@@ -1,0 +1,38 @@
+import storage from 'redux-persist/lib/storage';
+import { configureStore, Middleware } from '@reduxjs/toolkit';
+import { persistStore, persistReducer, PersistConfig } from 'redux-persist';
+import rootReducer from '../reducers';
+import api from '../../api';
+import { videoIntegrationApi } from '../../api/interview-service/VideoIntegration/index';
+import { interviewFeedbackApi } from '../../api/interview-service/InterviewFeedback/index';
+import { publicQrApi } from '../../api/candidate-service/PublicQr/index';
+
+export type RootState = ReturnType<typeof rootReducer>;
+
+const persistConfig: PersistConfig<RootState> = {
+  key: 'root',
+  storage,
+  whitelist: ['LoginSlice', 'JobSlice', 'EditJobSlice'],
+};
+
+const persistedReducer = persistReducer(persistConfig, rootReducer);
+
+const middleware: Middleware[] = [
+  api.middleware,
+  videoIntegrationApi.middleware,
+  interviewFeedbackApi.middleware,
+  publicQrApi.middleware,
+];
+const store = configureStore({
+  reducer: persistedReducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }).concat(middleware),
+  devTools: import.meta.env.MODE !== 'production',
+});
+
+const persistor = persistStore(store);
+
+export type AppDispatch = typeof store.dispatch;
+export { store, persistor };

@@ -1,0 +1,6 @@
+.placeholder-style .ant-select-selection-placeholder {
+  color: #00000073 !important;
+  /* font-family: 'DM Sans', sans-serif !important; */
+  font-family: inherit !important;
+  font-size: 14px !important;
+}

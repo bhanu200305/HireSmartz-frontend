@@ -1,0 +1,96 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  deploy-to-production:
+    name: 🚀 Deploy to Production
+    if: github.ref_name == 'main'
+    runs-on: [self-hosted, web-prod-fe]
+
+    steps:
+      - name: 📥 Checkout latest code
+        uses: actions/checkout@v3
+
+      - name: 🛠️ Deploy Production Build
+        run: |
+          echo "✅ Starting production deployment..."
+
+          RUNNER_DIR="${{ github.workspace }}"
+          TARGET_DIR="/home/careeruser/careerforcepro-web"
+
+          echo "Removing old files from $TARGET_DIR..."
+          rm -rf "$TARGET_DIR"/*
+
+          echo "📁 Syncing files to $TARGET_DIR..."
+          rsync -av --exclude 'node_modules' "$RUNNER_DIR/" "$TARGET_DIR/"
+
+          echo "🚀 Preparing production build..."
+          cd "$TARGET_DIR"
+
+          cat <<EOF > .env
+          VITE_NODE_ENV=production
+          VITE_BACKEND_PREFIX=/api/v1
+          VITE_BACKEND_ENDPOINT=https://careerforcepro.netsmartz.us
+          VITE_AGORA_APP_ID=${{ secrets.VITE_AGORA_APP_ID }}
+          EOF
+
+          echo "📦 Installing dependencies with Bun..."
+          bun install
+
+          echo "🔨 Building frontend..."
+          bun run build
+
+          echo "📁 Deploying to /var/www/html..."
+          cp -r dist/* /var/www/html/
+
+          echo "✅ Production deployment complete!"
+
+  deploy-to-development:
+    name: 🚧 Deploy to Development
+    if: github.ref_name == 'dev'
+    runs-on: [self-hosted, web-self-hosted-dev]
+
+    steps:
+      - run: echo "Running deployment for development branch..."
+        shell: bash
+      - name: 📥 Checkout latest code
+        uses: actions/checkout@v3
+
+      - name: 🛠️ Deploy Dev Build
+        run: |
+          echo "✅ Starting development deployment..."
+
+          RUNNER_DIR="${{ github.workspace }}"
+          TARGET_DIR="/home/careerforcepro/careerforcepro-web"
+
+          echo "Removing old files from $TARGET_DIR..."
+          rm -rf "$TARGET_DIR"/*
+
+          echo "📁 Syncing files to $TARGET_DIR..."
+          rsync -av --exclude 'node_modules' "$RUNNER_DIR/" "$TARGET_DIR/"
+
+          echo "🚀 Preparing dev build..."
+          cd "$TARGET_DIR"
+
+          cat <<EOF > .env
+          VITE_NODE_ENV=development
+          VITE_BACKEND_PREFIX=/api/v1
+          VITE_BACKEND_ENDPOINT=https://careerforceprotest.netsmartz.us
+          VITE_AGORA_APP_ID=${{ secrets.VITE_AGORA_APP_ID }}
+          EOF
+
+          echo "📦 Installing dependencies with Bun..."
+          bun install
+
+          echo "🔨 Building frontend..."
+          bun run build
+
+          echo "📁 Deploying to /var/www/dev/html..."
+          cp -r dist/* /var/www/dev/html/
+
+          echo "✅ Development deployment complete!"

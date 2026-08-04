@@ -1,0 +1,132 @@
+[
+  {
+    "key": "1",
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "phoneNumber": "+1 234 567 8901",
+    "role": "Super Admin",
+    "title": "CEO",
+    "status": "ACTIVE"
+  },
+  {
+    "key": "2",
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "email": "jane.smith@example.com",
+    "phoneNumber": "+1 987 654 3210",
+    "role": "Admin",
+    "title": "Senior Manager",
+    "status": "INACTIVE"
+  },
+  {
+    "key": "3",
+    "firstName": "Alice",
+    "lastName": "Brown",
+    "email": "alice.brown@example.com",
+    "phoneNumber": "+44 123 456 7890",
+    "role": "User",
+    "title": "Team Lead",
+    "status": "ACTIVE"
+  },
+  {
+    "key": "4",
+    "firstName": "Bob",
+    "lastName": "Wilson",
+    "email": "bob.wilson@example.com",
+    "phoneNumber": "+91 98765 43210",
+    "role": "Super Admin",
+    "title": "Director",
+    "status": "INACTIVE"
+  },
+  {
+    "key": "5",
+    "firstName": "Charlie",
+    "lastName": "Johnson",
+    "email": "charlie.johnson@example.com",
+    "phoneNumber": "+61 400 123 456",
+    "role": "Admin",
+    "title": "Assistant Manager",
+    "status": "ACTIVE"
+  },
+  {
+    "key": "6",
+    "firstName": "David",
+    "lastName": "Miller",
+    "email": "david.miller@example.com",
+    "phoneNumber": "+1 555 234 5678",
+    "role": "User",
+    "title": "Developer",
+    "status": "ACTIVE"
+  },
+  {
+    "key": "7",
+    "firstName": "Emma",
+    "lastName": "Davis",
+    "email": "emma.davis@example.com",
+    "phoneNumber": "+44 789 654 3210",
+    "role": "Super Admin",
+    "title": "Managing Director",
+    "status": "INACTIVE"
+  },
+  {
+    "key": "8",
+    "firstName": "Frank",
+    "lastName": "Harris",
+    "email": "frank.harris@example.com",
+    "phoneNumber": "+91 88999 12345",
+    "role": "Admin",
+    "title": "Project Manager",
+    "status": "ACTIVE"
+  },
+  {
+    "key": "9",
+    "firstName": "Grace",
+    "lastName": "Moore",
+    "email": "grace.moore@example.com",
+    "phoneNumber": "+33 612 345 678",
+    "role": "User",
+    "title": "Intern",
+    "status": "INACTIVE"
+  },
+  {
+    "key": "10",
+    "firstName": "Henry",
+    "lastName": "Taylor",
+    "email": "henry.taylor@example.com",
+    "phoneNumber": "+49 123 456 7890",
+    "role": "User",
+    "title": "Product Owner",
+    "status": "ACTIVE"
+  },
+  {
+    "key": "11",
+    "firstName": "Isabella",
+    "lastName": "Anderson",
+    "email": "isabella.anderson@example.com",
+    "phoneNumber": "+55 987 654 3210",
+    "role": "Admin",
+    "title": "HR Manager",
+    "status": "INACTIVE"
+  },
+  {
+    "key": "12",
+    "firstName": "Jack",
+    "lastName": "White",
+    "email": "jack.white@example.com",
+    "phoneNumber": "+61 456 789 012",
+    "role": "Super Admin",
+    "title": "CTO",
+    "status": "ACTIVE"
+  },
+  {
+    "key": "13",
+    "firstName": "Liam",
+    "lastName": "Scott",
+    "email": "liam.scott@example.com",
+    "phoneNumber": "+1 234 567 8901",
+    "role": "User",
+    "title": "Designer",
+    "status": "INACTIVE"
+  }
+]

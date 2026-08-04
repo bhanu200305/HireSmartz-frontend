@@ -1,0 +1,7 @@
+.ant-table-tbody > tr > td {
+  border: none !important;
+}
+.customTable {
+  padding: 4px !important;
+  border: none !important;
+}

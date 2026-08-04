@@ -1,0 +1,101 @@
+.master-pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background-color: #f5f5f5;
+  border-top: 1px solid #e8e8e8;
+  gap: 24px;
+}
+
+.master-pagination-info {
+  font-size: 14px;
+  color: #666;
+  min-width: fit-content;
+}
+
+.master-pagination-info span {
+  font-weight: 500;
+}
+
+.master-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.master-pagination-controls label {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+  font-weight: 500;
+}
+
+.master-pagination-input {
+  width: 50px;
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.master-pagination-input:focus {
+  outline: none;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.master-pagination-total {
+  font-size: 14px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.master-pagination-nav {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.master-pagination-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #1890ff;
+  transition: all 0.3s ease;
+}
+
+.master-pagination-btn:hover:not(:disabled) {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.master-pagination-btn:disabled {
+  cursor: not-allowed;
+  color: #999;
+  border-color: #d9d9d9;
+}
+
+@media (max-width: 768px) {
+  .master-pagination-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .master-pagination-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

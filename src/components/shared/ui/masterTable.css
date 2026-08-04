@@ -1,0 +1,38 @@
+/* custom-select: removes internal AntD Select border so the parent rounded wrapper shows instead.
+   Mirrors the same class used in Job Openings filter dropdowns. */
+.custom-select .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 24px 0 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  background-color: transparent !important;
+}
+
+.custom-select .ant-select-selection-placeholder {
+  color: black !important;
+}
+
+.custom-select .ant-select-arrow {
+  color: black !important;
+}
+
+.custom-select.ant-select-focused .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Error state */
+.master-table-error {
+  padding: 16px;
+  background-color: #fff2e8;
+  border: 1px solid #ffbb96;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  color: #d4380d;
+}
+
+.master-table-error p {
+  margin: 0;
+}

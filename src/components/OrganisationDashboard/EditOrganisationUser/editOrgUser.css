@@ -1,0 +1,22 @@
+.custom-select-org .ant-select-selector {
+  font-family: 'DM Sans', sans-serif !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  background-color: transparent !important;
+  font-size: 16px !important;
+  color: #000 !important;
+}
+
+.custom-select .ant-select-selection-placeholder,
+.custom-select .ant-select-arrow {
+  color: black !important;
+  font-family: inherit !important;
+}
+
+.hide-rest-item-while-open.ant-select-open .ant-select-selection-overflow-item-rest {
+  display: none !important;
+}

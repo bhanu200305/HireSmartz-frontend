@@ -1,0 +1,94 @@
+name: Deploy Preview
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout latest code
+        uses: actions/checkout@v4
+
+      - name: 📦 Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: 🟢 Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 🔤 Compute Preview Name
+        id: preview
+        shell: bash
+        run: |
+          BRANCH="${GITHUB_REF_NAME#feature/}"
+          BRANCH="${BRANCH//\//-}"
+          BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]')
+
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+          echo "Preview URL:"
+          echo "https://${BRANCH}.preview.careerforcepro.com"
+
+      - name: 📝 Create .env
+        run: |
+          cat <<EOF > .env
+          VITE_BACKEND_ENDPOINT=https://staging.careerforcepro.com
+          VITE_BACKEND_PREFIX=/v1
+          VITE_NYLAS_CLIENT_ID=2688977e-f353-441e-b625-7fff2209d976
+          VITE_NYLAS_SCHEDULER_API_URL=https://api.us.nylas.com
+          VITE_RECAPTCHA_SITE_KEY=6LdsHtQsAAAAADPBKwWwfuZjEkbFGLYfhcKSIYK6
+          VITE_NYLAS_FEATURE=true
+          VITE_INTERVIEW_FEEDBACK_FEATURE=true
+          VITE_VIDEO_CONSENT_FEATURE=true
+          VITE_CALL_EXPIRY_FEATURE=true
+          VITE_SECONDARY_CONTACT_ROLE_FEATURE=true
+          EOF
+
+      - name: 📦 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 🔨 Build frontend
+        run: pnpm run build
+
+      - name: 🔑 Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SERVER_SSH }}
+
+      - name: ➕ Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.STAGING_SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: 📁 Create preview directory
+        run: |
+          ssh \
+            ${{ secrets.STAGING_SERVER_USERNAME }}@${{ secrets.STAGING_SERVER_IP }} \
+            "mkdir -p /var/www/previews/${{ steps.preview.outputs.branch }}/dist"
+
+      - name: 🚀 Deploy Preview
+        run: |
+          rsync -az --delete \
+            dist/ \
+            ${{ secrets.STAGING_SERVER_USERNAME }}@${{ secrets.STAGING_SERVER_IP }}:/var/www/previews/${{ steps.preview.outputs.branch }}/dist/
+
+      - name: ✅ Done
+        run: |
+          echo ""
+          echo "======================================"
+          echo "Preview deployment complete!"
+          echo ""
+          echo "https://${{ steps.preview.outputs.branch }}.preview.careerforcepro.com"
+          echo "======================================"

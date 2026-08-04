@@ -1,0 +1,30 @@
+[
+  {
+    "jobTitle": "Software Engineer",
+    "qualification": "Bachelor's Degree in Computer Science",
+    "totalApplicants": 150,
+    "totalOpenings": 5,
+    "interviewed": 20
+  },
+  {
+    "jobTitle": "Data Analyst",
+    "qualification": "Bachelor's Degree in Statistics",
+    "totalApplicants": 100,
+    "totalOpenings": 3,
+    "interviewed": 15
+  },
+  {
+    "jobTitle": "Project Manager",
+    "qualification": "MBA or equivalent experience",
+    "totalApplicants": 80,
+    "totalOpenings": 2,
+    "interviewed": 10
+  },
+  {
+    "jobTitle": "UI/UX Designer",
+    "qualification": "Bachelor's Degree in Design or related field",
+    "totalApplicants": 120,
+    "totalOpenings": 4,
+    "interviewed": 18
+  }
+]

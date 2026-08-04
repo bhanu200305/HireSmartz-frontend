@@ -1,0 +1,278 @@
+import MainLayout from '../../layouts/MainLayout';
+import { MdLockOutline, MdOutlineArrowBack } from 'react-icons/md';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Button, Input, showToast } from '../shared';
+import { Controller, useForm } from 'react-hook-form';
+import { passwordSchema } from './ChangePasswordSchema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form } from 'antd';
+import { useChangePasswordMutation } from '../../api/tenant-service/UserProfile/UserProfile';
+import { get } from 'lodash-es';
+import { Loader } from '../shared/ui/loader';
+import { useDispatch } from 'react-redux';
+import { persistor } from '../../redux/provider/store';
+import { resetState } from '../../redux/slices/loginSlice';
+import {
+  clearLocalStorage,
+  getLocalStorageItem,
+  isImpersonationActive,
+} from '../../shared/utils/auth/localstorage.helpers';
+import { useState } from 'react';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { jwtDecode } from 'jwt-decode';
+import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
+import { TbLockCheck } from 'react-icons/tb';
+
+const ChangePassword = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const location = useLocation();
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [changePassword, { isLoading }] = useChangePasswordMutation();
+
+  const autoLogin = location?.state?.autoLogin;
+
+  const {
+    handleSubmit,
+    control,
+    trigger,
+    formState: { errors, isValid },
+  } = useForm({
+    resolver: zodResolver(passwordSchema(!!autoLogin)),
+    defaultValues: {
+      currentPassword: '',
+      newPassword: '',
+      confirmNewPassword: '',
+    },
+    mode: 'onChange',
+  });
+  const getCompanyNameFromToken = () => {
+    const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
+    if (!token) return null;
+    const decoded = jwtDecode<{ companyName: string }>(token);
+    return decoded.companyName;
+  };
+  const companyName = getCompanyNameFromToken();
+
+  const handlePasswordChange = (data: any) => {
+    const payload = {
+      oldPassword: data.currentPassword,
+      newPassword: data.newPassword,
+    };
+
+    changePassword(payload)
+      .unwrap()
+      .then((res) => {
+        const message = get(res, 'message', 'Password changed successfully');
+        const success = get(res, 'success', false);
+
+        if (success) {
+          showToast({ message, type: 'success' });
+
+          if (isImpersonationActive()) {
+            return;
+          }
+
+          clearLocalStorage();
+          persistor.purge();
+          dispatch(resetState());
+          navigate('/login');
+        } else {
+          showToast({ message: message || 'Failed to change password', type: 'error' });
+        }
+      })
+      .catch((err) => {
+        showToast({
+          message: get(err, 'data.message', 'An error occurred while changing password'),
+          type: 'error',
+        });
+      });
+  };
+
+  return (
+    <>
+      {isLoading && <Loader />}
+      <MainLayout>
+        <div className="flex flex-col items-center bg-white px-4 mt-4 relative pt-8">
+          {!autoLogin && (
+            <div className="mb-4 self-start px-4 absolute">
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center text-gray-600 hover:text-gray-800 mb-4 cursor-pointer"
+              >
+                <MdOutlineArrowBack className="mr-2" />
+                <span>Back</span>
+              </button>
+            </div>
+          )}
+          <div className="bg-[#FAFAFA] p-6 md:p-14 rounded-2xl shadow-lg w-full max-w-xl flex flex-col">
+            {companyName && (
+              <p className="text-center font-semibold text-black mb-2">{companyName}</p>
+            )}
+            <h2 className="text-center text-2xl font-semibold mb-2">Change Password</h2>
+            {autoLogin ? (
+              <p className="text-center mb-6">
+                Please change your temporary password for security reasons.
+              </p>
+            ) : (
+              <p className="text-center mb-6">Please enter the following details</p>
+            )}
+            <Form onFinish={handleSubmit(handlePasswordChange)} layout="vertical" colon={false}>
+              {/* <Form.Item
+                label={
+                  <span>
+                    Current Password <span className="required-asterisk">*</span>
+                  </span>
+                }
+              > */}
+              <div className="grid grid-rows-2 gap-4">
+                <div className="relative">
+                  <Controller
+                    name="currentPassword"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        type={showCurrentPassword ? 'text' : 'password'}
+                        placeholder={autoLogin ? 'Temporary Password*' : 'Current Password*'}
+                        prefix={
+                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 mr-1">
+                            <MdLockOutline className="text-blue-900 text-sm" />
+                          </div>
+                        }
+                        className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          trigger('newPassword');
+                        }}
+                      />
+                    )}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-4 flex items-center text-blue-900 cursor-pointer"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    {showCurrentPassword ? <FaEye /> : <FaEyeSlash />}
+                  </button>
+                </div>
+                {errors.currentPassword && (
+                  <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
+                    {errors.currentPassword.message}
+                  </p>
+                )}
+                {/* </Form.Item> */}
+
+                {/* <Form.Item
+                label={
+                  <span>
+                    New Password <span className="required-asterisk">*</span>
+                  </span>
+                }
+              > */}
+                <div className="relative">
+                  <Controller
+                    name="newPassword"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        type={showNewPassword ? 'text' : 'password'}
+                        placeholder="New Password*"
+                        prefix={
+                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 mr-1">
+                            <TbLockCheck className="text-blue-900 text-sm" />
+                          </div>
+                        }
+                        className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Re-validate confirmNewPassword and currentPassword when newPassword changes
+                          trigger(['confirmNewPassword', 'currentPassword']);
+                        }}
+                      />
+                    )}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-4 flex items-center text-blue-900 cursor-pointer"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    {showNewPassword ? <FaEye /> : <FaEyeSlash />}
+                  </button>
+                </div>
+                {errors.newPassword && (
+                  <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
+                    {errors.newPassword.message}
+                  </p>
+                )}
+                {/* </Form.Item> */}
+
+                {/* <Form.Item
+                label={
+                  <span>
+                    Confirm New Password <span className="required-asterisk">*</span>
+                  </span>
+                }
+              > */}
+                <div className="relative">
+                  <Controller
+                    name="confirmNewPassword"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder="Confirm New Password*"
+                        prefix={
+                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 mr-1">
+                            <TbLockCheck className="text-blue-900 text-sm" />
+                          </div>
+                        }
+                        className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Re-validate newPassword when confirmNewPassword changes
+                          trigger('newPassword');
+                        }}
+                      />
+                    )}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-4 flex items-center text-blue-900 cursor-pointer"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
+                  </button>
+                </div>
+                {errors.confirmNewPassword && (
+                  <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
+                    {errors.confirmNewPassword.message}
+                  </p>
+                )}
+                {/* </Form.Item> */}
+
+                <Form.Item style={{ marginBottom: 0 }}>
+                  <Button
+                    htmlType="submit"
+                    disabled={!isValid || isLoading}
+                    className="w-full text-white bg-button rounded-3xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'CHANGING PASSWORD...' : 'CHANGE PASSWORD'}
+                  </Button>
+                </Form.Item>
+              </div>
+            </Form>
+            {/* </form> */}
+          </div>
+        </div>
+      </MainLayout>
+    </>
+  );
+};
+
+export default ChangePassword;

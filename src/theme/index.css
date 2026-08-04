@@ -1,0 +1,20 @@
+:root {
+  color-scheme: light;
+  /* --primary: #004be0; */
+  --primary: #2a69a8;
+  --required-indicator-color: #dc2626;
+  --secondary: #ff00ff;
+  --background: #ffffff;
+  --button: #2a69a8;
+  --text: #333333;
+  /* --border: #e2e2e2; */
+  --border: #d1d1d1;
+  --login-background: #f3f3f3;
+  --light-text: #e2e2e2;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

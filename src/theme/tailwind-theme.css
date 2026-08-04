@@ -1,0 +1,20 @@
+@import './index.css';
+
+@import 'tailwindcss';
+
+@theme {
+  --color-primary: var(--primary);
+  --color-required-indicator: var(--required-indicator-color);
+  --color-secondary: var(--secondary);
+  --color-background: var(--background);
+  --color-text: var(--text);
+  --color-button: var(--button);
+  --color-border-input: var(--border);
+  --color-login-background: var(--login-background);
+  --color-light-text: var(--light-text);
+
+  --font-dm-sans: 'DM Sans', sans-serif;
+  --font-roboto: 'Roboto', sans-serif;
+  --font-intro-pro: 'Intro Pro', sans-serif;
+  --font-sora: 'Sora', sans-serif;
+}

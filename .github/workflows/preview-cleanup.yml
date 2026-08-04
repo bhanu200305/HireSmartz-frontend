@@ -1,0 +1,90 @@
+name: Cleanup Preview
+
+on:
+  delete:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Feature branch to clean up (without feature/)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-cleanup-${{ github.event.ref || github.event.inputs.branch }}
+  cancel-in-progress: true
+
+jobs:
+  cleanup:
+    name: 🧹 Remove Preview
+    runs-on: ubuntu-latest
+
+    # Only react to deleted feature branches.
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.ref_type == 'branch' &&
+       startsWith(github.event.ref, 'feature/'))
+
+    steps:
+      - name: 🔤 Compute Preview Name
+        id: preview
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BRANCH="${{ github.event.inputs.branch }}"
+          else
+            BRANCH="${{ github.event.ref }}"
+            BRANCH="${BRANCH#feature/}"
+          fi
+
+          BRANCH="${BRANCH//\//-}"
+          BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]')
+
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+          echo "Preview to remove:"
+          echo "$BRANCH"
+
+      - name: 🔑 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SERVER_SSH }}
+
+      - name: ➕ Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.STAGING_SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: 🧹 Remove Preview Directory
+        run: |
+          ssh \
+            -o StrictHostKeyChecking=yes \
+            ${{ secrets.STAGING_SERVER_USERNAME }}@${{ secrets.STAGING_SERVER_IP }} << EOF
+
+          PREVIEW="/var/www/previews/${{ steps.preview.outputs.branch }}"
+
+          echo "Checking preview..."
+
+          if [ ! -d "\$PREVIEW" ]; then
+            echo "Preview does not exist."
+            exit 0
+          fi
+
+          echo "Removing:"
+          echo "\$PREVIEW"
+
+          rm -rf "\$PREVIEW"
+
+          echo "Cleanup completed."
+
+          EOF
+
+      - name: ✅ Finished
+        run: |
+          echo ""
+          echo "======================================"
+          echo "Preview removed successfully!"
+          echo ""
+          echo "Branch: ${{ steps.preview.outputs.branch }}"
+          echo "======================================"

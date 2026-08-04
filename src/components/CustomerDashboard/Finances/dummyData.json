@@ -1,0 +1,85 @@
+{
+  "payments": [
+    {
+      "customerName": "James William",
+      "invoiceNumber": "#84643736725",
+      "paymentMode": "Online",
+      "totalAmount": "$870",
+      "receivedOn": "",
+      "dueDate": "02-28-2025",
+      "status": "UNPAID"
+    },
+    {
+      "customerName": "Michael David",
+      "invoiceNumber": "-",
+      "paymentMode": "Online",
+      "totalAmount": "$870",
+      "receivedOn": "",
+      "dueDate": "02-29-2025",
+      "status": "UNPAID"
+    },
+    {
+      "customerName": "Christopher Allen",
+      "invoiceNumber": "-",
+      "paymentMode": "Online",
+      "totalAmount": "$870",
+      "receivedOn": "",
+      "dueDate": "02-28-2025",
+      "status": "PAID"
+    },
+    {
+      "customerName": "John Doe",
+      "invoiceNumber": "#84643736754",
+      "paymentMode": "Cash",
+      "totalAmount": "$870",
+      "receivedOn": "02-28-2025",
+      "dueDate": "",
+      "status": "PAID"
+    },
+    {
+      "customerName": "Stephen Hawking",
+      "invoiceNumber": "#84643736871",
+      "paymentMode": "Cash",
+      "totalAmount": "$870",
+      "receivedOn": "02-28-2025",
+      "dueDate": "",
+      "status": "UNPAID"
+    },
+    {
+      "customerName": "Joshua Thomas",
+      "invoiceNumber": "-",
+      "paymentMode": "Online",
+      "totalAmount": "$870",
+      "receivedOn": "",
+      "dueDate": "02-28-2025",
+      "status": "UNPAID"
+    },
+    {
+      "customerName": "Matthew Joseph",
+      "invoiceNumber": "#84643736786",
+      "paymentMode": "Online",
+      "totalAmount": "$870",
+      "receivedOn": "",
+      "dueDate": "",
+      "status": "UNPAID"
+    },
+    {
+      "customerName": "Daniel Ryan",
+      "invoiceNumber": "-",
+      "paymentMode": "Online",
+      "totalAmount": "$870",
+      "receivedOn": "",
+      "dueDate": "",
+      "status": "UNPAID"
+    },
+    {
+      "customerName": "Anthony Charles",
+      "invoiceNumber": "#84643736428",
+      "paymentMode": "Online",
+      "totalAmount": "$870",
+      "receivedOn": "",
+      "dueDate": "02-28-2025",
+      "status": "UNPAID"
+    }
+  ]
+}

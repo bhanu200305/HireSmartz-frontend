@@ -1,0 +1,553 @@
+@import './theme/tailwind-theme.css';
+
+/* @font-face {
+  font-family: 'Intro Pro';
+  src:
+    url('/src/assets/fonts/IntroPro.woff2') format('woff2'),
+    url('/src/assets/fonts/IntroPro.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+} */
+
+/* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
+.public-page input,
+.public-page textarea,
+.public-page select,
+.public-page .ant-input,
+.public-page .ant-select-selector,
+.public-page .ant-select-selection-search-input {
+  font-size: 16px !important;
+}
+
+/* Fix vertical alignment of placeholder in Ant Design multiple Select */
+.public-page .ant-select-multiple .ant-select-selector {
+  height: 40px !important;
+  align-items: center !important;
+}
+
+.public-page .ant-select-multiple .ant-select-selection-overflow {
+  height: 100% !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+}
+
+.public-page .ant-select-selection-placeholder {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  line-height: 1 !important;
+  inset-inline-start: 11px !important;
+}
+
+body {
+  /* font-family: 'DM Sans', sans-serif; */
+  font-family: 'Roboto', sans-serif;
+  background-color: #ffffff;
+  color-scheme: light;
+}
+.roboto-font {
+  font-family: 'Roboto', sans-serif !important;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Sora', sans-serif;
+}
+.heading-font {
+  font-family: 'sora', sans-serif;
+}
+
+.heading-font.ant-col,
+.heading-font .ant-col {
+  font-family: 'Sora', sans-serif !important;
+}
+.ant-form-item-label > label {
+  font-family: 'Roboto', sans-serif !important;
+}
+
+.required-asterisk {
+  color: var(--required-indicator-color) !important;
+}
+
+.ant-form-item .ant-form-item-label > label.ant-form-item-required::before {
+  color: var(--required-indicator-color) !important;
+}
+
+.ant-input,
+.ant-select-selector,
+.ant-picker-input input,
+.ant-select-selection-placeholder,
+.ant-select-selection-item {
+  font-family: 'Roboto', sans-serif !important;
+}
+.ant-dropdown-menu,
+.ant-dropdown-menu-item,
+.ant-dropdown-menu-title-content {
+  font-family: 'Roboto', sans-serif !important;
+}
+
+.ant-form-item-explain-error {
+  font-family: 'Roboto', sans-serif !important;
+}
+.ant-switch.ant-switch-checked .ant-switch-inner,
+.ant-switch:not(.ant-switch-checked) .ant-switch-inner {
+  font-family: 'Roboto', sans-serif !important;
+}
+
+/* Remove highlight from sorted table columns */
+.ant-table-column-sort {
+  background: transparent !important;
+}
+.ant-table-tbody > tr.ant-table-row:hover > .ant-table-column-sort,
+.ant-table-tbody > tr > .ant-table-column-sort {
+  background: transparent !important;
+}
+
+canvas[data-agora-recording='true'] {
+  pointer-events: none; /* don't block mouse */
+}
+
+/* .ant-modal-mask {
+  @apply backdrop-blur-sm bg-white/30;
+} */
+
+.ant-custom-modal .ant-modal-content {
+  background-color: #fafafa !important;
+}
+
+.ant-custom-modal .ant-modal-header {
+  background-color: #fafafa !important;
+}
+
+.ant-custom-modal .ant-modal-footer {
+  background-color: #fafafa !important;
+}
+
+.ant-tabs-tab:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.ant-tabs-tab:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.custom-select-no-border .ant-select-selector {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* Prevent suffix arrow (caret) from overlapping placeholder/value text
+   in custom-select dropdowns at any browser zoom level. */
+.custom-select .ant-select-selection-placeholder,
+.custom-select .ant-select-selection-item {
+  padding-right: 25px !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.6);
+}
+
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input-number:focus,
+.ant-input-number-focused,
+.ant-picker-focused,
+.ant-select-focused .ant-select-selector {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.6) !important;
+}
+
+.custom-select-no-border.ant-select-focused .ant-select-selector {
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+.border-wrapper:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.6) !important;
+}
+
+.border-wrapper .ant-select-focused .ant-select-selector,
+.border-wrapper .ant-select-selector:focus,
+.border-wrapper .ant-select-selection-search-input:focus,
+.border-wrapper .ant-input:focus,
+.border-wrapper .ant-input-focused {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.border-wrapper input:focus,
+.border-wrapper textarea:focus,
+.border-wrapper .ant-select-selection-search-input:focus {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.ant-select .ant-select-selection-search-input:focus {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.6) !important;
+}
+
+.search-input-wrapper input:focus {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.ant-select-selection-search-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Suppress inner focus for TimePicker and DatePicker inside bordered wrappers */
+.border-wrapper .ant-picker-focused,
+.border-wrapper .ant-picker input:focus,
+.border-wrapper .ant-picker {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.ant-picker-focused {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Adjust height of TimePicker and DatePicker to match other form fields */
+.ant-picker {
+  height: 32px !important;
+}
+
+.ant-picker input {
+  height: 32px !important;
+}
+
+.custom-time-picker.ant-picker,
+.custom-date-picker.ant-picker {
+  width: 100% !important;
+  height: 32px !important;
+}
+
+.custom-time-picker.ant-picker input,
+.custom-date-picker.ant-picker input {
+  height: 32px !important;
+  font-size: 14px !important;
+}
+
+.phone-input-wrapper:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.6) !important;
+}
+
+.phone-input-wrapper input:focus,
+.phone-input-wrapper .ant-input:focus,
+.phone-input-wrapper .ant-input-focused,
+.phone-input-wrapper .ant-input-affix-wrapper:focus,
+.phone-input-wrapper .ant-input-affix-wrapper-focused,
+.phone-input-wrapper .ant-select-focused .ant-select-selector,
+.phone-input-wrapper .ant-select-selector:focus {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.view-candidate-tabs .ant-tabs-tab.ant-tabs-tab-active {
+  border-bottom: 2px solid var(--primary) !important;
+}
+.view-candidate-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--primary) !important;
+}
+.view-candidate-tabs .ant-tabs-nav::before {
+  border-bottom: none !important;
+}
+.view-candidate-tabs .ant-tabs-ink-bar {
+  display: none !important;
+}
+.view-candidate-tabs .ant-tabs-nav {
+  margin-bottom: 0 !important;
+}
+.view-candidate-tabs .ant-tabs-nav-wrap {
+  flex: none !important;
+  overflow: visible !important;
+}
+.view-candidate-tabs .ant-tabs-nav-list {
+  transform: none !important;
+}
+.view-candidate-tabs .ant-tabs-nav-operations {
+  display: none !important;
+}
+.view-candidate-tabs .ant-tabs-tab-btn {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+.custom-select-jobs .ant-select-selector {
+  cursor: pointer;
+}
+
+.custom-select-jobs .ant-select-selection-item {
+  cursor: pointer;
+}
+
+.custom-select-jobs .ant-select-arrow {
+  cursor: pointer;
+}
+
+.custom-select-jobs .ant-select-selection-search-input {
+  cursor: pointer !important;
+}
+
+.dropdown-focus-ring:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.6) !important;
+}
+
+.custom-select-jobs-dropdown .ant-select-item {
+  cursor: pointer;
+}
+
+.custom-select-jobs-dropdown .ant-select-item-option-disabled {
+  cursor: not-allowed;
+}
+
+/* LiveKit floating participant labels */
+.lk-participant-name,
+.lk-participant-metadata,
+.lk-participant-tile .lk-participant-name,
+.lk-participant-tile .lk-participant-metadata,
+.lk-participant-tile .lk-participant-name span,
+.lk-participant-tile .lk-participant-metadata span {
+  background-color: rgba(0, 0, 0, 0.85) !important;
+  color: #ffffff !important;
+  border-radius: 0.375rem !important;
+  padding: 0.2rem 0.5rem !important;
+  display: inline-flex !important;
+  width: fit-content !important;
+  max-width: max-content !important;
+}
+
+/* Hide signal/connection quality indicator in participant tiles */
+.lk-connection-quality,
+.lk-participant-connection-quality,
+.lk-participant-tile .lk-connection-quality {
+  display: none !important;
+}
+
+/* Interview control bar base contrast */
+.interview-control-bar .ant-btn {
+  color: #f8fafc !important;
+  background: transparent !important;
+}
+
+.interview-control-bar .ant-btn .anticon,
+.interview-control-bar .ant-btn svg {
+  color: #f8fafc !important;
+  fill: currentColor !important;
+}
+
+.interview-control-bar .ant-btn:hover,
+.interview-control-bar .ant-btn:focus {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Hide default LiveKit control bar */
+.lk-control-bar {
+  display: none !important;
+}
+/* ===== VIDEO GRID STYLING ===== */
+
+/* Video grid container */
+.video-grid-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Participant tiles container - add spacing */
+.video-grid-container .lk-video-conference {
+  width: 100% !important;
+  height: 100% !important;
+  padding: 12px !important;
+  gap: 12px !important;
+}
+
+/* Individual participant tile styling */
+.lk-participant-tile {
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  border: 3px solid rgba(148, 163, 184, 0.3) !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Participant tile hover state */
+.lk-participant-tile:hover {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5) !important;
+  border-color: rgba(148, 163, 184, 0.5) !important;
+}
+
+/* Audio bar visualization - bars for speaking detection */
+.lk-audio-bar {
+  background: rgba(107, 114, 128, 0.5) !important;
+  border-radius: 4px !important;
+  min-width: 2px !important;
+  transition: all 0.2s ease !important;
+}
+
+.lk-audio-bar.lk-highlighted {
+  background: #10b981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6) !important;
+}
+
+/* Audio visualization - blinking border when speaking */
+.lk-participant-tile[data-lk-speaking='true'] {
+  border-color: #10b981 !important;
+  animation: audio-pulse 0.6s ease-in-out infinite !important;
+  box-shadow: 0 8px 32px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Alternative: glow effect for speaking */
+.lk-participant-tile[data-lk-speaking='true']::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 20px;
+  border: 2px solid #10b981;
+  opacity: 0.5;
+  animation: audio-glow 0.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Keyframes for audio pulse (border blinking) */
+@keyframes audio-pulse {
+  0% {
+    border-color: #10b981 !important;
+    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3) !important;
+  }
+  50% {
+    border-color: #34d399 !important;
+    box-shadow: 0 8px 32px rgba(52, 211, 153, 0.5) !important;
+  }
+  100% {
+    border-color: #10b981 !important;
+    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3) !important;
+  }
+}
+
+/* Keyframes for audio glow effect */
+@keyframes audio-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 10px rgba(16, 185, 129, 0.4),
+      0 0 20px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 20px rgba(16, 185, 129, 0.6),
+      0 0 40px rgba(16, 185, 129, 0.4);
+  }
+}
+
+/* Participant video element inside tile */
+.lk-participant-tile video {
+  border-radius: 17px !important;
+}
+
+/* Participant name label styling */
+.lk-participant-name {
+  background: rgba(0, 0, 0, 0.6) !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  color: #f8fafc !important;
+  backdrop-filter: blur(4px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Screen share container */
+.lk-screen-share-container {
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  border: 2px solid #3b82f6 !important;
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Audio visualization bars */
+.lk-audio-bar {
+  background: rgba(107, 114, 128, 0.6) !important;
+  border-radius: 2px !important;
+  min-width: 3px !important;
+  height: 6px !important;
+  transition: all 0.15s ease !important;
+  margin: 0 2px !important;
+}
+
+.lk-audio-bar.lk-highlighted {
+  background: #10b981 !important;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.8) !important;
+  height: 12px !important;
+}
+
+/* Audio visualizer container */
+.lk-bar-visualizer {
+  display: flex !important;
+  align-items: flex-end !important;
+  gap: 2px !important;
+  height: 24px !important;
+  padding: 4px !important;
+}
+
+/* Participant speaking indicator - alternative to bar visualizer */
+.lk-participant-tile[data-lk-speaking='true'] {
+  border-color: #10b981 !important;
+}
+
+/* Grid layout for multiple participants */
+.lk-grid-layout {
+  gap: 12px !important;
+  padding: 12px !important;
+}
+
+/* Focus / speaker view container */
+.lk-focus-layout .lk-participant-tile {
+  min-height: 200px;
+  border-radius: 24px !important;
+}

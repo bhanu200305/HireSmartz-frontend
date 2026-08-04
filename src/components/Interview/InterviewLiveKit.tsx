@@ -1,0 +1,1789 @@
+/**
+ * Interview Component - LiveKit Integration
+ *
+ * Manages real-time video interviews with LiveKit SDK
+ * Replaces Agora-based Interview.tsx with simplified LiveKit architecture
+ *
+ * Responsibilities:
+ * - Token generation for room access
+ * - LiveKitRoom wrapper setup
+ * - Recording start/stop controls
+ * - Assessment sidebar management
+ * - WebSocket participant tracking
+ * - Interview state management
+ */
+
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { LiveKitRoom, useRoomContext } from '@livekit/components-react';
+import '@livekit/components-styles';
+import { Track, type RoomOptions, type RoomConnectOptions } from 'livekit-client';
+
+import {
+  FaMicrophone,
+  FaMicrophoneSlash,
+  FaVideo,
+  FaVideoSlash,
+  FaPhone,
+  FaCircle,
+  FaStopCircle,
+  FaChevronDown,
+  FaClipboardList,
+  FaRegCommentDots,
+} from 'react-icons/fa';
+import { MdScreenShare, MdStopScreenShare } from 'react-icons/md';
+import { Tooltip, Button, Spin, message, Dropdown } from 'antd';
+import type { MenuProps } from 'antd';
+import { jwtDecode } from 'jwt-decode';
+
+// LiveKit integration
+import { useLiveKit } from '../../hooks/useLiveKit';
+import type { LiveKitTokenResponse } from '../../types/LiveKit';
+import {
+  useEditAiQuestionForScoringMutation,
+  useLazyGetAiQuestionsByUserIdQuery,
+} from '../../api/ai-service/AiQuestion/AiQuestion';
+import {
+  useGenerateLiveKitTokenMutation,
+  useStopRecordingMutation,
+  useEndInterviewForAllMutation,
+} from '../../api/interview-service/VideoIntegration/index';
+import {
+  useLazyShouldPromptFeedbackQuery,
+  useSkipFeedbackMutation,
+} from '../../api/interview-service/InterviewFeedback/index';
+
+// UI Components
+import { showToast } from '../shared';
+import VideoGrid from './VideoGridLiveKit';
+import Sidebar from '../InterviewUser/Sidebar';
+import InterviewEndedScreen from './InterviewEndedScreen';
+import FeedbackPromptModal from './FeedbackPromptModal';
+import QuickFeedbackModal from './QuickFeedbackModal';
+import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import InterviewConsentModal from '../shared/ui/InterviewConsentModal';
+import InterviewSmsPanel from './InterviewSmsPanel';
+
+// Auth & Storage
+import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
+import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
+import clsx from 'clsx';
+
+/**
+ * Interview component main state
+ */
+interface InterviewState {
+  token: LiveKitTokenResponse | null;
+  joined: boolean;
+  loading: boolean;
+  error: string | null;
+  recording: boolean;
+  egressId: string | null;
+  showLeavingModal: boolean;
+  isRecordingModalVisible: boolean;
+  activeSidebar: 'info' | 'participants' | 'assessment' | null;
+  interviewToken: string | null;
+  hasEnded: boolean;
+  endedBy?: 'user' | 'recruiter';
+  interviewEndedByRecruiter: boolean;
+  categorizedQuestions?: any;
+  /** Tracks the post-interview feedback flow step */
+  feedbackFlow: 'idle' | 'checking' | 'chooser' | 'quick';
+}
+
+type InterviewTokenPayload = {
+  role?: string;
+  userId?: string | number;
+  candidateName?: string;
+  name?: string;
+  bookingId?: string;
+  sessionId?: string;
+  jobId?: string | number;
+  candidateId?: string | number;
+  interviewRoundId?: string | number;
+};
+
+const VIDEO_CONSENT_COPY = {
+  title: 'Consent for AI-Assisted Video Interview',
+  label:
+    'I have read and agree to the above, and I consent to this recorded, AI-assisted interview.',
+  cancel: 'CANCEL',
+  continue: 'CONTINUE',
+};
+
+const videoConsentDescription = (
+  <div className="space-y-4 text-left">
+    <p>Before proceeding, please review and confirm the following:</p>
+    <p>
+      This interview will be conducted using AI-assisted video interview technology. By checking the
+      box below, you agree to:
+    </p>
+    <ul className="list-disc pl-6 space-y-1">
+      <li>
+        Have your video and audio responses <strong>recorded</strong>
+      </li>
+      <li>
+        Have your responses <strong>analyzed using AI-based tools</strong> as part of the evaluation
+        process
+      </li>
+      <li>
+        Allow the recording to be <strong>stored and reviewed</strong> by authorized personnel
+        and/or hiring partners
+      </li>
+    </ul>
+  </div>
+);
+
+const videoConsentDisclaimer = (
+  <p className="mt-4">
+    You may decline without affecting your candidacy — an alternative interview option (e.g., live
+    call with a recruiter) is available upon request. Please contact the hiring manager directly.
+  </p>
+);
+
+/**
+ * Static room configuration — defined at module level to avoid
+ * recreating objects on every render (which could cause LiveKitRoom
+ * to detect prop changes and reconnect unnecessarily).
+ */
+const ROOM_OPTIONS: RoomOptions = {
+  adaptiveStream: true,
+  dynacast: true,
+  webAudioMix: true, // helps with browser audio autoplay policy issues
+};
+
+const CONNECT_OPTIONS: RoomConnectOptions = {
+  autoSubscribe: true,
+};
+
+/**
+ * Interview Component
+ *
+ * Top-level component for video interview experience
+ * Wraps all content in LiveKitRoom for video/audio functionality
+ */
+const Interview: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { pathname } = useLocation();
+  const interviewTokenFromQuery = searchParams.get('token') || '';
+
+  const decodedInterviewToken = useMemo<InterviewTokenPayload | null>(() => {
+    if (!interviewTokenFromQuery) return null;
+    try {
+      return jwtDecode<InterviewTokenPayload>(interviewTokenFromQuery);
+    } catch {
+      return null;
+    }
+  }, [interviewTokenFromQuery]);
+
+  const isVideoConsentFeatureEnabled = import.meta.env.VITE_VIDEO_CONSENT_FEATURE === 'true';
+  const isCandidateEntry = (decodedInterviewToken?.role || '').toUpperCase() === 'CANDIDATE';
+  const isConsentRequired = isCandidateEntry && isVideoConsentFeatureEnabled;
+  const [hasConsent, setHasConsent] = useState(!isConsentRequired);
+
+  useEffect(() => {
+    setHasConsent(!isConsentRequired);
+  }, [isConsentRequired, interviewTokenFromQuery]);
+
+  // State Management
+  const [state, setState] = useState<InterviewState>({
+    token: null,
+    joined: false,
+    loading: true,
+    error: null,
+    recording: false,
+    egressId: null,
+    showLeavingModal: false,
+    isRecordingModalVisible: false,
+    activeSidebar: null,
+    interviewToken: null,
+    hasEnded: false,
+    endedBy: undefined,
+    interviewEndedByRecruiter: false,
+    categorizedQuestions: undefined,
+    feedbackFlow: 'idle',
+  });
+
+  // Modal state for end interview confirmation
+  const [showEndInterviewModal, setShowEndInterviewModal] = useState(false);
+
+  /**
+   * Ref to prevent the `disconnected` event handler from racing with
+   * `handleEndInterview`. When the interviewer explicitly ends the interview,
+   * this ref is set to true so `handleLeaveInterview` (fired by the
+   * `disconnected` event) simply marks `hasEnded` without starting its own
+   * competing feedback-prompt flow.
+   */
+  const interviewEndingRef = useRef(false);
+
+  // RTK Query mutations
+  const [generateLiveKitToken] = useGenerateLiveKitTokenMutation();
+  const [stopRecording] = useStopRecordingMutation();
+  const [endInterviewForAll] = useEndInterviewForAllMutation();
+  const [getAiQuestionsByUserId] = useLazyGetAiQuestionsByUserIdQuery();
+  const [checkShouldPrompt] = useLazyShouldPromptFeedbackQuery();
+  const [skipFeedback, { isLoading: isSkippingFeedback }] = useSkipFeedbackMutation();
+
+  const clearSessionStorage = useCallback(() => {
+    sessionStorage.removeItem('livekit_booking_id');
+    sessionStorage.removeItem('livekit_session_id');
+    sessionStorage.removeItem('livekit_interview_token');
+  }, []);
+
+  /**
+   * Auto-detect recording status on join
+   * Recording is started automatically by backend when INTERVIEWER/RECRUITER joins
+   * Show recording status to all participants when an interviewer/recruiter joins
+   */
+  useEffect(() => {
+    if (state.joined && state.token) {
+      const isInterviewer = state.token.role === 'RECRUITER' || state.token.role === 'INTERVIEWER';
+      if (isInterviewer) {
+        setState((prev) => ({
+          ...prev,
+          recording: true,
+        }));
+      }
+    }
+  }, [state.joined, state.token]);
+
+  /**
+   * Callback to update recording state from InterviewContent
+   * This is needed because room context is only available inside LiveKitRoom
+   */
+  const handleUpdateRecordingState = useCallback((isRecording: boolean) => {
+    setState((prev) => ({
+      ...prev,
+      recording: isRecording,
+    }));
+  }, []);
+
+  /**
+   * Initialize interview: fetch token and join room
+   */
+  useEffect(() => {
+    const initializeInterview = async () => {
+      if (!hasConsent) {
+        return;
+      }
+
+      try {
+        setState((prev) => ({ ...prev, loading: true, error: null }));
+
+        // Get interview token from URL params
+        const interviewToken = interviewTokenFromQuery;
+        if (!interviewToken) {
+          throw new Error('Interview token missing from URL');
+        }
+
+        // Decode token to get user details
+        const decoded = jwtDecode<InterviewTokenPayload>(interviewToken);
+        const { role, candidateName, userId, bookingId, sessionId } = decoded;
+
+        if (!role || !userId) {
+          throw new Error('Invalid interview token structure');
+        }
+
+        // Validate interviewer login state
+        const isInterviewerRole = role === 'RECRUITER' || role === 'INTERVIEWER';
+        const hasAuthToken = !!getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
+
+        if (isInterviewerRole && !hasAuthToken) {
+          navigate('/login', {
+            replace: true,
+            state: { from: { pathname, search: window.location.search } },
+          });
+          return;
+        }
+
+        const participantName = candidateName || decoded.name || 'Unknown';
+
+        // Generate LiveKit token from backend
+        const response = await generateLiveKitToken({
+          interviewToken,
+          participantName,
+          participantIdentity: String(userId),
+          role: role.toUpperCase() as 'CANDIDATE' | 'RECRUITER' | 'INTERVIEWER',
+        }).unwrap();
+
+        let finalCategorizedQuestions = response.categorizedQuestions;
+
+        if (isInterviewerRole && hasAuthToken) {
+          try {
+            const authToken = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS) as string;
+            const decodedAuth = jwtDecode<{ userId?: string | number }>(authToken);
+            const authUserId = Number(decodedAuth.userId);
+            const jobOpeningId = Number(decoded.jobId);
+            const candidateId = Number(decoded.candidateId);
+            const interviewRoundId =
+              decoded.interviewRoundId !== undefined ? Number(decoded.interviewRoundId) : undefined;
+
+            if (
+              Number.isFinite(authUserId) &&
+              Number.isFinite(jobOpeningId) &&
+              Number.isFinite(candidateId)
+            ) {
+              const savedQuestions = await getAiQuestionsByUserId({
+                userId: authUserId,
+                jobOpeningId,
+                candidateId,
+                interviewRoundId: Number.isFinite(interviewRoundId) ? interviewRoundId : undefined,
+              }).unwrap();
+
+              if (savedQuestions && savedQuestions.categorizedQuestions) {
+                finalCategorizedQuestions = savedQuestions.categorizedQuestions;
+              }
+            }
+          } catch (err) {
+            console.error('Failed to fetch saved answers:', err);
+          }
+        }
+
+        // Store token and join room
+        setState((prev) => ({
+          ...prev,
+          token: response,
+          joined: true,
+          loading: false,
+          interviewToken,
+          categorizedQuestions: finalCategorizedQuestions,
+        }));
+
+        // Store metadata for recording
+        const tokenBookingId =
+          bookingId ||
+          (decoded as any).interviewBookingId ||
+          (decoded as any).bookingID ||
+          (decoded as any).booking_id ||
+          response.bookingId ||
+          (response as any).interviewBookingId;
+
+        console.log('[initializeInterview] Resolved bookingId details:', {
+          decodedBookingId: bookingId,
+          decodedInterviewBookingId: (decoded as any).interviewBookingId,
+          responseBookingId: response.bookingId,
+          responseInterviewBookingId: (response as any).interviewBookingId,
+          finalResolved: tokenBookingId,
+        });
+
+        if (tokenBookingId !== undefined && tokenBookingId !== null) {
+          sessionStorage.setItem('livekit_booking_id', String(tokenBookingId));
+        }
+        if (sessionId !== undefined) {
+          sessionStorage.setItem('livekit_session_id', String(sessionId));
+        }
+        sessionStorage.setItem('livekit_interview_token', interviewToken);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to initialize interview';
+        setState((prev) => ({
+          ...prev,
+          error: errorMsg,
+          loading: false,
+        }));
+        showToast({ message: errorMsg, type: 'error' });
+        console.error('Interview initialization error:', err);
+      }
+    };
+
+    initializeInterview();
+  }, [
+    generateLiveKitToken,
+    getAiQuestionsByUserId,
+    hasConsent,
+    interviewTokenFromQuery,
+    navigate,
+    pathname,
+  ]);
+
+  /**
+   * Handle start recording
+   */
+  const handleStartRecording = useCallback(async () => {
+    try {
+      if (!state.token) throw new Error('No interview token');
+
+      setState((prev) => ({ ...prev, isRecordingModalVisible: true }));
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to start recording';
+      showToast({ message: errorMsg, type: 'error' });
+      console.error('Recording start error:', err);
+    }
+  }, [state.token]);
+  /**
+   * Handle stop recording
+   */
+  const handleStopRecording = useCallback(async () => {
+    try {
+      const interviewToken =
+        state.interviewToken || sessionStorage.getItem('livekit_interview_token');
+
+      if (!interviewToken) {
+        throw new Error('Missing interview token for stopping recording');
+      }
+
+      // Stop recording
+      const response = await stopRecording({
+        interviewToken,
+      }).unwrap();
+
+      setState((prev) => ({
+        ...prev,
+        recording: false,
+        egressId: null,
+      }));
+
+      showToast({ message: response.message || 'Recording stopped', type: 'success' });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to stop recording';
+      showToast({ message: errorMsg, type: 'error' });
+      console.error('Recording stop error:', err);
+    }
+  }, [state.interviewToken, stopRecording]);
+
+  /**
+   * Handle leave interview
+   * @param endedBy - Who ended the interview ('user' for manual leave, 'recruiter' for API end)
+   *
+   * NOTE: When the interviewer explicitly clicks "End Interview",
+   * `handleEndInterview` sets `interviewEndingRef` to true. In that case this
+   * function (which fires from the LiveKit `disconnected` event) must NOT start
+   * its own feedback-prompt flow — it simply marks the interview as ended and
+   * lets `handleEndInterview` own the shouldPrompt check.
+   */
+  const handleLeaveInterview = useCallback(
+    async (endedBy: 'user' | 'recruiter' = 'user') => {
+      // If handleEndInterview is already managing the feedback flow,
+      // just mark as ended and bail — no competing shouldPrompt call.
+      if (interviewEndingRef.current) {
+        setState((prev) => {
+          // Only set hasEnded if handleEndInterview hasn't done it yet
+          if (prev.hasEnded) return prev;
+          return { ...prev, hasEnded: true, endedBy };
+        });
+        return;
+      }
+
+      // Grab bookingId before clearing session storage
+      const resolvedBookingId =
+        state.token?.bookingId ||
+        (state.token as any)?.interviewBookingId ||
+        decodedInterviewToken?.bookingId ||
+        (decodedInterviewToken as any)?.interviewBookingId ||
+        (decodedInterviewToken as any)?.bookingID ||
+        (decodedInterviewToken as any)?.booking_id ||
+        sessionStorage.getItem('livekit_booking_id');
+
+      const isFeedbackFeatureEnabled = import.meta.env.VITE_INTERVIEW_FEEDBACK_FEATURE === 'true';
+      const isInterviewer =
+        state.token?.role === 'RECRUITER' || state.token?.role === 'INTERVIEWER';
+
+      const willPromptFeedback =
+        isFeedbackFeatureEnabled && endedBy === 'recruiter' && isInterviewer && resolvedBookingId;
+
+      console.log('[handleLeaveInterview] Details:', {
+        endedBy,
+        isInterviewer,
+        resolvedBookingId,
+        willPromptFeedback,
+        stateToken: state.token,
+        decodedInterviewToken,
+      });
+
+      if (!willPromptFeedback) {
+        // Clear session data since we won't show feedback flow
+        clearSessionStorage();
+      }
+
+      // Only check shouldPrompt when interview was not intentionally left by user
+      // i.e. network drop (endedBy === 'recruiter' without explicit end)
+      if (willPromptFeedback) {
+        setState((prev) => ({
+          ...prev,
+          hasEnded: true,
+          endedBy,
+          feedbackFlow: 'checking',
+        }));
+
+        try {
+          console.log(
+            '[handleLeaveInterview] Calling checkShouldPrompt with bookingId:',
+            resolvedBookingId
+          );
+          const result = await checkShouldPrompt({
+            bookingId: Number(resolvedBookingId),
+          }).unwrap();
+          console.log('[handleLeaveInterview] checkShouldPrompt result:', result);
+
+          if (result?.data?.shouldShowPrompt) {
+            setState((prev) => ({ ...prev, feedbackFlow: 'chooser' }));
+            return;
+          }
+        } catch (err) {
+          // If API fails (e.g. network still down), fall through to ended screen
+          console.error('[handleLeaveInterview] shouldPrompt check failed:', err);
+        }
+
+        // shouldPrompt false or API failed → clear session data and show ended screen
+        clearSessionStorage();
+        setState((prev) => ({ ...prev, feedbackFlow: 'idle' }));
+        return;
+      }
+
+      // Default: show ended screen (user left intentionally, or non-interviewer)
+      setState((prev) => ({
+        ...prev,
+        hasEnded: true,
+        endedBy,
+        feedbackFlow: 'idle',
+      }));
+    },
+    [
+      state.recording,
+      state.token,
+      handleStopRecording,
+      decodedInterviewToken,
+      checkShouldPrompt,
+      clearSessionStorage,
+    ]
+  );
+
+  /**
+   * Handle end interview (recruiter only)
+   * Stops recording and drops call for all participants
+   */
+  const handleEndInterview = useCallback(async () => {
+    // Signal that WE own the feedback flow — the `disconnected` event handler
+    // in InterviewContent must NOT start a competing shouldPrompt call.
+    interviewEndingRef.current = true;
+
+    const resolvedBookingId =
+      state.token?.bookingId ||
+      (state.token as any)?.interviewBookingId ||
+      decodedInterviewToken?.bookingId ||
+      (decodedInterviewToken as any)?.interviewBookingId ||
+      (decodedInterviewToken as any)?.bookingID ||
+      (decodedInterviewToken as any)?.booking_id ||
+      sessionStorage.getItem('livekit_booking_id');
+
+    console.log('[handleEndInterview] Initial details:', {
+      resolvedBookingId,
+      stateToken: state.token,
+      decodedInterviewToken,
+      sessionStorageBookingId: sessionStorage.getItem('livekit_booking_id'),
+    });
+
+    try {
+      // Stop recording if active
+      if (state.recording) {
+        await handleStopRecording();
+      }
+
+      // Get interview token from state or session storage
+      const interviewToken =
+        state.interviewToken || sessionStorage.getItem('livekit_interview_token');
+
+      if (!interviewToken) {
+        throw new Error('Missing interview token');
+      }
+
+      // End interview for all participants (drop the call)
+      console.log('[handleEndInterview] Calling endInterviewForAll...');
+      const response = await endInterviewForAll({
+        interviewToken,
+      }).unwrap();
+      console.log('[handleEndInterview] endInterviewForAll response:', response);
+
+      // Show success message with booking details
+      showToast({
+        message: response.message || 'Interview ended for all participants',
+        type: 'success',
+      });
+
+      // Check shouldPrompt for feedback flow
+      const isFeedbackFeatureEnabled = import.meta.env.VITE_INTERVIEW_FEEDBACK_FEATURE === 'true';
+
+      if (isFeedbackFeatureEnabled && resolvedBookingId) {
+        setState((prev) => ({
+          ...prev,
+          hasEnded: true,
+          endedBy: 'recruiter',
+          interviewEndedByRecruiter: true,
+          feedbackFlow: 'checking',
+        }));
+
+        try {
+          console.log(
+            '[handleEndInterview] Calling checkShouldPrompt with bookingId:',
+            resolvedBookingId
+          );
+          const result = await checkShouldPrompt({
+            bookingId: Number(resolvedBookingId),
+          }).unwrap();
+          console.log('[handleEndInterview] checkShouldPrompt result:', result);
+
+          if (result?.data?.shouldShowPrompt) {
+            // Keep session storage for feedback prompt flow
+            setState((prev) => ({ ...prev, feedbackFlow: 'chooser' }));
+            return;
+          }
+        } catch (promptErr) {
+          console.error('[handleEndInterview] shouldPrompt check failed:', promptErr);
+        }
+
+        // shouldPrompt false or check failed → clear session data and show ended screen
+        clearSessionStorage();
+        setState((prev) => ({ ...prev, feedbackFlow: 'idle' }));
+      } else {
+        // No bookingId available or feature disabled — clear session data and show ended screen directly
+        console.warn(
+          '[handleEndInterview] bookingId not found or feedback feature disabled, skipping shouldPrompt'
+        );
+        clearSessionStorage();
+        setState((prev) => ({
+          ...prev,
+          hasEnded: true,
+          endedBy: 'recruiter',
+          interviewEndedByRecruiter: true,
+          feedbackFlow: 'idle',
+        }));
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to end interview';
+      showToast({ message: errorMsg, type: 'error' });
+      console.error('[handleEndInterview] End interview error:', err);
+      // Still show ended screen even if API call fails
+      clearSessionStorage();
+      setState((prev) => ({
+        ...prev,
+        hasEnded: true,
+        endedBy: 'recruiter',
+        interviewEndedByRecruiter: true,
+        feedbackFlow: 'idle',
+      }));
+    } finally {
+      interviewEndingRef.current = false;
+    }
+  }, [
+    state.recording,
+    state.token,
+    state.interviewToken,
+    handleStopRecording,
+    endInterviewForAll,
+    decodedInterviewToken,
+    checkShouldPrompt,
+    clearSessionStorage,
+  ]);
+
+  /**
+   * Handler to show end interview confirmation modal
+   */
+  const handleShowEndInterviewModal = useCallback(() => {
+    setShowEndInterviewModal(true);
+  }, []);
+
+  // --- Feedback flow handlers ---
+
+  /** "Complete Full Feedback" → navigate to candidate details page */
+  const handleFeedbackFullSelect = useCallback(() => {
+    const jobId = decodedInterviewToken?.jobId;
+    const candId = decodedInterviewToken?.candidateId;
+    const roundId = decodedInterviewToken?.interviewRoundId;
+    console.log('[handleFeedbackFullSelect] details:', { jobId, candId, roundId });
+    if (jobId && candId) {
+      const url = `/jobs/view/${jobId}/candidates/${candId}/details?tab=3${roundId ? `&interviewRoundId=${roundId}` : ''}`;
+      window.open(url, '_blank');
+    }
+    // Clear session data and dismiss prompt
+    clearSessionStorage();
+    setState((prev) => ({ ...prev, feedbackFlow: 'idle' }));
+  }, [decodedInterviewToken, clearSessionStorage]);
+
+  /** "Quick Feedback" → show quick feedback form */
+  const handleFeedbackQuickSelect = useCallback(() => {
+    setState((prev) => ({ ...prev, feedbackFlow: 'quick' }));
+  }, []);
+
+  /** "Skip For Now" → call skip API, then show ended screen */
+  const handleFeedbackSkip = useCallback(async () => {
+    const resolvedBookingId =
+      decodedInterviewToken?.bookingId ||
+      (decodedInterviewToken as any)?.interviewBookingId ||
+      (decodedInterviewToken as any)?.bookingID ||
+      (decodedInterviewToken as any)?.booking_id ||
+      sessionStorage.getItem('livekit_booking_id');
+
+    console.log('[handleFeedbackSkip] Resolved bookingId:', resolvedBookingId);
+
+    if (resolvedBookingId) {
+      try {
+        await skipFeedback({
+          bookingId: Number(resolvedBookingId),
+          actionSource: 'END_CALL_PROMPT',
+        }).unwrap();
+        console.log('[handleFeedbackSkip] Skip feedback API call succeeded');
+      } catch (err) {
+        console.error('[handleFeedbackSkip] Skip feedback failed:', err);
+      }
+    }
+    // Clear session data and dismiss prompt
+    clearSessionStorage();
+    setState((prev) => ({ ...prev, feedbackFlow: 'idle' }));
+  }, [decodedInterviewToken, skipFeedback, clearSessionStorage]);
+
+  /** "Cancel" → dismiss modal and show ended screen */
+  const handleFeedbackCancel = useCallback(() => {
+    clearSessionStorage();
+    setState((prev) => ({ ...prev, feedbackFlow: 'idle' }));
+  }, [clearSessionStorage]);
+
+  /** Called after quick feedback is submitted successfully */
+  const handleQuickFeedbackSuccess = useCallback(() => {
+    clearSessionStorage();
+    setState((prev) => ({ ...prev, feedbackFlow: 'idle' }));
+  }, [clearSessionStorage]);
+
+  // --- Resolve bookingId and candidateName for feedback modals ---
+  const feedbackBookingId = Number(
+    decodedInterviewToken?.bookingId ||
+      (decodedInterviewToken as any)?.interviewBookingId ||
+      (decodedInterviewToken as any)?.bookingID ||
+      (decodedInterviewToken as any)?.booking_id ||
+      sessionStorage.getItem('livekit_booking_id') ||
+      0
+  );
+  const feedbackCandidateName =
+    decodedInterviewToken?.candidateName || decodedInterviewToken?.name || 'the candidate';
+
+  // Interview ended state — with feedback flow branching
+  if (state.hasEnded) {
+    // Checking shouldPrompt — show loading
+    if (state.feedbackFlow === 'checking') {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+          <Spin size="large" />
+        </div>
+      );
+    }
+
+    // Show feedback chooser modal
+    if (state.feedbackFlow === 'chooser') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+          <FeedbackPromptModal
+            open
+            onSelectFullFeedback={handleFeedbackFullSelect}
+            onSelectQuickFeedback={handleFeedbackQuickSelect}
+            onSkip={handleFeedbackSkip}
+            isSkipping={isSkippingFeedback}
+          />
+        </div>
+      );
+    }
+
+    // Show quick feedback modal
+    if (state.feedbackFlow === 'quick') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+          <QuickFeedbackModal
+            open
+            bookingId={feedbackBookingId}
+            onClose={handleFeedbackCancel}
+            onSubmitSuccess={handleQuickFeedbackSuccess}
+          />
+        </div>
+      );
+    }
+
+    // Default: show ended screen
+    return <InterviewEndedScreen endedBy={state.endedBy} />;
+  }
+
+  if (isConsentRequired && !hasConsent) {
+    return (
+      <div className="min-h-screen bg-[#4D4D4D]">
+        <InterviewConsentModal
+          title={VIDEO_CONSENT_COPY.title}
+          description={videoConsentDescription}
+          disclaimer={videoConsentDisclaimer}
+          consentLabel={VIDEO_CONSENT_COPY.label}
+          cancelText={VIDEO_CONSENT_COPY.cancel}
+          continueText={VIDEO_CONSENT_COPY.continue}
+          onCancel={() => window.close()}
+          onContinue={() => setHasConsent(true)}
+          requireCheckbox={true}
+          panelClassName="max-w-2xl"
+        />
+      </div>
+    );
+  }
+
+  // Loading state
+  if (state.loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  // Error state
+  if (state.error || !state.token) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">Interview Link Expired / Invalid</h1>
+          <p className="text-gray-300 mb-6">{state.error || 'Failed to load interview'}</p>
+          <Button type="primary" onClick={() => navigate('/')}>
+            Return Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Render interview room
+  // NOTE: audio/video/screen are all set to false — none of these are auto-published.
+  // `audio={true}` would publish the mic immediately on join (unmuted by default — bug!).
+  // Users control their own mic/camera via the toggleMic/toggleCam buttons.
+  // Remote audio playback is handled by <RoomAudioRenderer> inside VideoGrid, which is
+  // independent of these props.
+  return (
+    <LiveKitRoom
+      token={state.token.token}
+      serverUrl={state.token.serverUrl}
+      options={ROOM_OPTIONS}
+      connectOptions={CONNECT_OPTIONS}
+      audio={false}
+      data-lk-theme="dark"
+      style={{ height: '100vh' }}
+    >
+      <InterviewContent
+        token={state.token}
+        recording={state.recording}
+        activeSidebar={state.activeSidebar}
+        onStartRecording={handleStartRecording}
+        onStopRecording={handleStopRecording}
+        onLeaveInterview={handleLeaveInterview}
+        onEndInterview={handleShowEndInterviewModal}
+        onUpdateRecordingState={handleUpdateRecordingState}
+        interviewEndedByRecruiter={state.interviewEndedByRecruiter}
+        categorizedQuestions={state.categorizedQuestions}
+        onSidebarChange={(sidebar) => setState((prev) => ({ ...prev, activeSidebar: sidebar }))}
+      />
+
+      {state.showLeavingModal && (
+        <ConfirmationModal
+          title="Leave Interview?"
+          confirmText="Leave"
+          onConfirm={handleLeaveInterview}
+          onClose={() => setState((prev) => ({ ...prev, showLeavingModal: false }))}
+        />
+      )}
+
+      {showEndInterviewModal && (
+        <ConfirmationModal
+          title="End Interview?"
+          confirmText="End"
+          onConfirm={handleEndInterview}
+          onClose={() => setShowEndInterviewModal(false)}
+        />
+      )}
+    </LiveKitRoom>
+  );
+};
+
+/**
+ * Interview Content Component
+ *
+ * Renders inside LiveKitRoom context
+ * Contains video grid, controls, sidebar
+ */
+interface InterviewContentProps {
+  token: LiveKitTokenResponse;
+  recording: boolean;
+  activeSidebar: 'info' | 'participants' | 'assessment' | null;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
+  onLeaveInterview: (endedBy?: 'user' | 'recruiter') => void;
+  onEndInterview: () => void;
+  onUpdateRecordingState: (isRecording: boolean) => void;
+  interviewEndedByRecruiter: boolean;
+  categorizedQuestions?: any;
+  onSidebarChange: (sidebar: 'info' | 'participants' | 'assessment' | null) => void;
+}
+
+interface DeviceInfo {
+  deviceId: string;
+  kind: 'audioinput' | 'videoinput';
+  label: string;
+}
+
+const InterviewContent: React.FC<InterviewContentProps> = ({
+  token,
+  recording,
+  activeSidebar,
+  onLeaveInterview,
+  onEndInterview,
+  onUpdateRecordingState,
+  categorizedQuestions,
+  onSidebarChange,
+}) => {
+  const [contentSearchParams] = useSearchParams();
+  // Use LiveKit hook
+  const liveKit = useLiveKit();
+  const room = useRoomContext();
+  const controlButtonClass = 'text-white hover:!text-white/90 hover:!bg-white/10';
+
+  // Track if user manually left (vs room being ended by recruiter)
+  const userManuallLeftRef = React.useRef(false);
+
+  // Track remote participant roles received via data messages
+  // Key: participant identity, Value: role string
+  const remoteRolesRef = React.useRef<Map<string, string>>(new Map());
+
+  // Track last active sidebar for smooth close transition
+  const lastSidebarRef = React.useRef(activeSidebar);
+  if (activeSidebar) {
+    lastSidebarRef.current = activeSidebar;
+  }
+  const displaySidebar = activeSidebar || lastSidebarRef.current;
+
+  const [showRecordingPopup, setShowRecordingPopup] = useState(false);
+
+  useEffect(() => {
+    if (recording) {
+      setShowRecordingPopup(true);
+    }
+  }, [recording]);
+
+  const [devices, setDevices] = useState<{
+    audioDevices: DeviceInfo[];
+    videoDevices: DeviceInfo[];
+    selectedAudioDevice: string | null;
+    selectedVideoDevice: string | null;
+  }>({
+    audioDevices: [],
+    videoDevices: [],
+    selectedAudioDevice: null,
+    selectedVideoDevice: null,
+  });
+
+  // Assessment scoring state
+  const [assessmentScores, setAssessmentScores] = useState<{
+    [questionId: number]: {
+      score?: number;
+      passFailResult?: boolean | null;
+    };
+  }>({});
+
+  useEffect(() => {
+    if (categorizedQuestions && categorizedQuestions.categories) {
+      const initialScores: {
+        [questionId: number]: { score?: number; passFailResult?: boolean | null };
+      } = {};
+
+      Object.keys(categorizedQuestions.categories).forEach((category) => {
+        categorizedQuestions.categories[category].forEach((q: any) => {
+          let parsedScore: number | undefined;
+          if (q.score !== null && q.score !== undefined && q.score !== '') {
+            const num = Number(q.score);
+            if (!isNaN(num)) parsedScore = num;
+          }
+
+          let parsedPassFail: boolean | null = null;
+          const pfString = String(q.passFailResult).toLowerCase();
+          if (q.passFailResult === true || pfString === 'true' || pfString === 'yes') {
+            parsedPassFail = true;
+          } else if (q.passFailResult === false || pfString === 'false' || pfString === 'no') {
+            parsedPassFail = false;
+          }
+
+          if (parsedScore !== undefined || parsedPassFail !== null) {
+            initialScores[q.id] = {
+              score: parsedScore,
+              passFailResult: parsedPassFail,
+            };
+          }
+        });
+      });
+
+      setAssessmentScores((prev) => ({ ...initialScores, ...prev }));
+    }
+  }, [categorizedQuestions]);
+
+  /**
+   * Per-question debounce timers for score API calls.
+   * Prevents the API from firing on every keystroke, which caused isSavingScore
+   * to flip true→false rapidly, disabling the input and breaking focus.
+   */
+  const scoreDebounceRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Tracks which category sections are expanded in the assessment panel
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+  const toggleCategory = (name: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  };
+
+  // API mutation for saving scores
+  const [editAiQuestionForScoring, { isLoading: isSavingScore }] =
+    useEditAiQuestionForScoringMutation();
+
+  const isRecruiter = token.role === 'RECRUITER' || token.role === 'INTERVIEWER';
+  const [isSmsPanelOpen, setIsSmsPanelOpen] = useState(false);
+
+  type InterviewJwtPayload = {
+    candidateId?: number | string;
+    jobId?: number | string;
+    jobOpeningId?: number | string;
+    candidateName?: string;
+    candidatePhone?: string;
+    phoneNumber?: string;
+    countryCode?: string;
+    bookingId?: number | string;
+  };
+
+  const interviewTokenFromUrl = contentSearchParams.get('token') || '';
+
+  const decodedInterviewToken = useMemo<InterviewJwtPayload>(() => {
+    if (!interviewTokenFromUrl) return {};
+    try {
+      return jwtDecode<InterviewJwtPayload>(interviewTokenFromUrl);
+    } catch {
+      return {};
+    }
+  }, [interviewTokenFromUrl]);
+
+  const smsCandidateId = Number(
+    token.candidateId ?? decodedInterviewToken.candidateId ?? token.participantIdentity
+  );
+  const smsJobOpeningId = Number(decodedInterviewToken.jobId ?? decodedInterviewToken.jobOpeningId);
+  const smsCandidateName =
+    decodedInterviewToken.candidateName || token.participantName || 'Candidate';
+  const smsCandidatePhone =
+    decodedInterviewToken.candidatePhone || decodedInterviewToken.phoneNumber || '';
+  const smsBookingId = decodedInterviewToken.bookingId || token.bookingId || '';
+  const canUseSmsPanel =
+    isRecruiter &&
+    Number.isFinite(smsCandidateId) &&
+    smsCandidateId > 0 &&
+    Number.isFinite(smsJobOpeningId) &&
+    smsJobOpeningId > 0;
+
+  /**
+   * Handle score input change for scoring questions.
+   *
+   * Fix for focus-loss bug:
+   * - State is updated IMMEDIATELY for instant UI feedback.
+   * - The API call is DEBOUNCED (600ms) — it only fires after the user
+   *   stops typing. This prevents isSavingScore from toggling true→false
+   *   on every keystroke, which was disabling the input and stealing focus.
+   */
+  const handleScoreChange = useCallback(
+    (questionId: number, value: string) => {
+      let score: number | null = null;
+      if (value !== '') {
+        score = parseInt(value, 10);
+        if (isNaN(score)) score = 1;
+        else if (score < 1) score = 1;
+        else if (score > 5) score = 5;
+      }
+
+      // Update local state immediately for responsive UI
+      setAssessmentScores((prev) => ({
+        ...prev,
+        [questionId]: {
+          ...prev[questionId],
+          score: score === null ? undefined : score,
+        },
+      }));
+
+      // Debounce the API call — cancel any pending call for this question
+      const existing = scoreDebounceRef.current.get(questionId);
+      if (existing) clearTimeout(existing);
+
+      const timer = setTimeout(async () => {
+        scoreDebounceRef.current.delete(questionId);
+        try {
+          await editAiQuestionForScoring({
+            candidateId: token.candidateId
+              ? Number(token.candidateId)
+              : parseInt(token.participantIdentity, 10),
+            questionId,
+            score,
+            interviewRoundId: token.interviewRoundId
+              ? parseInt(token.interviewRoundId, 10)
+              : undefined,
+          }).unwrap();
+          message.success('Score saved');
+        } catch (error) {
+          console.error('Failed to save score:', error);
+          message.error('Failed to save score');
+        }
+      }, 600);
+
+      scoreDebounceRef.current.set(questionId, timer);
+    },
+    [token, editAiQuestionForScoring]
+  );
+
+  /**
+   * Handle pass/fail toggle for pass/fail questions
+   * Calls API to save result
+   */
+  const handlePassFailChange = useCallback(
+    async (questionId: number, value: boolean | null) => {
+      try {
+        // Update local state
+        setAssessmentScores((prev) => {
+          const updated = { ...prev };
+          updated[questionId] = {
+            ...updated[questionId],
+            passFailResult: value,
+          };
+          return updated;
+        });
+
+        // Call API to save pass/fail result
+        await editAiQuestionForScoring({
+          candidateId: token.candidateId
+            ? Number(token.candidateId)
+            : parseInt(token.participantIdentity, 10),
+          questionId,
+          passFailResult: value,
+          interviewRoundId: token.interviewRoundId
+            ? parseInt(token.interviewRoundId, 10)
+            : undefined,
+        }).unwrap();
+
+        message.success('Result saved');
+      } catch (error) {
+        console.error('Failed to save result:', error);
+        message.error('Failed to save result');
+      }
+    },
+    [token, editAiQuestionForScoring]
+  );
+
+  /**
+   * Handle user manually leaving the interview
+   * Sets flag to indicate user left, not recruiter ending
+   */
+  const handleUserLeave = useCallback(() => {
+    userManuallLeftRef.current = true;
+    onLeaveInterview('user');
+  }, [onLeaveInterview]);
+
+  /**
+   * Detect when room is disconnected (e.g., recruiter ended interview)
+   * and automatically show ended screen to all participants
+   */
+  useEffect(() => {
+    if (!room) {
+      return;
+    }
+
+    const handleDisconnect = () => {
+      // If user manually left, show "You Left the Meeting"
+      // If room was disconnected without manual leave, recruiter ended it
+      const endedBy = userManuallLeftRef.current ? 'user' : 'recruiter';
+      onLeaveInterview(endedBy);
+    };
+
+    room.on('disconnected', handleDisconnect);
+
+    return () => {
+      room.off('disconnected', handleDisconnect);
+    };
+  }, [room, onLeaveInterview]);
+
+  /**
+   * Single screen share policy — auto-stop local share when a remote participant starts.
+   *
+   * This covers the race-condition case where two participants start sharing at the
+   * same moment (before either sees the other's track). The local participant's share
+   * is stopped gracefully and a notification is shown.
+   */
+  useEffect(() => {
+    if (!room) return;
+
+    const handleRemoteTrackPublished = (
+      publication: { source: string },
+      participant: { name?: string; identity: string }
+    ) => {
+      if (publication.source !== Track.Source.ScreenShare) return;
+
+      // If we are currently screen sharing, stop — only one person shares at a time
+      if (liveKit.mediaState.screenSharing) {
+        liveKit.toggleScreenShare();
+        const sharer = participant.name || participant.identity || 'Another participant';
+        message.warning(`${sharer} started sharing. Your screen share was stopped.`, 5);
+      }
+    };
+
+    room.on('trackPublished', handleRemoteTrackPublished as any);
+
+    return () => {
+      room.off('trackPublished', handleRemoteTrackPublished as any);
+    };
+  }, [room, liveKit.mediaState.screenSharing, liveKit.toggleScreenShare]);
+
+  /**
+   * Broadcast local participant's role via publishData.
+   * Retries until the room is fully connected.
+   * Also re-broadcasts when new participants connect so late-joiners get the role.
+   */
+  useEffect(() => {
+    if (!room) return;
+
+    let timerId: ReturnType<typeof setTimeout>;
+    let isMounted = true;
+
+    const broadcastRole = async () => {
+      if (!isMounted) return;
+      try {
+        if (room.state !== 'connected') {
+          timerId = setTimeout(broadcastRole, 500);
+          return;
+        }
+        const metadata = JSON.stringify({ role: token.role });
+        await room.localParticipant.publishData(new TextEncoder().encode(metadata), {
+          reliable: true,
+        });
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Failed to broadcast role metadata:', error);
+        timerId = setTimeout(broadcastRole, 1000);
+      }
+    };
+
+    // Broadcast role on initial connection
+    broadcastRole();
+
+    // Re-broadcast when a new participant connects so they learn our role
+    const handleNewParticipant = () => {
+      broadcastRole();
+    };
+    room.on('participantConnected', handleNewParticipant);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timerId);
+      room.off('participantConnected', handleNewParticipant);
+    };
+  }, [room, token.role]);
+
+  /**
+   * Listen for data messages from other participants to learn their roles.
+   * When a participant publishes their role via publishData, we capture it
+   * in remoteRolesRef and re-check for interviewer presence.
+   */
+  useEffect(() => {
+    if (!room) return;
+
+    const checkForInterviewer = () => {
+      // Check roles discovered via data messages
+      const hasRemoteInterviewer = Array.from(remoteRolesRef.current.values()).some(
+        (role) => role === 'RECRUITER' || role === 'INTERVIEWER'
+      );
+
+      // Also check the local participant
+      const isLocalRecruiter = token.role === 'RECRUITER' || token.role === 'INTERVIEWER';
+
+      if (hasRemoteInterviewer || isLocalRecruiter) {
+        onUpdateRecordingState(true);
+      } else {
+        onUpdateRecordingState(false);
+      }
+    };
+
+    // Handle incoming data messages that contain role information
+    const handleDataReceived = (
+      payload: Uint8Array,
+      participant?: { identity: string } | undefined
+    ) => {
+      if (!participant) return;
+      try {
+        const decoded = JSON.parse(new TextDecoder().decode(payload));
+        if (decoded.role) {
+          remoteRolesRef.current.set(participant.identity, decoded.role);
+          checkForInterviewer();
+        }
+      } catch {
+        // Not a JSON role message, ignore
+      }
+    };
+
+    // Clean up roles when a participant disconnects
+    const handleParticipantDisconnected = (participant: { identity: string }) => {
+      remoteRolesRef.current.delete(participant.identity);
+      checkForInterviewer();
+    };
+
+    // Check immediately for local recruiter role
+    checkForInterviewer();
+
+    room.on('dataReceived', handleDataReceived as any);
+    room.on('participantDisconnected', handleParticipantDisconnected as any);
+
+    return () => {
+      room.off('dataReceived', handleDataReceived as any);
+      room.off('participantDisconnected', handleParticipantDisconnected as any);
+    };
+  }, [room, token.role, onUpdateRecordingState]);
+
+  useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) {
+      return undefined;
+    }
+
+    const enumerateDevices = async (): Promise<void> => {
+      try {
+        const availableDevices = await navigator.mediaDevices.enumerateDevices();
+
+        const audioDevices: DeviceInfo[] = availableDevices
+          .filter((device) => device.kind === 'audioinput')
+          .map((device) => ({
+            deviceId: device.deviceId,
+            kind: 'audioinput',
+            label: device.label || `Microphone ${device.deviceId.slice(0, 5)}`,
+          }));
+
+        const videoDevices: DeviceInfo[] = availableDevices
+          .filter((device) => device.kind === 'videoinput')
+          .map((device) => ({
+            deviceId: device.deviceId,
+            kind: 'videoinput',
+            label: device.label || `Camera ${device.deviceId.slice(0, 5)}`,
+          }));
+
+        setDevices((prev) => ({
+          ...prev,
+          audioDevices,
+          videoDevices,
+          selectedAudioDevice: prev.selectedAudioDevice || audioDevices[0]?.deviceId || null,
+          selectedVideoDevice: prev.selectedVideoDevice || videoDevices[0]?.deviceId || null,
+        }));
+      } catch (error) {
+        console.error('Failed to enumerate devices:', error);
+        message.error('Unable to access media devices');
+      }
+    };
+
+    enumerateDevices();
+    navigator.mediaDevices.addEventListener('devicechange', enumerateDevices);
+
+    return () => {
+      navigator.mediaDevices.removeEventListener('devicechange', enumerateDevices);
+    };
+  }, []);
+
+  const handleSelectAudioDevice = useCallback(
+    async (deviceId: string): Promise<void> => {
+      try {
+        await room.switchActiveDevice('audioinput', deviceId);
+        setDevices((prev) => ({ ...prev, selectedAudioDevice: deviceId }));
+      } catch (error) {
+        console.error('Failed to switch microphone:', error);
+        message.error('Failed to switch microphone');
+      }
+    },
+    [room]
+  );
+
+  const handleSelectVideoDevice = useCallback(
+    async (deviceId: string): Promise<void> => {
+      try {
+        await room.switchActiveDevice('videoinput', deviceId);
+        setDevices((prev) => ({ ...prev, selectedVideoDevice: deviceId }));
+      } catch (error) {
+        console.error('Failed to switch camera:', error);
+        message.error('Failed to switch camera');
+      }
+    },
+    [room]
+  );
+
+  const audioMenuItems: MenuProps['items'] = devices.audioDevices.map((device) => ({
+    key: device.deviceId,
+    label: device.label,
+  }));
+
+  const videoMenuItems: MenuProps['items'] = devices.videoDevices.map((device) => ({
+    key: device.deviceId,
+    label: device.label,
+  }));
+
+  return (
+    <div className="flex h-screen w-screen bg-gray-900">
+      {/* Main Video Grid */}
+      <div className="flex-1 flex flex-col">
+        {/* Video Grid */}
+        <div className="flex-1 relative overflow-hidden pb-20">
+          <VideoGrid token={token} liveKit={liveKit} isRecording={recording} />
+        </div>
+
+        {/* Minimal bottom bar: statuses + controls */}
+        <div className="interview-control-bar fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full bg-gray-900/80 px-4 py-2 text-xs text-gray-300 backdrop-blur-md border border-gray-700/60 shadow-lg">
+          <div className="flex items-center gap-3">
+            {recording && (
+              <span className="relative flex items-center">
+                <Tooltip title="recording is in progress">
+                  <span
+                    onClick={() => setShowRecordingPopup(true)}
+                    className="flex items-center gap-1 text-red-400 cursor-pointer select-none"
+                  >
+                    <FaCircle className="animate-pulse" size={8} />
+                    Rec
+                  </span>
+                </Tooltip>
+
+                {showRecordingPopup && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-10 left-0 z-50 w-85 rounded-xl border border-gray-700 bg-gray-900/95 p-3.5 shadow-2xl text-gray-200 backdrop-blur-md text-left"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-white flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                          Recording in progress
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+                          This interview is being recorded, transcribed and analyzed using AI. By
+                          continuing, you consent to this.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowRecordingPopup(false);
+                        }}
+                        className="text-gray-400 hover:text-white transition-colors cursor-pointer text-sm shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </span>
+            )}
+            {liveKit.isConnected && <span className="text-emerald-400">Connected</span>}
+          </div>
+
+          <div className="h-4 w-px bg-gray-700/70" />
+
+          <div className="flex items-center gap-2">
+            <Tooltip title={liveKit.mediaState.micEnabled ? 'Mute' : 'Unmute'}>
+              <Button
+                type="text"
+                size="small"
+                className={controlButtonClass}
+                icon={
+                  liveKit.mediaState.micEnabled ? (
+                    <FaMicrophone className="text-white" />
+                  ) : (
+                    <FaMicrophoneSlash className="text-red-500" />
+                  )
+                }
+                onClick={liveKit.toggleMic}
+                loading={liveKit.isMicLoading}
+              />
+            </Tooltip>
+
+            <Dropdown
+              menu={{
+                items: audioMenuItems,
+                onClick: ({ key }) => handleSelectAudioDevice(String(key)),
+              }}
+              trigger={['click']}
+              placement="top"
+            >
+              <Tooltip title="Select microphone">
+                <Button
+                  type="text"
+                  size="small"
+                  className={controlButtonClass}
+                  icon={<FaChevronDown className="text-gray-300" />}
+                  disabled={devices.audioDevices.length === 0}
+                />
+              </Tooltip>
+            </Dropdown>
+
+            <Tooltip title={liveKit.mediaState.cameraEnabled ? 'Stop camera' : 'Start camera'}>
+              <Button
+                type="text"
+                size="small"
+                className={controlButtonClass}
+                icon={
+                  liveKit.mediaState.cameraEnabled ? (
+                    <FaVideo className="text-white" />
+                  ) : (
+                    <FaVideoSlash className="text-red-500" />
+                  )
+                }
+                onClick={liveKit.toggleCam}
+                loading={liveKit.isCamLoading}
+              />
+            </Tooltip>
+
+            <Dropdown
+              menu={{
+                items: videoMenuItems,
+                onClick: ({ key }) => handleSelectVideoDevice(String(key)),
+              }}
+              trigger={['click']}
+              placement="top"
+            >
+              <Tooltip title="Select camera">
+                <Button
+                  type="text"
+                  size="small"
+                  className={controlButtonClass}
+                  icon={<FaChevronDown className="text-gray-300" />}
+                  disabled={devices.videoDevices.length === 0}
+                />
+              </Tooltip>
+            </Dropdown>
+
+            <Tooltip
+              title={
+                liveKit.isRemoteScreenSharing && !liveKit.mediaState.screenSharing
+                  ? 'Another participant is already sharing their screen'
+                  : liveKit.mediaState.screenSharing
+                    ? 'Stop sharing'
+                    : 'Share screen'
+              }
+            >
+              <Button
+                type="text"
+                size="small"
+                className={clsx(
+                  controlButtonClass,
+                  liveKit.isRemoteScreenSharing && !liveKit.mediaState.screenSharing
+                    ? 'opacity-40 cursor-not-allowed'
+                    : ''
+                )}
+                icon={
+                  liveKit.mediaState.screenSharing ? (
+                    // Actively sharing — show stop/slash icon in blue
+                    <MdStopScreenShare className="text-blue-400" size={18} />
+                  ) : liveKit.isRemoteScreenSharing ? (
+                    // Blocked — someone else is sharing, show grayed out
+                    <MdScreenShare className="text-gray-500" size={18} />
+                  ) : (
+                    // Idle — show share icon in white
+                    <MdScreenShare className="text-white" size={18} />
+                  )
+                }
+                onClick={liveKit.toggleScreenShare}
+                loading={liveKit.isScreenShareLoading}
+                disabled={liveKit.isRemoteScreenSharing && !liveKit.mediaState.screenSharing}
+              />
+            </Tooltip>
+
+            {isRecruiter && (
+              <Tooltip title="Assessment">
+                <Button
+                  type="text"
+                  size="small"
+                  className={`${controlButtonClass} ${activeSidebar === 'assessment' ? 'text-blue-400 bg-white/10' : ''}`}
+                  icon={
+                    <FaClipboardList
+                      className={activeSidebar === 'assessment' ? 'text-blue-400' : 'text-white'}
+                    />
+                  }
+                  onClick={() =>
+                    onSidebarChange(activeSidebar === 'assessment' ? null : 'assessment')
+                  }
+                />
+              </Tooltip>
+            )}
+
+            <Tooltip title="Leave">
+              <Button
+                type="text"
+                size="small"
+                className="bg-red-500 hover:!bg-red-600 text-white border-none flex items-center justify-center"
+                icon={<FaPhone className="rotate-[225deg]" />}
+                onClick={handleUserLeave}
+              />
+            </Tooltip>
+
+            {isRecruiter && (
+              <Tooltip title="End interview">
+                <Button
+                  type="text"
+                  size="small"
+                  className="bg-red-500 hover:!bg-red-600 text-white border-none flex items-center justify-center"
+                  icon={<FaStopCircle />}
+                  onClick={onEndInterview}
+                />
+              </Tooltip>
+            )}
+          </div>
+        </div>
+
+        {canUseSmsPanel && (
+          <Tooltip title="Send SMS" placement="left">
+            <button
+              type="button"
+              onClick={() => setIsSmsPanelOpen((prev) => !prev)}
+              className="fixed bottom-6 right-6 z-69 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#b8d0e6] bg-[#eef4fb] text-[#2a69a8] shadow-lg transition-colors hover:bg-[#e0ecf8]"
+              aria-label="Open SMS panel"
+            >
+              <FaRegCommentDots size={18} />
+            </button>
+          </Tooltip>
+        )}
+
+        {canUseSmsPanel && (
+          <InterviewSmsPanel
+            open={isSmsPanelOpen}
+            onClose={() => setIsSmsPanelOpen(false)}
+            candidateId={smsCandidateId}
+            jobOpeningId={smsJobOpeningId}
+            candidateName={smsCandidateName}
+            candidatePhone={smsCandidatePhone}
+            bookingId={smsBookingId}
+          />
+        )}
+      </div>
+
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={!!activeSidebar}
+        onClose={() => onSidebarChange(null)}
+        title={displaySidebar === 'assessment' ? 'Assessment' : 'Participants'}
+      >
+        {displaySidebar === 'assessment' && categorizedQuestions?.categories && (
+          <div className="space-y-4">
+            {Object.entries(categorizedQuestions.categories).map(
+              ([categoryName, questionsData]: [string, unknown]) => {
+                const questions = questionsData as any[];
+                const isPassFailCategory =
+                  categoryName.toLowerCase().includes('pass') &&
+                  categoryName.toLowerCase().includes('fail');
+
+                return (
+                  <div
+                    key={categoryName}
+                    className="border border-gray-800 bg-gray-800/50 rounded-xl overflow-hidden shadow-sm"
+                  >
+                    <button
+                      onClick={() => toggleCategory(categoryName)}
+                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-700/50 text-gray-200 font-medium text-sm transition-colors"
+                    >
+                      <span>{categoryName}</span>
+                      <span className="text-xl leading-none text-gray-400 transition-all duration-200 select-none">
+                        {expandedCategories.has(categoryName) ? '−' : '+'}
+                      </span>
+                    </button>
+                    <div
+                      className={`bg-gray-900/40 px-5 py-5 space-y-6 border-t border-gray-800 ${
+                        expandedCategories.has(categoryName) ? 'block' : 'hidden'
+                      }`}
+                    >
+                      {questions.map((q: any, idx: number) => (
+                        <div key={q.id || idx} className="space-y-3">
+                          <p className="text-sm text-slate-300 leading-relaxed font-light">
+                            <span className="text-blue-400 font-medium mr-1 tracking-wide">
+                              Q{idx + 1}.
+                            </span>
+                            {q.question}
+                          </p>
+
+                          {/* Pass/Fail Questions: Radio Toggle */}
+                          {isPassFailCategory ? (
+                            <div className="flex items-center gap-4 pt-1">
+                              <label className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                  type="radio"
+                                  name={`pf-${q.id}`}
+                                  value="yes"
+                                  checked={assessmentScores[q.id]?.passFailResult === true}
+                                  onChange={() => handlePassFailChange(q.id, true)}
+                                  onClick={(e) => {
+                                    if (assessmentScores[q.id]?.passFailResult === true) {
+                                      e.preventDefault();
+                                      handlePassFailChange(q.id, null);
+                                    }
+                                  }}
+                                  disabled={isSavingScore}
+                                  className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-700 focus:ring-blue-600 focus:ring-2"
+                                />
+                                <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
+                                  Yes
+                                </span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                  type="radio"
+                                  name={`pf-${q.id}`}
+                                  value="no"
+                                  checked={assessmentScores[q.id]?.passFailResult === false}
+                                  onChange={() => handlePassFailChange(q.id, false)}
+                                  onClick={(e) => {
+                                    if (assessmentScores[q.id]?.passFailResult === false) {
+                                      e.preventDefault();
+                                      handlePassFailChange(q.id, null);
+                                    }
+                                  }}
+                                  disabled={isSavingScore}
+                                  className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-700 focus:ring-blue-600 focus:ring-2"
+                                />
+                                <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
+                                  No
+                                </span>
+                              </label>
+                            </div>
+                          ) : (
+                            // Score Questions: Number Input (1-5)
+                            // Note: disabled is intentionally NOT tied to isSavingScore here.
+                            // Disabling on every keystroke (while API saves) would steal focus.
+                            // The API call is debounced, so isSavingScore only triggers
+                            // after the user has paused typing.
+                            <input
+                              type="number"
+                              min="1"
+                              max="5"
+                              value={assessmentScores[q.id]?.score ?? ''}
+                              onChange={(e) => handleScoreChange(q.id, e.target.value)}
+                              placeholder="Score (1-5)"
+                              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all font-sans"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+            )}
+            <Button
+              block
+              type="primary"
+              size="large"
+              className="mt-6 bg-blue-600 hover:!bg-blue-500 border-none font-medium h-11 shadow-lg shadow-blue-900/20"
+              onClick={() => onSidebarChange(null)}
+            >
+              SAVE FEEDBACK
+            </Button>
+          </div>
+        )}
+      </Sidebar>
+    </div>
+  );
+};
+
+export default Interview;

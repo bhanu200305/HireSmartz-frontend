@@ -1,0 +1,103 @@
+.custom-scrollbar::-webkit-scrollbar {
+  width: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 16px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+  background-clip: padding-box;
+}
+
+/* For Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+
+textarea.custom-scrollbar {
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.ant-input.custom-scrollbar {
+  overflow: auto !important;
+}
+
+.preview-modal-scrollbar::-webkit-scrollbar {
+  width: 2px;
+}
+
+.preview-modal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+
+.preview-modal-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d1d1;
+  border-radius: 2px;
+}
+
+.preview-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #b8b8b8;
+}
+
+.preview-modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d1d1 #f8f8f8;
+  overflow: auto;
+}
+
+/* Send email modal: Cc/Bcc — tag chips only (no suggestion dropdown), removable × per email */
+.send-email-candidate-modal .send-email-cc-bcc-select.ant-select .ant-select-selector {
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-sizing: border-box;
+  padding: 6px 12px !important;
+  min-height: 42px;
+  cursor: text;
+}
+
+.send-email-candidate-modal
+  .send-email-tags-only.ant-select-multiple
+  .ant-select-selection-overflow {
+  flex-wrap: wrap;
+  gap: 6px 4px;
+}
+
+.send-email-candidate-modal .send-email-cc-bcc-select .ant-select-selection-placeholder {
+  line-height: 24px;
+}
+
+.send-email-candidate-modal .send-email-cc-bcc-select .ant-select-selection-search-input {
+  cursor: text !important;
+}
+
+.send-email-candidate-modal .send-email-cc-bcc-select .ant-select-arrow {
+  display: none;
+}
+
+/* Tag chips: keep close (×) visible and readable */
+.send-email-candidate-modal .send-email-cc-bcc-select .ant-select-selection-item {
+  border-radius: 6px;
+  padding-inline: 8px 4px !important;
+  margin-inline-end: 0 !important;
+}
+
+.send-email-candidate-modal .send-email-cc-bcc-select .ant-select-selection-item-remove {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.send-email-candidate-modal .send-email-cc-bcc-select .ant-select-selection-item-remove:hover {
+  color: rgba(0, 0, 0, 0.88);
+}

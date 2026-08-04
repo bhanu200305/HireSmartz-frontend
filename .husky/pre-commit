@@ -1,0 +1,28 @@
+#!/bin/sh
+echo "🔍 Running pre-commit checks..."
+
+# Clear caches for consistent formatting across systems
+echo "🧹 Clearing caches..."
+rm -f .eslintcache 2>/dev/null || true
+rm -rf node_modules/.cache 2>/dev/null || true
+
+# Run Prettier + ESLint auto-fix (FAST - do this first)
+echo "🎨 Running Prettier & ESLint..."
+npm run format:fix-all 2>&1 || true
+
+# Run TypeScript type checking (SLOW - do this last)
+echo "📝 Checking TypeScript..."
+npm run build 2>&1
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript check failed. Fix errors before committing."
+  exit 1
+fi
+
+# Re-stage only the files that were originally prepared for this commit
+# This pulls in the automatic prettier/eslint fixes inside those specific files
+echo "📦 Adding auto-formatted changes to commit..."
+git diff --cached --name-only --diff-filter=ACMR | while IFS= read -r file; do
+  git add "$file"
+done
+
+echo "✅ Pre-commit checks passed!"

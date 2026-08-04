@@ -1,0 +1,7 @@
+.custom-calendar .ant-picker-cell-selected .ant-picker-cell-inner {
+  background-color: var(--primary) !important;
+  color: white !important;
+}
+.custom-calendar .ant-picker-cell-today .ant-picker-cell-inner {
+  border: 1px var(--primary) !important;
+}

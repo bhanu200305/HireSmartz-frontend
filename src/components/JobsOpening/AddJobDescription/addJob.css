@@ -1,0 +1,123 @@
+.stepsContainer {
+  display: flex;
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 24px;
+}
+.stepBox {
+  flex: 0;
+  text-align: left;
+  padding: 10px 0px;
+  white-space: nowrap;
+  margin-right: 24px;
+}
+
+.custom-select-jobs .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  background-color: transparent !important;
+}
+
+.custom-select-jobs.ant-select-multiple .ant-select-selector {
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+}
+
+.custom-select-jobs.ant-select-multiple .ant-select-selection-overflow {
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+}
+
+.custom-select-jobs .ant-select-selection-placeholder {
+  color: black !important;
+}
+
+.custom-select-jobs .ant-select-arrow {
+  color: black !important;
+}
+
+.custom-select-jobs .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.placeholder-style .ant-select-selection-placeholder {
+  color: #00000073 !important;
+  /* font-family: 'DM Sans', sans-serif !important; */
+  font-family: inherit !important;
+  font-size: 14px !important;
+}
+
+.custom-select-jobs .ant-select-arrow {
+  color: black !important;
+}
+
+.custom-date-picker .ant-picker {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  width: 100% !important;
+  padding: 0 !important;
+  height: auto !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.custom-date-picker {
+  padding: 4px 8px 4px 6px !important;
+}
+
+.custom-date-picker .ant-picker-input > input {
+  padding: 0 !important;
+  height: auto !important;
+  line-height: normal !important;
+}
+
+.custom-date-picker .ant-picker-focused {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.custom-date-picker .ant-picker-input > input::placeholder {
+  color: #00000073 !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+}
+
+.custom-date-picker .ant-picker-suffix {
+  color: var(--primary) !important;
+}
+.custom-time-picker {
+  padding: 4px 8px 4px 6px !important;
+}
+
+/* Ensures input inside TimePicker has no padding */
+.custom-time-picker .ant-picker-input {
+  padding: 0 !important;
+  margin: 0 !important;
+  height: auto !important;
+  display: flex;
+  align-items: center;
+}
+
+/* Ensures input text has no extra padding */
+.custom-time-picker .ant-picker-input > input {
+  padding: 0 !important;
+  height: auto !important;
+  line-height: normal !important;
+}
+.custom-time-picker .ant-picker-input > input::placeholder {
+  color: #00000073 !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+}
+
+/* Changes the clock icon color */
+.custom-time-picker .ant-picker-suffix {
+  color: var(--primary) !important;
+}
