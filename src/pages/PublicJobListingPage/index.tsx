@@ -9,7 +9,10 @@ import {
   ExportOutlined,
   DownOutlined,
 } from '@ant-design/icons';
-import { useGetPublicJobsQuery, useGetPublicLocationsQuery } from '../../api/candidate-service/PublicQr/index';
+import {
+  useGetPublicJobsQuery,
+  useGetPublicLocationsQuery,
+} from '../../api/candidate-service/PublicQr/index';
 import type { PublicJob, PublicLocationItem } from '../../types/PublicQr';
 import { ApplyLaterModal } from '../../components/shared/ApplyLaterModal';
 import { usePublicBranding } from '../../hooks/usePublicBranding';

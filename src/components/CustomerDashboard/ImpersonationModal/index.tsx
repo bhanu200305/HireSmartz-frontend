@@ -4,7 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import ImpersonationForm, { ImpersonationFormData } from '../ImpersonationForm';
-import { ImpersonateUser, useImpersonateMutation } from '../../../api/authentication-service/Impersonation/index';
+import {
+  ImpersonateUser,
+  useImpersonateMutation,
+} from '../../../api/authentication-service/Impersonation/index';
 import { loginStore } from '../../../redux/slices/loginSlice';
 import { RootState } from '../../../redux/provider/store';
 import { setTokens } from '../../../shared/utils/auth/localstorage.helpers';

@@ -1,5 +1,8 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { NotificationItem, NotificationsResponse } from '../../api/notification-service/Notifications/index';
+import {
+  NotificationItem,
+  NotificationsResponse,
+} from '../../api/notification-service/Notifications/index';
 
 interface NotificationState {
   today: NotificationItem[];

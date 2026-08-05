@@ -92,7 +92,6 @@ export const ensureDevBypassTokens = (
   setTokens: (accessToken: string, refreshToken: string) => void
 ): string => {
   if (!warnedOnce) {
-    // eslint-disable-next-line no-console
     console.warn(
       '[devAuthBypass] VITE_BYPASS_AUTH is enabled — using a fake local session instead of real login. ' +
         'Do not enable this against a real backend/environment.'

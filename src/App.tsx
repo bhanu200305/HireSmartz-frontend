@@ -18,6 +18,7 @@ import {
 } from './shared/utils/auth/devAuthBypass';
 import { loginStore } from './redux/slices/loginSlice';
 import type { RootState } from './redux/provider/store';
+import DevRoleSwitcher from './components/DevRoleSwitcher';
 
 const App = () => {
   // Monitor internet connection globally
@@ -51,6 +52,7 @@ const App = () => {
       <ToastContainer />
       {!isPublicPage && <NotificationStreamListener />}
       <Routes>{renderRoutes(AllRoutes)}</Routes>
+      <DevRoleSwitcher />
     </div>
   );
 };

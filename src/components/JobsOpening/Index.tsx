@@ -49,7 +49,10 @@ import {
   useToggleQrActiveMutation,
 } from '../../api/tenant-service/MyCompany/qrCode';
 import { resetJobState } from '../../redux/slices/jobOpeningSlice';
-import { useUploadBulkJdMutation, useUploadSingleJdMutation } from '../../api/job-service/JobOpening/JdUpload';
+import {
+  useUploadBulkJdMutation,
+  useUploadSingleJdMutation,
+} from '../../api/job-service/JobOpening/JdUpload';
 import useEventSource from '../../hooks/useEventSource';
 import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';

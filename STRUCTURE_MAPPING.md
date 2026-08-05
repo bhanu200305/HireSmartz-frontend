@@ -14,20 +14,20 @@ every import across the whole repo was rewritten to match (verified: `tsc -b` an
 
 ## What moved where, and why
 
-| New location                         | Moved from                          | Notes |
-|---------------------------------------|--------------------------------------|-------|
-| `api/authentication-service/`         | Login, Logout, ForgotPassword, FeatureFlags, Impersonation | `FeatureFlags` hits `/auth/feature-flags`; `Impersonation` is an identity concern |
-| `api/rbac-service/`                   | Roles | |
-| `api/tenant-service/`                 | Organisation, Company, CompanySettings, MyCompany, UserProfile, User | Org/user management — judgment call, review if your team splits users into rbac-service instead |
-| `api/job-service/`                    | JobOpening, AtsJobDetails, AddableDropdown, Batches, Dashboard/JobOpening.ts | `Dashboard/JobOpening.ts` hits `/job-opening/dashboard/...` so it stayed with jobs |
-| `api/candidate-service/`              | Candidates, PublicQr | `PublicQr` is the public job-listing/apply flow, candidate-facing |
-| `api/interview-service/`              | InterviewFeedback, VideoIntegration, VideoInterviewQuestions, Nylas | `Nylas` is calendar integration for interview scheduling |
-| `api/ai-service/`                     | AiQuestion | AI-generated interview questions |
-| `api/notification-service/`           | Notifications | |
-| `api/audit-service/`                  | Dashboard/ActivityStream.ts | Activity feed ≈ audit trail |
-| `api/search-service/`                 | Dashboard/GlobalSearch.ts | |
-| `api/analytics-service/`              | Dashboard/CFPDashboard.ts, Dashboard/OwnerDashboard.ts | Cross-domain aggregated dashboard stats |
-| `api/billing-service/`                | *(nothing yet)* | No existing frontend API calls found for Subscription/Finances pages — folder is a placeholder for when that's built |
+| New location                  | Moved from                                                                   | Notes                                                                                                                |
+| ----------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `api/authentication-service/` | Login, Logout, ForgotPassword, FeatureFlags, Impersonation                   | `FeatureFlags` hits `/auth/feature-flags`; `Impersonation` is an identity concern                                    |
+| `api/rbac-service/`           | Roles                                                                        |                                                                                                                      |
+| `api/tenant-service/`         | Organisation, Company, CompanySettings, MyCompany, UserProfile, User         | Org/user management — judgment call, review if your team splits users into rbac-service instead                      |
+| `api/job-service/`            | JobOpening, AtsJobDetails, AddableDropdown, Batches, Dashboard/JobOpening.ts | `Dashboard/JobOpening.ts` hits `/job-opening/dashboard/...` so it stayed with jobs                                   |
+| `api/candidate-service/`      | Candidates, PublicQr                                                         | `PublicQr` is the public job-listing/apply flow, candidate-facing                                                    |
+| `api/interview-service/`      | InterviewFeedback, VideoIntegration, VideoInterviewQuestions, Nylas          | `Nylas` is calendar integration for interview scheduling                                                             |
+| `api/ai-service/`             | AiQuestion                                                                   | AI-generated interview questions                                                                                     |
+| `api/notification-service/`   | Notifications                                                                |                                                                                                                      |
+| `api/audit-service/`          | Dashboard/ActivityStream.ts                                                  | Activity feed ≈ audit trail                                                                                          |
+| `api/search-service/`         | Dashboard/GlobalSearch.ts                                                    |                                                                                                                      |
+| `api/analytics-service/`      | Dashboard/CFPDashboard.ts, Dashboard/OwnerDashboard.ts                       | Cross-domain aggregated dashboard stats                                                                              |
+| `api/billing-service/`        | _(nothing yet)_                                                              | No existing frontend API calls found for Subscription/Finances pages — folder is a placeholder for when that's built |
 
 `src/api/index.ts` (the shared RTK Query base client / auth-refresh interceptor) was
 **not** moved — it's cross-cutting infrastructure shared by every service, analogous

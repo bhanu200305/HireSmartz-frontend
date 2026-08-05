@@ -13,7 +13,10 @@ import { formatPhoneNumber, formattedDate } from '../../../shared/utils/methods'
 import MasterPagination from '../../shared/ui/MasterPagination';
 import { Role } from '../../../api/rbac-service/Roles/allRoles';
 import { setOrgUserFilters } from '../../../redux/slices/OrgUserFilterSlice';
-import { useGetCompanyUsersQuery, type CompanyUser } from '../../../api/tenant-service/Company/getCompanyUsers';
+import {
+  useGetCompanyUsersQuery,
+  type CompanyUser,
+} from '../../../api/tenant-service/Company/getCompanyUsers';
 import useFetchAllRoles from '../../../hooks/useAllRoles';
 import { SortDirection } from '../../../types';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
