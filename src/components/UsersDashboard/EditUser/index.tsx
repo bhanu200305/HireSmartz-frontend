@@ -355,7 +355,7 @@ const EditUser = () => {
                   type="text"
                   maxLength={100}
                   placeholder="First Name"
-                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   {...register('firstName')}
                   onChange={handleInputChange}
                 />
@@ -371,7 +371,7 @@ const EditUser = () => {
                   type="text"
                   placeholder="Last Name"
                   maxLength={100}
-                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   {...register('lastName')}
                   onChange={handleInputChange}
                 />
@@ -386,7 +386,7 @@ const EditUser = () => {
                   type="text"
                   placeholder="Title"
                   maxLength={100}
-                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   {...register('title')}
                   onChange={handleInputChange}
                 />
@@ -399,7 +399,7 @@ const EditUser = () => {
                   Email <span className="required-asterisk">*</span>
                 </label>
                 <Input
-                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   placeholder="Email"
                   value={watch('emailId')}
                   onChange={(e) => {

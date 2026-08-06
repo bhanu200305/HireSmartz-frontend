@@ -195,7 +195,7 @@ const ForgotPassword = () => {
               onChange={onHandleChange}
               onKeyDown={handleKeyDown}
               placeholder="Email"
-              className="w-90 px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="w-90 px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             />
           </div>
           <Button

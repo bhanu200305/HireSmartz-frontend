@@ -251,7 +251,7 @@ const FinalFeedbackDetails = ({ candidate, onOpenNotes, notesCount }: Props) => 
               <button
                 type="button"
                 onClick={onOpenNotes}
-                className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#b8d0e6] bg-[#eaf2f8] text-[#2a69a8] transition-colors hover:border-[#2a69a8] hover:bg-[#dce9f4] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2a69a8]/30"
+                className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#c7d0ef] bg-[#eef2ff] text-[#263d92] transition-colors hover:border-[#263d92] hover:bg-[#e2e7fa] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#263d92]/30"
                 aria-label={notesCount != null ? `Notes, ${notesCount} items` : 'Notes'}
               >
                 <LuSquarePen size={18} strokeWidth={2} aria-hidden />

@@ -1,43 +1,17 @@
-import { Select } from 'antd';
 import revenueGeneratedImage from '../../assets/svgs/revenueGenerated.svg';
-import { MdOutlineFilterAlt } from 'react-icons/md';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { offsetSign } from 'recharts/types/util/ChartUtils';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import ComingSoon from '../../assets/svgs/ComingSoon.svg';
 
 const RevenueGenerated = () => {
-  const navigate = useNavigate();
-  const { Option } = Select;
-  const data = [
-    { month: 'Jan', amount: 0.3 },
-    { month: 'Feb', amount: 0.5 },
-    { month: 'Mar', amount: 0.9 },
-    { month: 'Apr', amount: 0.7 },
-    { month: 'May', amount: 0.1 },
-    { month: 'Jun', amount: 1.3 },
-    { month: 'Jul', amount: 0.9 },
-    { month: 'Aug', amount: 1.4 },
-    { month: 'Sept', amount: 2.6 },
-    { month: 'Oct', amount: 2.2 },
-    { month: 'Nov', amount: 1.8 },
-    { month: 'Dec', amount: 1.8 },
-  ];
-  const handleIconClick = () => {
-    navigate('/finances');
-  };
   return (
-    <div className="bg-gray-50 rounded-xl shadow p-4 w-full">
+    <div className="bg-white rounded-xl p-4 w-full border" style={{ borderColor: 'var(--border)' }}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div
-            className={'w-13 h-13 flex items-center justify-center'}
-            // onClick={handleIconClick}
-          >
-            <img src={revenueGeneratedImage} />
+          <div className={'w-13 h-13 flex items-center justify-center'}>
+            <img src={revenueGeneratedImage} alt="" />
           </div>
           <Link to="/finances" className="text-xl font-medium text-primary">
-            <h2 className="text-xl font-medium hover:underline hover:text-primary text-black">
+            <h2 className="text-xl font-medium heading-font hover:underline hover:text-primary text-black">
               Revenue Generated
             </h2>
           </Link>

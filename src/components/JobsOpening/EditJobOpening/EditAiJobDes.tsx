@@ -18,7 +18,7 @@ import {
   useSyncAtsJobOpeningMutation,
   // useSyncJobOpeningMutation
 } from '../../../api/job-service/JobOpening/JobOpeningSync';
-import { getFullURL, makeFirstLetterUpperCase } from '../../../shared/utils/methods';
+import { makeFirstLetterUpperCase } from '../../../shared/utils/methods';
 // import { RichTextEditor } from '../../shared/ui/RichTextEditor'
 import TurndownService from 'turndown';
 import { RootState } from '../../../redux/provider/store';
@@ -304,7 +304,7 @@ const EditAiJobDescription = () => {
             onBlur={() => setIsInputFocused(false)}
             onChange={(e) => setValue('description', e.target.value)}
             placeholder="Type your input here..."
-            className="bg-white w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="bg-white w-full px-4 py-2 border rounded-lg focus:ring focus:ring-brand-300 border-[var(--border)]"
           />
           {isInputFocused && !isFetching && data && data.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[var(--border)] rounded-lg shadow-lg z-30 max-h-60 overflow-y-auto">
@@ -407,7 +407,7 @@ const EditAiJobDescription = () => {
             <div className="prose max-w-none prose-p:my-2 prose-li:my-1 prose-h2:mt-4 prose-h2:mb-2">
               <ReactMarkdown
                 components={{
-                  h1: ({ node, ...props }) => (
+                  h1: ({ node: _node, ...props }) => (
                     <h1
                       className="text-2xl flex gap-2 items-center font-bold capitalize mb-3"
                       {...props}
@@ -415,7 +415,7 @@ const EditAiJobDescription = () => {
                       {formatMarkdownHeadings(props.children)}
                     </h1>
                   ),
-                  h2: ({ node, ...props }) => (
+                  h2: ({ node: _node, ...props }) => (
                     <h3
                       className="text-xl font-semibold flex gap-2 items-center capitalize py-2"
                       {...props}
@@ -423,7 +423,7 @@ const EditAiJobDescription = () => {
                       {formatMarkdownHeadings(props.children)}
                     </h3>
                   ),
-                  h3: ({ node, ...props }) => (
+                  h3: ({ node: _node, ...props }) => (
                     <h3
                       className="text-lg font-semibold flex gap-2 items-center capitalize py-2"
                       {...props}
@@ -431,8 +431,10 @@ const EditAiJobDescription = () => {
                       {formatMarkdownHeadings(props.children)}
                     </h3>
                   ),
-                  li: ({ node, ...props }) => <li className="list-disc ml-8">{props.children}</li>,
-                  p: ({ node, ...props }) => {
+                  li: ({ node: _node, ...props }) => (
+                    <li className="list-disc ml-8">{props.children}</li>
+                  ),
+                  p: ({ node: _node, ...props }) => {
                     const children = props.children;
                     const isString = typeof children === 'string';
                     return (

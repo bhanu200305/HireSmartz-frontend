@@ -12,15 +12,8 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button, Select, message, Spin } from 'antd';
-import { createLocalTracks, Track } from 'livekit-client';
-import {
-  FaMicrophone,
-  FaMicrophoneSlash,
-  FaVideo,
-  FaVideoSlash,
-  FaCheck,
-  FaTimes,
-} from 'react-icons/fa';
+import { createLocalTracks } from 'livekit-client';
+import { FaMicrophone, FaVideo, FaCheck, FaTimes } from 'react-icons/fa';
 
 interface DeviceInfo {
   deviceId: string;
@@ -298,7 +291,7 @@ const MeetingAccessScreen: React.FC = () => {
         </div>
 
         {/* Ready to Join */}
-        <div className="mt-8 p-4 bg-blue-900/30 rounded-lg text-center">
+        <div className="mt-8 p-4 bg-brand-900/30 rounded-lg text-center">
           {state.micWorking && state.cameraWorking ? (
             <p className="text-green-400 font-semibold">
               ✓ All devices ready! You can now join the interview.

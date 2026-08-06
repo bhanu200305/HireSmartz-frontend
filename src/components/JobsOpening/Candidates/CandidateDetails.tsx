@@ -1,4 +1,4 @@
-import { Rate, Select, Switch, Tabs, Tooltip } from 'antd';
+import { Rate, Select, Tabs, Tooltip } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { FaLink, FaArrowDown } from 'react-icons/fa';
 import { BsFullscreen } from 'react-icons/bs';
@@ -63,7 +63,6 @@ import SmsCommunicationTab from './SmsCommunication/SmsCommunicationTab';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import AssignJobModal from './Modal/AssignJobModal';
 import AssignedJobsModal from './Modal/AssignedJobsModal';
-import CandidateApplications from './CandidateApplications';
 
 // const { Option } = Select;
 
@@ -157,7 +156,7 @@ const ViewCandidateDetails = () => {
   const [selectedModalStatus, setSelectedModalStatus] = useState<StatusModalType>(
     StatusModalType.SELECTED
   );
-  const [candidateStatus, setCandidateStatus] = useState<string>('');
+  const [, setCandidateStatus] = useState<string>('');
   const [scheduleInterview, { isLoading: isScheduleLoading }] = useScheduleInterviewMutation();
   const { data: jobOpeningData } = useGetJobOpeningByIdQuery(
     { jobOpeningId: Number(jobIdFromParams) || 0 },
@@ -298,6 +297,10 @@ const ViewCandidateDetails = () => {
     const lastRound = candidate.interviewRounds[candidate.interviewRounds.length - 1];
     return lastRound?.interviewStatus !== InterviewEnum.INTERVIEW_COMPLETED;
   };
+  // TODO: not currently wired to any UI control — kept (not deleted) since
+  // it's real reactivate-candidate logic; flagged rather than silently
+  // deleted during the lint cleanup pass.
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleReactivateClick = () => {
     setSelectedModalStatus('REACTIVATE' as any);
     setIsModalOpen(true);
@@ -1343,7 +1346,7 @@ const ViewCandidateDetails = () => {
               {Array.isArray(candidate?.assignedJobs) && candidate.assignedJobs.length > 0 && (
                 <button
                   onClick={() => setIsAssignedJobsModalOpen(true)}
-                  className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold text-blue-900 bg-blue-300 rounded-full cursor-pointer transition-colors"
+                  className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold text-brand-900 bg-brand-300 rounded-full cursor-pointer transition-colors"
                   title="View assigned jobs"
                 >
                   {candidate.assignedJobs.length} jobs assigned
@@ -1421,7 +1424,7 @@ const ViewCandidateDetails = () => {
                       ? 'text-red-700'
                       : candidate?.status?.toUpperCase() === 'DECISION_PENDING'
                         ? 'text-purple-700'
-                        : 'text-blue-700'
+                        : 'text-brand-700'
                 }`}
               >
                 {candidate?.status?.toUpperCase() === 'SELECTED' ? (
@@ -1433,7 +1436,7 @@ const ViewCandidateDetails = () => {
                     className={`w-2 h-2 rounded-full ${
                       candidate?.status?.toUpperCase() === 'DECISION_PENDING'
                         ? 'bg-purple-500 shadow-lg shadow-purple-400'
-                        : 'bg-blue-500 shadow-lg shadow-blue-400'
+                        : 'bg-brand-500 shadow-lg shadow-brand-400'
                     }`}
                   />
                 )}
@@ -1620,10 +1623,10 @@ const ViewCandidateDetails = () => {
                     </Button>
                   )}
                   <Button
-                    className="flex items-center justify-center text-sm p-1 h-[34px] w-[50%] gap-2 border-2 rounded-4xl border-blue-500 bg-blue-50"
+                    className="flex items-center justify-center text-sm p-1 h-[34px] w-[50%] gap-2 border-2 rounded-4xl border-brand-500 bg-brand-50"
                     onClick={() => setIsAssignJobModalOpen(true)}
                   >
-                    <span className="text-blue-500 font-semibold">ASSIGN NEW JOB</span>
+                    <span className="text-brand-500 font-semibold">ASSIGN NEW JOB</span>
                   </Button>
                 </div>
               </div>

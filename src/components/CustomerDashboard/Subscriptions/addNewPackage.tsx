@@ -12,14 +12,9 @@ import { Loader } from '../../shared/ui/loader';
 
 const AddNewPackage = () => {
   const navigate = useNavigate();
-  const [addPackage, { isLoading }] = useAddCompanyMutation();
+  const [, { isLoading }] = useAddCompanyMutation();
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm({
+  const { register, handleSubmit } = useForm({
     resolver: zodResolver(addCustomerSchema),
     defaultValues: {
       companyName: '',

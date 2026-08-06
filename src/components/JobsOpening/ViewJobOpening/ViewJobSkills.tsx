@@ -31,7 +31,7 @@ const ViewJobSkills = () => {
           >
             <Input
               type="text"
-              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={jobData?.data.communicationSkills || ''}
               disabled
             />
@@ -45,7 +45,7 @@ const ViewJobSkills = () => {
           >
             <Input
               type="text"
-              className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={
                 jobData?.data.mandatorySkills?.length
                   ? `${jobData.data.mandatorySkills.length} skills selected`
@@ -62,7 +62,7 @@ const ViewJobSkills = () => {
                   {jobData?.data.mandatorySkills.map((skill, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                      className="px-3 py-1 bg-brand-100 text-brand-800 rounded-full text-sm"
                     >
                       {skill.skillName}
                     </span>
@@ -75,7 +75,7 @@ const ViewJobSkills = () => {
           <Form.Item label={<span>Optional Skills</span>}>
             <Input
               type="text"
-              className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={
                 jobData?.data.optionalSkills?.length
                   ? `${jobData.data.optionalSkills.length} skills selected`
@@ -92,7 +92,7 @@ const ViewJobSkills = () => {
                   {jobData?.data.optionalSkills.map((skill, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                      className="px-3 py-1 bg-brand-100 text-brand-800 rounded-full text-sm"
                     >
                       {skill.skillName}
                     </span>
@@ -122,7 +122,7 @@ const ViewJobSkills = () => {
           >
             <Input
               type="text"
-              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={
                 jobData?.data.educationPreference?.map((item) => item.educationLevel).join(', ') ||
                 ''

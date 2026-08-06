@@ -103,7 +103,7 @@ const useJdUploadStream = ({
           } else if (streamType === 'notifications') {
             onNotification?.(json);
           }
-        } catch (err) {
+        } catch {
           console.warn(`Received non-JSON ${streamType} data:`, data);
         }
       };

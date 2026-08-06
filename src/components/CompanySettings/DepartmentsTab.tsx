@@ -9,19 +9,20 @@ import {
   useGetMasterDepartmentsQuery,
   useAddMasterDepartmentMutation,
   useUpdateMasterDepartmentMutation,
-  useDeleteMasterDepartmentMutation,
 } from '../../api/tenant-service/CompanySettings/departments';
 import { MasterTable } from '../shared/ui/MasterTable';
 import AddEditDepartmentModal from './AddEditDepartmentModal';
 
 const DepartmentsTab: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [modal, contextHolder] = Modal.useModal();
+  const [, contextHolder] = Modal.useModal();
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
-  const [sortDir, setSortDir] = useState('ASC');
+  // No UI wired up yet to change sort — kept as plain constants rather than
+  // useState until a sort control exists.
+  const sortBy = 'name';
+  const sortDir = 'ASC';
   const [page, setPage] = useState(0);
   const pageSize = 10;
 
@@ -43,7 +44,7 @@ const DepartmentsTab: React.FC = () => {
     return () => clearTimeout(handler);
   }, [searchText]);
 
-  const { data, isFetching } = useGetMasterDepartmentsQuery({
+  const { data } = useGetMasterDepartmentsQuery({
     page,
     size: pageSize,
     search: debouncedSearch || undefined,
@@ -121,7 +122,7 @@ const DepartmentsTab: React.FC = () => {
       key: 'source',
       span: 4,
       sortKey: 'source',
-      render: (text: string) => <span className="text-blue-600 font-medium">{text}</span>,
+      render: (text: string) => <span className="text-brand-600 font-medium">{text}</span>,
     },
     {
       title: 'JOB TITLES',

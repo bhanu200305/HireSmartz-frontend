@@ -217,7 +217,7 @@ const NotesSidePanel = ({
   const [editingContent, setEditingContent] = useState('');
   const [isPosting, setIsPosting] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [, setDeletingId] = useState<string | null>(null);
 
   const prevOpenRef = useRef(false);
 
@@ -506,7 +506,7 @@ const NotesSidePanel = ({
                           <div className="flex items-center gap-2 shrink-0">
                             {showTag ? (
                               <span
-                                className={`inline-flex items-center max-w-[200px] rounded-full border border-[#2a69a8] bg-white font-medium text-[#2a69a8] truncate ${
+                                className={`inline-flex items-center max-w-[200px] rounded-full border border-[#263d92] bg-white font-medium text-[#263d92] truncate ${
                                   isCompact ? 'px-2.5 py-0.5 text-[11px]' : 'px-3 py-1 text-xs'
                                 }`}
                               >
@@ -543,7 +543,7 @@ const NotesSidePanel = ({
                         {editingNoteId === note.id ? (
                           <div className="mt-2">
                             <textarea
-                              className="w-full border border-[#d1d5db] rounded-lg p-2.5 text-sm text-[#4f4f4f] focus:outline-none focus:ring-2 focus:ring-[#2a69a8]/30"
+                              className="w-full border border-[#d1d5db] rounded-lg p-2.5 text-sm text-[#4f4f4f] focus:outline-none focus:ring-2 focus:ring-[#263d92]/30"
                               rows={3}
                               value={editingContent}
                               onChange={(e) => setEditingContent(e.target.value)}
@@ -617,7 +617,7 @@ const NotesSidePanel = ({
           ) : null}
           <div className="relative z-10">
             <textarea
-              className={`relative z-10 w-full border border-gray-300 rounded-lg pr-12 pb-9 text-sm text-[#1a1a1a] placeholder:text-[#a3a3a3] focus:outline-none focus:ring-2 focus:ring-[#2a69a8]/40 ${
+              className={`relative z-10 w-full border border-gray-300 rounded-lg pr-12 pb-9 text-sm text-[#1a1a1a] placeholder:text-[#a3a3a3] focus:outline-none focus:ring-2 focus:ring-[#263d92]/40 ${
                 isCompact ? 'p-2 min-h-[64px]' : 'p-2.5'
               }`}
               rows={isCompact ? 2 : 3}
@@ -627,7 +627,7 @@ const NotesSidePanel = ({
             />
             <button
               type="button"
-              className="absolute z-20 text-[#2a69a8] hover:text-[#1e4d7a] disabled:opacity-50 disabled:cursor-not-allowed bottom-2.5 right-3 pointer-events-auto p-0.5 rounded-md hover:bg-[#2a69a8]/10 transition-colors"
+              className="absolute z-20 text-[#263d92] hover:text-[#1d2f73] disabled:opacity-50 disabled:cursor-not-allowed bottom-2.5 right-3 pointer-events-auto p-0.5 rounded-md hover:bg-[#263d92]/10 transition-colors"
               onClick={() => void handlePost()}
               disabled={!newNoteContent.trim() || isPosting}
               aria-label="Post note"

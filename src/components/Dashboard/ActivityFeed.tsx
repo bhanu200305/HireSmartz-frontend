@@ -175,7 +175,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
                   <FiArrowRightCircle className="text-xl text-primary" />
                 </Button>
               ) : (
-                <Button className="p-2 bg-blue-600 text-white text-sm font-medium">Act now</Button>
+                <Button className="p-2 bg-brand-600 text-white text-sm font-medium">Act now</Button>
               )}
             </div>
           </div>
@@ -263,7 +263,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
 
             <div className="border border-[var(--border)] p-1 rounded-3xl bg-white">
               <Select
-                prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-blue-600" />}
+                prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-brand-600" />}
                 allowClear
                 options={[
                   { value: 'JOB', label: 'Job Opening' },

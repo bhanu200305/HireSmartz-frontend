@@ -76,8 +76,6 @@ type ChangePrimaryFormState = {
 
 type LocationValidationField = keyof CompanyLocationValidationValues;
 
-const PAGE_SIZE = 10;
-
 const LOCATION_SORT_KEY_MAP: Record<string, string> = {
   locationName: 'name',
 };
@@ -770,7 +768,7 @@ const CompanyLocations = ({ companyId, onLocationsUpdated }: CompanyLocationsPro
       });
       setShowEditValidationErrors(false);
       setIsEditLocationModalOpen(false);
-    } catch (error) {
+    } catch {
       showToast({
         message: 'Failed to update location',
         type: 'error',
@@ -822,7 +820,7 @@ const CompanyLocations = ({ companyId, onLocationsUpdated }: CompanyLocationsPro
       }));
       setIsEditMakePrimaryConfirmModalOpen(false);
       setIsEditLocationModalOpen(true);
-    } catch (error) {
+    } catch {
       showToast({
         message: 'Failed to set primary location',
         type: 'error',
@@ -942,7 +940,7 @@ const CompanyLocations = ({ companyId, onLocationsUpdated }: CompanyLocationsPro
         type: 'success',
       });
       setOpenActionId(null);
-    } catch (error) {
+    } catch {
       showToast({
         message: 'Failed to activate location',
         type: 'error',
@@ -1033,7 +1031,7 @@ const CompanyLocations = ({ companyId, onLocationsUpdated }: CompanyLocationsPro
       setIsChangePrimaryConfirmModalOpen(false);
       setLocationPendingDeactivate(null);
       setChangePrimaryForm({ locationId: null });
-    } catch (error) {
+    } catch {
       showToast({
         message: 'Failed to change primary location',
         type: 'error',

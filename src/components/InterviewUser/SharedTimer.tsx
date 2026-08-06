@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, Ref } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import WebSocketService from '../../services/WebsocketService';
 
 type SharedTimerProps = {

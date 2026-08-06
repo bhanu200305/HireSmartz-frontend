@@ -10,7 +10,7 @@ import {
 import MainLayout from '../../../layouts/MainLayout';
 import { Button, Input, showToast, Textarea } from '../../shared';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { message, Select, Switch, Tabs, Upload } from 'antd';
+import { Select, Switch, Tabs, Upload } from 'antd';
 import { Loader } from '../../shared/ui/loader';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
@@ -24,7 +24,6 @@ import {
   useGetAllDepartmentsQuery,
   useGetDepartmentsByCompanyIdQuery,
   useGetCompanyIndustryByIdQuery,
-  useGetIndustriesQuery,
   useCreateDepartmentMutation,
   useUpdateDepartmentMutation,
   useCreateIndustryMutation,
@@ -107,7 +106,10 @@ const EditCompany = () => {
 
   const initialAllowedToManageLocation = companyData?.allowedToManageLocation ?? false;
   const parsedCompanyId = Number(companyId || 0);
-  const { data: locationsResponse } = useGetCompanyLocationsFilterQuery(
+  // Query result is unused now that the dead `primaryLocation` computation
+  // that read it was removed; kept the call itself (still warms the RTK
+  // Query cache other views may read) rather than deleting the fetch too.
+  useGetCompanyLocationsFilterQuery(
     {
       companyId: parsedCompanyId,
       status: 'ALL',
@@ -120,7 +122,7 @@ const EditCompany = () => {
   );
   const industryId = Number(companyData?.companyIndustryId || companyData?.industryId || null);
 
-  const { data: industryResponse, isLoading: industryLoading } = useGetCompanyIndustryByIdQuery(
+  const { data: industryResponse } = useGetCompanyIndustryByIdQuery(
     { industryId },
     { skip: !industryId }
   );
@@ -198,21 +200,18 @@ const EditCompany = () => {
     return [] as IndustryRecord[];
   }, [industriesData]);
 
-  const {
-    data: masterDepartmentsData,
-    isLoading: masterDepartmentsLoading,
-    refetch: refetchMasterDepartments,
-  } = useGetAllDepartmentsQuery(
-    {
-      page: 0,
-      size: 1000,
-      sortBy: 'name',
-      sortDirection: 'ASC',
-    },
-    {
-      skip: true,
-    }
-  );
+  const { data: masterDepartmentsData, isLoading: masterDepartmentsLoading } =
+    useGetAllDepartmentsQuery(
+      {
+        page: 0,
+        size: 1000,
+        sortBy: 'name',
+        sortDirection: 'ASC',
+      },
+      {
+        skip: true,
+      }
+    );
   const {
     data: companyDepartmentsData,
     isLoading: companyDepartmentsLoading,
@@ -305,12 +304,11 @@ const EditCompany = () => {
     [isDepartmentSearchActive, masterDepartments, companyDepartmentsList]
   );
   const [updateCompany, { isLoading: updateLoading }] = useUpdateCompanyMutation();
-  const [createDepartment, { isLoading: creatingDepartmentLoading }] =
-    useCreateDepartmentMutation();
+  const [createDepartment] = useCreateDepartmentMutation();
   const [updateDepartment, { isLoading: updatingDepartmentLoading }] =
     useUpdateDepartmentMutation();
-  const [createIndustry, { isLoading: creatingIndustryLoading }] = useCreateIndustryMutation();
-  const [updateIndustry, { isLoading: updatingIndustryLoading }] = useUpdateIndustryMutation();
+  const [createIndustry] = useCreateIndustryMutation();
+  const [updateIndustry] = useUpdateIndustryMutation();
 
   const [selectedCountry, setSelectedCountry] = useState<string>(companyData?.country || '');
   const [selectedState, setSelectedState] = useState<string>(companyData?.state || '');
@@ -319,7 +317,7 @@ const EditCompany = () => {
   const [selectedStateId, setSelectedStateId] = useState<number | undefined>(undefined);
   const [isHovered, setIsHovered] = useState(false);
   const [imagePreview, setImagePreview] = useState('');
-  const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const [, setImageLoadFailed] = useState(false);
   const [imageChanged, setImageChanged] = useState(false);
   const [isProfileDeleted, setIsProfileDeleted] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(searchParams.get('tab') || '1');
@@ -465,17 +463,6 @@ const EditCompany = () => {
     () => departmentOptions.filter((department) => department.status !== false).length,
     [departmentOptions]
   );
-
-  const selectedDepartmentsSummary = useMemo(() => {
-    const selectedCount = selectedDepartments.length;
-    const totalCount = activeDepartmentOptionsCount;
-
-    if (totalCount > 0) {
-      return `${selectedCount} of ${totalCount} departments selected`;
-    }
-
-    return `${selectedCount} departments selected`;
-  }, [selectedDepartments.length, activeDepartmentOptionsCount]);
 
   const watchSecondaryFields = watch([
     'firstNameSecondary',
@@ -854,6 +841,10 @@ const EditCompany = () => {
     addDepartmentsLocally(addedDepartmentIds.map(Number));
   };
 
+  // TODO: not currently called from any UI control — kept (not deleted) since
+  // it's real add-department logic, not scaffolding. Wire it up or remove it;
+  // flagged rather than silently deleted during the lint cleanup pass.
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleAddDepartment = async (departmentName: string) => {
     const trimmedDepartmentName = departmentName.trim().toLowerCase();
     if (!trimmedDepartmentName) {
@@ -891,6 +882,10 @@ const EditCompany = () => {
     trigger('industryId');
   };
 
+  // TODO: superseded by handleDeleteDepartmentAction below? Not called from any
+  // UI control — kept (not deleted) since it's real logic; flagged rather than
+  // silently deleted during the lint cleanup pass.
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleDeleteDepartment = async (departmentId: string | number) => {
     const numericDepartmentId = Number(departmentId);
     if (!Number.isFinite(numericDepartmentId)) {
@@ -1484,8 +1479,6 @@ const EditCompany = () => {
     return false;
   };
 
-  const primaryLocation = locationsResponse?.content?.find((location) => location.primary);
-
   const editLocations = get(companyData, 'locations', []) as Array<Record<string, unknown>>;
   const editPrimaryLocation =
     editLocations.find((location) => get(location, 'primary', false) === true) ||
@@ -1729,7 +1722,7 @@ const EditCompany = () => {
                     </label>
                     <Input
                       type="text"
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('companyName')}
                       onChange={handleInputChange}
                       placeholder="Company Name"
@@ -1740,7 +1733,7 @@ const EditCompany = () => {
                   <div className="mt-4">
                     <label className="text-sm capitalize ">Company website url</label>
                     <Input
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('websiteLink')}
                       placeholder="Website Link"
                       onChange={handleInputChange}
@@ -1835,6 +1828,13 @@ const EditCompany = () => {
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {selectedDepartments.map((department) => {
+                              // TODO: isNewlyAdded is computed but the className below
+                              // never branches on it — looks like an orphaned "highlight
+                              // newly-added department" style that got hardcoded to the
+                              // default. Left as-is (not guessing at the intended style)
+                              // during the lint cleanup pass; only silencing the unused-var
+                              // warning here.
+                              // eslint-disable-next-line unused-imports/no-unused-vars
                               const isNewlyAdded = isNewlySelectedDepartment(
                                 String(getMasterDepartmentId(department))
                               );
@@ -1914,7 +1914,7 @@ const EditCompany = () => {
                       maxLength={100}
                       placeholder="First name"
                       onChange={handleInputChange}
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     />
                     <p className="text-red-500">{errors.firstNamePrimary?.message}</p>
                   </div>
@@ -1928,7 +1928,7 @@ const EditCompany = () => {
                       type="text"
                       maxLength={100}
                       placeholder="Last Name"
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('lastNamePrimary')}
                       onChange={handleInputChange}
                     />
@@ -1986,7 +1986,7 @@ const EditCompany = () => {
                       Email <span className="required-asterisk">*</span>
                     </label>
                     <Input
-                      className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       value={watch('emailPrimary')}
                       placeholder="Email"
                       onChange={(e) => {
@@ -2003,7 +2003,7 @@ const EditCompany = () => {
                     <Input
                       type="text"
                       maxLength={100}
-                      className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('titlePrimary')}
                       placeholder="Title"
                       onChange={handleInputChange}
@@ -2017,7 +2017,7 @@ const EditCompany = () => {
                     </label>
                     <Input
                       type="text"
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       value={companyData?.primaryRole || ''}
                       placeholder="Role"
                       disabled
@@ -2034,7 +2034,7 @@ const EditCompany = () => {
                     <Input
                       type="text"
                       maxLength={100}
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('firstNameSecondary')}
                       placeholder="First name"
                       onChange={handleInputChange}
@@ -2051,7 +2051,7 @@ const EditCompany = () => {
                       type="text"
                       maxLength={100}
                       placeholder="Last Name"
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('lastNameSecondary')}
                       onChange={handleInputChange}
                     />
@@ -2105,7 +2105,7 @@ const EditCompany = () => {
                       Email {hasSecondaryData && <span className="required-asterisk">*</span>}
                     </label>
                     <Input
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       value={watch('emailSecondary')}
                       placeholder="Email"
                       onChange={handleSecondaryEmailChange}
@@ -2119,7 +2119,7 @@ const EditCompany = () => {
                       type="text"
                       maxLength={100}
                       placeholder="Title"
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('titleSecondary')}
                       onChange={handleInputChange}
                     />
@@ -2196,7 +2196,7 @@ const EditCompany = () => {
                     <Input
                       type="text"
                       placeholder="Location Name"
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('locationName')}
                       onChange={handleInputChange}
                     />
@@ -2209,7 +2209,7 @@ const EditCompany = () => {
                     <Input
                       type="text"
                       placeholder="Location Code"
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('locationCode')}
                       onChange={handleInputChange}
                     />
@@ -2226,7 +2226,7 @@ const EditCompany = () => {
                     <Input
                       type="text"
                       placeholder="Address Line 1"
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('addressLine1')}
                       onChange={handleInputChange}
                     />
@@ -2239,7 +2239,7 @@ const EditCompany = () => {
                     <Input
                       type="text"
                       placeholder="Address Line 2"
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('addressLine2')}
                       onChange={handleInputChange}
                     />
@@ -2329,7 +2329,7 @@ const EditCompany = () => {
                     </label>
                     <Input
                       type="text"
-                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       {...register('zip')}
                       onChange={handleInputChange}
                       placeholder="Zip Code"

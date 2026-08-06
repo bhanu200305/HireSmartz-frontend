@@ -5,7 +5,7 @@ import { CommonCard } from '../shared';
 import hiringManagerImage from '../../assets/svgs/hiringManager.svg';
 import InterviewClosureImage from '../../assets/svgs/interviewClosure.svg';
 import jobPostingImage from '../../assets/svgs/jobPosting.svg';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch, shallowEqual } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import InterviewDashboard from '../Dashboard/InterviewDashboard';
@@ -26,7 +26,6 @@ import { StatusFilters } from '../shared/ui/tableHeadbar';
 import ActivityFeed from '../Dashboard/ActivityFeed';
 const OwnerDashboard = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [localState, setLocalState] = useReducer(
     (prevState, newState) => ({ ...prevState, ...newState }),
     {
@@ -48,7 +47,7 @@ const OwnerDashboard = () => {
     shallowEqual
   );
   const dispatch = useDispatch();
-  const { roles, loading: rolesLoading } = useFetchRoles();
+  const { roles } = useFetchRoles();
   const [OwnerDashboard] = useOwnerDashboardMutation();
 
   const recruiterRole = Array.isArray(roles?.data)
@@ -106,7 +105,7 @@ const OwnerDashboard = () => {
     );
     navigate('/organisation-users');
   };
-  const { data: jobOpeningsData, refetch: refetchJobOpenings } = useJobOpeningFilterQuery(
+  const { data: jobOpeningsData } = useJobOpeningFilterQuery(
     {
       page: jobOpeningFilters.page || 0,
       pageSize: 5,
@@ -191,7 +190,7 @@ const OwnerDashboard = () => {
               <CommonCard className="!bg-[#EBF0ED]">
                 <div className="relative">
                   <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                    <img src={recruiterImage} />
+                    <img src={recruiterImage} alt="" />
                   </div>
                   <div className="pt-4 flex justify-between items-start">
                     <div>
@@ -211,7 +210,7 @@ const OwnerDashboard = () => {
               <CommonCard className="!bg-amber-50">
                 <div className="relative">
                   <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                    <img src={hiringManagerImage} />
+                    <img src={hiringManagerImage} alt="" />
                   </div>
                   <div className="pt-4 flex justify-between items-start">
                     <div>
@@ -228,10 +227,10 @@ const OwnerDashboard = () => {
                 </div>
               </CommonCard>
 
-              {/* <CommonCard className="!bg-blue-100">
+              {/* <CommonCard className="!bg-brand-100">
             <div className="relative">
               <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                <img src={InterviewClosureImage} />
+                <img src={InterviewClosureImage} alt="" />
               </div>
               <div className="pt-6 flex justify-between items-center">
                 <div className="mt-2">
@@ -248,10 +247,10 @@ const OwnerDashboard = () => {
               </div>
             </div>
           </CommonCard> */}
-              <CommonCard className="!bg-blue-100">
+              <CommonCard className="!bg-brand-100">
                 <div className="relative">
                   <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                    <img src={InterviewClosureImage} />
+                    <img src={InterviewClosureImage} alt="" />
                   </div>
                   <div className="pt-4">
                     <div className="flex justify-between items-center">
@@ -284,7 +283,7 @@ const OwnerDashboard = () => {
               <CommonCard className="!bg-green-100">
                 <div className="relative">
                   <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                    <img src={jobPostingImage} />
+                    <img src={jobPostingImage} alt="" />
                   </div>
                   <div className="pt-4 flex justify-between items-start">
                     <div>

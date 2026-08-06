@@ -16,7 +16,7 @@ const Stepper: React.FC<StepperProps> = ({ steps, currentStep }) => {
           <React.Fragment key={step}>
             <div
               className={`w-12 h-12 flex items-center justify-center rounded-full border 
-                ${isActive ? 'bg-blue-600 text-white font-bold' : 'border-gray-300 text-gray-600 font-bold'}
+                ${isActive ? 'bg-brand-600 text-white font-bold' : 'border-gray-300 text-gray-600 font-bold'}
               `}
             >
               {step}

@@ -4,6 +4,9 @@
 
 @theme {
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-required-indicator: var(--required-indicator-color);
   --color-secondary: var(--secondary);
   --color-background: var(--background);
@@ -12,6 +15,22 @@
   --color-border-input: var(--border);
   --color-login-background: var(--login-background);
   --color-light-text: var(--light-text);
+  --color-surface-indigo: var(--surface-indigo);
+  --color-surface-gray: var(--surface-gray);
+  --color-surface-cyan: var(--surface-cyan);
+
+  /* CareerForce Pro brand scale — anchored on the palette's cyan (400) and
+     navy (600) accents, tinted light-to-dark for badges, borders, rings. */
+  --color-brand-50: #f9fafc;
+  --color-brand-100: #eef2ff;
+  --color-brand-200: #ecf7fb;
+  --color-brand-300: #7dd8ee;
+  --color-brand-400: #11b7dd;
+  --color-brand-500: #0f9fc4;
+  --color-brand-600: #263d92;
+  --color-brand-700: #1d2f73;
+  --color-brand-800: #162457;
+  --color-brand-900: #0f1a3d;
 
   --font-dm-sans: 'DM Sans', sans-serif;
   --font-roboto: 'Roboto', sans-serif;

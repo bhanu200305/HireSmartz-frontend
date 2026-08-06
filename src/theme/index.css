@@ -1,16 +1,23 @@
 :root {
   color-scheme: light;
-  /* --primary: #004be0; */
-  --primary: #2a69a8;
+  /* CareerForce Pro brand palette */
+  --primary: #263d92;
+  --primary-hover: #1d2f73;
+  --accent: #11b7dd;
+  --accent-hover: #0f9fc4;
   --required-indicator-color: #dc2626;
-  --secondary: #ff00ff;
+  --secondary: #11b7dd;
   --background: #ffffff;
-  --button: #2a69a8;
+  --button: #263d92;
   --text: #333333;
   /* --border: #e2e2e2; */
   --border: #d1d1d1;
-  --login-background: #f3f3f3;
+  --login-background: #f9fafc;
   --light-text: #e2e2e2;
+  --surface-indigo: #eef2ff;
+  --surface-gray: #f9fafc;
+  --surface-cyan: #ecf7fb;
+  --focus-ring: rgba(125, 216, 238, 0.6);
 }
 
 input[type='number']::-webkit-inner-spin-button,

@@ -59,16 +59,14 @@ const JobDescription = () => {
   const [reuseDropdown] = useReuseDropdownMutation();
   const [allowNavigation, setAllowNavigation] = useState(false);
   const [isAddingToDropdown, setIsAddingToDropdown] = useState<string | null>(null);
-  const [isMandatoryFocused, setIsMandatoryFocused] = useState(false);
+  const [, setIsMandatoryFocused] = useState(false);
 
-  const [isOptionalFocused, setIsOptionalFocused] = useState(false);
+  const [, setIsOptionalFocused] = useState(false);
 
   const atsJobData = location.state?.jobData;
   const isFromAts = location.state?.refresh;
   const atsJobOpeningId = location.state?.atsJobOpeningId;
-  const { details, jobOpeningId, isFormCompleted } = useSelector(
-    (state: RootState) => state.JobSlice
-  );
+  const { details, jobOpeningId } = useSelector((state: RootState) => state.JobSlice);
   const [saveJobOpening, { isLoading }] = useSaveJobOpeningMutation();
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
   const {
@@ -107,7 +105,7 @@ const JobDescription = () => {
     watch,
     setError,
     control,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<JobDescriptionState>({
     resolver: zodResolver(jobDescriptionSchema),
     defaultValues: defaultVals,
@@ -659,7 +657,7 @@ const JobDescription = () => {
                     ?.map((skill: any) => (
                       <span
                         key={skill.id}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand-100 text-brand-800 border border-brand-200"
                       >
                         {skill.name}
                         <Button
@@ -670,7 +668,7 @@ const JobDescription = () => {
                             );
                             setValue('mandatorySkills', newValue, { shouldValidate: true });
                           }}
-                          className="ml-1 w-4 h-4 p-0 text-blue-500 hover:text-blue-700"
+                          className="ml-1 w-4 h-4 p-0 text-brand-500 hover:text-brand-700"
                         >
                           ×
                         </Button>
@@ -729,7 +727,7 @@ const JobDescription = () => {
                     ?.map((skill: any) => (
                       <span
                         key={skill.id}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand-100 text-brand-800 border border-brand-200"
                       >
                         {skill.name}
                         <Button
@@ -740,7 +738,7 @@ const JobDescription = () => {
                             );
                             setValue('optionalSkills', newValue, { shouldValidate: true });
                           }}
-                          className="ml-1 w-4 h-4 p-0 text-blue-500 hover:text-blue-700"
+                          className="ml-1 w-4 h-4 p-0 text-brand-500 hover:text-brand-700"
                         >
                           ×
                         </Button>

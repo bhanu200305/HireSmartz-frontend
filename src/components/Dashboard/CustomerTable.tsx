@@ -36,7 +36,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
 }) => {
   const navigate = useNavigate();
   return (
-    <div className="bg-gray-50 rounded-xl shadow p-4 w-full">
+    <div className="bg-white rounded-xl p-4 w-full border" style={{ borderColor: 'var(--border)' }}>
       <TableHeadBar
         icon={icon}
         title={title}
@@ -46,12 +46,15 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
         onIconClick={onIconClick}
       />
 
-      <div className="overflow-x-auto overflow-y-auto max-h-[400px] max-w-full">
+      <div className="overflow-x-auto overflow-y-auto max-h-[400px] max-w-full mt-3">
         <table className="min-w-[500px] text-sm text-left w-full">
-          <thead className="sticky top-0 bg-white p-0 m-0">
-            <tr className="text-black font-semibold">
+          <thead className="sticky top-0 bg-surface-gray p-0 m-0">
+            <tr className="text-gray-500">
               {headers?.map((item, index) => (
-                <th key={index} className="py-2 px-1 whitespace-nowrap">
+                <th
+                  key={index}
+                  className="py-2.5 px-3 whitespace-nowrap text-xs font-semibold uppercase tracking-wide"
+                >
                   {item}
                 </th>
               ))}
@@ -60,23 +63,29 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
           {role === 'organization' && <OwnerTableBody data={data} title={title} />}
 
           {role === 'owner' && (
-            <tbody>
+            <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
               {data &&
                 data?.data.slice(0, 5)?.map((customer: any) => (
-                  <tr key={customer?.id}>
+                  <tr key={customer?.id} className="hover:bg-surface-gray transition-colors">
                     <td
-                      className="py-2 px-1 text-primary underline hover:text-primary cursor-pointer"
+                      className="py-3 px-3 text-primary underline hover:text-primary cursor-pointer font-medium"
                       onClick={() => navigate(`/view-company?companyId=${customer.id}`)}
                     >
                       {customer?.cfpCustomerName}
                     </td>
-                    <td className="py-2 px-1">
+                    <td className="py-3 px-3 text-gray-600">
                       {customer.countryCode}
                       {formatPhoneNumber(customer.phone)}
                     </td>
-                    <td className="py-2 px-1">{customer.interviewCount || 0}</td>
-                    <td className="py-2 px-1">{customer.packages || 0}</td>
-                    <td className="py-2 px-1">{customer.recruiters || 0}</td>
+                    <td className="py-3 px-3 text-gray-700 font-medium">
+                      {customer.interviewCount || 0}
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="text-xs font-medium px-2 py-0.5 rounded bg-brand-100 text-primary">
+                        {customer.packages || 0}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-gray-600">{customer.recruiters || 0}</td>
                   </tr>
                 ))}
             </tbody>

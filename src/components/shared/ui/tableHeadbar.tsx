@@ -65,7 +65,7 @@ const TableHeadBar: React.FC<TableHeadBarProps> = ({
           // onClick={onIconClick}
           //  ${onIconClick ? 'cursor-pointer hover:opacity-70' : ''}
         >
-          <img src={icon} />
+          <img src={icon} alt="" />
         </div>
         <h2
           className={`text-xl font-medium ${onTitleClick ? 'cursor-pointer hover:underline hover:text-primary' : ''}`}

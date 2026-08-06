@@ -145,7 +145,7 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
           {/* QR Image */}
           <div className="w-48 h-48 flex items-center justify-center">
             {isLoading ? (
-              <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-10 h-10 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
             ) : hasQr && isActive ? (
               <img
                 src={`data:image/png;base64,${qrItem!.qrCodeImageBase64}`}

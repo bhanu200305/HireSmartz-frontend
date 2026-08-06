@@ -13,7 +13,7 @@ import type { SortDirection } from '../../types';
 import AddEditIndustryModal from './AddEditIndustryModal';
 
 const IndustriesTab: React.FC = () => {
-  const [modal, contextHolder] = Modal.useModal();
+  const [, contextHolder] = Modal.useModal();
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');

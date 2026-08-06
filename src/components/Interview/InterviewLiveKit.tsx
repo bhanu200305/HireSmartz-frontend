@@ -752,9 +752,6 @@ const Interview: React.FC = () => {
       sessionStorage.getItem('livekit_booking_id') ||
       0
   );
-  const feedbackCandidateName =
-    decodedInterviewToken?.candidateName || decodedInterviewToken?.name || 'the candidate';
-
   // Interview ended state — with feedback flow branching
   if (state.hasEnded) {
     // Checking shouldPrompt — show loading
@@ -1577,7 +1574,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                 icon={
                   liveKit.mediaState.screenSharing ? (
                     // Actively sharing — show stop/slash icon in blue
-                    <MdStopScreenShare className="text-blue-400" size={18} />
+                    <MdStopScreenShare className="text-brand-400" size={18} />
                   ) : liveKit.isRemoteScreenSharing ? (
                     // Blocked — someone else is sharing, show grayed out
                     <MdScreenShare className="text-gray-500" size={18} />
@@ -1597,10 +1594,10 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                 <Button
                   type="text"
                   size="small"
-                  className={`${controlButtonClass} ${activeSidebar === 'assessment' ? 'text-blue-400 bg-white/10' : ''}`}
+                  className={`${controlButtonClass} ${activeSidebar === 'assessment' ? 'text-brand-400 bg-white/10' : ''}`}
                   icon={
                     <FaClipboardList
-                      className={activeSidebar === 'assessment' ? 'text-blue-400' : 'text-white'}
+                      className={activeSidebar === 'assessment' ? 'text-brand-400' : 'text-white'}
                     />
                   }
                   onClick={() =>
@@ -1639,7 +1636,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
             <button
               type="button"
               onClick={() => setIsSmsPanelOpen((prev) => !prev)}
-              className="fixed bottom-6 right-6 z-69 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#b8d0e6] bg-[#eef4fb] text-[#2a69a8] shadow-lg transition-colors hover:bg-[#e0ecf8]"
+              className="fixed bottom-6 right-6 z-69 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#c7d0ef] bg-[#eef2ff] text-[#263d92] shadow-lg transition-colors hover:bg-[#e2e7fa]"
               aria-label="Open SMS panel"
             >
               <FaRegCommentDots size={18} />
@@ -1697,7 +1694,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                       {questions.map((q: any, idx: number) => (
                         <div key={q.id || idx} className="space-y-3">
                           <p className="text-sm text-slate-300 leading-relaxed font-light">
-                            <span className="text-blue-400 font-medium mr-1 tracking-wide">
+                            <span className="text-brand-400 font-medium mr-1 tracking-wide">
                               Q{idx + 1}.
                             </span>
                             {q.question}
@@ -1720,7 +1717,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                                     }
                                   }}
                                   disabled={isSavingScore}
-                                  className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-700 focus:ring-blue-600 focus:ring-2"
+                                  className="w-4 h-4 text-brand-500 bg-gray-800 border-gray-700 focus:ring-brand-600 focus:ring-2"
                                 />
                                 <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
                                   Yes
@@ -1740,7 +1737,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                                     }
                                   }}
                                   disabled={isSavingScore}
-                                  className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-700 focus:ring-blue-600 focus:ring-2"
+                                  className="w-4 h-4 text-brand-500 bg-gray-800 border-gray-700 focus:ring-brand-600 focus:ring-2"
                                 />
                                 <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
                                   No
@@ -1760,7 +1757,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                               value={assessmentScores[q.id]?.score ?? ''}
                               onChange={(e) => handleScoreChange(q.id, e.target.value)}
                               placeholder="Score (1-5)"
-                              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all font-sans"
+                              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all font-sans"
                             />
                           )}
                         </div>
@@ -1774,7 +1771,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
               block
               type="primary"
               size="large"
-              className="mt-6 bg-blue-600 hover:!bg-blue-500 border-none font-medium h-11 shadow-lg shadow-blue-900/20"
+              className="mt-6 bg-brand-600 hover:!bg-brand-500 border-none font-medium h-11 shadow-lg shadow-brand-900/20"
               onClick={() => onSidebarChange(null)}
             >
               SAVE FEEDBACK

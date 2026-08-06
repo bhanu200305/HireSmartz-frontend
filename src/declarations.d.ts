@@ -35,7 +35,7 @@ declare module 'draft-js-export-markdown' {
 }
 
 declare module 'html-to-draftjs' {
-  import { ContentBlock, RawDraftContentBlock } from 'draft-js';
+  import { ContentBlock } from 'draft-js';
 
   interface HTMLToDraftJSResult {
     contentBlocks: ContentBlock[];

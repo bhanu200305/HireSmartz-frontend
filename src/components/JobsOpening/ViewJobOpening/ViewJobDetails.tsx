@@ -188,7 +188,7 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={jobData?.data.jobProfileCode || ''}
                 disabled
               />
@@ -245,7 +245,7 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={jobData?.data.jobType?.map((item) => item.jobTypeName).join(', ') || ''}
                 disabled
               />
@@ -253,7 +253,7 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Shift</span>}>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={jobData?.data.shift || ''}
                 disabled
               />
@@ -327,7 +327,7 @@ const ViewJobDetails = () => {
               }
             >
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={locationDisplayName}
                 disabled
               />
@@ -335,7 +335,7 @@ const ViewJobDetails = () => {
 
             <Form.Item label={<span>Location Code</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={locationCode}
                 disabled
               />
@@ -345,14 +345,14 @@ const ViewJobDetails = () => {
           <div className="grid grid-cols-3 gap-x-4 mt-2">
             <Form.Item label={<span>Address Line 1</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={locationAddressLine1}
                 disabled
               />
             </Form.Item>
             <Form.Item label={<span>Address Line 2</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={locationAddressLine2}
                 disabled
               />
@@ -362,28 +362,28 @@ const ViewJobDetails = () => {
           <div className="grid grid-cols-3 gap-x-4 mt-2">
             <Form.Item label={<span>City</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={locationCity}
                 disabled
               />
             </Form.Item>
             <Form.Item label={<span>State</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={locationState}
                 disabled
               />
             </Form.Item>
             <Form.Item label={<span>Zip Code</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={locationZipCode}
                 disabled
               />
             </Form.Item>
             <Form.Item label={<span>Country</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={locationCountry}
                 disabled
               />
@@ -431,7 +431,7 @@ const ViewJobDetails = () => {
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
                             manager.isDeleted
                               ? 'bg-gray-100 text-gray-600 border-gray-300'
-                              : 'bg-blue-100 text-blue-800 border-blue-200'
+                              : 'bg-brand-100 text-brand-800 border-brand-200'
                           }`}
                         >
                           {manager.name}
@@ -473,7 +473,7 @@ const ViewJobDetails = () => {
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
                             recruiter.isDeleted
                               ? 'bg-gray-100 text-gray-600 border-gray-300'
-                              : 'bg-blue-100 text-blue-800 border-blue-200'
+                              : 'bg-brand-100 text-brand-800 border-brand-200'
                           }`}
                         >
                           {recruiter.name}
@@ -498,7 +498,7 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={
                   jobData?.data.openDate
                     ? dayjs(jobData.data.openDate, 'DD-MM-YYYY').format('MMM DD, YYYY')
@@ -516,7 +516,7 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={jobData?.data.openings || ''}
                 disabled
               />
@@ -537,7 +537,7 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={jobData?.data.exemptionStatus?.statusName || ''}
                 disabled
               />
@@ -558,12 +558,12 @@ const ViewJobDetails = () => {
                 prefix="$"
                 suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
                 placeholder="Minimum Salary"
-                className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)] text-gray-500"
+                className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] text-gray-500"
                 intlConfig={{ locale: 'en-US', currency: 'USD' }}
               />
               {/* <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={jobData?.data.minSalary || ''}
                 disabled
               /> */}
@@ -584,12 +584,12 @@ const ViewJobDetails = () => {
                 prefix="$"
                 suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
                 placeholder="Maximum Salary"
-                className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)] text-gray-500"
+                className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] text-gray-500"
                 intlConfig={{ locale: 'en-US', currency: 'USD' }}
               />
               {/* <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={jobData?.data.maxSalary || ''}
                 disabled
               /> */}
@@ -607,7 +607,7 @@ const ViewJobDetails = () => {
               prefix="$"
               suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
               // placeholder="Referral Bonus"
-              className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)] text-gray-500"
+              className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] text-gray-500"
               intlConfig={{ locale: 'en-US', currency: 'USD' }}
             />
           </Form.Item>
@@ -620,7 +620,7 @@ const ViewJobDetails = () => {
           >
             <Input
               type="text"
-              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={jobData?.data.minExperience ?? ''}
               disabled
             />
@@ -628,7 +628,7 @@ const ViewJobDetails = () => {
           <Form.Item label={<span>Maximum Experience (In years)</span>}>
             <Input
               type="text"
-              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={jobData?.data.maxExperience ?? ''}
               disabled
             />
@@ -648,7 +648,7 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={
                   jobData?.data.mandatorySkills?.length
                     ? `${jobData.data.mandatorySkills.length} skills selected`
@@ -667,7 +667,7 @@ const ViewJobDetails = () => {
                     {jobData.data.mandatorySkills.map((skill, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 border border-blue-200 rounded-full text-xs font-medium"
+                        className="inline-flex items-center px-3 py-1 bg-brand-100 text-brand-800 border border-brand-200 rounded-full text-xs font-medium"
                       >
                         {skill.skillName}
                       </span>
@@ -680,7 +680,7 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Optional Skills</span>}>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={
                   jobData?.data.optionalSkills?.length
                     ? `${jobData.data.optionalSkills.length} skills selected`
@@ -699,7 +699,7 @@ const ViewJobDetails = () => {
                     {jobData.data.optionalSkills.map((skill, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 border border-blue-200 rounded-full text-xs font-medium"
+                        className="inline-flex items-center px-3 py-1 bg-brand-100 text-brand-800 border border-brand-200 rounded-full text-xs font-medium"
                       >
                         {skill.skillName}
                       </span>
@@ -720,7 +720,7 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={
                   jobData?.data.educationPreference
                     ?.map((item) => item.educationLevel)

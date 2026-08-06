@@ -208,7 +208,7 @@ const ScoringCard: React.FC<ScoringCardProps> = ({
       </div>
 
       {/* Info banner */}
-      <div className="flex items-start gap-2 bg-blue-50 text-blue-700 text-xs rounded-lg px-3 py-2">
+      <div className="flex items-start gap-2 bg-brand-50 text-brand-700 text-xs rounded-lg px-3 py-2">
         <InfoCircleOutlined className="mt-0.5 shrink-0" />
         <span>{infoText}</span>
       </div>
@@ -245,7 +245,7 @@ const ScoringCard: React.FC<ScoringCardProps> = ({
                     {meta?.label ?? w.categoryName}
                   </p>
                   <p className="text-xs text-gray-400">{meta?.description ?? ''}</p>
-                  <p className="text-xs text-blue-500 mt-0.5">
+                  <p className="text-xs text-brand-500 mt-0.5">
                     Default:{' '}
                     {defaultWeights?.find((d) => d.categoryName === w.categoryName)
                       ?.weightPercentage ??
@@ -264,7 +264,7 @@ const ScoringCard: React.FC<ScoringCardProps> = ({
                     const val = Math.min(100, Math.max(0, Number(e.target.value)));
                     handleSliderChange(w.id, val);
                   }}
-                  className="ml-4 w-16 text-center text-sm font-semibold text-gray-700 border border-gray-200 rounded-lg py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="ml-4 w-16 text-center text-sm font-semibold text-gray-700 border border-gray-200 rounded-lg py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
               <Slider
@@ -298,7 +298,7 @@ const ScoringCard: React.FC<ScoringCardProps> = ({
         <Button
           onClick={handleSave}
           disabled={total !== 100 || isSaving}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-1.5 rounded-lg transition-colors"
+          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-5 py-1.5 rounded-lg transition-colors"
         >
           {isSaving ? 'Saving…' : 'Save'}
         </Button>
@@ -497,7 +497,7 @@ const ScoringCriteriaConfigTab: React.FC = () => {
                 checked={allowConfigure}
                 onChange={handleToggleAllow}
                 loading={isTogglingAllow}
-                className={allowConfigure ? 'bg-blue-600' : ''}
+                className={allowConfigure ? 'bg-brand-600' : ''}
               />
             </Tooltip>
             <span className="text-sm text-gray-600">

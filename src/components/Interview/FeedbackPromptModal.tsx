@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Spin } from 'antd';
+import { Button } from 'antd';
 import { FaRegEdit } from 'react-icons/fa';
 import { HiOutlineBolt } from 'react-icons/hi2';
 
@@ -49,9 +49,9 @@ const FeedbackPromptModal: React.FC<FeedbackPromptModalProps> = ({
           <button
             type="button"
             onClick={onSelectFullFeedback}
-            className="flex-1 flex flex-col items-center justify-center gap-3 px-5 py-7 border-2 border-gray-200 rounded-xl cursor-pointer bg-white hover:border-blue-500 hover:shadow-lg transition-all duration-200 group"
+            className="flex-1 flex flex-col items-center justify-center gap-3 px-5 py-7 border-2 border-gray-200 rounded-xl cursor-pointer bg-white hover:border-brand-500 hover:shadow-lg transition-all duration-200 group"
           >
-            <div className="w-12 h-12 rounded-lg bg-blue-600 flex items-center justify-center group-hover:bg-blue-700 transition-colors">
+            <div className="w-12 h-12 rounded-lg bg-brand-600 flex items-center justify-center group-hover:bg-brand-700 transition-colors">
               <FaRegEdit className="text-white" size={22} />
             </div>
             <span className="text-sm font-semibold text-gray-800 text-center uppercase tracking-wide">
@@ -63,9 +63,9 @@ const FeedbackPromptModal: React.FC<FeedbackPromptModalProps> = ({
           <button
             type="button"
             onClick={onSelectQuickFeedback}
-            className="flex-1 flex flex-col items-center justify-center gap-3 px-5 py-7 border-2 border-gray-200 rounded-xl cursor-pointer bg-white hover:border-blue-500 hover:shadow-lg transition-all duration-200 group"
+            className="flex-1 flex flex-col items-center justify-center gap-3 px-5 py-7 border-2 border-gray-200 rounded-xl cursor-pointer bg-white hover:border-brand-500 hover:shadow-lg transition-all duration-200 group"
           >
-            <div className="w-12 h-12 rounded-lg bg-blue-600 flex items-center justify-center group-hover:bg-blue-700 transition-colors">
+            <div className="w-12 h-12 rounded-lg bg-brand-600 flex items-center justify-center group-hover:bg-brand-700 transition-colors">
               <HiOutlineBolt className="text-white" size={24} />
             </div>
             <span className="text-sm font-semibold text-gray-800 text-center uppercase tracking-wide">
@@ -79,7 +79,7 @@ const FeedbackPromptModal: React.FC<FeedbackPromptModalProps> = ({
           <Button
             type="primary"
             size="large"
-            className="px-8 rounded-lg bg-blue-600 hover:!bg-blue-700 border-none font-medium h-10"
+            className="px-8 rounded-lg bg-brand-600 hover:!bg-brand-700 border-none font-medium h-10"
             onClick={onSkip}
             loading={isSkipping}
           >

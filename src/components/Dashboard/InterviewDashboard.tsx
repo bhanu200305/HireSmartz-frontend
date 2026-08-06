@@ -96,13 +96,16 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
   return (
     <>
       {isLoading && <Loader />}
-      <div className="bg-gray-50 rounded-xl shadow p-4 w-full">
+      <div
+        className="bg-white rounded-xl p-4 w-full border"
+        style={{ borderColor: 'var(--border)' }}
+      >
         <div className="flex justify-between items-center gap-5">
           <div className="flex items-center gap-3">
             <div className="w-13 h-13 flex items-center justify-center">
-              <img src={InterviewClosureImage} />
+              <img src={InterviewClosureImage} alt="" />
             </div>
-            <h2 className="text-xl font-medium">Interviews</h2>
+            <h2 className="text-xl font-medium heading-font">Interviews</h2>
           </div>
 
           <div className="flex flex-wrap justify-between items-center gap-2">
@@ -177,20 +180,36 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
         <div className="flex flex-row max-h-[400px] max-w-full">
           <div className="space-y-4 pl-2">
             <div>
-              <p className="text-xl font-semibold">{stats?.totalJobPosted ?? 0}</p>
-              <p className="text-sm border-b border-gray-300 pb-2 w-35">Total Jobs Posted</p>
+              <p className="text-xl font-semibold text-primary heading-font">
+                {stats?.totalJobPosted ?? 0}
+              </p>
+              <p className="text-sm border-b pb-2 w-35" style={{ borderColor: 'var(--border)' }}>
+                Total Jobs Posted
+              </p>
             </div>
             <div>
-              <p className="text-xl font-semibold">{stats?.totalInterviews ?? 0}</p>
-              <p className="text-sm border-b border-gray-300 pb-2 w-35">Completed Interviews</p>
+              <p className="text-xl font-semibold text-primary heading-font">
+                {stats?.totalInterviews ?? 0}
+              </p>
+              <p className="text-sm border-b pb-2 w-35" style={{ borderColor: 'var(--border)' }}>
+                Completed Interviews
+              </p>
             </div>
             <div>
-              <p className="text-xl font-semibold">{allInterviews?.totalCandidates ?? 0}</p>
-              <p className="text-sm border-b border-gray-300 pb-2 w-35">Candidates Applied</p>
+              <p className="text-xl font-semibold text-primary heading-font">
+                {allInterviews?.totalCandidates ?? 0}
+              </p>
+              <p className="text-sm border-b pb-2 w-35" style={{ borderColor: 'var(--border)' }}>
+                Candidates Applied
+              </p>
             </div>
             <div>
-              <p className="text-xl font-semibold">{stats?.totalCandidateEngage ?? 0}</p>
-              <p className="text-sm border-b border-gray-300 pb-2 w-35">Candidates Engaged</p>
+              <p className="text-xl font-semibold text-primary heading-font">
+                {stats?.totalCandidateEngage ?? 0}
+              </p>
+              <p className="text-sm border-b pb-2 w-35" style={{ borderColor: 'var(--border)' }}>
+                Candidates Engaged
+              </p>
             </div>
           </div>
           {interviewData && interviewData?.interviewRounds?.length > 0 && total > 0 ? (

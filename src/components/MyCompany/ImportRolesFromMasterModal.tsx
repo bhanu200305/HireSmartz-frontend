@@ -153,7 +153,7 @@ const ImportRolesFromMasterModal: React.FC<ImportRolesFromMasterModalProps> = ({
         <Button
           onClick={handleSave}
           disabled={selectedIds.length === 0}
-          className="px-12 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-3xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-12 py-2 bg-brand-600 text-white hover:bg-brand-700 rounded-3xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           SAVE
         </Button>

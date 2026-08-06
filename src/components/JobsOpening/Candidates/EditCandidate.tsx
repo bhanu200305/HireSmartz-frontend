@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useEffect, useRef, useState } from 'react';
 import { Form, Select, Tooltip } from 'antd';
 import { Button, Input, showToast } from '../../shared';
@@ -43,7 +42,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
 }) => {
   const [form] = Form.useForm();
   const skillsContainerRef = useRef<HTMLDivElement>(null);
-  const [isSkillsFocused, setIsSkillsFocused] = useState(false);
+  const [, setIsSkillsFocused] = useState(false);
   const [updateCandidate, { isLoading: isEditCandidateLoading }] = useEditCandidateMutation();
   // const [updateDropdownByType] = useUpdateDropdownByTypeMutation();
   const {
@@ -201,7 +200,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
               maxLength={100}
               disabled={!isEditing}
               placeholder="First Name"
-              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               {...register('firstName')}
               onChange={(e) => {
                 setValue('firstName', e.target.value, { shouldDirty: true });
@@ -225,7 +224,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
               maxLength={100}
               disabled={!isEditing}
               placeholder="Last Name"
-              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               {...register('lastName')}
               onChange={(e) => {
                 setValue('lastName', e.target.value, { shouldDirty: true });
@@ -316,7 +315,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
             <Input
               disabled={!isEditing}
               placeholder="Email ID"
-              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={watch('email')}
               onChange={(e) => {
                 const noSpaces = e.target.value.replace(/\s/g, '');
@@ -339,7 +338,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
             <Input
               disabled={!isEditing}
               placeholder="Qualification"
-              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               {...register('education')}
               onChange={(e) => {
                 setValue('education', e.target.value, { shouldDirty: true });
@@ -352,7 +351,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
             <Input
               type="text"
               placeholder="Source"
-              className="w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-gray-300"
+              className="w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-gray-300"
               value={candidate?.source ?? ''}
               disabled
             />
@@ -406,7 +405,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
                     {selectedSkillsData.map((skill: any) => (
                       <span
                         key={skill.id}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand-100 text-brand-800 border border-brand-200"
                       >
                         {skill.name}
                         {isEditing && (
@@ -419,7 +418,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
                                 shouldValidate: true,
                               });
                             }}
-                            className="ml-1 w-4 h-4 p-0 text-blue-500 hover:text-blue-700 !bg-transparent border-0"
+                            className="ml-1 w-4 h-4 p-0 text-brand-500 hover:text-brand-700 !bg-transparent border-0"
                           >
                             ×
                           </Button>
@@ -444,7 +443,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
             <Input
               disabled={!isEditing}
               placeholder="Candidate Location"
-              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               {...register('address')}
               onChange={(e) => {
                 setValue('address', e.target.value, { shouldDirty: true });
@@ -490,7 +489,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
                       : candidateLanguageLabel
                   }
                   disabled
-                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 />
               )}
               {isEditing && (

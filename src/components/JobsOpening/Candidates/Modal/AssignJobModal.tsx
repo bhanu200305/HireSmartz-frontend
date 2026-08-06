@@ -222,7 +222,7 @@ const AssignJobModal: React.FC<AssignJobModalProps> = ({
     >
       {/* Candidate Info – shown only before a job is selected */}
       {/* {!selectedJob && ( */}
-      <div className="mb-5 p-3 bg-blue-50 border border-blue-100 rounded-lg space-y-2">
+      <div className="mb-5 p-3 bg-brand-50 border border-brand-100 rounded-lg space-y-2">
         <p className="font-semibold text-lg text-gray-800">{candidateName}</p>
         {otherAssignedJobs.length > 0 && (
           <div className="pt-2">

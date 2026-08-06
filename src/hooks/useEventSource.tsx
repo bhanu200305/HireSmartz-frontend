@@ -114,7 +114,7 @@ const useEventSource = ({
           }
 
           onMessage(json);
-        } catch (err) {
+        } catch {
           console.warn('Received non-JSON SSE data:', data);
         }
       };

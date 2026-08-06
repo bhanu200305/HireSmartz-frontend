@@ -112,7 +112,7 @@ const AddEditJobTitleModal: React.FC<AddEditJobTitleModalProps> = ({
                 INACTIVE
               </span>
             }
-            className={`min-w-[80px] ${isActive ? 'bg-blue-600' : 'bg-gray-400'}`}
+            className={`min-w-[80px] ${isActive ? 'bg-brand-600' : 'bg-gray-400'}`}
           />
         </div>
 
@@ -126,7 +126,7 @@ const AddEditJobTitleModal: React.FC<AddEditJobTitleModalProps> = ({
           <Button
             onClick={handleSave}
             disabled={!name.trim() || selectedDeptIds.size === 0 || isLoading}
-            className="w-1/2 py-[10px] h-11 bg-blue-600 text-white hover:bg-blue-700 rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed border-none"
+            className="w-1/2 py-[10px] h-11 bg-brand-600 text-white hover:bg-brand-700 rounded-full font-semibold disabled:opacity-50 disabled:cursor-not-allowed border-none"
           >
             {isLoading ? 'SAVING...' : 'SAVE'}
           </Button>

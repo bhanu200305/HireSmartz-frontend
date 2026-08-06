@@ -82,10 +82,9 @@ const AiQuestionsSetup = () => {
     { skip: !activeJobOpeningId }
   );
 
-  const { data: roundsData, isLoading: isLoadingRounds } = useGetInterviewRoundsByJobIdQuery(
-    activeJobOpeningId,
-    { skip: !activeJobOpeningId }
-  );
+  const { data: roundsData } = useGetInterviewRoundsByJobIdQuery(activeJobOpeningId, {
+    skip: !activeJobOpeningId,
+  });
   const aiRoundId = useMemo(
     () => roundsData?.find((round) => round.roundType === 'AI')?.id ?? null,
     [roundsData]
@@ -139,7 +138,7 @@ const AiQuestionsSetup = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       showToast({ message: 'Template downloaded successfully', type: 'success' });
-    } catch (err) {
+    } catch {
       showToast({ message: 'Failed to download template', type: 'error' });
     }
   };

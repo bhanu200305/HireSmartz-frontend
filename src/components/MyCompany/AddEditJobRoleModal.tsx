@@ -104,7 +104,7 @@ const AddEditJobRoleModal: React.FC<AddEditJobRoleModalProps> = ({
                 INACTIVE
               </span>
             }
-            className={`min-w-[80px] ${isActive ? 'bg-blue-600' : 'bg-gray-400'}`}
+            className={`min-w-[80px] ${isActive ? 'bg-brand-600' : 'bg-gray-400'}`}
           />
         </div>
 
@@ -118,7 +118,7 @@ const AddEditJobRoleModal: React.FC<AddEditJobRoleModalProps> = ({
           <Button
             onClick={handleSave}
             disabled={!name.trim()}
-            className="px-12 py-[10px] h-11 bg-blue-600 text-white hover:bg-blue-700 rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-12 py-[10px] h-11 bg-brand-600 text-white hover:bg-brand-700 rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             SAVE
           </Button>

@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Button, showToast } from '../../shared';
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import { useDeleteInterviewRoundMutation } from '../../../api/job-service/JobOpening/DeleteInterviewRounds';
 import { get } from 'lodash-es';
 
-import { resetEditJobState } from '../../../redux/slices/editJobOpeningSlice';
 import { Loader } from '../../shared/ui/loader';
 import { useReorderInterviewRoundsMutation } from '../../../api/job-service/JobOpening/EditInterviewRound';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
@@ -15,7 +14,6 @@ import { SortableInterviewRounds } from './sortableInterviewRounds';
 
 const EditDetailedInterviewRounds = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const { id } = useParams<{ id: string }>();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedRoundId, setSelectedRoundId] = useState<number | null>(null);

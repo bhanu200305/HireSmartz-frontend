@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import customerImage from '../../assets/svgs/customers.svg';
-import { CommonCard } from '../shared';
 import interviewsImage from '../../assets/svgs/interviews.svg';
 import revenueGeneratedImage from '../../assets/svgs/revenueGenerated.svg';
 import upcomingRevenueImage from '../../assets/svgs/upcomingRevenue.svg';
@@ -21,12 +20,61 @@ import { useInterviewSummaryDashboardMutation } from '../../api/job-service/Dash
 import { formatEnumString } from '../../shared/utils/methods';
 import { StatusFilters } from '../shared/ui/tableHeadbar';
 
+// Presentational-only KPI tile shared by the four Dashboard summary cards.
+// Keeps the existing circular badge icon assets, just gives every card a
+// consistent white/bordered surface and a value color drawn from the
+// CareerForce Pro brand tokens (see DESIGN_SYSTEM.md) instead of one-off
+// pastel backgrounds/hex values per card.
+const KpiCard = ({
+  icon,
+  label,
+  value,
+  href,
+  accent,
+  extra,
+}: {
+  icon: string;
+  label: ReactNode;
+  value: ReactNode;
+  href?: string;
+  accent: string;
+  extra?: ReactNode;
+}) => {
+  const valueNode = (
+    <p className="heading-font text-2xl font-bold" style={{ color: accent }}>
+      {value}
+    </p>
+  );
+
+  return (
+    <div
+      className="relative bg-white rounded-xl p-5 pt-10 border flex flex-col gap-2"
+      style={{ borderColor: 'var(--border)' }}
+    >
+      <div className="absolute -top-6 left-5 w-14 h-14 flex items-center justify-center">
+        <img src={icon} alt="" className="w-full h-full" />
+      </div>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-sm text-gray-600 heading-font leading-snug">{label}</h3>
+        {href ? (
+          <Link to={href} className="hover:opacity-70 transition-opacity">
+            {valueNode}
+          </Link>
+        ) : (
+          valueNode
+        )}
+      </div>
+      {extra}
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const filters = useSelector((state: RootState) => state.cfpDashboardFiltersSlice);
   const { role } = useSelector((state: RootState) => state.LoginSlice);
-  const { roles, loading: rolesLoading } = useFetchRoles();
+  const { roles } = useFetchRoles();
 
   const matchedRole = (roles as any)?.data?.find(
     (r: any) => r.roleName.toLowerCase() === role?.name?.toLowerCase()
@@ -87,107 +135,71 @@ const Dashboard = () => {
 
   return (
     <MainLayout>
-      <div className="w-full p-8 justify-start pt-16">
-        <div className="mt-6 grid grid-cols-4 gap-x-4">
-          <CommonCard className="!bg-[#EBF0ED]">
-            <div className="relative">
-              <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                <img src={customerImage} />
-              </div>
-              <div className="pt-4 flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg">
-                    Total Onboarded <br />
-                    CFP Company
-                  </h3>
-                </div>
-                <div>
-                  <Link to="/company" className="text-3xl ">
-                    <p className="hover:underline hover:opacity-50 text-lg text-black font-bold">
-                      {dashboardData?.totalElements}
-                    </p>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </CommonCard>
+      <div className="w-full px-7 py-6 space-y-5">
+        <div className="grid grid-cols-4 gap-4">
+          <KpiCard
+            icon={customerImage}
+            label={
+              <>
+                Total Onboarded <br />
+                CFP Company
+              </>
+            }
+            value={dashboardData?.totalElements}
+            href="/company"
+            accent="#263d92"
+          />
 
-          <CommonCard className="!bg-amber-50">
-            <div className="relative">
-              <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                <img src={interviewsImage} />
-              </div>
-              <div className="pt-4 flex justify-between items-start">
+          <KpiCard
+            icon={interviewsImage}
+            label={
+              <>
+                Total Interviews
+                <br /> Conducted
+              </>
+            }
+            value={interviewData?.allInterviews?.totalInterviews ?? 'N/A'}
+            accent="#11b7dd"
+            extra={
+              interviewData?.interviewRounds && interviewData.interviewRounds.length > 0 ? (
                 <div>
-                  <h3 className="text-lg">
-                    Total Interviews
-                    <br /> Conducted
-                  </h3>
+                  {interviewData.interviewRounds.map((round, index) => (
+                    <span key={round?.roundType} className="text-xs font-medium text-gray-500">
+                      {index > 0 && <span className="text-[#11b7dd]"> | </span>}
+                      {formatEnumString(round?.roundType)} - {round?.totalInterviews}
+                    </span>
+                  ))}
                 </div>
-                <p className="text-lg text-[#F58220] font-bold">
-                  {interviewData?.allInterviews?.totalInterviews ?? 'N/A'}
-                </p>
-              </div>
-              <div>
-                {interviewData?.interviewRounds?.map((round, index) => (
-                  <span key={round?.roundType} className="text-xs font-medium text-gray-700">
-                    {index > 0 && <span className="text-[#F58220]"> | </span>}
-                    {formatEnumString(round?.roundType)} - {round?.totalInterviews}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </CommonCard>
+              ) : undefined
+            }
+          />
 
           {role.name === 'Admin' || role.name === 'User' ? null : (
             <>
-              <CommonCard className="!bg-green-100">
-                <div className="relative">
-                  <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                    <img src={revenueGeneratedImage} />
-                  </div>
-                  <div className="pt-4 flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg">
-                        Revenue <br /> Generated
-                      </h3>
-                    </div>
-                    <div>
-                      <Link to="/finances" className="text-3xl ">
-                        <p className="hover:underline hover:opacity-70 text-lg text-[#2B934E] font-bold">
-                          N/A
-                        </p>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </CommonCard>
+              <KpiCard
+                icon={revenueGeneratedImage}
+                label={
+                  <>
+                    Revenue <br /> Generated
+                  </>
+                }
+                value="N/A"
+                href="/finances"
+                accent="#059669"
+              />
 
-              <CommonCard className="!bg-blue-100">
-                <div className="relative">
-                  <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                    <img src={upcomingRevenueImage} />
-                  </div>
-                  <div className="pt-4 flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg">Predicted Upcoming Revenue</h3>
-                    </div>
-                    <div>
-                      <Link to="/finances" className="text-3xl ">
-                        <p className="hover:underline hover:opacity-70 text-lg text-[#6495EC] font-bold">
-                          N/A
-                        </p>
-                      </Link>
-                      {/* <p className="text-3xl text-[#6495EC] font-bold">$900K</p> */}
-                    </div>
-                  </div>
-                </div>
-              </CommonCard>
+              <KpiCard
+                icon={upcomingRevenueImage}
+                label="Predicted Upcoming Revenue"
+                value="N/A"
+                href="/finances"
+                accent="#263d92"
+              />
             </>
           )}
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-2 gap-4">
           <CustomerTable
             headers={cfpCustomersHeaders}
             title="CFP Company"
@@ -210,7 +222,7 @@ const Dashboard = () => {
         </div>
 
         {role.name === 'Admin' || role?.name === 'User' ? null : (
-          <div className="mt-6 grid grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-2 gap-4">
             <RevenueGenerated />
             <UpcomingRevenue />
           </div>

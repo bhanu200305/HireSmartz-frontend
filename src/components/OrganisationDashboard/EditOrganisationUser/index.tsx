@@ -71,7 +71,7 @@ const EditOrgUser = () => {
   };
   const [isHovered, setIsHovered] = useState(false);
   const [imagePreview, setImagePreview] = useState('');
-  const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const [, setImageLoadFailed] = useState(false);
   const [imageChanged, setImageChanged] = useState(false);
   const [isProfileDeleted, setIsProfileDeleted] = useState(false);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
@@ -80,7 +80,7 @@ const EditOrgUser = () => {
   const uploadRef = React.useRef<any>(null);
   const { loginToken } = useSelector((state: RootState) => state.LoginSlice);
   const decodedTokenData = safeDecodeToken<{ companyId: number }>(loginToken);
-  const { data, isLoading, refetch } = useGetViewOrgUserDetailsQuery(
+  const { data, isLoading } = useGetViewOrgUserDetailsQuery(
     { userId: Number(orgUserId), companyId: companyIdFromParams || undefined },
     { refetchOnMountOrArgChange: true }
   );
@@ -477,7 +477,7 @@ const EditOrgUser = () => {
                   type="text"
                   placeholder="First Name"
                   maxLength={100}
-                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   {...register('firstName')}
                   onChange={handleInputChange}
                 />
@@ -493,7 +493,7 @@ const EditOrgUser = () => {
                   type="text"
                   placeholder="Last Name"
                   maxLength={100}
-                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   {...register('lastName')}
                   onChange={handleInputChange}
                 />
@@ -506,7 +506,7 @@ const EditOrgUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)] !text-black"
+                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] !text-black"
                   {...register('employeeId')}
                   onChange={handleInputChange}
                   disabled
@@ -520,7 +520,7 @@ const EditOrgUser = () => {
                   Email <span className="required-asterisk">*</span>
                 </label>
                 <Input
-                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className=" w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={watch('emailId')}
                   placeholder="Email"
                   onChange={(e) => {
@@ -809,7 +809,7 @@ const EditOrgUser = () => {
                                     ? 'bg-primary text-white border-primary'
                                     : location.status === false
                                       ? 'bg-gray-100 text-gray-600 border-gray-300'
-                                      : 'bg-blue-100 text-blue-800 border-blue-200'
+                                      : 'bg-brand-100 text-brand-800 border-brand-200'
                                 }`}
                               >
                                 {location.name}
@@ -828,7 +828,7 @@ const EditOrgUser = () => {
                                         shouldValidate: true,
                                       });
                                     }}
-                                    className="ml-1 w-4 h-4 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-200 rounded-full"
+                                    className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
                                   >
                                     ×
                                   </button>

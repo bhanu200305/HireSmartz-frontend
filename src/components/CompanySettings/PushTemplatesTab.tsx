@@ -130,7 +130,7 @@ const PushTemplatesTab: React.FC = () => {
 
           {/* Trigger */}
           <div
-            className="border border-gray-300 rounded-full px-4 py-2.5 flex items-center justify-between cursor-pointer hover:border-blue-400 bg-white select-none"
+            className="border border-gray-300 rounded-full px-4 py-2.5 flex items-center justify-between cursor-pointer hover:border-brand-400 bg-white select-none"
             onClick={() => setIsDropdownOpen((v) => !v)}
           >
             <span className="text-sm text-gray-600 roboto-font">
@@ -210,7 +210,7 @@ const PushTemplatesTab: React.FC = () => {
       {/* PUSH TEMPLATES button */}
       <div className="flex justify-center mt-8">
         <Button
-          className="px-16 h-11 bg-[#004BE0] text-white hover:bg-blue-700 rounded-full font-semibold text-sm roboto-font disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-16 h-11 bg-[#004BE0] text-white hover:bg-brand-700 rounded-full font-semibold text-sm roboto-font disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handlePushClick}
           loading={isPushing}
           disabled={selectedIds.size === 0 || isPushing}
@@ -246,7 +246,7 @@ const PushTemplatesTab: React.FC = () => {
               CANCEL
             </Button>
             <Button
-              className="flex-1 h-11 bg-[#004BE0] text-white hover:bg-blue-700 rounded-full font-semibold text-sm roboto-font"
+              className="flex-1 h-11 bg-[#004BE0] text-white hover:bg-brand-700 rounded-full font-semibold text-sm roboto-font"
               onClick={handleDryRun}
             >
               CONFIRM
@@ -297,7 +297,7 @@ const PushTemplatesTab: React.FC = () => {
               NO
             </Button>
             <Button
-              className="flex-1 h-11 bg-[#004BE0] text-white hover:bg-blue-700 rounded-full font-semibold text-sm roboto-font"
+              className="flex-1 h-11 bg-[#004BE0] text-white hover:bg-brand-700 rounded-full font-semibold text-sm roboto-font"
               onClick={() => handleFinalPush(true)}
               loading={isPushing}
             >

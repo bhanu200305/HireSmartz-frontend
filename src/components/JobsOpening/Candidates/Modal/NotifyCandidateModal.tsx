@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { shallowEqual, useSelector } from 'react-redux';
 import { Button, showToast, Input } from '../../../shared';
 import { CandidateByIdResponse } from '../../../../types';
 import { Loader } from '../../../shared/ui/loader';
@@ -328,7 +327,7 @@ ${fixedFooter}`;
             <Input
               type="email"
               placeholder="candidate@email.com"
-              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={watch('to')}
               onChange={(e) => handleInputChange('to', e.target.value)}
               disabled
@@ -408,7 +407,7 @@ ${fixedFooter}`;
             <Input
               type="text"
               placeholder="Email Subject"
-              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={watch('subject')}
               onChange={(e) => handleInputChange('subject', e.target.value)}
               disabled

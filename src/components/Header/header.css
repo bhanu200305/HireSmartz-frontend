@@ -28,7 +28,7 @@
   height: 48px !important;
   border-radius: 9999px !important;
   background: transparent !important;
-  color: #2a69a8 !important;
+  color: #263d92 !important;
   border: 0 !important;
 }
 
@@ -45,7 +45,7 @@
 .notification-bell-button:hover,
 .notification-bell-button:focus,
 .notification-bell-button:active {
-  background: #eff6ff !important;
+  background: #eef2ff !important;
   color: var(--primary) !important;
 }
 
@@ -53,7 +53,7 @@
 .notification-bell-button--active:hover,
 .notification-bell-button--active:focus,
 .notification-bell-button--active:active {
-  background: #2a69a8 !important;
+  background: #263d92 !important;
   color: #ffffff !important;
 }
 

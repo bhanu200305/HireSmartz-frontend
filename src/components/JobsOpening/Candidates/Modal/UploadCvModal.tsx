@@ -3,10 +3,7 @@ import { Spin, Upload } from 'antd';
 import { MdClose } from 'react-icons/md';
 import { RiDeleteBin6Line } from 'react-icons/ri';
 import { FiUploadCloud } from 'react-icons/fi';
-import {
-  useExtractMultipleResumesMutation,
-  useExtractResumeMutation,
-} from '../../../../api/candidate-service/Candidates/Candidates';
+import { useExtractMultipleResumesMutation } from '../../../../api/candidate-service/Candidates/Candidates';
 import { Button, showToast } from '../../../shared';
 import { useParams } from 'react-router-dom';
 import { get } from 'lodash-es';
@@ -30,7 +27,6 @@ const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
   const [isUploading, setIsUploading] = useState(false);
 
   const { id } = useParams();
-  const [extractResume] = useExtractResumeMutation();
   const [extractMultipleResumes] = useExtractMultipleResumesMutation();
 
   const handleFileSelect = (selectedFiles: File[]) => {

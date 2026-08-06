@@ -76,7 +76,7 @@ export const useStreamManager = () => {
 
             console.log('Stream event received:', eventName, jsonData);
             dispatch(updateStreamPayload(payload));
-          } catch (parseErr) {
+          } catch {
             // Non-JSON SSE data (e.g. informational text messages) — log as warning only
             console.warn('Received non-JSON SSE data (skipping):', data);
           }

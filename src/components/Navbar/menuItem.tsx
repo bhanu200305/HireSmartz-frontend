@@ -1,5 +1,4 @@
-import { FaCity } from 'react-icons/fa';
-import { BsBuilding, BsCalendar4Event } from 'react-icons/bs';
+import { BsCalendar4Event } from 'react-icons/bs';
 import { Authorities } from '../../constants/authorities.constant';
 import { TbBriefcase2 } from 'react-icons/tb';
 import { LuSquareActivity, LuUsersRound } from 'react-icons/lu';

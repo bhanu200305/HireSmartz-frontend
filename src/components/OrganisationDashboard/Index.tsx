@@ -22,7 +22,6 @@ import useFetchAllRoles from '../../hooks/useAllRoles';
 import { Role } from '../../api/rbac-service/Roles/allRoles';
 import { useResendInviteMutation } from '../../api/tenant-service/User/reinviteUser';
 import renderHighlightedField from '../shared/ui/RenderHighlightedField';
-import CollapsePanel from 'antd/es/collapse/CollapsePanel';
 import { buildInternalGlobalSearchRequestDto } from '../../shared/utils/filters/internalSearchPayload';
 
 const { Option } = Select;
@@ -36,7 +35,7 @@ const OrganisationUserTable = () => {
   const persistedGlobalSearchField = useSelector(
     (state: RootState) => state.globalSearchSlice.selectedCategoryField
   );
-  const { data, isLoading, error, refetch } = useGetOrgUsersQuery(filters, {
+  const { data, isLoading, refetch } = useGetOrgUsersQuery(filters, {
     refetchOnMountOrArgChange: true,
   });
   const [resendInviteUser, { isLoading: isResending }] = useResendInviteMutation();
@@ -53,8 +52,8 @@ const OrganisationUserTable = () => {
   });
 
   const [isFromGlobalSearch, setIsFromGlobalSearch] = useState(false);
-  const [globalSearchBaseQuery, setGlobalSearchBaseQuery] = useState('');
-  const [globalSearchField, setGlobalSearchField] = useState('');
+  const [, setGlobalSearchBaseQuery] = useState('');
+  const [, setGlobalSearchField] = useState('');
 
   useEffect(() => {
     const state = location.state as any;
@@ -205,14 +204,6 @@ const OrganisationUserTable = () => {
     }
   };
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    showToast({
-      message: 'Copied to clipboard',
-      type: 'success',
-    });
-  };
-
   const renderActions = (record: OrgUser) => {
     const isArchived = record.archived;
 
@@ -293,7 +284,7 @@ const OrganisationUserTable = () => {
                 </h2>
               </div>
               {isFromGlobalSearch && filters.searchQuery && (
-                <span className="text-gray-500 text-sm">for "{filters.searchQuery}"</span>
+                <span className="text-gray-500 text-sm">for &quot;{filters.searchQuery}&quot;</span>
               )}
             </div>
             <div className="flex space-x-4 ">

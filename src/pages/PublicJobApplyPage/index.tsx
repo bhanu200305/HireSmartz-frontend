@@ -328,7 +328,7 @@ export const PublicJobApplyPage = () => {
               className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-gray-300 transition-colors bg-white"
               onClick={() => fileInputRef.current?.click()}
             >
-              <UploadOutlined className="text-2xl text-blue-400 mb-2" />
+              <UploadOutlined className="text-2xl text-brand-400 mb-2" />
               <p className="text-sm font-medium text-gray-700">Click to Upload file</p>
               <p className="text-xs text-gray-400 mt-1">PDF or DOCX only · Max 5MB</p>
             </div>
@@ -348,7 +348,7 @@ export const PublicJobApplyPage = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{resume.name}</p>
                   <p className="text-xs text-gray-400">{formatFileSize(resume.size)}</p>
-                  {isUploading && <p className="text-xs text-blue-500 mt-0.5">Uploading…</p>}
+                  {isUploading && <p className="text-xs text-brand-500 mt-0.5">Uploading…</p>}
                   {!isUploading && uploadedS3Key && !fileError && (
                     <p className="text-xs text-green-500 mt-0.5">✓ Uploaded</p>
                   )}
@@ -517,7 +517,7 @@ export const PublicJobApplyPage = () => {
                 href="https://www.careerforcepro.com/terms-of-service"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
+                className="text-brand-600 hover:underline"
               >
                 Terms of Service
               </a>{' '}
@@ -526,7 +526,7 @@ export const PublicJobApplyPage = () => {
                 href="https://www.careerforcepro.com/privacy-policy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
+                className="text-brand-600 hover:underline"
               >
                 Privacy Policy
               </a>

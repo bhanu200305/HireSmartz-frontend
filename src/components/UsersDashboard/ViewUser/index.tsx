@@ -184,7 +184,7 @@ const ViewUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData.firstName || ''}
                   disabled
                 />
@@ -197,7 +197,7 @@ const ViewUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData.lastName || ''}
                   disabled
                 />
@@ -209,7 +209,7 @@ const ViewUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData.title || ''}
                   disabled
                 />
@@ -221,7 +221,7 @@ const ViewUser = () => {
                   Email <span className="required-asterisk">*</span>
                 </label>
                 <Input
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData.emailId || ''}
                   disabled
                 />
@@ -234,7 +234,7 @@ const ViewUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={
                     userData.countryCode && userData.phoneNumber
                       ? `${userData.countryCode}${formatPhoneNumber(userData.phoneNumber)}`
@@ -252,7 +252,7 @@ const ViewUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData.role || 'N/A'}
                   disabled
                 />

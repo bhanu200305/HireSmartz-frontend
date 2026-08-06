@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { EvaluationResponseDto } from '../../../../types';
-import { Loader } from '../../../shared/ui/loader';
 import { Spin } from 'antd';
 
 type InterviewRecordingProps = {

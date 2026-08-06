@@ -627,7 +627,7 @@ const OrganizationModel: React.FC = () => {
           isMapped
             ? isInactive
               ? 'border-gray-300 bg-gray-200'
-              : 'border-blue-400 bg-blue-50/30'
+              : 'border-brand-400 bg-brand-50/30'
             : isInactive
               ? 'border-gray-200 bg-gray-100'
               : 'border-gray-200 bg-white hover:bg-gray-50/50'
@@ -638,7 +638,7 @@ const OrganizationModel: React.FC = () => {
             type="checkbox"
             checked={isMapped}
             onChange={(e) => toggleRoleMapping(role.id, e.target.checked)}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+            className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500 cursor-pointer"
           />
           <span className={`text-sm ${isInactive ? 'text-gray-500' : 'text-gray-700'}`}>
             {role.name}
@@ -757,7 +757,7 @@ const OrganizationModel: React.FC = () => {
               RESET
             </Button>
             <Button
-              className="px-12 py-[10px] h-11 bg-blue-600 text-white flex items-center gap-2 hover:bg-blue-700 rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-12 py-[10px] h-11 bg-brand-600 text-white flex items-center gap-2 hover:bg-brand-700 rounded-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={async () => {
                 try {
                   await configureJobTitles({

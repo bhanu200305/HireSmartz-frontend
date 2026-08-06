@@ -304,7 +304,7 @@ const AiCallBooking = () => {
         <div className="flex justify-center pt-2">
           <div className="text-center">
             <button
-              className={`text-white bg-primary rounded-3xl px-6 py-3 text-md font-medium ${isScheduleDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+              className={`text-white bg-primary rounded-3xl px-6 py-3 text-md font-medium ${isScheduleDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-brand-700'}`}
               disabled={isScheduleDisabled}
               onClick={onSchedule}
             >

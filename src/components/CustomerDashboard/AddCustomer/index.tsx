@@ -1,4 +1,4 @@
-import { Form, Switch, Select, Upload, Input as AntInput } from 'antd';
+import { Form, Switch, Select, Upload } from 'antd';
 import { Button, Input, showToast, Textarea } from '../..';
 import { useNavigate } from 'react-router-dom';
 import { MdOutlineArrowBack, MdOutlineFileUpload } from 'react-icons/md';
@@ -348,7 +348,7 @@ const AddCustomer = () => {
 
       const previewURL = URL.createObjectURL(file);
       setImagePreview(previewURL);
-    } catch (error) {
+    } catch {
       showToast({ message: 'Error converting image to Base64.', type: 'error' });
       return Upload.LIST_IGNORE;
     }
@@ -743,7 +743,7 @@ const AddCustomer = () => {
                     type="text"
                     {...register('companyName')}
                     placeholder="Company Name"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   />
                   <p className="text-red-500">{errors.companyName?.message}</p>
                 </Form.Item>
@@ -752,7 +752,7 @@ const AddCustomer = () => {
                   <Input
                     {...register('websiteLink')}
                     placeholder="Website Link"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   />
                   <p className="text-red-500">{errors.websiteLink?.message}</p>
                 </Form.Item>
@@ -846,7 +846,7 @@ const AddCustomer = () => {
                         {selectedDepartments.map((department) => (
                           <span
                             key={department.id}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand-100 text-brand-800 border border-brand-200"
                           >
                             {department.name}
                             <Button
@@ -860,7 +860,7 @@ const AddCustomer = () => {
                                   shouldValidate: true,
                                 });
                               }}
-                              className="ml-1 w-4 h-4 p-0 text-blue-500 hover:text-blue-700"
+                              className="ml-1 w-4 h-4 p-0 text-brand-500 hover:text-brand-700"
                             >
                               ×
                             </Button>
@@ -888,7 +888,7 @@ const AddCustomer = () => {
                       maxLength={100}
                       {...register('firstNamePrimary')}
                       placeholder="First name"
-                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     />
                     <p className="text-red-500">{errors.firstNamePrimary?.message}</p>
                   </Form.Item>
@@ -904,7 +904,7 @@ const AddCustomer = () => {
                       maxLength={100}
                       {...register('lastNamePrimary')}
                       placeholder="Last name"
-                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     />
                     <p className="text-red-500">{errors.lastNamePrimary?.message}</p>
                   </Form.Item>
@@ -968,7 +968,7 @@ const AddCustomer = () => {
                         trigger('emailPrimary');
                       }}
                       placeholder="Email"
-                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     />
                     <p className="text-red-500">
                       {errors.emailPrimary?.message ||
@@ -985,7 +985,7 @@ const AddCustomer = () => {
                       maxLength={100}
                       {...register('titlePrimary')}
                       placeholder="Title"
-                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     />
                     <p className="text-red-500">{errors.titlePrimary?.message}</p>
                   </Form.Item>
@@ -1050,7 +1050,7 @@ const AddCustomer = () => {
                         trigger('firstNameSecondary');
                       }}
                       placeholder="First name"
-                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     />
                     <p className="text-red-500">{getSecondaryFieldError('firstNameSecondary')}</p>
                   </Form.Item>
@@ -1072,7 +1072,7 @@ const AddCustomer = () => {
                         trigger('lastNameSecondary');
                       }}
                       placeholder="Last name"
-                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     />
                     <p className="text-red-500">{getSecondaryFieldError('lastNameSecondary')}</p>
                   </Form.Item>
@@ -1163,7 +1163,7 @@ const AddCustomer = () => {
                         trigger('emailSecondary');
                       }}
                       placeholder="Email"
-                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     />
                     <p className="text-red-500">
                       {getSecondaryFieldError('emailSecondary') ||
@@ -1180,7 +1180,7 @@ const AddCustomer = () => {
                       maxLength={100}
                       {...register('titleSecondary')}
                       placeholder="Title"
-                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     />
                     <p className="text-red-500">{errors.titleSecondary?.message}</p>
                   </Form.Item>
@@ -1245,7 +1245,7 @@ const AddCustomer = () => {
                   <Input
                     {...register('locationName')}
                     placeholder="Location Name"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   />
                   <p className="text-red-500">{errors.locationName?.message}</p>
                 </Form.Item>
@@ -1254,7 +1254,7 @@ const AddCustomer = () => {
                   <Input
                     {...register('locationCode')}
                     placeholder="Location Code"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   />
                   <p className="text-red-500">{errors.locationCode?.message}</p>
                 </Form.Item>
@@ -1269,7 +1269,7 @@ const AddCustomer = () => {
                   <Input
                     {...register('addressLine1')}
                     placeholder="Address Line 1"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   />
                   <p className="text-red-500">{errors.addressLine1?.message}</p>
                 </Form.Item>
@@ -1277,7 +1277,7 @@ const AddCustomer = () => {
                   <Input
                     {...register('addressLine2')}
                     placeholder="Address Line 2"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   />
                   <p className="text-red-500">{errors.addressLine2?.message}</p>
                 </Form.Item>
@@ -1386,7 +1386,7 @@ const AddCustomer = () => {
                   <Input
                     {...register('zip')}
                     placeholder="Zip Code"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   />
                   <p className="text-red-500">{errors.zip?.message}</p>
                 </Form.Item>

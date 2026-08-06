@@ -1,10 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { Col, Dropdown, Row, Select, Spin, Tag } from 'antd';
-import { DownOutlined, MoreOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Col, Row, Spin } from 'antd';
+import { DownOutlined, UpOutlined } from '@ant-design/icons';
+import { Link, useLocation } from 'react-router-dom';
 import { LuUsersRound } from 'react-icons/lu';
-import { MdOutlineCopyAll, MdOutlineFilterAlt } from 'react-icons/md';
-import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 
 import MainLayout from '../../../layouts/MainLayout';
 import { Loader } from '../../shared/ui/loader';
@@ -14,23 +12,19 @@ import { formatPhoneNumber, formatStatus } from '../../../shared/utils/methods';
 import MasterPagination from '../../shared/ui/MasterPagination';
 import { CommonCard, Search } from '../../shared';
 
-const { Option } = Select;
-
 const SearchCandidateListing = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
 
   // Get data from global search navigation state
   const { candidatesData, searchQuery, fromGlobalSearch } = location.state || {};
 
   const [collapsedCandidates, setCollapsedCandidates] = useState<string[]>([]);
   const [candidates, setCandidates] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
   const [filteredCandidates, setFilteredCandidates] = useState<any[]>([]);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize] = useState(10);
   const [isFromGlobalSearch, setIsFromGlobalSearch] = useState(false);
   const hasResetRef = useRef(false);
 
@@ -168,7 +162,6 @@ const SearchCandidateListing = () => {
   const endIndex = startIndex + pageSize;
   const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex);
   const totalItems = filteredCandidates.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
 
   // Determine the title based on context
   const isResults = isFromGlobalSearch && searchQuery;
@@ -190,9 +183,9 @@ const SearchCandidateListing = () => {
                   <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
                     <LuUsersRound size={18} />
                   </span>
-                  <h2 className="text-xl font-semibold">'Showing Results'</h2>
+                  <h2 className="text-xl font-semibold">&apos;Showing Results&apos;</h2>
                 </div>
-                <span className="text-gray-500 text-sm">for "{searchQuery}"</span>
+                <span className="text-gray-500 text-sm">for &quot;{searchQuery}&quot;</span>
               </div>
             ) : (
               <div className="flex flex-col space-y-2">
@@ -200,9 +193,9 @@ const SearchCandidateListing = () => {
                   <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
                     <LuUsersRound size={18} />
                   </span>
-                  <h2 className="text-xl font-semibold">'Candidates'</h2>
+                  <h2 className="text-xl font-semibold">&apos;Candidates&apos;</h2>
                 </div>
-                <span className="text-gray-500 text-sm">for "{searchQuery}"</span>
+                <span className="text-gray-500 text-sm">for &quot;{searchQuery}&quot;</span>
               </div>
             )}
             <div className="flex space-x-4 items-center">

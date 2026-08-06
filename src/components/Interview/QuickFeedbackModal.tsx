@@ -85,7 +85,7 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
 
         {/* Final Rating */}
         <div className="flex items-center justify-between border border-gray-200 rounded-lg px-5 py-4 mb-6">
-          <span className="text-sm font-semibold text-blue-600">Final Rating</span>
+          <span className="text-sm font-semibold text-brand-600">Final Rating</span>
           <Rate
             value={rating}
             onChange={setRating}
@@ -104,7 +104,7 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
             placeholder="Add your comments here..."
             rows={5}
             maxLength={MAX_NOTES_LENGTH}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all"
+            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all"
           />
           <div className="text-right text-xs text-gray-400 mt-1">
             {notes.length}/{MAX_NOTES_LENGTH} Characters
@@ -128,7 +128,7 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
             className={`px-8 rounded-lg border-none font-medium h-10 transition-colors ${
               rating === 0
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 hover:!bg-blue-700 text-white'
+                : 'bg-brand-600 hover:!bg-brand-700 text-white'
             }`}
             onClick={handleSubmit}
             loading={isSubmitting}

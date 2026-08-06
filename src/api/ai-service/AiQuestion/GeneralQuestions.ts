@@ -1,8 +1,6 @@
 import api from '../..';
 import {
   EditAiGeneralQuestionRequest,
-  RegenrateAiGeneralQuestionResponse,
-  ReorderAiGeneralQuestionRequest,
   SaveAiGeneralQuestionRequest,
   SaveAiGeneralQuestionResponse,
 } from '../../../types';

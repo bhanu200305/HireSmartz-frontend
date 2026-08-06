@@ -323,10 +323,12 @@ const UserTable = () => {
                   <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
                     <LuUsersRound size={18} />
                   </span>
-                  <h2 className="text-xl font-semibold">'Showing Results'</h2>
+                  <h2 className="text-xl font-semibold">&apos;Showing Results&apos;</h2>
                 </div>
                 {isFromGlobalSearch && filters.searchQuery && (
-                  <span className="text-gray-500 text-sm">for "{filters.searchQuery}"</span>
+                  <span className="text-gray-500 text-sm">
+                    for &quot;{filters.searchQuery}&quot;
+                  </span>
                 )}
               </div>
             ) : (

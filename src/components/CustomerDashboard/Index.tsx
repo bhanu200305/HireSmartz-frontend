@@ -43,15 +43,15 @@ const CustomerTable = () => {
   const [impersonationModalOpen, setImpersonationModalOpen] = useState(false);
   const [impersonationUsers, setImpersonationUsers] = useState<any[]>([]);
   const [selectedCompanyName, setSelectedCompanyName] = useState<string>('');
-  const [globalSearchBaseQuery, setGlobalSearchBaseQuery] = useState('');
-  const [globalSearchField, setGlobalSearchField] = useState('');
+  const [, setGlobalSearchBaseQuery] = useState('');
+  const [, setGlobalSearchField] = useState('');
 
   const filters = useSelector((state: RootState) => state.CompanyFilterSlice);
   const globalSearchQuery = useSelector((state: RootState) => state.globalSearchSlice.query);
   const persistedGlobalSearchField = useSelector(
     (state: RootState) => state.globalSearchSlice.selectedCategoryField
   );
-  const { data, isLoading, error, refetch } = useGetCompaniesQuery(filters);
+  const { data, isLoading, refetch } = useGetCompaniesQuery(filters);
   const [archieveCompany, { isLoading: isArchiving }] = useArchiveCompanyMutation();
   const [impersonateByUser, { isLoading: isImpersonating }] = useImpersonateByUserMutation();
 
@@ -362,9 +362,9 @@ const CustomerTable = () => {
                   <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
                     <FaCity size={18} />
                   </span>
-                  <h2 className="text-xl font-semibold">'Showing Results'</h2>
+                  <h2 className="text-xl font-semibold">&apos;Showing Results&apos;</h2>
                 </div>
-                <span className="text-gray-500 text-sm">for "{filters.searchQuery}"</span>
+                <span className="text-gray-500 text-sm">for &quot;{filters.searchQuery}&quot;</span>
               </div>
             ) : (
               <div className="flex flex-col space-y-2">

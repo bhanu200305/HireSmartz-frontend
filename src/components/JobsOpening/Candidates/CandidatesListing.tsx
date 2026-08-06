@@ -4,9 +4,7 @@ import {
   useParams,
   // useLocation,
   Link,
-  useSearchParams,
 } from 'react-router-dom';
-import { ELIGIBLE_FOR_ADVANCE_STATUS } from '../../../constants/candidateFilterStatus';
 import { DownloadOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
 import { Col, Row, Tooltip, Spin, Checkbox, Modal } from 'antd';
 import { CommonCard } from '../../shared/ui/card';
@@ -68,11 +66,7 @@ import {
 } from '../../../shared/utils/methods';
 import { IoArrowRedoOutline } from 'react-icons/io5';
 import DuplicateCandidateModal from './DuplicateCandidateModal';
-import type {
-  BulkScheduleInterviewResult,
-  DuplicateCandidate,
-  InterviewRoundResponseDTO,
-} from '../../../types';
+import type { BulkScheduleInterviewResult, InterviewRoundResponseDTO } from '../../../types';
 import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
 import CandidateNotesPanel from './Notes/CandidateNotesPanel';
 import SendEmailToCandidateModal from './Modal/SendEmailToCandidateModal';
@@ -88,10 +82,6 @@ const CandidatesListing = () => {
   const { role } = useSelector((state: any) => state.LoginSlice, shallowEqual);
   const { id } = useParams<{ id: string }>();
   // const pathname = useLocation().pathname;
-  const [
-    searchParams,
-    // setSearchParams
-  ] = useSearchParams();
   const parsedJobId = Number(id);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -110,7 +100,7 @@ const CandidatesListing = () => {
     { jobId: parsedJobId },
     { skip: !parsedJobId }
   );
-  const [acknowledgeBatch, { isLoading: isAcknowledging }] = useAcknowledgeBatchMutation();
+  const [acknowledgeBatch] = useAcknowledgeBatchMutation();
   const [isJobNotesPanelOpen, setIsJobNotesPanelOpen] = useState(false);
 
   // Unacknowledged duplicate batches — drives the modal
@@ -380,16 +370,6 @@ const CandidatesListing = () => {
 
   const normalizeStatus = (value?: string): string =>
     (value || '').trim().toUpperCase().replace(/[\s-]/g, '_');
-
-  const isRoundMarkedSkipped = (round: any): boolean => {
-    const status = normalizeStatus(round?.interviewStatus);
-    return status === 'SKIPPED' || Boolean(String(round?.skipReason || '').trim());
-  };
-
-  const isRoundCompleted = (round: any): boolean => {
-    const status = normalizeStatus(round?.interviewStatus);
-    return status === 'COMPLETED';
-  };
 
   const isCandidateTerminalForInvite = (candidate: any): boolean => {
     const terminalStates = new Set(['NOT_SELECTED', 'REJECTED', 'WITHDRAWN', 'SELECTED', 'HIRED']);
@@ -1858,7 +1838,7 @@ const CandidatesListing = () => {
                                   </span>
                                   {candidate.isNew && (
                                     <span
-                                      className="inline-flex h-5 items-center shrink-0 rounded-full bg-blue-500 px-2 text-[11px] font-semibold leading-none text-white cursor-default"
+                                      className="inline-flex h-5 items-center shrink-0 rounded-full bg-brand-500 px-2 text-[11px] font-semibold leading-none text-white cursor-default"
                                       onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
@@ -1879,7 +1859,7 @@ const CandidatesListing = () => {
                                   </span>
                                   {candidate.isNew && (
                                     <span
-                                      className="inline-flex h-5 items-center shrink-0 rounded-full bg-blue-500 px-2 text-[11px] font-semibold leading-none text-white cursor-default"
+                                      className="inline-flex h-5 items-center shrink-0 rounded-full bg-brand-500 px-2 text-[11px] font-semibold leading-none text-white cursor-default"
                                       onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();

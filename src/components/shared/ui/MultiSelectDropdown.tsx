@@ -166,7 +166,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
           onClick={() => !disabled && setIsOpen((v) => !v)}
           onKeyDown={handleTriggerKeyDown}
           className={`border rounded-3xl px-4 py-2 min-h-[44px] w-full bg-white flex items-center justify-between cursor-pointer select-none transition-colors
-            ${isOpen ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-300 hover:border-gray-400'}
+            ${isOpen ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-300 hover:border-gray-400'}
             ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
           `}
         >
@@ -195,7 +195,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                 }}
                 onKeyDown={handleSearchKeyDown}
                 placeholder={searchPlaceholder}
-                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
+                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-400"
                 aria-label="Search options"
               />
             </div>
@@ -221,8 +221,8 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                       aria-selected={isSelected}
                       onClick={() => toggle(opt.id)}
                       className={`flex items-center gap-3 px-2 py-2 rounded cursor-pointer text-sm transition-colors
-                        ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50'}
-                        ${isFocused ? 'ring-1 ring-blue-400 bg-blue-50' : ''}
+                        ${isSelected ? 'bg-brand-50/60' : 'hover:bg-gray-50'}
+                        ${isFocused ? 'ring-1 ring-brand-400 bg-brand-50' : ''}
                       `}
                     >
                       <Checkbox checked={isSelected} tabIndex={-1} />
@@ -248,11 +248,11 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => remove(item.id)}
-                className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-sm font-medium border border-blue-100 transition-colors hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                className="flex items-center gap-1.5 bg-brand-50 text-brand-700 px-3 py-1.5 rounded-full text-sm font-medium border border-brand-100 transition-colors hover:bg-brand-100 focus:outline-none focus:ring-1 focus:ring-brand-400"
                 aria-label={`Remove ${item.name}`}
               >
                 <span className="max-w-[150px] truncate">{item.name}</span>
-                <IoClose className="text-blue-500 hover:text-blue-800 text-base shrink-0" />
+                <IoClose className="text-brand-500 hover:text-brand-800 text-base shrink-0" />
               </button>
             ))}
           </div>

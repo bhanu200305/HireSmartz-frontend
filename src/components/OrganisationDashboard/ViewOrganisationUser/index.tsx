@@ -195,7 +195,7 @@ const ViewOrgUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData.firstName || ''}
                   disabled
                 />
@@ -208,7 +208,7 @@ const ViewOrgUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData.lastName || ''}
                   disabled
                 />
@@ -220,7 +220,7 @@ const ViewOrgUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData.employeeId || ''}
                   disabled
                 />
@@ -232,7 +232,7 @@ const ViewOrgUser = () => {
                   Email <span className="required-asterisk">*</span>
                 </label>
                 <Input
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData.emailId || ''}
                   disabled
                 />
@@ -245,7 +245,7 @@ const ViewOrgUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={
                     userData.countryCode && userData.phoneNumber
                       ? `${userData.countryCode}${formatPhoneNumber(userData.phoneNumber)}`
@@ -263,7 +263,7 @@ const ViewOrgUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData.role || 'N/A'}
                   disabled
                 />
@@ -293,7 +293,7 @@ const ViewOrgUser = () => {
                 </label>
                 <Input
                   type="text"
-                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={userData?.primaryLocation?.name || 'N/A'}
                   disabled
                 />
@@ -323,7 +323,7 @@ const ViewOrgUser = () => {
                   <label className="text-sm capitalize">Choose Locations</label>
                   <Input
                     type="text"
-                    className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     value={`${Array.isArray(userData.accessibleLocations) ? userData.accessibleLocations.length : 0} locations selected`}
                     disabled
                   />
@@ -355,7 +355,7 @@ const ViewOrgUser = () => {
                                       ? 'bg-primary text-white border-primary'
                                       : location.status === false
                                         ? 'bg-gray-100 text-gray-600 border-gray-300'
-                                        : 'bg-blue-100 text-blue-800 border-blue-200'
+                                        : 'bg-brand-100 text-brand-800 border-brand-200'
                                   }`}
                                 >
                                   {location.name || location.locationName || ''}

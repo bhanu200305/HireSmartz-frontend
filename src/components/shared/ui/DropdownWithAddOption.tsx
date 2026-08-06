@@ -346,7 +346,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
                       <Tooltip title="Edit" {...actionTooltipProps}>
                         <button
                           type="button"
-                          className="p-1 hover:bg-gray-200 rounded text-blue-600 transition-colors cursor-pointer"
+                          className="p-1 hover:bg-gray-200 rounded text-brand-600 transition-colors cursor-pointer"
                           onClick={(e) => handleEditClick(option, e)}
                           tabIndex={-1}
                         >

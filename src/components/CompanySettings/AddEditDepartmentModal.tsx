@@ -54,7 +54,7 @@ const AddEditDepartmentModal: React.FC<AddEditDepartmentModalProps> = ({
           {initialData ? 'Edit Department' : 'Add Department'}
         </h2>
         <p className="text-xs text-gray-500 mb-8 mx-auto max-w-sm">
-          Add a new Department. You'll be able to add Job Titles to it after creation.
+          Add a new Department. You&apos;ll be able to add Job Titles to it after creation.
         </p>
 
         <div className="mb-6 text-left w-full mx-auto max-w-[420px]">
@@ -83,7 +83,7 @@ const AddEditDepartmentModal: React.FC<AddEditDepartmentModalProps> = ({
                 INACTIVE
               </span>
             }
-            className={`min-w-[80px] h-6 ${isActive ? 'bg-blue-600' : 'bg-gray-400'}`}
+            className={`min-w-[80px] h-6 ${isActive ? 'bg-brand-600' : 'bg-gray-400'}`}
           />
         </div>
 
@@ -97,7 +97,7 @@ const AddEditDepartmentModal: React.FC<AddEditDepartmentModalProps> = ({
           <Button
             onClick={handleSave}
             disabled={!name.trim() || isLoading}
-            className="w-1/2 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-full font-semibold max-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-1/2 py-2 bg-brand-600 text-white hover:bg-brand-700 rounded-full font-semibold max-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'SAVING...' : 'SAVE'}
           </Button>

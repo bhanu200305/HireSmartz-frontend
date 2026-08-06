@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { DatePicker, Modal, TimePicker, Select } from 'antd';
+import { Modal, Select } from 'antd';
 import { Input } from '../../../shared';
 
 import { InterviewRoundResponseDTO, OptionType } from '../../../../types';
@@ -116,7 +116,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewProps> = ({
             <label className="text-sm capitalize">Interview Name</label>
             <Input
               value={`${formatEnumString(roundType) ?? ''} Interview`}
-              className="text-[var(--border)] w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="text-[var(--border)] w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               disabled
             />
           </div>
@@ -125,7 +125,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewProps> = ({
             <label className="text-sm capitalize">Candidate Name</label>
             <Input
               value={`${interviewRecord?.firstName ?? ''} ${interviewRecord?.lastName ?? ''}`}
-              className="text-[var(--border)] w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="text-[var(--border)] w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               disabled
             />
           </div>
@@ -168,7 +168,7 @@ const ScheduleInterviewModal: React.FC<ScheduleInterviewProps> = ({
                 <label className="text-sm capitalize">Location Details</label>
                 <Textarea
                   rows={4}
-                  className="w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-gray-300"
+                  className="w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-gray-300"
                   placeholder="Enter Location Details"
                   onChange={handleLocationChange}
                   value={interviewerData.interviewLocation}

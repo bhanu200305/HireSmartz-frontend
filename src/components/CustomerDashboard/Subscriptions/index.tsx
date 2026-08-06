@@ -1,39 +1,9 @@
-import { useState } from 'react';
-import { Button, Search } from '../..';
-import { Select } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
 import { BsCalendar4Event } from 'react-icons/bs';
 import MainLayout from '../../../layouts/MainLayout';
 import '../customerPage.css';
-import { useNavigate } from 'react-router-dom';
 import ComingSoon from '../../../assets/svgs/ComingSoon.svg';
 
-const { Option } = Select;
-
-const packages = [
-  {
-    id: 1,
-    name: 'Pro',
-    price: '$499',
-    features: ['Feature 1', 'Feature 2'],
-  },
-  {
-    id: 2,
-    name: 'Premium',
-    price: '$400',
-    features: ['Feature 1', 'Feature 2', 'Feature 3', 'Feature 4'],
-  },
-  {
-    id: 3,
-    name: 'Enterprise',
-    price: '$599',
-    features: ['Feature 1'],
-  },
-];
-
 const SubscriptionPage = () => {
-  const navigate = useNavigate();
-
   return (
     <div>
       <MainLayout>

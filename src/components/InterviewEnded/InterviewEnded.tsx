@@ -39,7 +39,7 @@ const InterviewEnded: React.FC<InterviewEndedProps> = ({ open, onClose, isInterv
             <p className="text-lg text-gray-600 mb-4">
               The interview has ended. Please submit feedback.
             </p>
-            <div className="text-2xl font-semibold text-blue-600 mb-4">
+            <div className="text-2xl font-semibold text-brand-600 mb-4">
               Redirecting in {timer}...
             </div>
             <div className="flex gap-4 mt-4">

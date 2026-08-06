@@ -222,7 +222,7 @@ const AddUser = () => {
                   type="text"
                   maxLength={100}
                   placeholder="First Name"
-                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   {...register('firstName')}
                   // value={firstName}
                   // onChange={onHandleChange}
@@ -243,7 +243,7 @@ const AddUser = () => {
                   type="text"
                   maxLength={100}
                   placeholder="Last Name"
-                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   {...register('lastName')}
                 />
                 <p className="text-red-500">{errors.lastName?.message}</p>
@@ -261,7 +261,7 @@ const AddUser = () => {
                   type="text"
                   maxLength={100}
                   placeholder="Title"
-                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   {...register('title')}
                 />
                 <p className="text-red-500">{errors.title?.message}</p>
@@ -278,7 +278,7 @@ const AddUser = () => {
               >
                 <Input
                   placeholder="Email Address"
-                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   value={watch('emailId')}
                   onChange={(e) => {
                     const noSpaces = e.target.value.replace(/\s/g, '');

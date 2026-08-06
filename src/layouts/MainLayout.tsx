@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
+import Sidebar, { SIDEBAR_WIDTH } from '../components/Sidebar';
 import {
   clearLocalStorage,
   clearImpersonationStorage,
@@ -129,11 +130,19 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
     };
   }, [navigate]);
 
+  const hideSidebar = hideNavbarPaths.includes(window.location.pathname);
+
   return (
-    <div className="w-full h-[100vh] flex flex-col">
-      <Header hideNavbar={hideNavbarPaths.includes(window.location.pathname)} />
-      <div className="flex-grow w-full pt-16">{children}</div>
-      <Footer />
+    <div className="w-full min-h-screen bg-surface-gray">
+      {!hideSidebar && <Sidebar />}
+      <div
+        className="flex flex-col min-h-screen"
+        style={{ marginLeft: hideSidebar ? 0 : SIDEBAR_WIDTH }}
+      >
+        <Header />
+        <div className="flex-grow w-full">{children}</div>
+        <Footer />
+      </div>
     </div>
   );
 };

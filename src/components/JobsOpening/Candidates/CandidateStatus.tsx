@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useEffect, useState } from 'react';
 import { Form, Select, Checkbox, Tooltip, Rate } from 'antd';
 import { Controller, useForm } from 'react-hook-form';

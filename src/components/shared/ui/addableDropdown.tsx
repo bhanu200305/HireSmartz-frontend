@@ -41,7 +41,7 @@ const AddableDropdown: FC<AddableDropdownProps> = ({
                 <Input
                   {...field}
                   placeholder={placeholder}
-                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 />
               )}
             />

@@ -36,7 +36,7 @@ const CommonModal: React.FC<CommonModalProps> = ({
         <div className="flex flex-col justify-start">
           <p className="font-medium text-sm pb-2">Reason</p>
           <Textarea
-            className="w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-gray-300"
+            className="w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-gray-300"
             rows={4}
             value={reason}
             placeholder="Type your reason here....."

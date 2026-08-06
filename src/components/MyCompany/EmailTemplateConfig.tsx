@@ -540,7 +540,7 @@ const EmailTemplateConfig: React.FC = () => {
                 className={`border-2 border-dashed rounded-xl py-10 flex flex-col items-center gap-2 cursor-pointer transition-colors ${
                   bannerError
                     ? 'border-red-400 bg-red-50/30 hover:border-red-500'
-                    : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50/20'
+                    : 'border-gray-300 hover:border-brand-400 hover:bg-brand-50/20'
                 }`}
                 onClick={() => fileInputRef.current?.click()}
               >
@@ -652,7 +652,7 @@ const EmailTemplateConfig: React.FC = () => {
               {/* Full screen button */}
               <div className="p-3 border-t border-gray-100 bg-gray-50">
                 <Button
-                  className="w-full rounded-full h-10 bg-[#004BE0] text-white text-sm font-semibold hover:bg-blue-700 roboto-font flex items-center justify-center"
+                  className="w-full rounded-full h-10 bg-[#004BE0] text-white text-sm font-semibold hover:bg-brand-700 roboto-font flex items-center justify-center"
                   onClick={handleFullScreen}
                 >
                   FULL SCREEN PREVIEW
@@ -672,7 +672,7 @@ const EmailTemplateConfig: React.FC = () => {
             RESET
           </Button>
           <Button
-            className="px-14 h-11 bg-[#004BE0] text-white hover:bg-blue-700 rounded-full font-semibold text-sm roboto-font disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-14 h-11 bg-[#004BE0] text-white hover:bg-brand-700 rounded-full font-semibold text-sm roboto-font disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleSavePublish}
             loading={isSaving}
             disabled={!isDirty || isSaving}
@@ -707,7 +707,7 @@ const EmailTemplateConfig: React.FC = () => {
               NO
             </Button>
             <Button
-              className="flex-1 h-11 bg-[#004BE0] text-white hover:bg-blue-700 rounded-full font-semibold text-sm roboto-font"
+              className="flex-1 h-11 bg-[#004BE0] text-white hover:bg-brand-700 rounded-full font-semibold text-sm roboto-font"
               onClick={handleConfirmSave}
               loading={isSaving}
             >

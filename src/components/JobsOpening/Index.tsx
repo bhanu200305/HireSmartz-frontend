@@ -26,16 +26,9 @@ import { Col, Dropdown, Modal, Row, Select, MenuProps, Tooltip } from 'antd';
 import { MdOutlineFilterAlt } from 'react-icons/md';
 import { DateTimePayload, Jobs, SortDirection } from '../../types';
 import DateTimeRangePicker from '../shared/ui/datePicker';
-import {
-  generateJobProfileCode,
-  handleDateValue,
-  safeDecodeToken,
-} from '../../shared/utils/methods';
+import { handleDateValue, safeDecodeToken } from '../../shared/utils/methods';
 import { COL } from '../shared/ui/Columns';
-import {
-  useDuplicateJobOpeningMutation,
-  useGetJobOpeningByIdQuery,
-} from '../../api/job-service/JobOpening/GetJobOpeningById';
+import { useDuplicateJobOpeningMutation } from '../../api/job-service/JobOpening/GetJobOpeningById';
 import { showToast } from '../shared';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import { useCheckAtsCalStatusMutation } from '../../api/job-service/JobOpening/CheckStatusForAtsAndCal';
@@ -114,13 +107,13 @@ const JobsOpening = () => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [jobToDuplicate, setJobToDuplicate] = useState<number | null>(null);
   const [isFromGlobalSearch, setIsFromGlobalSearch] = useState(false);
-  const [globalSearchBaseQuery, setGlobalSearchBaseQuery] = useState('');
-  const [globalSearchField, setGlobalSearchField] = useState('');
+  const [, setGlobalSearchBaseQuery] = useState('');
+  const [, setGlobalSearchField] = useState('');
   const { role, authorities } = useSelector((state: any) => state.LoginSlice, shallowEqual);
   const [collapsedUsers, setCollapsedUsers] = useState<string[]>([]);
   const [duplicateJobOpening, { isLoading: isDuplicating }] = useDuplicateJobOpeningMutation();
   const { loginToken } = useSelector((state: any) => state.LoginSlice);
-  const [checkAtsCalStatus, { isLoading: isCheckingStatus }] = useCheckAtsCalStatusMutation();
+  const [checkAtsCalStatus] = useCheckAtsCalStatusMutation();
   const [showCloseJobModal, setShowCloseJobModal] = useState(false);
   const [jobName, setJobName] = useState<string | null>(null);
   const [jobOpeningId, setJobOpeningId] = useState<number | null>(null);
@@ -141,12 +134,12 @@ const JobsOpening = () => {
   const [uploadedJobOpeningId, setUploadedJobOpeningId] = useState<number | null>(null);
   const [jdBatchId, setJdBatchId] = useState<string | null>(null);
   const [jdProgress, setJdProgress] = useState<number>(0);
-  const [jdProgressMessage, setJdProgressMessage] = useState<string>('');
+  const [, setJdProgressMessage] = useState<string>('');
   const [jdUploadError, setJdUploadError] = useState<string>('');
   const [isJdUploading, setIsJdUploading] = useState<boolean>(false);
   const [isJdCompleted, setIsJdCompleted] = useState<boolean>(false);
-  const [isJdPartialFailure, setIsJdPartialFailure] = useState<boolean>(false);
-  const [isJdFailed, setIsJdFailed] = useState<boolean>(false);
+  const [, setIsJdPartialFailure] = useState<boolean>(false);
+  const [, setIsJdFailed] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { data: qrListData, isLoading: isQrLoading } = useGetQrListQuery(
     { companyId, status: 'all' },
@@ -229,7 +222,7 @@ const JobsOpening = () => {
   const persistedGlobalSearchField = useSelector(
     (state: RootState) => state.globalSearchSlice.selectedCategoryField
   );
-  const { data, isLoading, error, refetch } = useGetJobOpeningsQuery(filters, {
+  const { data, isLoading, refetch } = useGetJobOpeningsQuery(filters, {
     refetchOnMountOrArgChange: true,
   });
 
@@ -868,7 +861,7 @@ const JobsOpening = () => {
                   </span>
                   <h2 className="text-xl font-semibold">Showing Results</h2>
                 </div>
-                <span className="text-gray-500 text-sm">for "{filters.text}"</span>
+                <span className="text-gray-500 text-sm">for &quot;{filters.text}&quot;</span>
               </div>
             ) : (
               <div className="flex flex-col space-y-2">
@@ -1103,7 +1096,7 @@ const JobsOpening = () => {
                         {(jobs.newCandidateCount ?? 0) > 0 && (
                           <Link
                             to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10&isNew=true`}
-                            className="text-xs font-semibold text-blue-500 border border-blue-500 rounded-full px-2 py-0.5 hover:bg-blue-50 whitespace-nowrap"
+                            className="text-xs font-semibold text-brand-500 border border-brand-500 rounded-full px-2 py-0.5 hover:bg-brand-50 whitespace-nowrap"
                           >
                             {jobs.newCandidateCount} New
                           </Link>
@@ -1286,7 +1279,7 @@ const JobsOpening = () => {
 
             {jdFiles.length > 0 && (
               <div className="space-y-3">
-                <div className="w-full border border-blue-400 bg-blue-50 rounded-md min-h-12 px-3 py-2 flex items-center justify-between">
+                <div className="w-full border border-brand-400 bg-brand-50 rounded-md min-h-12 px-3 py-2 flex items-center justify-between">
                   <div className="flex items-center min-w-0">
                     <span className="h-8 w-8 rounded bg-primary text-white flex items-center justify-center mr-3 shrink-0">
                       <UploadOutlined />

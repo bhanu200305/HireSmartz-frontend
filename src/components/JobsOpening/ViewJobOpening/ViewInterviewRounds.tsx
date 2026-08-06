@@ -1,5 +1,5 @@
 import { HiOutlineMinus, HiOutlinePlus } from 'react-icons/hi';
-import { Outlet, useNavigate, useParams } from 'react-router-dom';
+import { Outlet, useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { Loader } from '../../shared/ui/loader';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';

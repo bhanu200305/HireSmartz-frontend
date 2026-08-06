@@ -210,7 +210,7 @@ const CompanyDetails = ({
   const [showCancelConfirmation, setShowCancelConfirmation] = useState<boolean>(false);
   const [departmentSearchTerm, setDepartmentSearchTerm] = useState<string>('');
   const isDepartmentSearchActive = departmentSearchTerm.trim().length > 0;
-  const [isDepartmentFocused, setIsDepartmentFocused] = useState<boolean>(false);
+  const [, setIsDepartmentFocused] = useState<boolean>(false);
   const [isDepartmentDropdownOpen, setIsDepartmentDropdownOpen] = useState<boolean>(false);
 
   const [updateCompanyOrg, { isLoading: isUpdating }] = useUpdateCompanyOrgMutation();
@@ -944,7 +944,7 @@ const CompanyDetails = ({
           </label>
           <Input
             type="text"
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={formState.companyName}
             onChange={(event) => handleInputChange('companyName', event.target.value)}
             disabled={!isEditMode}
@@ -954,7 +954,7 @@ const CompanyDetails = ({
         <div>
           <label className="text-sm capitalize ">Company website url</label>
           <Input
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={formState.websiteUrl}
             onChange={(event) => handleInputChange('websiteUrl', event.target.value)}
             disabled={!isEditMode}
@@ -987,7 +987,7 @@ const CompanyDetails = ({
           ) : (
             <Input
               type="text"
-              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={industryLoading ? 'Loading industry...' : industryName}
               disabled
             />
@@ -1058,7 +1058,7 @@ const CompanyDetails = ({
           ) : (
             <Input
               type="text"
-              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               value={`${selectedDepartments.length} of ${activeDepartmentOptionsCount} departments selected`}
               disabled
             />
@@ -1082,7 +1082,7 @@ const CompanyDetails = ({
                         key={department.id}
                         className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                           isNewlyAdded
-                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                            ? 'bg-brand-100 text-brand-800 border border-brand-200'
                             : 'bg-gray-200 text-gray-700 border border-gray-300'
                         }`}
                       >
@@ -1099,7 +1099,7 @@ const CompanyDetails = ({
                                     department.name
                                   );
                                 }}
-                                className="p-0 w-4 h-4 text-blue-600 hover:text-blue-800"
+                                className="p-0 w-4 h-4 text-brand-600 hover:text-brand-800"
                                 title="Edit"
                               >
                                 <MdEdit size={12} />
@@ -1172,7 +1172,7 @@ const CompanyDetails = ({
           </label>
           <Input
             type="text"
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={formState.primaryFirstName}
             onChange={(event) => handleInputChange('primaryFirstName', event.target.value)}
             disabled={!isEditMode}
@@ -1185,7 +1185,7 @@ const CompanyDetails = ({
           </label>
           <Input
             type="text"
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={formState.primaryLastName}
             onChange={(event) => handleInputChange('primaryLastName', event.target.value)}
             disabled={!isEditMode}
@@ -1235,7 +1235,7 @@ const CompanyDetails = ({
             Email <span className="required-asterisk">*</span>
           </label>
           <Input
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={formState.primaryEmail}
             onChange={(event) => handleInputChange('primaryEmail', event.target.value)}
             disabled={!isEditMode}
@@ -1246,7 +1246,7 @@ const CompanyDetails = ({
           <label className="text-sm capitalize">Title</label>
           <Input
             type="text"
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={formState.primaryTitle}
             onChange={(event) => handleInputChange('primaryTitle', event.target.value)}
             disabled={!isEditMode}
@@ -1259,7 +1259,7 @@ const CompanyDetails = ({
           </label>
           <Input
             type="text"
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={companyData?.primaryRole || ''}
             disabled
           />
@@ -1272,7 +1272,7 @@ const CompanyDetails = ({
           <label className="text-sm capitalize">First Name</label>
           <Input
             type="text"
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={formState.secondaryFirstName}
             onChange={(event) => handleInputChange('secondaryFirstName', event.target.value)}
             disabled={!isEditMode}
@@ -1283,7 +1283,7 @@ const CompanyDetails = ({
           <label className="text-sm capitalize">Last Name</label>
           <Input
             type="text"
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={formState.secondaryLastName}
             onChange={(event) => handleInputChange('secondaryLastName', event.target.value)}
             disabled={!isEditMode}
@@ -1331,7 +1331,7 @@ const CompanyDetails = ({
         <div>
           <label className="text-sm capitalize">Email</label>
           <Input
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={formState.secondaryEmail}
             onChange={(event) => handleInputChange('secondaryEmail', event.target.value)}
             disabled={!isEditMode}
@@ -1342,7 +1342,7 @@ const CompanyDetails = ({
           <label className="text-sm capitalize">Title</label>
           <Input
             type="text"
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={formState.secondaryTitle}
             onChange={(event) => handleInputChange('secondaryTitle', event.target.value)}
             disabled={!isEditMode}
@@ -1353,7 +1353,7 @@ const CompanyDetails = ({
           <label className="text-sm capitalize">Role</label>
           <Input
             type="text"
-            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+            className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             value={companyData?.secondaryRole || ''}
             disabled
           />
@@ -1370,7 +1370,7 @@ const CompanyDetails = ({
               </label>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={formState.locationName}
                 onChange={(event) => handleInputChange('locationName', event.target.value)}
                 disabled={!isEditMode}
@@ -1381,7 +1381,7 @@ const CompanyDetails = ({
               <label className="text-sm capitalize">Location Code</label>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={formState?.locationCode || ''}
                 onChange={(event) => handleInputChange('locationCode', event.target.value)}
                 disabled={!isEditMode}
@@ -1395,7 +1395,7 @@ const CompanyDetails = ({
               </label>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={formState.addressLine1}
                 onChange={(event) => handleInputChange('addressLine1', event.target.value)}
                 disabled={!isEditMode}
@@ -1406,7 +1406,7 @@ const CompanyDetails = ({
               <label className="text-sm capitalize">Address Line 2</label>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={formState.addressLine2}
                 onChange={(event) => handleInputChange('addressLine2', event.target.value)}
                 disabled={!isEditMode}
@@ -1421,7 +1421,7 @@ const CompanyDetails = ({
               </label>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={formState.country}
                 onChange={(event) => handleInputChange('country', event.target.value)}
                 disabled={!isEditMode}
@@ -1434,7 +1434,7 @@ const CompanyDetails = ({
               </label>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={formState.state}
                 onChange={(event) => handleInputChange('state', event.target.value)}
                 disabled={!isEditMode}
@@ -1447,7 +1447,7 @@ const CompanyDetails = ({
               </label>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={formState.city}
                 onChange={(event) => handleInputChange('city', event.target.value)}
                 disabled={!isEditMode}
@@ -1460,7 +1460,7 @@ const CompanyDetails = ({
               </label>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 value={formState.zip}
                 onChange={(event) => handleInputChange('zip', event.target.value)}
                 disabled={!isEditMode}

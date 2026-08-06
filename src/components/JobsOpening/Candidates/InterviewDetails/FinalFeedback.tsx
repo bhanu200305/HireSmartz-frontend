@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button, CustomCheckbox, showToast, Textarea } from '../../../shared';
-import { useVideoFinalFeedbackStatusMutation } from '../../../../api/candidate-service/Candidates/Candidates';
-import { CheckboxChangeEvent } from 'antd';
+import { Textarea } from '../../../shared';
 import { InterviewRoundResponseDTO } from '../../../../types';
-import { get } from 'lodash-es';
-import { InterviewEnum } from '../../../../shared/utils/enums';
-import ConfirmationModal from '../../../shared/ui/ConfirmationModal';
 import dayjs from 'dayjs';
 
 type FinalFeedbackProps = {
@@ -13,9 +8,7 @@ type FinalFeedbackProps = {
 };
 
 const FinalFeedback: React.FC<FinalFeedbackProps> = ({ interviewRound }) => {
-  const [showFeedbackConfirmationModal, setShowFeedbackConfirmationModal] = useState(false);
-  const { candidateId, jobId, interviewRoundId, interviewStatus, videoInterviewFeedback } =
-    interviewRound;
+  const { interviewStatus, videoInterviewFeedback } = interviewRound;
   const feedbackAuthorName = interviewRound?.advanceFeedbackCreatedByName?.trim();
   const feedbackCreatedAt = interviewRound?.advanceFeedbackCreatedAt;
   const [feedbackData, setFeedbackData] = useState({
@@ -128,7 +121,7 @@ const FinalFeedback: React.FC<FinalFeedbackProps> = ({ interviewRound }) => {
               {/* <h2 className="font-medium pb-2">Feedback Comments</h2> */}
               <Textarea
                 rows={4}
-                className={`w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-gray-300 ${
+                className={`w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-gray-300 ${
                   videoInterviewFeedback ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
                 }`}
                 name="feedback"
@@ -153,7 +146,7 @@ const FinalFeedback: React.FC<FinalFeedbackProps> = ({ interviewRound }) => {
       {/* {interviewStatus && videoInterviewFeedback ? null : (
         <div className="flex justify-center">
           <Button
-            className="mt-6 px-10 py-3 bg-blue-600 font-bold text-white border rounded-4xl cursor-pointer"
+            className="mt-6 px-10 py-3 bg-brand-600 font-bold text-white border rounded-4xl cursor-pointer"
             disabled={!feedbackData.status || !feedbackData.feedback}
             onClick={() => setShowFeedbackConfirmationModal(true)}
           >

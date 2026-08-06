@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { LuCalendarDays, LuCalendarOff, LuPencil, LuSquarePen } from 'react-icons/lu';
 import { RxClock } from 'react-icons/rx';
 import { FaInfoCircle, FaEnvelope } from 'react-icons/fa';
@@ -906,9 +905,9 @@ const InterviewRounds: React.FC<RoundCardProps> = ({
                       : isRoundShortlisted(interview)
                         ? 'bg-green-100'
                         : interview?.interviewStatus === InterviewEnum.INTERVIEW_COMPLETED
-                          ? 'bg-blue-100'
+                          ? 'bg-brand-100'
                           : interview?.interviewStatus === InterviewEnum.BOOKING_CREATED
-                            ? 'bg-blue-100'
+                            ? 'bg-brand-100'
                             : interview?.interviewStatus === InterviewEnum.INTERVIEW_SKIPPED
                               ? 'bg-red-100'
                               : interview?.interviewStatus === InterviewEnum.BOOKING_CANCELLED
@@ -930,9 +929,9 @@ const InterviewRounds: React.FC<RoundCardProps> = ({
                           type="button"
                           className={`text-xs font-semibold ${
                             interview?.interviewStatus === InterviewEnum.INTERVIEW_COMPLETED
-                              ? 'text-blue-700 cursor-pointer hover:underline'
+                              ? 'text-brand-700 cursor-pointer hover:underline'
                               : interview?.interviewStatus === InterviewEnum.BOOKING_CREATED
-                                ? 'text-blue-700'
+                                ? 'text-brand-700'
                                 : interview?.interviewStatus === InterviewEnum.INTERVIEW_SKIPPED ||
                                     interview?.interviewStatus === InterviewEnum.BOOKING_CANCELLED
                                   ? 'text-red-700'
@@ -971,7 +970,7 @@ const InterviewRounds: React.FC<RoundCardProps> = ({
                           >
                             <FaEnvelope
                               className={`cursor-pointer ${
-                                interview.isFollowUpEmailSent ? 'text-gray-400' : 'text-blue-600'
+                                interview.isFollowUpEmailSent ? 'text-gray-400' : 'text-brand-600'
                               }`}
                               size={14}
                               onClick={() =>
@@ -992,7 +991,7 @@ const InterviewRounds: React.FC<RoundCardProps> = ({
                             onClick={() =>
                               onOpenRoundNotes?.(Number(interview?.id), interview?.round?.name)
                             }
-                            className="inline-flex shrink-0 items-center justify-center border-0 bg-transparent p-0.5 text-[#2a69a8] hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2a69a8]/30"
+                            className="inline-flex shrink-0 items-center justify-center border-0 bg-transparent p-0.5 text-[#263d92] hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#263d92]/30"
                             aria-label="Round notes"
                           >
                             <LuSquarePen size={18} strokeWidth={2} aria-hidden />

@@ -299,7 +299,7 @@ export const getStatusStyle = (status: string) => {
     case 'AI_CALL_IN_PROGRESS':
     case 'IN_REVIEW':
     case 'AI_CALLBACK_STARTED':
-      return 'bg-blue-100 text-blue-700 border border-blue-500';
+      return 'bg-brand-100 text-brand-700 border border-brand-500';
 
     default:
       return;

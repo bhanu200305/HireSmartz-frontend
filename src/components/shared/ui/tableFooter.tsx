@@ -26,7 +26,7 @@ const TableFooter: React.FC<TableFooterProps> = ({ onViewAll, title, count }) =>
         onClick={onViewAll}
       >
         VIEW ALL {title?.toUpperCase()}
-        <span className="absolute no-underline ml-1.5 text-orange-500">→</span>
+        <span className="absolute no-underline ml-1.5 text-accent">→</span>
       </button>
     </div>
   );

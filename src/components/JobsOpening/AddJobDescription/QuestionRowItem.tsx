@@ -58,7 +58,7 @@ export const QuestionRowItem = ({
                 </Typography>
                 <div className="flex items-center gap-3">
                   <button
-                    className="text-primary hover:text-blue-600 cursor-pointer"
+                    className="text-primary hover:text-brand-600 cursor-pointer"
                     onClick={onEdit}
                   >
                     <MdEdit size={18} />

@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import ScoringCriteriaModal from './Modal/ScoringCriteriaModal';
 import { LiaThumbsUpSolid, LiaThumbsDownSolid } from 'react-icons/lia';
 import { BsFullscreen } from 'react-icons/bs';
-import { base64toBlob, detectMimeTypeFromBase64 } from '../../../shared/utils/methods';
+import { base64toBlob } from '../../../shared/utils/methods';
 import { CandidateByIdResponse } from '../../../types';
-import DocViewer, { DocViewerRenderers } from 'react-doc-viewer';
 import { Viewer } from '@react-pdf-viewer/core';
 import { GlobalWorkerOptions } from 'pdfjs-dist';
 import { fullScreenPlugin } from '@react-pdf-viewer/full-screen';
@@ -52,20 +51,15 @@ const ResumeScore = ({
   //  isBlocked = false
 }: ResumeScoreProps) => {
   const [reason, setReason] = useState<string>('');
-  const [resumeStatus, setResumeStatus] = useState<string>(candidate?.resumeStatus);
+  const [, setResumeStatus] = useState<string>(candidate?.resumeStatus);
   const [rating, setRating] = useState<number>(candidate?.resumeRating || 0);
   const [fileUrl, setFileUrl] = useState<string | undefined>();
   const fullScreenPluginInstance = fullScreenPlugin();
   const [showDislikeModal, setShowDislikeModal] = useState(false);
   const [showScoringCriteria, setShowScoringCriteria] = useState(false);
-  const mimeType = detectMimeTypeFromBase64(candidate?.resumeFilePath || '', 'docx');
-  const fileType = mimeType.includes('word') ? 'docx' : mimeType.includes('pdf') ? 'pdf' : 'doc';
-  const docs = [
-    {
-      uri: fileUrl || '',
-      fileType,
-    },
-  ];
+  // mimeType/fileType/docs (for a DocViewer fallback) were removed as dead
+  // code — their only consumer was the commented-out <DocViewer> block
+  // further down in this file.
   const [candidateResumeStatus, { isLoading: isResumeStatusLoading }] =
     useCandidateResumeStatusMutation();
   const [resumeThumbStatus, { isLoading: isResumeThumbStatusLoading }] =
@@ -300,7 +294,7 @@ const ResumeScore = ({
                 <button
                   type="button"
                   onClick={onOpenNotes}
-                  className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#b8d0e6] bg-[#eaf2f8] text-[#2a69a8] transition-colors hover:border-[#2a69a8] hover:bg-[#dce9f4] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2a69a8]/30"
+                  className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#c7d0ef] bg-[#eef2ff] text-[#263d92] transition-colors hover:border-[#263d92] hover:bg-[#e2e7fa] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#263d92]/30"
                   aria-label={notesCount != null ? `Notes, ${notesCount} items` : 'Notes'}
                 >
                   <LuSquarePen size={18} strokeWidth={2} aria-hidden />
@@ -321,7 +315,10 @@ const ResumeScore = ({
             <div className="space-y-4">
               {matchMetrics?.map((metric, index) => {
                 const value = Number(metric.value) || 0;
-                const max = metric.max;
+                // TODO: percentage is hardcoded to a /5 scale rather than
+                // metric.max — looks like it should be (value / metric.max) * 100.
+                // Left as-is (not guessing at intended behavior) during the lint
+                // cleanup pass.
                 const percentage = (value / 5) * 100 ? Math.round((value / 5) * 100) : 0;
                 return (
                   <div key={index} className="flex items-center space-x-4">
@@ -386,7 +383,7 @@ const ResumeScore = ({
                   {candidate?.resumeFeedback && candidate.resumeFeedback.length > 0 ? (
                     <Textarea
                       rows={4}
-                      className="w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-gray-300 mb-3"
+                      className="w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-gray-300 mb-3"
                       name="feedback"
                       value={candidate?.resumeFeedback || 'No comments'}
                       disabled
@@ -395,7 +392,7 @@ const ResumeScore = ({
                   ) : (
                     <Textarea
                       rows={4}
-                      className="w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-gray-300"
+                      className="w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-gray-300"
                       name="feedback"
                       value="No feedback comments yet"
                       disabled
@@ -467,7 +464,7 @@ const ResumeScore = ({
           footer={
             <div className="flex justify-center items-center space-x-2">
               <Button
-                className="px-10 py-3 bg-blue-600 font-bold text-white border rounded-4xl cursor-pointer"
+                className="px-10 py-3 bg-brand-600 font-bold text-white border rounded-4xl cursor-pointer"
                 onClick={() => {
                   handleResumeThumbFeedback(false, reason);
                   setShowDislikeModal(false);

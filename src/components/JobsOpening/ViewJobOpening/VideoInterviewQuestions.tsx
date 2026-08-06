@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { useParams } from 'react-router-dom';
 import { Select } from 'antd';
 import { Typography } from '../../shared';
-import { Loader } from '../../shared/ui/loader';
 import { useGetAiInterviewQuestionsByRoundQuery } from '../../../api/interview-service/VideoInterviewQuestions/VideoInterviewQuestion';
 import { GetAiInterviewQuestionsByRoundResponse } from '../../../types';
 

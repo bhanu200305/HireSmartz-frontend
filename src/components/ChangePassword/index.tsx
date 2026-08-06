@@ -139,11 +139,11 @@ const ChangePassword = () => {
                         type={showCurrentPassword ? 'text' : 'password'}
                         placeholder={autoLogin ? 'Temporary Password*' : 'Current Password*'}
                         prefix={
-                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 mr-1">
-                            <MdLockOutline className="text-blue-900 text-sm" />
+                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                            <MdLockOutline className="text-brand-900 text-sm" />
                           </div>
                         }
-                        className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                        className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                         onChange={(e) => {
                           field.onChange(e);
                           trigger('newPassword');
@@ -153,7 +153,7 @@ const ChangePassword = () => {
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-4 flex items-center text-blue-900 cursor-pointer"
+                    className="absolute inset-y-0 right-4 flex items-center text-brand-900 cursor-pointer"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   >
                     {showCurrentPassword ? <FaEye /> : <FaEyeSlash />}
@@ -183,11 +183,11 @@ const ChangePassword = () => {
                         type={showNewPassword ? 'text' : 'password'}
                         placeholder="New Password*"
                         prefix={
-                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 mr-1">
-                            <TbLockCheck className="text-blue-900 text-sm" />
+                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                            <TbLockCheck className="text-brand-900 text-sm" />
                           </div>
                         }
-                        className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                        className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                         onChange={(e) => {
                           field.onChange(e);
                           // Re-validate confirmNewPassword and currentPassword when newPassword changes
@@ -198,7 +198,7 @@ const ChangePassword = () => {
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-4 flex items-center text-blue-900 cursor-pointer"
+                    className="absolute inset-y-0 right-4 flex items-center text-brand-900 cursor-pointer"
                     onClick={() => setShowNewPassword(!showNewPassword)}
                   >
                     {showNewPassword ? <FaEye /> : <FaEyeSlash />}
@@ -228,11 +228,11 @@ const ChangePassword = () => {
                         type={showConfirmPassword ? 'text' : 'password'}
                         placeholder="Confirm New Password*"
                         prefix={
-                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 mr-1">
-                            <TbLockCheck className="text-blue-900 text-sm" />
+                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                            <TbLockCheck className="text-brand-900 text-sm" />
                           </div>
                         }
-                        className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                        className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                         onChange={(e) => {
                           field.onChange(e);
                           // Re-validate newPassword when confirmNewPassword changes
@@ -243,7 +243,7 @@ const ChangePassword = () => {
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-4 flex items-center text-blue-900 cursor-pointer"
+                    className="absolute inset-y-0 right-4 flex items-center text-brand-900 cursor-pointer"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}

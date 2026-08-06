@@ -1,6 +1,4 @@
-import { useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { useParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import useJdUploadStream from '../../hooks/useJdUploadStream';
 import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
@@ -34,9 +32,6 @@ interface JdUploadNotificationData {
  * Persists batch ID in sessionStorage to resume streams across page navigations
  */
 const JdUploadStreamListener = () => {
-  const dispatch = useDispatch();
-  const { id: jobOpeningId } = useParams<{ id?: string }>();
-
   // Get auth token from Redux or localStorage
   const loginToken = useSelector((state: RootState) => state.LoginSlice.loginToken);
   const token = loginToken || getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);

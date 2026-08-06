@@ -1,12 +1,11 @@
-import { Checkbox, Form, Select } from 'antd';
+import { Form, Select } from 'antd';
 import { Controller, useForm } from 'react-hook-form';
 import { useGetAllAtsNamesByCompanyIdQuery } from '../../api/job-service/JobOpening/JobOpeningSync';
-import { data, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useDispatch } from 'react-redux';
 import { updateATS } from '../../redux/slices/jobOpeningSlice';
-import { ATS } from '../../types';
 import { MdClose } from 'react-icons/md';
 
 const { Option } = Select;
@@ -38,12 +37,7 @@ const SyncAts = () => {
     navigate(-1);
     // onSuccess?.()
   };
-  const jobBoards = [
-    { id: 'jobBoard1', name: 'Job Board 1' },
-    { id: 'jobBoard2', name: 'Job Board 2' },
-    { id: 'jobBoard3', name: 'Job Board 3' },
-    { id: 'jobBoard4', name: 'Job Board 4' },
-  ];
+  // `jobBoards` was only used by the commented-out "Select Job Boards" UI below.
   return (
     <div className="fixed ats inset-0 flex items-center justify-center bg-black/60 z-50">
       <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[500px] relative">

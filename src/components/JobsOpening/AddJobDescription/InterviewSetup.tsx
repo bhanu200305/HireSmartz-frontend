@@ -4,7 +4,7 @@ import { HiOutlinePlus } from 'react-icons/hi';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MainLayout from '../../../layouts/MainLayout';
 import { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import { useDeleteInterviewRoundMutation } from '../../../api/job-service/JobOpening/DeleteInterviewRounds';
@@ -17,7 +17,6 @@ import { SortableInterviewRounds } from '../EditJobOpening/sortableInterviewRoun
 
 const InterviewSetup = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedRoundId, setSelectedRoundId] = useState<number | null>(null);
   const jobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);

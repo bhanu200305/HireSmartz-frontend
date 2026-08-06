@@ -7,7 +7,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { UserProfileSchema } from './UserProfileSchema';
 import { countryCodes } from '../../constants/countryCode';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './userProfile.css';
 import { jwtDecode } from 'jwt-decode';
 import {
@@ -350,7 +350,7 @@ const UserProfile = () => {
                     className="border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center"
                   >
                     <MdOutlineFileUpload className="text-xl mb-2 text-primary mx-auto" />
-                    <p>Upload User's Image (Optional)</p>
+                    <p>Upload User&apos;s Image (Optional)</p>
                   </Upload.Dragger>
                 )}
               </Form.Item>
@@ -375,7 +375,7 @@ const UserProfile = () => {
                         maxLength={100}
                         type="text"
                         placeholder="First Name"
-                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       />
                     )}
                   />
@@ -400,7 +400,7 @@ const UserProfile = () => {
                         type="text"
                         maxLength={100}
                         placeholder="Last Name"
-                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       />
                     )}
                   />
@@ -409,7 +409,7 @@ const UserProfile = () => {
                 {/* <Form.Item name="Title" style={{ marginBottom: '10px' }}>
                 <Input
                   placeholder="Title"
-                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                   
                 />
                 <p className="text-red-500">{errors.title?.message}</p>
@@ -476,7 +476,7 @@ const UserProfile = () => {
                       <Input
                         {...field}
                         placeholder="Email Address"
-                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                         onChange={(e) => {
                           const value = e.target.value.replace(/\s/g, ''); // Remove all spaces
                           field.onChange(value);
@@ -508,7 +508,7 @@ const UserProfile = () => {
                         type="text"
                         disabled
                         placeholder="Role"
-                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       />
                     )}
                   />
@@ -517,7 +517,7 @@ const UserProfile = () => {
                   <Input
                     type="text"
                     placeholder="Address Line 1"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     value={watch('addressLine1') || ''}
                     onChange={(e) =>
                       setValue('addressLine1', e.target.value, { shouldValidate: true })
@@ -529,7 +529,7 @@ const UserProfile = () => {
                   <Input
                     type="text"
                     placeholder="Address Line 2"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     value={watch('addressLine2') || ''}
                     onChange={(e) =>
                       setValue('addressLine2', e.target.value, { shouldValidate: true })
@@ -637,7 +637,7 @@ const UserProfile = () => {
                   <Input
                     type="text"
                     placeholder="Zip"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     value={watch('pinCode') || ''}
                     onChange={(e) => setValue('pinCode', e.target.value, { shouldValidate: true })}
                   />

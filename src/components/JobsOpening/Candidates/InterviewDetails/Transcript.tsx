@@ -146,7 +146,7 @@ const Transcript = ({ evalResponse, isVideoInterview }: TranscriptProps) => {
               </div>
             ) : (
               <div key={message.id} className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-blue-600 text-white flex items-center justify-center rounded-full mt-1">
+                <div className="w-8 h-8 bg-brand-600 text-white flex items-center justify-center rounded-full mt-1">
                   <FaRegUser size={16} title="Interviewer" />
                 </div>
                 <div className="bg-white rounded-md p-3 border border-gray-200 text-sm text-gray-800 max-w-xl shadow whitespace-pre-line">
@@ -167,7 +167,7 @@ const Transcript = ({ evalResponse, isVideoInterview }: TranscriptProps) => {
 
           return isAIOrInterviewer ? (
             <div key={index} className="flex items-start space-x-3">
-              <div className="w-8 h-8 bg-blue-600 text-white flex items-center justify-center rounded-full mt-1">
+              <div className="w-8 h-8 bg-brand-600 text-white flex items-center justify-center rounded-full mt-1">
                 {isInterviewer ? (
                   <FaRegUser size={16} title="Interviewer" />
                 ) : (

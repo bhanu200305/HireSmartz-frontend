@@ -99,7 +99,7 @@ const Login = () => {
               });
             }
           }, 0);
-        } catch (err) {
+        } catch {
           showToast({ message: 'Failed to parse remembered credentials', type: 'error' });
         }
       }
@@ -319,7 +319,7 @@ const Login = () => {
                 onChange={onHandleChange}
                 onKeyDown={handleKeyDown}
                 placeholder="Email"
-                className="w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               />
             </div>
             <div className="w-90">
@@ -331,7 +331,7 @@ const Login = () => {
                   name="password"
                   value={password}
                   placeholder="Password"
-                  className="w-full !normal-case px-4 py-2 rounded-3xl pr-10 focus:ring focus:ring-blue-300 border-[var(--border)]"
+                  className="w-full !normal-case px-4 py-2 rounded-3xl pr-10 focus:ring focus:ring-brand-300 border-[var(--border)]"
                 />
                 <button
                   type="button"

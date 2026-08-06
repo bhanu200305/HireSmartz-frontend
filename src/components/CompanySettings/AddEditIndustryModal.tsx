@@ -83,7 +83,7 @@ const AddEditIndustryModal: React.FC<AddEditIndustryModalProps> = ({
                 INACTIVE
               </span>
             }
-            className={`min-w-[80px] h-6 ${isActive ? 'bg-blue-600' : 'bg-gray-400'}`}
+            className={`min-w-[80px] h-6 ${isActive ? 'bg-brand-600' : 'bg-gray-400'}`}
           />
         </div>
 
@@ -97,7 +97,7 @@ const AddEditIndustryModal: React.FC<AddEditIndustryModalProps> = ({
           <Button
             onClick={handleSave}
             disabled={!name.trim() || isLoading}
-            className="w-1/2 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-full font-semibold max-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-1/2 py-2 bg-brand-600 text-white hover:bg-brand-700 rounded-full font-semibold max-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'SAVING...' : 'SAVE'}
           </Button>

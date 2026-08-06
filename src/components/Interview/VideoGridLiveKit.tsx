@@ -30,8 +30,11 @@ interface VideoGridProps {
 }
 
 export const VideoGrid: React.FC<VideoGridProps> = () => {
-  const { localParticipant } = useLocalParticipant();
-  const remoteParticipants = useRemoteParticipants();
+  // Return values unused here; kept the hook calls themselves (rather than
+  // deleting them) since LiveKit context hooks like these commonly have
+  // subscription side effects independent of their return value.
+  useLocalParticipant();
+  useRemoteParticipants();
 
   // Ensure withPlaceholder is true for the camera so local user tile renders immediately
   const tracks = useTracks(

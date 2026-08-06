@@ -52,7 +52,7 @@ export const UploadAndGenerateHeader = ({
 
           <div className="relative flex flex-col items-center">
             <label
-              className={`bg-primary hover:bg-blue-700 text-white flex items-center gap-2 px-5 py-2 font-semibold text-sm rounded-full shadow-sm cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`bg-primary hover:bg-brand-700 text-white flex items-center gap-2 px-5 py-2 font-semibold text-sm rounded-full shadow-sm cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <HiOutlineUpload className="text-lg" />
               UPLOAD FILE
@@ -88,22 +88,22 @@ export const UploadAndGenerateHeader = ({
 
       {/* Upload Details & Warning display */}
       {uploadedFileName && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex flex-col gap-2">
-          <div className="flex justify-between items-center border-b border-blue-100 pb-2">
-            <Typography variant="subtitle2" className="text-blue-900 m-0">
+        <div className="bg-brand-50 border border-brand-200 rounded-2xl p-4 flex flex-col gap-2">
+          <div className="flex justify-between items-center border-b border-brand-100 pb-2">
+            <Typography variant="subtitle2" className="text-brand-900 m-0">
               Uploaded File:{' '}
               <span className="font-mono text-xs font-semibold">{uploadedFileName}</span>
             </Typography>
             {onClearDetails && (
               <button
-                className="text-blue-500 hover:text-blue-800 text-xs font-semibold"
+                className="text-brand-500 hover:text-brand-800 text-xs font-semibold"
                 onClick={onClearDetails}
               >
                 Clear Details [x]
               </button>
             )}
           </div>
-          <Typography variant="body2" className="text-blue-800 m-0">
+          <Typography variant="body2" className="text-brand-800 m-0">
             Successfully imported <strong>{importedCount}</strong> question(s). Skipped{' '}
             <strong>{skippedCount}</strong> row(s).
           </Typography>

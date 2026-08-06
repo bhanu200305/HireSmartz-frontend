@@ -1,9 +1,7 @@
-import { Form } from 'antd';
-import { Button, Input, showToast } from '../..';
+import { Button } from '../..';
 import { useNavigate } from 'react-router-dom';
 import { BsCalendar4Event } from 'react-icons/bs';
 import MainLayout from '../../../layouts/MainLayout';
-import { PlusOutlined } from '@ant-design/icons';
 
 const UpdatePayment = () => {
   const navigate = useNavigate();

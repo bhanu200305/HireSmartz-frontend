@@ -270,7 +270,7 @@ export const useNavigationBlocker = (shouldBlock: boolean, isFormDirty: boolean)
         if (typeof (to as any).toString === 'function') return (to as any).toString();
       }
       return String(to);
-    } catch (err) {
+    } catch {
       return String(to);
     }
   };

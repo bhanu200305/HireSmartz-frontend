@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useLocation, useNavigate, useParams, useSearchParams, Outlet } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { Select } from 'antd';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -37,7 +37,6 @@ const VideoQuestionsSetup = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
   const [isDeleteInProgress, setIsDeleteInProgress] = useState(false);
@@ -208,7 +207,7 @@ const VideoQuestionsSetup = () => {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch {
       showToast({ message: 'Failed to download template', type: 'error' });
     }
   };

@@ -170,7 +170,7 @@ const CloseJobModal: React.FC<CloseJobProps> = ({
 
             <Textarea
               rows={4}
-              className={`w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-blue-300 ${
+              className={`w-full p-3 bg-white border rounded-3xl focus:ring focus:ring-brand-300 ${
                 commentError ? 'border-red-500' : 'border-gray-300'
               }`}
               placeholder="Add comments here..."
@@ -196,7 +196,7 @@ const CloseJobModal: React.FC<CloseJobProps> = ({
           </Button>
 
           <Button
-            className="font-bold rounded-full px-7 py-3 w-full text-white bg-blue-600"
+            className="font-bold rounded-full px-7 py-3 w-full text-white bg-brand-600"
             onClick={handleCloseJob}
             loading={isCloseJobLoading}
             disabled={!closureReason || (isOtherReason && !otherReason.trim())}

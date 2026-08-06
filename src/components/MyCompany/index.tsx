@@ -7,7 +7,6 @@ import {
   MdEdit,
   MdEmail,
   MdOutlineArrowBack,
-  MdOutlineLocalPhone,
   MdOutlineLocationOn,
   MdPhone,
 } from 'react-icons/md';
@@ -227,7 +226,7 @@ const MyCompany: React.FC = () => {
         message: 'Image uploaded successfully. Save changes to apply.',
         type: 'success',
       });
-    } catch (_error: unknown) {
+    } catch {
       showToast({ message: 'Failed to upload image.', type: 'error' });
     }
   }, []);

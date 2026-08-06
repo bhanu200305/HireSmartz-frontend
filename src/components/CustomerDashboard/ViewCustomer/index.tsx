@@ -38,7 +38,10 @@ const ViewCustomer = () => {
     { companyId: parsedCompanyId },
     { skip: !companyId || isNaN(Number(companyId)) }
   );
-  const { data: locationsResponse } = useGetCompanyLocationsFilterQuery(
+  // TODO: query result isn't read anywhere in this file (CompanyLocations
+  // below fetches its own copy with different params) — this call's purpose
+  // is unclear. Left in place rather than guessing it's safe to remove.
+  useGetCompanyLocationsFilterQuery(
     {
       companyId: parsedCompanyId,
       status: 'ALL',

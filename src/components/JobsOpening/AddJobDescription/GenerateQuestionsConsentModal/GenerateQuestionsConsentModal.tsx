@@ -55,7 +55,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
             className={clsx(
               'flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200',
               selectedMode === 'ADD'
-                ? 'border-blue-500 bg-blue-50/40 shadow-sm'
+                ? 'border-brand-500 bg-brand-50/40 shadow-sm'
                 : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm',
               isLoading && 'opacity-50 cursor-not-allowed'
             )}
@@ -63,7 +63,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
             <div
               className={clsx(
                 'p-2.5 rounded-xl shrink-0',
-                selectedMode === 'ADD' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500'
+                selectedMode === 'ADD' ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-500'
               )}
             >
               <MdPostAdd size={22} />

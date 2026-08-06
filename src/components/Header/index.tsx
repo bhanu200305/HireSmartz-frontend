@@ -1,5 +1,4 @@
 import { Avatar, Dropdown, Modal, Select } from 'antd';
-import Navbar from '../Navbar';
 import { DownOutlined, CheckOutlined } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RootState } from '../../redux/provider/store';
@@ -12,7 +11,6 @@ import {
 import { useGetUserProfileQuery } from '../../api/tenant-service/UserProfile/UserProfile';
 import { jwtDecode } from 'jwt-decode';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
-import { Authorities } from '../../constants/authorities.constant';
 import './header.css';
 import { Search, showToast } from '../shared';
 import { MdOutlineFilterAlt } from 'react-icons/md';
@@ -35,10 +33,6 @@ import { api } from '../../api';
 import NotificationBell from './NotificationBell';
 
 const { Option, OptGroup } = Select;
-
-interface HeaderProps {
-  hideNavbar?: boolean;
-}
 
 interface CategoryItem {
   uiName: string;
@@ -79,7 +73,7 @@ const resolveSearchSelection = (
   return {};
 };
 
-const Header = ({ hideNavbar = false }: HeaderProps) => {
+const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -104,7 +98,6 @@ const Header = ({ hideNavbar = false }: HeaderProps) => {
     (token && (jwtDecode(token) as any)?.userId);
 
   const role = useSelector((state: RootState) => state.LoginSlice.role);
-  const authorities = useSelector((state: RootState) => state.LoginSlice.authorities || []);
 
   const isNylasFeatureEnabled = import.meta.env.VITE_NYLAS_FEATURE === 'true';
   const isCalendarUser = isMultiLocationRoleName(role?.name);
@@ -460,168 +453,160 @@ const Header = ({ hideNavbar = false }: HeaderProps) => {
 
   return (
     <>
-      <div className="w-full fixed top-0 left-0 z-50">
-        <header className="bg-[#EBF0ED] text-white px-6 py-3 flex justify-between items-center w-full">
-          <div className="flex items-center">
-            <img
-              src="/cfpLogo.svg"
-              alt="CareerForce Pro"
-              className="h-10 w-auto object-contain cursor-pointer"
-              onClick={() => navigate('/')}
-            />
-          </div>
-          <div className="flex items-center justify-end gap-4">
-            <Dropdown
-              open={showGlobal}
-              placement="bottomLeft"
-              trigger={[]}
-              dropdownRender={() => (
-                <div
-                  style={{
-                    backgroundColor: '#fff',
-                    borderRadius: 8,
-                    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.15)',
+      <header
+        className="sticky top-0 z-30 bg-white px-7 py-3 flex justify-end items-center w-full border-b"
+        style={{ borderColor: 'var(--border)' }}
+      >
+        <div className="flex items-center justify-end gap-4">
+          <Dropdown
+            open={showGlobal}
+            placement="bottomLeft"
+            trigger={[]}
+            dropdownRender={() => (
+              <div
+                style={{
+                  backgroundColor: '#fff',
+                  borderRadius: 8,
+                  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.15)',
+                }}
+              >
+                <GlobalSearch
+                  query={searchParams}
+                  onQueryChange={(value) => {
+                    setSearchQuery(value);
+                    dispatch(setGlobalSearchQuery(value));
                   }}
-                >
-                  <GlobalSearch
-                    query={searchParams}
-                    onQueryChange={(value) => {
-                      setSearchQuery(value);
-                      dispatch(setGlobalSearchQuery(value));
-                    }}
-                    onClose={(clearSearch = true) => {
-                      if (clearSearch) {
-                        setSearchQuery('');
-                        setSelectedValue(null);
-                        dispatch(clearGlobalSearch());
-                        dispatch(
-                          api.util.invalidateTags([
-                            { type: 'SearchResults', id: 'Users' },
-                            { type: 'SearchResults', id: 'OrgUsers' },
-                            { type: 'SearchResults', id: 'Companies' },
-                            { type: 'SearchResults', id: 'JobOpenings' },
-                          ])
-                        );
-                      }
-                      setIsSearchFocused(false);
-                    }}
-                    isInputFocused={isSearchFocused}
-                    onSearchTrigger={handleSearchChange}
-                    navigationConfig={globalSearchNavigationConfig}
-                  />
-                </div>
-              )}
-            >
-              <div className="w-[180px] sm:w-[250px] lg:w-[350px]">
-                <Search
-                  appname="Search"
-                  placeholder="Search..."
-                  allowClear
-                  className="my-search"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onSearch={handleSearchChange}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => {
-                    setTimeout(() => setIsSearchFocused(false), 200);
+                  onClose={(clearSearch = true) => {
+                    if (clearSearch) {
+                      setSearchQuery('');
+                      setSelectedValue(null);
+                      dispatch(clearGlobalSearch());
+                      dispatch(
+                        api.util.invalidateTags([
+                          { type: 'SearchResults', id: 'Users' },
+                          { type: 'SearchResults', id: 'OrgUsers' },
+                          { type: 'SearchResults', id: 'Companies' },
+                          { type: 'SearchResults', id: 'JobOpenings' },
+                        ])
+                      );
+                    }
+                    setIsSearchFocused(false);
                   }}
+                  isInputFocused={isSearchFocused}
+                  onSearchTrigger={handleSearchChange}
+                  navigationConfig={globalSearchNavigationConfig}
                 />
               </div>
-            </Dropdown>
-
-            <div
-              className="border border-[var(--border)] p-1 rounded-3xl w-40 sm:w-50 gap-1 flex items-center"
-              style={{ backgroundColor: 'white' }}
-            >
-              <Select
-                placeholder="Categories"
-                prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />}
-                allowClear
-                className="w-full custom-select my-select-with-divider"
-                popupClassName="rounded-3xl"
-                value={getDisplayValue()}
-                onChange={(value) => {
-                  if (!value) {
-                    handleClear();
-                  } else {
-                    handleSelect(value);
-                  }
-                }}
-                onClear={handleClear}
-                suffixIcon={<DownOutlined />}
-                open={dropdownOpen}
-                onDropdownVisibleChange={handleDropdownVisibleChange}
-                dropdownMatchSelectWidth={false}
-                dropdownStyle={{ minWidth: '200px' }}
-                loading={!categoriesData && shouldFetchCategories}
-              >
-                {renderCategoryOptions()}
-              </Select>
-            </div>
-
-            <NotificationBell disabled={!canShowNotificationBell} />
-
-            {userData && (
-              <div className="flex items-center gap-2">
-                <div onClick={handleProfileClick} className="cursor-pointer">
-                  {userData?.profilePicture ? (
-                    <Avatar
-                      size={40}
-                      src={userData?.profilePicture}
-                      alt={userData?.firstName}
-                      onError={() => false}
-                    >
-                      <span>{userData?.firstName.charAt(0).toUpperCase()}</span>
-                    </Avatar>
-                  ) : (
-                    <Avatar size={40} style={{ backgroundColor: 'var(--primary)' }}>
-                      {userData?.firstName.charAt(0).toUpperCase()}
-                    </Avatar>
-                  )}
-                </div>
-                <Dropdown
-                  menu={{
-                    items: [
-                      {
-                        key: 'profile',
-                        label: 'User Profile',
-                        onClick: handleProfileClick,
-                      },
-                      {
-                        key: 'change-password',
-                        label: 'Change Password',
-                        onClick: handleChangePasswordClick,
-                      },
-                      ...calendarMenuItems,
-                      {
-                        type: 'divider' as const,
-                        className: 'custom-divider',
-                      },
-                      {
-                        key: 'logout',
-                        label: 'Logout',
-                        onClick: handleLogoutClick,
-                      },
-                    ],
-                  }}
-                  trigger={['click']}
-                >
-                  <div className="flex items-center gap-3 px-1 py-1 text-sm cursor-pointer">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-black">Welcome</span>
-                      <span className="font-semibold text-black">
-                        {makeFirstLetterUpperCase(userData?.firstName)}{' '}
-                        <DownOutlined className="text-xs text-black cursor-pointer" />
-                      </span>
-                    </div>
-                  </div>
-                </Dropdown>
-              </div>
             )}
+          >
+            <div className="w-[180px] sm:w-[250px] lg:w-[350px]">
+              <Search
+                appname="Search"
+                placeholder="Search..."
+                allowClear
+                className="my-search"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                onSearch={handleSearchChange}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => {
+                  setTimeout(() => setIsSearchFocused(false), 200);
+                }}
+              />
+            </div>
+          </Dropdown>
+
+          <div
+            className="border border-[var(--border)] p-1 rounded-3xl w-40 sm:w-50 gap-1 flex items-center"
+            style={{ backgroundColor: 'white' }}
+          >
+            <Select
+              placeholder="Categories"
+              prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />}
+              allowClear
+              className="w-full custom-select my-select-with-divider"
+              popupClassName="rounded-3xl"
+              value={getDisplayValue()}
+              onChange={(value) => {
+                if (!value) {
+                  handleClear();
+                } else {
+                  handleSelect(value);
+                }
+              }}
+              onClear={handleClear}
+              suffixIcon={<DownOutlined />}
+              open={dropdownOpen}
+              onDropdownVisibleChange={handleDropdownVisibleChange}
+              dropdownMatchSelectWidth={false}
+              dropdownStyle={{ minWidth: '200px' }}
+              loading={!categoriesData && shouldFetchCategories}
+            >
+              {renderCategoryOptions()}
+            </Select>
           </div>
-        </header>
-        {!hideNavbar && <Navbar />}
-      </div>
+
+          <NotificationBell disabled={!canShowNotificationBell} />
+
+          {userData && (
+            <div className="flex items-center gap-2">
+              <div onClick={handleProfileClick} className="cursor-pointer">
+                {userData?.profilePicture ? (
+                  <Avatar
+                    size={40}
+                    src={userData?.profilePicture}
+                    alt={userData?.firstName}
+                    onError={() => false}
+                  >
+                    <span>{userData?.firstName.charAt(0).toUpperCase()}</span>
+                  </Avatar>
+                ) : (
+                  <Avatar size={40} style={{ backgroundColor: 'var(--primary)' }}>
+                    {userData?.firstName.charAt(0).toUpperCase()}
+                  </Avatar>
+                )}
+              </div>
+              <Dropdown
+                menu={{
+                  items: [
+                    {
+                      key: 'profile',
+                      label: 'User Profile',
+                      onClick: handleProfileClick,
+                    },
+                    {
+                      key: 'change-password',
+                      label: 'Change Password',
+                      onClick: handleChangePasswordClick,
+                    },
+                    ...calendarMenuItems,
+                    {
+                      type: 'divider' as const,
+                      className: 'custom-divider',
+                    },
+                    {
+                      key: 'logout',
+                      label: 'Logout',
+                      onClick: handleLogoutClick,
+                    },
+                  ],
+                }}
+                trigger={['click']}
+              >
+                <div className="flex items-center gap-3 px-1 py-1 text-sm cursor-pointer">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-black">Welcome</span>
+                    <span className="font-semibold text-black">
+                      {makeFirstLetterUpperCase(userData?.firstName)}{' '}
+                      <DownOutlined className="text-xs text-black cursor-pointer" />
+                    </span>
+                  </div>
+                </div>
+              </Dropdown>
+            </div>
+          )}
+        </div>
+      </header>
 
       <Modal
         open={showSwitchCalendarModal}

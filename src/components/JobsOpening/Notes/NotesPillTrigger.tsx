@@ -3,10 +3,10 @@ import clsx from 'clsx';
 import { LuSquarePen } from 'react-icons/lu';
 
 /** Brand color for notes triggers and drawer accents */
-export const NOTES_ACCENT = '#2a69a8';
+export const NOTES_ACCENT = '#263d92';
 
 const pillBase =
-  'inline-flex items-center rounded-full border font-medium transition-colors border-[#b8d0e6] bg-[#eaf2f8] text-[#2a69a8] hover:bg-[#dce9f4] hover:border-[#2a69a8] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#eaf2f8] disabled:hover:border-[#b8d0e6]';
+  'inline-flex items-center rounded-full border font-medium transition-colors border-[#c7d0ef] bg-[#eef2ff] text-[#263d92] hover:bg-[#e2e7fa] hover:border-[#263d92] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#eef2ff] disabled:hover:border-[#c7d0ef]';
 
 type NotesPillTriggerProps = {
   count: number;
@@ -52,7 +52,7 @@ export function NotesPillTrigger({
       <LuSquarePen size={iconSize} strokeWidth={2} className="shrink-0" aria-hidden />
       <span className="whitespace-nowrap">{label}</span>
       {showBadge ? (
-        <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-md bg-[#2a69a8] px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white tabular-nums">
+        <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-md bg-[#263d92] px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white tabular-nums">
           {count}
         </span>
       ) : null}

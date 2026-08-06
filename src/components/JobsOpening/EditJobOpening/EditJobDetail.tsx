@@ -74,18 +74,16 @@ const EditJobDetail = () => {
   const justSavedRef = useRef(false);
   const initialLoadRef = useRef(true);
 
-  const { jobDetails, jobOpeningId, jobDescritpion, interViewRound, aiJobDescription, isDraft } =
-    useSelector(
-      (state: RootState) => ({
-        jobDetails: state.EditJobSlice.details,
-        jobDescritpion: state.EditJobSlice.description,
-        interViewRound: state.EditJobSlice.interviewRounds,
-        jobOpeningId: state.EditJobSlice.jobOpeningId,
-        aiJobDescription: state.EditJobSlice.aiJobDescription,
-        isDraft: state.EditJobSlice.isDraft,
-      }),
-      shallowEqual
-    );
+  const { jobDetails, jobOpeningId, interViewRound, aiJobDescription, isDraft } = useSelector(
+    (state: RootState) => ({
+      jobDetails: state.EditJobSlice.details,
+      interViewRound: state.EditJobSlice.interviewRounds,
+      jobOpeningId: state.EditJobSlice.jobOpeningId,
+      aiJobDescription: state.EditJobSlice.aiJobDescription,
+      isDraft: state.EditJobSlice.isDraft,
+    }),
+    shallowEqual
+  );
   const { loginToken } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
   const decodedToken = safeDecodeToken<{ companyId?: number | string }>(loginToken);
   const parsedCompanyId = Number(decodedToken?.companyId || 0);
@@ -207,7 +205,7 @@ const EditJobDetail = () => {
     watch,
     setError,
     trigger,
-    formState: { errors, isValid, isDirty },
+    formState: { errors },
   } = useForm<JobDetailsState>({
     resolver: zodResolver(editJobDetailsSchema),
     defaultValues: {},
@@ -1586,7 +1584,7 @@ const EditJobDetail = () => {
                 jobOpeningId: parsedJobId || jobOpeningId || 0,
               };
             }
-          } catch (err) {
+          } catch {
             needRegenerate = true;
           } finally {
             setIsCheckingJdSource(false);
@@ -1681,7 +1679,7 @@ const EditJobDetail = () => {
                   <Input
                     {...field}
                     placeholder="Job Profile Code"
-                    className={`bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 ${errors.jobProfileCode ? 'border-red-500' : 'border-[var(--border)]'}`}
+                    className={`bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 ${errors.jobProfileCode ? 'border-red-500' : 'border-[var(--border)]'}`}
                   />
                 )}
               />
@@ -2109,7 +2107,7 @@ const EditJobDetail = () => {
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
                             manager.isDeleted
                               ? 'bg-gray-100 text-gray-600 border-gray-300'
-                              : 'bg-blue-100 text-blue-800 border-blue-200'
+                              : 'bg-brand-100 text-brand-800 border-brand-200'
                           }`}
                         >
                           {manager.name}
@@ -2127,7 +2125,7 @@ const EditJobDetail = () => {
                                 shouldValidate: true,
                               });
                             }}
-                            className="ml-1 w-4 h-4 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-200 rounded-full"
+                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
                           >
                             ×
                           </button>
@@ -2184,7 +2182,7 @@ const EditJobDetail = () => {
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
                             recruiter.isDeleted
                               ? 'bg-gray-100 text-gray-600 border-gray-300'
-                              : 'bg-blue-100 text-blue-800 border-blue-200'
+                              : 'bg-brand-100 text-brand-800 border-brand-200'
                           }`}
                         >
                           {recruiter.name}
@@ -2202,7 +2200,7 @@ const EditJobDetail = () => {
                                 shouldValidate: true,
                               });
                             }}
-                            className="ml-1 w-4 h-4 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-200 rounded-full"
+                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
                           >
                             ×
                           </button>
@@ -2273,7 +2271,7 @@ const EditJobDetail = () => {
                   });
                 }}
                 placeholder="Opening(s)"
-                className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+                className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               />
               {errors.openings && (
                 <p className="text-red-500 text-sm mt-1">{errors.openings.message}</p>
@@ -2358,7 +2356,7 @@ const EditJobDetail = () => {
                         : '/hr'
                     }
                     placeholder="Minimum Salary"
-                    className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)] placeholder:capitalize"
+                    className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                     intlConfig={{ locale: 'en-US', currency: 'USD' }}
                   />
                 )}
@@ -2396,7 +2394,7 @@ const EditJobDetail = () => {
                         : '/hr'
                     }
                     placeholder="Maximum Salary"
-                    className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)] placeholder:capitalize"
+                    className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                     intlConfig={{ locale: 'en-US', currency: 'USD' }}
                   />
                 )}
@@ -2422,7 +2420,7 @@ const EditJobDetail = () => {
                   decimalScale={2}
                   prefix="$"
                   placeholder="Referral Bonus"
-                  className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)] placeholder:capitalize"
+                  className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                   intlConfig={{ locale: 'en-US', currency: 'USD' }}
                 />
               )}
@@ -2453,7 +2451,7 @@ const EditJobDetail = () => {
                 trigger(['minExperience', 'maxExperience']);
               }}
               placeholder="Minimum Experience"
-              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             />
             {errors.minExperience && (
               <p className="text-red-500 text-sm mt-1">{errors.minExperience.message}</p>
@@ -2478,7 +2476,7 @@ const EditJobDetail = () => {
                 trigger(['minExperience', 'maxExperience']);
               }}
               placeholder="Maximum Experience"
-              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-blue-300 border-[var(--border)]"
+              className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             />
             {errors.maxExperience && (
               <p className="text-red-500 text-sm mt-1">{errors.maxExperience.message}</p>
@@ -2549,7 +2547,7 @@ const EditJobDetail = () => {
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
                             skill.isDeleted
                               ? 'bg-gray-100 text-gray-600 border-gray-300'
-                              : 'bg-blue-100 text-blue-800 border-blue-200'
+                              : 'bg-brand-100 text-brand-800 border-brand-200'
                           }`}
                         >
                           {skill.name}
@@ -2567,7 +2565,7 @@ const EditJobDetail = () => {
                                 shouldValidate: true,
                               });
                             }}
-                            className="ml-1 w-4 h-4 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-200 rounded-full"
+                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
                           >
                             ×
                           </button>
@@ -2631,7 +2629,7 @@ const EditJobDetail = () => {
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
                             skill.isDeleted
                               ? 'bg-gray-100 text-gray-600 border-gray-300'
-                              : 'bg-blue-100 text-blue-800 border-blue-200'
+                              : 'bg-brand-100 text-brand-800 border-brand-200'
                           }`}
                         >
                           {skill.name}
@@ -2649,7 +2647,7 @@ const EditJobDetail = () => {
                                 shouldValidate: true,
                               });
                             }}
-                            className="ml-1 w-4 h-4 flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-200 rounded-full"
+                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
                           >
                             ×
                           </button>

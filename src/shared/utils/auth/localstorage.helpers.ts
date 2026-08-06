@@ -7,7 +7,7 @@ export const getLocalStorageItem = (key: string): any | null => {
   try {
     item = get(localStorage, key);
     return item ? JSON.parse(JSON.stringify(item)) : null;
-  } catch (error) {
+  } catch {
     // console.error(`Error retrieving item from localStorage: ${error}`)
     return item;
   }
@@ -16,7 +16,7 @@ export const getLocalStorageItem = (key: string): any | null => {
 export const setLocalStorageItem = (key: string, value: any): void => {
   try {
     set(localStorage, key, JSON.stringify(value));
-  } catch (error) {
+  } catch {
     // console.error(`Error setting item in localStorage: ${error}`)
   }
 };
@@ -24,7 +24,7 @@ export const setLocalStorageItem = (key: string, value: any): void => {
 export const removeLocalStorageItem = (key: string): void => {
   try {
     localStorage.removeItem(key);
-  } catch (error) {
+  } catch {
     // console.error(`Error removing item from localStorage: ${error}`)
   }
 };
@@ -45,7 +45,7 @@ export const clearImpersonationStorage = (): void => {
       localStorage.removeItem(key);
       sessionStorage.removeItem(key);
     });
-  } catch (error) {
+  } catch {
     // console.error(`Error clearing impersonation storage: ${error}`)
   }
 };
@@ -55,7 +55,7 @@ export const clearLegacyImpersonationLocalStorage = (): void => {
     IMPERSONATION_STORAGE_KEYS.forEach((key) => {
       localStorage.removeItem(key);
     });
-  } catch (error) {
+  } catch {
     // console.error(`Error clearing legacy impersonation localStorage: ${error}`)
   }
 };
@@ -88,7 +88,7 @@ export const isImpersonationActive = (tokenFromContext?: string | null): boolean
     }
 
     return decoded.impersonating === true;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -126,7 +126,7 @@ export const validateImpersonationSessionOwnership = (): void => {
     if (String(originalAdminId) === String(impersonatedUserId)) {
       clearImpersonationStorage();
     }
-  } catch (error) {
+  } catch {
     clearImpersonationStorage();
   }
 };
@@ -146,7 +146,7 @@ export const clearLocalStorage = (): void => {
       .forEach((key) => removeLocalStorageItem(key));
 
     clearImpersonationStorage();
-  } catch (error) {
+  } catch {
     // console.error(`Error clearing localStorage: ${error}`)
   }
 };

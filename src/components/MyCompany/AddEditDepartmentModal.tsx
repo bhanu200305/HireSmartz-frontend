@@ -76,7 +76,7 @@ const AddEditDepartmentModal: React.FC<AddEditDepartmentModalProps> = ({
                 INACTIVE
               </span>
             }
-            className={`min-w-[70px] ${isActive ? 'bg-blue-600' : 'bg-gray-400'}`}
+            className={`min-w-[70px] ${isActive ? 'bg-brand-600' : 'bg-gray-400'}`}
           />
         </div>
 
@@ -90,7 +90,7 @@ const AddEditDepartmentModal: React.FC<AddEditDepartmentModalProps> = ({
           <Button
             onClick={handleSave}
             disabled={!name.trim()}
-            className="px-16 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-3xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-16 py-2 bg-brand-600 text-white hover:bg-brand-700 rounded-3xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             SAVE
           </Button>

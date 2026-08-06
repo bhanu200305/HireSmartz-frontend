@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { AiOutlinePlus, AiOutlineMinus } from 'react-icons/ai';
 import SummaryContent from '../Summary';
-import InterviewFeedback from '../InterviewFeedback';
 import Transcript from '../Transcript';
 import Scorecard from '../Scorecard';
 import InterviewScore from '../InterviewScore';

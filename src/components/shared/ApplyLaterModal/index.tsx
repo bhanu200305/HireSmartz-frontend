@@ -74,7 +74,7 @@ export const ApplyLaterModal = ({ open, qrCode, jobId, onClose }: ApplyLaterModa
 
         <div>
           <label htmlFor="al-email" className="block text-sm font-medium text-gray-800 mb-2">
-            Email<span className="text-blue-500">*</span>
+            Email<span className="text-brand-500">*</span>
           </label>
           <Input
             id="al-email"

@@ -1,6 +1,6 @@
 import { Form } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
-import { Button, Input, showToast } from '../../shared';
+import { Button, showToast } from '../../shared';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import { useForm, Controller } from 'react-hook-form';
 import { RootState } from '../../../redux/provider/store';
@@ -83,7 +83,7 @@ const EditJobDescription = () => {
     setValue,
     watch,
     setError,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<JobDescriptionState>({
     resolver: zodResolver(editJobDescriptionSchema),
     defaultValues: {
@@ -97,8 +97,8 @@ const EditJobDescription = () => {
   });
 
   const formValues = watch();
-  const [isMandatoryFocused, setIsMandatoryFocused] = useState<boolean>(false);
-  const [isOptionalFocused, setIsOptionalFocused] = useState<boolean>(false);
+  const [, setIsMandatoryFocused] = useState<boolean>(false);
+  const [, setIsOptionalFocused] = useState<boolean>(false);
 
   const isFormDirty = JSON.stringify(formValues) !== JSON.stringify(descriptionDetails);
 
@@ -611,7 +611,7 @@ const EditJobDescription = () => {
                             ?.map((skill: any) => (
                               <span
                                 key={skill.id}
-                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand-100 text-brand-800 border border-brand-200"
                               >
                                 {skill.name}
                                 <Button
@@ -622,7 +622,7 @@ const EditJobDescription = () => {
                                     );
                                     setValue('mandatorySkills', newValue, { shouldValidate: true });
                                   }}
-                                  className="ml-1 w-4 h-4 p-0 text-blue-500 hover:text-blue-700"
+                                  className="ml-1 w-4 h-4 p-0 text-brand-500 hover:text-brand-700"
                                 >
                                   ×
                                 </Button>
@@ -687,7 +687,7 @@ const EditJobDescription = () => {
                           ?.map((skill: any) => (
                             <span
                               key={skill.id}
-                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand-100 text-brand-800 border border-brand-200"
                             >
                               {skill.name}
                               <Button
@@ -698,7 +698,7 @@ const EditJobDescription = () => {
                                   );
                                   setValue('optionalSkills', newValue, { shouldValidate: true });
                                 }}
-                                className="ml-1 w-4 h-4 p-0 text-blue-500 hover:text-blue-700"
+                                className="ml-1 w-4 h-4 p-0 text-brand-500 hover:text-brand-700"
                               >
                                 ×
                               </Button>

@@ -636,7 +636,7 @@ const AiCallSchedulePage = () => {
                         onClick={() => handleTimezoneSelect(tz.id)}
                         className={clsx(
                           'w-full flex items-center justify-between px-4 py-2.5 text-xs hover:bg-gray-50 transition text-left',
-                          tz.id === selectedTimezone && 'bg-blue-50 text-(--primary) font-semibold'
+                          tz.id === selectedTimezone && 'bg-brand-50 text-(--primary) font-semibold'
                         )}
                       >
                         <span>{tz.label}</span>
@@ -676,7 +676,7 @@ const AiCallSchedulePage = () => {
                     }}
                     className={clsx(
                       'w-full px-4 py-2.5 text-xs text-left hover:bg-gray-50 transition',
-                      lang === opt.value && 'bg-blue-50 text-(--primary) font-semibold'
+                      lang === opt.value && 'bg-brand-50 text-(--primary) font-semibold'
                     )}
                   >
                     {opt.label}

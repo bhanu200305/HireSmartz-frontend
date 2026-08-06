@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { shallowEqual, useSelector } from 'react-redux';
 import { Checkbox, Form, Modal, Select } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import {
@@ -77,7 +76,7 @@ function buildDefaults(c: CandidateByIdResponse, isBulk: boolean) {
 }
 
 const inputClass =
-  'bg-white w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-300 border-[var(--border)]';
+  'bg-white w-full px-4 py-2 border rounded-lg focus:ring focus:ring-brand-300 border-[var(--border)]';
 
 function parseToAddressList(value: string): string[] {
   return String(value ?? '')
@@ -547,13 +546,6 @@ const SendEmailToCandidateModal = ({
       return text.replace(oldPrefix2, prefix);
     }
     return `${prefix}${text}`;
-  };
-
-  const mergeSmsTextInContent = (generatedContent: string, textMessage: string): string => {
-    // API now returns plain text; prefer edited text and fallback to generated text.
-    const edited = String(textMessage ?? '').trim();
-    if (edited) return edited;
-    return String(generatedContent ?? '').trim();
   };
 
   const generateSmsFromInputs = async (

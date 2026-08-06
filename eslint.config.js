@@ -5,6 +5,7 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import importPlugin from 'eslint-plugin-import';
+import unusedImports from 'eslint-plugin-unused-imports';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import prettier from 'eslint-plugin-prettier/recommended';
 import jest from 'eslint-plugin-jest';
@@ -30,6 +31,7 @@ export default tseslint.config(
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
+      'unused-imports': unusedImports,
     },
     settings: {
       react: {
@@ -43,9 +45,16 @@ export default tseslint.config(
     },
     rules: {
       'no-console': 'off',
-      'unused-imports/no-unused-imports': 'off',
+      // TypeScript already type-checks props at compile time, so the
+      // PropTypes-era react/prop-types rule is redundant noise on a
+      // fully-TS codebase (see DESIGN_SYSTEM.md-adjacent lint cleanup).
+      'react/prop-types': 'off',
+      // Delegate unused-import/unused-var detection to eslint-plugin-unused-imports,
+      // which (unlike @typescript-eslint/no-unused-vars) ships an autofixer.
+      '@typescript-eslint/no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'error',
       'unused-imports/no-unused-vars': [
-        'off',
+        'error',
         {
           vars: 'all',
           varsIgnorePattern: '^_',
@@ -54,7 +63,6 @@ export default tseslint.config(
         },
       ],
       'react/react-in-jsx-scope': ['off'],
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-explicit-any': 'off',
       'jsx-a11y/click-events-have-key-events': 'off',

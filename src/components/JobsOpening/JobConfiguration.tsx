@@ -41,8 +41,12 @@ const JobConfiguration = () => {
 
   const [downloadTemplateExcel, { isLoading: loadingTemplate }] =
     useLazyDownloadTemplateExcelQuery();
+  // isLoading unused below — the "View Sample" button that would read it is
+  // commented out further down; kept the query hook (not deleted) since it's
+  // real logic, just currently unreferenced.
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const [downloadSampleExcel, { isLoading: loadingSample }] = useLazyDownloadSampleExcelQuery();
-  const [uploadJobOpeningFile, { isLoading: uploading }] = useUploadJobOpeningFileMutation();
+  const [uploadJobOpeningFile] = useUploadJobOpeningFileMutation();
 
   const handleDownload = async () => {
     if (!selectedField) {
@@ -69,7 +73,7 @@ const JobConfiguration = () => {
           type: 'success',
         });
       }
-    } catch (error) {
+    } catch {
       showToast({
         message: 'Failed to download template. Please try again.',
         type: 'error',
@@ -77,6 +81,11 @@ const JobConfiguration = () => {
     }
   };
 
+  // TODO: not currently called — the "View Sample" button that would
+  // trigger this is commented out further down. Kept (not deleted) since
+  // it's real logic; flagged rather than silently deleted during the lint
+  // cleanup pass.
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleView = async () => {
     if (!selectedField) {
       message.warning('Please select a job field first.');
@@ -102,7 +111,7 @@ const JobConfiguration = () => {
           type: 'success',
         });
       }
-    } catch (error) {
+    } catch {
       showToast({
         message: 'Failed to download sample file. Please try again.',
         type: 'error',
@@ -200,7 +209,7 @@ const JobConfiguration = () => {
                     disabled={!selectedField}
                     className={`transition-colors ${
                       selectedField
-                        ? 'text-blue-600 hover:text-blue-800 cursor-pointer'
+                        ? 'text-brand-600 hover:text-brand-800 cursor-pointer'
                         : 'text-gray-400 cursor-not-allowed'
                     }`}
                   >
@@ -239,7 +248,7 @@ const JobConfiguration = () => {
                 <Tooltip title="File Validation Rules">
                   <button
                     onClick={() => setShowConfigurationInstructions(true)}
-                    className="text-primary hover:text-blue-800 transition-colors cursor-pointer"
+                    className="text-primary hover:text-brand-800 transition-colors cursor-pointer"
                   >
                     <MdInfoOutline size={28} />
                   </button>
@@ -249,8 +258,8 @@ const JobConfiguration = () => {
 
             {/* Selected Field Info */}
             {selectedField && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
+              <div className="mt-4 p-4 bg-brand-50 rounded-lg">
+                <p className="text-sm text-brand-800">
                   Selected: <strong>{jobFields.find((f) => f.id === selectedField)?.name}</strong>
                 </p>
               </div>
@@ -271,8 +280,8 @@ const JobConfiguration = () => {
               </div>
 
               {uploadResult.uploadedFileName && (
-                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-sm text-blue-800">
+                <div className="mb-4 p-3 bg-brand-50 rounded-lg border border-brand-200">
+                  <p className="text-sm text-brand-800">
                     <span className="font-medium">Uploaded File:</span>{' '}
                     {uploadResult.uploadedFileName}
                   </p>

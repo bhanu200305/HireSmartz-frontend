@@ -245,7 +245,7 @@ export const PublicJobListingPage = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Job Openings</h1>
           <button
             onClick={() => openApplyLater()}
-            className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold px-5 py-2 rounded-full transition-colors whitespace-nowrap"
+            className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold px-5 py-2 rounded-full transition-colors whitespace-nowrap"
           >
             APPLY LATER
           </button>

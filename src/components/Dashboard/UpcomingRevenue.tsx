@@ -1,8 +1,6 @@
-import { Select } from 'antd';
 import upcomingRevenueImage from '../../assets/svgs/upcomingRevenue.svg';
 import ComingSoon from '../../assets/svgs/ComingSoon.svg';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const UpcomingRevenue = () => {
   // const navigate = useNavigate()
@@ -20,17 +18,17 @@ const UpcomingRevenue = () => {
   // }
 
   return (
-    <div className="bg-gray-50 rounded-xl shadow p-4 w-full">
+    <div className="bg-white rounded-xl p-4 w-full border" style={{ borderColor: 'var(--border)' }}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div
             className={`w-13 h-13 flex items-center justify-center`}
             // onClick={handleIconClick}
           >
-            <img src={upcomingRevenueImage} />
+            <img src={upcomingRevenueImage} alt="" />
           </div>
           <Link to="/finances" className="text-xl font-medium text-primary">
-            <h2 className="text-xl font-medium hover:underline hover:text-primary text-black">
+            <h2 className="text-xl font-medium heading-font hover:underline hover:text-primary text-black">
               Predicted Upcoming Revenue
             </h2>
           </Link>
@@ -49,8 +47,8 @@ const UpcomingRevenue = () => {
             <p className="text-sm border-b border-gray-300 pb-1">January</p>
           </div>
           <div className="absolute text-left bottom-25">
-            <p className="text-lg font-bold text-blue-400">$40K</p>
-            <p className="text-sm text-blue-400 border-b-2 border-blue-500 pb-1">February</p>
+            <p className="text-lg font-bold text-brand-400">$40K</p>
+            <p className="text-sm text-brand-400 border-b-2 border-brand-500 pb-1">February</p>
           </div>
         </div>
         <div className="flex justify-center flex-grow relative">

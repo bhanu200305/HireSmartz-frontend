@@ -34,7 +34,7 @@ const AssignedJobsModal: React.FC<AssignedJobsModalProps> = ({
         <button
           key="ok"
           onClick={onClose}
-          className="h-11 min-w-[100px] px-8 bg-blue-900 text-white rounded-full font-semibold hover:opacity-90 cursor-pointer transition-opacity"
+          className="h-11 min-w-[100px] px-8 bg-brand-900 text-white rounded-full font-semibold hover:opacity-90 cursor-pointer transition-opacity"
         >
           OK
         </button>,
@@ -72,6 +72,12 @@ const AssignedJobsModal: React.FC<AssignedJobsModalProps> = ({
 
           <div className="space-y-1 pt-1">
             {assignedJobs.map((job) => {
+              // TODO: isSelected is computed but the onClick/selection wiring
+              // below is commented out and className never branches on it —
+              // looks like an in-progress "select a job" interaction. Left
+              // as-is (not guessing at intended behavior) during the lint
+              // cleanup pass.
+              // eslint-disable-next-line unused-imports/no-unused-vars
               const isSelected = selectedJobId === job.jobOpeningId;
 
               return (
@@ -82,7 +88,7 @@ const AssignedJobsModal: React.FC<AssignedJobsModalProps> = ({
                   className={`w-full grid grid-cols-[1fr_auto] items-center px-2 py-1 rounded-md text-left transition-colors ${'hover:bg-white/40'}`}
                 >
                   <span className="text-[17px] text-[#2b2b2b]">{job.jobTitle}</span>
-                  <span className="text-[17px] font-semibold text-blue-900 text-right">
+                  <span className="text-[17px] font-semibold text-brand-900 text-right">
                     {formatStatusLabel(job.externalStatus)}
                   </span>
                 </button>
