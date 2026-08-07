@@ -1,6 +1,5 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { Button, Input, showToast } from '..';
-import loginImage from '../../assets/svgs/LoginNew.svg';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { Checkbox } from 'antd';
@@ -23,6 +22,13 @@ import { extractCanManageCompanySettings } from '../../shared/utils/auth/permiss
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import { verifyTokenLogin } from '../../services/AuthService';
 import { jwtDecode } from 'jwt-decode';
+import {
+  isDevAuthBypassEnabled,
+  createDevBypassToken,
+  getDevBypassLoginPayload,
+  warnDevBypassUsedOnce,
+  DEV_SEED_CREDENTIALS,
+} from '../../shared/utils/auth/devAuthBypass';
 
 const loginSchema = z.object({
   email: z
@@ -39,6 +45,32 @@ type FormErrors = {
   password?: string;
 };
 
+// Cosmetic only: there is no backend to register a user against yet, so this form
+// validates and then just hands control back to the Login tab. Nothing is persisted.
+const signUpSchema = z
+  .object({
+    name: z.string().min(1, 'Full name is required.'),
+    email: z
+      .string()
+      .min(1, 'Email is required.')
+      .email('Enter a valid email address.')
+      .transform((val) => val.trim())
+      .refine((val) => !val.includes(' '), 'Email cannot contain spaces.'),
+    password: z.string().min(6, 'Password must be at least 6 characters.'),
+    confirmPassword: z.string().min(1, 'Please confirm your password.'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match.',
+    path: ['confirmPassword'],
+  });
+
+type SignUpFormErrors = {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+};
+
 const Login = () => {
   const [searchParams] = useSearchParams();
   const loginToken = searchParams.get('token') as string;
@@ -46,6 +78,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isSubmitting = useRef(false);
+  const [view, setView] = useState<'login' | 'signup'>('login');
 
   useEffect(() => {
     const successMessage = (location.state as { successMessage?: string } | null)?.successMessage;
@@ -77,6 +110,19 @@ const Login = () => {
   };
   const { email, password, showPassword, errors, rememberMe, isFormValid } = localState;
   const [login, { isLoading }] = useLoginMutation();
+
+  const [signUpState, setSignUpState] = useReducer(
+    (prevState, newState) => ({ ...prevState, ...newState }),
+    {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      showPassword: false,
+      showConfirmPassword: false,
+      errors: {} as SignUpFormErrors,
+    }
+  );
 
   useEffect(() => {
     if (rememberMe) {
@@ -150,6 +196,50 @@ const Login = () => {
     }, 0);
   };
 
+  const onSignUpChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    let processedValue = value;
+    if (name === 'email') {
+      processedValue = value.replace(/\s/g, '');
+    }
+    setSignUpState({ [name]: processedValue });
+  };
+
+  // Logs a seeded demo credential straight into the app the same way a real login
+  // would, without calling the (nonexistent) backend. See devAuthBypass.ts.
+  const completeSeededLogin = (loggedInEmail: string) => {
+    warnDevBypassUsedOnce();
+    const token = createDevBypassToken();
+    const payload = getDevBypassLoginPayload(token);
+
+    clearImpersonationStorage();
+    sessionStorage.setItem(LOCALSTORAGE_KEYS.ACCESS, token);
+    sessionStorage.setItem(LOCALSTORAGE_KEYS.REFRESH, token);
+
+    if (rememberMe) {
+      setTokens(token, token);
+      setLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME, 'true');
+      setLocalStorageItem(LOCALSTORAGE_KEYS.ROLE, payload.role);
+      setLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS, {
+        email: loggedInEmail,
+        password: encrypt(password),
+      });
+    } else {
+      setTokens(token, token);
+      setLocalStorageItem(LOCALSTORAGE_KEYS.ROLE, payload.role);
+      removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME);
+      removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS);
+    }
+
+    dispatch(loginStore(payload));
+    showToast({ message: 'Login successful (demo mode)', type: 'success' });
+
+    const fromPath = location.state?.from?.pathname || '/';
+    const fromSearch = location.state?.from?.search || '';
+    const safePath = fromPath === '/logout' ? '/' : fromPath;
+    navigate(safePath + fromSearch, { replace: true });
+  };
+
   const handleLogin = async () => {
     // Prevent double-click submissions
     if (isLoading || isSubmitting.current) return;
@@ -162,6 +252,19 @@ const Login = () => {
     isSubmitting.current = true;
 
     const trimmedEmail = email.trim();
+
+    // No real backend yet: the one seeded demo credential logs in locally instead
+    // of calling the API. Anything else still goes through the real login flow below.
+    if (
+      isDevAuthBypassEnabled() &&
+      trimmedEmail === DEV_SEED_CREDENTIALS.email &&
+      password === DEV_SEED_CREDENTIALS.password
+    ) {
+      completeSeededLogin(trimmedEmail);
+      isSubmitting.current = false;
+      return;
+    }
+
     const payload: LoginRequest = {
       emailId: trimmedEmail,
       password,
@@ -246,6 +349,40 @@ const Login = () => {
     }
   };
 
+  // Cosmetic only — see signUpSchema comment above. There's nothing to persist this to
+  // yet, so a successful submit just confirms the input looks right and hands the
+  // visitor back to the Login tab with their email prefilled.
+  const handleSignUpSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = signUpSchema.safeParse(signUpState);
+
+    if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      setSignUpState({
+        errors: {
+          name: fieldErrors.name?.[0] ?? '',
+          email: fieldErrors.email?.[0] ?? '',
+          password: fieldErrors.password?.[0] ?? '',
+          confirmPassword: fieldErrors.confirmPassword?.[0] ?? '',
+        },
+      });
+      return;
+    }
+
+    showToast({
+      message: 'Account created! Please log in with your new credentials.',
+      type: 'success',
+    });
+    setLocalState({ email: signUpState.email });
+    setSignUpState({
+      name: '',
+      password: '',
+      confirmPassword: '',
+      errors: {},
+    });
+    setView('login');
+  };
+
   const verifyAndRedirect = async () => {
     const result = await verifyTokenLogin(loginToken, dispatch);
     if (result) {
@@ -268,49 +405,71 @@ const Login = () => {
 
   return (
     <>
-      <div className="flex flex-wrap h-screen w-full font-['DM Sans'] bg-[var(--login-background)]">
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
         {isLoading && <Loader />}
-        <div className="flex-2 h-full flex flex-col justify-center items-center px-10">
-          <img
-            src="/cfpLogo.svg"
-            alt="CareerForce Pro"
-            className="h-24 w-auto object-contain cursor-pointer"
-            onClick={() => navigate('/')}
-          />
-          <span className="ai-recruitment-text mb-8 mt-2 ">AI POWERED RECRUITMENT SOLUTIONS</span>
-          <img
-            src={loginImage}
-            alt="Login"
-            className="max-w-[450px] h-auto object-cover rounded-3xl"
-          />
-          <div className="flex flex-col items-center mt-4 text-center">
-            <span className="text-black text-lg font-semibold">
-              Revolutionizing Talent Acquisition with AI Precision
-            </span>
-            <span className="text-black text-sm mt-4">
-              careerforce pro is an end-to-end AI-powered recruitment platform that empowers
-              organizations to streamline hiring processes, reduce manual effort, and secure top
-              talent with unparalleled efficiency.
+
+        {/* decorative background texture + glow blobs for depth */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.15]"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
+        />
+        <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#7dd8ee]/30 blur-3xl" />
+        <div className="pointer-events-none absolute top-1/4 -right-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#182a72]/30 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-[#11b7dd]/20 blur-2xl" />
+        <div className="pointer-events-none absolute top-10 left-1/3 h-24 w-24 rounded-full border border-white/20" />
+        <div className="pointer-events-none absolute bottom-24 right-1/4 h-16 w-16 rounded-full border border-white/10" />
+
+        <div className="login-card-pop relative z-10 w-full max-w-sm rounded-3xl bg-white px-8 py-9 shadow-2xl ring-1 ring-black/5">
+          {/* Brand */}
+          <div className="mb-7 flex flex-col items-center">
+            <img
+              src="/cfpLogo.svg"
+              alt="CareerForce Pro"
+              className="h-10 w-auto object-contain cursor-pointer"
+              onClick={() => navigate('/')}
+            />
+            <span className="ai-recruitment-text mt-2 text-[11px] tracking-widest">
+              AI POWERED RECRUITMENT SOLUTIONS
             </span>
           </div>
-        </div>
-        <div className="flex-1 flex flex-col justify-center items-center px-10 py-8">
-          {/* <div className="text-center"> */}
-          {/* <h3 className="text-4xl font-bold">
-            <span className="text-primary">Career</span>
-            <span className="text-black">Force Pro</span>
-          </h3> */}
-          {/* </div> */}
-          {/* <div className="w-full max-w-md flex flex-col items-center bg-white rounded-3xl px-8 py-24 shadow-lg"> */}
-          <form
-            onSubmit={handleSubmit}
-            className="w-full max-w-md flex flex-col items-center bg-white rounded-3xl px-8 py-24 shadow-lg"
-          >
-            <div className="text-center">
-              <h2 className="text-4xl font-medium mb-2 font-sora">Login</h2>
-              <p className="text-lg text-gray-600 mb-6">Welcome to careerforce pro</p>
-            </div>
-            <div className="mb-4 w-90">
+
+          {/* Tabs */}
+          <div className="mb-7 flex rounded-full bg-gray-100 p-1 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setView('login')}
+              className={`flex-1 rounded-full py-1.5 cursor-pointer transition-all duration-200 ${
+                view === 'login' ? 'bg-white text-black shadow-sm' : 'text-gray-500'
+              }`}
+            >
+              Login
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('signup')}
+              className={`flex-1 rounded-full py-1.5 cursor-pointer transition-all duration-200 ${
+                view === 'signup' ? 'bg-white text-black shadow-sm' : 'text-gray-500'
+              }`}
+            >
+              Sign Up
+            </button>
+          </div>
+
+          {view === 'login' ? (
+            <form
+              key="login"
+              onSubmit={handleSubmit}
+              className="login-tab-fade flex flex-col gap-4"
+            >
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-900">Welcome back</h2>
+                <p className="mt-1 text-sm text-gray-500">Log in to continue to careerforce pro</p>
+              </div>
+
               <Input
                 name="email"
                 autoFocus
@@ -319,56 +478,146 @@ const Login = () => {
                 onChange={onHandleChange}
                 onKeyDown={handleKeyDown}
                 placeholder="Email"
-                className="w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
               />
-            </div>
-            <div className="w-90">
-              <div className="relative">
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  onChange={onHandleChange}
-                  onKeyDown={handleKeyDown}
-                  name="password"
-                  value={password}
-                  placeholder="Password"
-                  className="w-full !normal-case px-4 py-2 rounded-3xl pr-10 focus:ring focus:ring-brand-300 border-[var(--border)]"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-4 flex items-center text-gray-500 cursor-pointer"
-                  onClick={() => setLocalState({ showPassword: !showPassword })}
-                >
-                  {showPassword ? <FaEye /> : <FaEyeSlash />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-red-500 text-sm px-2 py-1">{errors.password}</p>
-              )}
-            </div>
-            <div className="flex w-90 justify-start py-4 px-1">
-              <Checkbox
-                checked={rememberMe}
-                onChange={(e) => setLocalState({ rememberMe: e.target.checked })}
-                className="custom-checkbox"
-              >
-                Remember Me?
-              </Checkbox>
-            </div>
-            <Button
-              type="submit"
-              appname="test"
-              disabled={!isFormValid || isLoading || isSubmitting.current}
-              className="w-90 text-white bg-button rounded-3xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'LOGGING IN...' : 'LOGIN'}
-            </Button>
 
-            <Link to="/forgot-password" className="text-primary text-sm hover:underline mt-4">
-              Forgot Password?
-            </Link>
-          </form>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                onChange={onHandleChange}
+                onKeyDown={handleKeyDown}
+                name="password"
+                value={password}
+                placeholder="Password"
+                error={errors.password}
+                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+                suffix={
+                  <button
+                    type="button"
+                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                    onClick={() => setLocalState({ showPassword: !showPassword })}
+                  >
+                    {showPassword ? <FaEye /> : <FaEyeSlash />}
+                  </button>
+                }
+              />
+
+              <div className="-mt-1 flex items-center justify-between">
+                <Checkbox
+                  checked={rememberMe}
+                  onChange={(e) => setLocalState({ rememberMe: e.target.checked })}
+                  className="custom-checkbox"
+                >
+                  Remember me
+                </Checkbox>
+                <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+
+              <Button
+                type="submit"
+                appname="test"
+                disabled={!isFormValid || isLoading || isSubmitting.current}
+                className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isLoading ? 'Logging in…' : 'Log in'}
+              </Button>
+
+              {isDevAuthBypassEnabled() && (
+                <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-400">
+                  Demo access:{' '}
+                  <span className="font-mono text-gray-500">
+                    {DEV_SEED_CREDENTIALS.email} / {DEV_SEED_CREDENTIALS.password}
+                  </span>
+                </p>
+              )}
+            </form>
+          ) : (
+            <form
+              key="signup"
+              onSubmit={handleSignUpSubmit}
+              className="login-tab-fade flex flex-col gap-4"
+            >
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-900">Create account</h2>
+                <p className="mt-1 text-sm text-gray-500">Get started with careerforce pro</p>
+              </div>
+
+              <Input
+                name="name"
+                autoFocus
+                error={signUpState.errors.name}
+                value={signUpState.name}
+                onChange={onSignUpChange}
+                placeholder="Full name"
+                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+              />
+
+              <Input
+                name="email"
+                error={signUpState.errors.email}
+                value={signUpState.email}
+                onChange={onSignUpChange}
+                placeholder="Email"
+                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+              />
+
+              <Input
+                type={signUpState.showPassword ? 'text' : 'password'}
+                onChange={onSignUpChange}
+                name="password"
+                value={signUpState.password}
+                placeholder="Password"
+                error={signUpState.errors.password}
+                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+                suffix={
+                  <button
+                    type="button"
+                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                    onClick={() => setSignUpState({ showPassword: !signUpState.showPassword })}
+                  >
+                    {signUpState.showPassword ? <FaEye /> : <FaEyeSlash />}
+                  </button>
+                }
+              />
+
+              <Input
+                type={signUpState.showConfirmPassword ? 'text' : 'password'}
+                onChange={onSignUpChange}
+                name="confirmPassword"
+                value={signUpState.confirmPassword}
+                placeholder="Confirm password"
+                error={signUpState.errors.confirmPassword}
+                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+                suffix={
+                  <button
+                    type="button"
+                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                    onClick={() =>
+                      setSignUpState({ showConfirmPassword: !signUpState.showConfirmPassword })
+                    }
+                  >
+                    {signUpState.showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
+                  </button>
+                }
+              />
+
+              <Button
+                type="submit"
+                appname="test"
+                className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white"
+              >
+                Create account
+              </Button>
+
+              <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-400">
+                Preview only — accounts aren&apos;t saved yet. Use the demo login on the Login tab
+                to explore the app.
+              </p>
+            </form>
+          )}
         </div>
-        <Footer className="fixed bottom-0 left-0 z-10 text-[var(--primary)]" />
+        <Footer className="relative z-10 mt-8 shrink-0 text-white/70" />
       </div>
     </>
   );

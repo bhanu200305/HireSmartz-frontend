@@ -1,8 +1,7 @@
 import { get } from 'lodash-es';
-import { getLocalStorageItem, setTokens } from '../auth/localstorage.helpers';
+import { getLocalStorageItem } from '../auth/localstorage.helpers';
 import { LOCALSTORAGE_KEYS } from '../../../constants/webAPI';
 import { jwtDecode } from 'jwt-decode';
-import { isDevAuthBypassEnabled, ensureDevBypassTokens } from '../auth/devAuthBypass';
 
 /**
  * Generic archive/unarchive handler for users and companies.
@@ -317,13 +316,11 @@ export const monthlyOptions = [
 ];
 
 export const verifyAuthToken = () => {
-  // DEV-ONLY: backend login isn't ready yet. See src/shared/utils/auth/devAuthBypass.ts
-  // and set VITE_BYPASS_AUTH=true in .env.local to skip real token validation.
-  if (isDevAuthBypassEnabled()) {
-    ensureDevBypassTokens(getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS), setTokens);
-    return true;
-  }
-
+  // There is no real backend yet, so "valid" here just means "a non-expired token
+  // exists in storage" — that token may be a real backend JWT, or the seeded
+  // dev-demo token minted by the login page (see src/shared/utils/auth/devAuthBypass.ts).
+  // Either way this always checks it for real: nothing auto-authenticates on app load,
+  // so an unauthenticated visit is always sent to /login first.
   const accessToken = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
   if (!accessToken) {
     return false;

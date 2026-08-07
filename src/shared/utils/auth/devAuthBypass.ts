@@ -1,13 +1,24 @@
 /**
- * DEV-ONLY AUTH BYPASS
+ * DEV-ONLY DEMO LOGIN
  * =====================
- * The backend team hasn't handed over a working login endpoint yet, so this lets
- * the frontend be developed/demoed without a real authentication flow.
+ * The backend team hasn't handed over a working login endpoint yet, so the app still
+ * needs a way to get past the login page during development/demos.
+ *
+ * Unlike the old version of this file, nothing here auto-logs anyone in on app load —
+ * the login page (src/components/Login/index.tsx) is always shown first to an
+ * unauthenticated visitor. What this file provides is a single seeded demo credential
+ * that the login form accepts *instead of* calling the real backend, plus the fake
+ * token/session-shape that credential logs you into.
  *
  * Enable it by setting VITE_BYPASS_AUTH=true in your .env.local (see .env.example).
  * It is OFF by default and does nothing unless that flag is explicitly set to 'true'.
+ * While it's on:
+ *  - Submitting the seeded email/password (DEV_SEED_CREDENTIALS below) on the login
+ *    form logs you in locally, without hitting the backend.
+ *  - The DevRoleSwitcher widget (bottom-right) is available so any role defined in
+ *    ROLE_AUTHORITIES can be previewed post-login.
  *
- * What it does when enabled:
+ * What the seeded login does:
  *  - Fabricates a fake (unsigned, client-side-only) JWT with plausible claims so that
  *    every place in the app that decodes the access token (PrivateRoute, permission
  *    checks, tenant/user id lookups, etc.) has something consistent to read.
@@ -16,11 +27,16 @@
  *  - Provides a LoginSlice payload so Redux state (role, authorities, canManageCompanySettings)
  *    looks "logged in" too, since some UI reads from Redux instead of the token directly.
  *
- * IMPORTANT: This does not talk to, mock, or replace any real backend call — API requests
- * will still hit VITE_BACKEND_ENDPOINT and will fail/404 until the real backend is wired up.
- * This only unblocks client-side route/UI gating. Remove or keep the flag OFF for any
- * build that talks to a real environment.
+ * IMPORTANT: This does not talk to, mock, or replace any real backend call — any other
+ * credentials still go through the real API (which will fail/404 until the real backend
+ * is wired up). Remove or keep the flag OFF for any build that talks to a real environment.
  */
+
+/** The one seeded credential the login page accepts while there's no real backend. */
+export const DEV_SEED_CREDENTIALS = {
+  email: 'admin@cfp.com',
+  password: 'admin123',
+};
 
 type DevBypassLoginPayload = {
   token: string;
@@ -81,29 +97,12 @@ export const getDevBypassLoginPayload = (token: string): DevBypassLoginPayload =
 
 let warnedOnce = false;
 
-/**
- * Idempotent: only writes tokens if none exist yet, so it won't stomp on a real
- * session if someone does manage to log in for real while the flag is on.
- * Returns the token in use (existing or freshly created) so callers can also
- * hydrate Redux state with it.
- */
-export const ensureDevBypassTokens = (
-  existingAccessToken: string | null,
-  setTokens: (accessToken: string, refreshToken: string) => void
-): string => {
-  if (!warnedOnce) {
-    console.warn(
-      '[devAuthBypass] VITE_BYPASS_AUTH is enabled — using a fake local session instead of real login. ' +
-        'Do not enable this against a real backend/environment.'
-    );
-    warnedOnce = true;
-  }
-
-  if (existingAccessToken) {
-    return existingAccessToken;
-  }
-
-  const token = createDevBypassToken();
-  setTokens(token, token);
-  return token;
+/** One-time console warning that the seeded demo login was used, not a real backend call. */
+export const warnDevBypassUsedOnce = (): void => {
+  if (warnedOnce) return;
+  console.warn(
+    '[devAuthBypass] Logged in with the seeded demo credential — using a fake local session, ' +
+      'not a real backend login. Do not enable VITE_BYPASS_AUTH against a real environment.'
+  );
+  warnedOnce = true;
 };

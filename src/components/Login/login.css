@@ -42,3 +42,47 @@
 .disabled-checkbox:hover .ant-checkbox-inner {
   border-color: #d9d9d9 !important;
 }
+
+/* Pop-in entrance for the centered login/sign-up card */
+.login-card-pop {
+  animation: login-card-pop 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes login-card-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card-pop {
+    animation: none;
+  }
+}
+
+/* Subtle fade when switching between the Login and Sign Up forms */
+.login-tab-fade {
+  animation: login-tab-fade 0.2s ease both;
+}
+
+@keyframes login-tab-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-tab-fade {
+    animation: none;
+  }
+}
