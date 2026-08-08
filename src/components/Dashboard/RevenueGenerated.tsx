@@ -4,14 +4,17 @@ import ComingSoon from '../../assets/svgs/ComingSoon.svg';
 
 const RevenueGenerated = () => {
   return (
-    <div className="bg-white rounded-xl p-4 w-full border" style={{ borderColor: 'var(--border)' }}>
+    <div
+      className="bg-white rounded-xl p-6 w-full border shadow-xs"
+      style={{ borderColor: 'var(--border)' }}
+    >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className={'w-13 h-13 flex items-center justify-center'}>
-            <img src={revenueGeneratedImage} alt="" />
+          <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-primary-50">
+            <img src={revenueGeneratedImage} alt="" className="w-6 h-6 object-contain" />
           </div>
-          <Link to="/finances" className="text-xl font-medium text-primary">
-            <h2 className="text-xl font-medium heading-font hover:underline hover:text-primary text-black">
+          <Link to="/finances" className="transition-colors hover:text-primary">
+            <h2 className="font-display text-lg font-semibold text-neutral-900">
               Revenue Generated
             </h2>
           </Link>
@@ -40,7 +43,7 @@ const RevenueGenerated = () => {
         <div className="mb-4">
           <img src={ComingSoon} alt="Coming Soon" className="w-50 h-50" />
         </div>
-        <p className="text-md text-gray-400">COMING SOON</p>
+        <p className="text-xs font-semibold tracking-widest text-neutral-400">COMING SOON</p>
       </div>
 
       {/* <div className="flex flex-row max-h-[400px] max-w-full"> */}

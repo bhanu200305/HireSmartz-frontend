@@ -97,21 +97,21 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
     <>
       {isLoading && <Loader />}
       <div
-        className="bg-white rounded-xl p-4 w-full border"
+        className="bg-white rounded-xl p-6 w-full border shadow-xs"
         style={{ borderColor: 'var(--border)' }}
       >
         <div className="flex justify-between items-center gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-13 h-13 flex items-center justify-center">
-              <img src={InterviewClosureImage} alt="" />
+            <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-primary-50">
+              <img src={InterviewClosureImage} alt="" className="w-6 h-6 object-contain" />
             </div>
-            <h2 className="text-xl font-medium heading-font">Interviews</h2>
+            <h2 className="font-display text-lg font-semibold text-neutral-900">Interviews</h2>
           </div>
 
           <div className="flex flex-wrap justify-between items-center gap-2">
             <div className="flex items-center gap-2">
               <div className="flex gap-2">
-                <div className="border border-[var(--border)] p-1 rounded-3xl w-full flex items-center gap-1 bg-white">
+                <div className="border border-[var(--border)] p-1 rounded-lg w-full flex items-center gap-1 bg-white">
                   <Select
                     dropdownStyle={{ minWidth: '100px' }}
                     prefix={
@@ -121,7 +121,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
                     placeholder="Year"
                     allowClear
                     className="w-full custom-select"
-                    popupClassName="rounded-3xl"
+                    popupClassName="rounded-xl"
                     value={filters?.year}
                     onChange={(value: number) => handleFilterChange('year', value)}
                   >
@@ -133,7 +133,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
                   </Select>
                 </div>
 
-                <div className="border border-[var(--border)] p-1 rounded-3xl w-full flex items-center gap-1 bg-white">
+                <div className="border border-[var(--border)] p-1 rounded-lg w-full flex items-center gap-1 bg-white">
                   <Select
                     dropdownStyle={{ minWidth: '100px' }}
                     style={{ width: '100px', fontSize: '14px' }}
@@ -143,7 +143,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
                     placeholder="Month"
                     allowClear
                     className="w-full custom-select"
-                    popupClassName="rounded-3xl"
+                    popupClassName="rounded-xl"
                     value={filters?.month}
                     onChange={(value: number) => handleFilterChange('month', value)}
                   >
@@ -155,7 +155,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
                   </Select>
                 </div>
 
-                <div className="border border-[var(--border)] p-1 rounded-3xl w-full flex items-center gap-1 bg-white">
+                <div className="border border-[var(--border)] p-1 rounded-lg w-full flex items-center gap-1 bg-white">
                   <Select
                     dropdownStyle={{ minWidth: '100px' }}
                     style={{ width: '130px', fontSize: '14px' }}
@@ -165,7 +165,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
                     placeholder="All Rounds"
                     allowClear
                     className="w-full custom-select"
-                    popupClassName="rounded-3xl"
+                    popupClassName="rounded-xl"
                     value={filters?.roundType}
                     onChange={(value: string) => handleFilterChange('roundType', value)}
                     options={interviewRoundOptions}
@@ -177,39 +177,31 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-row max-h-[400px] max-w-full">
-          <div className="space-y-4 pl-2">
+        <div className="flex flex-row max-h-[400px] max-w-full mt-2">
+          <div className="flex flex-col gap-5 pl-2 pt-2">
             <div>
-              <p className="text-xl font-semibold text-primary heading-font">
+              <p className="font-display text-2xl font-bold text-primary-600 tracking-tight">
                 {stats?.totalJobPosted ?? 0}
               </p>
-              <p className="text-sm border-b pb-2 w-35" style={{ borderColor: 'var(--border)' }}>
-                Total Jobs Posted
-              </p>
+              <p className="text-sm text-neutral-500 mt-0.5">Total Jobs Posted</p>
             </div>
             <div>
-              <p className="text-xl font-semibold text-primary heading-font">
+              <p className="font-display text-2xl font-bold text-primary-600 tracking-tight">
                 {stats?.totalInterviews ?? 0}
               </p>
-              <p className="text-sm border-b pb-2 w-35" style={{ borderColor: 'var(--border)' }}>
-                Completed Interviews
-              </p>
+              <p className="text-sm text-neutral-500 mt-0.5">Completed Interviews</p>
             </div>
             <div>
-              <p className="text-xl font-semibold text-primary heading-font">
+              <p className="font-display text-2xl font-bold text-primary-600 tracking-tight">
                 {allInterviews?.totalCandidates ?? 0}
               </p>
-              <p className="text-sm border-b pb-2 w-35" style={{ borderColor: 'var(--border)' }}>
-                Candidates Applied
-              </p>
+              <p className="text-sm text-neutral-500 mt-0.5">Candidates Applied</p>
             </div>
             <div>
-              <p className="text-xl font-semibold text-primary heading-font">
+              <p className="font-display text-2xl font-bold text-primary-600 tracking-tight">
                 {stats?.totalCandidateEngage ?? 0}
               </p>
-              <p className="text-sm border-b pb-2 w-35" style={{ borderColor: 'var(--border)' }}>
-                Candidates Engaged
-              </p>
+              <p className="text-sm text-neutral-500 mt-0.5">Candidates Engaged</p>
             </div>
           </div>
           {interviewData && interviewData?.interviewRounds?.length > 0 && total > 0 ? (
@@ -232,23 +224,23 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
               </ResponsiveContainer>
               <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex gap-6 mt-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-[#34D399]"></div>
-                  <div className="text-center">
-                    <p>Selected: {stats?.selectedCandidates ?? 'N/A'}</p>
-                  </div>
+                  <div className="w-3 h-3 rounded-full bg-[#34D399]"></div>
+                  <p className="text-sm font-medium text-neutral-700">
+                    Selected: {stats?.selectedCandidates ?? 'N/A'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-[#F87171]"></div>
-                  <div className="text-center">
-                    <p>Rejected: {stats?.rejectedCandidates ?? 'N/A'}</p>
-                  </div>
+                  <div className="w-3 h-3 rounded-full bg-[#F87171]"></div>
+                  <p className="text-sm font-medium text-neutral-700">
+                    Rejected: {stats?.rejectedCandidates ?? 'N/A'}
+                  </p>
                 </div>
               </div>
             </div>
           ) : (
             <div className="flex justify-center items-center flex-grow flex-col ml-12">
               <img src={EmptyChartImage} alt="No data available" className="w-50 h-50" />
-              <p className="text-gray-400 text-md mt-4">
+              <p className="text-neutral-400 text-sm mt-4">
                 Pie chart data not available for selected filters
               </p>
             </div>

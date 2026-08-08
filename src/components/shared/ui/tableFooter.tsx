@@ -17,16 +17,16 @@ const TableFooter: React.FC<TableFooterProps> = ({ onViewAll, title, count }) =>
   const formattedTitle = formatTitle(title);
 
   return (
-    <div className="relative text-sm text-gray-500 mt-4 flex items-center justify-between pr-6">
+    <div className="text-sm text-neutral-500 mt-4 pt-4 border-t border-neutral-100 flex items-center justify-between">
       <span>
         Showing latest {count} {formattedTitle}
       </span>
       <button
-        className="text-primary font-bold underline relative cursor-pointer"
+        className="group flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-primary cursor-pointer transition-colors hover:text-primary-700"
         onClick={onViewAll}
       >
-        VIEW ALL {title?.toUpperCase()}
-        <span className="absolute no-underline ml-1.5 text-accent">→</span>
+        View all {title}
+        <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">→</span>
       </button>
     </div>
   );

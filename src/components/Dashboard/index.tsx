@@ -41,21 +41,24 @@ const KpiCard = ({
   extra?: ReactNode;
 }) => {
   const valueNode = (
-    <p className="heading-font text-2xl font-bold" style={{ color: accent }}>
+    <p className="font-display text-3xl font-bold tracking-tight" style={{ color: accent }}>
       {value}
     </p>
   );
 
   return (
     <div
-      className="relative bg-white rounded-xl p-5 pt-10 border flex flex-col gap-2"
+      className="group relative bg-white rounded-xl p-6 pt-11 border flex flex-col gap-3 shadow-xs transition-shadow hover:shadow-sm"
       style={{ borderColor: 'var(--border)' }}
     >
-      <div className="absolute -top-6 left-5 w-14 h-14 flex items-center justify-center">
-        <img src={icon} alt="" className="w-full h-full" />
+      <div
+        className="absolute -top-6 left-6 w-14 h-14 flex items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-neutral-100 transition-transform group-hover:-translate-y-0.5"
+        aria-hidden
+      >
+        <img src={icon} alt="" className="w-9 h-9 object-contain" />
       </div>
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm text-gray-600 heading-font leading-snug">{label}</h3>
+        <h3 className="text-sm text-neutral-500 font-medium leading-snug">{label}</h3>
         {href ? (
           <Link to={href} className="hover:opacity-70 transition-opacity">
             {valueNode}
@@ -133,10 +136,26 @@ const Dashboard = () => {
     });
   }, [interviewFilters.year, interviewFilters.month]);
 
+  const greeting = (() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  })();
+
   return (
     <MainLayout>
-      <div className="w-full px-7 py-6 space-y-5">
-        <div className="grid grid-cols-4 gap-4">
+      <div className="w-full px-8 py-8 space-y-6">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-neutral-900 tracking-tight">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            {greeting}. Here&apos;s what&apos;s happening across careerforce pro today.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-4 gap-5">
           <KpiCard
             icon={customerImage}
             label={
@@ -147,7 +166,7 @@ const Dashboard = () => {
             }
             value={dashboardData?.totalElements}
             href="/company"
-            accent="#263d92"
+            accent="var(--primary-600)"
           />
 
           <KpiCard
@@ -159,13 +178,13 @@ const Dashboard = () => {
               </>
             }
             value={interviewData?.allInterviews?.totalInterviews ?? 'N/A'}
-            accent="#11b7dd"
+            accent="var(--accent-400)"
             extra={
               interviewData?.interviewRounds && interviewData.interviewRounds.length > 0 ? (
                 <div>
                   {interviewData.interviewRounds.map((round, index) => (
-                    <span key={round?.roundType} className="text-xs font-medium text-gray-500">
-                      {index > 0 && <span className="text-[#11b7dd]"> | </span>}
+                    <span key={round?.roundType} className="text-xs font-medium text-neutral-500">
+                      {index > 0 && <span className="text-accent-400"> | </span>}
                       {formatEnumString(round?.roundType)} - {round?.totalInterviews}
                     </span>
                   ))}
@@ -185,7 +204,7 @@ const Dashboard = () => {
                 }
                 value="N/A"
                 href="/finances"
-                accent="#059669"
+                accent="var(--success-solid)"
               />
 
               <KpiCard
@@ -193,13 +212,13 @@ const Dashboard = () => {
                 label="Predicted Upcoming Revenue"
                 value="N/A"
                 href="/finances"
-                accent="#263d92"
+                accent="var(--primary-600)"
               />
             </>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <CustomerTable
             headers={cfpCustomersHeaders}
             title="CFP Company"
@@ -222,7 +241,7 @@ const Dashboard = () => {
         </div>
 
         {role.name === 'Admin' || role?.name === 'User' ? null : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <RevenueGenerated />
             <UpcomingRevenue />
           </div>

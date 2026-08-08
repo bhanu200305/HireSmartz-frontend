@@ -454,7 +454,7 @@ const Header = () => {
   return (
     <>
       <header
-        className="sticky top-0 z-30 bg-white px-7 py-3 flex justify-end items-center w-full border-b"
+        className="sticky top-0 z-30 bg-white px-7 py-3.5 flex justify-end items-center w-full border-b"
         style={{ borderColor: 'var(--border)' }}
       >
         <div className="flex items-center justify-end gap-4">
@@ -466,8 +466,8 @@ const Header = () => {
               <div
                 style={{
                   backgroundColor: '#fff',
-                  borderRadius: 8,
-                  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.15)',
+                  borderRadius: 12,
+                  boxShadow: '0 8px 24px rgba(16, 26, 58, 0.12)',
                 }}
               >
                 <GlobalSearch
@@ -517,7 +517,7 @@ const Header = () => {
           </Dropdown>
 
           <div
-            className="border border-[var(--border)] p-1 rounded-3xl w-40 sm:w-50 gap-1 flex items-center"
+            className="border border-[var(--border)] p-1 rounded-lg w-40 sm:w-50 gap-1 flex items-center"
             style={{ backgroundColor: 'white' }}
           >
             <Select
@@ -525,7 +525,7 @@ const Header = () => {
               prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />}
               allowClear
               className="w-full custom-select my-select-with-divider"
-              popupClassName="rounded-3xl"
+              popupClassName="rounded-xl"
               value={getDisplayValue()}
               onChange={(value) => {
                 if (!value) {
@@ -595,10 +595,10 @@ const Header = () => {
               >
                 <div className="flex items-center gap-3 px-1 py-1 text-sm cursor-pointer">
                   <div className="flex flex-col">
-                    <span className="text-xs text-black">Welcome</span>
-                    <span className="font-semibold text-black">
+                    <span className="text-xs text-neutral-500">Welcome</span>
+                    <span className="font-semibold text-neutral-900">
                       {makeFirstLetterUpperCase(userData?.firstName)}{' '}
-                      <DownOutlined className="text-xs text-black cursor-pointer" />
+                      <DownOutlined className="text-xs text-neutral-500 cursor-pointer" />
                     </span>
                   </div>
                 </div>

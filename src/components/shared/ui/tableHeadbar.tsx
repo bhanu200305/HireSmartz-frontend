@@ -60,15 +60,11 @@ const TableHeadBar: React.FC<TableHeadBarProps> = ({
   return (
     <div className="flex justify-between items-center gap-5">
       <div className="flex items-center gap-3">
-        <div
-          className={`w-13 h-13 flex items-center justify-center `}
-          // onClick={onIconClick}
-          //  ${onIconClick ? 'cursor-pointer hover:opacity-70' : ''}
-        >
-          <img src={icon} alt="" />
+        <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-primary-50">
+          <img src={icon} alt="" className="w-6 h-6 object-contain" />
         </div>
         <h2
-          className={`text-xl font-medium ${onTitleClick ? 'cursor-pointer hover:underline hover:text-primary' : ''}`}
+          className={`font-display text-lg font-semibold text-neutral-900 ${onTitleClick ? 'cursor-pointer transition-colors hover:text-primary' : ''}`}
           onClick={onTitleClick}
         >
           {title}
@@ -77,14 +73,14 @@ const TableHeadBar: React.FC<TableHeadBarProps> = ({
       <div className="flex flex-wrap justify-between items-center gap-2">
         {title === 'Job Openings' && (
           <>
-            <div className="border border-[var(--border)] p-1 rounded-3xl w-full flex items-center gap-1 bg-white">
+            <div className="border border-[var(--border)] p-1 rounded-lg w-full flex items-center gap-1 bg-white">
               <Select
                 style={{ width: '120px', fontSize: '14px' }}
                 prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />}
                 placeholder="Status"
                 allowClear
                 className="w-full custom-select"
-                popupClassName="rounded-3xl"
+                popupClassName="rounded-xl"
                 onChange={handleStatusChange}
                 value={getSelectValue()}
               >

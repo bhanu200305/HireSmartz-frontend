@@ -33,8 +33,10 @@ const AntdCommonModal: React.FC<CommonModalProps> = ({
     >
       {(title || subtitle) && (
         <div className="mb-6 text-center">
-          {title && <h2 className="text-l font-semibold mb-2">{title}</h2>}
-          {subtitle && <p className="text-xs roboto-font">{subtitle}</p>}
+          {title && (
+            <h2 className="font-display text-lg font-semibold text-neutral-900 mb-1.5">{title}</h2>
+          )}
+          {subtitle && <p className="text-sm text-neutral-500">{subtitle}</p>}
         </div>
       )}
       <div className="modal-content">{children}</div>

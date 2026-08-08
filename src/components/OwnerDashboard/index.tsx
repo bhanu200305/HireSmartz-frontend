@@ -182,24 +182,24 @@ const OwnerDashboard = () => {
 
   return (
     <MainLayout>
-      <div className="w-full p-8 justify-start pt-16">
+      <div className="w-full px-7 py-6">
         {/* Top 4 cards */}
-        <div className="mt-6 grid grid-cols-4 gap-x-4">
+        <div className="grid grid-cols-4 gap-4">
           {(role.name === 'Super Admin' || role.name === 'Admin') && (
             <>
-              <CommonCard className="!bg-[#EBF0ED]">
+              <CommonCard>
                 <div className="relative">
                   <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
                     <img src={recruiterImage} alt="" />
                   </div>
                   <div className="pt-4 flex justify-between items-start">
                     <div>
-                      <h3 className="text-lg">
+                      <h3 className="text-sm text-neutral-500 font-medium">
                         Total Recruiters <br /> Onboarded
                       </h3>
                     </div>
                     <div className="cursor-pointer" onClick={handleViewAllRecruiters}>
-                      <p className="hover:underline hover:opacity-50 text-lg text-black font-bold">
+                      <p className="font-display hover:opacity-70 transition-opacity text-2xl text-primary-600 font-bold">
                         {localState.totalRecruiters}
                       </p>
                     </div>
@@ -207,19 +207,19 @@ const OwnerDashboard = () => {
                 </div>
               </CommonCard>
 
-              <CommonCard className="!bg-amber-50">
+              <CommonCard>
                 <div className="relative">
                   <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
                     <img src={hiringManagerImage} alt="" />
                   </div>
                   <div className="pt-4 flex justify-between items-start">
                     <div>
-                      <h3 className="text-lg">
+                      <h3 className="text-sm text-neutral-500 font-medium">
                         Total Hiring <br /> Manager Onboarded
                       </h3>
                     </div>
                     <div className="cursor-pointer" onClick={handleViewAllHiringManagers}>
-                      <p className="text-lg text-[#F58220] font-bold hover:underline hover:opacity-50">
+                      <p className="font-display text-2xl text-accent-400 font-bold hover:opacity-70 transition-opacity">
                         {localState.totalHiringManagers}
                       </p>
                     </div>
@@ -247,47 +247,39 @@ const OwnerDashboard = () => {
               </div>
             </div>
           </CommonCard> */}
-              <CommonCard className="!bg-brand-100">
+              <CommonCard>
                 <div className="relative">
                   <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
                     <img src={InterviewClosureImage} alt="" />
                   </div>
-                  <div className="pt-4">
+                  <div className="pt-4 flex flex-col gap-1.5">
                     <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="text-lg">Total Interviews</h3>
-                      </div>
-                      <div>
-                        <p className="text-lg text-[#6495EC] font-bold">
-                          {interviewData?.allInterviews?.totalInterviews ?? 'N/A'}
-                        </p>
-                      </div>
+                      <h3 className="text-sm text-neutral-500 font-medium">Total Interviews</h3>
+                      <p className="font-display text-lg text-primary-500 font-bold">
+                        {interviewData?.allInterviews?.totalInterviews ?? 'N/A'}
+                      </p>
                     </div>
 
                     <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="text-lg">Closure Rate</h3>
-                      </div>
-                      <div>
-                        <p className="text-lg text-[#6495EC] font-bold">
-                          {interviewData?.allInterviews?.closureRate
-                            ? `${interviewData.allInterviews.closureRate.toFixed(2)}%`
-                            : 'N/A'}
-                        </p>
-                      </div>
+                      <h3 className="text-sm text-neutral-500 font-medium">Closure Rate</h3>
+                      <p className="font-display text-lg text-primary-500 font-bold">
+                        {interviewData?.allInterviews?.closureRate
+                          ? `${interviewData.allInterviews.closureRate.toFixed(2)}%`
+                          : 'N/A'}
+                      </p>
                     </div>
                   </div>
                 </div>
               </CommonCard>
 
-              <CommonCard className="!bg-green-100">
+              <CommonCard>
                 <div className="relative">
                   <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
                     <img src={jobPostingImage} alt="" />
                   </div>
                   <div className="pt-4 flex justify-between items-start">
                     <div>
-                      <h3 className="text-lg">
+                      <h3 className="text-sm text-neutral-500 font-medium">
                         Total Job <br /> Postings
                       </h3>
                     </div>
@@ -295,7 +287,7 @@ const OwnerDashboard = () => {
                       className="flex flex-row items-center cursor-pointer"
                       onClick={() => navigate('/jobs')}
                     >
-                      <p className="text-lg text-[#2B934E] font-bold hover:underline hover:opacity-50">
+                      <p className="font-display text-2xl text-success font-bold hover:opacity-70 transition-opacity">
                         {jobOpeningsData?.totalElements}
                       </p>
                     </div>

@@ -1,23 +1,96 @@
 :root {
   color-scheme: light;
-  /* CareerForce Pro brand palette */
-  --primary: #263d92;
-  --primary-hover: #1d2f73;
-  --accent: #11b7dd;
-  --accent-hover: #0f9fc4;
-  --required-indicator-color: #dc2626;
-  --secondary: #11b7dd;
+
+  /* ============================================================
+     Design tokens — single source of truth for the CareerForce Pro
+     redesign. Raw values live here; Tailwind utility aliases
+     (--color-*, --font-*, --shadow-*) are declared in
+     tailwind-theme.css's @theme block, which is what actually wires
+     these into `bg-*`/`text-*`/`font-*`/`shadow-*` classes app-wide.
+     ============================================================ */
+
+  /* ---- Neutral scale — cool, blue-tinted gray (not flat gray) ---- */
+  --gray-25: #fafbfd;
+  --gray-50: #f5f7fa;
+  --gray-100: #ebeef4;
+  --gray-200: #dce1ec;
+  --gray-300: #c2c9da;
+  --gray-400: #9aa3bc;
+  --gray-500: #737e9c;
+  --gray-600: #545f7d;
+  --gray-700: #3d4761;
+  --gray-800: #262e45;
+  --gray-900: #151a2c;
+  --gray-950: #0b0e19;
+
+  /* ---- Primary — navy. The single primary accent: primary buttons,
+     active nav/tab states, links-as-actions. ---- */
+  --primary-50: #eef1fb;
+  --primary-100: #dce2f7;
+  --primary-200: #b4c0ed;
+  --primary-300: #8b9ee3;
+  --primary-400: #5870c9;
+  --primary-500: #34479f;
+  --primary-600: #263d92;
+  --primary-700: #1d2f73;
+  --primary-800: #182857;
+  --primary-900: #101a3a;
+
+  /* ---- Accent — cyan. Deliberately narrow role: focus rings, links,
+     small highlights, the logo mark — not a second competing primary. ---- */
+  --accent-50: #e8fbff;
+  --accent-100: #cdf3fc;
+  --accent-300: #7dd8ee;
+  --accent-400: #11b7dd;
+  --accent-500: #0f9fc4;
+  --accent-600: #0c7f9e;
+
+  /* ---- Semantic status ---- */
+  --success-bg: #ecfdf5;
+  --success-text: #065f46;
+  --success-solid: #059669;
+  --warning-bg: #fffbeb;
+  --warning-text: #92400e;
+  --warning-solid: #d97706;
+  --danger-bg: #fef2f2;
+  --danger-text: #991b1b;
+  --danger-solid: #dc2626;
+  --info-bg: #e8fbff;
+  --info-text: #0c7f9e;
+  --info-solid: #11b7dd;
+
+  /* ---- Elevation — navy-tinted shadows, reserved for floating/overlay UI
+     (dropdowns, modals, popovers). Cards use a 1px border, not a shadow. ---- */
+  --elevation-tint: 16, 26, 58;
+  --elevation-xs: 0 1px 2px rgba(var(--elevation-tint), 0.06);
+  --elevation-sm: 0 2px 8px rgba(var(--elevation-tint), 0.08);
+  --elevation-md: 0 8px 24px rgba(var(--elevation-tint), 0.12);
+  --elevation-lg: 0 16px 48px rgba(var(--elevation-tint), 0.18);
+
+  /* ---- Type — Inter (UI/body/tables/forms) + Plus Jakarta Sans
+     (display/headings/KPI values). Loaded in index.html. ---- */
+  --font-family-sans: 'Inter', ui-sans-serif, -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --font-family-display:
+    'Plus Jakarta Sans', ui-sans-serif, -apple-system, 'Segoe UI', system-ui, sans-serif;
+
+  /* ---- CareerForce Pro brand — flat aliases kept for existing call sites.
+     Values are now sourced from the scales above instead of hand-picked hex. ---- */
+  --primary: var(--primary-600);
+  --primary-hover: var(--primary-700);
+  --accent: var(--accent-400);
+  --accent-hover: var(--accent-500);
+  --required-indicator-color: var(--danger-solid);
+  --secondary: var(--accent-400);
   --background: #ffffff;
-  --button: #263d92;
-  --text: #333333;
-  /* --border: #e2e2e2; */
-  --border: #d1d1d1;
-  --login-background: #f9fafc;
+  --button: var(--primary-600);
+  --text: var(--gray-900);
+  --border: var(--gray-200);
+  --login-background: var(--gray-50);
   --light-text: #e2e2e2;
-  --surface-indigo: #eef2ff;
-  --surface-gray: #f9fafc;
-  --surface-cyan: #ecf7fb;
-  --focus-ring: rgba(125, 216, 238, 0.6);
+  --surface-indigo: var(--primary-50);
+  --surface-gray: var(--gray-50);
+  --surface-cyan: var(--accent-50);
+  --focus-ring: rgba(17, 183, 221, 0.35);
 }
 
 input[type='number']::-webkit-inner-spin-button,

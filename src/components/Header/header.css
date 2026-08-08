@@ -28,7 +28,7 @@
   height: 48px !important;
   border-radius: 9999px !important;
   background: transparent !important;
-  color: #263d92 !important;
+  color: var(--primary-600) !important;
   border: 0 !important;
 }
 
@@ -45,7 +45,7 @@
 .notification-bell-button:hover,
 .notification-bell-button:focus,
 .notification-bell-button:active {
-  background: #eef2ff !important;
+  background: var(--primary-50) !important;
   color: var(--primary) !important;
 }
 
@@ -53,7 +53,7 @@
 .notification-bell-button--active:hover,
 .notification-bell-button--active:focus,
 .notification-bell-button--active:active {
-  background: #263d92 !important;
+  background: var(--primary-600) !important;
   color: #ffffff !important;
 }
 
@@ -90,7 +90,7 @@
   line-height: 22px;
   font-size: 10px;
   font-weight: 700;
-  background: #c2410c !important;
+  background: var(--danger-solid) !important;
   border: 2px solid #ffffff !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
   text-align: center;
@@ -121,12 +121,12 @@
 .notification-dropdown .ant-select-item,
 .notification-dropdown .ant-select-item-option-content,
 .notification-dropdown .ant-spin-text {
-  font-family: 'Roboto', sans-serif !important;
+  font-family: var(--font-sans) !important;
 }
 
 .notification-filter-wrapper {
   height: 36px;
-  border: 2px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 9999px;
   background-color: #ffffff;
   display: flex;

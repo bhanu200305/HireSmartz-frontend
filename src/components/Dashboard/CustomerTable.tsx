@@ -36,7 +36,10 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
 }) => {
   const navigate = useNavigate();
   return (
-    <div className="bg-white rounded-xl p-4 w-full border" style={{ borderColor: 'var(--border)' }}>
+    <div
+      className="bg-white rounded-xl p-6 w-full border shadow-xs"
+      style={{ borderColor: 'var(--border)' }}
+    >
       <TableHeadBar
         icon={icon}
         title={title}
@@ -46,10 +49,10 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
         onIconClick={onIconClick}
       />
 
-      <div className="overflow-x-auto overflow-y-auto max-h-[400px] max-w-full mt-3">
+      <div className="overflow-x-auto overflow-y-auto max-h-[400px] max-w-full mt-4">
         <table className="min-w-[500px] text-sm text-left w-full">
-          <thead className="sticky top-0 bg-surface-gray p-0 m-0">
-            <tr className="text-gray-500">
+          <thead className="sticky top-0 bg-neutral-50 p-0 m-0">
+            <tr className="text-neutral-500">
               {headers?.map((item, index) => (
                 <th
                   key={index}
@@ -66,18 +69,18 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
             <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
               {data &&
                 data?.data.slice(0, 5)?.map((customer: any) => (
-                  <tr key={customer?.id} className="hover:bg-surface-gray transition-colors">
+                  <tr key={customer?.id} className="hover:bg-neutral-50 transition-colors">
                     <td
-                      className="py-3 px-3 text-primary underline hover:text-primary cursor-pointer font-medium"
+                      className="py-3 px-3 text-primary hover:text-primary-700 cursor-pointer font-semibold transition-colors"
                       onClick={() => navigate(`/view-company?companyId=${customer.id}`)}
                     >
                       {customer?.cfpCustomerName}
                     </td>
-                    <td className="py-3 px-3 text-gray-600">
+                    <td className="py-3 px-3 text-neutral-600">
                       {customer.countryCode}
                       {formatPhoneNumber(customer.phone)}
                     </td>
-                    <td className="py-3 px-3 text-gray-700 font-medium">
+                    <td className="py-3 px-3 text-neutral-700 font-medium">
                       {customer.interviewCount || 0}
                     </td>
                     <td className="py-3 px-3">
@@ -85,7 +88,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
                         {customer.packages || 0}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-gray-600">{customer.recruiters || 0}</td>
+                    <td className="py-3 px-3 text-neutral-600">{customer.recruiters || 0}</td>
                   </tr>
                 ))}
             </tbody>

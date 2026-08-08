@@ -3,6 +3,7 @@
 @import 'tailwindcss';
 
 @theme {
+  /* ---- Flat semantic aliases (existing call sites: bg-primary, text-accent, etc.) ---- */
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-accent: var(--accent);
@@ -19,21 +20,85 @@
   --color-surface-gray: var(--surface-gray);
   --color-surface-cyan: var(--surface-cyan);
 
-  /* CareerForce Pro brand scale — anchored on the palette's cyan (400) and
-     navy (600) accents, tinted light-to-dark for badges, borders, rings. */
-  --color-brand-50: #f9fafc;
-  --color-brand-100: #eef2ff;
-  --color-brand-200: #ecf7fb;
-  --color-brand-300: #7dd8ee;
-  --color-brand-400: #11b7dd;
-  --color-brand-500: #0f9fc4;
-  --color-brand-600: #263d92;
-  --color-brand-700: #1d2f73;
-  --color-brand-800: #162457;
-  --color-brand-900: #0f1a3d;
+  /* ---- Brand scale — kept for existing bg-brand-N / text-brand-N call sites
+     (Sidebar, Header, Dashboard). Now sourced from the primary/accent ramps
+     below instead of separately hand-picked hex values. ---- */
+  --color-brand-50: var(--gray-50);
+  --color-brand-100: var(--primary-100);
+  --color-brand-200: var(--accent-100);
+  --color-brand-300: var(--accent-300);
+  --color-brand-400: var(--accent-400);
+  --color-brand-500: var(--accent-500);
+  --color-brand-600: var(--primary-600);
+  --color-brand-700: var(--primary-700);
+  --color-brand-800: var(--primary-800);
+  --color-brand-900: var(--primary-900);
 
-  --font-dm-sans: 'DM Sans', sans-serif;
-  --font-roboto: 'Roboto', sans-serif;
-  --font-intro-pro: 'Intro Pro', sans-serif;
-  --font-sora: 'Sora', sans-serif;
+  /* ---- Primary ramp — the single primary accent ---- */
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+
+  /* ---- Accent ramp — used sparingly, not a second primary ---- */
+  --color-accent-50: var(--accent-50);
+  --color-accent-100: var(--accent-100);
+  --color-accent-300: var(--accent-300);
+  --color-accent-400: var(--accent-400);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+
+  /* ---- Neutral scale — cool, blue-tinted gray ---- */
+  --color-neutral-25: var(--gray-25);
+  --color-neutral-50: var(--gray-50);
+  --color-neutral-100: var(--gray-100);
+  --color-neutral-200: var(--gray-200);
+  --color-neutral-300: var(--gray-300);
+  --color-neutral-400: var(--gray-400);
+  --color-neutral-500: var(--gray-500);
+  --color-neutral-600: var(--gray-600);
+  --color-neutral-700: var(--gray-700);
+  --color-neutral-800: var(--gray-800);
+  --color-neutral-900: var(--gray-900);
+  --color-neutral-950: var(--gray-950);
+
+  /* ---- Semantic status colors ---- */
+  --color-success-bg: var(--success-bg);
+  --color-success-text: var(--success-text);
+  --color-success: var(--success-solid);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-text: var(--warning-text);
+  --color-warning: var(--warning-solid);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-text: var(--danger-text);
+  --color-danger: var(--danger-solid);
+  --color-info-bg: var(--info-bg);
+  --color-info-text: var(--info-text);
+  --color-info: var(--info-solid);
+
+  /* ---- Type — Inter (UI/body/tables) + Plus Jakarta Sans (display/headings).
+     `font-roboto`/`font-sora`/`font-dm-sans`/`font-intro-pro` are kept pointing
+     at the same two families so the handful of existing call sites render the
+     new fonts without needing to be touched — new code should reach for
+     `font-sans` / `font-display` instead. ---- */
+  --font-sans: var(--font-family-sans);
+  --font-display: var(--font-family-display);
+  --font-roboto: var(--font-family-sans);
+  --font-sora: var(--font-family-display);
+  --font-dm-sans: var(--font-family-sans);
+  --font-intro-pro: var(--font-family-display);
+
+  /* ---- Elevation — navy-tinted, reserved for floating/overlay elements.
+     Overrides Tailwind's default (black) shadow scale so every existing
+     `shadow-sm`/`shadow-md` class site-wide picks up the brand tint for free. ---- */
+  --shadow-xs: var(--elevation-xs);
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
+  --shadow-lg: var(--elevation-lg);
 }

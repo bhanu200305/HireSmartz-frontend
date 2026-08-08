@@ -1,4 +1,6 @@
 export { CommonCard } from './ui/card';
+export { Badge } from './ui/badge';
+export type { BadgeStatus } from './ui/badge';
 export { Button } from './ui/button';
 export { Code } from './ui/code';
 export { Form } from './ui/form';

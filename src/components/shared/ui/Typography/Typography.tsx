@@ -19,19 +19,19 @@ const defaultTags: Record<TypographyVariant, ElementType> = {
 };
 
 const variantClasses: Record<TypographyVariant, string> = {
-  h1: 'font-sora font-bold text-4xl md:text-5xl tracking-tight leading-tight',
-  h2: 'font-sora font-bold text-3xl md:text-4xl tracking-tight leading-snug',
-  h3: 'font-sora font-semibold text-2xl md:text-3xl leading-snug',
-  h4: 'font-sora font-semibold text-xl md:text-2xl leading-normal',
-  h5: 'font-sora font-medium text-lg md:text-xl leading-normal',
-  h6: 'font-sora font-medium text-base md:text-lg leading-normal',
-  body1: 'font-roboto font-normal text-base leading-relaxed',
-  body2: 'font-roboto font-normal text-sm leading-relaxed',
-  subtitle1: 'font-sora font-medium text-base leading-normal',
-  subtitle2: 'font-sora font-medium text-sm leading-normal',
-  caption: 'font-roboto font-normal text-xs leading-normal text-gray-500',
-  button: 'font-roboto font-semibold text-sm tracking-wider uppercase',
-  overline: 'font-roboto font-medium text-[10px] tracking-widest uppercase',
+  h1: 'font-display font-bold text-4xl md:text-5xl tracking-tight leading-tight',
+  h2: 'font-display font-bold text-3xl md:text-4xl tracking-tight leading-snug',
+  h3: 'font-display font-semibold text-2xl md:text-3xl leading-snug',
+  h4: 'font-display font-semibold text-xl md:text-2xl leading-normal',
+  h5: 'font-display font-medium text-lg md:text-xl leading-normal',
+  h6: 'font-display font-medium text-base md:text-lg leading-normal',
+  body1: 'font-sans font-normal text-base leading-relaxed',
+  body2: 'font-sans font-normal text-sm leading-relaxed',
+  subtitle1: 'font-display font-medium text-base leading-normal',
+  subtitle2: 'font-display font-medium text-sm leading-normal',
+  caption: 'font-sans font-normal text-xs leading-normal text-neutral-500',
+  button: 'font-sans font-semibold text-sm tracking-wider uppercase',
+  overline: 'font-sans font-medium text-[10px] tracking-widest uppercase',
 };
 
 const colorClasses: Record<TypographyColor, string> = {
@@ -39,9 +39,9 @@ const colorClasses: Record<TypographyColor, string> = {
   secondary: 'text-secondary',
   'text-main': 'text-text',
   'text-muted': 'text-gray-500',
-  error: 'text-red-500',
-  success: 'text-emerald-600',
-  warning: 'text-amber-500',
+  error: 'text-danger',
+  success: 'text-success',
+  warning: 'text-warning',
   inherit: 'text-inherit',
 };
 

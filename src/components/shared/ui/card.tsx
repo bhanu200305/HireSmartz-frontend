@@ -13,10 +13,12 @@ interface CardProps {
 export const CommonCard = ({ children, className, extra }: CardProps) => {
   return (
     <Card
-      // title={title}
       extra={extra}
-      className={clsx('shadow-md rounded-2xl', className)}
-      styles={{ body: { padding: '18px' } }}
+      // Flat + bordered by default (a hairline border does the separating),
+      // with only a barely-there resting shadow — heavier shadows are
+      // reserved for floating/overlay elements (dropdowns, modals).
+      className={clsx('rounded-xl border border-neutral-200 shadow-xs', className)}
+      styles={{ body: { padding: '24px' } }}
     >
       {children}
     </Card>

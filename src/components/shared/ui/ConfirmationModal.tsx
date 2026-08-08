@@ -26,19 +26,19 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
   cancelText = 'CANCEL',
 }) => {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-[2000] p-4">
-      <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg max-w-lg w-full relative">
+    <div className="fixed inset-0 flex items-center justify-center bg-neutral-900/50 z-[2000] p-4">
+      <div className="bg-white p-6 rounded-2xl shadow-lg border border-neutral-100 max-w-lg w-full relative">
         {/* Title section with proper text wrapping */}
-        <div className="flex items-start justify-between mb-4 gap-3">
-          <h2 className="text-lg text-black/60 font-semibold flex-1 break-words overflow-hidden">
+        <div className="flex items-start justify-between mb-5 gap-3">
+          <h2 className="font-display text-lg font-semibold text-neutral-900 flex-1 break-words overflow-hidden">
             {titleHasHtml(title) ? <span dangerouslySetInnerHTML={{ __html: title }} /> : title}
           </h2>
           <button
-            className="text-primary cursor-pointer shrink-0 flex-shrink-0 mt-1"
+            className="text-neutral-400 cursor-pointer shrink-0 flex-shrink-0 -mt-1 -mr-1 p-1.5 rounded-lg transition-colors hover:bg-neutral-100 hover:text-neutral-600"
             onClick={() => onClose(true)}
             aria-label="Close"
           >
-            <MdClose size={20} />
+            <MdClose size={18} />
           </button>
         </div>
 
@@ -53,7 +53,7 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
               type="button"
               onClick={() => onClose()}
               disabled={disableClose || isLoading}
-              className="w-full border border-gray-300 text-gray-600 py-2 px-4 rounded-3xl cursor-pointer hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+              className="w-full border border-neutral-200 text-neutral-700 bg-white py-2.5 px-4 rounded-lg cursor-pointer font-medium transition-colors hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {cancelText}
             </button>
@@ -64,7 +64,7 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
               type="button"
               onClick={onConfirm}
               disabled={disableConfirm || isLoading}
-              className="w-full bg-primary text-white py-2 px-4 rounded-3xl cursor-pointer hover:bg-primary-dark transition disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base flex items-center justify-center gap-2"
+              className="w-full bg-primary-600 text-white py-2.5 px-4 rounded-lg cursor-pointer font-medium transition-colors hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2"
             >
               {isLoading && <Loader />}
               {confirmText}
