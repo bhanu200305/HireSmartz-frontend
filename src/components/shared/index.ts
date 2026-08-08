@@ -1,4 +1,8 @@
 export { CommonCard } from './ui/card';
+export { PeekDeck } from './ui/PeekDeck';
+export type { PeekDeckPanel } from './ui/PeekDeck';
+export { StatCardRow } from './ui/StatCardRow';
+export type { StatCardData, StatCardVariant } from './ui/StatCardRow';
 export { Badge } from './ui/badge';
 export type { BadgeStatus } from './ui/badge';
 export { Button } from './ui/button';

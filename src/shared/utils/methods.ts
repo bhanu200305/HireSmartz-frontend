@@ -268,6 +268,16 @@ export const formatEnumString = (input: string): string => {
   }
 };
 
+// Cosmetic display formatter only — does not change what value is passed in
+// or when it's "N/A" vs a real number, just how a missing value reads on screen.
+export const formatStatValue = (value: string | number | null | undefined): string => {
+  if (value === null || value === undefined) return 'Not enough data yet';
+  if (typeof value === 'number') return Number.isNaN(value) ? 'Not enough data yet' : String(value);
+  const trimmed = value.trim();
+  if (trimmed === '' || trimmed.toUpperCase() === 'N/A') return 'Not enough data yet';
+  return trimmed;
+};
+
 export const getStatusStyle = (status: string) => {
   switch (status) {
     case 'SELECTED':

@@ -1,9 +1,9 @@
 import MainLayout from '../../layouts/MainLayout';
 import { useEffect, useReducer, useState } from 'react';
 import recruiterImage from '../../assets/svgs/recruiter.svg';
-import { CommonCard } from '../shared';
+import { PeekDeck, StatCardRow } from '../shared';
+import type { PeekDeckPanel } from '../shared';
 import hiringManagerImage from '../../assets/svgs/hiringManager.svg';
-import InterviewClosureImage from '../../assets/svgs/interviewClosure.svg';
 import jobPostingImage from '../../assets/svgs/jobPosting.svg';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch, shallowEqual } from 'react-redux';
@@ -24,6 +24,7 @@ import { setJobOpeningFilters } from '../../redux/slices/jobOpeningFilterSlice';
 import { setOrgUserFilters } from '../../redux/slices/OrgUserFilterSlice';
 import { StatusFilters } from '../shared/ui/tableHeadbar';
 import ActivityFeed from '../Dashboard/ActivityFeed';
+import { TeamOutlined, UserOutlined, AuditOutlined, SolutionOutlined } from '@ant-design/icons';
 const OwnerDashboard = () => {
   const navigate = useNavigate();
   const [localState, setLocalState] = useReducer(
@@ -180,184 +181,157 @@ const OwnerDashboard = () => {
     }
   }, [role, status, recruiterRoleId, hiringManagerRoleId]);
 
+  const canViewOrgStats = role.name === 'Super Admin' || role.name === 'Admin';
+  const canViewActivity = role.name !== 'User';
+
+  const interviewsAndClosure =
+    interviewData?.allInterviews?.totalInterviews != null &&
+    interviewData?.allInterviews?.closureRate != null
+      ? `${interviewData.allInterviews.totalInterviews} / ${interviewData.allInterviews.closureRate.toFixed(2)}%`
+      : undefined;
+
+  const panels: PeekDeckPanel[] = [
+    ...(canViewOrgStats
+      ? [
+          {
+            key: 'team',
+            label: 'Team',
+            content: (
+              <div className="grid grid-cols-2 gap-4">
+                <CustomerTable
+                  headers={recruitersHeaders}
+                  title="Recruiters"
+                  data={localState.recruiterData}
+                  role={role.type}
+                  icon={recruiterImage}
+                  getData={() =>
+                    getDashboardData(recruiterRoleId, 'recruiterData', 'totalRecruiters')
+                  }
+                  count={localState.totalRecruiters < 5 ? localState.totalRecruiters : 5}
+                  onViewAll={handleViewAllRecruiters}
+                  onTitleClick={handleViewAllRecruiters}
+                  onIconClick={handleViewAllRecruiters}
+                />
+                <CustomerTable
+                  headers={hiringManagersHeaders}
+                  title="Hiring Managers"
+                  data={localState.hiringManagerData}
+                  role={role.type}
+                  icon={hiringManagerImage}
+                  getData={() =>
+                    getDashboardData(
+                      hiringManagerRoleId,
+                      'hiringManagerData',
+                      'totalHiringManagers'
+                    )
+                  }
+                  count={localState.totalHiringManagers < 5 ? localState.totalHiringManagers : 5}
+                  onViewAll={handleViewAllHiringManagers}
+                  onTitleClick={handleViewAllHiringManagers}
+                  onIconClick={handleViewAllHiringManagers}
+                />
+              </div>
+            ),
+          },
+        ]
+      : []),
+    ...(canViewActivity
+      ? [
+          {
+            key: 'activity',
+            label: 'Activity Feed — Latest Updates',
+            content: <ActivityFeed />,
+          },
+        ]
+      : []),
+    {
+      key: 'pipeline',
+      label: 'Pipeline',
+      content: (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="min-w-0">
+            <InterviewDashboard
+              interviewData={interviewData}
+              filters={interviewFilters}
+              isLoading={isLoading}
+              handleFilterChange={handleFilterChange}
+              isOwner={role?.type === 'owner' ? true : false}
+            />
+          </div>
+          <div className="min-w-0">
+            <CustomerTable
+              headers={jobOpeningsHeaders}
+              title="Job Openings"
+              data={jobOpeningsData?.data || []}
+              role={role.type}
+              icon={jobPostingImage}
+              onStatusChange={handleJobStatusChange}
+              currentFilters={jobOpeningFilters}
+              count={jobCount < 5 ? jobCount : 5}
+              onViewAll={handleViewAllJobs}
+              onTitleClick={() => navigate('/jobs')}
+              onIconClick={() => navigate('/jobs')}
+            />
+          </div>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <MainLayout>
-      <div className="w-full px-7 py-6">
-        {/* Top 4 cards */}
-        <div className="grid grid-cols-4 gap-4">
-          {(role.name === 'Super Admin' || role.name === 'Admin') && (
-            <>
-              <CommonCard>
-                <div className="relative">
-                  <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                    <img src={recruiterImage} alt="" />
-                  </div>
-                  <div className="pt-4 flex justify-between items-start">
-                    <div>
-                      <h3 className="text-sm text-neutral-500 font-medium">
-                        Total Recruiters <br /> Onboarded
-                      </h3>
-                    </div>
-                    <div className="cursor-pointer" onClick={handleViewAllRecruiters}>
-                      <p className="font-display hover:opacity-70 transition-opacity text-2xl text-primary-600 font-bold">
-                        {localState.totalRecruiters}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CommonCard>
-
-              <CommonCard>
-                <div className="relative">
-                  <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                    <img src={hiringManagerImage} alt="" />
-                  </div>
-                  <div className="pt-4 flex justify-between items-start">
-                    <div>
-                      <h3 className="text-sm text-neutral-500 font-medium">
-                        Total Hiring <br /> Manager Onboarded
-                      </h3>
-                    </div>
-                    <div className="cursor-pointer" onClick={handleViewAllHiringManagers}>
-                      <p className="font-display text-2xl text-accent-400 font-bold hover:opacity-70 transition-opacity">
-                        {localState.totalHiringManagers}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CommonCard>
-
-              {/* <CommonCard className="!bg-brand-100">
-            <div className="relative">
-              <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                <img src={InterviewClosureImage} alt="" />
-              </div>
-              <div className="pt-6 flex justify-between items-center">
-                <div className="mt-2">
-                  <h3 className="text-lg">
+      <div className="w-full px-7 py-6 space-y-6">
+        {canViewOrgStats && (
+          <StatCardRow
+            cards={[
+              {
+                icon: <TeamOutlined />,
+                label: (
+                  <>
+                    Total Recruiters <br /> Onboarded
+                  </>
+                ),
+                value: localState.totalRecruiters,
+                variant: 'neutral',
+                onClick: handleViewAllRecruiters,
+              },
+              {
+                icon: <UserOutlined />,
+                label: (
+                  <>
+                    Total Hiring <br /> Manager Onboarded
+                  </>
+                ),
+                value: localState.totalHiringManagers,
+                variant: 'orange',
+                onClick: handleViewAllHiringManagers,
+              },
+              {
+                icon: <AuditOutlined />,
+                label: (
+                  <>
                     Total Interviews & <br /> Closure Rate
-                  </h3>
-                </div>
-                <div className="flex flex-row items-center">
-                  <p className="text-3xl text-[#6495EC] font-bold">
-                    {interviewData?.allInterviews?.totalInterviews ?? 'N/A'}/
-                    {interviewData?.allInterviews?.closureRate.toFixed(2) ?? 'N/A'}%
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CommonCard> */}
-              <CommonCard>
-                <div className="relative">
-                  <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                    <img src={InterviewClosureImage} alt="" />
-                  </div>
-                  <div className="pt-4 flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-sm text-neutral-500 font-medium">Total Interviews</h3>
-                      <p className="font-display text-lg text-primary-500 font-bold">
-                        {interviewData?.allInterviews?.totalInterviews ?? 'N/A'}
-                      </p>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-sm text-neutral-500 font-medium">Closure Rate</h3>
-                      <p className="font-display text-lg text-primary-500 font-bold">
-                        {interviewData?.allInterviews?.closureRate
-                          ? `${interviewData.allInterviews.closureRate.toFixed(2)}%`
-                          : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CommonCard>
-
-              <CommonCard>
-                <div className="relative">
-                  <div className="absolute -top-12 left-0 w-16 h-16 flex items-center justify-center">
-                    <img src={jobPostingImage} alt="" />
-                  </div>
-                  <div className="pt-4 flex justify-between items-start">
-                    <div>
-                      <h3 className="text-sm text-neutral-500 font-medium">
-                        Total Job <br /> Postings
-                      </h3>
-                    </div>
-                    <div
-                      className="flex flex-row items-center cursor-pointer"
-                      onClick={() => navigate('/jobs')}
-                    >
-                      <p className="font-display text-2xl text-success font-bold hover:opacity-70 transition-opacity">
-                        {jobOpeningsData?.totalElements}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CommonCard>
-            </>
-          )}
-        </div>
-
-        {role.name !== 'User' && (
-          <div className="mt-6 grid gap-x-4">
-            <ActivityFeed />
-          </div>
+                  </>
+                ),
+                value: interviewsAndClosure,
+                variant: 'blue',
+              },
+              {
+                icon: <SolutionOutlined />,
+                label: (
+                  <>
+                    Total Job <br /> Postings
+                  </>
+                ),
+                value: jobOpeningsData?.totalElements,
+                variant: 'green',
+                href: '/jobs',
+              },
+            ]}
+          />
         )}
 
-        {/* Recruiters & Hiring Managers */}
-        {(role.name === 'Super Admin' || role.name === 'Admin') && (
-          <div className="mt-6 grid grid-cols-2 gap-x-4">
-            <CustomerTable
-              headers={recruitersHeaders}
-              title="Recruiters"
-              data={localState.recruiterData}
-              role={role.type}
-              icon={recruiterImage}
-              getData={() => getDashboardData(recruiterRoleId, 'recruiterData', 'totalRecruiters')}
-              count={localState.totalRecruiters < 5 ? localState.totalRecruiters : 5}
-              onViewAll={handleViewAllRecruiters}
-              onTitleClick={handleViewAllRecruiters}
-              onIconClick={handleViewAllRecruiters}
-            />
-            <CustomerTable
-              headers={hiringManagersHeaders}
-              title="Hiring Managers"
-              data={localState.hiringManagerData}
-              role={role.type}
-              icon={hiringManagerImage}
-              getData={() =>
-                getDashboardData(hiringManagerRoleId, 'hiringManagerData', 'totalHiringManagers')
-              }
-              count={localState.totalHiringManagers < 5 ? localState.totalHiringManagers : 5}
-              onViewAll={handleViewAllHiringManagers}
-              onTitleClick={handleViewAllHiringManagers}
-              onIconClick={handleViewAllHiringManagers}
-            />
-          </div>
-        )}
-
-        <div className="mt-6 grid grid-cols-2 gap-x-4">
-          <InterviewDashboard
-            interviewData={interviewData}
-            filters={interviewFilters}
-            isLoading={isLoading}
-            handleFilterChange={handleFilterChange}
-            isOwner={role?.type === 'owner' ? true : false}
-          />
-          <CustomerTable
-            headers={jobOpeningsHeaders}
-            title="Job Openings"
-            data={jobOpeningsData?.data || []}
-            role={role.type}
-            icon={jobPostingImage}
-            onStatusChange={handleJobStatusChange}
-            currentFilters={jobOpeningFilters}
-            count={jobCount < 5 ? jobCount : 5}
-            onViewAll={handleViewAllJobs}
-            onTitleClick={() => navigate('/jobs')}
-            onIconClick={() => navigate('/jobs')}
-          />
-        </div>
+        {panels.length > 1 ? <PeekDeck panels={panels} /> : panels[0]?.content}
       </div>
     </MainLayout>
   );

@@ -1,11 +1,8 @@
-import { useEffect, useState, ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 import customerImage from '../../assets/svgs/customers.svg';
-import interviewsImage from '../../assets/svgs/interviews.svg';
-import revenueGeneratedImage from '../../assets/svgs/revenueGenerated.svg';
-import upcomingRevenueImage from '../../assets/svgs/upcomingRevenue.svg';
 import { cfpCustomersHeaders } from '../../constants/dashboardConstants';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import CustomerTable from './CustomerTable';
 import InterviewDashboard from './InterviewDashboard';
 import { useSelector, useDispatch } from 'react-redux';
@@ -19,58 +16,9 @@ import { setcfpDashboardFilters } from '../../redux/slices/CFPDashboardFilterSli
 import { useInterviewSummaryDashboardMutation } from '../../api/job-service/Dashboard/JobOpening';
 import { formatEnumString } from '../../shared/utils/methods';
 import { StatusFilters } from '../shared/ui/tableHeadbar';
-
-// Presentational-only KPI tile shared by the four Dashboard summary cards.
-// Keeps the existing circular badge icon assets, just gives every card a
-// consistent white/bordered surface and a value color drawn from the
-// CareerForce Pro brand tokens (see DESIGN_SYSTEM.md) instead of one-off
-// pastel backgrounds/hex values per card.
-const KpiCard = ({
-  icon,
-  label,
-  value,
-  href,
-  accent,
-  extra,
-}: {
-  icon: string;
-  label: ReactNode;
-  value: ReactNode;
-  href?: string;
-  accent: string;
-  extra?: ReactNode;
-}) => {
-  const valueNode = (
-    <p className="font-display text-3xl font-bold tracking-tight" style={{ color: accent }}>
-      {value}
-    </p>
-  );
-
-  return (
-    <div
-      className="group relative bg-white rounded-xl p-6 pt-11 border flex flex-col gap-3 shadow-xs transition-shadow hover:shadow-sm"
-      style={{ borderColor: 'var(--border)' }}
-    >
-      <div
-        className="absolute -top-6 left-6 w-14 h-14 flex items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-neutral-100 transition-transform group-hover:-translate-y-0.5"
-        aria-hidden
-      >
-        <img src={icon} alt="" className="w-9 h-9 object-contain" />
-      </div>
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm text-neutral-500 font-medium leading-snug">{label}</h3>
-        {href ? (
-          <Link to={href} className="hover:opacity-70 transition-opacity">
-            {valueNode}
-          </Link>
-        ) : (
-          valueNode
-        )}
-      </div>
-      {extra}
-    </div>
-  );
-};
+import { PeekDeck, StatCardRow } from '../shared';
+import type { PeekDeckPanel } from '../shared';
+import { BankOutlined, AuditOutlined, DollarOutlined, RiseOutlined } from '@ant-design/icons';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -143,6 +91,72 @@ const Dashboard = () => {
     return 'Good evening';
   })();
 
+  const canViewRevenue = role.name !== 'Admin' && role.name !== 'User';
+
+  const interviewBreakdown =
+    interviewData?.interviewRounds && interviewData.interviewRounds.length > 0 ? (
+      <div>
+        {interviewData.interviewRounds.map((round, index) => (
+          <span key={round?.roundType} className="text-xs font-medium text-neutral-500">
+            {index > 0 && <span className="text-accent-400"> | </span>}
+            {formatEnumString(round?.roundType)} - {round?.totalInterviews}
+          </span>
+        ))}
+      </div>
+    ) : undefined;
+
+  const panels: PeekDeckPanel[] = [
+    {
+      key: 'company-interviews',
+      label: 'Company & Interviews',
+      content: (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="min-w-0">
+            <CustomerTable
+              headers={cfpCustomersHeaders}
+              title="CFP Company"
+              role={role.type}
+              data={dashboardData}
+              icon={customerImage}
+              onStatusChange={handleStatusChange}
+              count={cfpuserCount < 5 ? cfpuserCount : 5}
+              onViewAll={() => navigate('/company')}
+              onTitleClick={() => navigate('/company')}
+              onIconClick={() => navigate('/company')}
+            />
+          </div>
+          <div className="min-w-0">
+            <InterviewDashboard
+              interviewData={interviewData}
+              filters={interviewFilters}
+              isLoading={isLoading}
+              handleFilterChange={handleFilterChange}
+              isOwner={role?.type === 'owner' ? true : false}
+            />
+          </div>
+        </div>
+      ),
+    },
+    ...(canViewRevenue
+      ? [
+          {
+            key: 'revenue',
+            label: 'Revenue',
+            content: (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="min-w-0">
+                  <RevenueGenerated />
+                </div>
+                <div className="min-w-0">
+                  <UpcomingRevenue />
+                </div>
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <MainLayout>
       <div className="w-full px-8 py-8 space-y-6">
@@ -155,97 +169,58 @@ const Dashboard = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-4 gap-5">
-          <KpiCard
-            icon={customerImage}
-            label={
-              <>
-                Total Onboarded <br />
-                CFP Company
-              </>
-            }
-            value={dashboardData?.totalElements}
-            href="/company"
-            accent="var(--primary-600)"
-          />
+        <StatCardRow
+          cards={[
+            {
+              icon: <BankOutlined />,
+              label: (
+                <>
+                  Total Onboarded <br />
+                  CFP Company
+                </>
+              ),
+              value: dashboardData?.totalElements,
+              variant: 'neutral',
+              href: '/company',
+            },
+            {
+              icon: <AuditOutlined />,
+              label: (
+                <>
+                  Total Interviews
+                  <br /> Conducted
+                </>
+              ),
+              value: interviewData?.allInterviews?.totalInterviews,
+              variant: 'orange',
+              footer: interviewBreakdown,
+            },
+            ...(canViewRevenue
+              ? [
+                  {
+                    icon: <DollarOutlined />,
+                    label: (
+                      <>
+                        Revenue <br /> Generated
+                      </>
+                    ),
+                    value: 'N/A',
+                    variant: 'blue' as const,
+                    href: '/finances',
+                  },
+                  {
+                    icon: <RiseOutlined />,
+                    label: 'Predicted Upcoming Revenue',
+                    value: 'N/A',
+                    variant: 'green' as const,
+                    href: '/finances',
+                  },
+                ]
+              : []),
+          ]}
+        />
 
-          <KpiCard
-            icon={interviewsImage}
-            label={
-              <>
-                Total Interviews
-                <br /> Conducted
-              </>
-            }
-            value={interviewData?.allInterviews?.totalInterviews ?? 'N/A'}
-            accent="var(--accent-400)"
-            extra={
-              interviewData?.interviewRounds && interviewData.interviewRounds.length > 0 ? (
-                <div>
-                  {interviewData.interviewRounds.map((round, index) => (
-                    <span key={round?.roundType} className="text-xs font-medium text-neutral-500">
-                      {index > 0 && <span className="text-accent-400"> | </span>}
-                      {formatEnumString(round?.roundType)} - {round?.totalInterviews}
-                    </span>
-                  ))}
-                </div>
-              ) : undefined
-            }
-          />
-
-          {role.name === 'Admin' || role.name === 'User' ? null : (
-            <>
-              <KpiCard
-                icon={revenueGeneratedImage}
-                label={
-                  <>
-                    Revenue <br /> Generated
-                  </>
-                }
-                value="N/A"
-                href="/finances"
-                accent="var(--success-solid)"
-              />
-
-              <KpiCard
-                icon={upcomingRevenueImage}
-                label="Predicted Upcoming Revenue"
-                value="N/A"
-                href="/finances"
-                accent="var(--primary-600)"
-              />
-            </>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-5">
-          <CustomerTable
-            headers={cfpCustomersHeaders}
-            title="CFP Company"
-            role={role.type}
-            data={dashboardData}
-            icon={customerImage}
-            onStatusChange={handleStatusChange}
-            count={cfpuserCount < 5 ? cfpuserCount : 5}
-            onViewAll={() => navigate('/company')}
-            onTitleClick={() => navigate('/company')}
-            onIconClick={() => navigate('/company')}
-          />
-          <InterviewDashboard
-            interviewData={interviewData}
-            filters={interviewFilters}
-            isLoading={isLoading}
-            handleFilterChange={handleFilterChange}
-            isOwner={role?.type === 'owner' ? true : false}
-          />
-        </div>
-
-        {role.name === 'Admin' || role?.name === 'User' ? null : (
-          <div className="grid grid-cols-2 gap-5">
-            <RevenueGenerated />
-            <UpcomingRevenue />
-          </div>
-        )}
+        {panels.length > 1 ? <PeekDeck panels={panels} /> : panels[0]?.content}
       </div>
     </MainLayout>
   );

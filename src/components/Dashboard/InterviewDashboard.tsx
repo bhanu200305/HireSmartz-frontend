@@ -100,7 +100,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
         className="bg-white rounded-xl p-6 w-full border shadow-xs"
         style={{ borderColor: 'var(--border)' }}
       >
-        <div className="flex justify-between items-center gap-5">
+        <div className="flex flex-wrap justify-between items-center gap-5">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-primary-50">
               <img src={InterviewClosureImage} alt="" className="w-6 h-6 object-contain" />
