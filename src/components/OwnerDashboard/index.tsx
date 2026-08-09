@@ -331,7 +331,7 @@ const OwnerDashboard = () => {
           />
         )}
 
-        {panels.length > 1 ? <PeekDeck panels={panels} /> : panels[0]?.content}
+        <PeekDeck panels={panels} />
       </div>
     </MainLayout>
   );

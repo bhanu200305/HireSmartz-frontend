@@ -140,12 +140,14 @@ const MyCompany: React.FC = () => {
     }
   );
 
+  const hasValidCompanyId = Boolean(parsedCompanyId) && !isNaN(Number(parsedCompanyId));
+
   React.useEffect(() => {
-    if (currentTab === '1') {
+    if (currentTab === '1' && hasValidCompanyId) {
       refetch();
       refetchDepartments();
     }
-  }, [currentTab, refetch, refetchDepartments]);
+  }, [currentTab, hasValidCompanyId, refetch, refetchDepartments]);
 
   const handleTabChange = (key: string) => {
     if (shouldShowCompanyDetailsOnly) {
