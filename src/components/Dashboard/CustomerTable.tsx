@@ -1,4 +1,5 @@
 import React from 'react';
+import clsx from 'clsx';
 import { formatPhoneNumber } from '../../shared/utils/methods';
 import TableHeadBar, { StatusFilters } from '../shared/ui/tableHeadbar';
 import OwnerTableBody from '../OwnerDashboard/OwnerTableBody';
@@ -19,6 +20,8 @@ type CustomerTableProps = {
   count?: number;
   onTitleClick?: () => void;
   onIconClick?: () => void;
+  /** When true, the card stretches to fill its parent's height instead of sizing to content. */
+  fillHeight?: boolean;
 };
 
 const CustomerTable: React.FC<CustomerTableProps> = ({
@@ -33,11 +36,15 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
   count,
   onTitleClick,
   onIconClick,
+  fillHeight,
 }) => {
   const navigate = useNavigate();
   return (
     <div
-      className="bg-white rounded-xl p-6 w-full border shadow-xs"
+      className={clsx(
+        'bg-white rounded-xl p-6 w-full border shadow-xs',
+        fillHeight && 'h-full flex flex-col'
+      )}
       style={{ borderColor: 'var(--border)' }}
     >
       <TableHeadBar
@@ -49,7 +56,12 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
         onIconClick={onIconClick}
       />
 
-      <div className="overflow-x-auto overflow-y-auto max-h-[400px] max-w-full mt-4">
+      <div
+        className={clsx(
+          'overflow-x-auto overflow-y-auto max-w-full mt-4',
+          fillHeight ? 'flex-1 min-h-0' : 'max-h-[400px]'
+        )}
+      >
         <table className="min-w-[500px] text-sm text-left w-full">
           <thead className="sticky top-0 bg-neutral-50 p-0 m-0">
             <tr className="text-neutral-500">

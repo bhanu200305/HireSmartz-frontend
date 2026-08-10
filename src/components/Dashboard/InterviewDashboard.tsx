@@ -1,4 +1,5 @@
 import { Select } from 'antd';
+import clsx from 'clsx';
 import InterviewClosureImage from '../../assets/svgs/interviewClosure.svg';
 import { MdOutlineFilterAlt } from 'react-icons/md';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -19,6 +20,8 @@ type InterviewDashboardProps = {
   isLoading: boolean;
   handleFilterChange: (field: 'month' | 'year' | 'roundType', value: number | string) => void;
   isOwner?: boolean;
+  /** When true, the card stretches to fill its parent's height instead of sizing to content. */
+  fillHeight?: boolean;
 };
 
 const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
@@ -27,6 +30,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
   isLoading,
   handleFilterChange,
   isOwner = false,
+  fillHeight,
 }) => {
   const { allInterviews } = interviewData || {};
   const { interviewRounds } = interviewData || {};
@@ -97,7 +101,10 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
     <>
       {isLoading && <Loader />}
       <div
-        className="bg-white rounded-xl p-6 w-full border shadow-xs"
+        className={clsx(
+          'bg-white rounded-xl p-6 w-full border shadow-xs',
+          fillHeight && 'h-full flex flex-col'
+        )}
         style={{ borderColor: 'var(--border)' }}
       >
         <div className="flex flex-wrap justify-between items-center gap-5">
@@ -177,32 +184,29 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-row max-h-[400px] max-w-full mt-2">
-          <div className="flex flex-col gap-5 pl-2 pt-2">
-            <div>
-              <p className="font-display text-2xl font-bold text-primary-600 tracking-tight">
-                {stats?.totalJobPosted ?? 0}
-              </p>
-              <p className="text-sm text-neutral-500 mt-0.5">Total Jobs Posted</p>
-            </div>
-            <div>
-              <p className="font-display text-2xl font-bold text-primary-600 tracking-tight">
-                {stats?.totalInterviews ?? 0}
-              </p>
-              <p className="text-sm text-neutral-500 mt-0.5">Completed Interviews</p>
-            </div>
-            <div>
-              <p className="font-display text-2xl font-bold text-primary-600 tracking-tight">
-                {allInterviews?.totalCandidates ?? 0}
-              </p>
-              <p className="text-sm text-neutral-500 mt-0.5">Candidates Applied</p>
-            </div>
-            <div>
-              <p className="font-display text-2xl font-bold text-primary-600 tracking-tight">
-                {stats?.totalCandidateEngage ?? 0}
-              </p>
-              <p className="text-sm text-neutral-500 mt-0.5">Candidates Engaged</p>
-            </div>
+        <div
+          className={clsx(
+            'flex flex-col lg:flex-row max-w-full mt-2 gap-4',
+            fillHeight ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-[400px]'
+          )}
+        >
+          <div className="grid w-full shrink-0 grid-cols-2 content-start gap-3 pt-2 sm:gap-4 lg:w-auto lg:max-w-[280px]">
+            {[
+              { label: 'Total Jobs Posted', value: stats?.totalJobPosted ?? 0 },
+              { label: 'Completed Interviews', value: stats?.totalInterviews ?? 0 },
+              { label: 'Candidates Applied', value: allInterviews?.totalCandidates ?? 0 },
+              { label: 'Candidates Engaged', value: stats?.totalCandidateEngage ?? 0 },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="rounded-xl border border-neutral-100 bg-neutral-50/70 px-3 py-3 sm:px-4 sm:py-4"
+              >
+                <p className="font-display text-xl font-bold text-primary-600 tracking-tight sm:text-2xl">
+                  {item.value}
+                </p>
+                <p className="mt-0.5 text-xs text-neutral-500 sm:text-sm">{item.label}</p>
+              </div>
+            ))}
           </div>
           {interviewData && interviewData?.interviewRounds?.length > 0 && total > 0 ? (
             <div className="flex justify-center flex-grow relative">

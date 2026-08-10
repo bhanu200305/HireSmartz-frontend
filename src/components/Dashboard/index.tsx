@@ -14,10 +14,8 @@ import { useCFPDashboardQuery } from '../../api/analytics-service/Dashboard/CFPD
 
 import { setcfpDashboardFilters } from '../../redux/slices/CFPDashboardFilterSlice';
 import { useInterviewSummaryDashboardMutation } from '../../api/job-service/Dashboard/JobOpening';
-import { formatEnumString } from '../../shared/utils/methods';
 import { StatusFilters } from '../shared/ui/tableHeadbar';
-import { PeekDeck, StatCardRow } from '../shared';
-import type { PeekDeckPanel } from '../shared';
+import DashboardCarousel, { DashboardSlide } from './DashboardCarousel';
 import { BankOutlined, AuditOutlined, DollarOutlined, RiseOutlined } from '@ant-design/icons';
 
 const Dashboard = () => {
@@ -93,134 +91,75 @@ const Dashboard = () => {
 
   const canViewRevenue = role.name !== 'Admin' && role.name !== 'User';
 
-  const interviewBreakdown =
-    interviewData?.interviewRounds && interviewData.interviewRounds.length > 0 ? (
-      <div>
-        {interviewData.interviewRounds.map((round, index) => (
-          <span key={round?.roundType} className="text-xs font-medium text-neutral-500">
-            {index > 0 && <span className="text-accent-400"> | </span>}
-            {formatEnumString(round?.roundType)} - {round?.totalInterviews}
-          </span>
-        ))}
-      </div>
-    ) : undefined;
-
-  const panels: PeekDeckPanel[] = [
+  const slides: DashboardSlide[] = [
     {
-      key: 'company-interviews',
-      label: 'Company & Interviews',
+      key: 'cfp-company',
+      label: 'CFP Company',
+      icon: <BankOutlined />,
       content: (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="min-w-0">
-            <CustomerTable
-              headers={cfpCustomersHeaders}
-              title="CFP Company"
-              role={role.type}
-              data={dashboardData}
-              icon={customerImage}
-              onStatusChange={handleStatusChange}
-              count={cfpuserCount < 5 ? cfpuserCount : 5}
-              onViewAll={() => navigate('/company')}
-              onTitleClick={() => navigate('/company')}
-              onIconClick={() => navigate('/company')}
-            />
-          </div>
-          <div className="min-w-0">
-            <InterviewDashboard
-              interviewData={interviewData}
-              filters={interviewFilters}
-              isLoading={isLoading}
-              handleFilterChange={handleFilterChange}
-              isOwner={role?.type === 'owner' ? true : false}
-            />
-          </div>
-        </div>
+        <CustomerTable
+          headers={cfpCustomersHeaders}
+          title="CFP Company"
+          role={role.type}
+          data={dashboardData}
+          icon={customerImage}
+          onStatusChange={handleStatusChange}
+          count={cfpuserCount < 5 ? cfpuserCount : 5}
+          onViewAll={() => navigate('/company')}
+          onTitleClick={() => navigate('/company')}
+          onIconClick={() => navigate('/company')}
+          fillHeight
+        />
+      ),
+    },
+    {
+      key: 'interviews',
+      label: 'Interviews',
+      icon: <AuditOutlined />,
+      content: (
+        <InterviewDashboard
+          interviewData={interviewData}
+          filters={interviewFilters}
+          isLoading={isLoading}
+          handleFilterChange={handleFilterChange}
+          isOwner={role?.type === 'owner' ? true : false}
+          fillHeight
+        />
       ),
     },
     ...(canViewRevenue
       ? [
           {
-            key: 'revenue',
-            label: 'Revenue',
-            content: (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="min-w-0">
-                  <RevenueGenerated />
-                </div>
-                <div className="min-w-0">
-                  <UpcomingRevenue />
-                </div>
-              </div>
-            ),
+            key: 'revenue-generated',
+            label: 'Revenue Generated',
+            icon: <DollarOutlined />,
+            content: <RevenueGenerated />,
+          },
+          {
+            key: 'upcoming-revenue',
+            label: 'Predicted Upcoming Revenue',
+            icon: <RiseOutlined />,
+            content: <UpcomingRevenue />,
           },
         ]
       : []),
   ];
 
   return (
-    <MainLayout>
-      <div className="w-full px-8 py-8 space-y-6">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-neutral-900 tracking-tight">
+    <MainLayout fullHeight>
+      <div className="flex h-full min-h-0 w-full flex-col px-5 py-4 sm:px-8 sm:py-5">
+        <div className="mb-3 shrink-0 sm:mb-4">
+          <h1 className="font-display text-xl font-bold text-neutral-900 tracking-tight sm:text-2xl">
             Dashboard
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-500 sm:text-sm">
             {greeting}. Here&apos;s what&apos;s happening across careerforce pro today.
           </p>
         </div>
 
-        <StatCardRow
-          cards={[
-            {
-              icon: <BankOutlined />,
-              label: (
-                <>
-                  Total Onboarded <br />
-                  CFP Company
-                </>
-              ),
-              value: dashboardData?.totalElements,
-              variant: 'neutral',
-              href: '/company',
-            },
-            {
-              icon: <AuditOutlined />,
-              label: (
-                <>
-                  Total Interviews
-                  <br /> Conducted
-                </>
-              ),
-              value: interviewData?.allInterviews?.totalInterviews,
-              variant: 'orange',
-              footer: interviewBreakdown,
-            },
-            ...(canViewRevenue
-              ? [
-                  {
-                    icon: <DollarOutlined />,
-                    label: (
-                      <>
-                        Revenue <br /> Generated
-                      </>
-                    ),
-                    value: 'N/A',
-                    variant: 'blue' as const,
-                    href: '/finances',
-                  },
-                  {
-                    icon: <RiseOutlined />,
-                    label: 'Predicted Upcoming Revenue',
-                    value: 'N/A',
-                    variant: 'green' as const,
-                    href: '/finances',
-                  },
-                ]
-              : []),
-          ]}
-        />
-
-        <PeekDeck panels={panels} />
+        <div className="min-h-0 flex-1">
+          <DashboardCarousel slides={slides} />
+        </div>
       </div>
     </MainLayout>
   );

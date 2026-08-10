@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
@@ -10,7 +11,17 @@ import {
 } from '../shared/utils/auth/localstorage.helpers';
 import { LOCALSTORAGE_KEYS } from '../constants/webAPI';
 
-const MainLayout = ({ children }: { children: React.ReactNode }) => {
+interface MainLayoutProps {
+  children: React.ReactNode;
+  /**
+   * When true, locks the page to the viewport height (h-screen + overflow
+   * hidden) instead of the default min-h-screen scrolling page, so the
+   * content area must fit without a page-level vertical scrollbar.
+   */
+  fullHeight?: boolean;
+}
+
+const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
   const navigate = useNavigate();
   const hideNavbarPaths = ['/profile', '/change-password'];
   const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
@@ -133,14 +144,23 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const hideSidebar = hideNavbarPaths.includes(window.location.pathname);
 
   return (
-    <div className="w-full min-h-screen bg-surface-gray">
+    <div
+      className={clsx(
+        'w-full bg-surface-gray',
+        fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'
+      )}
+    >
       {!hideSidebar && <Sidebar />}
       <div
-        className="flex flex-col min-h-screen"
+        className={clsx('flex flex-col', fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen')}
         style={{ marginLeft: hideSidebar ? 0 : SIDEBAR_WIDTH }}
       >
         <Header />
-        <div className="flex-grow w-full">{children}</div>
+        <div
+          className={clsx('w-full', fullHeight ? 'flex-1 min-h-0 overflow-hidden' : 'flex-grow')}
+        >
+          {children}
+        </div>
         <Footer />
       </div>
     </div>

@@ -1,0 +1,58 @@
+/* Animated gradient border "frame" around each carousel slide. Flows
+   continuously on the active slide and freezes (but stays visible, dimmed
+   by the slide's own opacity) on the peeking neighbors — so the border
+   visibly "comes alive" as a slide pops into focus. */
+.cfp-gradient-frame {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 1.15rem;
+  padding: 2.5px;
+  background: linear-gradient(
+    115deg,
+    var(--primary-600) 0%,
+    var(--accent-400) 30%,
+    var(--primary-400) 55%,
+    var(--accent-500) 80%,
+    var(--primary-600) 100%
+  );
+  background-size: 260% 260%;
+  animation: cfp-gradient-flow 6.5s ease-in-out infinite;
+  box-shadow:
+    0 16px 36px rgba(38, 61, 146, 0.16),
+    0 2px 10px rgba(15, 159, 196, 0.12);
+  transition: box-shadow 320ms ease-out;
+}
+
+.cfp-gradient-frame--active {
+  box-shadow:
+    0 20px 48px rgba(38, 61, 146, 0.22),
+    0 4px 16px rgba(15, 159, 196, 0.2);
+}
+
+.cfp-gradient-frame__inner {
+  height: 100%;
+  width: 100%;
+  border-radius: calc(1.15rem - 2.5px);
+  overflow: hidden;
+  background: #fff;
+}
+
+@keyframes cfp-gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cfp-gradient-frame {
+    animation: none;
+  }
+}
