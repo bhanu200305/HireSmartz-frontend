@@ -26,11 +26,16 @@
  *    so it doesn't need a parallel code path.
  *  - Provides a LoginSlice payload so Redux state (role, authorities, canManageCompanySettings)
  *    looks "logged in" too, since some UI reads from Redux instead of the token directly.
+ *  - Seeds a full dynamic `resolvedRole` (baseline permissions + one per-location override) so
+ *    the Roles & Permissions feature, and the location-aware permission resolver, can be
+ *    exercised end to end with no backend at all.
  *
  * IMPORTANT: This does not talk to, mock, or replace any real backend call — any other
  * credentials still go through the real API (which will fail/404 until the real backend
  * is wired up). Remove or keep the flag OFF for any build that talks to a real environment.
  */
+import { ALL_AUTHORITIES, Authorities } from '../../../constants/authorities.constant';
+import type { Role } from '../../../types';
 
 /** The one seeded credential the login page accepts while there's no real backend. */
 export const DEV_SEED_CREDENTIALS = {
@@ -46,9 +51,41 @@ type DevBypassLoginPayload = {
   role: { name: string; type: string };
   userId: string;
   refreshToken: string;
+  resolvedRole: Role;
+  activeLocationId: number;
 };
 
 const DEV_BYPASS_USER_ID = 'dev-bypass-user';
+
+/** Headquarters gets everything; the Remote Office override demonstrates a role
+ * granting a narrower set at a different location — same role, two locations,
+ * two effective permission sets. */
+const DEV_BYPASS_LOCATION_HQ = 1;
+const DEV_BYPASS_LOCATION_REMOTE = 2;
+
+const DEV_BYPASS_ROLE: Role = {
+  id: -1,
+  roleName: 'Dev Bypass Owner',
+  scope: 'platform',
+  isSystemRole: false,
+  permissions: ALL_AUTHORITIES,
+  locationPermissions: [
+    {
+      locationId: DEV_BYPASS_LOCATION_HQ,
+      locationName: 'Headquarters',
+      permissions: ALL_AUTHORITIES,
+    },
+    {
+      locationId: DEV_BYPASS_LOCATION_REMOTE,
+      locationName: 'Remote Office',
+      permissions: [
+        Authorities.DASHBOARD_VIEW,
+        Authorities.JOB_OPENING_VIEW,
+        Authorities.ACTIVITY_FEED,
+      ],
+    },
+  ],
+};
 
 export const isDevAuthBypassEnabled = (): boolean => {
   return import.meta.env.VITE_BYPASS_AUTH === 'true';
@@ -87,12 +124,14 @@ export const createDevBypassToken = (): string => {
 
 export const getDevBypassLoginPayload = (token: string): DevBypassLoginPayload => ({
   token,
-  authorities: ['*'],
+  authorities: ALL_AUTHORITIES,
   rememberMe: true,
   canManageCompanySettings: true,
   role: { name: 'Dev Bypass Owner', type: 'owner' },
   userId: DEV_BYPASS_USER_ID,
   refreshToken: token,
+  resolvedRole: DEV_BYPASS_ROLE,
+  activeLocationId: DEV_BYPASS_LOCATION_HQ,
 });
 
 let warnedOnce = false;

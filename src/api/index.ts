@@ -33,6 +33,7 @@ const CACHE_TAG_TYPES = [
   'JobBatches',
   'SearchResults',
   'QrCodes',
+  'Roles',
 ];
 
 const isPasswordChangeInvalidationError = (message: string): boolean => {

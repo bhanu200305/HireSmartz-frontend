@@ -25,6 +25,7 @@ import { useImpersonateByUserMutation } from '../../api/authentication-service/I
 import { get } from 'lodash-es';
 import ImpersonationModal from './ImpersonationModal';
 import { buildInternalGlobalSearchRequestDto } from '../../shared/utils/filters/internalSearchPayload';
+import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 
 const { Option } = Select;
 
@@ -34,6 +35,7 @@ type CompanyActionRecord = User & {
 
 const CustomerTable = () => {
   const role = useSelector((state: RootState) => state.LoginSlice.role);
+  const effectivePermissions = useEffectivePermissions();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
@@ -336,7 +338,7 @@ const CustomerTable = () => {
             if (item.key === 'impersonate') {
               return role?.name === 'Master Super Admin';
             }
-            if (hasFeatureAccess('user', item.key as any, role)) return true;
+            if (hasFeatureAccess('user', item.key as any, role, effectivePermissions)) return true;
             return false;
           }),
         }}
@@ -416,7 +418,12 @@ const CustomerTable = () => {
                   <Option value="ARCHIVED">Archived</Option>
                 </Select>
               </div>
-              {!hasFeatureAccess(role.name.toLowerCase() as any, 'view', role) && (
+              {!hasFeatureAccess(
+                role.name.toLowerCase() as any,
+                'view',
+                role,
+                effectivePermissions
+              ) && (
                 <Button
                   appname="add user"
                   className="w-100% text-white bg-button rounded-3xl px-4 py-2 flex items-center space-x-2"

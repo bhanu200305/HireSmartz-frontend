@@ -20,6 +20,7 @@ import { formatPhoneNumber, handleDateValue } from '../../shared/utils/methods';
 import { handleArchive, handleResendInvite } from '../../shared/utils/business-logic';
 import { COL } from '../shared/ui/Columns';
 import { hasFeatureAccess } from '../../shared/utils/auth/getAccess';
+import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 
 import { useResendInviteMutation } from '../../api/tenant-service/User/reinviteUser';
 import renderHighlightedField from '../shared/ui/RenderHighlightedField';
@@ -38,6 +39,7 @@ const UserTable = () => {
   const [globalSearchBaseQuery, setGlobalSearchBaseQuery] = useState('');
   const [globalSearchField, setGlobalSearchField] = useState('');
   const { role } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  const effectivePermissions = useEffectivePermissions();
   const filters = useSelector((state: RootState) => state.UserFiltersSlice);
   const globalSearchQuery = useSelector((state: RootState) => state.globalSearchSlice.query);
   const persistedGlobalSearchField = useSelector(
@@ -268,7 +270,7 @@ const UserTable = () => {
           ]
         : []),
     ].filter((item) => {
-      if (hasFeatureAccess('user', item.key as any, role)) return true;
+      if (hasFeatureAccess('user', item.key as any, role, effectivePermissions)) return true;
       return false;
     });
     return (
@@ -380,7 +382,12 @@ const UserTable = () => {
                   <Option value="ARCHIVED">Archived</Option>
                 </Select>
               </div>
-              {!hasFeatureAccess(role.name.toLowerCase() as any, 'view', role) && (
+              {!hasFeatureAccess(
+                role.name.toLowerCase() as any,
+                'view',
+                role,
+                effectivePermissions
+              ) && (
                 <Button
                   appname="add user"
                   className="w-100% text-white bg-button rounded-3xl px-4 py-2 flex items-center space-x-2"

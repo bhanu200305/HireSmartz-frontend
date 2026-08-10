@@ -30,6 +30,11 @@ export { default as AtsJobId } from './JobsOpening/AddJobDescription/AtsJobId';
 export { default as SyncAts } from './JobsOpening/SyncAts';
 export { default as ViewOrgUser } from './OrganisationDashboard/ViewOrganisationUser';
 export { default as EditOrgUser } from './OrganisationDashboard/EditOrganisationUser';
+export { default as RolesManagement } from './RolesManagement/Index';
+export { default as AddRole } from './RolesManagement/AddRole';
+export { default as EditRole } from './RolesManagement/EditRole';
+export { default as ViewRole } from './RolesManagement/ViewRole';
+export { default as InviteUser } from './RolesManagement/InviteUser';
 // MeetingAccessScreen moved to pages - use MeetingAccessScreenLiveKit
 export { default as UserProfile } from './UserProfile/index';
 export { default as ChangePassword } from './ChangePassword/index';

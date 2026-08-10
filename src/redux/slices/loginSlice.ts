@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import type { Role } from '../../types';
 
 type LoginState = {
   loginToken?: string;
@@ -11,6 +12,15 @@ type LoginState = {
   };
   userId?: string | undefined | null;
   refreshToken?: string;
+  /**
+   * The full dynamic Role record (baseline + per-location permission
+   * overrides) resolved for the signed-in user, when the backend/dev-bypass
+   * provides one. Absent for sessions still running on the legacy
+   * ROLE_AUTHORITIES fallback — see useEffectivePermissions.
+   */
+  resolvedRole?: Role;
+  /** The location whose permission set is currently in effect (multi-location users). */
+  activeLocationId?: number | null;
 };
 
 type LoginPayload = {
@@ -24,6 +34,8 @@ type LoginPayload = {
   };
   userId?: string | undefined | null;
   refreshToken?: string;
+  resolvedRole?: Role;
+  activeLocationId?: number | null;
 };
 
 const initialState: LoginState = {
@@ -37,6 +49,8 @@ const initialState: LoginState = {
   },
   userId: undefined,
   refreshToken: '',
+  resolvedRole: undefined,
+  activeLocationId: null,
 };
 
 const loginSlice = createSlice({
@@ -44,6 +58,11 @@ const loginSlice = createSlice({
   initialState,
   reducers: {
     loginStore: (state, action: PayloadAction<LoginPayload>) => {
+      const defaultLocationId =
+        action.payload.activeLocationId ??
+        action.payload.resolvedRole?.locationPermissions?.[0]?.locationId ??
+        null;
+
       return {
         ...state,
         loginToken: action.payload.token,
@@ -56,6 +75,8 @@ const loginSlice = createSlice({
         },
         userId: action.payload.userId,
         refreshToken: action.payload.refreshToken,
+        resolvedRole: action.payload.resolvedRole,
+        activeLocationId: defaultLocationId,
       };
     },
     resetState: () => {
@@ -64,8 +85,12 @@ const loginSlice = createSlice({
     setAllowedAuthorities: (state, action: PayloadAction<string[]>) => {
       state.authorities = action.payload;
     },
+    setActiveLocation: (state, action: PayloadAction<number | null>) => {
+      state.activeLocationId = action.payload;
+    },
   },
 });
 
-export const { loginStore, resetState } = loginSlice.actions;
+export const { loginStore, resetState, setAllowedAuthorities, setActiveLocation } =
+  loginSlice.actions;
 export default loginSlice.reducer;

@@ -205,7 +205,7 @@ const OwnerDashboard = () => {
                   role={role.type}
                   icon={recruiterImage}
                   getData={() =>
-                    getDashboardData(recruiterRoleId, 'recruiterData', 'totalRecruiters')
+                    getDashboardData(recruiterRoleId ?? 0, 'recruiterData', 'totalRecruiters')
                   }
                   count={localState.totalRecruiters < 5 ? localState.totalRecruiters : 5}
                   onViewAll={handleViewAllRecruiters}
@@ -220,7 +220,7 @@ const OwnerDashboard = () => {
                   icon={hiringManagerImage}
                   getData={() =>
                     getDashboardData(
-                      hiringManagerRoleId,
+                      hiringManagerRoleId ?? 0,
                       'hiringManagerData',
                       'totalHiringManagers'
                     )

@@ -6,6 +6,7 @@ import { publicQrApi } from '../../api/candidate-service/PublicQr/index';
 import LoginSlice from '../slices/loginSlice';
 import UserFiltersSlice from '../slices/userFilterSlice';
 import CompanyFilterSlice from '../slices/companyFilterSlice';
+import RoleFilterSlice from '../slices/roleFilterSlice';
 import JobSlice from '../slices/jobOpeningSlice';
 import JobOpeningFiltersSlice from '../slices/jobOpeningFilterSlice';
 import OrgUserFilterSlice from '../slices/OrgUserFilterSlice';
@@ -22,6 +23,7 @@ const rootReducer = combineReducers({
   LoginSlice,
   UserFiltersSlice,
   CompanyFilterSlice,
+  RoleFilterSlice,
   JobSlice,
   JobOpeningFiltersSlice,
   OrgUserFilterSlice,

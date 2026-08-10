@@ -14,7 +14,10 @@ import { useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import useFetchRoles from '../../../hooks/useRoles';
-import { Role } from '../../../api/rbac-service/Roles/roles';
+
+// The role dropdown here only ever needs id + display name — it doesn't need
+// the full dynamic Role record (permissions, location overrides, etc.).
+type Role = { id: number; roleName: string };
 import AddUserLayout from '../../../layouts/AddUserLayout';
 import addOrgUserSchema from './AddOrganisationUserSchema';
 import { useAddOrgUserMutation } from '../../../api/tenant-service/Organisation/AddOrganisationUser';
@@ -92,11 +95,7 @@ const AddOrganisationUser = () => {
 
     navigate(-1);
   };
-  const roleOptionsRaw =
-    (Array.isArray(roles?.data?.data) && roles.data.data) ||
-    (Array.isArray((roles as unknown as { data?: Role[] })?.data) &&
-      (roles as unknown as { data?: Role[] }).data) ||
-    [];
+  const roleOptionsRaw: Role[] = Array.isArray(roles?.data) ? roles.data : [];
   const roleOptions: Role[] = roleOptionsRaw
     .map((role) => ({
       id: Number(role.id),

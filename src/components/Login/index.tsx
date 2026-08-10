@@ -29,6 +29,8 @@ import {
   warnDevBypassUsedOnce,
   DEV_SEED_CREDENTIALS,
 } from '../../shared/utils/auth/devAuthBypass';
+import { devUserStore, InvitedUser } from '../../shared/utils/dev/devUserStore';
+import { devRoleStore } from '../../shared/utils/dev/devRoleStore';
 
 const loginSchema = z.object({
   email: z
@@ -240,6 +242,67 @@ const Login = () => {
     navigate(safePath + fromSearch, { replace: true });
   };
 
+  // Logs in a locally-invited user (see Roles & Permissions -> Invite User)
+  // with exactly the permissions/location their assigned role carries — the
+  // "portal" the invite promised, built entirely client-side since there's
+  // no backend to issue a real token from yet.
+  const completeInvitedUserLogin = (user: InvitedUser) => {
+    const assignedRole = devRoleStore.getById(user.roleId);
+    if (!assignedRole) {
+      showToast({
+        message: 'The role this invite was created with no longer exists.',
+        type: 'error',
+      });
+      return;
+    }
+
+    warnDevBypassUsedOnce();
+    const token = createDevBypassToken();
+    const roleForStorage = {
+      name: assignedRole.roleName,
+      type: assignedRole.scope === 'platform' ? 'owner' : 'organization',
+    };
+
+    clearImpersonationStorage();
+    sessionStorage.setItem(LOCALSTORAGE_KEYS.ACCESS, token);
+    sessionStorage.setItem(LOCALSTORAGE_KEYS.REFRESH, token);
+
+    if (rememberMe) {
+      setTokens(token, token);
+      setLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME, 'true');
+      setLocalStorageItem(LOCALSTORAGE_KEYS.ROLE, roleForStorage);
+      setLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS, {
+        email: user.email,
+        password: encrypt(password),
+      });
+    } else {
+      setTokens(token, token);
+      setLocalStorageItem(LOCALSTORAGE_KEYS.ROLE, roleForStorage);
+      removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME);
+      removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS);
+    }
+
+    dispatch(
+      loginStore({
+        token,
+        authorities: assignedRole.permissions,
+        rememberMe,
+        canManageCompanySettings: false,
+        role: roleForStorage,
+        userId: user.id,
+        refreshToken: token,
+        resolvedRole: assignedRole,
+        activeLocationId: user.locationId,
+      })
+    );
+    showToast({ message: `Welcome, ${user.firstName}! (demo mode)`, type: 'success' });
+
+    const fromPath = location.state?.from?.pathname || '/';
+    const fromSearch = location.state?.from?.search || '';
+    const safePath = fromPath === '/logout' ? '/' : fromPath;
+    navigate(safePath + fromSearch, { replace: true });
+  };
+
   const handleLogin = async () => {
     // Prevent double-click submissions
     if (isLoading || isSubmitting.current) return;
@@ -263,6 +326,18 @@ const Login = () => {
       completeSeededLogin(trimmedEmail);
       isSubmitting.current = false;
       return;
+    }
+
+    // Same idea, for anyone invited via Roles & Permissions -> Invite User:
+    // their generated credentials log them in locally with exactly the
+    // permissions/location their assigned role carries.
+    if (isDevAuthBypassEnabled()) {
+      const invitedUser = devUserStore.findByCredentials(trimmedEmail, password);
+      if (invitedUser) {
+        completeInvitedUserLogin(invitedUser);
+        isSubmitting.current = false;
+        return;
+      }
     }
 
     const payload: LoginRequest = {

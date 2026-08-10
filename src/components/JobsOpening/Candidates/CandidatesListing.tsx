@@ -46,6 +46,7 @@ import { get } from 'lodash-es';
 import clsx from 'clsx';
 
 import { hasFeatureAccess } from '../../../shared/utils/auth/getAccess';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
 import { MdClose, MdEdit, MdOutlineRemoveRedEye } from 'react-icons/md';
 import { useCandidateFilters } from '../../../hooks/useCandidateFilter';
 import useEventSource from '../../../hooks/useEventSource';
@@ -80,6 +81,7 @@ type SelectedCandidates = {
 const CandidatesListing = () => {
   const navigate = useNavigate();
   const { role } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const effectivePermissions = useEffectivePermissions();
   const { id } = useParams<{ id: string }>();
   // const pathname = useLocation().pathname;
   const parsedJobId = Number(id);
@@ -213,7 +215,7 @@ const CandidatesListing = () => {
 
   const isDraft = jobOpeningData?.data?.isDraft || false;
   const isClosed = jobOpeningData?.data?.isClosed || false;
-  const canViewJobNotes = hasFeatureAccess('job_opening', 'view', role);
+  const canViewJobNotes = hasFeatureAccess('job_opening', 'view', role, effectivePermissions);
 
   // Extract atsJobOpeningId from jobOpeningData
   const atsJobOpeningId =
@@ -264,8 +266,8 @@ const CandidatesListing = () => {
     jobOpeningData || {};
 
   const canInviteCandidate =
-    hasFeatureAccess('job_opening', 'edit', role) ||
-    hasFeatureAccess('job_opening', 'create', role);
+    hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) ||
+    hasFeatureAccess('job_opening', 'create', role, effectivePermissions);
 
   const jobTitleName = jobTitle[0]?.jobTypeName;
   const departmentName = department[0]?.departmentName;
@@ -1657,7 +1659,7 @@ const CandidatesListing = () => {
                     </Button>
                   )}
 
-                  {hasFeatureAccess('job_opening', 'create', role) && (
+                  {hasFeatureAccess('job_opening', 'create', role, effectivePermissions) && (
                     <div className="flex items-center gap-3 justify-end">
                       {/* Upload Button */}
                       <Tooltip

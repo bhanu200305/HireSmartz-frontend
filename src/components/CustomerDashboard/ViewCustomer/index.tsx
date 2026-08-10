@@ -27,11 +27,13 @@ import { RootState } from '../../../redux/provider/store';
 import CompanyDetails from './CompanyDetails';
 import CompanyLocations from './CompanyLocations';
 import CompanyUsers from './CompanyUsers';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
 
 const ViewCustomer = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { role } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  const effectivePermissions = useEffectivePermissions();
   const companyId = searchParams.get('companyId');
   const parsedCompanyId = Number(companyId || 0);
   const { data, isLoading, refetch } = useGetCompanyDetailsQuery(
@@ -203,7 +205,12 @@ const ViewCustomer = () => {
                   )}
                 </div>
               </div>
-              {!hasFeatureAccess(role.name.toLowerCase() as any, 'view', role) && (
+              {!hasFeatureAccess(
+                role.name.toLowerCase() as any,
+                'view',
+                role,
+                effectivePermissions
+              ) && (
                 <div className="items-start flex gap-1">
                   <div className="p-1 text-sm flex flex-col items-end gap-1.5">
                     <div className="flex items-center gap-1.5 self-end">

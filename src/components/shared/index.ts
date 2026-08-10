@@ -19,3 +19,4 @@ export { default as CustomTable } from './ui/table';
 export { default as CustomCollapse } from './ui/collapse';
 export { default as GlobalSearch } from './GlobalSearch';
 export { Typography } from './ui/Typography';
+export { default as PermissionMatrix } from './ui/PermissionMatrix';

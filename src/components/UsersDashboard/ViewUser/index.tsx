@@ -21,12 +21,14 @@ import { formatPhoneNumber, safeDecodeToken } from '../../../shared/utils/method
 import { hasFeatureAccess } from '../../../shared/utils/auth/getAccess';
 import { useSelector, shallowEqual } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
 
 const ViewUser = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = searchParams.get('userId');
   const { role } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  const effectivePermissions = useEffectivePermissions();
   const { loginToken } = useSelector((state: any) => state.LoginSlice);
   const { data, isLoading, refetch } = useGetUserDetailsQuery({ userId: Number(userId) });
   const userData: ViewUserTypes = data || ({} as ViewUserTypes);
@@ -140,7 +142,12 @@ const ViewUser = () => {
                   <span>{companyName || 'N/A'}</span>
                 </div>
               </div>
-              {!hasFeatureAccess(role.name.toLowerCase() as any, 'view', role) && (
+              {!hasFeatureAccess(
+                role.name.toLowerCase() as any,
+                'view',
+                role,
+                effectivePermissions
+              ) && (
                 <div className="items-start flex gap-1">
                   {!userData.archived && (
                     <Tooltip title="Edit user">

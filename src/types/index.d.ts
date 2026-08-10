@@ -1,6 +1,9 @@
 // LiveKit types
 export * from './LiveKit';
 
+// RBAC (roles & permissions) types
+export * from './rbac';
+
 export type SmsMessage = {
   id: number;
   messageText: string;

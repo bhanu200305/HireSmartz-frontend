@@ -3,7 +3,7 @@ import { Authorities } from '../../constants/authorities.constant';
 import { TbBriefcase2 } from 'react-icons/tb';
 import { LuSquareActivity, LuUsersRound } from 'react-icons/lu';
 import { FiSettings } from 'react-icons/fi';
-import { MdApartment, MdOutlineDashboard } from 'react-icons/md';
+import { MdApartment, MdOutlineAdminPanelSettings, MdOutlineDashboard } from 'react-icons/md';
 import { PiMoneyFill } from 'react-icons/pi';
 
 const MenuItems = [
@@ -93,6 +93,12 @@ const MenuItems = [
     icon: <LuSquareActivity size={18} />,
     path: '/activityFeed',
     requiredAuthority: Authorities.ACTIVITY_FEED,
+  },
+  {
+    name: 'Roles & Permissions',
+    icon: <MdOutlineAdminPanelSettings size={18} />,
+    path: ['/roles', '/add-role', '/view-role', '/edit-role'],
+    requiredAuthority: Authorities.ROLE_VIEW,
   },
 ];
 

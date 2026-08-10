@@ -39,6 +39,7 @@ import { FiEdit2 } from 'react-icons/fi';
 import EditCandidate from './EditCandidate';
 import { Button, showToast } from '../../shared';
 import { hasFeatureAccess } from '../../../shared/utils/auth/getAccess';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
 import { useSelector, shallowEqual } from 'react-redux';
 import { useScheduleInterviewMutation } from '../../../api/candidate-service/Candidates/Candidates';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
@@ -135,6 +136,7 @@ const ViewCandidateDetails = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { role } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const effectivePermissions = useEffectivePermissions();
   const { candidateId, id: jobIdFromParams } = useParams();
   const [candidate, setCandidate] = useState<CandidateByIdResponse>();
   const [isCandidateLoading, setIsCandidateLoading] = useState(true);
@@ -1660,7 +1662,7 @@ const ViewCandidateDetails = () => {
             tabBarExtraContent={
               activeTab === '2' ? (
                 <div className="flex items-center gap-1 ">
-                  {hasFeatureAccess('job_opening', 'create', role) && (
+                  {hasFeatureAccess('job_opening', 'create', role, effectivePermissions) && (
                     <Button
                       className={
                         isEditing

@@ -15,6 +15,7 @@ import MainLayout from '../../layouts/MainLayout';
 import { TbBriefcase2 } from 'react-icons/tb';
 import { AiFillStar } from 'react-icons/ai';
 import { hasFeatureAccess } from '../../shared/utils/auth/getAccess';
+import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import { useState, useEffect, useRef } from 'react';
@@ -109,7 +110,8 @@ const JobsOpening = () => {
   const [isFromGlobalSearch, setIsFromGlobalSearch] = useState(false);
   const [, setGlobalSearchBaseQuery] = useState('');
   const [, setGlobalSearchField] = useState('');
-  const { role, authorities } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const { role } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const authorities = useEffectivePermissions();
   const [collapsedUsers, setCollapsedUsers] = useState<string[]>([]);
   const [duplicateJobOpening, { isLoading: isDuplicating }] = useDuplicateJobOpeningMutation();
   const { loginToken } = useSelector((state: any) => state.LoginSlice);
@@ -826,9 +828,9 @@ const JobsOpening = () => {
     ].filter((item) => {
       if (!item) return false;
       if (item.key === 'notes') {
-        return hasFeatureAccess('job_opening', 'view', role);
+        return hasFeatureAccess('job_opening', 'view', role, authorities);
       }
-      if (hasFeatureAccess('job_opening', item.key as any, role)) return true;
+      if (hasFeatureAccess('job_opening', item.key as any, role, authorities)) return true;
       return false;
     });
 

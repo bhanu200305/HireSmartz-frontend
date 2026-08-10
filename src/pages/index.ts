@@ -38,6 +38,11 @@ export { ViewCandidateDetailsPage, CandidatesPage, SearchCandidateListingPage } 
 export { default as AtsJobIdPage } from './AtsJobId';
 export { default as MeetingAccessScreenPage } from './MeetingAccessScreen';
 export { default as DashboardPage } from './Dashboard';
+export { default as RolesPage } from './RolesPage';
+export { default as AddRolePage } from './AddRolePage';
+export { default as EditRolePage } from './EditRolePage';
+export { default as ViewRolePage } from './ViewRolePage';
+export { default as InviteUserPage } from './InviteUserPage';
 export { default as FinancesPage } from './FinancesPage';
 export { default as InterviewEndedPage } from './InterviewEnded';
 export { default as AiCallBookingPage } from './AiCallBookingPage';

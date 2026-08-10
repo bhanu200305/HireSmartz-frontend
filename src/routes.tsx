@@ -55,6 +55,11 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const JobsOpeningPage = lazyImport(() => import('./pages/JobsOpening'), 'JobsOpeningPage');
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OrganisationUserPage = lazy(() => import('./pages/OrganisationUserPage'));
+const RolesPage = lazy(() => import('./pages/RolesPage'));
+const AddRolePage = lazy(() => import('./pages/AddRolePage'));
+const EditRolePage = lazy(() => import('./pages/EditRolePage'));
+const ViewRolePage = lazy(() => import('./pages/ViewRolePage'));
+const InviteUserPage = lazy(() => import('./pages/InviteUserPage'));
 const SyncAtsPage = lazyImport(() => import('./pages/JobsOpening'), 'SyncAtsPage');
 const JobConfigurationPage = lazyImport(
   () => import('./pages/JobsOpening'),
@@ -300,6 +305,31 @@ export const Routes: RouteType[] = [
     name: 'editCompany',
     path: '/edit-company',
     component: EditCompanyPage,
+  },
+  {
+    name: 'Roles',
+    path: '/roles',
+    component: RolesPage,
+  },
+  {
+    name: 'AddRole',
+    path: '/add-role',
+    component: AddRolePage,
+  },
+  {
+    name: 'ViewRole',
+    path: '/view-role',
+    component: ViewRolePage,
+  },
+  {
+    name: 'EditRole',
+    path: '/edit-role',
+    component: EditRolePage,
+  },
+  {
+    name: 'InviteUser',
+    path: '/invite-user',
+    component: InviteUserPage,
   },
   {
     name: 'Jobs',
