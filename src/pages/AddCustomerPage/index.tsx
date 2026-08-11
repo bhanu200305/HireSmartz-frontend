@@ -1,3 +1,3 @@
-import { AddCustomer } from '../../components';
+import TenantOnboardingWizard from '../../components/TenantOnboarding';
 
-export default AddCustomer;
+export default TenantOnboardingWizard;

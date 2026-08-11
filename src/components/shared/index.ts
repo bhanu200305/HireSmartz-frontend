@@ -19,4 +19,6 @@ export { default as CustomTable } from './ui/table';
 export { default as CustomCollapse } from './ui/collapse';
 export { default as GlobalSearch } from './GlobalSearch';
 export { Typography } from './ui/Typography';
+export { StepIndicator } from './ui/StepIndicator';
+export type { Step } from './ui/StepIndicator';
 export { default as PermissionMatrix } from './ui/PermissionMatrix';

@@ -18,8 +18,13 @@ import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
 import CompanyDetails from '../CustomerDashboard/ViewCustomer/CompanyDetails';
 import CompanyLocations from '../CustomerDashboard/ViewCustomer/CompanyLocations';
 import { useGetCompanyDetailsQuery } from '../../api/tenant-service/Company/viewCompany';
-import { useGetDepartmentsByCompanyIdQuery } from '../../api/tenant-service/Company/addCompany';
+import {
+  useGetDepartmentsByCompanyIdQuery,
+  useGetCompanyLocationsQuery,
+} from '../../api/tenant-service/Company/addCompany';
 import { useGetFeatureFlagsQuery } from '../../api/authentication-service/FeatureFlags/index';
+import OnboardingChecklist from './OnboardingChecklist';
+import TeamTab from './Team';
 import { Loader } from '../shared/ui/loader';
 import { useSelector, shallowEqual } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
@@ -130,7 +135,7 @@ const MyCompany: React.FC = () => {
     { companyId: Number(parsedCompanyId) },
     { skip: !parsedCompanyId || isNaN(Number(parsedCompanyId)), refetchOnMountOrArgChange: true }
   );
-  const { refetch: refetchDepartments } = useGetDepartmentsByCompanyIdQuery(
+  const { data: departmentsData, refetch: refetchDepartments } = useGetDepartmentsByCompanyIdQuery(
     { companyId: Number(parsedCompanyId) },
     {
       skip: !parsedCompanyId || isNaN(Number(parsedCompanyId)),
@@ -139,8 +144,22 @@ const MyCompany: React.FC = () => {
       refetchOnReconnect: true,
     }
   );
+  const { data: companyLocationsData } = useGetCompanyLocationsQuery(
+    { companyId: Number(parsedCompanyId) },
+    { skip: !parsedCompanyId || isNaN(Number(parsedCompanyId)) }
+  );
 
   const hasValidCompanyId = Boolean(parsedCompanyId) && !isNaN(Number(parsedCompanyId));
+  const [hasInvitedTeam, setHasInvitedTeam] = useState<boolean>(
+    () =>
+      hasValidCompanyId && localStorage.getItem(`cfp_team_invited_${parsedCompanyId}`) === 'true'
+  );
+  const handleTeamInviteRecorded = useCallback(() => {
+    if (hasValidCompanyId) {
+      localStorage.setItem(`cfp_team_invited_${parsedCompanyId}`, 'true');
+    }
+    setHasInvitedTeam(true);
+  }, [hasValidCompanyId, parsedCompanyId]);
 
   React.useEffect(() => {
     if (currentTab === '1' && hasValidCompanyId) {
@@ -359,6 +378,16 @@ const MyCompany: React.FC = () => {
       label: 'QR Management',
       children: parsedCompanyId ? <QrManagementTab companyId={Number(parsedCompanyId)} /> : null,
     },
+    {
+      key: '8',
+      label: 'Team',
+      children: parsedCompanyId ? (
+        <TeamTab
+          companyId={String(parsedCompanyId)}
+          onTeamInviteRecorded={handleTeamInviteRecorded}
+        />
+      ) : null,
+    },
   ];
 
   if (shouldRestrictCompanyAccess) {
@@ -491,6 +520,21 @@ const MyCompany: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {hasValidCompanyId && (
+                  <OnboardingChecklist
+                    companyId={String(parsedCompanyId)}
+                    status={{
+                      profileReviewed: Boolean(
+                        companyData?.companyLogo || companyData?.cultureIntroText
+                      ),
+                      hasOffice: (companyLocationsData?.data?.length ?? 0) > 0,
+                      hasDepartment: (departmentsData?.length ?? 0) > 0,
+                      hasInvitedTeam,
+                    }}
+                    onNavigateToTab={handleTabChange}
+                  />
+                )}
 
                 <Tabs
                   activeKey={currentTab}

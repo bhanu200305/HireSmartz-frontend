@@ -33,6 +33,10 @@ const CACHE_TAG_TYPES = [
   'JobBatches',
   'SearchResults',
   'QrCodes',
+  'Tenant',
+  'TenantInvitations',
+  'TenantDepartments',
+  'ImportBatch',
   'Roles',
 ];
 
@@ -63,7 +67,10 @@ const rawBaseQuery = fetchBaseQuery({
     if (import.meta.env.VITE_ENV === 'development') {
       headers.set('ngrok-skip-browser-warning', 'true');
     }
-    if (!['login', 'forgot-password'].includes(endpoint) && token) {
+    if (
+      !['login', 'forgot-password', 'validateInvitation', 'acceptInvitation'].includes(endpoint) &&
+      token
+    ) {
       headers.set('authorization', `Bearer ${token}`);
     }
     return headers;

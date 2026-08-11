@@ -52,6 +52,7 @@ const EditAiJobDescriptionPage = lazy(() => import('./pages/EditAiJobDescription
 const EditAiQuestionPage = lazyImport(() => import('./pages/AIQuestions'), 'EditAiQuestionPage');
 const EditDetailedInterviewRoundPage = lazy(() => import('./pages/EditDetailedInterviewPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
 const JobsOpeningPage = lazyImport(() => import('./pages/JobsOpening'), 'JobsOpeningPage');
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OrganisationUserPage = lazy(() => import('./pages/OrganisationUserPage'));
@@ -166,6 +167,12 @@ export const Routes: RouteType[] = [
     name: 'ForgotPassword',
     path: '/forgot-password',
     component: ForgotPasswordPage,
+    isPublic: true,
+  },
+  {
+    name: 'AcceptInvitation',
+    path: '/accept-invite/:token',
+    component: AcceptInvitationPage,
     isPublic: true,
   },
   {
