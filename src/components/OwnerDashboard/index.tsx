@@ -1,8 +1,6 @@
 import MainLayout from '../../layouts/MainLayout';
 import { useEffect, useReducer, useState } from 'react';
 import recruiterImage from '../../assets/svgs/recruiter.svg';
-import { PeekDeck, StatCardRow } from '../shared';
-import type { PeekDeckPanel } from '../shared';
 import hiringManagerImage from '../../assets/svgs/hiringManager.svg';
 import jobPostingImage from '../../assets/svgs/jobPosting.svg';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +8,7 @@ import { useSelector, useDispatch, shallowEqual } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import InterviewDashboard from '../Dashboard/InterviewDashboard';
 import CustomerTable from '../Dashboard/CustomerTable';
+import DashboardCarousel, { DashboardSlide } from '../Dashboard/DashboardCarousel';
 import { hiringManagersHeaders } from '../../constants/hiringManager';
 import { recruitersHeaders } from '../../constants/recruiters';
 import { jobOpeningsHeaders } from '../../constants/jobOpenings';
@@ -25,6 +24,8 @@ import { setOrgUserFilters } from '../../redux/slices/OrgUserFilterSlice';
 import { StatusFilters } from '../shared/ui/tableHeadbar';
 import ActivityFeed from '../Dashboard/ActivityFeed';
 import { TeamOutlined, UserOutlined, AuditOutlined, SolutionOutlined } from '@ant-design/icons';
+import { LuSquareActivity } from 'react-icons/lu';
+
 const OwnerDashboard = () => {
   const navigate = useNavigate();
   const [localState, setLocalState] = useReducer(
@@ -184,154 +185,129 @@ const OwnerDashboard = () => {
   const canViewOrgStats = role.name === 'Super Admin' || role.name === 'Admin';
   const canViewActivity = role.name !== 'User';
 
-  const interviewsAndClosure =
-    interviewData?.allInterviews?.totalInterviews != null &&
-    interviewData?.allInterviews?.closureRate != null
-      ? `${interviewData.allInterviews.totalInterviews} / ${interviewData.allInterviews.closureRate.toFixed(2)}%`
-      : undefined;
+  const greeting = (() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  })();
 
-  const panels: PeekDeckPanel[] = [
+  const slides: DashboardSlide[] = [
     ...(canViewOrgStats
       ? [
           {
-            key: 'team',
-            label: 'Team',
+            key: 'recruiters',
+            label: 'Recruiters',
+            icon: <TeamOutlined />,
             content: (
-              <div className="grid grid-cols-2 gap-4">
-                <CustomerTable
-                  headers={recruitersHeaders}
-                  title="Recruiters"
-                  data={localState.recruiterData}
-                  role={role.type}
-                  icon={recruiterImage}
-                  getData={() =>
-                    getDashboardData(recruiterRoleId ?? 0, 'recruiterData', 'totalRecruiters')
-                  }
-                  count={localState.totalRecruiters < 5 ? localState.totalRecruiters : 5}
-                  onViewAll={handleViewAllRecruiters}
-                  onTitleClick={handleViewAllRecruiters}
-                  onIconClick={handleViewAllRecruiters}
-                />
-                <CustomerTable
-                  headers={hiringManagersHeaders}
-                  title="Hiring Managers"
-                  data={localState.hiringManagerData}
-                  role={role.type}
-                  icon={hiringManagerImage}
-                  getData={() =>
-                    getDashboardData(
-                      hiringManagerRoleId ?? 0,
-                      'hiringManagerData',
-                      'totalHiringManagers'
-                    )
-                  }
-                  count={localState.totalHiringManagers < 5 ? localState.totalHiringManagers : 5}
-                  onViewAll={handleViewAllHiringManagers}
-                  onTitleClick={handleViewAllHiringManagers}
-                  onIconClick={handleViewAllHiringManagers}
-                />
-              </div>
+              <CustomerTable
+                headers={recruitersHeaders}
+                title="Recruiters"
+                data={localState.recruiterData}
+                role={role.type}
+                icon={recruiterImage}
+                getData={() =>
+                  getDashboardData(recruiterRoleId ?? 0, 'recruiterData', 'totalRecruiters')
+                }
+                count={localState.totalRecruiters < 5 ? localState.totalRecruiters : 5}
+                onViewAll={handleViewAllRecruiters}
+                onTitleClick={handleViewAllRecruiters}
+                onIconClick={handleViewAllRecruiters}
+                fillHeight
+              />
+            ),
+          },
+          {
+            key: 'hiring-managers',
+            label: 'Hiring Managers',
+            icon: <UserOutlined />,
+            content: (
+              <CustomerTable
+                headers={hiringManagersHeaders}
+                title="Hiring Managers"
+                data={localState.hiringManagerData}
+                role={role.type}
+                icon={hiringManagerImage}
+                getData={() =>
+                  getDashboardData(
+                    hiringManagerRoleId ?? 0,
+                    'hiringManagerData',
+                    'totalHiringManagers'
+                  )
+                }
+                count={localState.totalHiringManagers < 5 ? localState.totalHiringManagers : 5}
+                onViewAll={handleViewAllHiringManagers}
+                onTitleClick={handleViewAllHiringManagers}
+                onIconClick={handleViewAllHiringManagers}
+                fillHeight
+              />
             ),
           },
         ]
       : []),
+    {
+      key: 'interviews',
+      label: 'Interviews',
+      icon: <AuditOutlined />,
+      content: (
+        <InterviewDashboard
+          interviewData={interviewData}
+          filters={interviewFilters}
+          isLoading={isLoading}
+          handleFilterChange={handleFilterChange}
+          isOwner={role?.type === 'owner' ? true : false}
+          fillHeight
+        />
+      ),
+    },
+    {
+      key: 'job-openings',
+      label: 'Job Openings',
+      icon: <SolutionOutlined />,
+      content: (
+        <CustomerTable
+          headers={jobOpeningsHeaders}
+          title="Job Openings"
+          data={jobOpeningsData?.data || []}
+          role={role.type}
+          icon={jobPostingImage}
+          onStatusChange={handleJobStatusChange}
+          currentFilters={jobOpeningFilters}
+          count={jobCount < 5 ? jobCount : 5}
+          onViewAll={handleViewAllJobs}
+          onTitleClick={() => navigate('/jobs')}
+          onIconClick={() => navigate('/jobs')}
+          fillHeight
+        />
+      ),
+    },
     ...(canViewActivity
       ? [
           {
             key: 'activity',
-            label: 'Activity Feed — Latest Updates',
+            label: 'Activity Feed',
+            icon: <LuSquareActivity />,
             content: <ActivityFeed />,
           },
         ]
       : []),
-    {
-      key: 'pipeline',
-      label: 'Pipeline',
-      content: (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="min-w-0">
-            <InterviewDashboard
-              interviewData={interviewData}
-              filters={interviewFilters}
-              isLoading={isLoading}
-              handleFilterChange={handleFilterChange}
-              isOwner={role?.type === 'owner' ? true : false}
-            />
-          </div>
-          <div className="min-w-0">
-            <CustomerTable
-              headers={jobOpeningsHeaders}
-              title="Job Openings"
-              data={jobOpeningsData?.data || []}
-              role={role.type}
-              icon={jobPostingImage}
-              onStatusChange={handleJobStatusChange}
-              currentFilters={jobOpeningFilters}
-              count={jobCount < 5 ? jobCount : 5}
-              onViewAll={handleViewAllJobs}
-              onTitleClick={() => navigate('/jobs')}
-              onIconClick={() => navigate('/jobs')}
-            />
-          </div>
-        </div>
-      ),
-    },
   ];
 
   return (
-    <MainLayout>
-      <div className="w-full px-7 py-6 space-y-6">
-        {canViewOrgStats && (
-          <StatCardRow
-            cards={[
-              {
-                icon: <TeamOutlined />,
-                label: (
-                  <>
-                    Total Recruiters <br /> Onboarded
-                  </>
-                ),
-                value: localState.totalRecruiters,
-                variant: 'neutral',
-                onClick: handleViewAllRecruiters,
-              },
-              {
-                icon: <UserOutlined />,
-                label: (
-                  <>
-                    Total Hiring <br /> Manager Onboarded
-                  </>
-                ),
-                value: localState.totalHiringManagers,
-                variant: 'orange',
-                onClick: handleViewAllHiringManagers,
-              },
-              {
-                icon: <AuditOutlined />,
-                label: (
-                  <>
-                    Total Interviews & <br /> Closure Rate
-                  </>
-                ),
-                value: interviewsAndClosure,
-                variant: 'blue',
-              },
-              {
-                icon: <SolutionOutlined />,
-                label: (
-                  <>
-                    Total Job <br /> Postings
-                  </>
-                ),
-                value: jobOpeningsData?.totalElements,
-                variant: 'green',
-                href: '/jobs',
-              },
-            ]}
-          />
-        )}
+    <MainLayout fullHeight>
+      <div className="flex h-full min-h-0 w-full flex-col px-5 py-4 sm:px-8 sm:py-5">
+        <div className="mb-3 shrink-0 sm:mb-4">
+          <h1 className="font-display text-xl font-bold text-neutral-900 tracking-tight sm:text-2xl">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-xs text-neutral-500 sm:text-sm">
+            {greeting}. Here&apos;s what&apos;s happening across careerforce pro today.
+          </p>
+        </div>
 
-        <PeekDeck panels={panels} />
+        <div className="min-h-0 flex-1">
+          <DashboardCarousel slides={slides} />
+        </div>
       </div>
     </MainLayout>
   );

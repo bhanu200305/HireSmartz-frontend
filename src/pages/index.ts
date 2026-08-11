@@ -1,5 +1,6 @@
 export { default as LoginPage } from './LoginPage/index';
 export { default as HomePage } from './HomePage/index';
+export { default as BookDemoPage } from './BookDemoPage/index';
 export { default as ForgotPasswordPage } from './ForgotPasswordPage/index';
 export { default as UsersPage } from './UsersPage/index';
 export { default as AddUser } from './AddUserPage/index';

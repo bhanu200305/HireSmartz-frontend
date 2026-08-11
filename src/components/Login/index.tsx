@@ -80,7 +80,9 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isSubmitting = useRef(false);
-  const [view, setView] = useState<'login' | 'signup'>('login');
+  const [view, setView] = useState<'login' | 'signup'>(
+    searchParams.get('view') === 'signup' ? 'signup' : 'login'
+  );
 
   useEffect(() => {
     const successMessage = (location.state as { successMessage?: string } | null)?.successMessage;

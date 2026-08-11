@@ -47,7 +47,8 @@ const VideoInterviewQuestionsSetupPage = lazyImport(
 );
 const ConfrimNewJDModalPage = lazy(() => import('./pages/ConfirmNewJDModal'));
 const CustomersPage = lazy(() => import('./pages/CustomerPage'));
-const DashboardPage = lazy(() => import('./pages/Dashboard'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const BookDemoPage = lazy(() => import('./pages/BookDemoPage'));
 const EditAiJobDescriptionPage = lazy(() => import('./pages/EditAiJobDescriptionPage'));
 const EditAiQuestionPage = lazyImport(() => import('./pages/AIQuestions'), 'EditAiQuestionPage');
 const EditDetailedInterviewRoundPage = lazy(() => import('./pages/EditDetailedInterviewPage'));
@@ -147,9 +148,16 @@ const ActivityFeed = lazy(() => import('./components/Dashboard/ActivityFeed'));
 
 export const Routes: RouteType[] = [
   {
-    name: 'Dashboard',
+    name: 'Home',
     path: '/',
-    component: DashboardPage,
+    component: HomePage,
+    isOpen: true,
+  },
+  {
+    name: 'BookDemo',
+    path: '/book-demo',
+    component: BookDemoPage,
+    isOpen: true,
   },
   {
     name: 'Login',

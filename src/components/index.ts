@@ -1,6 +1,8 @@
 export { default as Login } from './Login/index';
 export { default as Dashboard } from './Dashboard';
 export { default as ForgotPassword } from './ForgotPassword/index';
+export { default as LandingPage } from './LandingPage/index';
+export { default as BookDemoPage } from './LandingPage/BookDemoPage';
 export { default as Users } from './UsersDashboard/Index';
 export { default as AddUser } from './UsersDashboard/AddUser/index';
 export { default as customers } from './CustomerDashboard/Index';
