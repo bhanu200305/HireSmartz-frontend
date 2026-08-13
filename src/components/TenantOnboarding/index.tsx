@@ -18,7 +18,7 @@ export type TenantDraft = {
   tenantId: string;
   companyName: string;
   adminEmail: string;
-  scrapedPreview: ScrapedTenantPreview;
+  scrapedPreview: ScrapedTenantPreview | null;
 };
 
 /**

@@ -1,14 +1,14 @@
 import { Select } from 'antd';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { get } from 'lodash-es';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import { Button, Input, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import { useInviteTenantUserMutation } from '../../../api/organization-service/Tenants/users';
+import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { inviteTeamMemberSchema, type InviteTeamMemberFormValues } from './InviteTeamMemberSchema';
 
-type DepartmentOption = { id: number; name: string };
+type DepartmentOption = { id: string; name: string };
 
 type InviteTeamMemberModalProps = {
   open: boolean;
@@ -52,7 +52,7 @@ const InviteTeamMemberModal = ({
       onInvited();
     } catch (error: unknown) {
       showToast({
-        message: get(error, 'data.message', 'Failed to send invite. Please try again.'),
+        message: getOrgErrorMessage(error, 'Failed to send invite. Please try again.'),
         type: 'error',
       });
     }
@@ -83,7 +83,7 @@ const InviteTeamMemberModal = ({
 
         <div>
           <label htmlFor="inviteDepartment" className="text-sm text-gray-600">
-            Department <span className="required-asterisk">*</span>
+            Department <span className="text-gray-400">(optional)</span>
           </label>
           <Controller
             name="departmentId"
@@ -93,6 +93,7 @@ const InviteTeamMemberModal = ({
                 id="inviteDepartment"
                 {...field}
                 onChange={field.onChange}
+                allowClear
                 className="w-full mt-1"
                 placeholder="Select department"
                 options={departments.map((department) => ({

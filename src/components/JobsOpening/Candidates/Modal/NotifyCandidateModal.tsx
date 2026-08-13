@@ -143,7 +143,7 @@ const NotifyCandidateModal: React.FC<NotifyCandidateModalProps> = ({
   }, []);
 
   const { data: emailTemplateConfig, isLoading: isTemplateConfigLoading } =
-    useGetEmailTemplateConfigQuery(companyId as number, { skip: companyId === null });
+    useGetEmailTemplateConfigQuery(String(companyId), { skip: companyId === null });
 
   const fixedHeader = `Dear ${templateData?.interviewDetails?.name || candidate?.firstName || 'Candidate'},`;
 

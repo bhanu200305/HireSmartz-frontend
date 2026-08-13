@@ -14,17 +14,15 @@ import { extractCanManageCompanySettings } from '../shared/utils/auth/permission
  * Handles token refresh when access token expires.
  *
  * This function is called automatically by RTK Query's baseQuery when a 401 error occurs.
- * It validates the refresh token expiry and calls the backend /auth/refresh endpoint.
+ * It calls authentication-service's real POST /auth/refresh endpoint directly.
  *
  * @returns Promise with new tokens { token, refreshToken } on success, null on failure
  *
  * @flow
  * 1. Retrieves refresh token from localStorage (cfp_rtoken)
- * 2. Decodes JWT to check expiry date
- * 3. If refresh token expired, returns null (user must re-login)
- * 4. Calls POST /auth/refresh with refresh token
- * 5. Updates localStorage with new access token and refresh token
- * 6. Returns token pair for immediate use
+ * 2. Calls POST /auth/refresh with the refresh token in the JSON body
+ * 3. Updates localStorage with new access token and refresh token
+ * 4. Returns token pair for immediate use
  *
  * @example
  * // Automatic retry after token refresh
@@ -45,108 +43,38 @@ export const handleRefreshToken = async (): Promise<{
   if (!refreshToken) {
     return null;
   }
-  const decodedToken = jwtDecode<{ exp: number }>(refreshToken);
-  if (decodedToken.exp <= Math.floor(Date.now() / 1000)) {
-    return null;
-  }
 
-  const response = await fetch(
-    `${import.meta.env.VITE_BACKEND_ENDPOINT}${import.meta.env.VITE_BACKEND_PREFIX}/auth/refresh`,
-    {
-      method: 'GET',
+  // No client-side expiry pre-check: authentication-service's refresh tokens
+  // are opaque (id.secret), not JWTs — see RefreshTokenRequest/TokenResponse
+  // in its API contract. jwtDecode() on one throws (it isn't a
+  // header.payload.signature structure), which used to happen silently
+  // whenever the fake dev-bypass token (which IS JWT-shaped) wasn't sitting
+  // in this slot. The backend call below is the only real way to learn
+  // whether a refresh token is still good.
+  let response: Response;
+  try {
+    response = await fetch(`${import.meta.env.VITE_AUTH_SERVICE_ENDPOINT}/auth/refresh`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${refreshToken}`,
         'ngrok-skip-browser-warning': '69420',
       },
-    }
-  );
+      // Sent in the body, not an Authorization header — that's how
+      // authentication-service's RefreshTokenRequest expects it.
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  } catch {
+    return null;
+  }
 
   if (!response.ok) {
     return null;
   }
 
   const data = await response.json();
-  setTokens(data.token, data.refreshToken);
-  return data as { token: string; refreshToken: string };
-};
-
-/**
- * Verifies a login token and initializes Redux store with user data.
- *
- * This function is used for SSO flows, magic link authentication, or initial token verification.
- * It calls the backend /auth/verify endpoint and populates the Redux LoginSlice.
- *
- * @param token - JWT token to verify (from URL param, magic link, etc.)
- * @param dispatch - Redux dispatch function to update LoginSlice
- *
- * @returns Promise with token pair { token, refreshToken } on success, null on failure
- *
- * @flow
- * 1. Calls backend /auth/verify endpoint with token
- * 2. Backend validates token and returns:
- *    - accessToken: New access token
- *    - refreshToken: Refresh token for future use
- *    - roleName: User role (e.g., 'Hiring Manager')
- *    - roleType: Role type (e.g., 'HIRING_MANAGER')
- *    - authorities: Array of user authorities/permissions
- * 3. Stores tokens in localStorage
- * 4. Dispatches loginStore action to Redux with user data
- *
- * @example
- * // Verify magic link token during SSO
- * const tokens = await verifyTokenLogin(token, dispatch)
- * if (!tokens) {
- *   showError('Invalid or expired link')
- *   return
- * }
- * // User is now logged in with data in Redux
- * navigate('/dashboard')
- *
- * @throws Errors logged to console and null is returned
- */
-export const verifyTokenLogin = async (
-  token: string,
-  dispatch: AppDispatch
-): Promise<{ token: string; refreshToken: string } | null> => {
-  try {
-    const response = await axios.get(
-      `${import.meta.env.VITE_BACKEND_ENDPOINT}${import.meta.env.VITE_BACKEND_PREFIX}/auth/verify`,
-      {
-        params: { token },
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': '69420',
-        },
-      }
-    );
-
-    const { token: accessToken, refreshToken, roleName, roleType, authorities } = response.data;
-    const canManageCompanySettings = extractCanManageCompanySettings(accessToken);
-
-    clearImpersonationStorage();
-
-    setTokens(accessToken, refreshToken);
-
-    dispatch(
-      loginStore({
-        token: accessToken,
-        refreshToken,
-        rememberMe: false,
-        authorities,
-        canManageCompanySettings,
-        role: {
-          name: roleName,
-          type: roleType,
-        },
-      })
-    );
-
-    return { token: accessToken, refreshToken };
-  } catch (error) {
-    console.error('Token verification failed:', error);
-    return null;
-  }
+  const tokens = { token: data.access_token, refreshToken: data.refresh_token };
+  setTokens(tokens.token, tokens.refreshToken);
+  return tokens;
 };
 
 /**

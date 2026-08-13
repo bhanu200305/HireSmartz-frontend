@@ -1,25 +1,29 @@
 import { useState } from 'react';
 import { Upload } from 'antd';
-import { get } from 'lodash-es';
-import { MdOutlineFileUpload } from 'react-icons/md';
+import { MdOutlineFileUpload, MdOutlineDownload } from 'react-icons/md';
 import { FaCheckCircle } from 'react-icons/fa';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Button, showToast, StepIndicator, type Step } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import {
-  useUploadTenantImportMutation,
-  useConfirmTenantImportMutation,
+  useRequestRosterUploadMutation,
+  useParseRosterMutation,
+  useConfirmRosterImportMutation,
+  uploadRosterFile,
+  downloadRosterTemplate,
 } from '../../../../api/organization-service/Tenants/imports';
+import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
+import BulkImportRows, { ReviewRow, toReviewRows } from './BulkImportRows';
 
 const IMPORT_STEPS: Step[] = [
   { key: 'upload', label: 'Upload' },
-  { key: 'preview', label: 'Preview' },
+  { key: 'review', label: 'Review' },
   { key: 'done', label: 'Done' },
 ];
 
 const ALLOWED_IMPORT_TYPES = [
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-  'application/vnd.ms-excel', // .xls
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
   'text/csv',
 ];
 
@@ -30,24 +34,28 @@ type BulkImportProps = {
   onCompleted: () => void;
 };
 
+/** The real 3-step roster flow — request an upload URL, upload straight to
+ * storage, parse; then review/edit the detected rows and confirm. */
 const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [batchId, setBatchId] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{
-    detectedDepartments: number;
-    detectedUsers: number;
-    warnings: string[];
+  const [rows, setRows] = useState<ReviewRow[]>([]);
+  const [result, setResult] = useState<{
+    created: number;
+    skipped: number;
+    suppressed: number;
   } | null>(null);
-  const [invitationsSent, setInvitationsSent] = useState<number | null>(null);
 
-  const [uploadImport, { isLoading: isUploading }] = useUploadTenantImportMutation();
-  const [confirmImport, { isLoading: isConfirming }] = useConfirmTenantImportMutation();
+  const [requestUpload, { isLoading: isRequestingUrl }] = useRequestRosterUploadMutation();
+  const [parseRoster, { isLoading: isParsing }] = useParseRosterMutation();
+  const [confirmImport, { isLoading: isConfirming }] = useConfirmRosterImportMutation();
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+
+  const isBusy = isRequestingUrl || isParsing || isConfirming || isUploadingFile;
 
   const resetAndClose = () => {
     setStep(1);
-    setBatchId(null);
-    setPreview(null);
-    setInvitationsSent(null);
+    setRows([]);
+    setResult(null);
     onClose();
   };
 
@@ -60,17 +68,23 @@ const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) =
     }
 
     try {
-      const response = await uploadImport({ tenantId, file }).unwrap();
-      setBatchId(response.batch_id);
-      setPreview({
-        detectedDepartments: response.detected_departments,
-        detectedUsers: response.detected_users,
-        warnings: response.warnings || [],
-      });
+      const target = await requestUpload({
+        tenantId,
+        filename: file.name,
+        content_type: file.type || 'application/octet-stream',
+      }).unwrap();
+
+      setIsUploadingFile(true);
+      await uploadRosterFile(target, file);
+      setIsUploadingFile(false);
+
+      const parsed = await parseRoster({ tenantId, storage_key: target.storage_key }).unwrap();
+      setRows(toReviewRows(parsed.rows));
       setStep(2);
     } catch (error: unknown) {
+      setIsUploadingFile(false);
       showToast({
-        message: get(error, 'data.message', 'Failed to parse the spreadsheet. Please try again.'),
+        message: getOrgErrorMessage(error, 'Failed to parse the spreadsheet. Please try again.'),
         type: 'error',
       });
     }
@@ -78,20 +92,41 @@ const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) =
   };
 
   const handleConfirm = async () => {
-    if (!batchId) return;
+    const confirmedRows = rows.filter((row) => row.include);
+    const invalidRow = confirmedRows.find((row) => !row.role);
+    if (invalidRow) {
+      showToast({ message: `${invalidRow.email} needs a role before confirming.`, type: 'error' });
+      return;
+    }
     try {
-      // The upload response only returns counts + warnings, not per-row detail, so
-      // there's nothing row-level for the admin to edit here — confirming just
-      // greenlights the batch that was already detected server-side.
-      const response = await confirmImport({ tenantId, batchId, confirmed_rows: [] }).unwrap();
-      setInvitationsSent(response.invitations_sent);
+      const response = await confirmImport({
+        tenantId,
+        rows: confirmedRows.map((row) => ({
+          email: row.email,
+          role: row.role as 'recruiter' | 'hiring_manager',
+          department: row.department || undefined,
+        })),
+      }).unwrap();
+      setResult({
+        created: response.created_count,
+        skipped: response.skipped_duplicate_emails.length,
+        suppressed: response.previously_suppressed_emails.length,
+      });
       setStep(3);
       onCompleted();
     } catch (error: unknown) {
       showToast({
-        message: get(error, 'data.message', 'Failed to confirm the import. Please try again.'),
+        message: getOrgErrorMessage(error, 'Failed to confirm the import. Please try again.'),
         type: 'error',
       });
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadRosterTemplate(tenantId);
+    } catch {
+      showToast({ message: 'Failed to download the template.', type: 'error' });
     }
   };
 
@@ -102,11 +137,18 @@ const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) =
       title="Import Team"
       modalProps={{ width: 560 }}
     >
-      {(isUploading || isConfirming) && <Loader />}
+      {isBusy && <Loader />}
       <StepIndicator steps={IMPORT_STEPS} currentStep={step} className="mb-6" />
 
       {step === 1 && (
         <div>
+          <button
+            type="button"
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-1 text-sm text-primary hover:underline mb-3 cursor-pointer"
+          >
+            <MdOutlineDownload /> Download the roster template
+          </button>
           <Upload.Dragger
             beforeUpload={handleUpload}
             maxCount={1}
@@ -121,42 +163,16 @@ const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) =
         </div>
       )}
 
-      {step === 2 && preview && (
+      {step === 2 && (
         <div>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="rounded-xl border border-[var(--border)] bg-gray-50 p-4 text-center">
-              <p className="text-2xl font-semibold text-gray-900">{preview.detectedDepartments}</p>
-              <p className="text-xs text-gray-500">Departments detected</p>
-            </div>
-            <div className="rounded-xl border border-[var(--border)] bg-gray-50 p-4 text-center">
-              <p className="text-2xl font-semibold text-gray-900">{preview.detectedUsers}</p>
-              <p className="text-xs text-gray-500">People detected</p>
-            </div>
-          </div>
-
-          {preview.warnings.length > 0 && (
-            <div className="rounded-xl border border-warning-bg bg-warning-bg/40 p-3 mb-4">
-              <p className="text-xs font-medium text-warning-text mb-1">
-                {preview.warnings.length} row{preview.warnings.length > 1 ? 's' : ''} need attention
-              </p>
-              <ul className="text-xs text-warning-text list-disc list-inside space-y-0.5 max-h-32 overflow-auto">
-                {preview.warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <p className="text-xs text-gray-400 mb-4">
-            Confirming creates {preview.detectedDepartments} department
-            {preview.detectedDepartments !== 1 ? 's' : ''} and sends {preview.detectedUsers} invite
-            {preview.detectedUsers !== 1 ? 's' : ''} in one batch.
+          <p className="text-xs text-gray-500 mb-3">
+            {rows.filter((r) => r.include).length} of {rows.length} rows will be invited. Pick a
+            role for each — a row with no role can&apos;t be confirmed.
           </p>
-
-          <div className="flex items-center gap-2">
+          <BulkImportRows rows={rows} onChange={setRows} />
+          <div className="flex items-center gap-2 mt-4">
             <Button
               type="button"
-              appname="back to upload"
               onClick={() => setStep(1)}
               className="w-full bg-white border text-black rounded-3xl py-2.5"
             >
@@ -164,9 +180,8 @@ const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) =
             </Button>
             <Button
               type="button"
-              appname="confirm import"
               onClick={handleConfirm}
-              disabled={isConfirming}
+              disabled={isConfirming || rows.filter((r) => r.include).length === 0}
               className="w-full text-white bg-[var(--color-primary)] rounded-3xl py-2.5 disabled:opacity-50"
             >
               Confirm & Send Invites
@@ -175,15 +190,22 @@ const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) =
         </div>
       )}
 
-      {step === 3 && (
+      {step === 3 && result && (
         <div className="flex flex-col items-center text-center gap-2 py-4">
           <FaCheckCircle className="text-4xl text-brand-600" />
           <p className="text-sm text-gray-700">
-            {invitationsSent} invitation{invitationsSent !== 1 ? 's' : ''} sent.
+            {result.created} invitation{result.created !== 1 ? 's' : ''} sent.
           </p>
+          {result.skipped > 0 && (
+            <p className="text-xs text-gray-500">{result.skipped} skipped — already invited.</p>
+          )}
+          {result.suppressed > 0 && (
+            <p className="text-xs text-amber-600">
+              {result.suppressed} invited but flagged as a previously-bounced address.
+            </p>
+          )}
           <Button
             type="button"
-            appname="close import"
             onClick={resetAndClose}
             className="mt-2 w-full max-w-xs text-white bg-[var(--color-primary)] rounded-3xl py-2.5"
           >

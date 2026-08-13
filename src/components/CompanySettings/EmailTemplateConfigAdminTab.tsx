@@ -314,7 +314,7 @@ const ColorField: React.FC<ColorFieldProps> = ({ label, value, onChange }) => {
 /* ──────────────────────── EmailTemplateConfigAdminTab ───────────────── */
 
 const EmailTemplateConfigAdminTab: React.FC = () => {
-  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeColors>(DEFAULT_THEME);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [bannerFileName, setBannerFileName] = useState<string | null>(null);
@@ -340,12 +340,12 @@ const EmailTemplateConfigAdminTab: React.FC = () => {
     data: configData,
     isLoading: isConfigLoading,
     isError: isConfigError,
-  } = useGetEmailTemplateConfigQuery(selectedCompanyId as number, {
+  } = useGetEmailTemplateConfigQuery(selectedCompanyId as string, {
     skip: selectedCompanyId === null,
   });
 
   /* ── Reset all state when company changes ───────────────────── */
-  const handleCompanyChange = (companyId: number): void => {
+  const handleCompanyChange = (companyId: string): void => {
     setSelectedCompanyId(companyId);
     setTheme(DEFAULT_THEME);
     setBannerUrl(null);
@@ -455,7 +455,7 @@ const EmailTemplateConfigAdminTab: React.FC = () => {
   const handleConfirmSave = async (): Promise<void> => {
     try {
       await saveEmailTemplateConfig({
-        companyId: selectedCompanyId as number,
+        companyId: selectedCompanyId as string,
         template: 'default',
         enabled: true,
         themeConfig: {

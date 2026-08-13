@@ -1,105 +1,48 @@
-import React, { useState } from 'react';
-import { Modal } from 'antd';
-import {
-  useGetQrListQuery,
-  useGenerateQrMutation,
-  useToggleQrActiveMutation,
-} from '../../api/tenant-service/MyCompany/qrCode';
-import { QrCodeCard } from '../shared/ui/QrCodeCard';
-import { showToast } from '../shared/ui/toast';
-import { Button } from '../shared/ui/button';
+import React from 'react';
+import { MdOutlineDownload } from 'react-icons/md';
+import { Typography, Button } from '../shared';
+import { Loader } from '../shared/ui/loader';
+import { useGetTenantQrCodeQuery } from '../../api/organization-service/Tenants/qrCode';
 
-type QrManagementTabProps = {
-  companyId: number;
-};
+/**
+ * GET /v1/tenants/{tenant_id}/qr-code — generated once and reused; there is
+ * no regenerate/activate/deactivate endpoint in the contract today, so this
+ * tab is read-only display + download, not the legacy multi-QR management
+ * screen it used to be.
+ */
+const QrManagementTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
+  const { data, isLoading } = useGetTenantQrCodeQuery(tenantId);
 
-const QrManagementTab: React.FC<QrManagementTabProps> = ({ companyId }) => {
-  const { data, isLoading } = useGetQrListQuery({ companyId, status: 'all' }, { skip: !companyId });
-
-  const [toggleQrActive, { isLoading: isTogglingActive }] = useToggleQrActiveMutation();
-  const [generateQr, { isLoading: isGenerating }] = useGenerateQrMutation();
-  const [showDeactivateModal, setShowDeactivateModal] = useState<boolean>(false);
-
-  const masterQr = data?.data?.find((qr) => qr.masterQr) ?? null;
-
-  const handleGenerate = async (): Promise<void> => {
-    try {
-      const result = await generateQr({ companyId }).unwrap();
-      showToast({ type: 'success', message: result.message || 'QR code generated successfully.' });
-    } catch {
-      showToast({ type: 'error', message: 'Failed to generate QR code. Please try again.' });
-    }
-  };
-
-  const handleToggleActive = (active: boolean): void => {
-    if (!active) {
-      // toggling to inactive — show confirmation first
-      setShowDeactivateModal(true);
-      return;
-    }
-    void doToggle(active);
-  };
-
-  const doToggle = async (active: boolean): Promise<void> => {
-    if (!masterQr) return;
-    try {
-      const result = await toggleQrActive({ qrId: masterQr.id, active }).unwrap();
-      showToast({
-        type: 'success',
-        message: result.message || `QR code ${active ? 'activated' : 'deactivated'} successfully.`,
-      });
-    } catch {
-      showToast({ type: 'error', message: 'Failed to update QR code status. Please try again.' });
-    }
-  };
+  if (isLoading) return <Loader />;
 
   return (
-    <>
-      <QrCodeCard
-        qrItem={masterQr}
-        isLoading={isLoading || isGenerating}
-        isTogglingActive={isTogglingActive}
-        onGenerate={handleGenerate}
-        onToggleActive={handleToggleActive}
-        showGenerateButton={!masterQr}
-      />
+    <div className="p-4 flex flex-col items-center text-center">
+      <Typography variant="h5" className="mb-1 block">
+        Your public jobs QR code
+      </Typography>
+      <Typography variant="body2" className="mb-6 max-w-md">
+        Candidates who scan this are taken straight to your public job listing page.
+      </Typography>
 
-      <Modal
-        open={showDeactivateModal}
-        onCancel={() => setShowDeactivateModal(false)}
-        footer={null}
-        centered
-        closable={false}
-        width={520}
-      >
-        <div className="flex flex-col items-center gap-6 py-4 text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Deactivate QR Code</h2>
-          <p className="text-gray-500 text-base leading-relaxed">
-            Once deactivated, candidates will no longer be able to apply using this QR code.
-            <br />
-            Do you want to continue?
-          </p>
-          <div className="flex gap-4 w-full mt-2">
-            <Button
-              onClick={() => setShowDeactivateModal(false)}
-              className="flex-1 h-12 bg-white text-gray-800 border border-gray-300 rounded-full font-bold text-sm tracking-widest hover:bg-gray-50 transition-colors"
-            >
-              NO
+      {data?.url ? (
+        <>
+          <img
+            src={data.url}
+            alt="Company QR code"
+            className="w-48 h-48 border rounded-xl p-2 mb-4"
+          />
+          <a href={data.url} download target="_blank" rel="noopener noreferrer">
+            <Button className="rounded-full bg-button text-white px-5 py-2 flex items-center gap-2">
+              <MdOutlineDownload /> Download
             </Button>
-            <Button
-              onClick={() => {
-                setShowDeactivateModal(false);
-                void doToggle(false);
-              }}
-              loading={isTogglingActive}
-              className="flex-1 h-12 bg-[#1B4DFF] text-white rounded-full font-bold text-sm tracking-widest hover:opacity-90 transition-opacity"
-            >
-              YES
-            </Button>
-          </div>
+          </a>
+        </>
+      ) : (
+        <div className="p-6 text-gray-500 border border-dashed rounded-xl">
+          QR code isn&apos;t available yet.
         </div>
-      </Modal>
-    </>
+      )}
+    </div>
   );
 };
 

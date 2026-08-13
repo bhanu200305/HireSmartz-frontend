@@ -18,6 +18,7 @@ import { Authorities } from '../../constants/authorities.constant';
 import {
   canViewCompanyTab,
   extractCanManageCompanySettings,
+  isMasterSuperAdminRole,
 } from '../../shared/utils/auth/permission.helpers';
 import { useGetUserProfileQuery } from '../../api/tenant-service/UserProfile/UserProfile';
 
@@ -64,6 +65,13 @@ const Sidebar: React.FC = () => {
         canManageCompanySettings: effectiveCanManageCompanySettings,
         hasMyCompanyAuthority,
       });
+    }
+
+    // Role-gated, not Authorities-gated — see menuItem.tsx's comment on this
+    // entry and isMasterSuperAdminRole's own comment on why this reads
+    // false for every real login today, not just non-admins.
+    if (item.name === 'Admin') {
+      return isMasterSuperAdminRole(role);
     }
 
     return useHasAccess(item.requiredAuthority);

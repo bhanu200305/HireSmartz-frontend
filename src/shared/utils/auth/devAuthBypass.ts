@@ -53,6 +53,8 @@ type DevBypassLoginPayload = {
   refreshToken: string;
   resolvedRole: Role;
   activeLocationId: number;
+  tenantId: string | null;
+  callerKind: 'tenant' | 'platform';
 };
 
 const DEV_BYPASS_USER_ID = 'dev-bypass-user';
@@ -132,6 +134,10 @@ export const getDevBypassLoginPayload = (token: string): DevBypassLoginPayload =
   refreshToken: token,
   resolvedRole: DEV_BYPASS_ROLE,
   activeLocationId: DEV_BYPASS_LOCATION_HQ,
+  // Matches createDevBypassToken()'s `tenant_id` claim above, and mirrors
+  // how a real session derives callerKind — present -> 'tenant'.
+  tenantId: 'dev-bypass-tenant',
+  callerKind: 'tenant',
 });
 
 let warnedOnce = false;

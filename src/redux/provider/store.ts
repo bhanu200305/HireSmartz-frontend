@@ -6,6 +6,8 @@ import api from '../../api';
 import { videoIntegrationApi } from '../../api/interview-service/VideoIntegration/index';
 import { interviewFeedbackApi } from '../../api/interview-service/InterviewFeedback/index';
 import { publicQrApi } from '../../api/candidate-service/PublicQr/index';
+import { authApi } from '../../api/authentication-service/authApi';
+import { orgApi } from '../../api/organization-service/orgApi';
 
 export type RootState = ReturnType<typeof rootReducer>;
 
@@ -22,6 +24,8 @@ const middleware: Middleware[] = [
   videoIntegrationApi.middleware,
   interviewFeedbackApi.middleware,
   publicQrApi.middleware,
+  authApi.middleware,
+  orgApi.middleware,
 ];
 const store = configureStore({
   reducer: persistedReducer,

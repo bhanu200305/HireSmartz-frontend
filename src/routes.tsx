@@ -53,6 +53,10 @@ const EditAiJobDescriptionPage = lazy(() => import('./pages/EditAiJobDescription
 const EditAiQuestionPage = lazyImport(() => import('./pages/AIQuestions'), 'EditAiQuestionPage');
 const EditDetailedInterviewRoundPage = lazy(() => import('./pages/EditDetailedInterviewPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
+const SecuritySettingsPage = lazy(() => import('./pages/SecuritySettingsPage'));
+const AdminToolsPage = lazy(() => import('./pages/AdminToolsPage'));
 const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
 const JobsOpeningPage = lazyImport(() => import('./pages/JobsOpening'), 'JobsOpeningPage');
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -68,13 +72,11 @@ const JobConfigurationPage = lazyImport(
   'JobConfigurationPage'
 );
 const UpdateInterviewRoundPage = lazy(() => import('./pages/UpdateInterviewRoundPage'));
-const UsersPage = lazy(() => import('./pages/UsersPage'));
 const ViewCompanyPage = lazy(() => import('./pages/ViewCompanyPage'));
 const ViewDetailJdPage = lazyImport(() => import('./pages/ViewDetailJdPage'), 'ViewDetailJdPage');
 const ViewInterviewRoundPage = lazy(() => import('./pages/ViewInterviewRoundPage'));
 const ViewJobDescriptionPage = lazy(() => import('./pages/ViewJobDescriptionPage'));
 const ViewJobDetailsPage = lazy(() => import('./pages/ViewJobDetails'));
-const ViewUser = lazy(() => import('./pages/ViewUserPage'));
 const AtsJobIdPage = lazy(() => import('./pages/AtsJobId'));
 const SearchCandidateListingPage = lazyImport(
   () => import('./pages/Candidates'),
@@ -96,8 +98,6 @@ const changePasswordPage = lazyImport(() => import('./pages/UserProfile'), 'chan
 const FinancesPage = lazy(() => import('./pages/FinancesPage'));
 const InterviewEndedPage = lazy(() => import('./pages/InterviewEnded'));
 const AiCallBookingPage = lazy(() => import('./pages/AiCallBookingPage'));
-const AddUser = lazy(() => import('./pages/AddUserPage'));
-const EditUserPage = lazy(() => import('./pages/EditUserPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const EditCompanyPage = lazy(() => import('./pages/EditCompanyPage'));
 const EditInterviewRoundPage = lazy(() => import('./pages/EditInterviewRoundPage'));
@@ -105,6 +105,10 @@ const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 const InterviewLiveKit = lazy(() => import('./components/Interview/InterviewLiveKit'));
 const MyCompanyPage = lazy(() => import('./pages/MyCompanyPage'));
 const CompanySettingsPage = lazy(() => import('./pages/CompanySettingsPage'));
+const PlatformTeamPage = lazy(() => import('./pages/PlatformTeamPage'));
+const PlatformAuditPage = lazy(() => import('./pages/PlatformAuditPage'));
+const PlatformMetricsPage = lazy(() => import('./pages/PlatformMetricsPage'));
+const GuestOrganizationsPage = lazy(() => import('./pages/GuestOrganizationsPage'));
 const CalendarSettingsPage = lazy(() => import('./pages/CalendarSettingsPage'));
 const ScheduleCalendarPage = lazy(() => import('./pages/ScheduleCalendarPage'));
 const AiCallSchedulePage = lazy(() => import('./pages/AiCallSchedulePage'));
@@ -178,6 +182,30 @@ export const Routes: RouteType[] = [
     isPublic: true,
   },
   {
+    name: 'ResetPassword',
+    path: '/reset-password',
+    component: ResetPasswordPage,
+    isPublic: true,
+  },
+  {
+    name: 'VerifyEmail',
+    path: '/verify-email',
+    component: VerifyEmailPage,
+    isPublic: true,
+  },
+  {
+    name: 'SecuritySettings',
+    path: '/settings/security',
+    component: SecuritySettingsPage,
+    isPrivate: true,
+  },
+  {
+    name: 'AdminTools',
+    path: '/settings/admin',
+    component: AdminToolsPage,
+    isPrivate: true,
+  },
+  {
     name: 'AcceptInvitation',
     path: '/accept-invite/:token',
     component: AcceptInvitationPage,
@@ -195,26 +223,6 @@ export const Routes: RouteType[] = [
     isPrivate: true,
   },
   {
-    name: 'Users',
-    path: '/users',
-    component: UsersPage,
-  },
-  {
-    name: 'AddUsers',
-    path: '/add-user',
-    component: AddUser,
-  },
-  {
-    name: 'ViewUsers',
-    path: '/view-user',
-    component: ViewUser,
-  },
-  {
-    name: 'EditUsers',
-    path: '/edit-user',
-    component: EditUserPage,
-  },
-  {
     name: '404',
     path: '*',
     component: NotFoundPage,
@@ -223,6 +231,26 @@ export const Routes: RouteType[] = [
     name: 'CompanySettings',
     path: '/company-settings',
     component: CompanySettingsPage,
+  },
+  {
+    name: 'PlatformTeam',
+    path: '/platform-team',
+    component: PlatformTeamPage,
+  },
+  {
+    name: 'PlatformAudit',
+    path: '/platform-audit',
+    component: PlatformAuditPage,
+  },
+  {
+    name: 'PlatformMetrics',
+    path: '/platform-metrics',
+    component: PlatformMetricsPage,
+  },
+  {
+    name: 'GuestOrganizations',
+    path: '/guest-organizations',
+    component: GuestOrganizationsPage,
   },
   {
     name: 'CalendarSettings',

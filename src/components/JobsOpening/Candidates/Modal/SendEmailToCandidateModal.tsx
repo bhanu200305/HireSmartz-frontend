@@ -478,7 +478,7 @@ const SendEmailToCandidateModal = ({
   }, []);
 
   const { data: emailTemplateConfig, isLoading: isTemplateConfigLoading } =
-    useGetEmailTemplateConfigQuery(companyId as number, {
+    useGetEmailTemplateConfigQuery(String(companyId), {
       skip: companyId === null || !open,
     });
 

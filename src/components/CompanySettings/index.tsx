@@ -2,19 +2,26 @@ import React from 'react';
 import { Tabs } from 'antd';
 import type { TabsProps } from 'antd';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../redux/provider/store';
 import MainLayout from '../../layouts/MainLayout';
 import { BsArrowLeft } from 'react-icons/bs';
 import IndustriesTab from './IndustriesTab';
-import DepartmentsTab from './DepartmentsTab';
 import JobTitlesTab from './JobTitlesTab';
-import DepartmentSettingsTab from './DepartmentSettingsTab';
+import PlatformScoringDefaultsTab from './PlatformScoringDefaultsTab';
 import EmailTemplateConfigWrapper from './EmailTemplateConfigWrapper';
 import SmsTemplatesTab from './SmsTemplatesTab';
-import ScoringCriteriaConfigTab from './ScoringCriteriaConfigTab';
 import { useGetFeatureFlagsQuery } from '../../api/authentication-service/FeatureFlags/index';
 
+/**
+ * Super Admin's platform master-data hub. Industries/Job Titles/Scoring
+ * Defaults are real (organization-service's `/v1/platform/...`). The old
+ * "Departments"/"Department Settings" tabs are dropped, not just hidden —
+ * they modeled a master-department-catalog-with-job-title-mapping feature
+ * that has no endpoint anywhere in the contract and isn't planned (not the
+ * same thing as CareerForcePro's own internal Sales/Support/Finance/Ops
+ * departments, which live on the Platform Team screen instead). Email/SMS
+ * template tabs are untouched — notification-service owns that surface now,
+ * out of this integration's scope.
+ */
 const CompanySettings: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -27,23 +34,6 @@ const CompanySettings: React.FC = () => {
 
   const { data: featureFlags } = useGetFeatureFlagsQuery();
 
-  const role = useSelector((state: RootState) => state.LoginSlice.role);
-
-  const isScoringCriteriaAllowed = React.useMemo(() => {
-    const normalizeRoleIdentifier = (value?: string): string => {
-      return (value || '').replace(/[_\s-]+/g, '').toLowerCase();
-    };
-
-    const name = normalizeRoleIdentifier(role?.name);
-    const type = normalizeRoleIdentifier(role?.type);
-    const isOrganizationUser = type === 'organization';
-    const isCompanySuperAdmin = isOrganizationUser && name === 'superadmin';
-    const isHiringManager = name === 'hiringmanager';
-    const isMasterSuperAdmin = name === 'mastersuperadmin';
-
-    return isCompanySuperAdmin || isHiringManager || isMasterSuperAdmin;
-  }, [role]);
-
   const items = React.useMemo<TabsProps['items']>(
     () => [
       {
@@ -53,18 +43,13 @@ const CompanySettings: React.FC = () => {
       },
       {
         key: '2',
-        label: 'Departments',
-        children: <DepartmentsTab />,
-      },
-      {
-        key: '3',
         label: 'Job Titles',
         children: <JobTitlesTab />,
       },
       {
-        key: '4',
-        label: 'Department Settings',
-        children: <DepartmentSettingsTab />,
+        key: '3',
+        label: 'Default Scoring Weights',
+        children: <PlatformScoringDefaultsTab />,
       },
       ...(featureFlags?.emailTemplateConfig
         ? [{ key: '5', label: 'Email Templates Config', children: <EmailTemplateConfigWrapper /> }]
@@ -74,17 +59,8 @@ const CompanySettings: React.FC = () => {
         label: 'SMS Templates',
         children: <SmsTemplatesTab />,
       },
-      ...(isScoringCriteriaAllowed
-        ? [
-            {
-              key: '7',
-              label: 'Scoring Criteria Configuration',
-              children: <ScoringCriteriaConfigTab />,
-            },
-          ]
-        : []),
     ],
-    [featureFlags, isScoringCriteriaAllowed]
+    [featureFlags]
   );
 
   return (

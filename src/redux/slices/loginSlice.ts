@@ -21,6 +21,19 @@ type LoginState = {
   resolvedRole?: Role;
   /** The location whose permission set is currently in effect (multi-location users). */
   activeLocationId?: number | null;
+  /**
+   * The signed-in user's tenant, decoded from the access token's `tenant_id`
+   * claim (authentication-service docs/API_CONTRACT.md's JWT-claims table).
+   * `null` for a platform caller (Super Admin / internal staff — their token
+   * carries no `tenant_id` at all, by design). Every organization-service
+   * tenant-scoped call (`/v1/tenants/{tenant_id}/...`) reads this rather than
+   * re-decoding the token locally.
+   */
+  tenantId?: string | null;
+  /** Derived the same way authentication-service itself derives it: `tenant_id`
+   * present -> 'tenant', absent -> 'platform'. Decides which admin surface
+   * (Company Admin vs Super Admin) a session sees. */
+  callerKind?: 'tenant' | 'platform' | null;
 };
 
 type LoginPayload = {
@@ -36,6 +49,8 @@ type LoginPayload = {
   refreshToken?: string;
   resolvedRole?: Role;
   activeLocationId?: number | null;
+  tenantId?: string | null;
+  callerKind?: 'tenant' | 'platform' | null;
 };
 
 const initialState: LoginState = {
@@ -51,6 +66,8 @@ const initialState: LoginState = {
   refreshToken: '',
   resolvedRole: undefined,
   activeLocationId: null,
+  tenantId: null,
+  callerKind: null,
 };
 
 const loginSlice = createSlice({
@@ -77,6 +94,8 @@ const loginSlice = createSlice({
         refreshToken: action.payload.refreshToken,
         resolvedRole: action.payload.resolvedRole,
         activeLocationId: defaultLocationId,
+        tenantId: action.payload.tenantId ?? null,
+        callerKind: action.payload.callerKind ?? null,
       };
     },
     resetState: () => {

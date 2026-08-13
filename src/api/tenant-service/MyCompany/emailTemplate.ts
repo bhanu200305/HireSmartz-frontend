@@ -30,7 +30,7 @@ export interface ThemeConfigResponse {
 
 export interface EmailTemplateConfigResponse {
   id: number;
-  companyId: number;
+  companyId: string;
   template: string;
   enabled: boolean;
   inlineImages: {
@@ -41,7 +41,7 @@ export interface EmailTemplateConfigResponse {
 }
 
 export interface SaveEmailTemplateConfigRequest {
-  companyId: number;
+  companyId: string;
   template: string;
   enabled: boolean;
   themeConfig: Record<string, string>;
@@ -57,7 +57,7 @@ export interface PushTemplateAction {
 }
 
 export interface ImpactedTenant {
-  companyId: number;
+  companyId: string;
   companyName: string;
   message: string;
 }
@@ -76,7 +76,7 @@ export interface PushToTenantsResponse {
 }
 
 export interface PushToTenantsRequest {
-  companyIds: number[];
+  companyIds: string[];
   performChanges: boolean;
   confirmed: boolean;
 }
@@ -99,7 +99,7 @@ export interface GenericCandidateEmailTemplateApiResponse {
 
 const extendedApi = api.injectEndpoints({
   endpoints: (build) => ({
-    getEmailTemplateConfig: build.query<EmailTemplateConfigResponse, number>({
+    getEmailTemplateConfig: build.query<EmailTemplateConfigResponse, string>({
       query: (companyId) => ({
         url: `/mail/template-config/${companyId}/default`,
         method: 'GET',

@@ -41,10 +41,51 @@ several services.
 most debatable call here, since user management can reasonably sit in either
 depending on how your team defines the rbac-service boundary.
 
+## Update — 2026-08-13: authentication-service and organization-service are live
+
+The premise above (no real backend yet) no longer holds for these two services.
+Both are fully wired against their real contracts now:
+
+- `api/authentication-service/**` — real login/MFA/password-reset/sessions, its
+  own `authApi` instance (see `authApi.ts`'s comment for why it's separate from
+  the shared `api`).
+- `api/organization-service/**` — every screen listed in
+  `services/organization-service/docs/API_CONTRACT.md` that has a real,
+  reachable endpoint: tenant onboarding, My Company (profile, locations,
+  departments, entitlements, interview questions, scoring, QR, team/invites,
+  bulk import, activity), the org directory (`Users`), RBAC assignment, and
+  the full Super Admin surface (Companies, Industries, Job Titles, Platform
+  Team, Audit Log, Metrics, Guest Organizations).
+
+`api/tenant-service/**` and `api/rbac-service/**` are **not** fully retired —
+they predate both real services and modeled a different, partly-fictional
+backend (numeric ids, a role/permission shape the real RBAC catalog doesn't
+have, master-data CRUD with no real endpoint). Every call site these two
+folders had that organization-service now actually covers has been moved
+over and the now-orphaned files deleted; what's left in `tenant-service`/
+`rbac-service` backs screens genuinely outside this scope (job-service
+pages, notification-service's email/SMS templates, the CFP-internal
+Owner/Users dashboards) or documents a real backend gap:
+
+- **No role catalog endpoint exists anywhere in organization-service** — only
+  grant/revoke/resolve-permissions. A role browser has nothing to list, so
+  `RolesManagement` now shows an honest "not available yet" state instead of
+  the old mock-backed CRUD table; `/add-role`, `/edit-role`, `/view-role`,
+  `/invite-user` redirect there rather than render a dead form.
+- Two features the old frontend modeled that have **no equivalent anywhere in
+  the real contract** and are confirmed not planned: a master-department
+  catalog with job-title-department mapping (`CompanySettings`'s old
+  "Departments"/"Department Settings" tabs, `MyCompany`'s old "Company
+  Settings" tab) — dropped, not stubbed.
+- Email/SMS template CRUD moved to notification-service entirely
+  (`/v1/template-settings/...`) — left as visible "coming soon" placeholders
+  in `MyCompany` (not silently removed) since notification-service's own
+  integration is a separate piece of work.
+
 ## Dev auth bypass
 
-Since the login endpoint isn't available from the backend team yet, a **dev-only**
-bypass was added (off by default):
+The dev-only login bypass below predates real login too — it's still useful
+for local demos/role-previews, but is no longer the only way in:
 
 - Set `VITE_BYPASS_AUTH=true` in `.env.local` to skip real token validation and
   auto-hydrate a fake local session (see `src/shared/utils/auth/devAuthBypass.ts`).

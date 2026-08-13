@@ -3,14 +3,21 @@ import { Button, Input, showToast } from '..';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { Checkbox } from 'antd';
-import { useLoginMutation, LoginRequest } from '../../api/authentication-service/Login/login';
-import { get } from 'lodash-es';
+import {
+  useLoginMutation,
+  LoginRequest,
+  LoginTokenResponse,
+  MfaRequiredResponse,
+  isMfaRequiredResponse,
+} from '../../api/authentication-service/Login/login';
+import { useResendVerificationMutation } from '../../api/authentication-service/EmailVerification/resendVerification';
 import { useDispatch } from 'react-redux';
 import { loginStore } from '../../redux/slices/loginSlice';
 import { z } from 'zod';
 import { Loader } from '../shared/ui/loader';
 import './login.css';
 import Footer from '../Footer';
+import MfaChallengeStep from './MfaChallengeStep';
 import {
   clearImpersonationStorage,
   getLocalStorageItem,
@@ -19,9 +26,11 @@ import {
   setTokens,
 } from '../../shared/utils/auth/localstorage.helpers';
 import { extractCanManageCompanySettings } from '../../shared/utils/auth/permission.helpers';
+import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
+import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
-import { verifyTokenLogin } from '../../services/AuthService';
 import { jwtDecode } from 'jwt-decode';
+import { useLazyGetUserPermissionsQuery } from '../../api/organization-service/Roles/permissions';
 import {
   isDevAuthBypassEnabled,
   createDevBypassToken,
@@ -75,7 +84,6 @@ type SignUpFormErrors = {
 
 const Login = () => {
   const [searchParams] = useSearchParams();
-  const loginToken = searchParams.get('token') as string;
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -83,6 +91,16 @@ const Login = () => {
   const [view, setView] = useState<'login' | 'signup'>(
     searchParams.get('view') === 'signup' ? 'signup' : 'login'
   );
+  // Set only when POST /login returns status: "mfa_required" — while this is
+  // non-null the card renders MfaChallengeStep instead of the password form.
+  // Local state, not Redux: it is meaningless outside this page and holds a
+  // short-lived interim token, not anything worth surviving a refresh.
+  const [mfaChallenge, setMfaChallenge] = useState<MfaRequiredResponse | null>(null);
+  // Set when login fails with error_code "email_not_verified" — offers a
+  // resend action instead of leaving the visitor at a dead-end toast.
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resendVerification, { isLoading: isResendingVerification }] =
+    useResendVerificationMutation();
 
   useEffect(() => {
     const successMessage = (location.state as { successMessage?: string } | null)?.successMessage;
@@ -114,6 +132,7 @@ const Login = () => {
   };
   const { email, password, showPassword, errors, rememberMe, isFormValid } = localState;
   const [login, { isLoading }] = useLoginMutation();
+  const [fetchUserPermissions] = useLazyGetUserPermissionsQuery();
 
   const [signUpState, setSignUpState] = useReducer(
     (prevState, newState) => ({ ...prevState, ...newState }),
@@ -295,6 +314,8 @@ const Login = () => {
         refreshToken: token,
         resolvedRole: assignedRole,
         activeLocationId: user.locationId,
+        tenantId: assignedRole.scope === 'tenant' ? 'dev-bypass-tenant' : null,
+        callerKind: assignedRole.scope === 'tenant' ? 'tenant' : 'platform',
       })
     );
     showToast({ message: `Welcome, ${user.firstName}! (demo mode)`, type: 'success' });
@@ -303,6 +324,94 @@ const Login = () => {
     const fromSearch = location.state?.from?.search || '';
     const safePath = fromPath === '/logout' ? '/' : fromPath;
     navigate(safePath + fromSearch, { replace: true });
+  };
+
+  // Shared by a plain no-MFA login and MfaChallengeStep's onVerified callback
+  // — both end at authentication-service's TokenResponse and finish exactly
+  // the same way: store tokens, resolve tenant/permissions, populate Redux,
+  // redirect.
+  const completeRealLogin = async (tokens: LoginTokenResponse, loggedInEmail: string) => {
+    const token = tokens.access_token;
+    const refreshToken = tokens.refresh_token;
+    // Real access tokens carry `sub` (the user id) and, for a tenant caller
+    // only, `tenant_id` (authentication-service docs/API_CONTRACT.md's
+    // JWT-claims table). A platform caller's token has no `tenant_id` claim
+    // at all — that absence, not any dedicated flag, is how "Super Admin /
+    // internal staff" is distinguished from "tenant user" everywhere in the
+    // backend, so the frontend mirrors it here rather than inventing its own
+    // signal.
+    const decodedToken = jwtDecode<{ sub: string; tenant_id?: string }>(token);
+    const userId = decodedToken.sub || undefined;
+    const tenantId = decodedToken.tenant_id ?? null;
+    const callerKind: 'tenant' | 'platform' = tenantId ? 'tenant' : 'platform';
+    const role = { name: '', type: '' };
+    const canManageCompanySettings = extractCanManageCompanySettings(token);
+
+    clearImpersonationStorage();
+
+    sessionStorage.setItem(LOCALSTORAGE_KEYS.ACCESS, token);
+    sessionStorage.setItem(LOCALSTORAGE_KEYS.REFRESH, refreshToken);
+
+    if (rememberMe) {
+      setTokens(token, refreshToken);
+      setLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME, 'true');
+      setLocalStorageItem(LOCALSTORAGE_KEYS.ROLE, role);
+      setLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS, {
+        email: loggedInEmail,
+        password: encrypt(password),
+      });
+    } else {
+      setTokens(token, refreshToken);
+      setLocalStorageItem(LOCALSTORAGE_KEYS.ROLE, role);
+      removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME);
+      removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS);
+    }
+
+    // The token itself carries no `permissions` claim by design (see the
+    // decode comment above) — organization-service's
+    // GET /v1/roles/users/{user_id}/permissions is the actual source of a
+    // real session's effective permissions, so it's resolved once, right
+    // here, rather than left empty until some later screen happens to need
+    // it. A failure here must not block the login the user already
+    // completed — it degrades to "no permissions yet" (useHasAccess denies
+    // everything) with an explicit toast, never a silent empty grant.
+    let authorities: string[] = [];
+    if (userId) {
+      try {
+        const resolved = await fetchUserPermissions({ userId }).unwrap();
+        authorities = resolved.permissions;
+      } catch (err) {
+        showToast({
+          message: getOrgErrorMessage(
+            err,
+            "Signed in, but we couldn't load your permissions yet. Some sections may be hidden until you refresh."
+          ),
+          type: 'error',
+        });
+      }
+    }
+
+    dispatch(
+      loginStore({
+        token,
+        rememberMe,
+        authorities,
+        canManageCompanySettings,
+        role,
+        refreshToken,
+        userId,
+        tenantId,
+        callerKind,
+      })
+    );
+    showToast({ message: 'Login successful', type: 'success' });
+    const fromPath = location.state?.from?.pathname || '/';
+    const fromSearch = location.state?.from?.search || '';
+    // Never redirect back to /logout after login — it would immediately log the user out again.
+    // This happens when PrivateRoute saves /logout as the "from" location before redirecting to /login.
+    const safePath = fromPath === '/logout' ? '/' : fromPath;
+    const fromLocation = safePath + fromSearch;
+    navigate(fromLocation, { replace: true });
   };
 
   const handleLogin = async () => {
@@ -343,69 +452,53 @@ const Login = () => {
     }
 
     const payload: LoginRequest = {
-      emailId: trimmedEmail,
+      email: trimmedEmail,
       password,
     };
 
     login(payload)
       .unwrap()
       .then((res) => {
-        const token = get(res, 'token', '');
-        const roleName = get(res, 'roleName', '');
-        const roleType = get(res, 'roleType', '');
-        const authorities = get(res, 'authorities', []);
-        const refreshToken = get(res, 'refreshToken', '');
-        const decodedToken = jwtDecode<{ userId: string }>(token);
-        const userId = decodedToken.userId || undefined;
-        const canManageCompanySettings = extractCanManageCompanySettings(token);
-
-        const role = { name: roleName, type: roleType };
-
-        clearImpersonationStorage();
-
-        sessionStorage.setItem(LOCALSTORAGE_KEYS.ACCESS, token);
-        sessionStorage.setItem(LOCALSTORAGE_KEYS.REFRESH, refreshToken);
-
-        if (rememberMe) {
-          setTokens(token, refreshToken);
-          setLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME, 'true');
-          setLocalStorageItem(LOCALSTORAGE_KEYS.ROLE, role);
-          setLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS, {
-            email: trimmedEmail,
-            password: encrypt(password),
-          });
-        } else {
-          setTokens(token, refreshToken);
-          setLocalStorageItem(LOCALSTORAGE_KEYS.ROLE, role);
-          removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME);
-          removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS);
+        if (isMfaRequiredResponse(res)) {
+          // Second factor armed — hand off to MfaChallengeStep instead of
+          // completing the login. Nothing is stored yet: mfa_token is not
+          // an access token and authorises exactly the two MFA endpoints.
+          setUnverifiedEmail(null);
+          setMfaChallenge(res);
+          return;
         }
-        dispatch(
-          loginStore({
-            token,
-            rememberMe,
-            authorities,
-            canManageCompanySettings,
-            role,
-            refreshToken,
-            userId,
-          })
-        );
-        showToast({ message: get(res, 'message', 'Login successful'), type: 'success' });
-        const fromPath = location.state?.from?.pathname || '/';
-        const fromSearch = location.state?.from?.search || '';
-        // Never redirect back to /logout after login — it would immediately log the user out again.
-        // This happens when PrivateRoute saves /logout as the "from" location before redirecting to /login.
-        const safePath = fromPath === '/logout' ? '/' : fromPath;
-        const fromLocation = safePath + fromSearch;
-        navigate(fromLocation, { replace: true });
+        setUnverifiedEmail(null);
+        void completeRealLogin(res, trimmedEmail);
       })
       .catch((err) => {
-        showToast({ message: get(err, 'data.message', 'Login failed'), type: 'error' });
+        const errorCode = getAuthErrorCode(err);
+        // email_not_verified gets its own affordance (resend link) below the
+        // form instead of just a dead-end toast — everything else keeps the
+        // backend's own (deliberately uniform, non-enumerating) message.
+        setUnverifiedEmail(errorCode === 'email_not_verified' ? trimmedEmail : null);
+        showToast({ message: getAuthErrorMessage(err, 'Login failed'), type: 'error' });
       })
       .finally(() => {
         isSubmitting.current = false;
       });
+  };
+
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail || isResendingVerification) return;
+    try {
+      await resendVerification({ email: unverifiedEmail }).unwrap();
+      // 202, always — see forgotPassword.ts's identical reasoning for why
+      // there is no "address not found" branch to show here either.
+      showToast({
+        message: "If that email needs verifying, we've sent a new link.",
+        type: 'success',
+      });
+    } catch (err) {
+      showToast({
+        message: getAuthErrorMessage(err, 'Could not resend the verification email.'),
+        type: 'error',
+      });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -460,26 +553,6 @@ const Login = () => {
     setView('login');
   };
 
-  const verifyAndRedirect = async () => {
-    const result = await verifyTokenLogin(loginToken, dispatch);
-    if (result) {
-      sessionStorage.setItem(LOCALSTORAGE_KEYS.ACCESS, result.token);
-      sessionStorage.setItem(LOCALSTORAGE_KEYS.REFRESH, result.refreshToken);
-
-      navigate('/change-password', {
-        state: { autoLogin: true },
-      });
-    } else {
-      navigate('/login');
-    }
-  };
-
-  useEffect(() => {
-    if (loginToken) {
-      verifyAndRedirect();
-    }
-  }, [loginToken]);
-
   return (
     <>
       <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
@@ -514,184 +587,210 @@ const Login = () => {
             </span>
           </div>
 
-          {/* Tabs */}
-          <div className="mb-7 flex rounded-full bg-gray-100 p-1 text-sm font-medium">
-            <button
-              type="button"
-              onClick={() => setView('login')}
-              className={`flex-1 rounded-full py-1.5 cursor-pointer transition-all duration-200 ${
-                view === 'login' ? 'bg-white text-black shadow-sm' : 'text-gray-500'
-              }`}
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('signup')}
-              className={`flex-1 rounded-full py-1.5 cursor-pointer transition-all duration-200 ${
-                view === 'signup' ? 'bg-white text-black shadow-sm' : 'text-gray-500'
-              }`}
-            >
-              Sign Up
-            </button>
-          </div>
-
-          {view === 'login' ? (
-            <form
-              key="login"
-              onSubmit={handleSubmit}
-              className="login-tab-fade flex flex-col gap-4"
-            >
-              <div className="text-center">
-                <h2 className="text-xl font-semibold text-gray-900">Welcome back</h2>
-                <p className="mt-1 text-sm text-gray-500">Log in to continue to careerforce pro</p>
-              </div>
-
-              <Input
-                name="email"
-                autoFocus
-                error={errors.email}
-                value={email}
-                onChange={onHandleChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Email"
-                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-              />
-
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                onChange={onHandleChange}
-                onKeyDown={handleKeyDown}
-                name="password"
-                value={password}
-                placeholder="Password"
-                error={errors.password}
-                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-                suffix={
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                    onClick={() => setLocalState({ showPassword: !showPassword })}
-                  >
-                    {showPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
-                }
-              />
-
-              <div className="-mt-1 flex items-center justify-between">
-                <Checkbox
-                  checked={rememberMe}
-                  onChange={(e) => setLocalState({ rememberMe: e.target.checked })}
-                  className="custom-checkbox"
-                >
-                  Remember me
-                </Checkbox>
-                <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
-
-              <Button
-                type="submit"
-                appname="test"
-                disabled={!isFormValid || isLoading || isSubmitting.current}
-                className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isLoading ? 'Logging in…' : 'Log in'}
-              </Button>
-
-              {isDevAuthBypassEnabled() && (
-                <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-400">
-                  Demo access:{' '}
-                  <span className="font-mono text-gray-500">
-                    {DEV_SEED_CREDENTIALS.email} / {DEV_SEED_CREDENTIALS.password}
-                  </span>
-                </p>
-              )}
-            </form>
+          {mfaChallenge ? (
+            <MfaChallengeStep
+              mfaState={mfaChallenge}
+              onBack={() => setMfaChallenge(null)}
+              onVerified={(tokens) => void completeRealLogin(tokens, email.trim())}
+            />
           ) : (
-            <form
-              key="signup"
-              onSubmit={handleSignUpSubmit}
-              className="login-tab-fade flex flex-col gap-4"
-            >
-              <div className="text-center">
-                <h2 className="text-xl font-semibold text-gray-900">Create account</h2>
-                <p className="mt-1 text-sm text-gray-500">Get started with careerforce pro</p>
+            <>
+              {/* Tabs */}
+              <div className="mb-7 flex rounded-full bg-gray-100 p-1 text-sm font-medium">
+                <button
+                  type="button"
+                  onClick={() => setView('login')}
+                  className={`flex-1 rounded-full py-1.5 cursor-pointer transition-all duration-200 ${
+                    view === 'login' ? 'bg-white text-black shadow-sm' : 'text-gray-500'
+                  }`}
+                >
+                  Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView('signup')}
+                  className={`flex-1 rounded-full py-1.5 cursor-pointer transition-all duration-200 ${
+                    view === 'signup' ? 'bg-white text-black shadow-sm' : 'text-gray-500'
+                  }`}
+                >
+                  Sign Up
+                </button>
               </div>
 
-              <Input
-                name="name"
-                autoFocus
-                error={signUpState.errors.name}
-                value={signUpState.name}
-                onChange={onSignUpChange}
-                placeholder="Full name"
-                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-              />
+              {view === 'login' ? (
+                <form
+                  key="login"
+                  onSubmit={handleSubmit}
+                  className="login-tab-fade flex flex-col gap-4"
+                >
+                  <div className="text-center">
+                    <h2 className="text-xl font-semibold text-gray-900">Welcome back</h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Log in to continue to careerforce pro
+                    </p>
+                  </div>
 
-              <Input
-                name="email"
-                error={signUpState.errors.email}
-                value={signUpState.email}
-                onChange={onSignUpChange}
-                placeholder="Email"
-                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-              />
+                  <Input
+                    name="email"
+                    autoFocus
+                    error={errors.email}
+                    value={email}
+                    onChange={onHandleChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Email"
+                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+                  />
 
-              <Input
-                type={signUpState.showPassword ? 'text' : 'password'}
-                onChange={onSignUpChange}
-                name="password"
-                value={signUpState.password}
-                placeholder="Password"
-                error={signUpState.errors.password}
-                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-                suffix={
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                    onClick={() => setSignUpState({ showPassword: !signUpState.showPassword })}
-                  >
-                    {signUpState.showPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
-                }
-              />
-
-              <Input
-                type={signUpState.showConfirmPassword ? 'text' : 'password'}
-                onChange={onSignUpChange}
-                name="confirmPassword"
-                value={signUpState.confirmPassword}
-                placeholder="Confirm password"
-                error={signUpState.errors.confirmPassword}
-                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-                suffix={
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                    onClick={() =>
-                      setSignUpState({ showConfirmPassword: !signUpState.showConfirmPassword })
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    onChange={onHandleChange}
+                    onKeyDown={handleKeyDown}
+                    name="password"
+                    value={password}
+                    placeholder="Password"
+                    error={errors.password}
+                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+                    suffix={
+                      <button
+                        type="button"
+                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                        onClick={() => setLocalState({ showPassword: !showPassword })}
+                      >
+                        {showPassword ? <FaEye /> : <FaEyeSlash />}
+                      </button>
                     }
+                  />
+
+                  <div className="-mt-1 flex items-center justify-between">
+                    <Checkbox
+                      checked={rememberMe}
+                      onChange={(e) => setLocalState({ rememberMe: e.target.checked })}
+                      className="custom-checkbox"
+                    >
+                      Remember me
+                    </Checkbox>
+                    <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                      Forgot password?
+                    </Link>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    appname="test"
+                    disabled={!isFormValid || isLoading || isSubmitting.current}
+                    className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {signUpState.showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
-                }
-              />
+                    {isLoading ? 'Logging in…' : 'Log in'}
+                  </Button>
 
-              <Button
-                type="submit"
-                appname="test"
-                className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white"
-              >
-                Create account
-              </Button>
+                  {isDevAuthBypassEnabled() && (
+                    <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-400">
+                      Demo access:{' '}
+                      <span className="font-mono text-gray-500">
+                        {DEV_SEED_CREDENTIALS.email} / {DEV_SEED_CREDENTIALS.password}
+                      </span>
+                    </p>
+                  )}
 
-              <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-400">
-                Preview only — accounts aren&apos;t saved yet. Use the demo login on the Login tab
-                to explore the app.
-              </p>
-            </form>
+                  {unverifiedEmail && (
+                    <p className="rounded-xl bg-amber-50 px-3 py-2 text-center text-xs text-amber-700">
+                      That email address hasn&apos;t been verified yet.{' '}
+                      <button
+                        type="button"
+                        onClick={handleResendVerification}
+                        disabled={isResendingVerification}
+                        className="font-medium underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isResendingVerification ? 'Sending…' : 'Resend verification email'}
+                      </button>
+                    </p>
+                  )}
+                </form>
+              ) : (
+                <form
+                  key="signup"
+                  onSubmit={handleSignUpSubmit}
+                  className="login-tab-fade flex flex-col gap-4"
+                >
+                  <div className="text-center">
+                    <h2 className="text-xl font-semibold text-gray-900">Create account</h2>
+                    <p className="mt-1 text-sm text-gray-500">Get started with careerforce pro</p>
+                  </div>
+
+                  <Input
+                    name="name"
+                    autoFocus
+                    error={signUpState.errors.name}
+                    value={signUpState.name}
+                    onChange={onSignUpChange}
+                    placeholder="Full name"
+                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+                  />
+
+                  <Input
+                    name="email"
+                    error={signUpState.errors.email}
+                    value={signUpState.email}
+                    onChange={onSignUpChange}
+                    placeholder="Email"
+                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+                  />
+
+                  <Input
+                    type={signUpState.showPassword ? 'text' : 'password'}
+                    onChange={onSignUpChange}
+                    name="password"
+                    value={signUpState.password}
+                    placeholder="Password"
+                    error={signUpState.errors.password}
+                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+                    suffix={
+                      <button
+                        type="button"
+                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                        onClick={() => setSignUpState({ showPassword: !signUpState.showPassword })}
+                      >
+                        {signUpState.showPassword ? <FaEye /> : <FaEyeSlash />}
+                      </button>
+                    }
+                  />
+
+                  <Input
+                    type={signUpState.showConfirmPassword ? 'text' : 'password'}
+                    onChange={onSignUpChange}
+                    name="confirmPassword"
+                    value={signUpState.confirmPassword}
+                    placeholder="Confirm password"
+                    error={signUpState.errors.confirmPassword}
+                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+                    suffix={
+                      <button
+                        type="button"
+                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                        onClick={() =>
+                          setSignUpState({ showConfirmPassword: !signUpState.showConfirmPassword })
+                        }
+                      >
+                        {signUpState.showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
+                      </button>
+                    }
+                  />
+
+                  <Button
+                    type="submit"
+                    appname="test"
+                    className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white"
+                  >
+                    Create account
+                  </Button>
+
+                  <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-400">
+                    Preview only — accounts aren&apos;t saved yet. Use the demo login on the Login
+                    tab to explore the app.
+                  </p>
+                </form>
+              )}
+            </>
           )}
         </div>
         <Footer className="relative z-10 mt-8 shrink-0 text-white/70" />

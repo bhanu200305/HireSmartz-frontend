@@ -1,4 +1,4 @@
-import { api } from '../../index';
+import { orgApi } from '../orgApi';
 
 export type ScrapedTenantPreview = {
   logo_url: string;
@@ -8,16 +8,22 @@ export type ScrapedTenantPreview = {
 
 export type CreateTenantRequest = {
   company_name: string;
-  website_url: string;
-  industry_id: string;
+  // Optional on organization-service's CreateTenantInput — omit rather than
+  // send '' for an unset value, which a UUID/URL field would reject as
+  // malformed rather than treat as absent.
+  website_url?: string;
+  industry_id?: string;
   admin_email: string;
-  admin_contact: string;
+  admin_contact?: string;
 };
 
 export type CreateTenantResponse = {
   tenant_id: string;
   status: 'draft' | string;
-  scraped_preview: ScrapedTenantPreview;
+  // null when no website_url was given, or ai-service didn't answer —
+  // CreateTenantUseCase never fails the request over this, so the frontend
+  // must handle the no-preview case rather than assume one always comes back.
+  scraped_preview: ScrapedTenantPreview | null;
 };
 
 export type ConfirmedTenantProfileFields = {
@@ -37,22 +43,11 @@ export type ConfirmTenantResponse = {
   invitation_id: string;
 };
 
-export type UpdateTenantProfileRequest = {
-  tenantId: string;
-  name?: string;
-  logo?: string;
-  description?: string;
-};
-
-export type UpdateTenantProfileResponse = {
-  status: string;
-};
-
 export type SuspendTenantResponse = {
   status: 'suspended' | string;
 };
 
-const extendedApi = api.injectEndpoints({
+const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     createTenant: build.mutation<CreateTenantResponse, CreateTenantRequest>({
       query: (body) => ({
@@ -70,14 +65,6 @@ const extendedApi = api.injectEndpoints({
       }),
       invalidatesTags: ['Tenant', 'TenantInvitations'],
     }),
-    updateTenantProfile: build.mutation<UpdateTenantProfileResponse, UpdateTenantProfileRequest>({
-      query: ({ tenantId, ...body }) => ({
-        url: `/v1/tenants/${tenantId}/profile`,
-        method: 'PATCH',
-        body,
-      }),
-      invalidatesTags: ['Tenant'],
-    }),
     suspendTenant: build.mutation<SuspendTenantResponse, { tenantId: string }>({
       query: ({ tenantId }) => ({
         url: `/v1/tenants/${tenantId}/suspend`,
@@ -88,9 +75,5 @@ const extendedApi = api.injectEndpoints({
   }),
 });
 
-export const {
-  useCreateTenantMutation,
-  useConfirmTenantMutation,
-  useUpdateTenantProfileMutation,
-  useSuspendTenantMutation,
-} = extendedApi;
+export const { useCreateTenantMutation, useConfirmTenantMutation, useSuspendTenantMutation } =
+  extendedApi;

@@ -4,18 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { get } from 'lodash-es';
 import { Button, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
-import DropdownWithAddOption from '../shared/ui/DropdownWithAddOption';
 import { countryCodes } from '../../constants/countryCode';
 import {
   handlePhoneNumberChange,
   sanitizeInput,
 } from '../../shared/utils/validation/input.helpers';
 import { cleanPhoneNumber, makeFirstLetterUpperCase } from '../../shared/utils/methods';
-import {
-  useGetMasterIndustriesQuery,
-  useAddMasterIndustryMutation,
-  useUpdateMasterIndustryMutation,
-} from '../../api/tenant-service/CompanySettings/industries';
+import { useListIndustriesQuery } from '../../api/organization-service/Platform/industries';
 import { useCreateTenantMutation } from '../../api/organization-service/Tenants/tenants';
 import { tenantDetailsSchema, type TenantDetailsFormValues } from './TenantOnboardingSchema';
 import type { TenantDraft } from './index';
@@ -24,30 +19,15 @@ type StepCompanyDetailsProps = {
   onCreated: (draft: TenantDraft) => void;
 };
 
+// The industry catalog itself (add/edit/delete) is a Super Admin action —
+// CompanySettings/IndustriesTab.tsx, its own real screen, gated on
+// INDUSTRY_WRITE. Creating a company only needs to pick from what already
+// exists there; it doesn't need (and the person doing it may not hold
+// permission for) an inline "add a new industry" shortcut, which is also
+// why this no longer reuses DropdownWithAddOption.
 const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
   const [createTenant, { isLoading }] = useCreateTenantMutation();
-  const [addMasterIndustry] = useAddMasterIndustryMutation();
-  const [updateMasterIndustry] = useUpdateMasterIndustryMutation();
-
-  const {
-    data: industriesData,
-    isLoading: loadingIndustries,
-    refetch: refetchIndustries,
-  } = useGetMasterIndustriesQuery({
-    status: 'all',
-    page: 0,
-    size: 1000,
-    sortBy: 'name',
-    sortDirection: 'ASC',
-  });
-
-  const industries = Array.isArray(industriesData)
-    ? industriesData
-    : ((industriesData as { content?: unknown })?.content as Array<{
-        id: number;
-        name: string;
-        status: boolean;
-      }>) || [];
+  const { data: industries, isLoading: loadingIndustries } = useListIndustriesQuery();
 
   const { register, handleSubmit, watch, setValue, trigger, formState } =
     useForm<TenantDetailsFormValues>({
@@ -66,59 +46,17 @@ const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
 
   const { errors, isValid } = formState;
 
-  const handleAddIndustryOption = async (industryName: string): Promise<void> => {
-    const trimmedName = industryName.trim();
-    if (!trimmedName) {
-      showToast({ message: 'Industry name cannot be empty.', type: 'error' });
-      return;
-    }
-    try {
-      const response = await addMasterIndustry({ name: trimmedName, status: true }).unwrap();
-      await refetchIndustries();
-      const newIndustryId = response?.data?.id;
-      if (newIndustryId) {
-        setValue('industryId', String(newIndustryId), { shouldDirty: true, shouldValidate: true });
-      }
-      showToast({ message: 'Industry created successfully.', type: 'success' });
-    } catch (error: unknown) {
-      showToast({
-        message: get(error, 'data.message', 'Failed to create industry.'),
-        type: 'error',
-      });
-    }
-  };
-
-  const handleEditIndustryOption = async (
-    industryId: string | number,
-    newName: string
-  ): Promise<void> => {
-    const trimmedName = newName.trim();
-    if (!trimmedName) {
-      showToast({ message: 'Industry name cannot be empty.', type: 'error' });
-      return;
-    }
-    try {
-      await updateMasterIndustry({
-        id: Number(industryId),
-        name: trimmedName,
-        status: true,
-      }).unwrap();
-      await refetchIndustries();
-      showToast({ message: 'Industry updated successfully.', type: 'success' });
-    } catch (error: unknown) {
-      showToast({
-        message: get(error, 'data.message', 'Failed to update industry.'),
-        type: 'error',
-      });
-    }
-  };
-
   const onSubmit = async (data: TenantDetailsFormValues) => {
     try {
       const response = await createTenant({
         company_name: makeFirstLetterUpperCase(sanitizeInput(data.companyName)),
-        website_url: data.websiteUrl,
-        industry_id: data.industryId,
+        // Both optional on the backend — send undefined rather than '' so an
+        // unset field is actually absent, not a value that fails UUID/URL
+        // parsing server-side. Leaving website_url unset also means Create
+        // Tenant returns immediately instead of waiting on ai-service's
+        // branding-scrape RPC, which has no consumer in this stack right now.
+        website_url: data.websiteUrl?.trim() || undefined,
+        industry_id: data.industryId || undefined,
         admin_email: data.adminEmail,
         admin_contact: `${data.adminContactCountryCode}${cleanPhoneNumber(data.adminContactPhone)}`,
       }).unwrap();
@@ -169,30 +107,23 @@ const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
         </div>
 
         <div>
-          <p className="text-sm text-gray-600">
-            Industry <span className="required-asterisk">*</span>
-          </p>
+          <p className="text-sm text-gray-600">Industry</p>
           <div className="mt-1">
-            <DropdownWithAddOption
+            <Select
               className="w-full custom-select-jobs placeholder-style"
               value={watch('industryId') || undefined}
               onChange={(value) =>
-                setValue('industryId', String(value ?? ''), {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                })
+                setValue('industryId', value ?? '', { shouldDirty: true, shouldValidate: true })
               }
-              options={industries.map((industry) => ({
-                id: String(industry.id),
-                name: industry.name,
-                isDeleted: industry.status === false,
-              }))}
+              allowClear
+              showSearch
+              optionFilterProp="label"
               loading={loadingIndustries}
-              placeholder="Select Industry"
-              label="Industry"
-              type="industry"
-              onAddOption={handleAddIndustryOption}
-              onEditOption={handleEditIndustryOption}
+              placeholder="Select industry (optional)"
+              options={(industries || []).map((industry) => ({
+                label: industry.name,
+                value: industry.industry_id,
+              }))}
             />
           </div>
           {errors.industryId && (

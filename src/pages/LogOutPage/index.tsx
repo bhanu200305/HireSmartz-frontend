@@ -11,7 +11,6 @@ import { resetJobOpeningFilters } from '../../redux/slices/jobOpeningFilterSlice
 import { useDispatch } from 'react-redux';
 import { resetOrgUserFilters } from '../../redux/slices/OrgUserFilterSlice';
 import { resetCompanyFilters } from '../../redux/slices/companyFilterSlice';
-import { resetFilters } from '../../redux/slices/userFilterSlice';
 import { resetState } from '../../redux/slices/loginSlice';
 import { clearGlobalSearch } from '../../redux/slices/globalSearchSlice';
 import { resetNotificationState } from '../../redux/slices/notificationSlice';
@@ -39,7 +38,6 @@ const LogOutPage = () => {
     dispatch(resetJobOpeningFilters());
     dispatch(resetOrgUserFilters());
     dispatch(resetCompanyFilters());
-    dispatch(resetFilters());
     dispatch(clearGlobalSearch());
     dispatch(resetNotificationState());
     dispatch(resetState());
@@ -60,12 +58,14 @@ const LogOutPage = () => {
     try {
       clearImpersonationStorage();
 
-      const response = await logout().unwrap();
+      // 204 No Content — there is no response body to read a message off,
+      // success is "the promise resolved" (see api/authentication-service/Logout/logout.ts).
+      await logout().unwrap();
       await cleanupClientSession();
 
       const successMessage = isInactivityLogout
         ? 'You have been logged out successfully.'
-        : response.message;
+        : 'You have been logged out.';
       setTimeout(() => {
         navigate('/login', { state: { successMessage } });
       }, 100);

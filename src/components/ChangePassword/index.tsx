@@ -6,8 +6,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { passwordSchema } from './ChangePasswordSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from 'antd';
-import { useChangePasswordMutation } from '../../api/tenant-service/UserProfile/UserProfile';
-import { get } from 'lodash-es';
+import { useChangePasswordMutation } from '../../api/authentication-service/ChangePassword/changePassword';
 import { Loader } from '../shared/ui/loader';
 import { useDispatch } from 'react-redux';
 import { persistor } from '../../redux/provider/store';
@@ -17,6 +16,7 @@ import {
   getLocalStorageItem,
   isImpersonationActive,
 } from '../../shared/utils/auth/localstorage.helpers';
+import { getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
 import { useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
@@ -58,35 +58,43 @@ const ChangePassword = () => {
   const companyName = getCompanyNameFromToken();
 
   const handlePasswordChange = (data: any) => {
+    // authentication-service's contract field names, exactly
+    // (docs/API_CONTRACT.md §5 "POST /change-password") — the endpoint
+    // itself signs out every OTHER device already, so this never needs to
+    // pass along a session id.
     const payload = {
-      oldPassword: data.currentPassword,
-      newPassword: data.newPassword,
+      current_password: data.currentPassword,
+      new_password: data.newPassword,
     };
 
     changePassword(payload)
       .unwrap()
-      .then((res) => {
-        const message = get(res, 'message', 'Password changed successfully');
-        const success = get(res, 'success', false);
+      .then(() => {
+        // 204 No Content — success is "the promise resolved", there is no
+        // body to read a message or a flag off.
+        showToast({ message: 'Password changed successfully.', type: 'success' });
 
-        if (success) {
-          showToast({ message, type: 'success' });
+        if (isImpersonationActive()) {
+          return;
+        }
 
-          if (isImpersonationActive()) {
-            return;
-          }
-
+        // Only the temporary-password / first-login path forces a fresh
+        // sign-in — the backend deliberately keeps THIS session valid after
+        // an ordinary change (it only revokes every other device), so a
+        // change made from account settings should not log the user out of
+        // the session they're sitting in.
+        if (autoLogin) {
           clearLocalStorage();
           persistor.purge();
           dispatch(resetState());
           navigate('/login');
         } else {
-          showToast({ message: message || 'Failed to change password', type: 'error' });
+          navigate(-1);
         }
       })
       .catch((err) => {
         showToast({
-          message: get(err, 'data.message', 'An error occurred while changing password'),
+          message: getAuthErrorMessage(err, 'An error occurred while changing password.'),
           type: 'error',
         });
       });

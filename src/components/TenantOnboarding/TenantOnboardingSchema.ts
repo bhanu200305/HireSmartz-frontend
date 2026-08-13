@@ -2,18 +2,21 @@ import { z } from 'zod';
 import {
   emailValidation,
   phoneNumberValidation,
+  websiteLinkValidation,
 } from '../../shared/utils/validation/input.helpers';
-
-const WEBSITE_URL_REGEX = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/;
 
 export const tenantDetailsSchema = z.object({
   companyName: z.string().nonempty('Company name is required.'),
-  websiteUrl: z
-    .string()
-    .trim()
-    .nonempty('Website is required.')
-    .regex(WEBSITE_URL_REGEX, 'Please enter a valid URL, e.g. example.com.'),
-  industryId: z.string().nonempty('Industry is required.'),
+  // Optional on organization-service's CreateTenantInput — a value here
+  // triggers an ai-service branding scrape, which is a nice-to-have preview,
+  // not a requirement to create the tenant. websiteLinkValidation() already
+  // does "empty is fine, but validate the format if something's there."
+  websiteUrl: websiteLinkValidation(),
+  // Also optional on the backend (CreateTenantInput.industry_id: UUID | None).
+  // Not made required here even though it has a UI: the industry picker is
+  // currently wired to a legacy backend that isn't part of this stack (see
+  // StepCompanyDetails.tsx), so forcing a selection would be a dead end.
+  industryId: z.string(),
   adminEmail: emailValidation(),
   adminContactCountryCode: z.string().nonempty('Country code is required.'),
   adminContactPhone: phoneNumberValidation(),

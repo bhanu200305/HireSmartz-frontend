@@ -57,13 +57,13 @@ export interface SmsTemplateDetailsApiResponse {
 
 export interface SaveSmsTemplateRequest {
   templateKey: string;
-  companyId: number;
+  companyId: string;
   content: string;
 }
 
 export interface RevertSmsTemplateRequest {
   templateKey: string;
-  companyId: number;
+  companyId: string;
 }
 
 export interface SmsTemplateMutationResponse {
@@ -400,7 +400,7 @@ export const useGetSmsRoundOptionsQuery = (
 
 const smsTemplatesApi = api.injectEndpoints({
   endpoints: (build) => ({
-    getSmsTemplateCatalog: build.query<SmsTemplateCatalogItem[], number>({
+    getSmsTemplateCatalog: build.query<SmsTemplateCatalogItem[], string>({
       query: (companyId) => ({
         url: '/job-opening/sms/templates/catalog',
         method: 'GET',
@@ -413,7 +413,7 @@ const smsTemplatesApi = api.injectEndpoints({
 
     getSmsTemplateDetails: build.query<
       SmsTemplateDetails,
-      { templateKey: string; companyId: number }
+      { templateKey: string; companyId: string }
     >({
       query: ({ templateKey, companyId }) => ({
         url: `/job-opening/sms/templates/catalog/${encodeURIComponent(templateKey)}`,

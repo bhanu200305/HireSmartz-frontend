@@ -1,15 +1,5 @@
 import { api } from '../../index';
 
-export type ChangePasswordRequest = {
-  oldPassword: string;
-  newPassword: string;
-};
-
-export type ChangePasswordResponse = {
-  message: string;
-  success: boolean;
-};
-
 export type UserProfile = {
   id: string;
   firstName: string;
@@ -55,13 +45,6 @@ export type ProfileResponse = UserProfile & {
 
 const extendedApi = api.injectEndpoints({
   endpoints: (build) => ({
-    changePassword: build.mutation<ChangePasswordResponse, ChangePasswordRequest>({
-      query: (body) => ({
-        url: '/auth/password/change',
-        method: 'POST',
-        body,
-      }),
-    }),
     getUserProfile: build.query<ProfileResponse, string>({
       query: (userId) => ({
         url: `orguserservice/user/profile/getById?userId=${userId}`,
@@ -78,5 +61,4 @@ const extendedApi = api.injectEndpoints({
   }),
 });
 
-export const { useChangePasswordMutation, useGetUserProfileQuery, useUpdateUserProfileMutation } =
-  extendedApi;
+export const { useGetUserProfileQuery, useUpdateUserProfileMutation } = extendedApi;

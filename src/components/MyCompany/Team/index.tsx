@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { MdOutlinePersonAdd, MdOutlineUploadFile } from 'react-icons/md';
-import { useGetDepartmentsByCompanyIdQuery } from '../../../api/tenant-service/Company/addCompany';
+import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import BulkImport from './BulkImport';
+import TeamInvitationsList from './TeamInvitationsList';
 
 type TeamTabProps = {
-  companyId: string;
+  tenantId: string;
   onTeamInviteRecorded: () => void;
 };
 
@@ -36,17 +37,17 @@ const ActionCard = ({
   </button>
 );
 
-const TeamTab = ({ companyId, onTeamInviteRecorded }: TeamTabProps) => {
+/** §D — invite one at a time (POST .../users/invitations) or in bulk (the
+ * 3-step roster flow), plus the invitations list every status feeds. */
+const TeamTab = ({ tenantId, onTeamInviteRecorded }: TeamTabProps) => {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  const { data: departmentsData } = useGetDepartmentsByCompanyIdQuery(
-    { companyId: Number(companyId) },
-    { skip: !companyId || Number.isNaN(Number(companyId)) }
-  );
-  const departments = (departmentsData || [])
-    .filter((department) => department.status !== false)
-    .map((department) => ({ id: department.id, name: department.name }));
+  const { data: departmentsData } = useListTenantDepartmentsQuery(tenantId, { skip: !tenantId });
+  const departments = (departmentsData || []).map((department) => ({
+    id: department.org_department_id,
+    name: department.name,
+  }));
 
   return (
     <div className="px-2 sm:px-6 py-2 sm:py-4">
@@ -74,14 +75,16 @@ const TeamTab = ({ companyId, onTeamInviteRecorded }: TeamTabProps) => {
 
       {departments.length === 0 && (
         <p className="text-xs text-gray-400 mt-4">
-          Create a department first (under the &quot;Company Settings&quot; tab) before inviting
-          your team.
+          Departments are optional for an invite, but creating one first (under the
+          &quot;Departments&quot; tab) makes assigning people easier later.
         </p>
       )}
 
+      <TeamInvitationsList tenantId={tenantId} />
+
       <InviteTeamMemberModal
         open={isInviteModalOpen}
-        tenantId={companyId}
+        tenantId={tenantId}
         departments={departments}
         onClose={() => setIsInviteModalOpen(false)}
         onInvited={() => {
@@ -92,7 +95,7 @@ const TeamTab = ({ companyId, onTeamInviteRecorded }: TeamTabProps) => {
 
       <BulkImport
         open={isImportModalOpen}
-        tenantId={companyId}
+        tenantId={tenantId}
         onClose={() => setIsImportModalOpen(false)}
         onCompleted={onTeamInviteRecorded}
       />

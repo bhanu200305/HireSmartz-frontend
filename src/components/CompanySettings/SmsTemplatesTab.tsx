@@ -48,7 +48,7 @@ const PREVIEW_SAMPLE_VALUES: Record<string, string> = {
 };
 
 type PendingNavigation =
-  | { type: 'company'; companyId: number | null }
+  | { type: 'company'; companyId: string | null }
   | { type: 'round'; round: string | null }
   | { type: 'template'; templateKey: string | null };
 
@@ -57,7 +57,7 @@ export interface SmsTemplatesTabProps {
    * When provided (DRG / My Company), company is resolved from auth context
    * and the Company dropdown is hidden.
    */
-  fixedCompanyId?: number | null;
+  fixedCompanyId?: string | null;
   showCompanySelect?: boolean;
 }
 
@@ -85,7 +85,7 @@ const SmsTemplatesTab: React.FC<SmsTemplatesTabProps> = ({
 }) => {
   const isCompanySelectVisible = showCompanySelect && fixedCompanyId == null;
 
-  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(fixedCompanyId ?? null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(fixedCompanyId ?? null);
   const [selectedRound, setSelectedRound] = useState<string | null>(null);
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
   const [content, setContent] = useState('');
@@ -123,7 +123,7 @@ const SmsTemplatesTab: React.FC<SmsTemplatesTabProps> = ({
     isFetching: isCatalogFetching,
     isError: isCatalogError,
     refetch: refetchCatalog,
-  } = useGetSmsTemplateCatalogQuery(selectedCompanyId as number, {
+  } = useGetSmsTemplateCatalogQuery(selectedCompanyId as string, {
     skip: selectedCompanyId == null,
   });
 
@@ -170,7 +170,7 @@ const SmsTemplatesTab: React.FC<SmsTemplatesTabProps> = ({
   } = useGetSmsTemplateDetailsQuery(
     {
       templateKey: selectedTemplateKey as string,
-      companyId: selectedCompanyId as number,
+      companyId: selectedCompanyId as string,
     },
     { skip: selectedCompanyId == null || !selectedTemplateKey }
   );
@@ -272,7 +272,7 @@ const SmsTemplatesTab: React.FC<SmsTemplatesTabProps> = ({
     [applyPendingNavigation, isDirty]
   );
 
-  const handleCompanyChange = (companyId: number | null) => {
+  const handleCompanyChange = (companyId: string | null) => {
     requestNavigation({ type: 'company', companyId });
   };
 

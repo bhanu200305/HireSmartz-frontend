@@ -3,8 +3,9 @@ import api from '../../api';
 import { videoIntegrationApi } from '../../api/interview-service/VideoIntegration/index';
 import { interviewFeedbackApi } from '../../api/interview-service/InterviewFeedback/index';
 import { publicQrApi } from '../../api/candidate-service/PublicQr/index';
+import { authApi } from '../../api/authentication-service/authApi';
+import { orgApi } from '../../api/organization-service/orgApi';
 import LoginSlice from '../slices/loginSlice';
-import UserFiltersSlice from '../slices/userFilterSlice';
 import CompanyFilterSlice from '../slices/companyFilterSlice';
 import RoleFilterSlice from '../slices/roleFilterSlice';
 import JobSlice from '../slices/jobOpeningSlice';
@@ -21,7 +22,6 @@ import notificationSlice from '../slices/notificationSlice';
 
 const rootReducer = combineReducers({
   LoginSlice,
-  UserFiltersSlice,
   CompanyFilterSlice,
   RoleFilterSlice,
   JobSlice,
@@ -39,6 +39,8 @@ const rootReducer = combineReducers({
   [videoIntegrationApi.reducerPath]: videoIntegrationApi.reducer,
   [interviewFeedbackApi.reducerPath]: interviewFeedbackApi.reducer,
   [publicQrApi.reducerPath]: publicQrApi.reducer,
+  [authApi.reducerPath]: authApi.reducer,
+  [orgApi.reducerPath]: orgApi.reducer,
 });
 
 export default rootReducer;

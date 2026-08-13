@@ -1,4 +1,10 @@
-import { MdDelete, MdEdit, MdOutlineArrowBack, MdOutlineFileUpload } from 'react-icons/md';
+import {
+  MdDelete,
+  MdEdit,
+  MdOutlineArrowBack,
+  MdOutlineFileUpload,
+  MdOutlineSecurity,
+} from 'react-icons/md';
 import MainLayout from '../../layouts/MainLayout';
 import { useNavigate } from 'react-router-dom';
 import { Form, Select, Upload } from 'antd';
@@ -261,6 +267,15 @@ const UserProfile = () => {
             >
               <MdOutlineArrowBack className="mr-2" />
               <span>Back</span>
+            </button>
+          </div>
+          <div className="mb-4 self-end px-4 absolute right-0">
+            <button
+              onClick={() => navigate('/settings/security')}
+              className="flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"
+            >
+              <MdOutlineSecurity />
+              <span>Security &amp; sessions</span>
             </button>
           </div>
           <div className="bg-[#FAFAFA] p-6 md:p-10 rounded-2xl shadow-lg w-full max-w-4xl flex flex-col">

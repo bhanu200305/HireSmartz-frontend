@@ -88,12 +88,12 @@ interface GlobalSearchProps {
 const defaultNavigationConfig: SearchNavigationConfig = {
   candidatesViewAllPath: '/candidates',
   jobsViewAllPath: '/jobs',
-  usersViewAllPath: '/users',
+  usersViewAllPath: '/organisation-users',
   companiesViewAllPath: '/company',
   getCandidateDetailPath: (item) =>
     `/jobs/view/${item?.extraJson?.job_opening_id}/candidates/${item?.extraJson?.id}/details`,
   getJobDetailPath: (item) => `/jobs/view/${item?.extraJson?.id}/candidates`,
-  getUserDetailPath: (item) => `/view-user?userId=${item?.extraJson?.id}`,
+  getUserDetailPath: (item) => `/view-organisation-user?orgUserId=${item?.extraJson?.id}`,
   getCompanyDetailPath: (item) => `/view-company?companyId=${item?.extraJson?.id}`,
 };
 

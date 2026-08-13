@@ -11,7 +11,7 @@ import {
 } from '../../api/tenant-service/MyCompany/emailTemplate';
 
 const PushTemplatesTab: React.FC = () => {
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [isPreConfirmModalOpen, setIsPreConfirmModalOpen] = useState<boolean>(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
@@ -34,7 +34,7 @@ const PushTemplatesTab: React.FC = () => {
   }, []);
 
   /* ── Helpers ──────────────────────────────────────────────────── */
-  const toggleCompany = (id: number): void => {
+  const toggleCompany = (id: string): void => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -43,7 +43,7 @@ const PushTemplatesTab: React.FC = () => {
     });
   };
 
-  const removeCompany = (id: number): void => {
+  const removeCompany = (id: string): void => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       next.delete(id);

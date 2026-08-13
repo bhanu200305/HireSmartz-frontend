@@ -3,8 +3,15 @@ import { Authorities } from '../../constants/authorities.constant';
 import { TbBriefcase2 } from 'react-icons/tb';
 import { LuSquareActivity, LuUsersRound } from 'react-icons/lu';
 import { FiSettings } from 'react-icons/fi';
-import { MdApartment, MdOutlineAdminPanelSettings, MdOutlineDashboard } from 'react-icons/md';
+import {
+  MdAdminPanelSettings,
+  MdApartment,
+  MdOutlineAdminPanelSettings,
+  MdOutlineDashboard,
+  MdOutlineInsights,
+} from 'react-icons/md';
 import { PiMoneyFill } from 'react-icons/pi';
+import { HiOutlineUserGroup, HiOutlineSpeakerphone } from 'react-icons/hi';
 
 const MenuItems = [
   {
@@ -17,7 +24,7 @@ const MenuItems = [
     name: 'Company Settings',
     icon: <FiSettings size={18} />,
     path: ['/company-settings'],
-    requiredAuthority: Authorities.COMPANY_SETTINGS_VIEW,
+    requiredAuthority: Authorities.INDUSTRY_VIEW,
   },
   {
     name: 'Companies',
@@ -26,10 +33,28 @@ const MenuItems = [
     requiredAuthority: Authorities.COMPANY_VIEW,
   },
   {
-    name: 'CFP Users',
-    icon: <LuUsersRound size={18} />,
-    path: ['/users', '/add-user', '/view-user', '/edit-user'],
-    requiredAuthority: Authorities.USER_VIEW,
+    name: 'Platform Team',
+    icon: <HiOutlineUserGroup size={18} />,
+    path: ['/platform-team'],
+    requiredAuthority: Authorities.PLATFORM_VIEW,
+  },
+  {
+    name: 'Platform Metrics',
+    icon: <MdOutlineInsights size={18} />,
+    path: ['/platform-metrics'],
+    requiredAuthority: Authorities.PLATFORM_VIEW,
+  },
+  {
+    name: 'Audit Log',
+    icon: <LuSquareActivity size={18} />,
+    path: ['/platform-audit'],
+    requiredAuthority: Authorities.PLATFORM_VIEW,
+  },
+  {
+    name: 'Book a Demo Leads',
+    icon: <HiOutlineSpeakerphone size={18} />,
+    path: ['/guest-organizations'],
+    requiredAuthority: Authorities.PLATFORM_VIEW,
   },
   {
     name: 'Company',
@@ -58,7 +83,7 @@ const MenuItems = [
       '/view-organisation-user',
       '/edit-organisation-user',
     ],
-    requiredAuthority: Authorities.ORGANIZATION_USER_ADD,
+    requiredAuthority: Authorities.USER_ADD,
   },
   {
     name: 'Job Openings',
@@ -99,6 +124,15 @@ const MenuItems = [
     icon: <MdOutlineAdminPanelSettings size={18} />,
     path: ['/roles', '/add-role', '/view-role', '/edit-role'],
     requiredAuthority: Authorities.ROLE_VIEW,
+  },
+  {
+    // Not authority-gated like the rest of this list — Sidebar filters this
+    // one on role directly (isMasterSuperAdminRole), since unlocking an
+    // account / rotating the signing key isn't something any Authorities
+    // catalog entry could ever grant a tenant. See that helper's comment.
+    name: 'Admin',
+    icon: <MdAdminPanelSettings size={18} />,
+    path: ['/settings/admin'],
   },
 ];
 

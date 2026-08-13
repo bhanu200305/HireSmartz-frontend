@@ -4,13 +4,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 import {
   ForgotPasswordRequest,
-  useLazyGetForgotPwdQuery,
+  useForgotPasswordMutation,
 } from '../../api/authentication-service/ForgotPassword/forgotPassword';
 import { useReducer, useRef } from 'react';
 import { z } from 'zod';
-import { get } from 'lodash-es';
 import { Loader } from '../shared/ui/loader';
 import Footer from '../Footer';
+import { getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
 
 const forgotPasswordSchema = z.object({
   email: z
@@ -36,7 +36,7 @@ const ForgotPassword = () => {
     }
   );
   const { email, errors, isFormValid } = localState;
-  const [getForgotPwd, { isLoading }] = useLazyGetForgotPwdQuery();
+  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
 
   // Real-time validation with shouldValidate: true
   const validateForm = (emailValue: string = email): boolean => {
@@ -88,30 +88,26 @@ const ForgotPassword = () => {
     isSubmitting.current = true;
     const trimmedEmail = email.trim();
     const payload: ForgotPasswordRequest = {
-      emailId: trimmedEmail,
+      email: trimmedEmail,
     };
-    getForgotPwd(payload)
+    forgotPassword(payload)
       .unwrap()
-      .then((res) => {
-        if (res.success) {
-          showToast({
-            message: get(res, 'message', 'Password reset link has been sent successfully'),
-            type: 'success',
-          });
-          navigate('/login');
-        } else {
-          showToast({
-            message: get(res, 'message', 'Failed to send password reset link. Please try again.'),
-            type: 'error',
-          });
-        }
-        // setOpenSuccessMsg(true);
+      .then(() => {
+        // 202 {accepted: true}, always — whether or not the address exists.
+        // This is deliberate (docs/API_CONTRACT.md §4.1): a different
+        // message for "sent" vs "no such account" would make this endpoint
+        // an account-enumeration oracle, so there is no failure branch here
+        // for "email not found".
+        showToast({
+          message: "If that email is registered, we've sent a link to reset your password.",
+          type: 'success',
+        });
+        navigate('/login');
       })
       .catch((err) => {
         showToast({
-          message: get(
+          message: getAuthErrorMessage(
             err,
-            'data.message',
             'Failed to send password reset link. Please try again.'
           ),
           type: 'error',

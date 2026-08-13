@@ -1,289 +1,194 @@
-import React, { useState, useEffect } from 'react';
-import { BsThreeDotsVertical } from 'react-icons/bs';
-import { Dropdown, Modal } from 'antd';
-import type { MenuProps } from 'antd';
-import { Button, showToast } from '../shared';
+import React, { useState } from 'react';
+import { MdDelete, MdEdit, MdOutlineAdd } from 'react-icons/md';
+import { Button, Input, Typography, showToast } from '../shared';
+import { Loader } from '../shared/ui/loader';
+import AntdCommonModal from '../shared/ui/AntdCommonModal';
+import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import {
-  useGetMasterJobTitlesQuery,
-  useAddMasterJobTitleMutation,
-  useUpdateMasterJobTitleMutation,
-  useDeleteMasterJobTitleMutation,
-} from '../../api/tenant-service/CompanySettings/jobTitles';
-import { useGetMasterDepartmentsQuery } from '../../api/tenant-service/CompanySettings/departments';
-import { MasterTable } from '../shared/ui/MasterTable';
-import type { SortDirection } from '../../types';
-import AddEditJobTitleModal from './AddEditJobTitleModal';
+  useListPlatformJobTitlesQuery,
+  useCreatePlatformJobTitleMutation,
+  useUpdatePlatformJobTitleMutation,
+  useDeletePlatformJobTitleMutation,
+  PlatformJobTitle,
+} from '../../api/organization-service/Platform/jobTitles';
+import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
+type FormState = { code: string; name: string; description: string };
+const emptyForm: FormState = { code: '', name: '', description: '' };
+
+/**
+ * GET/POST/PUT/DELETE /v1/platform/job-titles — the platform's master
+ * job-title catalogue only. Explicitly NOT a cross-tenant moderation view
+ * into a company's own job titles (out of scope per the backend's own
+ * router docstring) — same shape as IndustriesTab.tsx.
+ */
 const JobTitlesTab: React.FC = () => {
-  const [modal, contextHolder] = Modal.useModal();
-  const [searchText, setSearchText] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState<number | 'all'>('all');
-  const [sortBy, setSortBy] = useState('name');
-  const [sortDir, setSortDir] = useState<'ASC' | 'DESC'>('ASC');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [jobTitleToEdit, setJobTitleToEdit] = useState<{
-    id?: number;
-    name: string;
-    isActive: boolean;
-    departmentIds: number[];
+  const { data: jobTitles, isLoading } = useListPlatformJobTitlesQuery();
+  const [createJobTitle, { isLoading: isCreating }] = useCreatePlatformJobTitleMutation();
+  const [updateJobTitle, { isLoading: isUpdating }] = useUpdatePlatformJobTitleMutation();
+  const [deleteJobTitle] = useDeletePlatformJobTitleMutation();
+
+  const [modalState, setModalState] = useState<{
+    mode: 'add' | 'edit';
+    jobTitle?: PlatformJobTitle;
   } | null>(null);
-  const [page, setPage] = useState(0);
-  const size = 10;
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [jobTitleToDelete, setJobTitleToDelete] = useState<PlatformJobTitle | null>(null);
 
-  const [addJobTitle, { isLoading: isAdding }] = useAddMasterJobTitleMutation();
-  const [updateJobTitle, { isLoading: isUpdating }] = useUpdateMasterJobTitleMutation();
-  const [deleteJobTitle] = useDeleteMasterJobTitleMutation();
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(searchText);
-      setPage(0);
-    }, 500);
-    return () => clearTimeout(handler);
-  }, [searchText]);
-
-  const { data: deptData } = useGetMasterDepartmentsQuery({
-    size: 200,
-    status: 'active',
-    sortBy: 'name',
-    sortDirection: 'ASC',
-  });
-  const masterDepartments = deptData?.content || [];
-
-  const { data } = useGetMasterJobTitlesQuery({
-    page,
-    size,
-    search: debouncedSearch || undefined,
-    departmentId: departmentFilter === 'all' ? undefined : departmentFilter,
-    sortBy,
-    sortDirection: sortDir,
-  });
-
-  const jobTitles = data?.content || [];
-  const totalElements = data?.totalElements || 0;
-
-  const currentSortKey = sortBy ? (sortDir === 'DESC' ? `-${sortBy}` : sortBy) : undefined;
-
-  const handleSort = (key: string, direction: SortDirection): void => {
-    setSortBy(direction ? key : 'name');
-    setSortDir(direction === 'desc' ? 'DESC' : 'ASC');
+  const openAdd = () => {
+    setForm(emptyForm);
+    setModalState({ mode: 'add' });
+  };
+  const openEdit = (jobTitle: PlatformJobTitle) => {
+    setForm({ code: jobTitle.code, name: jobTitle.name, description: jobTitle.description || '' });
+    setModalState({ mode: 'edit', jobTitle });
   };
 
-  const mapDepartmentIdsToNames = (deptIds: number[]): string => {
-    if (!deptIds || deptIds.length === 0) return '-';
-    return deptIds
-      .map((id) => {
-        const found = masterDepartments.find((d) => d.id === id);
-        return found ? found.name : `Dept ${id}`;
-      })
-      .join(', ');
+  const handleSubmit = async () => {
+    if (!form.name.trim() || (modalState?.mode === 'add' && !form.code.trim())) {
+      showToast({ message: 'Code and name are required.', type: 'error' });
+      return;
+    }
+    try {
+      if (modalState?.mode === 'edit' && modalState.jobTitle) {
+        await updateJobTitle({
+          jobTitleId: modalState.jobTitle.job_title_id,
+          name: form.name.trim(),
+          description: form.description.trim() || undefined,
+        }).unwrap();
+        showToast({ message: 'Job title updated.', type: 'success' });
+      } else {
+        await createJobTitle({
+          code: form.code.trim(),
+          name: form.name.trim(),
+          description: form.description.trim() || undefined,
+        }).unwrap();
+        showToast({ message: 'Job title added.', type: 'success' });
+      }
+      setModalState(null);
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to save job title.'), type: 'error' });
+    }
   };
 
-  const tableData = jobTitles.map((jt) => ({
-    key: jt.id.toString(),
-    id: jt.id,
-    name: jt.name,
-    departmentsRaw: jt.departmentIds || [],
-    departments: mapDepartmentIdsToNames(jt.departmentIds || []),
-    status: jt.status,
-  }));
+  const handleDelete = async () => {
+    if (!jobTitleToDelete) return;
+    try {
+      await deleteJobTitle(jobTitleToDelete.job_title_id).unwrap();
+      showToast({ message: 'Job title removed.', type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(
+          err,
+          'Failed to remove job title — a company may still use it.'
+        ),
+        type: 'error',
+      });
+    } finally {
+      setJobTitleToDelete(null);
+    }
+  };
 
-  const getActionMenu = (record: any): MenuProps['items'] => [
-    {
-      key: '1',
-      label: 'Edit',
-      onClick: () => {
-        setJobTitleToEdit({
-          id: record.id,
-          name: record.name,
-          isActive: record.status,
-          departmentIds: record.departmentsRaw,
-        });
-        setIsModalOpen(true);
-      },
-    },
-    {
-      key: '2',
-      label: record.status ? 'Deactivate' : 'Activate',
-      onClick: async () => {
-        try {
-          await updateJobTitle({
-            jobTitleId: record.id,
-            name: record.name,
-            status: !record.status,
-            departmentIds: record.departmentsRaw,
-          }).unwrap();
-          showToast({
-            type: 'success',
-            message: `Job Title ${record.status ? 'deactivated' : 'activated'} successfully`,
-          });
-        } catch (error: any) {
-          showToast({
-            type: 'error',
-            message: error?.data?.message || 'Failed to update Job Title status',
-          });
-        }
-      },
-    },
-    {
-      key: '3',
-      label: 'Delete',
-      onClick: () => {
-        modal.confirm({
-          title: 'Delete Job Title',
-          content: `Are you sure you want to delete "${record.name}"?`,
-          okText: 'Delete',
-          okType: 'danger',
-          cancelText: 'Cancel',
-          onOk: async () => {
-            try {
-              await deleteJobTitle(record.id).unwrap();
-              showToast({ type: 'success', message: 'Job Title deleted successfully' });
-            } catch (error: any) {
-              showToast({
-                type: 'error',
-                message: error?.data?.message || 'Failed to delete Job Title',
-              });
-            }
-          },
-        });
-      },
-    },
-  ];
-
-  const columns = [
-    {
-      title: 'JOB TITLE',
-      dataIndex: 'name',
-      key: 'name',
-      span: 8,
-      sortKey: 'name',
-      render: (text: string) => <span className="text-gray-700">{text}</span>,
-    },
-    {
-      title: 'DEPARTMENTS',
-      dataIndex: 'departments',
-      key: 'departments',
-      span: 8,
-      sortKey: 'departments',
-      render: (text: string) => <span className="text-gray-500 text-sm">{text}</span>,
-    },
-    {
-      title: 'STATUS',
-      dataIndex: 'status',
-      key: 'status',
-      span: 4,
-      sortKey: 'status',
-      render: (status: boolean) => (
-        <span className={status ? 'text-green-600 font-medium' : 'text-gray-400 font-medium'}>
-          {status ? 'Active' : 'Inactive'}
-        </span>
-      ),
-    },
-    {
-      title: 'ACTIONS',
-      key: 'actions',
-      span: 4,
-      render: (_: any, record: any) => (
-        <Dropdown
-          menu={{ items: getActionMenu(record) }}
-          trigger={['click']}
-          placement="bottomRight"
-        >
-          <Button className="p-1 border-none hover:bg-gray-100 bg-transparent text-gray-500 shadow-none h-auto w-auto flex items-center justify-center">
-            <BsThreeDotsVertical style={{ fontSize: 16 }} />
-          </Button>
-        </Dropdown>
-      ),
-    },
-  ];
-
-  const departmentFilterOptions = [
-    { label: 'All Departments', value: '' },
-    ...masterDepartments.map((d) => ({ label: d.name, value: d.id.toString() })),
-  ];
+  if (isLoading) return <Loader />;
 
   return (
-    <>
-      <p className="text-sm text-gray-500 mb-8 font-medium">
-        Global role vocabulary. Job Titles are neutral and reusable across multiple departments.
-      </p>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <Typography variant="body2">Platform-wide job-title catalogue.</Typography>
+        <Button
+          className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1"
+          onClick={openAdd}
+        >
+          <MdOutlineAdd /> Add job title
+        </Button>
+      </div>
 
-      <MasterTable
-        title="Job Titles"
-        columns={columns}
-        dataSource={tableData}
-        error={null}
-        onAddClick={() => {
-          setJobTitleToEdit(null);
-          setIsModalOpen(true);
-        }}
-        addButtonLabel="+ ADD JOB TITLE"
-        filters={{
-          searchPlaceholder: 'Search Job Titles...',
-          filterOptions: [
-            {
-              label: 'All Departments',
-              value: 'department',
-              options: departmentFilterOptions,
-            },
-          ],
-        }}
-        pagination={{
-          current: page + 1,
-          pageSize: size,
-          total: totalElements,
-          onPageChange: (newPage) => setPage(newPage - 1),
-          onPageSizeChange: () => {},
-        }}
-        currentSortKey={currentSortKey}
-        onSort={handleSort}
-        onSearch={setSearchText}
-        onFilterChange={(filterKey, value) => {
-          if (filterKey === 'department') {
-            setDepartmentFilter(value === '' ? 'all' : Number(value));
-            setPage(0);
-          }
-        }}
-      />
+      <div className="divide-y border rounded-xl overflow-hidden bg-white">
+        {(jobTitles || []).map((jobTitle) => (
+          <div key={jobTitle.job_title_id} className="flex items-center justify-between p-3">
+            <div>
+              <Typography variant="body1">
+                {jobTitle.name} <span className="text-gray-400 text-xs">({jobTitle.code})</span>
+              </Typography>
+              {jobTitle.description && (
+                <Typography variant="caption">{jobTitle.description}</Typography>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                aria-label="Edit job title"
+                className="p-2 hover:bg-gray-100 rounded-full"
+                onClick={() => openEdit(jobTitle)}
+              >
+                <MdEdit className="text-gray-600" />
+              </button>
+              <button
+                type="button"
+                aria-label="Delete job title"
+                className="p-2 hover:bg-gray-100 rounded-full"
+                onClick={() => setJobTitleToDelete(jobTitle)}
+              >
+                <MdDelete className="text-red-500" />
+              </button>
+            </div>
+          </div>
+        ))}
+        {!jobTitles?.length && (
+          <div className="p-6 text-center text-gray-400 text-sm">No job titles yet.</div>
+        )}
+      </div>
 
-      {contextHolder}
+      <AntdCommonModal
+        open={modalState !== null}
+        onClose={() => setModalState(null)}
+        title={modalState?.mode === 'edit' ? 'Edit job title' : 'Add job title'}
+      >
+        <div className="flex flex-col gap-4">
+          <Input
+            placeholder="Code *"
+            value={form.code}
+            disabled={modalState?.mode === 'edit'}
+            onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
+          />
+          <Input
+            placeholder="Name *"
+            value={form.name}
+            onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+          />
+          <Input
+            placeholder="Description (optional)"
+            value={form.description}
+            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              className="w-full border border-gray-300 rounded-full py-2"
+              onClick={() => setModalState(null)}
+              disabled={isCreating || isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="w-full bg-button text-white rounded-full py-2"
+              onClick={handleSubmit}
+              disabled={isCreating || isUpdating}
+            >
+              {isCreating || isUpdating ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </AntdCommonModal>
 
-      <AddEditJobTitleModal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        initialData={jobTitleToEdit}
-        isLoading={isAdding || isUpdating}
-        onSave={async (data) => {
-          try {
-            if (data.id) {
-              await updateJobTitle({
-                jobTitleId: data.id,
-                name: data.name,
-                status: data.isActive,
-                departmentIds: data.departmentIds,
-              }).unwrap();
-              showToast({ type: 'success', message: 'Job Title updated successfully' });
-            } else {
-              await addJobTitle({
-                name: data.name,
-                status: data.isActive,
-                departmentIds: data.departmentIds,
-              }).unwrap();
-              showToast({ type: 'success', message: 'Job Title added successfully' });
-            }
-            setIsModalOpen(false);
-            setJobTitleToEdit(null);
-          } catch (error: any) {
-            showToast({
-              type: 'error',
-              message: error?.data?.message || `Failed to ${data.id ? 'update' : 'add'} Job Title`,
-            });
-          }
-        }}
-      />
-    </>
+      {jobTitleToDelete && (
+        <ConfirmationModal
+          title={`Remove "${jobTitleToDelete.name}"? Blocked if a company's own title was seeded from it.`}
+          confirmText="REMOVE"
+          onConfirm={handleDelete}
+          onClose={() => setJobTitleToDelete(null)}
+        />
+      )}
+    </div>
   );
 };
 
