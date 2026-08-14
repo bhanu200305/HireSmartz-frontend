@@ -54,7 +54,10 @@ const JobTitlesTab: React.FC = () => {
         await updateJobTitle({
           jobTitleId: modalState.jobTitle.job_title_id,
           name: form.name.trim(),
-          description: form.description.trim() || undefined,
+          // Always sent, even empty — same reasoning as IndustriesTab: the
+          // backend only clears a description when the field is explicitly
+          // present as '', not when it's omitted from the request.
+          description: form.description.trim(),
         }).unwrap();
         showToast({ message: 'Job title updated.', type: 'success' });
       } else {

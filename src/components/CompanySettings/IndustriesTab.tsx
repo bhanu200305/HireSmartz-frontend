@@ -54,7 +54,11 @@ const IndustriesTab: React.FC = () => {
         await updateIndustry({
           industryId: modalState.industry.industry_id,
           name: form.name.trim(),
-          description: form.description.trim() || undefined,
+          // Always sent, even empty: the backend's Industry.update() treats
+          // an OMITTED description as "leave it alone" (only `undefined`
+          // skips the field) and an EXPLICIT '' as "clear it" — they are not
+          // the same thing server-side, so clearing the box has to send ''.
+          description: form.description.trim(),
         }).unwrap();
         showToast({ message: 'Industry updated.', type: 'success' });
       } else {

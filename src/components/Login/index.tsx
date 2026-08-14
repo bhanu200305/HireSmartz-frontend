@@ -344,7 +344,19 @@ const Login = () => {
     const userId = decodedToken.sub || undefined;
     const tenantId = decodedToken.tenant_id ?? null;
     const callerKind: 'tenant' | 'platform' = tenantId ? 'tenant' : 'platform';
-    const role = { name: '', type: '' };
+    // A platform caller (Super Admin / internal staff) has no backend role
+    // record reachable from here (see the authorities comment below), but the
+    // app still needs *some* role to route on: DashboardPage only renders for
+    // role.type 'owner'/'organization' (anything else — including the '' this
+    // used to send unconditionally — falls through to NotFoundPage), and
+    // RequirePermission's authority check falls back to
+    // ROLE_AUTHORITIES.owner.masterSuperAdmin (useEffectivePermissions) when
+    // there's no dynamic `authorities` list to union with. 'owner' +
+    // 'Master Super Admin' is the one value this fallback already recognizes
+    // — see isMasterSuperAdminRole's docstring for the same gap from the
+    // other side. Tenant callers are unaffected: left blank, unchanged.
+    const role =
+      callerKind === 'platform' ? { name: 'Master Super Admin', type: 'owner' } : { name: '', type: '' };
     const canManageCompanySettings = extractCanManageCompanySettings(token);
 
     clearImpersonationStorage();
@@ -375,8 +387,16 @@ const Login = () => {
     // it. A failure here must not block the login the user already
     // completed — it degrades to "no permissions yet" (useHasAccess denies
     // everything) with an explicit toast, never a silent empty grant.
+    //
+    // That endpoint is TENANT-scoped (cfp_security.authorization._tenant_check
+    // rejects any non-tenant principal with 403 "requires a tenant user"), so
+    // it always fails — loudly, with a toast — for a platform caller. Skipped
+    // entirely for one: the `role` set above already gets it the full
+    // masterSuperAdmin authority set via useEffectivePermissions' static
+    // fallback, so there's nothing this call could add, only a guaranteed
+    // error to show on every single platform login.
     let authorities: string[] = [];
-    if (userId) {
+    if (callerKind !== 'platform' && userId) {
       try {
         const resolved = await fetchUserPermissions({ userId }).unwrap();
         authorities = resolved.permissions;

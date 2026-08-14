@@ -26,7 +26,7 @@ const BASE_URL = import.meta.env.VITE_ORG_SERVICE_ENDPOINT as string;
 // same convention as authApi.ts's ANONYMOUS_ENDPOINTS.
 const ANONYMOUS_ENDPOINTS = new Set<string>(['validateInvitation', 'acceptInvitation']);
 
-const rawOrgBaseQuery = fetchBaseQuery({
+const fetchOrgBaseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
   prepareHeaders: (headers, { getState, endpoint }) => {
     if (import.meta.env.VITE_ENV === 'development') {
@@ -43,6 +43,32 @@ const rawOrgBaseQuery = fetchBaseQuery({
     return headers;
   },
 });
+
+// organization-service's ResponseEnvelopeMiddleware wraps every /v1/* JSON
+// body — success or error — in {status_code, status, message, data}
+// (services/organization-service/app/core/middleware/response_envelope.py).
+// On success the real payload sits one level down, under `data`; each
+// endpoint's own `transformResponse` (or return type, where there isn't one)
+// already assumes it's looking at that unwrapped payload directly — e.g.
+// listIndustries reads `response.industries`, which only exists on the
+// inner object, not the envelope. Unwrapped centrally here so every
+// endpoint file can go on assuming the shape its types already declare,
+// instead of every single one re-deriving `.data.data` by hand. Error
+// responses are untouched: `getOrgErrorMessage`/`get(error, 'data.message')`
+// already reads the envelope's own top-level `message`, which errors don't
+// nest a second time.
+const rawOrgBaseQuery: typeof fetchOrgBaseQuery = async (args, api, extraOptions) => {
+  const result = await fetchOrgBaseQuery(args, api, extraOptions);
+  if (
+    result.data &&
+    typeof result.data === 'object' &&
+    'data' in (result.data as Record<string, unknown>) &&
+    'status_code' in (result.data as Record<string, unknown>)
+  ) {
+    return { ...result, data: (result.data as { data: unknown }).data };
+  }
+  return result;
+};
 
 /**
  * Same refresh-on-401 shape as authApi.ts's authBaseQueryWithReauth, scoped
