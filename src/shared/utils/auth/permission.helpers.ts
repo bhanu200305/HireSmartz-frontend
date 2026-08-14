@@ -43,17 +43,38 @@ export const isHiringManagerOrRecruiterRole = (role?: Role): boolean => {
  * outright rather than granted by a permission a tenant could ever hold
  * (docs/API_CONTRACT.md §8).
  *
- * Same caveat as isHiringManagerOrRecruiterRole: `role` is currently empty
- * for a real (non-dev-bypass) login — authentication-service's login
- * response carries no role claim yet (see Login/index.tsx's
- * completeRealLogin) — so this reads false for every real session today,
- * not just non-admins. It only resolves true today via the dev-bypass
- * fixtures. Revisit once role/permission data actually reaches the
- * frontend.
+ * For a real (non-dev-bypass) platform login, `role.name` is set to
+ * PLATFORM_CALLER_ROLE_NAME below — see its comment for why that's a
+ * justified assignment, not a guess — so this resolves true for a real
+ * platform session the same as it always has for the dev-bypass fixtures.
  */
 export const isMasterSuperAdminRole = (role?: Role): boolean => {
   return normalizeRoleIdentifier(role?.name) === 'mastersuperadmin';
 };
+
+/**
+ * The `role.name` a platform (no-`tenant_id`) caller's real session stores
+ * — see Login/index.tsx's completeRealLogin — so the static
+ * ROLE_AUTHORITIES fallback (the only source of effective permissions a
+ * platform caller has client-side today; GET /v1/roles/users/{id}/permissions
+ * is tenant-only, confirmed 403ing a real Super Admin token with "this
+ * endpoint requires a tenant user") can resolve instead of silently denying
+ * everything.
+ *
+ * This is NOT a guess and deliberately does NOT come from the JWT's `roles`
+ * claim: organization-service's `PLATFORM_SCOPED_ROLES` invariant
+ * (system_role.py) is exactly `{SUPER_ADMIN}` — a platform-scoped
+ * (no-tenant) account cannot be anything else, enforced at the schema level
+ * (`OrganizationRole` rejects any other role assignment lacking a tenant).
+ * The `roles` claim would be the "right" source in principle, but
+ * authentication-service's own docs (API_CONTRACT.md §11.3) say it's empty
+ * until a role-snapshot publisher ships and warn against building UI on it
+ * until then — confirmed empty on a real bootstrapped Super Admin's token
+ * even though organization-service's own (Redis-backed, not JWT-based)
+ * authorization already correctly treats that same account as fully
+ * platform-authorized.
+ */
+export const PLATFORM_CALLER_ROLE_NAME = 'Master Super Admin';
 
 export const extractCanManageCompanySettings = (token?: string | null): boolean => {
   if (!token) return false;

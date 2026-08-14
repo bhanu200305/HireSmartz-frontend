@@ -25,7 +25,10 @@ import {
   setLocalStorageItem,
   setTokens,
 } from '../../shared/utils/auth/localstorage.helpers';
-import { extractCanManageCompanySettings } from '../../shared/utils/auth/permission.helpers';
+import {
+  extractCanManageCompanySettings,
+  PLATFORM_CALLER_ROLE_NAME,
+} from '../../shared/utils/auth/permission.helpers';
 import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
@@ -344,7 +347,16 @@ const Login = () => {
     const userId = decodedToken.sub || undefined;
     const tenantId = decodedToken.tenant_id ?? null;
     const callerKind: 'tenant' | 'platform' = tenantId ? 'tenant' : 'platform';
-    const role = { name: '', type: '' };
+    // DashboardPage branches on role.type ('owner' | 'organization', else 404)
+    // — mirror callerKind so a real login lands on a dashboard, not the 404
+    // fallback. role.name is only resolvable for a platform caller — see
+    // PLATFORM_CALLER_ROLE_NAME's comment for why that's a justified
+    // assignment rather than a guess (a tenant caller's real permissions
+    // come from the fetch below instead, and don't need this fallback).
+    const role = {
+      name: callerKind === 'platform' ? PLATFORM_CALLER_ROLE_NAME : '',
+      type: callerKind === 'platform' ? 'owner' : 'organization',
+    };
     const canManageCompanySettings = extractCanManageCompanySettings(token);
 
     clearImpersonationStorage();
@@ -375,10 +387,32 @@ const Login = () => {
     // it. A failure here must not block the login the user already
     // completed — it degrades to "no permissions yet" (useHasAccess denies
     // everything) with an explicit toast, never a silent empty grant.
+    //
+    // TENANT-ONLY: that endpoint is guarded server-side by require_permission
+    // (cfp_security/authorization.py's _tenant_check), which rejects any
+    // non-tenant principal with "this endpoint requires a tenant user" —
+    // there is no equivalent self-service endpoint yet for a platform
+    // operator (Super Admin / internal staff, callerKind 'platform') to
+    // resolve their own permissions. Calling it for them always 403s, so
+    // it's skipped rather than surfaced as a spurious failure toast.
     let authorities: string[] = [];
-    if (userId) {
+    if (userId && callerKind === 'tenant') {
       try {
-        const resolved = await fetchUserPermissions({ userId }).unwrap();
+        // fetchBaseQuery has no built-in request timeout, and a wedged
+        // organization-service (accepting the connection, never answering —
+        // seen in local dev when its container reports unhealthy) would
+        // otherwise hang this `await` forever, freezing the login button on
+        // a completed auth with nothing left on screen to show for it.
+        const PERMISSIONS_FETCH_TIMEOUT_MS = 8000;
+        const resolved = await Promise.race([
+          fetchUserPermissions({ userId }).unwrap(),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error('Loading permissions timed out')),
+              PERMISSIONS_FETCH_TIMEOUT_MS
+            )
+          ),
+        ]);
         authorities = resolved.permissions;
       } catch (err) {
         showToast({

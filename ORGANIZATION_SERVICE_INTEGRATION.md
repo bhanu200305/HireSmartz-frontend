@@ -75,7 +75,7 @@ The blocking discovery: a real (non-demo) login never populated `tenant_id` or e
 
 - **New API**: `Platform/tenants.ts` (list with filters/pagination, get one, get/update entitlements with `locked_flags`), `Platform/scoringConfig.ts` (platform-default weights).
 - **`CustomerDashboard/Index.tsx`** rebuilt — real filters only (status, server-side name search, pagination). Dropped interview counts, recruiter/hiring-manager counts, packages, primary-location objects, impersonate-from-this-row — none exist on this contract.
-- **`ViewCustomer/index.tsx`** rebuilt — profile summary, suspend action, and a new `EntitlementsPanel.tsx` where Super Admin can toggle *and* lock each of the 6 feature flags (distinct from the tenant's own read-mostly view in Phase 1).
+- **`ViewCustomer/index.tsx`** rebuilt — profile summary, suspend action, and a new `EntitlementsPanel.tsx` where Super Admin can toggle _and_ lock each of the 6 feature flags (distinct from the tenant's own read-mostly view in Phase 1).
 - **Confirmed backend gap**: no endpoint lets a Super Admin edit a tenant's profile fields (`PATCH /tenants/{id}/profile` is `require_own_tenant`-gated, which a platform caller can never satisfy). `/edit-company` now redirects to the view page instead of rendering a dead form.
 - `/add-company` needed no work — already wired to the real `TenantOnboarding` wizard.
 
@@ -98,7 +98,7 @@ The blocking discovery: a real (non-demo) login never populated `tenant_id` or e
 ## Phase 6 — Cleanup
 
 - Restored two tabs (**Email Templates**, **SMS Templates**) to `MyCompany` as honest placeholders — the Phase 1 rewrite had silently dropped them instead of stubbing them like everything else.
-- **Deleted ~30 fully-orphaned files** (components, schemas, CSS) left behind by the phase 1–5 rewires: old `CustomerDashboard` (AddCustomer, EditCustomer, CompanyDetails/Locations/Users, Badge, CustomerTable, Filter, Impersonation*), the fictional `CompanySettings`/`MyCompany` master-department-catalog tabs and their modals, `RolesManagement`'s AddRole/EditRole/ViewRole/InviteUser/RoleForm, `OrganisationDashboard` schema/CSS leftovers.
+- **Deleted ~30 fully-orphaned files** (components, schemas, CSS) left behind by the phase 1–5 rewires: old `CustomerDashboard` (AddCustomer, EditCustomer, CompanyDetails/Locations/Users, Badge, CustomerTable, Filter, Impersonation\*), the fictional `CompanySettings`/`MyCompany` master-department-catalog tabs and their modals, `RolesManagement`'s AddRole/EditRole/ViewRole/InviteUser/RoleForm, `OrganisationDashboard` schema/CSS leftovers.
 - **Retired 12 now-unreferenced `tenant-service`/`rbac-service` API files** (Company CRUD, Organisation users, all of rbac-service's `Roles/*`) — confirmed zero references before removal.
 - Redirected `/invite-user` (used the same dead rbac-service role catalog) rather than leave a working link to a broken form.
 - Cleaned the RTK Query tag graph in `src/api/organization-service/orgApi.ts` — removed one declared-but-unused tag (`ImportBatch`, a leftover from the old broken bulk-import implementation).
@@ -122,7 +122,7 @@ These were verified by reading the actual backend code, not assumed:
 
 - **No role catalog endpoint** anywhere in organization-service (only grant/revoke/resolve exist). A role browser has nothing to list. See Phase 2.
 - **No Super-Admin tenant-profile-edit endpoint** — `PATCH /tenants/{id}/profile` is tenant-self-only. See Phase 4.
-- **The AI website-branding scrape has a deliberately *unbounded* wait** (`timeout_seconds=None` in `ai_scrape_client.py`) for a reply from `ai-service`. If `ai-service` isn't running and a website URL is provided when creating a company, `POST /v1/tenants` hangs forever — this is what caused the "stuck loading screen" during testing. **Workaround: leave Website blank when adding a company.**
+- **The AI website-branding scrape has a deliberately _unbounded_ wait** (`timeout_seconds=None` in `ai_scrape_client.py`) for a reply from `ai-service`. If `ai-service` isn't running and a website URL is provided when creating a company, `POST /v1/tenants` hangs forever — this is what caused the "stuck loading screen" during testing. **Workaround: leave Website blank when adding a company.**
 - **Email delivery is real, end-to-end, but was running in `dry_run` mode** — organization-service correctly publishes the invite event, notification-service correctly calls back for invitation/branding details and renders the email, but makes no real provider call until `NOTIFICATION_DELIVERY_MODE=live` + real Postmark credentials are set.
 - **notification-service's `.env.example` documentation for `SERVICE_TOKEN` is stale** — real service-to-service auth now uses `SERVICE_TOKEN_BOOTSTRAP_SECRET` (`cfp_security.ServiceTokenAuth`, minted via `POST /internal/v1/service-tokens`), already defaulted consistently across services in `docker-compose.yml`.
 - **`services/organization-service/.env.example` has two wrong values** relative to the actual local `docker-compose.yml` setup: the database name (`career_force_pro` vs. the real `careerforce`) and passwords (`cfp_app`/`cfp_migrator` vs. the real `cfp_app_local`/`cfp_migrator_local`), and `AUTH_SERVICE_BASE_URL`/`JWKS_URL` point at port 8001 (job-service's port) instead of 8000 (authentication-service's real port).
@@ -133,20 +133,22 @@ These were verified by reading the actual backend code, not assumed:
 
 **Real local port mapping** (from `docker-compose.yml`):
 
-| Service | Host port |
-|---|---|
-| authentication-service | 8000 |
-| job-service | 8001 |
-| organization-service | 8002 |
-| notification-service | 8003 |
+| Service                | Host port |
+| ---------------------- | --------- |
+| authentication-service | 8000      |
+| job-service            | 8001      |
+| organization-service   | 8002      |
+| notification-service   | 8003      |
 
 **Creating the first Super Admin** (one-time, only if none exists):
+
 ```
 cd services/organization-service
 $env:DATABASE_DSN = "postgresql+asyncpg://cfp_app:cfp_app_local@localhost:5432/careerforce"
 $env:REDIS_DSN = "redis://localhost:6379/0"
 python scripts/bootstrap_super_admin.py --email you@company.com
 ```
+
 (prompts for a password; re-run with `--refresh-permissions-only` to re-seed the Redis permission cache for an existing account instead of creating a new one)
 
 **Dev-bypass login (`VITE_BYPASS_AUTH=true`) is incompatible with a real running backend** — its token is fake/unsigned and every real service correctly rejects it (401 on everything, including token refresh). Use a real login for any testing against live services.

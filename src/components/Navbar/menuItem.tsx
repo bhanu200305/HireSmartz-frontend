@@ -11,8 +11,21 @@ import {
   MdOutlineInsights,
 } from 'react-icons/md';
 import { PiMoneyFill } from 'react-icons/pi';
-import { HiOutlineUserGroup, HiOutlineSpeakerphone } from 'react-icons/hi';
+import { HiOutlineSpeakerphone } from 'react-icons/hi';
 
+// Order matters: Sidebar renders this array as-is (filtered down to
+// whatever `requiredAuthority` the signed-in caller holds), so the order
+// below IS the nav order for every role, not just the one that happens to
+// see every entry. For a Master Super Admin — who holds DASHBOARD_VIEW,
+// COMPANY_VIEW, INDUSTRY_VIEW, ROLE_VIEW, USER_ADD, the Admin role-gate,
+// FINANCES_VIEW, SUBSCRIPTIONS_VIEW and PLATFORM_VIEW, but neither
+// MY_COMPANY_VIEW, JOB_OPENING_VIEW nor ACTIVITY_FEED — filtering this list
+// down to what they can see yields, in order: Dashboard, Companies, Company
+// Settings, Roles & Permissions, Users, Admin, Finances, Subscriptions,
+// Platform Metrics, Audit Log, Book a Demo Leads. The tenant-only entries
+// interleaved here (Company/my-company, Job Openings, Activity Feed) sit
+// wherever's natural for a tenant caller's own nav, since a Master Super
+// Admin never holds their authority and never sees them.
 const MenuItems = [
   {
     name: 'Dashboard',
@@ -21,40 +34,10 @@ const MenuItems = [
     requiredAuthority: Authorities.DASHBOARD_VIEW,
   },
   {
-    name: 'Company Settings',
-    icon: <FiSettings size={18} />,
-    path: ['/company-settings'],
-    requiredAuthority: Authorities.INDUSTRY_VIEW,
-  },
-  {
     name: 'Companies',
     icon: <MdApartment size={18} />,
     path: ['/company', '/add-company', '/view-company', '/edit-company'],
     requiredAuthority: Authorities.COMPANY_VIEW,
-  },
-  {
-    name: 'Platform Team',
-    icon: <HiOutlineUserGroup size={18} />,
-    path: ['/platform-team'],
-    requiredAuthority: Authorities.PLATFORM_VIEW,
-  },
-  {
-    name: 'Platform Metrics',
-    icon: <MdOutlineInsights size={18} />,
-    path: ['/platform-metrics'],
-    requiredAuthority: Authorities.PLATFORM_VIEW,
-  },
-  {
-    name: 'Audit Log',
-    icon: <LuSquareActivity size={18} />,
-    path: ['/platform-audit'],
-    requiredAuthority: Authorities.PLATFORM_VIEW,
-  },
-  {
-    name: 'Book a Demo Leads',
-    icon: <HiOutlineSpeakerphone size={18} />,
-    path: ['/guest-organizations'],
-    requiredAuthority: Authorities.PLATFORM_VIEW,
   },
   {
     name: 'Company',
@@ -63,18 +46,21 @@ const MenuItems = [
     requiredAuthority: Authorities.MY_COMPANY_VIEW,
   },
   {
-    name: 'Finances',
-    icon: <PiMoneyFill size={20} />,
-    path: '/finances',
-    requiredAuthority: Authorities.FINANCES_VIEW,
+    name: 'Company Settings',
+    icon: <FiSettings size={18} />,
+    path: ['/company-settings'],
+    requiredAuthority: Authorities.INDUSTRY_VIEW,
   },
   {
-    name: 'Subscriptions',
-    icon: <BsCalendar4Event size={16} />,
-    path: '/Subscriptions',
-    requiredAuthority: Authorities.SUBSCRIPTIONS_VIEW,
+    name: 'Roles & Permissions',
+    icon: <MdOutlineAdminPanelSettings size={18} />,
+    path: ['/roles', '/add-role', '/view-role', '/edit-role'],
+    requiredAuthority: Authorities.ROLE_VIEW,
   },
   {
+    // CFP Users (CareerForcePro's own internal team) lives as a section on
+    // this same page now, not a separate nav entry — see
+    // pages/OrganisationUserPage and components/CfpUsers.
     name: 'Users',
     icon: <LuUsersRound size={18} />,
     path: [
@@ -120,12 +106,6 @@ const MenuItems = [
     requiredAuthority: Authorities.ACTIVITY_FEED,
   },
   {
-    name: 'Roles & Permissions',
-    icon: <MdOutlineAdminPanelSettings size={18} />,
-    path: ['/roles', '/add-role', '/view-role', '/edit-role'],
-    requiredAuthority: Authorities.ROLE_VIEW,
-  },
-  {
     // Not authority-gated like the rest of this list — Sidebar filters this
     // one on role directly (isMasterSuperAdminRole), since unlocking an
     // account / rotating the signing key isn't something any Authorities
@@ -133,6 +113,36 @@ const MenuItems = [
     name: 'Admin',
     icon: <MdAdminPanelSettings size={18} />,
     path: ['/settings/admin'],
+  },
+  {
+    name: 'Finances',
+    icon: <PiMoneyFill size={20} />,
+    path: '/finances',
+    requiredAuthority: Authorities.FINANCES_VIEW,
+  },
+  {
+    name: 'Subscriptions',
+    icon: <BsCalendar4Event size={16} />,
+    path: '/Subscriptions',
+    requiredAuthority: Authorities.SUBSCRIPTIONS_VIEW,
+  },
+  {
+    name: 'Platform Metrics',
+    icon: <MdOutlineInsights size={18} />,
+    path: ['/platform-metrics'],
+    requiredAuthority: Authorities.PLATFORM_VIEW,
+  },
+  {
+    name: 'Audit Log',
+    icon: <LuSquareActivity size={18} />,
+    path: ['/platform-audit'],
+    requiredAuthority: Authorities.PLATFORM_VIEW,
+  },
+  {
+    name: 'Book a Demo Leads',
+    icon: <HiOutlineSpeakerphone size={18} />,
+    path: ['/guest-organizations'],
+    requiredAuthority: Authorities.PLATFORM_VIEW,
   },
 ];
 

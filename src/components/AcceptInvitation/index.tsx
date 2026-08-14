@@ -31,7 +31,8 @@ const INVITATION_EXPIRED_COPY = {
 };
 const INVITATION_ALREADY_ACCEPTED_COPY = {
   title: 'Already set up',
-  message: 'This invite has already been used to create an account. If that was you, log in instead.',
+  message:
+    'This invite has already been used to create an account. If that was you, log in instead.',
 };
 const GENERIC_INVITE_ERROR_COPY = {
   title: 'Invite not available',
@@ -103,9 +104,9 @@ const ExternalServiceErrorBanner = ({
         </p>
         <p className="mt-1 text-sm text-red-700">
           Something went wrong on our end while activating {invitedEmail}. Your invite is still
-          valid, so it&apos;s safe to try again — but if this happens more than once, please
-          contact your admin or CareerForce Pro support before trying a different email address.
-          Your account may have been partially created, and support can check before you continue.
+          valid, so it&apos;s safe to try again — but if this happens more than once, please contact
+          your admin or CareerForce Pro support before trying a different email address. Your
+          account may have been partially created, and support can check before you continue.
         </p>
       </div>
     </div>

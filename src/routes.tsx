@@ -105,7 +105,6 @@ const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 const InterviewLiveKit = lazy(() => import('./components/Interview/InterviewLiveKit'));
 const MyCompanyPage = lazy(() => import('./pages/MyCompanyPage'));
 const CompanySettingsPage = lazy(() => import('./pages/CompanySettingsPage'));
-const PlatformTeamPage = lazy(() => import('./pages/PlatformTeamPage'));
 const PlatformAuditPage = lazy(() => import('./pages/PlatformAuditPage'));
 const PlatformMetricsPage = lazy(() => import('./pages/PlatformMetricsPage'));
 const GuestOrganizationsPage = lazy(() => import('./pages/GuestOrganizationsPage'));
@@ -231,11 +230,6 @@ export const Routes: RouteType[] = [
     name: 'CompanySettings',
     path: '/company-settings',
     component: CompanySettingsPage,
-  },
-  {
-    name: 'PlatformTeam',
-    path: '/platform-team',
-    component: PlatformTeamPage,
   },
   {
     name: 'PlatformAudit',

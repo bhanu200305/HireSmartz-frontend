@@ -437,19 +437,20 @@ const Header = () => {
   const globalSearchNavigationConfig = {
     candidatesViewAllPath: '/candidates',
     jobsViewAllPath: '/jobs',
-    usersViewAllPath: isOrgAdmin ? '/organisation-users' : '/platform-team',
+    usersViewAllPath: '/organisation-users',
     companiesViewAllPath: '/company',
     getCandidateDetailPath: (item: { extraJson?: { job_opening_id?: number; id?: number } }) =>
       `/jobs/view/${item?.extraJson?.job_opening_id}/candidates/${item?.extraJson?.id}/details`,
     getJobDetailPath: (item: { extraJson?: { id?: number } }) =>
       `/jobs/view/${item?.extraJson?.id}/candidates`,
-    // Platform Team has no per-staff detail page (flat list + inline
-    // offboard action) — a platform/staff search hit routes back to the
-    // list itself rather than a dead /view-user link.
+    // CFP Users (the platform staff section on the Users page) has no
+    // per-staff detail page (flat list + inline offboard action) — a
+    // platform/staff search hit routes back to the Users page itself
+    // rather than a dead /view-user link.
     getUserDetailPath: (item: { extraJson?: { id?: number } }) =>
       isOrgAdmin
         ? `/view-organisation-user?orgUserId=${item?.extraJson?.id}`
-        : '/platform-team',
+        : '/organisation-users',
     getCompanyDetailPath: (item: { extraJson?: { id?: number } }) =>
       `/view-company?companyId=${item?.extraJson?.id}`,
   };
