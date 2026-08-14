@@ -124,6 +124,16 @@ export const createDevBypassToken = (): string => {
   return `${base64UrlEncode(header)}.${base64UrlEncode(payload)}.devbypass`;
 };
 
+/**
+ * True for a token minted by createDevBypassToken() above — recognisable by
+ * its literal 'devbypass' signature segment, since it's never actually
+ * signed. Used to skip calls that only make sense for a real backend session
+ * (e.g. POST /auth/logout, which would otherwise 401 on a token the real
+ * authentication-service never issued and has no session record for).
+ */
+export const isDevBypassToken = (token: string | null | undefined): boolean =>
+  typeof token === 'string' && token.endsWith('.devbypass');
+
 export const getDevBypassLoginPayload = (token: string): DevBypassLoginPayload => ({
   token,
   authorities: ALL_AUTHORITIES,

@@ -18,7 +18,8 @@ import { useGetFeatureFlagsQuery } from '../../api/authentication-service/Featur
  * they modeled a master-department-catalog-with-job-title-mapping feature
  * that has no endpoint anywhere in the contract and isn't planned (not the
  * same thing as CareerForcePro's own internal Sales/Support/Finance/Ops
- * departments, which live on the Platform Team screen instead). Email/SMS
+ * departments, which live in the CFP Users section of the Users page
+ * instead). Email/SMS
  * template tabs are untouched — notification-service owns that surface now,
  * out of this integration's scope.
  */

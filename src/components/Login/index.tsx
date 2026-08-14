@@ -25,7 +25,10 @@ import {
   setLocalStorageItem,
   setTokens,
 } from '../../shared/utils/auth/localstorage.helpers';
-import { extractCanManageCompanySettings } from '../../shared/utils/auth/permission.helpers';
+import {
+  extractCanManageCompanySettings,
+  PLATFORM_CALLER_ROLE_NAME,
+} from '../../shared/utils/auth/permission.helpers';
 import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
@@ -344,19 +347,16 @@ const Login = () => {
     const userId = decodedToken.sub || undefined;
     const tenantId = decodedToken.tenant_id ?? null;
     const callerKind: 'tenant' | 'platform' = tenantId ? 'tenant' : 'platform';
-    // A platform caller (Super Admin / internal staff) has no backend role
-    // record reachable from here (see the authorities comment below), but the
-    // app still needs *some* role to route on: DashboardPage only renders for
-    // role.type 'owner'/'organization' (anything else — including the '' this
-    // used to send unconditionally — falls through to NotFoundPage), and
-    // RequirePermission's authority check falls back to
-    // ROLE_AUTHORITIES.owner.masterSuperAdmin (useEffectivePermissions) when
-    // there's no dynamic `authorities` list to union with. 'owner' +
-    // 'Master Super Admin' is the one value this fallback already recognizes
-    // — see isMasterSuperAdminRole's docstring for the same gap from the
-    // other side. Tenant callers are unaffected: left blank, unchanged.
-    const role =
-      callerKind === 'platform' ? { name: 'Master Super Admin', type: 'owner' } : { name: '', type: '' };
+    // DashboardPage branches on role.type ('owner' | 'organization', else 404)
+    // — mirror callerKind so a real login lands on a dashboard, not the 404
+    // fallback. role.name is only resolvable for a platform caller — see
+    // PLATFORM_CALLER_ROLE_NAME's comment for why that's a justified
+    // assignment rather than a guess (a tenant caller's real permissions
+    // come from the fetch below instead, and don't need this fallback).
+    const role = {
+      name: callerKind === 'platform' ? PLATFORM_CALLER_ROLE_NAME : '',
+      type: callerKind === 'platform' ? 'owner' : 'organization',
+    };
     const canManageCompanySettings = extractCanManageCompanySettings(token);
 
     clearImpersonationStorage();
@@ -388,17 +388,31 @@ const Login = () => {
     // completed — it degrades to "no permissions yet" (useHasAccess denies
     // everything) with an explicit toast, never a silent empty grant.
     //
-    // That endpoint is TENANT-scoped (cfp_security.authorization._tenant_check
-    // rejects any non-tenant principal with 403 "requires a tenant user"), so
-    // it always fails — loudly, with a toast — for a platform caller. Skipped
-    // entirely for one: the `role` set above already gets it the full
-    // masterSuperAdmin authority set via useEffectivePermissions' static
-    // fallback, so there's nothing this call could add, only a guaranteed
-    // error to show on every single platform login.
+    // TENANT-ONLY: that endpoint is guarded server-side by require_permission
+    // (cfp_security/authorization.py's _tenant_check), which rejects any
+    // non-tenant principal with "this endpoint requires a tenant user" —
+    // there is no equivalent self-service endpoint yet for a platform
+    // operator (Super Admin / internal staff, callerKind 'platform') to
+    // resolve their own permissions. Calling it for them always 403s, so
+    // it's skipped rather than surfaced as a spurious failure toast.
     let authorities: string[] = [];
-    if (callerKind !== 'platform' && userId) {
+    if (userId && callerKind === 'tenant') {
       try {
-        const resolved = await fetchUserPermissions({ userId }).unwrap();
+        // fetchBaseQuery has no built-in request timeout, and a wedged
+        // organization-service (accepting the connection, never answering —
+        // seen in local dev when its container reports unhealthy) would
+        // otherwise hang this `await` forever, freezing the login button on
+        // a completed auth with nothing left on screen to show for it.
+        const PERMISSIONS_FETCH_TIMEOUT_MS = 8000;
+        const resolved = await Promise.race([
+          fetchUserPermissions({ userId }).unwrap(),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error('Loading permissions timed out')),
+              PERMISSIONS_FETCH_TIMEOUT_MS
+            )
+          ),
+        ]);
         authorities = resolved.permissions;
       } catch (err) {
         showToast({

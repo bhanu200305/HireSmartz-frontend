@@ -4,8 +4,11 @@ import { useLogoutMutation } from '../../api/authentication-service/Logout/logou
 import {
   clearImpersonationStorage,
   clearLocalStorage,
+  getLocalStorageItem,
   isImpersonationActive,
 } from '../../shared/utils/auth/localstorage.helpers';
+import { isDevBypassToken } from '../../shared/utils/auth/devAuthBypass';
+import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import { persistor } from '../../redux/provider/store';
 import { resetJobOpeningFilters } from '../../redux/slices/jobOpeningFilterSlice';
 import { useDispatch } from 'react-redux';
@@ -16,7 +19,7 @@ import { clearGlobalSearch } from '../../redux/slices/globalSearchSlice';
 import { resetNotificationState } from '../../redux/slices/notificationSlice';
 import { showToast } from '../../components';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { api } from '../../api';
 
 const LogOutPage = () => {
@@ -26,6 +29,13 @@ const LogOutPage = () => {
   const isInactivityLogout =
     (location.state as { inactivity?: boolean } | null)?.inactivity === true;
   const [logout, { isSuccess, isLoading }] = useLogoutMutation();
+  // StrictMode (dev only) double-invokes this mount effect, running
+  // handleLogout twice concurrently. The first call clears the session
+  // synchronously (inside cleanupClientSession, before its first real await)
+  // well before it settles, so an un-guarded second call would see no token
+  // left, fall through to a doomed real /auth/logout call, and surface a
+  // spurious "Logout failed" toast alongside the first call's real result.
+  const hasStartedLogoutRef = useRef(false);
 
   const cleanupClientSession = async (): Promise<void> => {
     clearLocalStorage();
@@ -45,6 +55,9 @@ const LogOutPage = () => {
   };
 
   const handleLogout = async () => {
+    if (hasStartedLogoutRef.current) return;
+    hasStartedLogoutRef.current = true;
+
     const isImpersonating = isImpersonationActive();
     if (isImpersonating) {
       showToast({
@@ -52,6 +65,25 @@ const LogOutPage = () => {
         type: 'warning',
       });
       navigate('/');
+      return;
+    }
+
+    // A dev-bypass session (see devAuthBypass.ts) was never created on the
+    // real backend — there is no server-side session for POST /auth/logout
+    // to revoke, and the real authentication-service can't verify this
+    // token's (fake) signature anyway, so it always 401s. That's not an
+    // actual failure, so skip straight to clearing the local session instead
+    // of surfacing a "Logout failed" toast for something that isn't broken.
+    const currentToken = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
+    if (isDevBypassToken(currentToken)) {
+      clearImpersonationStorage();
+      await cleanupClientSession();
+      const successMessage = isInactivityLogout
+        ? 'You have been logged out successfully.'
+        : 'You have been logged out.';
+      setTimeout(() => {
+        navigate('/login', { state: { successMessage } });
+      }, 100);
       return;
     }
 
