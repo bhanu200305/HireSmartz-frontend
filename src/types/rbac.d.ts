@@ -23,8 +23,13 @@ export type Role = {
   id: number;
   roleName: string;
   scope: RoleScope;
-  /** Absent for platform-scope roles. */
-  tenantId?: number;
+  /**
+   * Absent for platform-scope roles. `string` for a real platform tenant id
+   * (organization-service's UUID `tenant_id`, e.g. from
+   * useListPlatformTenantsQuery) — `number` is kept for backward
+   * compatibility with any caller still on the legacy numeric company id.
+   */
+  tenantId?: string | number;
   /**
    * Seeded/system roles (the historical 6 — masterSuperAdmin, admin, etc.)
    * are immutable, same as the backend's tenant_id IS NULL roles — a role
@@ -50,7 +55,8 @@ export type RolePermissionsUpdate = {
 export type CreateRolePayload = {
   roleName: string;
   scope: RoleScope;
-  tenantId?: number;
+  /** Same string|number allowance as Role.tenantId above — see that comment. */
+  tenantId?: string | number;
   permissions: Authorities[];
   locationPermissions: RoleLocationPermissions[];
 };
