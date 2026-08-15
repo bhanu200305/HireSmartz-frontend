@@ -667,6 +667,7 @@ const Login = () => {
                   <Input
                     name="email"
                     autoFocus
+                    autoComplete="email"
                     error={errors.email}
                     value={email}
                     onChange={onHandleChange}
@@ -680,6 +681,7 @@ const Login = () => {
                     onChange={onHandleChange}
                     onKeyDown={handleKeyDown}
                     name="password"
+                    autoComplete="current-password"
                     value={password}
                     placeholder="Password"
                     error={errors.password}

@@ -11,6 +11,7 @@ import {
   useConfirmRosterImportMutation,
   uploadRosterFile,
   downloadRosterTemplate,
+  type RosterRole,
 } from '../../../../api/organization-service/Tenants/imports';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
 import BulkImportRows, { ReviewRow, toReviewRows } from './BulkImportRows';
@@ -43,6 +44,7 @@ const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) =
     created: number;
     skipped: number;
     suppressed: number;
+    unknownLocation: number;
   } | null>(null);
 
   const [requestUpload, { isLoading: isRequestingUrl }] = useRequestRosterUploadMutation();
@@ -103,14 +105,16 @@ const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) =
         tenantId,
         rows: confirmedRows.map((row) => ({
           email: row.email,
-          role: row.role as 'recruiter' | 'hiring_manager',
+          role: row.role as RosterRole,
           department: row.department || undefined,
+          location: row.location || undefined,
         })),
       }).unwrap();
       setResult({
         created: response.created_count,
         skipped: response.skipped_duplicate_emails.length,
         suppressed: response.previously_suppressed_emails.length,
+        unknownLocation: response.skipped_unknown_location_emails.length,
       });
       setStep(3);
       onCompleted();
@@ -202,6 +206,11 @@ const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) =
           {result.suppressed > 0 && (
             <p className="text-xs text-amber-600">
               {result.suppressed} invited but flagged as a previously-bounced address.
+            </p>
+          )}
+          {result.unknownLocation > 0 && (
+            <p className="text-xs text-amber-600">
+              {result.unknownLocation} skipped — location didn&apos;t match an existing office.
             </p>
           )}
           <Button

@@ -63,7 +63,19 @@ export const Input = ({
           }}
           onWheel={handleOnWheel}
           onScroll={handleOnScroll}
-          autoComplete="off"
+          // Defaults to 'off', but a caller-supplied autoComplete (already
+          // spread in via restProps above) wins — placing a bare "off" here
+          // unconditionally would silently override it, since this JSX
+          // attribute comes after the spread. That override is exactly what
+          // broke the login form: Chrome ignores autocomplete="off" on
+          // login-relevant fields and fills them via its password manager
+          // anyway, but through an internal path that skips firing a normal
+          // input event when the page explicitly opted out — so the field
+          // shows text but React's controlled state (and therefore form
+          // validation) never updates. Properly declaring "email" /
+          // "current-password" instead makes Chrome autofill through its
+          // normal, event-firing path.
+          autoComplete={restProps.autoComplete || 'off'}
           disabled={disabled}
         />
 

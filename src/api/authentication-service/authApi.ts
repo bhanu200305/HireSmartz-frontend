@@ -42,7 +42,7 @@ const ANONYMOUS_ENDPOINTS = new Set<string>([
   'resendVerification',
 ]);
 
-const rawAuthBaseQuery = fetchBaseQuery({
+const fetchAuthBaseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
   prepareHeaders: (headers, { getState, endpoint }) => {
     if (import.meta.env.VITE_ENV === 'development') {
@@ -59,6 +59,29 @@ const rawAuthBaseQuery = fetchBaseQuery({
     return headers;
   },
 });
+
+// authentication-service's ResponseEnvelopeMiddleware wraps every /api/v1/*
+// JSON body — success or error — in {status_code, status, message, data}
+// (cfp_platform.middleware.response_envelope, installed in app/main.py). On
+// success the real payload (access_token, TokenResponse, MfaRequiredResponse,
+// etc.) sits one level down, under `data`; every endpoint file in
+// api/authentication-service/** assumes it's looking at that unwrapped
+// payload directly. Unwrapped centrally here, same pattern and same reason as
+// orgApi.ts's rawOrgBaseQuery. Error responses are untouched: they already
+// read the envelope's own top-level `message` via getAuthErrorMessage, which
+// errors don't nest a second time.
+const rawAuthBaseQuery: typeof fetchAuthBaseQuery = async (args, api, extraOptions) => {
+  const result = await fetchAuthBaseQuery(args, api, extraOptions);
+  if (
+    result.data &&
+    typeof result.data === 'object' &&
+    'data' in (result.data as Record<string, unknown>) &&
+    'status_code' in (result.data as Record<string, unknown>)
+  ) {
+    return { ...result, data: (result.data as { data: unknown }).data };
+  }
+  return result;
+};
 
 /**
  * Same refresh-on-401 shape as src/api/index.ts's baseQueryWithReauth, scoped
