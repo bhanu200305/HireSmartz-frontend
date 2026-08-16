@@ -5,6 +5,7 @@ import { interviewFeedbackApi } from '../../api/interview-service/InterviewFeedb
 import { publicQrApi } from '../../api/candidate-service/PublicQr/index';
 import { authApi } from '../../api/authentication-service/authApi';
 import { orgApi } from '../../api/organization-service/orgApi';
+import { notifApi } from '../../api/notification-service/notifApi';
 import LoginSlice from '../slices/loginSlice';
 import CompanyFilterSlice from '../slices/companyFilterSlice';
 import RoleFilterSlice from '../slices/roleFilterSlice';
@@ -41,6 +42,7 @@ const rootReducer = combineReducers({
   [publicQrApi.reducerPath]: publicQrApi.reducer,
   [authApi.reducerPath]: authApi.reducer,
   [orgApi.reducerPath]: orgApi.reducer,
+  [notifApi.reducerPath]: notifApi.reducer,
 });
 
 export default rootReducer;

@@ -9,6 +9,7 @@ import JobTitlesTab from './JobTitlesTab';
 import PlatformScoringDefaultsTab from './PlatformScoringDefaultsTab';
 import EmailTemplateConfigWrapper from './EmailTemplateConfigWrapper';
 import SmsTemplatesTab from './SmsTemplatesTab';
+import NotificationTemplatesTab from './NotificationTemplatesTab';
 import { useGetFeatureFlagsQuery } from '../../api/authentication-service/FeatureFlags/index';
 
 /**
@@ -19,9 +20,14 @@ import { useGetFeatureFlagsQuery } from '../../api/authentication-service/Featur
  * that has no endpoint anywhere in the contract and isn't planned (not the
  * same thing as CareerForcePro's own internal Sales/Support/Finance/Ops
  * departments, which live in the CFP Users section of the Users page
- * instead). Email/SMS
- * template tabs are untouched — notification-service owns that surface now,
- * out of this integration's scope.
+ * instead).
+ *
+ * "Email Templates Config" and "SMS Templates" manage a DIFFERENT, unrelated
+ * feature — candidate-facing recruiting email/SMS branding — left untouched
+ * on purpose (see this integration's notes on why wiring them to
+ * notification-service would be wrong, not a fix). "Notification Templates"
+ * is the real notification-service surface (`/v1/platform/template-settings/*`):
+ * the platform's own security/onboarding/lifecycle notification catalogue.
  */
 const CompanySettings: React.FC = () => {
   const navigate = useNavigate();
@@ -59,6 +65,11 @@ const CompanySettings: React.FC = () => {
         key: '6',
         label: 'SMS Templates',
         children: <SmsTemplatesTab />,
+      },
+      {
+        key: '7',
+        label: 'Notification Templates',
+        children: <NotificationTemplatesTab />,
       },
     ],
     [featureFlags]

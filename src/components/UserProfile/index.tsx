@@ -3,6 +3,7 @@ import {
   MdEdit,
   MdOutlineArrowBack,
   MdOutlineFileUpload,
+  MdOutlineNotifications,
   MdOutlineSecurity,
 } from 'react-icons/md';
 import MainLayout from '../../layouts/MainLayout';
@@ -269,7 +270,14 @@ const UserProfile = () => {
               <span>Back</span>
             </button>
           </div>
-          <div className="mb-4 self-end px-4 absolute right-0">
+          <div className="mb-4 self-end px-4 absolute right-0 flex items-center gap-4">
+            <button
+              onClick={() => navigate('/settings/notifications')}
+              className="flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"
+            >
+              <MdOutlineNotifications />
+              <span>Notifications</span>
+            </button>
             <button
               onClick={() => navigate('/settings/security')}
               className="flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"

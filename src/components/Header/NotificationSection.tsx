@@ -1,7 +1,9 @@
-import { LiaExternalLinkAltSolid } from 'react-icons/lia';
 import { CheckOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
-import { NotificationItem } from '../../api/notification-service/Notifications/index';
+import {
+  NotificationItem,
+  isNotificationRead,
+} from '../../api/notification-service/Notifications/index';
 import { formattedDateTime } from '../../shared/utils/methods';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -16,20 +18,16 @@ type NotificationSectionProps = {
   title: string;
   notifications: NotificationItem[];
   isToday?: boolean;
-  getNotificationId: (notification: NotificationItem) => string;
   onMarkAsRead: (notification: NotificationItem) => void;
   onNotificationClick: (notification: NotificationItem) => void;
-  onNavigateToCandidate: (notification: NotificationItem) => void;
 };
 
 const NotificationSection = ({
   title,
   notifications,
   isToday = false,
-  getNotificationId,
   onMarkAsRead,
   onNotificationClick,
-  onNavigateToCandidate,
 }: NotificationSectionProps) => {
   if (notifications.length === 0) {
     return null;
@@ -40,19 +38,19 @@ const NotificationSection = ({
       <h4 className="text-sm font-semibold text-gray-700 mb-2 px-0">{title}</h4>
       <div className="space-y-1">
         {notifications.map((notification) => {
-          const id = getNotificationId(notification);
+          const isRead = isNotificationRead(notification);
           const timeDisplay = isToday
-            ? getRelativeTime(notification.createdAt)
-            : formattedDateTime(notification.createdAt);
+            ? getRelativeTime(notification.created_at)
+            : formattedDateTime(notification.created_at);
 
           return (
             <div
-              key={id || `${notification.createdAt}-${notification.title}`}
+              key={notification.id}
               role="button"
               tabIndex={0}
-              aria-label={`Notification: ${notification.title || notification.message || 'Notification'}`}
+              aria-label={`Notification: ${notification.title || 'Notification'}`}
               className={`group w-full text-left rounded-md border px-3 py-2.5 transition-colors flex flex-col gap-1.5 relative cursor-pointer ${
-                notification.isRead
+                isRead
                   ? 'border-gray-200 bg-white hover:bg-gray-50'
                   : 'border-l-4 border-l-[#165DCC] border-gray-300 bg-[#EEF4FF] hover:bg-[#E6EEFC]'
               }`}
@@ -84,12 +82,14 @@ const NotificationSection = ({
               }}
             >
               <div className="flex items-start justify-between gap-2">
-                <p
-                  className={`text-sm leading-snug flex-1 ${notification.isRead ? 'text-gray-700 font-normal' : 'text-gray-900 font-semibold'}`}
-                >
-                  {notification.title || notification.message || 'Notification'}
-                </p>
-                {!notification.isRead ? (
+                {notification.title ? (
+                  <p
+                    className={`text-sm leading-snug flex-1 ${isRead ? 'text-gray-700 font-normal' : 'text-gray-900 font-semibold'}`}
+                  >
+                    {notification.title}
+                  </p>
+                ) : null}
+                {!isRead ? (
                   <Tooltip title="Click to mark as read" placement="top" mouseEnterDelay={0.15}>
                     <button
                       type="button"
@@ -108,24 +108,20 @@ const NotificationSection = ({
                   </Tooltip>
                 ) : null}
               </div>
-              <p className={`text-xs ${notification.isRead ? 'text-gray-500' : 'text-gray-600'}`}>
-                {notification.message}
-              </p>
-              <div className="flex items-center justify-between gap-2">
-                {notification.jobOpeningId && notification.candidateId ? (
-                  <button
-                    type="button"
-                    aria-label="View candidate details"
-                    className="cursor-pointer text-primary hover:text-primary/80 transition-colors text-xs font-medium flex items-center gap-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onNavigateToCandidate(notification);
-                    }}
-                  >
-                    <LiaExternalLinkAltSolid className="text-sm" />
-                  </button>
-                ) : null}
-
+              {notification.body ? (
+                // `body` comes from `delivery.body_html`, already escaped/rendered
+                // server-side — notification-service's own API docs are explicit
+                // that the frontend inserts it as HTML (context values are
+                // sandboxed and escaped at render time; see
+                // docs/API.md#the-in-app-feed-v1notifications). For the in-app
+                // channel `title` is normally null and this fragment carries the
+                // heading itself, so this is the primary content, not a caption.
+                <div
+                  className={`text-xs [&_p]:m-0 [&_a]:text-primary [&_a]:underline ${isRead ? 'text-gray-500' : 'text-gray-600'}`}
+                  dangerouslySetInnerHTML={{ __html: notification.body }}
+                />
+              ) : null}
+              <div className="flex items-center justify-end gap-2">
                 <span className="text-xs text-gray-500 whitespace-nowrap">{timeDisplay}</span>
               </div>
             </div>

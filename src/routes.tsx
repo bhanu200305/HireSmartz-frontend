@@ -56,6 +56,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
 const SecuritySettingsPage = lazy(() => import('./pages/SecuritySettingsPage'));
+const NotificationSettingsPage = lazy(() => import('./pages/NotificationSettingsPage'));
 const AdminToolsPage = lazy(() => import('./pages/AdminToolsPage'));
 const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
 const JobsOpeningPage = lazyImport(() => import('./pages/JobsOpening'), 'JobsOpeningPage');
@@ -196,6 +197,12 @@ export const Routes: RouteType[] = [
     name: 'SecuritySettings',
     path: '/settings/security',
     component: SecuritySettingsPage,
+    isPrivate: true,
+  },
+  {
+    name: 'NotificationSettings',
+    path: '/settings/notifications',
+    component: NotificationSettingsPage,
     isPrivate: true,
   },
   {

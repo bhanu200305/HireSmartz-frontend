@@ -8,6 +8,7 @@ import { interviewFeedbackApi } from '../../api/interview-service/InterviewFeedb
 import { publicQrApi } from '../../api/candidate-service/PublicQr/index';
 import { authApi } from '../../api/authentication-service/authApi';
 import { orgApi } from '../../api/organization-service/orgApi';
+import { notifApi } from '../../api/notification-service/notifApi';
 
 export type RootState = ReturnType<typeof rootReducer>;
 
@@ -26,6 +27,7 @@ const middleware: Middleware[] = [
   publicQrApi.middleware,
   authApi.middleware,
   orgApi.middleware,
+  notifApi.middleware,
 ];
 const store = configureStore({
   reducer: persistedReducer,

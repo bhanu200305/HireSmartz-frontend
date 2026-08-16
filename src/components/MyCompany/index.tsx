@@ -17,6 +17,7 @@ import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
 import QrManagementTab from './QrManagementTab';
 import TeamTab from './Team';
 import TenantActivityFeedTab from './TenantActivityFeedTab';
+import EmailTemplatesTab from './EmailTemplatesTab';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
@@ -82,14 +83,21 @@ const MyCompany: React.FC = () => {
       children: <TeamTab tenantId={tenantId} onTeamInviteRecorded={handleTeamInviteRecorded} />,
     },
     { key: '9', label: 'Activity', children: <TenantActivityFeedTab tenantId={tenantId} /> },
-    // Template CRUD moved to notification-service entirely
-    // (`/v1/template-settings/...`) — organization-service's copy of these
-    // tables was removed (docs/API_CONTRACT.md's footer note). Kept as
-    // visible, honest placeholders rather than silently dropped, since
-    // that's a real feature this tenant expects to find, just not owned by
-    // this integration.
-    { key: '10', label: 'Email Templates', children: <ComingSoonTab label="Email templates" /> },
-    { key: '11', label: 'SMS Templates', children: <ComingSoonTab label="SMS templates" /> },
+    // Template CRUD lives in notification-service (`/v1/template-settings/...`)
+    // — organization-service's copy of these tables was removed
+    // (docs/API_CONTRACT.md's footer note). Email is wired for real below.
+    { key: '10', label: 'Email Templates', children: <EmailTemplatesTab /> },
+    // SMS has no per-tenant override endpoint on notification-service — only
+    // a platform-wide default (see PlatformTemplateSettings, Super Admin
+    // only). Left as an honest placeholder rather than a fake control; not a
+    // gap in this integration, a real limit of the current backend contract.
+    {
+      key: '11',
+      label: 'SMS Templates',
+      children: (
+        <ComingSoonTab label="SMS templates aren't customisable per organisation yet — CareerForce Pro's default wording is used for every tenant" />
+      ),
+    },
   ];
 
   return (

@@ -4,17 +4,19 @@ import { BellOutlined } from '@ant-design/icons';
 import { MdOutlineFilterAlt } from 'react-icons/md';
 import { useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
 import {
+  NOTIFICATION_FEED_MAX_LIMIT,
   NotificationItem,
-  useLazyGetAllNotificationsQuery,
-  useMarkNotificationsAsReadMutation,
+  isNotificationRead,
+  useLazyGetNotificationFeedQuery,
+  useMarkAllNotificationsReadMutation,
+  useMarkNotificationReadMutation,
 } from '../../api/notification-service/Notifications/index';
 import { RootState } from '../../redux/provider/store';
 import {
   markAllReadOptimistic,
   markNotificationReadOptimistic,
-  setNotifications,
+  setNotificationFeed,
   setUnreadCount,
 } from '../../redux/slices/notificationSlice';
 import { showToast } from '../shared';
@@ -26,120 +28,57 @@ type NotificationBellProps = {
 
 type NotificationFilterValue = 'all' | 'read' | 'unread';
 
-type ReadStatus = 'ALL' | 'READ' | 'UNREAD';
-
-const FETCH_LIMIT = 1000;
 const PANEL_REFRESH_DEBOUNCE_MS = 300;
 
-const getNotificationId = (notification: NotificationItem): string => {
-  return String(notification.notificationId ?? notification.id ?? '');
+const isToday = (dateValue: string): boolean => {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) {
+    return true;
+  }
+
+  return date.toDateString() === new Date().toDateString();
 };
 
-const getNotificationTargetPath = (notification: NotificationItem): string => {
-  const { jobOpeningId, candidateId, interviewBookingId, interviewRoundId } = notification;
-
-  if (jobOpeningId && candidateId) {
-    return `/jobs/view/${jobOpeningId}/candidates/${candidateId}/details?tab=3`;
-  }
-
-  if (jobOpeningId && interviewRoundId) {
-    return `/jobs/view/${jobOpeningId}/interview?interviewRoundId=${interviewRoundId}`;
-  }
-
-  if (interviewBookingId) {
-    return `/ai-call-booking?interviewBookingId=${interviewBookingId}`;
-  }
-
-  if (jobOpeningId) {
-    return `/jobs/view/${jobOpeningId}/details`;
-  }
-
-  return '/';
-};
-
-const getReadStatusFromFilter = (filter: NotificationFilterValue): ReadStatus => {
-  switch (filter) {
-    case 'read':
-      return 'READ';
-    case 'unread':
-      return 'UNREAD';
-    default:
-      return 'ALL';
-  }
-};
-
-const markNotificationReadInPanel = (
-  items: NotificationItem[],
-  notificationId: string,
-  filter: NotificationFilterValue
-): NotificationItem[] => {
-  return items
-    .map((item) => {
-      if (getNotificationId(item) === notificationId && !item.isRead) {
-        return { ...item, isRead: true };
-      }
-
-      return item;
-    })
-    .filter((item) => (filter === 'unread' ? !item.isRead : true));
-};
-
-const markAllReadInPanel = (
+const applyFilter = (
   items: NotificationItem[],
   filter: NotificationFilterValue
 ): NotificationItem[] => {
+  if (filter === 'read') {
+    return items.filter(isNotificationRead);
+  }
+
   if (filter === 'unread') {
-    return [];
+    return items.filter((item) => !isNotificationRead(item));
   }
 
-  return items.map((item) => ({ ...item, isRead: true }));
+  return items;
 };
 
 const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoadingPanel, setIsLoadingPanel] = useState(false);
   const [notificationFilter, setNotificationFilter] = useState<NotificationFilterValue>('all');
   const [isMarkingAll, setIsMarkingAll] = useState(false);
-  const [panelToday, setPanelToday] = useState<NotificationItem[]>([]);
-  const [panelEarlier, setPanelEarlier] = useState<NotificationItem[]>([]);
   const lastPanelOpenFetchRef = useRef<number>(0);
-  const { today, earlier, totalUnreadCount } = useSelector(
-    (state: RootState) => state.notificationSlice
-  );
+  const { items, unreadCount } = useSelector((state: RootState) => state.notificationSlice);
 
-  const [getAllNotifications] = useLazyGetAllNotificationsQuery();
-  const [markNotificationsAsRead] = useMarkNotificationsAsReadMutation();
+  const [getNotificationFeed] = useLazyGetNotificationFeedQuery();
+  const [markNotificationRead] = useMarkNotificationReadMutation();
+  const [markAllNotificationsRead] = useMarkAllNotificationsReadMutation();
 
-  const fetchNotifications = async (filter: NotificationFilterValue = notificationFilter) => {
+  const fetchNotifications = async () => {
     if (disabled) {
       return;
     }
 
     try {
       setIsLoadingPanel(true);
-      const response = await getAllNotifications(
-        { limit: FETCH_LIMIT, readStatus: getReadStatusFromFilter(filter) },
+      const response = await getNotificationFeed(
+        { limit: NOTIFICATION_FEED_MAX_LIMIT },
         false
       ).unwrap();
-
-      const apiToday = response.today || [];
-      const apiEarlier = response.earlier || [];
-
-      setPanelToday(apiToday);
-      setPanelEarlier(apiEarlier);
-      dispatch(setUnreadCount(response.totalUnreadCount ?? totalUnreadCount));
-
-      if (filter === 'all') {
-        dispatch(
-          setNotifications({
-            today: apiToday,
-            earlier: apiEarlier,
-            totalUnreadCount: response.totalUnreadCount ?? totalUnreadCount,
-          })
-        );
-      }
+      dispatch(setNotificationFeed(response));
     } catch {
       showToast({
         message: 'Unable to load notifications. Please try again.',
@@ -148,16 +87,6 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
     } finally {
       setIsLoadingPanel(false);
     }
-  };
-
-  const handleFilterSelection = (value: NotificationFilterValue) => {
-    setNotificationFilter(value);
-
-    if (!isOpen || disabled) {
-      return;
-    }
-
-    void fetchNotifications(value);
   };
 
   const handleOpenPanel = async () => {
@@ -174,80 +103,49 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
 
     lastPanelOpenFetchRef.current = now;
     setIsOpen(true);
-    await fetchNotifications(notificationFilter);
+    await fetchNotifications();
+  };
+
+  const markOneRead = async (notification: NotificationItem) => {
+    if (isNotificationRead(notification)) {
+      return;
+    }
+
+    dispatch(markNotificationReadOptimistic(notification.id));
+
+    try {
+      await markNotificationRead(notification.id).unwrap();
+    } catch {
+      // Roll back by re-syncing with the server rather than hand-reversing
+      // the optimistic patch — simpler and always correct.
+      dispatch(setUnreadCount(unreadCount));
+      await fetchNotifications();
+      showToast({ message: 'Failed to mark notification as read.', type: 'error' });
+    }
   };
 
   const handleNotificationClick = async (notification: NotificationItem) => {
-    const notificationId = getNotificationId(notification);
-    const snapshot = {
-      today,
-      earlier,
-      totalUnreadCount,
-    };
-    const panelSnapshot = {
-      today: panelToday,
-      earlier: panelEarlier,
-    };
-
-    if (!notification.isRead && notificationId) {
-      dispatch(markNotificationReadOptimistic(notificationId));
-      setPanelToday((current) =>
-        markNotificationReadInPanel(current, notificationId, notificationFilter)
-      );
-      setPanelEarlier((current) =>
-        markNotificationReadInPanel(current, notificationId, notificationFilter)
-      );
-
-      try {
-        await markNotificationsAsRead({ notificationIds: [notificationId] }).unwrap();
-      } catch {
-        dispatch(setNotifications(snapshot));
-        setPanelToday(panelSnapshot.today);
-        setPanelEarlier(panelSnapshot.earlier);
-        showToast({ message: 'Failed to mark notification as read.', type: 'error' });
-      }
-    }
-
-    setIsOpen(false);
-    navigate(getNotificationTargetPath(notification), {
-      state: {
-        notificationContext: {
-          jobOpeningId: notification.jobOpeningId,
-          candidateId: notification.candidateId,
-          interviewBookingId: notification.interviewBookingId,
-          interviewRoundId: notification.interviewRoundId,
-        },
-      },
-    });
+    // notification-service's feed carries no job/candidate/interview linking
+    // (it has no concept of job-service's ids) — clicking a notification only
+    // marks it read, the same way opening a message in a plain notification
+    // centre does. There is nowhere for it to navigate to.
+    await markOneRead(notification);
   };
 
   const handleMarkAllAsRead = async () => {
-    if (totalUnreadCount <= 0) {
+    if (unreadCount <= 0) {
       return;
     }
 
     setIsMarkingAll(true);
-
-    const snapshot = {
-      today,
-      earlier,
-      totalUnreadCount,
-    };
-    const panelSnapshot = {
-      today: panelToday,
-      earlier: panelEarlier,
-    };
-
+    const previousUnreadCount = unreadCount;
     dispatch(markAllReadOptimistic());
-    setPanelToday((current) => markAllReadInPanel(current, notificationFilter));
-    setPanelEarlier((current) => markAllReadInPanel(current, notificationFilter));
 
     try {
-      await markNotificationsAsRead({ markAll: true }).unwrap();
+      await markAllNotificationsRead().unwrap();
     } catch {
-      dispatch(setNotifications(snapshot));
-      setPanelToday(panelSnapshot.today);
-      setPanelEarlier(panelSnapshot.earlier);
+      dispatch(setUnreadCount(previousUnreadCount));
+      await fetchNotifications();
       showToast({ message: 'Failed to mark all notifications as read.', type: 'error' });
     } finally {
       setIsMarkingAll(false);
@@ -255,64 +153,22 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
   };
 
   const unreadBadgeCount = useMemo(() => {
-    if (disabled) {
+    if (disabled || unreadCount <= 0) {
       return 0;
     }
 
-    if (totalUnreadCount <= 0) {
-      return 0;
-    }
+    return unreadCount > 99 ? '99+' : unreadCount;
+  }, [disabled, unreadCount]);
 
-    return totalUnreadCount > 99 ? '99+' : totalUnreadCount;
-  }, [disabled, totalUnreadCount]);
-
-  const allNotifications = [...panelToday, ...panelEarlier];
-  const hasNotifications = allNotifications.length > 0;
-
-  const handleNavigateToCandidate = (notification: NotificationItem) => {
-    setIsOpen(false);
-    navigate(
-      `/jobs/view/${notification.jobOpeningId}/candidates/${notification.candidateId}/details?tab=3`
-    );
-  };
-
-  const handleCircleMarkAsRead = async (notification: NotificationItem) => {
-    if (notification.isRead) {
-      return;
-    }
-
-    const notificationId = getNotificationId(notification);
-    if (!notificationId) {
-      return;
-    }
-
-    const snapshot = {
-      today,
-      earlier,
-      totalUnreadCount,
+  const { panelToday, panelEarlier } = useMemo(() => {
+    const filtered = applyFilter(items, notificationFilter);
+    return {
+      panelToday: filtered.filter((item) => isToday(item.created_at)),
+      panelEarlier: filtered.filter((item) => !isToday(item.created_at)),
     };
-    const panelSnapshot = {
-      today: panelToday,
-      earlier: panelEarlier,
-    };
+  }, [items, notificationFilter]);
 
-    dispatch(markNotificationReadOptimistic(notificationId));
-    setPanelToday((current) =>
-      markNotificationReadInPanel(current, notificationId, notificationFilter)
-    );
-    setPanelEarlier((current) =>
-      markNotificationReadInPanel(current, notificationId, notificationFilter)
-    );
-
-    try {
-      await markNotificationsAsRead({ notificationIds: [notificationId] }).unwrap();
-    } catch {
-      dispatch(setNotifications(snapshot));
-      setPanelToday(panelSnapshot.today);
-      setPanelEarlier(panelSnapshot.earlier);
-      showToast({ message: 'Failed to mark notification as read.', type: 'error' });
-    }
-  };
+  const hasNotifications = panelToday.length + panelEarlier.length > 0;
 
   return (
     <>
@@ -353,7 +209,7 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
                 <button
                   type="button"
                   onClick={handleMarkAllAsRead}
-                  disabled={isMarkingAll || totalUnreadCount <= 0}
+                  disabled={isMarkingAll || unreadCount <= 0}
                   className="text-primary hover:text-[#0B5ED7] disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed whitespace-nowrap cursor-pointer transition-colors"
                   style={{
                     fontFamily: 'Roboto, sans-serif',
@@ -375,7 +231,7 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
                   <Select<NotificationFilterValue>
                     placeholder="All"
                     value={notificationFilter}
-                    onSelect={handleFilterSelection}
+                    onSelect={setNotificationFilter}
                     prefix={<MdOutlineFilterAlt className="notification-filter-icon" />}
                     allowClear={false}
                     style={{ width: 100 }}
@@ -406,30 +262,24 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
               </div>
             ) : (
               <>
-                {/* Checkbox bar */}
-
                 <div className="max-h-[calc(100vh-280px)] overflow-y-auto px-5 py-2">
                   <NotificationSection
                     title="Today"
                     notifications={panelToday}
                     isToday={true}
-                    getNotificationId={getNotificationId}
-                    onMarkAsRead={handleCircleMarkAsRead}
+                    onMarkAsRead={markOneRead}
                     onNotificationClick={handleNotificationClick}
-                    onNavigateToCandidate={handleNavigateToCandidate}
                   />
 
                   <NotificationSection
                     title="Older"
                     notifications={panelEarlier}
                     isToday={false}
-                    getNotificationId={getNotificationId}
-                    onMarkAsRead={handleCircleMarkAsRead}
+                    onMarkAsRead={markOneRead}
                     onNotificationClick={handleNotificationClick}
-                    onNavigateToCandidate={handleNavigateToCandidate}
                   />
 
-                  {allNotifications.length >= FETCH_LIMIT && (
+                  {items.length >= NOTIFICATION_FEED_MAX_LIMIT && (
                     <p className="text-center text-xs text-gray-500 mt-4 mb-3">
                       Showing latest notifications
                     </p>
