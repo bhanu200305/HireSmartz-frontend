@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { Select } from 'antd';
 import { MdOutlineArrowBack, MdEdit } from 'react-icons/md';
 import MainLayout from '../../../layouts/MainLayout';
 import { Button, Typography, showToast } from '../../shared';
@@ -11,8 +12,9 @@ import {
   useListUsersQuery,
   useDeactivateUserMutation,
 } from '../../../api/organization-service/Users/users';
-import { useGetUserPermissionsQuery } from '../../../api/organization-service/Roles/permissions';
+import { useGetUserDashboardQuery } from '../../../api/organization-service/Roles/dashboard';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import AssignRoleModal from './AssignRoleModal';
 
 /** §"Users" + RBAC_API.md's "See what someone can do" — GET /v1/users (this
  * service has no single-user GET, so the row is read off the list) plus
@@ -28,12 +30,19 @@ const ViewOrgUser = () => {
     { skip: !tenantId }
   );
   const user = data?.items.find((u) => u.user_id === userId);
-  const { data: permissions, isLoading: isPermissionsLoading } = useGetUserPermissionsQuery(
-    { userId },
+
+  // undefined = the all-locations union, same default useGetUserPermissionsQuery
+  // had. `available_locations` in the response drives the dropdown below —
+  // sourced from this person's own attached offices, not the company's full
+  // office list, so the switcher only ever offers somewhere relevant to them.
+  const [locationId, setLocationId] = useState<string | undefined>(undefined);
+  const { data: dashboard, isLoading: isPermissionsLoading } = useGetUserDashboardQuery(
+    { userId, locationId },
     { skip: !userId }
   );
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivateUserMutation();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showAssignRole, setShowAssignRole] = useState(false);
 
   const handleDeactivate = async () => {
     try {
@@ -92,21 +101,54 @@ const ViewOrgUser = () => {
           </div>
         </div>
 
-        <Typography variant="subtitle1" className="mb-2 block">
-          Permissions
-        </Typography>
+        <div className="flex items-center justify-between mb-2">
+          <Typography variant="subtitle1">Permissions</Typography>
+          {user.is_active && (
+            <Button
+              className="text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5"
+              onClick={() => setShowAssignRole(true)}
+            >
+              + Assign role
+            </Button>
+          )}
+        </div>
+
+        {!!dashboard?.available_locations.length && (
+          <div className="mb-3">
+            <label htmlFor="viewUserLocation" className="text-xs text-gray-500">
+              Viewing permissions at
+            </label>
+            <Select
+              id="viewUserLocation"
+              allowClear
+              className="w-full max-w-xs mt-1"
+              placeholder="Everywhere (all locations combined)"
+              value={locationId}
+              onChange={(value) => setLocationId(value ?? undefined)}
+              options={dashboard.available_locations.map((location) => ({
+                label: location.label,
+                value: location.location_id,
+              }))}
+            />
+          </div>
+        )}
+
         {isPermissionsLoading ? (
           <Loader />
-        ) : permissions?.permissions.length ? (
+        ) : dashboard?.permissions.length ? (
           <div className="flex flex-wrap gap-2 mb-8">
-            {permissions.permissions.map((permission) => (
+            {dashboard.permissions.map((permission) => (
               <span key={permission} className="text-xs bg-gray-100 rounded-full px-3 py-1">
                 {permission}
               </span>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-400 mb-8">No permissions granted yet.</p>
+          <p className="text-sm text-gray-400 mb-8">
+            {locationId
+              ? 'No permissions granted at this location.'
+              : 'No permissions granted yet.'}
+          </p>
         )}
 
         {user.is_active && (
@@ -126,6 +168,16 @@ const ViewOrgUser = () => {
           isLoading={isDeactivating}
           onConfirm={handleDeactivate}
           onClose={() => setShowConfirm(false)}
+        />
+      )}
+
+      {showAssignRole && tenantId && (
+        <AssignRoleModal
+          open={showAssignRole}
+          onClose={() => setShowAssignRole(false)}
+          userId={userId}
+          tenantId={tenantId}
+          onAssigned={() => setShowAssignRole(false)}
         />
       )}
     </MainLayout>

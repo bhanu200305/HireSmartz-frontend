@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { Tooltip } from 'antd';
 import { CustomCheckbox } from './checkbox';
 import { Authorities, PermissionModule } from '../../../constants/authorities.constant';
 import { groupCatalogByModule } from '../../../shared/utils/auth/rbac.helpers';
@@ -11,8 +10,9 @@ type PermissionMatrixProps = {
   /**
    * The permissions the acting user is allowed to grant — the escalation
    * ceiling (see getAssignablePermissionCeiling). Anything outside this set
-   * renders disabled: a role can only ever be narrowed from what its
-   * creator already holds, never widened past it.
+   * is not rendered at all: a role can only ever be narrowed from what its
+   * creator already holds, never widened past it, and there is nothing
+   * useful to show for a box nobody in this conversation can ever check.
    */
   ceiling: Authorities[];
   /** Renders every checkbox disabled/read-only (e.g. an immutable system role). */
@@ -57,17 +57,20 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
   return (
     <div className={`flex flex-col gap-y-6 ${className}`}>
       {(Object.keys(groups) as PermissionModule[]).map((moduleName) => {
-        const entries = groups[moduleName];
-        const grantable = entries.filter((entry) => ceilingSet.has(entry.code));
+        // Only permissions the acting user actually holds are ever shown —
+        // a module where they hold none of them has nothing to render.
+        const grantable = groups[moduleName].filter((entry) => ceilingSet.has(entry.code));
+        if (grantable.length === 0) return null;
+
         const selectedInModule = grantable.filter((entry) => selected.has(entry.code));
-        const allSelected = grantable.length > 0 && selectedInModule.length === grantable.length;
+        const allSelected = selectedInModule.length === grantable.length;
         const someSelected = selectedInModule.length > 0 && !allSelected;
 
         return (
           <div key={moduleName} className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-200">
               <span className="text-sm font-semibold text-gray-700">{moduleName}</span>
-              {!disabled && grantable.length > 0 && (
+              {!disabled && (
                 <CustomCheckbox
                   label="Select all"
                   checked={allSelected}
@@ -78,29 +81,15 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
-              {entries.map((entry) => {
-                const withinCeiling = ceilingSet.has(entry.code);
-                const checkbox = (
-                  <CustomCheckbox
-                    key={entry.code}
-                    label={entry.label}
-                    checked={selected.has(entry.code)}
-                    disabled={disabled || !withinCeiling}
-                    onChange={(e) => togglePermission(entry.code, e.target.checked)}
-                  />
-                );
-
-                if (withinCeiling) return checkbox;
-
-                return (
-                  <Tooltip
-                    key={entry.code}
-                    title="You don't hold this permission yourself, so you can't grant it to a role."
-                  >
-                    <span>{checkbox}</span>
-                  </Tooltip>
-                );
-              })}
+              {grantable.map((entry) => (
+                <CustomCheckbox
+                  key={entry.code}
+                  label={entry.label}
+                  checked={selected.has(entry.code)}
+                  disabled={disabled}
+                  onChange={(e) => togglePermission(entry.code, e.target.checked)}
+                />
+              ))}
             </div>
           </div>
         );
