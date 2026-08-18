@@ -40,7 +40,10 @@ const MyCompany: React.FC = () => {
   const { data: profile, isLoading: isProfileLoading } = useGetTenantProfileQuery(tenantId ?? '', {
     skip: !tenantId,
   });
-  const { data: offices } = useListTenantOfficesQuery(tenantId ?? '', { skip: !tenantId });
+  const { data: offices } = useListTenantOfficesQuery(
+    { tenantId: tenantId ?? '' },
+    { skip: !tenantId }
+  );
   const { data: departments } = useListTenantDepartmentsQuery(tenantId ?? '', { skip: !tenantId });
 
   const [hasInvitedTeam, setHasInvitedTeam] = useState<boolean>(

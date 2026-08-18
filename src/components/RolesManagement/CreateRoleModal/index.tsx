@@ -4,6 +4,7 @@ import { showToast } from '../../shared';
 import TemplateStep from './TemplateStep';
 import PermissionsStep from './PermissionsStep';
 import { getAssignablePermissionCeiling } from '../../../shared/utils/auth/rbac.helpers';
+import { getPlatformErrorMessage } from '../../../shared/utils/api/platformErrorEnvelope';
 import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
 import type { LocationOption } from '../RolePermissionsEditor';
 import type { RoleTemplate } from '../data/roleTemplates';
@@ -16,6 +17,10 @@ type CreateRoleModalProps = {
   scope: RoleScope;
   tenantId?: string;
   availableLocations: LocationOption[];
+  /** This catalog's already-fetched roles — used to look up the selected
+   * template's REAL system role and its actual permission set (see ceiling
+   * below). */
+  roles: Role[];
   onCreate: (payload: CreateRolePayload) => Promise<Role>;
 };
 
@@ -28,6 +33,7 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
   scope,
   tenantId,
   availableLocations,
+  roles,
   onCreate,
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -38,10 +44,28 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const actingPermissions = useEffectivePermissions();
-  const ceiling = useMemo(
-    () => getAssignablePermissionCeiling(actingPermissions),
-    [actingPermissions]
-  );
+
+  // The backend caps a custom role's permissions at its base role's OWN set
+  // (PERMISSION_EXCEEDS_BASE_ROLE otherwise) — a narrower, second ceiling on
+  // top of "what the acting user themself holds". A template's `key` is
+  // exactly one of the 8 real system role names (see roleTemplates.ts), so
+  // its true ceiling is that system role's own `permissions` in this
+  // already-fetched catalog — not the frontend's hand-picked
+  // ROLE_TEMPLATES.permissions suggestion, which is only a starting
+  // checkbox state, not a validated ceiling.
+  const baseRolePermissions = useMemo(() => {
+    if (!template) return [];
+    return (
+      roles.find((role) => role.isSystemRole && role.roleName === template.key)?.permissions ?? []
+    );
+  }, [roles, template]);
+
+  const ceiling = useMemo(() => {
+    const acting = getAssignablePermissionCeiling(actingPermissions);
+    if (!template) return acting;
+    const baseSet = new Set(baseRolePermissions);
+    return acting.filter((code) => baseSet.has(code));
+  }, [actingPermissions, template, baseRolePermissions]);
 
   const reset = () => {
     setStep(1);
@@ -74,11 +98,15 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
         tenantId,
         permissions,
         locationPermissions: locationOverrides,
+        templateKey: template.key,
       });
       showToast({ message: `"${roleName.trim()}" created.`, type: 'success' });
       handleClose();
-    } catch {
-      showToast({ message: 'Failed to create role.', type: 'error' });
+    } catch (err) {
+      showToast({
+        message: getPlatformErrorMessage(err, 'Failed to create role.'),
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -104,7 +132,6 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
         <div className="flex items-center gap-1.5 mt-2">
           {Array.from({ length: TOTAL_STEPS }).map((_, index) => (
             <span
-              // eslint-disable-next-line react/no-array-index-key
               key={index}
               className={`h-[3px] w-5 rounded-full ${index + 1 <= step ? 'bg-white' : 'bg-white/30'}`}
             />

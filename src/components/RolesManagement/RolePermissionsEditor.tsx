@@ -4,7 +4,7 @@ import type { Authorities } from '../../constants/authorities.constant';
 import type { RoleLocationPermissions } from '../../types';
 import LocationOverrideBlock from './LocationOverrideBlock';
 
-export type LocationOption = { id: number; name: string };
+export type LocationOption = { id: string; name: string };
 
 type RolePermissionsEditorProps = {
   permissions: Authorities[];
@@ -29,7 +29,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   availableLocations,
   showLocationOverrides,
 }) => {
-  const [pendingLocationId, setPendingLocationId] = useState<number | ''>('');
+  const [pendingLocationId, setPendingLocationId] = useState<string>('');
 
   const overriddenIds = new Set(locationOverrides.map((override) => override.locationId));
   const pickableLocations = availableLocations.filter((loc) => !overriddenIds.has(loc.id));
@@ -45,11 +45,13 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
     setPendingLocationId('');
   };
 
-  const removeOverride = (locationId: number) => {
-    onLocationOverridesChange(locationOverrides.filter((override) => override.locationId !== locationId));
+  const removeOverride = (locationId: string) => {
+    onLocationOverridesChange(
+      locationOverrides.filter((override) => override.locationId !== locationId)
+    );
   };
 
-  const updateOverride = (locationId: number, next: Authorities[]) => {
+  const updateOverride = (locationId: string, next: Authorities[]) => {
     onLocationOverridesChange(
       locationOverrides.map((override) =>
         override.locationId === locationId ? { ...override, permissions: next } : override
@@ -86,11 +88,13 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
               <select
                 className="text-xs font-medium border border-gray-200 rounded-lg px-2.5 py-2 bg-white min-w-[180px]"
                 value={pendingLocationId}
-                onChange={(e) => setPendingLocationId(e.target.value ? Number(e.target.value) : '')}
+                onChange={(e) => setPendingLocationId(e.target.value)}
                 disabled={pickableLocations.length === 0}
               >
                 <option value="">
-                  {pickableLocations.length === 0 ? 'No more locations to add' : 'Select a location…'}
+                  {pickableLocations.length === 0
+                    ? 'No more locations to add'
+                    : 'Select a location…'}
                 </option>
                 {pickableLocations.map((location) => (
                   <option key={location.id} value={location.id}>

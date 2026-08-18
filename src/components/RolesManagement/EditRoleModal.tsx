@@ -4,6 +4,7 @@ import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import RolePermissionsEditor, { type LocationOption } from './RolePermissionsEditor';
 import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import { getAssignablePermissionCeiling } from '../../shared/utils/auth/rbac.helpers';
+import { getPlatformErrorMessage } from '../../shared/utils/api/platformErrorEnvelope';
 import type { Authorities } from '../../constants/authorities.constant';
 import type { Role, RoleLocationPermissions, UpdateRolePayload } from '../../types';
 
@@ -17,17 +18,28 @@ type EditRoleModalProps = {
 /** Single-panel edit — no template re-pick, just the permission matrix +
  * location overrides, pre-filled from the role being edited. Only ever
  * opened for custom roles; system roles show no Edit action (see RoleTable). */
-const EditRoleModal: React.FC<EditRoleModalProps> = ({ role, onClose, availableLocations, onSave }) => {
+const EditRoleModal: React.FC<EditRoleModalProps> = ({
+  role,
+  onClose,
+  availableLocations,
+  onSave,
+}) => {
   const [roleName, setRoleName] = useState('');
   const [permissions, setPermissions] = useState<Authorities[]>([]);
   const [locationOverrides, setLocationOverrides] = useState<RoleLocationPermissions[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   const actingPermissions = useEffectivePermissions();
-  const ceiling = useMemo(
-    () => getAssignablePermissionCeiling(actingPermissions),
-    [actingPermissions]
-  );
+  // Same second ceiling CreateRoleModal applies: the backend caps a custom
+  // role at its base role's own permission set (PERMISSION_EXCEEDS_BASE_ROLE
+  // otherwise). Unlike create, no template lookup needed — the role being
+  // edited already carries its real base_role_permissions from the backend.
+  const ceiling = useMemo(() => {
+    const acting = getAssignablePermissionCeiling(actingPermissions);
+    if (!role?.baseRolePermissions) return acting;
+    const baseSet = new Set(role.baseRolePermissions);
+    return acting.filter((code) => baseSet.has(code));
+  }, [actingPermissions, role]);
 
   useEffect(() => {
     if (!role) return;
@@ -49,8 +61,11 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({ role, onClose, availableL
       });
       showToast({ message: `"${roleName.trim()}" updated.`, type: 'success' });
       onClose();
-    } catch {
-      showToast({ message: 'Failed to update role.', type: 'error' });
+    } catch (err) {
+      showToast({
+        message: getPlatformErrorMessage(err, 'Failed to update role.'),
+        type: 'error',
+      });
     } finally {
       setIsSaving(false);
     }

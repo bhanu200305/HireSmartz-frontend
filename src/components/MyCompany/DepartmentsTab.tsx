@@ -21,7 +21,7 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
  */
 const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: departments, isLoading } = useListTenantDepartmentsQuery(tenantId);
-  const { data: offices } = useListTenantOfficesQuery(tenantId);
+  const { data: offices } = useListTenantOfficesQuery({ tenantId });
   const [addDepartment, { isLoading: isAdding }] = useAddTenantDepartmentMutation();
   const [deleteDepartment] = useDeleteTenantDepartmentMutation();
 

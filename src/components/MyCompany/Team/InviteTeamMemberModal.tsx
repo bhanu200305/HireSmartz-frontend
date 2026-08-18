@@ -36,8 +36,8 @@ const InviteTeamMemberModal = ({
   onInvited,
 }: InviteTeamMemberModalProps) => {
   const [inviteTenantUser, { isLoading }] = useInviteTenantUserMutation();
-  const { data: offices } = useListTenantOfficesQuery(tenantId, { skip: !open });
-  const { data: roles } = useListRolesQuery(undefined, { skip: !open });
+  const { data: offices } = useListTenantOfficesQuery({ tenantId }, { skip: !open });
+  const { data: roles } = useListRolesQuery({ scope: 'tenant', isMaster: false }, { skip: !open });
   const [activeTab, setActiveTab] = useState<'details' | 'permissions'>('details');
 
   const { control, handleSubmit, reset, watch, setValue, formState } =
@@ -72,7 +72,6 @@ const InviteTeamMemberModal = ({
     // rolePermissions is derived from `roles` + `selectedRole` each render;
     // depending on `selectedRole` (and `roles` loading in) is what should
     // actually re-trigger this, not the derived array's own identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRole, roles, setValue]);
 
   const togglePermission = (permission: string, checked: boolean) => {

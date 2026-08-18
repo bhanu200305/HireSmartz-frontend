@@ -20,7 +20,7 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
  * anyway since it's still a destructive action, just not a data-loss one.
  */
 const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
-  const { data: offices, isLoading } = useListTenantOfficesQuery(tenantId);
+  const { data: offices, isLoading } = useListTenantOfficesQuery({ tenantId });
   const [addOffice, { isLoading: isAdding }] = useAddTenantOfficeMutation();
   const [updateOffice, { isLoading: isUpdating }] = useUpdateTenantOfficeMutation();
   const [deleteOffice] = useDeleteTenantOfficeMutation();

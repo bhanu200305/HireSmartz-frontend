@@ -8,6 +8,8 @@ import { Authorities } from '../../constants/authorities.constant';
 import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import { useRolesCatalog } from '../../hooks/useRolesCatalog';
 import { isMasterSuperAdminRole } from '../../shared/utils/auth/permission.helpers';
+import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+import { Loader } from '../shared/ui/loader';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
 import RoleContextSwitcher from './RoleContextSwitcher';
 import RoleTable from './RoleTable';
@@ -19,18 +21,20 @@ import type { RoleManagementContext } from './types';
 import type { Role } from '../../types';
 
 /**
- * Real backend today only supports grant/revoke of a role on one user at a
- * time — no role-catalog CRUD endpoint (see useRolesCatalog's own comment).
- * This screen builds the full interactive experience against local mock
- * state instead of waiting on that, structured so wiring up the real
- * endpoints later only touches useRolesCatalog, not this component tree.
+ * Backed by the real organization-service RBAC endpoints via
+ * useRolesCatalog (api/organization-service/Roles/roles.ts) — this
+ * component tree only ever talks to that hook's shape, never the network
+ * directly, which is what let the backend catch up without any changes
+ * here beyond passing `isMaster` through and using real office ids.
  */
 const RolesManagement: React.FC = () => {
   const session = useSelector((state: RootState) => state.LoginSlice);
   const effectivePermissions = useEffectivePermissions();
   const isMaster = isMasterSuperAdminRole(session.role);
 
-  const [switcherContext, setSwitcherContext] = useState<RoleManagementContext>({ scope: 'platform' });
+  const [switcherContext, setSwitcherContext] = useState<RoleManagementContext>({
+    scope: 'platform',
+  });
 
   // Non-Master-Super-Admin sessions are always scoped to their own tier —
   // owner-type sessions (Master/Admin/User) see the CFP platform catalog,
@@ -42,18 +46,30 @@ const RolesManagement: React.FC = () => {
       ? { scope: 'tenant', tenantId: session.tenantId ?? undefined }
       : { scope: 'platform' };
 
-  const { roles, createRole, updateRole, deleteRole, bulkImportRoles } = useRolesCatalog({
+  const {
+    roles,
+    isLoading: rolesLoading,
+    error: rolesError,
+    createRole,
+    updateRole,
+    deleteRole,
+    bulkImportRoles,
+  } = useRolesCatalog({
     scope: context.scope,
     tenantId: context.tenantId,
+    isMaster,
   });
 
-  const { data: offices } = useListTenantOfficesQuery(context.tenantId ?? '', {
-    skip: !context.tenantId,
-  });
+  const { data: offices } = useListTenantOfficesQuery(
+    { tenantId: context.tenantId ?? '', isMaster },
+    { skip: !context.tenantId }
+  );
   const availableLocations = useMemo(
     () =>
-      (offices ?? []).map((office, index) => ({
-        id: index + 1,
+      (offices ?? []).map((office) => ({
+        // Real office_id (UUID) — PUT .../permissions needs this exact id
+        // as location_id for an override to resolve to anything server-side.
+        id: office.office_id,
         name: office.state ? `${office.city}, ${office.state}` : office.city,
       })),
     [offices]
@@ -114,11 +130,25 @@ const RolesManagement: React.FC = () => {
           </div>
         </div>
 
-        {isMaster && <RoleContextSwitcher context={switcherContext} onChange={setSwitcherContext} />}
+        {isMaster && (
+          <RoleContextSwitcher context={switcherContext} onChange={setSwitcherContext} />
+        )}
 
         {awaitingCompanySelection ? (
           <div className="py-16 flex flex-col items-center justify-center text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-            <p className="text-sm text-gray-500">Select a company above to manage its role catalog.</p>
+            <p className="text-sm text-gray-500">
+              Select a company above to manage its role catalog.
+            </p>
+          </div>
+        ) : rolesLoading ? (
+          <div className="py-16 flex items-center justify-center">
+            <Loader />
+          </div>
+        ) : rolesError ? (
+          <div className="py-16 flex flex-col items-center justify-center text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+            <p className="text-sm text-danger-solid">
+              {getOrgErrorMessage(rolesError, 'Failed to load roles.')}
+            </p>
           </div>
         ) : (
           <RoleTable
@@ -137,6 +167,7 @@ const RolesManagement: React.FC = () => {
         scope={context.scope}
         tenantId={context.tenantId}
         availableLocations={availableLocations}
+        roles={roles}
         onCreate={createRole}
       />
 

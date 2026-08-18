@@ -92,7 +92,6 @@ const orgSystemRoles = (tenantId?: string): Role[] => [
       Authorities.JOB_OPENING_VIEW,
       Authorities.JOB_OPENING_CREATE,
       Authorities.JOB_OPENING_EDIT,
-      Authorities.JOB_OPENING_DUPLICATE,
       Authorities.ACTIVITY_FEED,
     ],
     locationPermissions: [

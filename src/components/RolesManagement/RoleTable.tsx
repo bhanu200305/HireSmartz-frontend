@@ -3,7 +3,7 @@ import type { TableProps } from 'antd';
 import { CustomTable, Badge } from '../shared';
 import type { Role } from '../../types';
 
-type RoleRow = Role & { key: number };
+type RoleRow = Role & { key: string };
 
 type RoleTableProps = {
   roles: Role[];

@@ -41,11 +41,32 @@ export type DeleteTenantOfficeResponse = {
   status: string;
 };
 
+export type ListTenantOfficesArgs = {
+  tenantId: string;
+  /**
+   * True when a Master Super Admin is viewing another company's offices
+   * from the platform side (RolesManagement's RoleContextSwitcher, e.g.) —
+   * their token carries no ambient tenant_id, so `GET /v1/tenants/{id}/offices`
+   * (which requires one) 403s with PERMISSION_DENIED/"this endpoint requires
+   * a tenant user" even for a Master Super Admin holding location:read.
+   * `GET /v1/platform/tenants/{id}/offices` is the platform-mounted
+   * equivalent — same data, guarded by require_platform_permission instead,
+   * with tenantId taken from the path rather than the token. Mirrors
+   * `rolesBasePath` in `../Roles/roles.ts` exactly. Defaults to false: every
+   * other caller (MyCompany's own tabs, InviteTeamMemberModal) is a real
+   * tenant session listing its own offices.
+   */
+  isMaster?: boolean;
+};
+
+const officesBasePath = ({ tenantId, isMaster }: ListTenantOfficesArgs): string =>
+  isMaster ? `/v1/platform/tenants/${tenantId}/offices` : `/v1/tenants/${tenantId}/offices`;
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
-    listTenantOffices: build.query<TenantOffice[], string>({
-      query: (tenantId) => `/v1/tenants/${tenantId}/offices`,
-      providesTags: (_result, _error, tenantId) => [{ type: 'TenantOffices', id: tenantId }],
+    listTenantOffices: build.query<TenantOffice[], ListTenantOfficesArgs>({
+      query: (args) => officesBasePath(args),
+      providesTags: (_result, _error, { tenantId }) => [{ type: 'TenantOffices', id: tenantId }],
     }),
     addTenantOffice: build.mutation<AddTenantOfficeResponse, AddTenantOfficeRequest>({
       query: ({ tenantId, ...body }) => ({
