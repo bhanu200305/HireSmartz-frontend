@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import MenuItems from './menuItem';
 import useHasAccess from '../../hooks/useHasAccess';
 import {
-  getLocalStorageItem,
   isImpersonationActive,
   setLocalStorageItem,
 } from '../../shared/utils/auth/localstorage.helpers';
@@ -13,26 +12,15 @@ import { useDispatch, useSelector } from 'react-redux';
 import { showToast } from '../shared';
 import { MdExitToApp } from 'react-icons/md';
 import { RootState } from '../../redux/provider/store';
-import { Authorities } from '../../constants/authorities.constant';
-import {
-  canViewCompanyTab,
-  extractCanManageCompanySettings,
-} from '../../shared/utils/auth/permission.helpers';
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const { loginToken, role, canManageCompanySettings } = useSelector(
-    (state: RootState) => state.LoginSlice
-  );
+  const { loginToken, tenantId } = useSelector((state: RootState) => state.LoginSlice);
 
   const [activeTab, setActiveTab] = useState<string>('/');
   const isImpersonating = isImpersonationActive(loginToken);
-  const tokenFromStorage = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS) as string | null;
-  const effectiveCanManageCompanySettings =
-    canManageCompanySettings || extractCanManageCompanySettings(loginToken || tokenFromStorage);
-  const hasMyCompanyAuthority = useHasAccess(Authorities.MY_COMPANY_VIEW);
 
   useEffect(() => {
     if (activeTab !== '/') {
@@ -57,12 +45,14 @@ const Navbar: React.FC = () => {
   };
 
   const accessibleMenuItems = MenuItems.filter((item) => {
-    if (item.name === 'Company') {
-      return canViewCompanyTab({
-        role,
-        canManageCompanySettings: effectiveCanManageCompanySettings,
-        hasMyCompanyAuthority,
-      });
+    if (item.name === 'Companies') {
+      // COMPANY_VIEW ('tenant:read') is also a real permission a tenant's
+      // own role can hold, for reading THEIR OWN tenant — so the permission
+      // check alone can't tell a platform caller from a tenant one here.
+      // This platform-only screen (lists every company) additionally
+      // requires no tenant of their own, same principal-type guard
+      // CustomerPage's own route already enforces.
+      return !tenantId && useHasAccess(item.requiredAuthority);
     }
 
     return useHasAccess(item.requiredAuthority);

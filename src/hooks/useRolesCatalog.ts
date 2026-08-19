@@ -185,9 +185,24 @@ export const useRolesCatalog = (args: UseRolesCatalogArgs): UseRolesCatalogResul
         base_role_id: resolveBaseRoleId(payload.templateKey),
         permissions: toBackendPermissions(payload.permissions),
       }).unwrap();
-      return toFrontendRole(created, scope, tenantId);
+
+      // POST /roles only ever accepts the baseline set (CreateRoleRequest has
+      // no location_overrides field) — any per-location overrides chosen in
+      // the Create Role wizard have to be persisted as a second call, same
+      // PUT .../permissions endpoint updateRole uses. Skipped when there are
+      // none so a plain create (the common case) stays a single request.
+      if (payload.locationPermissions.length === 0) {
+        return toFrontendRole(created, scope, tenantId);
+      }
+
+      const withOverrides = await replacePermissionsMutation({
+        ...ctx,
+        roleId: created.role_id,
+        entries: buildPermissionEntries(payload.permissions, payload.locationPermissions),
+      }).unwrap();
+      return toFrontendRole(withOverrides, scope, tenantId);
     },
-    [createRoleMutation, ctx, resolveBaseRoleId, scope, tenantId]
+    [createRoleMutation, replacePermissionsMutation, ctx, resolveBaseRoleId, scope, tenantId]
   );
 
   const updateRole = useCallback(

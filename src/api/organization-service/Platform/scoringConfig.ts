@@ -7,6 +7,11 @@ import type { ScoringConfig } from '../Tenants/scoringConfig';
 // /platform/tenants) specifically to avoid colliding with the
 // /platform/tenants/{tenant_id} path parameter — see platform_router.py's
 // own comment on why.
+export type UpdatePlatformTenantScoringConfigArgs = {
+  tenantId: string;
+  weights: Record<string, number>;
+};
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     getPlatformScoringConfig: build.query<ScoringConfig, void>({
@@ -21,8 +26,34 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['PlatformScoringConfig'],
     }),
+    // A SPECIFIC tenant's own weights, on their behalf — distinct from the
+    // platform-wide default above. Same ScoringConfigView shape, tenant
+    // bound from the path (mirrors Tenants/scoringConfig.ts).
+    getPlatformTenantScoringConfig: build.query<ScoringConfig, string>({
+      query: (tenantId) => `/v1/platform/tenants/${tenantId}/scoring-config`,
+      providesTags: (_result, _error, tenantId) => [
+        { type: 'ScoringConfig', id: `platform-${tenantId}` },
+      ],
+    }),
+    updatePlatformTenantScoringConfig: build.mutation<
+      ScoringConfig,
+      UpdatePlatformTenantScoringConfigArgs
+    >({
+      query: ({ tenantId, weights }) => ({
+        url: `/v1/platform/tenants/${tenantId}/scoring-config`,
+        method: 'PUT',
+        body: { weights },
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'ScoringConfig', id: `platform-${tenantId}` },
+      ],
+    }),
   }),
 });
 
-export const { useGetPlatformScoringConfigQuery, useUpdatePlatformScoringConfigMutation } =
-  extendedApi;
+export const {
+  useGetPlatformScoringConfigQuery,
+  useUpdatePlatformScoringConfigMutation,
+  useGetPlatformTenantScoringConfigQuery,
+  useUpdatePlatformTenantScoringConfigMutation,
+} = extendedApi;

@@ -14,13 +14,8 @@ import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import { exitImpersonation } from '../../services/AuthService';
 import { showToast } from '../shared';
 import { RootState } from '../../redux/provider/store';
-import { Authorities } from '../../constants/authorities.constant';
-import {
-  canViewCompanyTab,
-  extractCanManageCompanySettings,
-  isMasterSuperAdminRole,
-} from '../../shared/utils/auth/permission.helpers';
-import { useGetUserProfileQuery } from '../../api/tenant-service/UserProfile/UserProfile';
+import { isMasterSuperAdminRole } from '../../shared/utils/auth/permission.helpers';
+import { useListUsersQuery } from '../../api/organization-service/Users/users';
 
 // Public-folder asset — referenced by URL, not imported (mirrors how Header
 // previously referenced /cfpLogo.svg).
@@ -37,34 +32,39 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const { loginToken, role, canManageCompanySettings } = useSelector(
-    (state: RootState) => state.LoginSlice
-  );
+  const { loginToken, role, tenantId } = useSelector((state: RootState) => state.LoginSlice);
 
   const isImpersonating = isImpersonationActive(loginToken);
-  const tokenFromStorage = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS) as string | null;
-  const effectiveCanManageCompanySettings =
-    canManageCompanySettings || extractCanManageCompanySettings(loginToken || tokenFromStorage);
-  const hasMyCompanyAuthority = useHasAccess(Authorities.MY_COMPANY_VIEW);
 
   const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
   const userId =
     useSelector((state: RootState) => state.LoginSlice.userId) ||
     (token && (jwtDecode(token as string) as any)?.userId);
 
-  const { data: profileData, error: profileError } = useGetUserProfileQuery(userId!, {
-    skip: !userId,
-    refetchOnMountOrArgChange: true,
-  });
-  const userData = profileError ? { firstName: 'User', profilePicture: null } : profileData;
+  // useGetUserProfileQuery (tenant-service/UserProfile) hit a dead,
+  // pre-microservices path (`orguserservice/user/profile/getById`) that no
+  // longer exists on organization-service — always 404'd, silently falling
+  // back to "Welcome, User" for every real login. There's no single-user or
+  // `/me` endpoint on the backend today, so this reuses the same
+  // already-proven workaround EditOrganisationUser/index.tsx uses: pull the
+  // current user out of the real tenant roster list instead. Same known
+  // limitation as that call site — a tenant with >200 users whose current
+  // user isn't on the first page still falls back to "User".
+  const { data: usersData } = useListUsersQuery(
+    { includeInactive: true, limit: 200 },
+    { skip: !tenantId }
+  );
+  const userData = usersData?.items.find((u) => u.user_id === userId);
 
   const accessibleMenuItems = MenuItems.filter((item) => {
-    if (item.name === 'Company') {
-      return canViewCompanyTab({
-        role,
-        canManageCompanySettings: effectiveCanManageCompanySettings,
-        hasMyCompanyAuthority,
-      });
+    if (item.name === 'Companies') {
+      // COMPANY_VIEW ('tenant:read') is also a real permission a tenant's
+      // own role can hold, for reading THEIR OWN tenant — so the permission
+      // check alone can't tell a platform caller from a tenant one here.
+      // This platform-only screen (lists every company) additionally
+      // requires no tenant of their own, same principal-type guard
+      // CustomerPage's own route already enforces.
+      return !tenantId && useHasAccess(item.requiredAuthority);
     }
 
     // Role-gated, not Authorities-gated — see menuItem.tsx's comment on this
@@ -177,11 +177,11 @@ const Sidebar: React.FC = () => {
             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-brand-400"
             aria-hidden
           >
-            {(userData?.firstName || 'U').charAt(0).toUpperCase()}
+            {(userData?.first_name || 'U').charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-white truncate">
-              Welcome{userData?.firstName ? `, ${userData.firstName}` : ''}
+              Welcome{userData?.first_name ? `, ${userData.first_name}` : ''}
             </p>
             <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
               {role?.name || ''}

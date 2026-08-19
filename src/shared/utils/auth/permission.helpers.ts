@@ -20,18 +20,6 @@ const normalizeRoleIdentifier = (value: string | undefined): string => {
   return (value || '').replace(/[_\s-]+/g, '').toLowerCase();
 };
 
-export const isHiringManagerOrRecruiterRole = (role?: Role): boolean => {
-  const normalizedRoleName = normalizeRoleIdentifier(role?.name);
-  const normalizedRoleType = normalizeRoleIdentifier(role?.type);
-
-  return (
-    normalizedRoleName === 'hiringmanager' ||
-    normalizedRoleName === 'recruiter' ||
-    normalizedRoleType === 'hiringmanager' ||
-    normalizedRoleType === 'recruiter'
-  );
-};
-
 /**
  * The platform-wide ("owner" scope) seeded role — see types/rbac.d.ts's
  * comment on the historical 6 system roles. Gates the sidebar's Admin
@@ -85,20 +73,4 @@ export const extractCanManageCompanySettings = (token?: string | null): boolean 
   } catch {
     return false;
   }
-};
-
-export const canViewCompanyTab = ({
-  role,
-  canManageCompanySettings,
-  hasMyCompanyAuthority,
-}: {
-  role?: Role;
-  canManageCompanySettings: boolean;
-  hasMyCompanyAuthority: boolean;
-}): boolean => {
-  if (isHiringManagerOrRecruiterRole(role)) {
-    return canManageCompanySettings;
-  }
-
-  return hasMyCompanyAuthority;
 };

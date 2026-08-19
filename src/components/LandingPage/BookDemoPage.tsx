@@ -2,11 +2,23 @@ import { useReducer, useState } from 'react';
 import { z } from 'zod';
 import { LuHeadset, LuStar, LuCalendarCheck, LuCheck } from 'react-icons/lu';
 import { showToast } from '../shared/ui/toast';
+import { useSubmitDemoRequestMutation } from '../../api/organization-service/Platform/guestOrganizations';
+import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import './landingPage.css';
 
 const COMPANY_SIZE_OPTIONS = ['1-10', '11-50', '51-200', '201-500', '500+'];
+
+// Backend wants a single integer (`company_size`), the form offers ranges —
+// mapped to each bucket's lower bound, e.g. '11-50' -> 11.
+const COMPANY_SIZE_TO_INT: Record<string, number> = {
+  '1-10': 1,
+  '11-50': 11,
+  '51-200': 51,
+  '201-500': 201,
+  '500+': 500,
+};
 
 const demoRequestSchema = z.object({
   firstName: z.string().min(1, 'First name is required.'),
@@ -21,6 +33,7 @@ const demoRequestSchema = z.object({
     .min(1, 'Phone number is required.')
     .refine((val) => /^[\d\s()+-]{7,}$/.test(val), 'Enter a valid phone number.'),
   company: z.string().min(1, 'Company is required.'),
+  location: z.string().min(1, 'Location is required.'),
   jobTitle: z.string().min(1, 'Job title is required.'),
   companySize: z.string().min(1, 'Please select your company size.'),
   hearAboutUs: z.string().min(1, 'Please let us know how you heard about us.'),
@@ -35,6 +48,7 @@ const INITIAL_STATE: FormState = {
   workEmail: '',
   phone: '',
   company: '',
+  location: '',
   jobTitle: '',
   companySize: '',
   hearAboutUs: '',
@@ -46,6 +60,7 @@ const FIELD_LABELS: Record<keyof FormState, string> = {
   workEmail: 'Work Email',
   phone: 'Phone',
   company: 'Company',
+  location: 'Location',
   jobTitle: 'Job Title',
   companySize: 'What is Your Company Size?',
   hearAboutUs: 'How Did You Hear About Us?',
@@ -152,15 +167,13 @@ const BookDemoPage = () => {
   );
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitDemoRequest, { isLoading: isSubmitting }] = useSubmitDemoRequestMutation();
 
   const handleChange = (name: keyof FormState, value: string) => {
     setForm({ [name]: value });
   };
 
-  // Cosmetic only, mirroring the sign-up flow on the Login page — there's no
-  // lead-capture backend yet, so a valid submission just confirms the input
-  // and shows a success state. Nothing is persisted.
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = demoRequestSchema.safeParse(form);
 
@@ -175,8 +188,26 @@ const BookDemoPage = () => {
     }
 
     setErrors({});
-    setSubmitted(true);
-    showToast({ message: 'Demo request received!', type: 'success' });
+    try {
+      await submitDemoRequest({
+        first_name: result.data.firstName,
+        last_name: result.data.lastName,
+        email: result.data.workEmail,
+        contact_number: result.data.phone,
+        company_name: result.data.company,
+        location: result.data.location,
+        company_size: COMPANY_SIZE_TO_INT[result.data.companySize] ?? 1,
+        job_title: result.data.jobTitle,
+        heard_about_us: result.data.hearAboutUs,
+      }).unwrap();
+      setSubmitted(true);
+      showToast({ message: 'Demo request received!', type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to submit your request. Please try again.'),
+        type: 'error',
+      });
+    }
   };
 
   const resetForm = () => {
@@ -257,6 +288,16 @@ const BookDemoPage = () => {
                   />
                 </FormField>
 
+                <FormField name="location" error={errors.location}>
+                  <input
+                    id="location"
+                    className={inputClass}
+                    placeholder="San Francisco, CA"
+                    value={form.location}
+                    onChange={(e) => handleChange('location', e.target.value)}
+                  />
+                </FormField>
+
                 <FormField name="jobTitle" error={errors.jobTitle}>
                   <input
                     id="jobTitle"
@@ -296,9 +337,10 @@ const BookDemoPage = () => {
 
                 <button
                   type="submit"
-                  className="mt-1 w-full cursor-pointer rounded-lg bg-neutral-950 py-3.5 text-sm font-bold text-white transition-colors hover:bg-primary-700"
+                  disabled={isSubmitting}
+                  className="mt-1 w-full cursor-pointer rounded-lg bg-neutral-950 py-3.5 text-sm font-bold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Book a Demo
+                  {isSubmitting ? 'Submitting…' : 'Book a Demo'}
                 </button>
 
                 <p className="text-center text-[11px] leading-relaxed text-neutral-400">

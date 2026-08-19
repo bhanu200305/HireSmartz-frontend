@@ -213,7 +213,10 @@ export const Routes: RouteType[] = [
   },
   {
     name: 'AcceptInvitation',
-    path: '/accept-invite/:token',
+    // Must match notification-service's LinkBuilder.setup_url() exactly
+    // (services/notification-service/app/core/links.py) — that's the only
+    // place invite emails' link is built, and it always points here.
+    path: '/invitations/:token/accept',
     component: AcceptInvitationPage,
     isPublic: true,
   },

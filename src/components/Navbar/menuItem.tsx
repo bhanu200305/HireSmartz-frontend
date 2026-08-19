@@ -40,10 +40,18 @@ const MenuItems = [
     requiredAuthority: Authorities.COMPANY_VIEW,
   },
   {
+    // MY_COMPANY_VIEW used to gate this — a frontend-only flag the real
+    // backend permission-resolution call can never return (see its own "No
+    // backend permission" comment in authorities.constant.ts), which meant
+    // no real (non-dev-bypass) tenant login ever saw this item. COMPANY_
+    // SETTINGS_VIEW ('organization:read') is the actual permission
+    // MyCompanyPage's own RequirePermission gate already requires to render
+    // the page this links to — using the same one here means the nav item
+    // and the page it points at finally agree on who can see it.
     name: 'Company',
     icon: <MdApartment size={18} />,
     path: ['/my-company'],
-    requiredAuthority: Authorities.MY_COMPANY_VIEW,
+    requiredAuthority: Authorities.COMPANY_SETTINGS_VIEW,
   },
   {
     name: 'Company Settings',

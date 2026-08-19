@@ -24,6 +24,21 @@ export type ListGuestOrganizationsResponse = {
   total: number;
 };
 
+// POST /v1/guest-organizations request body — the "Book a Demo" form.
+// Public endpoint, no auth/tenant context: this is submitted by a visitor
+// who has no account yet, same as the invite-acceptance endpoints.
+export type SubmitDemoRequestBody = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  contact_number: string;
+  company_name: string;
+  location: string;
+  company_size: number;
+  job_title: string;
+  heard_about_us?: string;
+};
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     listGuestOrganizations: build.query<
@@ -42,7 +57,15 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'GuestOrganizations', id: guestOrgId },
       ],
     }),
+    submitDemoRequest: build.mutation<GuestOrganization, SubmitDemoRequestBody>({
+      query: (body) => ({ url: '/v1/guest-organizations', method: 'POST', body }),
+      invalidatesTags: ['GuestOrganizations'],
+    }),
   }),
 });
 
-export const { useListGuestOrganizationsQuery, useGetGuestOrganizationQuery } = extendedApi;
+export const {
+  useListGuestOrganizationsQuery,
+  useGetGuestOrganizationQuery,
+  useSubmitDemoRequestMutation,
+} = extendedApi;

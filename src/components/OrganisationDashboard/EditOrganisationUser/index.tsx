@@ -13,6 +13,9 @@ import {
   useUpdateUserMutation,
 } from '../../../api/organization-service/Users/users';
 import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
+import { useListRolesQuery } from '../../../api/organization-service/Roles/roles';
+import { useListTenantOfficesQuery } from '../../../api/organization-service/Tenants/offices';
+import { useAssignRoleMutation } from '../../../api/organization-service/Roles/assignments';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 
 type FormState = {
@@ -44,6 +47,38 @@ const EditOrgUser = () => {
   const user = data?.items.find((u) => u.user_id === userId);
   const { data: departments } = useListTenantDepartmentsQuery(tenantId ?? '', { skip: !tenantId });
   const [updateUser, { isLoading: isSaving }] = useUpdateUserMutation();
+
+  // Role assignment — a separate mutation from the profile fields above (a
+  // real RBAC grant via POST /v1/roles/assignments, not a form field on this
+  // user's record). Kept as its own action with its own button rather than
+  // folded into "Save changes", same as ViewOrganisationUser/AssignRoleModal
+  // already does it. There is no endpoint to list a user's EXISTING
+  // assignments (see assignments.ts's header comment), so this can only ADD
+  // a role — it can't show or change whatever they already hold.
+  const { data: roles } = useListRolesQuery({ scope: 'tenant', isMaster: false });
+  const { data: offices } = useListTenantOfficesQuery(
+    { tenantId: tenantId ?? '' },
+    { skip: !tenantId }
+  );
+  const [assignRole, { isLoading: isAssigningRole }] = useAssignRoleMutation();
+  const [assignRoleId, setAssignRoleId] = useState<string | undefined>(undefined);
+  const [assignLocationId, setAssignLocationId] = useState<string | undefined>(undefined);
+
+  const handleAssignRole = async () => {
+    if (!assignRoleId) return;
+    try {
+      const result = await assignRole({
+        user_id: userId,
+        role_id: assignRoleId,
+        location_id: assignLocationId ?? null,
+      }).unwrap();
+      showToast({ message: `"${result.role_name}" assigned.`, type: 'success' });
+      setAssignRoleId(undefined);
+      setAssignLocationId(undefined);
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to assign role.'), type: 'error' });
+    }
+  };
 
   const [form, setForm] = useState<FormState>({
     first_name: '',
@@ -131,6 +166,43 @@ const EditOrgUser = () => {
               value: d.org_department_id,
             }))}
           />
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-gray-100">
+          <Typography variant="h6" className="block">
+            Assign a role
+          </Typography>
+          <p className="text-xs text-gray-500 mt-1 mb-3">
+            This grants a real RBAC role via a separate action from the fields above —
+            &quot;Title&quot; is just a label, not a permission. Adds a role in addition to whatever
+            this person already holds; there&apos;s no way yet to view or remove an existing
+            assignment from here.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select
+              placeholder="Select a role"
+              value={assignRoleId}
+              onChange={(value) => setAssignRoleId(value)}
+              options={(roles ?? []).map((role) => ({ label: role.name, value: role.role_id }))}
+            />
+            <Select
+              placeholder="Location (optional — applies everywhere if blank)"
+              allowClear
+              value={assignLocationId}
+              onChange={(value) => setAssignLocationId(value ?? undefined)}
+              options={(offices ?? []).map((office) => ({
+                label: office.city,
+                value: office.office_id,
+              }))}
+            />
+          </div>
+          <Button
+            className="mt-3 rounded-full bg-button text-white px-6 py-2 disabled:opacity-60"
+            onClick={handleAssignRole}
+            disabled={!assignRoleId || isAssigningRole}
+          >
+            {isAssigningRole ? 'Assigning…' : 'Assign role'}
+          </Button>
         </div>
 
         <div className="flex gap-3 mt-8">
