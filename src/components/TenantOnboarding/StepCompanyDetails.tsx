@@ -1,5 +1,6 @@
 import { Select } from 'antd';
 import { useForm } from 'react-hook-form';
+import { useLocation } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { get } from 'lodash-es';
 import { Button, Input, showToast } from '../shared';
@@ -15,6 +16,32 @@ import { useCreateTenantMutation } from '../../api/organization-service/Tenants/
 import { tenantDetailsSchema, type TenantDetailsFormValues } from './TenantOnboardingSchema';
 import type { TenantDraft } from './index';
 
+// Shape GuestOrganizations/index.tsx hands over via router state when a
+// Super Admin clicks "Approve" on a Book a Demo lead. Deliberately narrow —
+// only the fields this step's form actually has room for; website/industry
+// aren't collected by the demo form, so they stay for the Super Admin to
+// fill in here rather than being guessed at.
+export type GuestOrgPrefill = {
+  id: string;
+  companyName: string;
+  adminEmail: string;
+  contactNumber: string;
+};
+
+// Best-effort only: the demo form collects one free-text phone field with no
+// guaranteed format, while this step's own validation
+// (phoneNumberValidation()) requires exactly "(xxx) xxx-xxxx". Rather than
+// seed a value that fails validation in a way that confuses
+// handlePhoneNumberChange's keystroke-diffing, this only prefills when it
+// can produce something that actually validates — taking the last 10 digits
+// drops a leading country code like "+1" or "1" without guessing at others.
+// Anything else is left blank for the Super Admin to type in.
+const formatPrefillPhone = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '').slice(-10);
+  if (digits.length !== 10) return '';
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+};
+
 type StepCompanyDetailsProps = {
   onCreated: (draft: TenantDraft) => void;
 };
@@ -29,17 +56,20 @@ const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
   const [createTenant, { isLoading }] = useCreateTenantMutation();
   const { data: industries, isLoading: loadingIndustries } = useListIndustriesQuery();
 
+  const location = useLocation();
+  const fromGuestOrg = (location.state as { fromGuestOrg?: GuestOrgPrefill } | null)?.fromGuestOrg;
+
   const { register, handleSubmit, watch, setValue, trigger, formState } =
     useForm<TenantDetailsFormValues>({
       resolver: zodResolver(tenantDetailsSchema),
       defaultValues: {
-        companyName: '',
+        companyName: fromGuestOrg?.companyName ?? '',
         websiteUrl: '',
         industryId: '',
-        adminEmail: '',
+        adminEmail: fromGuestOrg?.adminEmail ?? '',
         adminContactCountryCode:
           countryCodes.find((code) => code.label === 'United States & Canada (+1)')?.value || '+1',
-        adminContactPhone: '',
+        adminContactPhone: fromGuestOrg ? formatPrefillPhone(fromGuestOrg.contactNumber) : '',
       },
       mode: 'onChange',
     });
@@ -59,6 +89,7 @@ const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
         industry_id: data.industryId || undefined,
         admin_email: data.adminEmail,
         admin_contact: `${data.adminContactCountryCode}${cleanPhoneNumber(data.adminContactPhone)}`,
+        source_guest_organization_id: fromGuestOrg?.id,
       }).unwrap();
 
       onCreated({
@@ -78,6 +109,13 @@ const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       {isLoading && <Loader />}
+
+      {fromGuestOrg && (
+        <div className="mb-4 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm text-brand-900">
+          Pre-filled from a Book a Demo lead. Add a website to trigger the branding scrape, and
+          confirm the industry, before creating the tenant.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <div className="sm:col-span-2">

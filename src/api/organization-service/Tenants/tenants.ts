@@ -15,6 +15,10 @@ export type CreateTenantRequest = {
   industry_id?: string;
   admin_email: string;
   admin_contact?: string;
+  // Set when this tenant is being created from an approved "Book a Demo"
+  // lead (GuestOrganizations screen) — see organization-service's
+  // CreateTenantUseCase. Omitted for the ordinary manual-entry path.
+  source_guest_organization_id?: string;
 };
 
 export type CreateTenantResponse = {
@@ -55,7 +59,11 @@ const extendedApi = orgApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Tenant'],
+      // Also invalidate GuestOrganizations, but only when this creation
+      // actually converted a lead — otherwise every ordinary manual
+      // "add company" would refetch a list it never touched.
+      invalidatesTags: (_result, _error, body) =>
+        body.source_guest_organization_id ? ['Tenant', 'GuestOrganizations'] : ['Tenant'],
     }),
     confirmTenant: build.mutation<ConfirmTenantResponse, ConfirmTenantRequest>({
       query: ({ tenantId, confirmed_profile_fields }) => ({

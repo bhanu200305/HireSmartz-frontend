@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import MenuItems from './menuItem';
+import LocationSwitcher from './LocationSwitcher';
 import useHasAccess from '../../hooks/useHasAccess';
 import {
   isImpersonationActive,
@@ -88,15 +89,19 @@ const Navbar: React.FC = () => {
         })}
       </div>
 
-      {isImpersonating && (
-        <button
-          onClick={handleExitImpersonation}
-          className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-full transition-all cursor-pointer border border-red-200"
-        >
-          <MdExitToApp size={18} />
-          <span className="text-sm font-medium">Exit Impersonation</span>
-        </button>
-      )}
+      <div className="flex items-center gap-4">
+        {!!tenantId && <LocationSwitcher />}
+
+        {isImpersonating && (
+          <button
+            onClick={handleExitImpersonation}
+            className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-full transition-all cursor-pointer border border-red-200"
+          >
+            <MdExitToApp size={18} />
+            <span className="text-sm font-medium">Exit Impersonation</span>
+          </button>
+        )}
+      </div>
     </nav>
   );
 };

@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../redux/provider/store';
 import { setActiveLocation } from '../redux/slices/loginSlice';
-import { useGetMyLocationsQuery } from '../api/job-service/JobOpening/GetJobLocations';
+import { useGetUserDashboardQuery } from '../api/organization-service/Roles/dashboard';
 
-export type LocationOption = { id: number; name: string };
+export type LocationOption = { id: string; name: string };
 
 /**
  * The current user's accessible locations, which one is active, and a
@@ -15,17 +15,24 @@ export type LocationOption = { id: number; name: string };
  */
 const useActiveLocation = () => {
   const dispatch = useDispatch();
-  const { activeLocationId, resolvedRole } = useSelector((state: RootState) => state.LoginSlice);
+  const { activeLocationId, resolvedRole, userId, callerKind } = useSelector(
+    (state: RootState) => state.LoginSlice
+  );
 
   // A role created with per-location overrides already knows its own
   // locations (see the dev-bypass seed and the Roles & Permissions "location
   // overrides" section) — prefer that so the switcher matches what the
-  // role actually varies by. Fall back to the user's own accessible
-  // locations (from the tenant's location list) once a real backend is wired up.
+  // role actually varies by. For a real tenant login (no resolvedRole),
+  // fall back to organization-service's own per-user dashboard, which
+  // already lists every location this user may switch between — the SAME
+  // call useEffectivePermissions makes for the active location, so RTK
+  // Query serves this from one shared cache entry rather than firing a
+  // second request.
   const roleLocations = resolvedRole?.locationPermissions ?? [];
-  const { data: myLocationsResponse, isFetching } = useGetMyLocationsQuery(
-    { activeOnly: true },
-    { skip: roleLocations.length > 0 }
+  const isLiveTenantSession = !resolvedRole && !!userId && callerKind === 'tenant';
+  const { data: dashboard, isFetching } = useGetUserDashboardQuery(
+    { userId: userId as string, locationId: activeLocationId ?? undefined },
+    { skip: !isLiveTenantSession }
   );
 
   const accessibleLocations: LocationOption[] = useMemo(() => {
@@ -35,18 +42,18 @@ const useActiveLocation = () => {
         name: entry.locationName || `Location ${entry.locationId}`,
       }));
     }
-    return (myLocationsResponse?.data || []).map((location) => ({
-      id: location.id,
-      name: location.name,
+    return (dashboard?.available_locations || []).map((location) => ({
+      id: location.location_id,
+      name: location.label,
     }));
-  }, [roleLocations, myLocationsResponse]);
+  }, [roleLocations, dashboard]);
 
   return {
     activeLocationId: activeLocationId ?? null,
     accessibleLocations,
     isLoading: roleLocations.length === 0 && isFetching,
     hasMultipleLocations: accessibleLocations.length > 1,
-    setActiveLocationId: (locationId: number | null) => dispatch(setActiveLocation(locationId)),
+    setActiveLocationId: (locationId: string | null) => dispatch(setActiveLocation(locationId)),
   };
 };
 
