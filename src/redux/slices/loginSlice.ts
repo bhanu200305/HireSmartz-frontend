@@ -19,8 +19,10 @@ type LoginState = {
    * ROLE_AUTHORITIES fallback — see useEffectivePermissions.
    */
   resolvedRole?: Role;
-  /** The location whose permission set is currently in effect (multi-location users). */
-  activeLocationId?: number | null;
+  /** The location whose permission set is currently in effect (multi-location
+   * users) — a real organization-service location UUID (same id
+   * TenantOffice.office_id carries), or null for the all-locations union. */
+  activeLocationId?: string | null;
   /**
    * The signed-in user's tenant, decoded from the access token's `tenant_id`
    * claim (authentication-service docs/API_CONTRACT.md's JWT-claims table).
@@ -48,7 +50,7 @@ type LoginPayload = {
   userId?: string | undefined | null;
   refreshToken?: string;
   resolvedRole?: Role;
-  activeLocationId?: number | null;
+  activeLocationId?: string | null;
   tenantId?: string | null;
   callerKind?: 'tenant' | 'platform' | null;
 };
@@ -104,7 +106,7 @@ const loginSlice = createSlice({
     setAllowedAuthorities: (state, action: PayloadAction<string[]>) => {
       state.authorities = action.payload;
     },
-    setActiveLocation: (state, action: PayloadAction<number | null>) => {
+    setActiveLocation: (state, action: PayloadAction<string | null>) => {
       state.activeLocationId = action.payload;
     },
   },

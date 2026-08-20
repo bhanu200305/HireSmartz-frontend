@@ -33,7 +33,7 @@ import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/a
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import { jwtDecode } from 'jwt-decode';
-import { useLazyGetUserPermissionsQuery } from '../../api/organization-service/Roles/permissions';
+import { useLazyGetUserDashboardQuery } from '../../api/organization-service/Roles/dashboard';
 import {
   isDevAuthBypassEnabled,
   createDevBypassToken,
@@ -105,7 +105,7 @@ const Login = () => {
   };
   const { email, password, showPassword, errors, rememberMe, isFormValid } = localState;
   const [login, { isLoading }] = useLoginMutation();
-  const [fetchUserPermissions] = useLazyGetUserPermissionsQuery();
+  const [fetchUserDashboard] = useLazyGetUserDashboardQuery();
 
   useEffect(() => {
     if (rememberMe) {
@@ -264,7 +264,12 @@ const Login = () => {
         userId: user.id,
         refreshToken: token,
         resolvedRole: assignedRole,
-        activeLocationId: user.locationId,
+        // devUserStore's InvitedUser predates rbac.d.ts's real (UUID string)
+        // location ids and still keys locations numerically — converted
+        // here, at the boundary into LoginPayload, rather than changing
+        // devUserStore/devRoleStore's own numeric-id convention, which
+        // Roles & Permissions' whole local dev fixture is still built on.
+        activeLocationId: user.locationId != null ? String(user.locationId) : null,
         tenantId: assignedRole.scope === 'tenant' ? 'dev-bypass-tenant' : null,
         callerKind: assignedRole.scope === 'tenant' ? 'tenant' : 'platform',
       })
@@ -353,7 +358,7 @@ const Login = () => {
         // a completed auth with nothing left on screen to show for it.
         const PERMISSIONS_FETCH_TIMEOUT_MS = 8000;
         const resolved = await Promise.race([
-          fetchUserPermissions({ userId }).unwrap(),
+          fetchUserDashboard({ userId }).unwrap(),
           new Promise<never>((_, reject) =>
             setTimeout(
               () => reject(new Error('Loading permissions timed out')),

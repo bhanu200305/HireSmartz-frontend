@@ -17,7 +17,7 @@ import type { Role } from '../../../types';
  */
 export const resolveEffectivePermissions = (
   role: Pick<Role, 'permissions' | 'locationPermissions'> | undefined | null,
-  locationId?: number | null
+  locationId?: string | null
 ): Authorities[] => {
   if (!role) return [];
 

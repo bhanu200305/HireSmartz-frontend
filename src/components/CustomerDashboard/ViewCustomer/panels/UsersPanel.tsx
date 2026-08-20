@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MdOutlineAdd, MdPersonOff } from 'react-icons/md';
+import { MdOutlineAdd, MdPersonOff, MdRestore } from 'react-icons/md';
 import { Button, Input, Select, Typography, showToast } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import { Badge } from '../../../shared/ui/badge';
@@ -9,6 +9,7 @@ import {
   useListPlatformTenantUsersQuery,
   useCreatePlatformTenantUserMutation,
   useDeactivatePlatformTenantUserMutation,
+  useReactivatePlatformTenantUserMutation,
 } from '../../../../api/organization-service/Platform/users';
 import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organization-service/Platform/departments';
 import { useRolesCatalog } from '../../../../hooks/useRolesCatalog';
@@ -61,6 +62,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
   const [createUser, { isLoading: isCreating }] = useCreatePlatformTenantUserMutation();
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivatePlatformTenantUserMutation();
+  const [reactivateUser, { isLoading: isReactivating }] = useReactivatePlatformTenantUserMutation();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -108,6 +110,19 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
   };
 
+  // No confirmation modal, unlike deactivate — restoring access is the
+  // low-risk direction and the whole reason this exists: deactivating never
+  // freed the user's email, so re-adding them via "Add user" 409s with
+  // "already exists." This is the actual way back.
+  const handleReactivate = async (user: OrgUser) => {
+    try {
+      await reactivateUser({ tenantId, userId: user.user_id }).unwrap();
+      showToast({ message: 'User reactivated.', type: 'success' });
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to reactivate user.'), type: 'error' });
+    }
+  };
+
   const users = data?.items ?? [];
 
   if (isLoading) return <Loader />;
@@ -152,7 +167,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 <Badge status={user.is_active ? 'success' : 'neutral'}>
                   {user.is_active ? 'Active' : 'Deactivated'}
                 </Badge>
-                {user.is_active && (
+                {user.is_active ? (
                   <button
                     type="button"
                     aria-label="Deactivate user"
@@ -160,6 +175,16 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                     onClick={() => setUserToDeactivate(user)}
                   >
                     <MdPersonOff className="text-red-500" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label="Reactivate user"
+                    className="p-2 hover:bg-gray-100 rounded-full disabled:opacity-50"
+                    disabled={isReactivating}
+                    onClick={() => handleReactivate(user)}
+                  >
+                    <MdRestore className="text-green-600" />
                   </button>
                 )}
               </div>

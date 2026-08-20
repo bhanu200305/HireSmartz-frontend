@@ -12,6 +12,9 @@ export type GuestOrganization = {
   job_title: string;
   referral_source: string | null;
   created_at: string | null;
+  // Set once a Super Admin approves this lead into a tenant — the id of the
+  // tenant it became. null for every not-yet-approved lead.
+  converted_tenant_id: string | null;
 };
 
 export type ListGuestOrganizationsArgs = {

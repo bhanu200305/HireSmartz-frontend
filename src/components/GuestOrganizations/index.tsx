@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { HiOutlineSpeakerphone } from 'react-icons/hi';
 import MainLayout from '../../layouts/MainLayout';
-import { Typography } from '../shared';
+import { Button, Typography } from '../shared';
 import { Loader } from '../shared/ui/loader';
+import { Badge } from '../shared/ui/badge';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { useListGuestOrganizationsQuery } from '../../api/organization-service/Platform/guestOrganizations';
+import type { GuestOrganization } from '../../api/organization-service/Platform/guestOrganizations';
+import type { GuestOrgPrefill } from '../TenantOnboarding/StepCompanyDetails';
 
 const PAGE_SIZE = 25;
 
@@ -13,7 +17,15 @@ const PAGE_SIZE = 25;
  * the public landing page (guest_organization module's `public_router.py`
  * is the write side; this is Super Admin's read side).
  */
+const toPrefill = (lead: GuestOrganization): GuestOrgPrefill => ({
+  id: lead.id,
+  companyName: lead.organization_name,
+  adminEmail: lead.organization_email,
+  contactNumber: lead.contact_number,
+});
+
 const GuestOrganizations: React.FC = () => {
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const { data, isLoading } = useListGuestOrganizationsQuery({
     limit: PAGE_SIZE,
@@ -40,15 +52,16 @@ const GuestOrganizations: React.FC = () => {
           </div>
         ) : (
           <div className="w-full divide-y border rounded-xl overflow-hidden bg-white">
-            <div className="grid grid-cols-5 gap-2 px-4 py-2 bg-[#FAFAFA] text-xs font-semibold text-gray-500">
+            <div className="grid grid-cols-6 gap-2 px-4 py-2 bg-[#FAFAFA] text-xs font-semibold text-gray-500">
               <span>ORGANIZATION</span>
               <span>CONTACT</span>
               <span>EMAIL</span>
               <span>LOCATION</span>
               <span>SUBMITTED</span>
+              <span className="text-right">STATUS</span>
             </div>
             {leads.map((lead) => (
-              <div key={lead.id} className="grid grid-cols-5 gap-2 px-4 py-3 items-center">
+              <div key={lead.id} className="grid grid-cols-6 gap-2 px-4 py-3 items-center">
                 <Typography variant="body2">{lead.organization_name}</Typography>
                 <Typography variant="body2">
                   {lead.first_name} {lead.last_name}
@@ -60,6 +73,22 @@ const GuestOrganizations: React.FC = () => {
                 <Typography variant="body2">
                   {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '-'}
                 </Typography>
+                <div className="flex justify-end">
+                  {lead.converted_tenant_id ? (
+                    <Badge status="success">Converted</Badge>
+                  ) : (
+                    <Button
+                      type="button"
+                      appname="approve lead"
+                      onClick={() =>
+                        navigate('/add-company', { state: { fromGuestOrg: toPrefill(lead) } })
+                      }
+                      className="rounded-3xl border border-[var(--border)] bg-white px-4 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Approve
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

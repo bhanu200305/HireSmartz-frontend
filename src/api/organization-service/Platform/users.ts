@@ -57,6 +57,19 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'OrgUsers', id: `platform-${tenantId}` },
       ],
     }),
+    // Undo side of deactivate — restores is_active with the roles the user
+    // already held. Without this, re-adding a deactivated user's email via
+    // createPlatformTenantUser 409s (DUPLICATE_USER_EMAIL): deactivating
+    // never freed the email, it only flipped a flag.
+    reactivatePlatformTenantUser: build.mutation<OrgUser, { tenantId: string; userId: string }>({
+      query: ({ tenantId, userId }) => ({
+        url: `${usersBasePath(tenantId)}/${userId}/reactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'OrgUsers', id: `platform-${tenantId}` },
+      ],
+    }),
   }),
 });
 
@@ -64,4 +77,5 @@ export const {
   useListPlatformTenantUsersQuery,
   useCreatePlatformTenantUserMutation,
   useDeactivatePlatformTenantUserMutation,
+  useReactivatePlatformTenantUserMutation,
 } = extendedApi;

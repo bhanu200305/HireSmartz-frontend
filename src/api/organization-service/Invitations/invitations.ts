@@ -47,7 +47,18 @@ const extendedApi = orgApi.injectEndpoints({
         url: `/v1/invitations/${token}`,
         method: 'GET',
       }),
-      providesTags: ['TenantInvitations'],
+      // Deliberately NOT tagged 'TenantInvitations' — that tag also covers
+      // the Team page's admin-facing pending-invitations list
+      // (Tenants/teamInvitations.ts), which SHOULD refetch when
+      // acceptInvitation below invalidates it. This query is different: it's
+      // the public accept-invitation page's own one-shot token check, kept
+      // subscribed for the page's whole lifetime. Sharing the tag meant that
+      // same invalidation auto-refetched THIS query right after a successful
+      // accept, using the now-already-accepted token — the refetch 409'd,
+      // flipped `isError`, and (since AcceptInvitation/index.tsx checks
+      // isError before isAccepted) replaced the "you're all set up" screen
+      // with an "invite expired/not available" one for the ~2s before the
+      // already-scheduled navigate('/login') fired.
     }),
     acceptInvitation: build.mutation<AcceptInvitationResponse, AcceptInvitationRequest>({
       query: ({ token, ...body }) => ({

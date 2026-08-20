@@ -52,7 +52,7 @@ type DevBypassLoginPayload = {
   userId: string;
   refreshToken: string;
   resolvedRole: Role;
-  activeLocationId: number;
+  activeLocationId: string;
   tenantId: string | null;
   callerKind: 'tenant' | 'platform';
 };
@@ -61,12 +61,14 @@ const DEV_BYPASS_USER_ID = 'dev-bypass-user';
 
 /** Headquarters gets everything; the Remote Office override demonstrates a role
  * granting a narrower set at a different location — same role, two locations,
- * two effective permission sets. */
-const DEV_BYPASS_LOCATION_HQ = 1;
-const DEV_BYPASS_LOCATION_REMOTE = 2;
+ * two effective permission sets. String ids, matching rbac.d.ts's real
+ * (organization-service UUID) location id type — these two are just fixed,
+ * recognizable stand-ins, not meant to look like real UUIDs. */
+const DEV_BYPASS_LOCATION_HQ = 'dev-location-hq';
+const DEV_BYPASS_LOCATION_REMOTE = 'dev-location-remote';
 
 const DEV_BYPASS_ROLE: Role = {
-  id: -1,
+  id: 'dev-bypass-role',
   roleName: 'Dev Bypass Owner',
   scope: 'platform',
   isSystemRole: false,
