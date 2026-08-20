@@ -1,5 +1,5 @@
 import { get } from 'lodash-es';
-import { getLocalStorageItem } from '../auth/localstorage.helpers';
+import { getLocalStorageItem, removeLocalStorageItem } from '../auth/localstorage.helpers';
 import { LOCALSTORAGE_KEYS } from '../../../constants/webAPI';
 import { jwtDecode } from 'jwt-decode';
 
@@ -325,11 +325,25 @@ export const verifyAuthToken = () => {
   if (!accessToken) {
     return false;
   }
-  const decodedToken = jwtDecode<{ exp: number }>(accessToken);
-  if (decodedToken.exp <= Math.floor(Date.now() / 1000)) {
+  try {
+    const decodedToken = jwtDecode<{ exp: number }>(accessToken);
+    if (decodedToken.exp <= Math.floor(Date.now() / 1000)) {
+      return false;
+    }
+    return true;
+  } catch {
+    // jwt-decode throws InvalidTokenError for anything that isn't a
+    // well-formed 3-part JWT (truncated/corrupted storage, a stray
+    // non-token string, …). Both PublicRoute and PrivateRoute call this
+    // synchronously during render with no error boundary above them, so an
+    // uncaught throw here doesn't just fail the auth check — it takes down
+    // the entire app to a blank screen. Treat a malformed token the same as
+    // no token at all, and drop it so it doesn't keep failing on every
+    // subsequent render (same pattern localstorage.helpers.ts's own
+    // jwtDecode call sites already use).
+    removeLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
     return false;
   }
-  return true;
 };
 
 export const sanitizeImagePreview = (imagePreview: string) => {

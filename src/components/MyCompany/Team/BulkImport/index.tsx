@@ -32,12 +32,11 @@ type BulkImportProps = {
   open: boolean;
   tenantId: string;
   onClose: () => void;
-  onCompleted: () => void;
 };
 
 /** The real 3-step roster flow — request an upload URL, upload straight to
  * storage, parse; then review/edit the detected rows and confirm. */
-const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) => {
+const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [result, setResult] = useState<{
@@ -117,7 +116,6 @@ const BulkImport = ({ open, tenantId, onClose, onCompleted }: BulkImportProps) =
         unknownLocation: response.skipped_unknown_location_emails.length,
       });
       setStep(3);
-      onCompleted();
     } catch (error: unknown) {
       showToast({
         message: getOrgErrorMessage(error, 'Failed to confirm the import. Please try again.'),

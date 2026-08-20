@@ -1,22 +1,25 @@
 import { orgApi } from '../orgApi';
 
-// The 4 roles a tenant may invite someone as. Mirrors
-// organization-service's TenantInvitableRole (tenants/api/requests.py) —
-// every SystemRole except super_admin, which is platform-only and never
-// assigned to a customer.
-export type TenantUserRole = 'company_admin' | 'hiring_manager' | 'recruiter' | 'interviewer';
+// The only 2 roles this endpoint accepts — InviteTenantUserRequest's `role`
+// is `Literal["recruiter", "hiring_manager"]` on the backend (tenants/api/
+// requests.py), enforced with `extra="forbid"` on the whole request. Company
+// Admin has its own separate invite path (ADMIN_ROLE_REQUIRES_INVITE); there
+// is no self-serve Interviewer invite yet.
+export type TenantUserRole = 'hiring_manager' | 'recruiter';
 
+// Matches InviteTenantUserRequest's wire shape field-for-field — the request
+// model rejects any key it doesn't list (extra="forbid"), so an `office_id`
+// or `selected_permissions` field here would 422 the whole request rather
+// than being ignored. Location/permission scoping happens later, once the
+// invite is accepted and the person is a real user, via the separate "grant
+// a role" flow — not at invite time.
 export type InviteTenantUserRequest = {
   tenantId: string;
   email: string;
   department_id?: string;
   designation?: string;
+  contact_phone?: string;
   role: TenantUserRole;
-  office_id?: string;
-  /** Narrows `role`'s default permission set for this one invite. Omit for
-   * the role's full set. Must be a subset of that role's own permissions —
-   * the backend rejects anything wider with PERMISSION_NOT_GRANTED_BY_ROLE. */
-  selected_permissions?: string[];
 };
 
 export type InviteTenantUserResponse = {

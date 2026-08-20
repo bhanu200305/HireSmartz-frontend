@@ -1,116 +1,133 @@
 import React, { useEffect, useState } from 'react';
-import { MdOutlineAdd, MdOutlineAutoAwesome, MdDelete } from 'react-icons/md';
+import { MdDelete } from 'react-icons/md';
 import { Button, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
+import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import {
   useListInterviewQuestionsQuery,
-  useSuggestInterviewQuestionsMutation,
-  useSaveInterviewQuestionsMutation,
-  MAX_INTERVIEW_QUESTIONS,
+  useUpdateInterviewQuestionMutation,
+  useDeleteInterviewQuestionMutation,
+  InterviewQuestion,
 } from '../../api/organization-service/Tenants/interviewQuestions';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 /**
- * §"Interview questions" — the tenant's own HR/interpersonal question set
- * (up to 8), shared across every job. "Ask AI to suggest" is a preview only
- * — nothing is saved until "Save" replaces the whole set, per
- * docs/frontend_guide.txt.
+ * This tenant's own HR/interpersonal question set, asked in a candidate's
+ * first-round audio interview. Seeded from the platform's default set at
+ * tenant creation — organization-service's `/v1/tenants/{tenant_id}/audio-
+ * questions` only supports editing or removing an existing question, one at
+ * a time (PATCH/DELETE); there is no endpoint to add a brand new one from
+ * here, and no AI-suggestion endpoint either, so neither control is offered.
  */
 const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useListInterviewQuestionsQuery(tenantId);
-  const [suggest, { isLoading: isSuggesting }] = useSuggestInterviewQuestionsMutation();
-  const [saveQuestions, { isLoading: isSaving }] = useSaveInterviewQuestionsMutation();
-  const [questions, setQuestions] = useState<string[]>([]);
+  const [updateQuestion, { isLoading: isSaving }] = useUpdateInterviewQuestionMutation();
+  const [deleteQuestion] = useDeleteInterviewQuestionMutation();
+
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [questionToDelete, setQuestionToDelete] = useState<InterviewQuestion | null>(null);
 
   useEffect(() => {
-    if (data) setQuestions(data.questions.map((q) => q.question_text));
+    if (data) {
+      setDrafts(Object.fromEntries(data.questions.map((q) => [q.question_id, q.question_text])));
+    }
   }, [data]);
 
-  const handleSuggest = async () => {
+  const handleSave = async (question: InterviewQuestion) => {
+    const text = (drafts[question.question_id] ?? '').trim();
+    if (!text) {
+      showToast({ message: 'Question text cannot be empty.', type: 'error' });
+      return;
+    }
+    setSavingId(question.question_id);
     try {
-      const result = await suggest({ tenantId, count: MAX_INTERVIEW_QUESTIONS }).unwrap();
-      setQuestions(result.questions);
-      showToast({ message: 'Suggestions loaded — review and save to keep them.', type: 'success' });
+      await updateQuestion({
+        tenantId,
+        questionId: question.question_id,
+        question_text: text,
+      }).unwrap();
+      showToast({ message: 'Question updated.', type: 'success' });
     } catch (err) {
-      showToast({ message: getOrgErrorMessage(err, 'Failed to get suggestions.'), type: 'error' });
+      showToast({ message: getOrgErrorMessage(err, 'Failed to update question.'), type: 'error' });
+    } finally {
+      setSavingId(null);
     }
   };
 
-  const updateQuestion = (index: number, value: string) => {
-    setQuestions((prev) => prev.map((q, i) => (i === index ? value : q)));
-  };
-
-  const removeQuestion = (index: number) => {
-    setQuestions((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSave = async () => {
-    const cleaned = questions.map((q) => q.trim()).filter(Boolean);
+  const handleDelete = async () => {
+    if (!questionToDelete) return;
     try {
-      await saveQuestions({ tenantId, questions: cleaned }).unwrap();
-      showToast({ message: 'Interview questions saved.', type: 'success' });
+      await deleteQuestion({ tenantId, questionId: questionToDelete.question_id }).unwrap();
+      showToast({ message: 'Question removed.', type: 'success' });
     } catch (err) {
-      showToast({ message: getOrgErrorMessage(err, 'Failed to save questions.'), type: 'error' });
+      showToast({ message: getOrgErrorMessage(err, 'Failed to remove question.'), type: 'error' });
+    } finally {
+      setQuestionToDelete(null);
     }
   };
 
   if (isLoading) return <Loader />;
 
+  const questions = data?.questions ?? [];
+
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-1">
-        <Typography variant="h5">Interview questions</Typography>
-        <Button
-          className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1"
-          onClick={handleSuggest}
-          disabled={isSuggesting}
-        >
-          <MdOutlineAutoAwesome /> {isSuggesting ? 'Asking AI…' : 'Ask AI to suggest'}
-        </Button>
-      </div>
+      <Typography variant="h5" className="mb-1 block">
+        Interview questions
+      </Typography>
       <Typography variant="body2" className="mb-6 block">
-        Up to {MAX_INTERVIEW_QUESTIONS} questions, shared across every job. Saving replaces the
-        whole set.
+        Your HR/interpersonal question set, asked in every candidate&apos;s first-round audio
+        interview. Edit the wording below — changes to one question save independently.
       </Typography>
 
-      <div className="flex flex-col gap-3">
-        {questions.map((question, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <Input
-              value={question}
-              onChange={(e) => updateQuestion(index, e.target.value)}
-              placeholder={`Question ${index + 1}`}
-              className="flex-1"
-            />
-            <button
-              type="button"
-              aria-label="Remove question"
-              className="p-2 hover:bg-gray-100 rounded-full"
-              onClick={() => removeQuestion(index)}
-            >
-              <MdDelete className="text-red-500" />
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {questions.length < MAX_INTERVIEW_QUESTIONS && (
-        <button
-          type="button"
-          className="mt-3 flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"
-          onClick={() => setQuestions((prev) => [...prev, ''])}
-        >
-          <MdOutlineAdd /> Add a question
-        </button>
+      {questions.length === 0 ? (
+        <div className="p-6 text-gray-500 text-center border border-dashed rounded-xl">
+          No interview questions set up yet.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {questions.map((question) => {
+            const draft = drafts[question.question_id] ?? '';
+            const isDirty = draft.trim() !== question.question_text.trim();
+            return (
+              <div key={question.question_id} className="flex items-center gap-2">
+                <Input
+                  value={draft}
+                  onChange={(e) =>
+                    setDrafts((prev) => ({ ...prev, [question.question_id]: e.target.value }))
+                  }
+                  className="flex-1"
+                />
+                <Button
+                  className="rounded-full border border-gray-300 px-4 py-1.5 whitespace-nowrap"
+                  onClick={() => handleSave(question)}
+                  disabled={!isDirty || (isSaving && savingId === question.question_id)}
+                >
+                  {isSaving && savingId === question.question_id ? 'Saving…' : 'Save'}
+                </Button>
+                <button
+                  type="button"
+                  aria-label="Remove question"
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                  onClick={() => setQuestionToDelete(question)}
+                >
+                  <MdDelete className="text-red-500" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      <Button
-        className="mt-6 rounded-full bg-button text-white px-6 py-2"
-        onClick={handleSave}
-        disabled={isSaving}
-      >
-        {isSaving ? 'Saving…' : 'Save questions'}
-      </Button>
+      {questionToDelete && (
+        <ConfirmationModal
+          title={`Remove "${questionToDelete.question_text}"?`}
+          confirmText="REMOVE"
+          onConfirm={handleDelete}
+          onClose={() => setQuestionToDelete(null)}
+        />
+      )}
     </div>
   );
 };

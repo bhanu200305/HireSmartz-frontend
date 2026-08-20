@@ -7,7 +7,6 @@ import TeamInvitationsList from './TeamInvitationsList';
 
 type TeamTabProps = {
   tenantId: string;
-  onTeamInviteRecorded: () => void;
 };
 
 const ActionCard = ({
@@ -39,7 +38,7 @@ const ActionCard = ({
 
 /** §D — invite one at a time (POST .../users/invitations) or in bulk (the
  * 3-step roster flow), plus the invitations list every status feeds. */
-const TeamTab = ({ tenantId, onTeamInviteRecorded }: TeamTabProps) => {
+const TeamTab = ({ tenantId }: TeamTabProps) => {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
@@ -87,17 +86,13 @@ const TeamTab = ({ tenantId, onTeamInviteRecorded }: TeamTabProps) => {
         tenantId={tenantId}
         departments={departments}
         onClose={() => setIsInviteModalOpen(false)}
-        onInvited={() => {
-          setIsInviteModalOpen(false);
-          onTeamInviteRecorded();
-        }}
+        onInvited={() => setIsInviteModalOpen(false)}
       />
 
       <BulkImport
         open={isImportModalOpen}
         tenantId={tenantId}
         onClose={() => setIsImportModalOpen(false)}
-        onCompleted={onTeamInviteRecorded}
       />
     </div>
   );

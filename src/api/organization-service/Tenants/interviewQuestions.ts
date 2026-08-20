@@ -1,7 +1,5 @@
 import { orgApi } from '../orgApi';
 
-export const MAX_INTERVIEW_QUESTIONS = 8;
-
 export type InterviewQuestion = {
   question_id: string;
   question_text: string;
@@ -11,44 +9,50 @@ export type InterviewQuestionsResponse = {
   questions: InterviewQuestion[];
 };
 
-export type SuggestInterviewQuestionsArgs = {
+export type UpdateInterviewQuestionArgs = {
   tenantId: string;
-  count: number;
+  questionId: string;
+  question_text: string;
 };
 
-export type SuggestedInterviewQuestions = {
-  questions: string[];
-};
-
-export type SaveInterviewQuestionsArgs = {
+export type DeleteInterviewQuestionArgs = {
   tenantId: string;
-  questions: string[];
+  questionId: string;
 };
 
+/**
+ * This tenant's own HR/interpersonal question set, asked in a candidate's
+ * first-round audio interview — seeded from the platform's default set at
+ * tenant creation, editable from there on. Backed by organization-service's
+ * `/v1/tenants/{tenant_id}/audio-questions` (renamed 2026-08-17 from
+ * `interview-questions`, see internal_router.py) — there is no bulk
+ * replace-the-set endpoint and no AI "suggest" endpoint on this contract:
+ * each question is edited or removed one at a time, matching the routes
+ * organization-service actually exposes (GET list, PATCH one, DELETE one —
+ * no tenant-level POST to add a brand new question either).
+ */
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     listInterviewQuestions: build.query<InterviewQuestionsResponse, string>({
-      query: (tenantId) => `/v1/tenants/${tenantId}/interview-questions`,
+      query: (tenantId) => `/v1/tenants/${tenantId}/audio-questions`,
       providesTags: (_result, _error, tenantId) => [{ type: 'InterviewQuestions', id: tenantId }],
     }),
-    // Preview only — nothing saved. A separate save call (below) is required
-    // to persist the reviewed set.
-    suggestInterviewQuestions: build.mutation<
-      SuggestedInterviewQuestions,
-      SuggestInterviewQuestionsArgs
-    >({
-      query: ({ tenantId, count }) => ({
-        url: `/v1/tenants/${tenantId}/interview-questions/suggest`,
-        method: 'POST',
-        body: { count },
+    updateInterviewQuestion: build.mutation<InterviewQuestion, UpdateInterviewQuestionArgs>({
+      query: ({ tenantId, questionId, question_text }) => ({
+        url: `/v1/tenants/${tenantId}/audio-questions/${questionId}`,
+        method: 'PATCH',
+        body: { question_text },
       }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'InterviewQuestions', id: tenantId },
+      ],
     }),
-    // Replaces the whole saved set — not additive.
-    saveInterviewQuestions: build.mutation<InterviewQuestionsResponse, SaveInterviewQuestionsArgs>({
-      query: ({ tenantId, questions }) => ({
-        url: `/v1/tenants/${tenantId}/interview-questions`,
-        method: 'PUT',
-        body: { questions },
+    // TenantStatusView — a JSON `{status}` body, same as office/department
+    // delete on this service (not a 204).
+    deleteInterviewQuestion: build.mutation<{ status: string }, DeleteInterviewQuestionArgs>({
+      query: ({ tenantId, questionId }) => ({
+        url: `/v1/tenants/${tenantId}/audio-questions/${questionId}`,
+        method: 'DELETE',
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [
         { type: 'InterviewQuestions', id: tenantId },
@@ -59,6 +63,6 @@ const extendedApi = orgApi.injectEndpoints({
 
 export const {
   useListInterviewQuestionsQuery,
-  useSuggestInterviewQuestionsMutation,
-  useSaveInterviewQuestionsMutation,
+  useUpdateInterviewQuestionMutation,
+  useDeleteInterviewQuestionMutation,
 } = extendedApi;

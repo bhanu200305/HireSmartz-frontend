@@ -10,15 +10,15 @@ export const inviteTeamMemberSchema = z.object({
   // picker exists yet; the backend resolves it by name, auto-creating if
   // new — see InviteTenantUserInput.designation).
   designation: z.string().optional(),
-  officeId: z.string().optional(),
-  role: z.enum(['company_admin', 'hiring_manager', 'recruiter', 'interviewer'], {
+  // InviteTenantUserRequest's `role` is `Literal["recruiter",
+  // "hiring_manager"]` — the only two roles this endpoint (or the bulk
+  // roster import) will accept; `company_admin` and `interviewer` 422
+  // immediately (see requests.py). A Company Admin invite goes through a
+  // separate flow (ADMIN_ROLE_REQUIRES_INVITE), and there's no self-serve
+  // interviewer invite at all yet.
+  role: z.enum(['hiring_manager', 'recruiter'], {
     errorMap: () => ({ message: 'Role is required.' }),
   }),
-  // Every permission code CURRENTLY CHECKED in the Permissions tab, kept in
-  // sync with the selected role (see InviteTeamMemberModal's effect) rather
-  // than free-standing — this is never something the form itself validates
-  // against a role's set, only the backend does (PERMISSION_NOT_GRANTED_BY_ROLE).
-  selectedPermissions: z.array(z.string()),
 });
 
 export type InviteTeamMemberFormValues = z.infer<typeof inviteTeamMemberSchema>;

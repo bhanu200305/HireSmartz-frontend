@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { Tabs } from 'antd';
 import type { TabsProps } from 'antd';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
@@ -12,16 +12,13 @@ import CompanyProfileTab from './CompanyProfileTab';
 import CompanyLocationsTab from './CompanyLocationsTab';
 import DepartmentsTab from './DepartmentsTab';
 import EntitlementsTab from './EntitlementsTab';
-import InterviewQuestionsTab from './InterviewQuestionsTab';
-import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
-import QrManagementTab from './QrManagementTab';
 import TeamTab from './Team';
 import TenantActivityFeedTab from './TenantActivityFeedTab';
-import EmailTemplatesTab from './EmailTemplatesTab';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
 import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
+import { useListTenantInvitationsQuery } from '../../api/organization-service/Tenants/teamInvitations';
 
 /**
  * Company Admin's own company management — every tab reads/writes
@@ -45,14 +42,16 @@ const MyCompany: React.FC = () => {
     { skip: !tenantId }
   );
   const { data: departments } = useListTenantDepartmentsQuery(tenantId ?? '', { skip: !tenantId });
-
-  const [hasInvitedTeam, setHasInvitedTeam] = useState<boolean>(
-    () => Boolean(tenantId) && localStorage.getItem(`cfp_team_invited_${tenantId}`) === 'true'
+  // Real signal for the "invite your team" checklist step — whether this
+  // tenant has ever sent an invite (pending or since-accepted), not a
+  // per-browser localStorage flag that forgot the moment you cleared storage
+  // or invited from a different device. `limit: 1` since only `total` is
+  // read; both the single-invite and bulk-import mutations invalidate the
+  // 'TenantInvitations' tag, so this refetches the instant either succeeds.
+  const { data: invitations } = useListTenantInvitationsQuery(
+    { tenantId: tenantId ?? '', limit: 1 },
+    { skip: !tenantId }
   );
-  const handleTeamInviteRecorded = useCallback(() => {
-    if (tenantId) localStorage.setItem(`cfp_team_invited_${tenantId}`, 'true');
-    setHasInvitedTeam(true);
-  }, [tenantId]);
 
   const handleTabChange = (key: string) => {
     setSearchParams({ tab: key });
@@ -64,43 +63,28 @@ const MyCompany: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
+  // Interview Questions / Scoring Criteria / QR Management / Email Templates
+  // / SMS Templates are all job-workflow-adjacent screens (per-job question
+  // sets, per-job scoring, the jobs QR code, applicant-facing email/SMS) —
+  // parked behind an honest "coming soon" placeholder until the job posting
+  // workflow they hang off of is built, rather than surfaced ahead of it.
+  // Their real tabs (InterviewQuestionsTab, ScoringCriteriaOwnerTab,
+  // QrManagementTab, EmailTemplatesTab) are already wired to their backends
+  // and ready to swap back in once that workflow lands.
+  const comingSoon = <ComingSoonTab label="To be added soon, alongside the job posting workflow" />;
+
   const items: TabsProps['items'] = [
     { key: '1', label: 'Company Details', children: <CompanyProfileTab tenantId={tenantId} /> },
     { key: '2', label: 'Locations', children: <CompanyLocationsTab tenantId={tenantId} /> },
     { key: '3', label: 'Departments', children: <DepartmentsTab tenantId={tenantId} /> },
     { key: '4', label: 'Feature Settings', children: <EntitlementsTab tenantId={tenantId} /> },
-    {
-      key: '5',
-      label: 'Interview Questions',
-      children: <InterviewQuestionsTab tenantId={tenantId} />,
-    },
-    {
-      key: '6',
-      label: 'Scoring Criteria',
-      children: <ScoringCriteriaOwnerTab tenantId={tenantId} />,
-    },
-    { key: '7', label: 'QR Management', children: <QrManagementTab tenantId={tenantId} /> },
-    {
-      key: '8',
-      label: 'Team',
-      children: <TeamTab tenantId={tenantId} onTeamInviteRecorded={handleTeamInviteRecorded} />,
-    },
-    { key: '9', label: 'Activity', children: <TenantActivityFeedTab tenantId={tenantId} /> },
-    // Template CRUD lives in notification-service (`/v1/template-settings/...`)
-    // — organization-service's copy of these tables was removed
-    // (docs/API_CONTRACT.md's footer note). Email is wired for real below.
-    { key: '10', label: 'Email Templates', children: <EmailTemplatesTab /> },
-    // SMS has no per-tenant override endpoint on notification-service — only
-    // a platform-wide default (see PlatformTemplateSettings, Super Admin
-    // only). Left as an honest placeholder rather than a fake control; not a
-    // gap in this integration, a real limit of the current backend contract.
-    {
-      key: '11',
-      label: 'SMS Templates',
-      children: (
-        <ComingSoonTab label="SMS templates aren't customisable per organisation yet — CareerForce Pro's default wording is used for every tenant" />
-      ),
-    },
+    { key: '5', label: 'Team', children: <TeamTab tenantId={tenantId} /> },
+    { key: '6', label: 'Activity', children: <TenantActivityFeedTab tenantId={tenantId} /> },
+    { key: '7', label: 'Interview Questions', children: comingSoon },
+    { key: '8', label: 'Scoring Criteria', children: comingSoon },
+    { key: '9', label: 'QR Management', children: comingSoon },
+    { key: '10', label: 'Email Templates', children: comingSoon },
+    { key: '11', label: 'SMS Templates', children: comingSoon },
   ];
 
   return (
@@ -151,7 +135,7 @@ const MyCompany: React.FC = () => {
               profileReviewed: Boolean(profile?.logo_url || profile?.culture_intro),
               hasOffice: (offices?.length ?? 0) > 0,
               hasDepartment: (departments?.length ?? 0) > 0,
-              hasInvitedTeam,
+              hasInvitedTeam: (invitations?.total ?? 0) > 0,
             }}
             onNavigateToTab={handleTabChange}
           />
