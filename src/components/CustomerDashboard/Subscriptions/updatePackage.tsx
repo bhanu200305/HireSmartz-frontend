@@ -13,7 +13,7 @@ const UpdatePackage = () => {
           {/* {isLoading && <Loader />} */}
           <div className="w-full justify-start mb-6">
             <div className="flex items-center space-x-2">
-              <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
+              <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
                 <BsCalendar4Event size={18} />
               </span>
               <h2 className="text-xl font-semibold">Subscriptions</h2>

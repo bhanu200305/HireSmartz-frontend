@@ -20,7 +20,12 @@ type Stage = 'upload' | 'parsing' | 'review';
  * review table → import. Mirrors FileUploadModal's Upload.Dragger pattern
  * directly rather than nesting it, since this modal needs its own
  * multi-step footer instead of FileUploadModal's single upload button. */
-const BulkImportRolesModal: React.FC<BulkImportRolesModalProps> = ({ open, onClose, scope, onImport }) => {
+const BulkImportRolesModal: React.FC<BulkImportRolesModalProps> = ({
+  open,
+  onClose,
+  scope,
+  onImport,
+}) => {
   const [stage, setStage] = useState<Stage>('upload');
   const [fileName, setFileName] = useState('');
   const [rows, setRows] = useState<BulkImportRoleRow[]>([]);
@@ -54,7 +59,10 @@ const BulkImportRolesModal: React.FC<BulkImportRolesModalProps> = ({ open, onClo
     setIsImporting(true);
     try {
       await onImport(rows);
-      showToast({ message: `${rows.length} role${rows.length === 1 ? '' : 's'} imported.`, type: 'success' });
+      showToast({
+        message: `${rows.length} role${rows.length === 1 ? '' : 's'} imported.`,
+        type: 'success',
+      });
       handleClose();
     } catch {
       showToast({ message: 'Failed to import roles.', type: 'error' });
@@ -114,7 +122,9 @@ const BulkImportRolesModal: React.FC<BulkImportRolesModalProps> = ({ open, onClo
               <tr key={row.designation}>
                 <td className="px-3.5 py-2.5">{row.designation}</td>
                 <td className="px-3.5 py-2.5 text-gray-500">{row.tier}</td>
-                <td className="px-3.5 py-2.5 text-gray-500 font-mono text-xs">{row.baseTemplate}</td>
+                <td className="px-3.5 py-2.5 text-gray-500 font-mono text-xs">
+                  {row.baseTemplate}
+                </td>
                 <td className="px-3.5 py-2.5 text-gray-500">{row.locationLabel}</td>
               </tr>
             ))}
@@ -124,7 +134,9 @@ const BulkImportRolesModal: React.FC<BulkImportRolesModalProps> = ({ open, onClo
 
       {stage === 'upload' && (
         <>
-          <div className="font-semibold text-sm text-gray-900 mb-2">2. Upload your completed file</div>
+          <div className="font-semibold text-sm text-gray-900 mb-2">
+            2. Upload your completed file
+          </div>
           <Upload.Dragger
             accept=".xls,.xlsx,.csv"
             showUploadList={false}
@@ -139,7 +151,9 @@ const BulkImportRolesModal: React.FC<BulkImportRolesModalProps> = ({ open, onClo
               <p className="text-sm font-semibold text-gray-700">
                 Drop your .xlsx or .csv file here, or click to browse
               </p>
-              <p className="text-xs text-gray-400 mt-0.5">One row per role · uses the columns above</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                One row per role · uses the columns above
+              </p>
             </div>
           </Upload.Dragger>
           <div className="flex items-center gap-2.5">

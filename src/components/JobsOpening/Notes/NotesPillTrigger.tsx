@@ -6,7 +6,7 @@ import { LuSquarePen } from 'react-icons/lu';
 export const NOTES_ACCENT = '#263d92';
 
 const pillBase =
-  'inline-flex items-center rounded-full border font-medium transition-colors border-[#c7d0ef] bg-[#eef2ff] text-[#263d92] hover:bg-[#e2e7fa] hover:border-[#263d92] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#eef2ff] disabled:hover:border-[#c7d0ef]';
+  'inline-flex items-center rounded-full border font-medium transition-colors border-primary-200 bg-primary-50 text-primary-600 hover:bg-primary-100 hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-50 disabled:hover:border-primary-200';
 
 type NotesPillTriggerProps = {
   count: number;

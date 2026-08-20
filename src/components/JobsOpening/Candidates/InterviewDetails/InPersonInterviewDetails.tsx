@@ -94,9 +94,9 @@ const InPersonInterviewDetails = ({
               </span>
             ) : null}
             {isExpanded ? (
-              <AiOutlineMinus className="text-[#0047AB] h-5 w-5" />
+              <AiOutlineMinus className="text-primary-600 h-5 w-5" />
             ) : (
-              <AiOutlinePlus className="text-[#0047AB] h-5 w-5" />
+              <AiOutlinePlus className="text-primary-600 h-5 w-5" />
             )}
           </div>
         </div>
@@ -180,9 +180,9 @@ const InPersonInterviewDetails = ({
         >
           <span className="font-medium text-gray-800">{title}</span>
           {isExpanded ? (
-            <AiOutlineMinus className="text-[#0047AB] h-5 w-5" />
+            <AiOutlineMinus className="text-primary-600 h-5 w-5" />
           ) : (
-            <AiOutlinePlus className="text-[#0047AB] h-5 w-5" />
+            <AiOutlinePlus className="text-primary-600 h-5 w-5" />
           )}
         </div>
         {isExpanded &&

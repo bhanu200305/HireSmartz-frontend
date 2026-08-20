@@ -1636,7 +1636,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
             <button
               type="button"
               onClick={() => setIsSmsPanelOpen((prev) => !prev)}
-              className="fixed bottom-6 right-6 z-69 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#c7d0ef] bg-[#eef2ff] text-[#263d92] shadow-lg transition-colors hover:bg-[#e2e7fa]"
+              className="fixed bottom-6 right-6 z-69 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary-200 bg-primary-50 text-primary-600 shadow-lg transition-colors hover:bg-primary-100 cfp-hover-lift"
               aria-label="Open SMS panel"
             >
               <FaRegCommentDots size={18} />

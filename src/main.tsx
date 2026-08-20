@@ -58,6 +58,17 @@ const cfpAntdTheme = {
     Card: { borderRadiusLG: 12 },
     Modal: { borderRadiusLG: 16 },
     Tag: { borderRadiusSM: 6 },
+    // Cyan-underline tabs, matching the wireframe reference — applies to
+    // every plain AntD <Tabs> app-wide (CompanySettings, MyCompany, job/
+    // candidate detail tabs) without touching each page individually.
+    Tabs: {
+      inkBarColor: 'var(--accent-400)',
+      itemColor: 'var(--gray-500)',
+      itemHoverColor: 'var(--accent-500)',
+      itemSelectedColor: 'var(--primary-600)',
+      itemActiveColor: 'var(--primary-600)',
+      titleFontSizeLG: 14,
+    },
   },
 };
 

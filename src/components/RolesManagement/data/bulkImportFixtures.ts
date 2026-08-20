@@ -109,5 +109,10 @@ export const bulkImportTemplatePreview: {
     baseTemplate: 'hiring_manager',
     locationLabel: 'Austin, TX',
   },
-  { designation: 'CFP Support — APAC', tier: 'Platform', baseTemplate: 'cfp_support', locationLabel: '—' },
+  {
+    designation: 'CFP Support — APAC',
+    tier: 'Platform',
+    baseTemplate: 'cfp_support',
+    locationLabel: '—',
+  },
 ];

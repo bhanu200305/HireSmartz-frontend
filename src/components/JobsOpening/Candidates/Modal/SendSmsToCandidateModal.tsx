@@ -105,7 +105,7 @@ const SendSmsToCandidateModal = ({
   return (
     <Drawer
       title={
-        <span className="pr-8 text-base font-bold text-[#1a1a1a]">
+        <span className="pr-8 text-base font-bold text-gray-900">
           Send SMS - {jobTitle || 'Candidate'}
         </span>
       }
@@ -198,7 +198,7 @@ const SendSmsToCandidateModal = ({
               phoneValid ? 'border-gray-300' : 'border-red-300'
             }`}
           >
-            <span className="min-w-0 truncate font-medium text-[#1a1a1a]">{candidateName}</span>
+            <span className="min-w-0 truncate font-medium text-gray-900">{candidateName}</span>
             <span
               className={`shrink-0 text-right ${phoneValid ? 'text-gray-500' : 'text-red-600'}`}
             >

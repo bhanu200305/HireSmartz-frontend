@@ -851,7 +851,7 @@ const SendEmailToCandidateModal = ({
         title={null}
         className="send-email-candidate-modal"
       >
-        <h2 className="text-center text-xl font-bold text-[#1a1a1a] mb-6">
+        <h2 className="text-center text-xl font-bold text-gray-900 mb-6">
           Send Email to Candidate
         </h2>
         <div className="max-h-[70vh] overflow-y-auto custom-scrollbar px-1">
@@ -1026,11 +1026,11 @@ const SendEmailToCandidateModal = ({
 
                 {notifyCandidateViaSms && reviewBeforeSendingSms && (
                   <div className="mb-2 rounded-2xl border-2 border-primary/40 bg-[#f7fbff] p-4">
-                    <div className="mb-3 text-base font-semibold text-[#1a1a1a]">SMS Review</div>
+                    <div className="mb-3 text-base font-semibold text-gray-900">SMS Review</div>
                     <div className="space-y-3">
                       {isBulk ? (
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-[#1a1a1a]">
+                          <label className="mb-2 block text-sm font-medium text-gray-900">
                             Candidates with Phone Number
                           </label>
                           {withPhone.length === 0 && invalidPhone.length === 0 ? (
@@ -1056,7 +1056,7 @@ const SendEmailToCandidateModal = ({
                                           }
                                         />
                                         <span className="min-w-0">
-                                          <span className="block text-sm font-medium text-[#1a1a1a] truncate">
+                                          <span className="block text-sm font-medium text-gray-900 truncate">
                                             {candidateDisplayName(candidate)}
                                           </span>
                                           <span className="block text-xs text-gray-500">
@@ -1119,11 +1119,11 @@ const SendEmailToCandidateModal = ({
                         </div>
                       ) : (
                         <div>
-                          <label className="mb-1 block text-sm font-medium text-[#1a1a1a]">
+                          <label className="mb-1 block text-sm font-medium text-gray-900">
                             To <span className="required-asterisk">*</span>
                           </label>
                           <div className="flex items-center justify-between gap-3 rounded-lg border border-(--border) bg-white px-3 py-2 text-sm">
-                            <span className="truncate font-medium text-[#1a1a1a]">
+                            <span className="truncate font-medium text-gray-900">
                               {candidateName}
                             </span>
                             <span className="shrink-0 text-gray-600">{smsPhoneDisplay}</span>
@@ -1132,7 +1132,7 @@ const SendEmailToCandidateModal = ({
                       )}
 
                       <div>
-                        <label className="mb-1 block text-sm font-medium text-[#1a1a1a]">
+                        <label className="mb-1 block text-sm font-medium text-gray-900">
                           Message <span className="required-asterisk">*</span>
                         </label>
                         <TextArea
@@ -1158,7 +1158,7 @@ const SendEmailToCandidateModal = ({
                 type="button"
                 onClick={handleClose}
                 disabled={isSending}
-                className="rounded-full border border-[#1a1a1a] bg-white px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-[#1a1a1a] hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-full border border-gray-900 bg-white px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-gray-900 hover:bg-gray-50 disabled:opacity-50"
               >
                 CANCEL
               </Button>
@@ -1166,7 +1166,7 @@ const SendEmailToCandidateModal = ({
                 type="button"
                 onClick={() => void handlePreview()}
                 disabled={isSending || isTemplateConfigLoading || isGenericCandidateTemplateLoading}
-                className="rounded-full border border-[#1a1a1a] bg-white px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-[#1a1a1a] hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-full border border-gray-900 bg-white px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-gray-900 hover:bg-gray-50 disabled:opacity-50"
               >
                 {isTemplateConfigLoading || isGenericCandidateTemplateLoading
                   ? 'LOADING…'

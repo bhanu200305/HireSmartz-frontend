@@ -1,4 +1,4 @@
-import { MdOutlineArrowBack } from 'react-icons/md';
+import { MdOutlineArrowBack, MdAdminPanelSettings } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
 import UnlockUserSection from './UnlockUserSection';
@@ -29,17 +29,22 @@ const AdminTools = () => {
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
         <button
           onClick={() => navigate('/profile')}
-          className="flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+          className="flex w-fit items-center text-gray-600 hover:text-primary-600 transition-colors cursor-pointer"
         >
           <MdOutlineArrowBack className="mr-2" />
           <span>Back to profile</span>
         </button>
 
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Admin tools</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Account recovery and platform-level authentication controls.
-          </p>
+        <div className="flex items-center gap-2.5">
+          <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
+            <MdAdminPanelSettings size={18} />
+          </span>
+          <div>
+            <h1 className="font-display text-xl font-bold text-gray-900">Admin tools</h1>
+            <p className="text-sm text-gray-500">
+              Account recovery and platform-level authentication controls.
+            </p>
+          </div>
         </div>
 
         <UnlockUserSection />

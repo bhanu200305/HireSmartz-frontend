@@ -40,24 +40,29 @@ const PlatformAudit: React.FC = () => {
     <MainLayout>
       <div className="w-full p-8 pt-16">
         <div className="flex items-center space-x-2 mb-6">
-          <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
+          <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
             <LuSquareActivity size={18} />
           </span>
-          <h2 className="text-xl font-semibold">Audit Log</h2>
+          <h2 className="font-display text-xl font-bold text-gray-900">Audit Log</h2>
         </div>
 
         {isLoading ? (
           <Loader />
         ) : events.length === 0 ? (
-          <div className="p-10 text-center text-gray-500 border border-dashed rounded-xl">
+          <div className="p-10 text-center text-gray-500 border border-dashed border-neutral-200 rounded-xl bg-neutral-50">
             No Super Admin actions recorded yet.
           </div>
         ) : (
-          <div className="divide-y border rounded-xl overflow-hidden bg-white">
+          <div className="divide-y divide-neutral-100 border border-neutral-200 rounded-xl overflow-hidden bg-white">
             {events.map((event) => (
-              <div key={event.id} className="flex items-center justify-between gap-4 p-3">
+              <div
+                key={event.id}
+                className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-primary-50 transition-colors"
+              >
                 <div>
-                  <Typography variant="body1">{describeAction(event.action)}</Typography>
+                  <Typography variant="body1" className="font-medium">
+                    {describeAction(event.action)}
+                  </Typography>
                   <Typography variant="caption">
                     {event.target_type} · by {event.actor_id}
                     {event.tenant_id ? ` · tenant ${event.tenant_id}` : ''}

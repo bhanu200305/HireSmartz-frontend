@@ -42,7 +42,7 @@ const CompanyMetrics: React.FC = () => {
     <MainLayout>
       <div className="w-full p-8 pt-16">
         <div className="flex items-center space-x-2 mb-6">
-          <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
+          <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
             <MdOutlineInsights size={18} />
           </span>
           <h2 className="text-xl font-semibold">Company Metrics</h2>

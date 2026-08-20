@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { TableProps } from 'antd';
 import { LuUsersRound } from 'react-icons/lu';
 import { PlusOutlined } from '@ant-design/icons';
 import { Select } from 'antd';
@@ -8,6 +9,7 @@ import { Button, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { Badge } from '../shared/ui/badge';
+import CustomTable from '../shared/ui/table';
 import { RootState } from '../../redux/provider/store';
 import { useListUsersQuery } from '../../api/organization-service/Users/users';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
@@ -42,16 +44,75 @@ const OrganisationUserTable = () => {
   }, [error]);
 
   const users = data?.items || [];
+  type UserRow = (typeof users)[number] & { key: string };
+  const dataSource: UserRow[] = users.map((user) => ({ ...user, key: user.user_id }));
+
+  const columns: TableProps<UserRow>['columns'] = [
+    {
+      title: 'Name',
+      dataIndex: 'full_name',
+      key: 'full_name',
+      render: (_: unknown, user: UserRow) => (
+        <Link
+          to={`/view-organisation-user?orgUserId=${user.user_id}`}
+          className="font-semibold text-primary-600 hover:underline"
+        >
+          {user.full_name}
+        </Link>
+      ),
+    },
+    {
+      title: 'Email',
+      dataIndex: 'email',
+      key: 'email',
+      render: (_: unknown, user: UserRow) => (
+        <span className="text-sm text-gray-600 truncate" title={user.email}>
+          {user.email}
+        </span>
+      ),
+    },
+    {
+      title: 'Phone',
+      key: 'phone',
+      render: (_: unknown, user: UserRow) => (
+        <span className="text-sm text-gray-600">
+          {user.phone_no ? `${user.country_code || ''}${user.phone_no}` : '-'}
+        </span>
+      ),
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      render: (_: unknown, user: UserRow) => (
+        <Badge status={user.is_active ? 'success' : 'neutral'}>
+          {user.is_active ? 'Active' : 'Deactivated'}
+        </Badge>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      align: 'right',
+      render: (_: unknown, user: UserRow) => (
+        <Link
+          to={`/edit-organisation-user?orgUserId=${user.user_id}`}
+          className="text-sm font-semibold text-primary-600 hover:underline"
+        >
+          Edit
+        </Link>
+      ),
+    },
+  ];
 
   return (
     <div className="w-full">
       {isLoading && <Loader />}
-      <div className="flex space-x-4 justify-between p-2">
+      <div className="flex flex-wrap gap-4 justify-between items-center p-2">
         <div className="flex items-center space-x-2">
-          <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
+          <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
             <LuUsersRound size={18} />
           </span>
-          <h2 className="text-xl font-semibold">Users</h2>
+          <h2 className="font-display text-xl font-bold text-gray-900">Users</h2>
         </div>
         <div className="flex space-x-4">
           <Select
@@ -68,54 +129,24 @@ const OrganisationUserTable = () => {
           />
           <Button
             appname="add user"
-            className="text-white bg-button rounded-3xl px-4 py-2 flex items-center space-x-2"
+            className="text-white bg-primary-600 rounded-full px-5 py-2 flex items-center gap-1.5 text-sm font-semibold cfp-hover-lift"
             onClick={() => navigate('/add-organisation-users')}
           >
-            <PlusOutlined className="text-lg" /> <span>ADD USER</span>
+            <PlusOutlined className="text-sm" /> <span>ADD USER</span>
           </Button>
         </div>
       </div>
 
-      <div className="w-full divide-y border rounded-xl overflow-hidden bg-white mt-2">
-        <div className="grid grid-cols-5 gap-2 px-4 py-2 bg-[#FAFAFA] text-xs font-semibold text-gray-500">
-          <span>NAME</span>
-          <span>EMAIL</span>
-          <span>PHONE</span>
-          <span>STATUS</span>
-          <span className="text-right">ACTIONS</span>
-        </div>
-        {users.map((user) => (
-          <div key={user.user_id} className="grid grid-cols-5 gap-2 px-4 py-3 items-center">
-            <Link
-              to={`/view-organisation-user?orgUserId=${user.user_id}`}
-              className="font-medium underline text-primary"
-            >
-              {user.full_name}
-            </Link>
-            <span className="text-sm truncate" title={user.email}>
-              {user.email}
-            </span>
-            <span className="text-sm">
-              {user.phone_no ? `${user.country_code || ''}${user.phone_no}` : '-'}
-            </span>
-            <span>
-              <Badge status={user.is_active ? 'success' : 'neutral'}>
-                {user.is_active ? 'Active' : 'Deactivated'}
-              </Badge>
-            </span>
-            <span className="text-right">
-              <Link
-                to={`/edit-organisation-user?orgUserId=${user.user_id}`}
-                className="text-sm text-primary hover:underline"
-              >
-                Edit
-              </Link>
-            </span>
-          </div>
-        ))}
-        {!isLoading && users.length === 0 && (
-          <div className="p-8 text-center text-gray-400 text-sm">No users found.</div>
-        )}
+      <div className="w-full border border-neutral-200 rounded-xl overflow-hidden bg-white mt-3">
+        <CustomTable<UserRow>
+          columns={columns}
+          dataSource={dataSource}
+          emptyText={
+            !isLoading ? (
+              <div className="py-10 text-center text-gray-400 text-sm">No users found.</div>
+            ) : undefined
+          }
+        />
       </div>
 
       <MasterPagination

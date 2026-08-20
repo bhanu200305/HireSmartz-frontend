@@ -105,7 +105,7 @@ const BulkSendSmsModal = ({ open, onClose, jobOpeningId, candidates }: BulkSendS
 
   return (
     <Drawer
-      title={<span className="pr-8 text-base font-bold text-[#1a1a1a]">Send SMS - Bulk SMS</span>}
+      title={<span className="pr-8 text-base font-bold text-gray-900">Send SMS - Bulk SMS</span>}
       placement="bottom"
       height="min(560px, 78dvh)"
       onClose={onClose}
@@ -185,7 +185,7 @@ const BulkSendSmsModal = ({ open, onClose, jobOpeningId, candidates }: BulkSendS
           <Input
             readOnly
             value={totalSelectedLabel}
-            className="h-10 rounded-lg border border-gray-300 bg-gray-50 text-sm text-[#1a1a1a]"
+            className="h-10 rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900"
           />
         </div>
 
@@ -214,7 +214,7 @@ const BulkSendSmsModal = ({ open, onClose, jobOpeningId, candidates }: BulkSendS
                           onChange={(e) => toggleId(id, e.target.checked)}
                         />
                         <span className="min-w-0">
-                          <span className="block text-sm font-medium text-[#1a1a1a]">
+                          <span className="block text-sm font-medium text-gray-900">
                             {candidateDisplayName(candidate)}
                           </span>
                           <span className="block text-xs text-gray-500">

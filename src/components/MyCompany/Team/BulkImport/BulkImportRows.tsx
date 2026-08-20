@@ -1,7 +1,10 @@
 import React from 'react';
 import { Select } from 'antd';
 import { Input } from '../../../shared';
-import type { ParsedRosterRow, RosterRole } from '../../../../api/organization-service/Tenants/imports';
+import type {
+  ParsedRosterRow,
+  RosterRole,
+} from '../../../../api/organization-service/Tenants/imports';
 
 const KNOWN_ROLES: RosterRole[] = ['company_admin', 'hiring_manager', 'recruiter', 'interviewer'];
 

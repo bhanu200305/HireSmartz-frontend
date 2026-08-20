@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import type { TableProps } from 'antd';
 import { MdOutlinePersonAdd, MdDelete, MdOutlineAdd } from 'react-icons/md';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import { Button, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import { Badge, BadgeStatus } from '../shared/ui/badge';
+import CustomTable from '../shared/ui/table';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import {
@@ -69,24 +71,85 @@ const CfpUsers: React.FC = () => {
     }
   };
 
+  const staffRows: (PlatformStaffMember & { key: string })[] = (staff || []).map((member) => ({
+    ...member,
+    key: member.membership_id,
+  }));
+
+  const staffColumns: TableProps<PlatformStaffMember & { key: string }>['columns'] = [
+    {
+      title: 'Email',
+      dataIndex: 'email',
+      key: 'email',
+      render: (_: unknown, member) => (
+        <span className="text-sm text-gray-800 truncate" title={member.email}>
+          {member.email}
+        </span>
+      ),
+    },
+    {
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
+      render: (_: unknown, member) => (
+        <span className="text-sm text-gray-600 capitalize">{member.role}</span>
+      ),
+    },
+    {
+      title: 'Department',
+      dataIndex: 'department_name',
+      key: 'department_name',
+      render: (_: unknown, member) => (
+        <span className="text-sm text-gray-600">{member.department_name || '-'}</span>
+      ),
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      render: (_: unknown, member) => (
+        <Badge status={STATUS_BADGE[member.status.toLowerCase()] || 'neutral'}>
+          {member.status}
+        </Badge>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      align: 'right',
+      render: (_: unknown, member) =>
+        member.status.toLowerCase() === 'active' ? (
+          <button
+            type="button"
+            aria-label="Offboard"
+            className="p-2 hover:bg-danger-bg rounded-full transition-colors"
+            onClick={() => setStaffToOffboard(member)}
+          >
+            <MdDelete className="text-red-500" />
+          </button>
+        ) : (
+          <span className="text-gray-300">—</span>
+        ),
+    },
+  ];
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-2">
-          <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
+          <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
             <HiOutlineUserGroup size={18} />
           </span>
-          <h2 className="text-xl font-semibold">CFP Users</h2>
+          <h2 className="font-display text-xl font-bold text-gray-900">CFP Users</h2>
         </div>
         <div className="flex gap-3">
           <Button
-            className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1"
+            className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1 text-sm font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-colors"
             onClick={() => setIsDeptModalOpen(true)}
           >
             <MdOutlineAdd /> Add department
           </Button>
           <Button
-            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1"
+            className="rounded-full bg-primary-600 text-white px-4 py-1.5 flex items-center gap-1 text-sm font-semibold cfp-hover-lift"
             onClick={() => setIsInviteOpen(true)}
           >
             <MdOutlinePersonAdd /> Invite
@@ -97,46 +160,12 @@ const CfpUsers: React.FC = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <div className="divide-y border rounded-xl overflow-hidden bg-white">
-          <div className="grid grid-cols-5 gap-2 px-4 py-2 bg-[#FAFAFA] text-xs font-semibold text-gray-500">
-            <span>EMAIL</span>
-            <span>ROLE</span>
-            <span>DEPARTMENT</span>
-            <span>STATUS</span>
-            <span className="text-right">ACTIONS</span>
-          </div>
-          {(staff || []).map((member) => (
-            <div
-              key={member.membership_id}
-              className="grid grid-cols-5 gap-2 px-4 py-3 items-center"
-            >
-              <span className="text-sm truncate" title={member.email}>
-                {member.email}
-              </span>
-              <span className="text-sm capitalize">{member.role}</span>
-              <span className="text-sm">{member.department_name || '-'}</span>
-              <span>
-                <Badge status={STATUS_BADGE[member.status.toLowerCase()] || 'neutral'}>
-                  {member.status}
-                </Badge>
-              </span>
-              <span className="text-right">
-                {member.status.toLowerCase() === 'active' && (
-                  <button
-                    type="button"
-                    aria-label="Offboard"
-                    className="p-2 hover:bg-gray-100 rounded-full"
-                    onClick={() => setStaffToOffboard(member)}
-                  >
-                    <MdDelete className="text-red-500" />
-                  </button>
-                )}
-              </span>
-            </div>
-          ))}
-          {!staff?.length && (
-            <div className="p-8 text-center text-gray-400 text-sm">No staff yet.</div>
-          )}
+        <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white">
+          <CustomTable
+            columns={staffColumns}
+            dataSource={staffRows}
+            emptyText={<div className="py-10 text-center text-gray-400 text-sm">No staff yet.</div>}
+          />
         </div>
       )}
 

@@ -858,7 +858,7 @@ const JobsOpening = () => {
             {isFromGlobalSearch && filters.text ? (
               <div className="flex flex-col space-y-2">
                 <div className="flex items-center space-x-2">
-                  <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
+                  <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
                     <TbBriefcase2 size={18} />
                   </span>
                   <h2 className="text-xl font-semibold">Showing Results</h2>
@@ -868,7 +868,7 @@ const JobsOpening = () => {
             ) : (
               <div className="flex flex-col space-y-2">
                 <div className="flex items-center space-x-2">
-                  <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
+                  <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
                     <TbBriefcase2 size={18} />
                   </span>
                   <h2 className="text-xl font-semibold">Job Openings</h2>
@@ -972,7 +972,7 @@ const JobsOpening = () => {
           <div className="w-full p-2 justify-start">
             <Row
               gutter={[16, 16]}
-              className="font-bold py-2 px-2 bg-[#FAFAFA] border border-[var(--border)] heading-font"
+              className="font-bold py-2 px-2 bg-neutral-50 border border-[var(--border)] heading-font"
             >
               <COL
                 sortable
@@ -1324,7 +1324,7 @@ const JobsOpening = () => {
                     </p>
                     <div className="h-1 w-full bg-gray-200 rounded">
                       <div
-                        className="h-1 bg-[#13b78f] rounded transition-all duration-300"
+                        className="h-1 bg-success rounded transition-all duration-300"
                         style={{ width: `${Math.max(0, Math.min(100, jdProgress))}%` }}
                       />
                     </div>

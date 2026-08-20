@@ -360,7 +360,7 @@ const NotesSidePanel = ({
   const drawerTitle = (
     <div className="pr-2 min-w-0 mr-2">
       <div
-        className={`font-bold text-[#1a1a1a] leading-tight truncate ${isCompact ? 'text-base' : 'text-lg'}`}
+        className={`font-bold text-gray-900 leading-tight truncate ${isCompact ? 'text-base' : 'text-lg'}`}
         title={title}
       >
         {title}
@@ -492,7 +492,7 @@ const NotesSidePanel = ({
                           <div
                             className={`min-w-0 leading-snug pt-0.5 ${isCompact ? 'text-[14px]' : 'text-[15px]'}`}
                           >
-                            <span className="font-bold text-[#1a1a1a]">{note.authorName}</span>
+                            <span className="font-bold text-gray-900">{note.authorName}</span>
                             {roleText ? (
                               <span
                                 className={`font-normal text-[#717171] ${isCompact ? 'text-[12px]' : 'text-[13px]'}`}
@@ -506,7 +506,7 @@ const NotesSidePanel = ({
                           <div className="flex items-center gap-2 shrink-0">
                             {showTag ? (
                               <span
-                                className={`inline-flex items-center max-w-[200px] rounded-full border border-[#263d92] bg-white font-medium text-[#263d92] truncate ${
+                                className={`inline-flex items-center max-w-[200px] rounded-full border border-primary-600 bg-white font-medium text-primary-600 truncate ${
                                   isCompact ? 'px-2.5 py-0.5 text-[11px]' : 'px-3 py-1 text-xs'
                                 }`}
                               >
@@ -543,7 +543,7 @@ const NotesSidePanel = ({
                         {editingNoteId === note.id ? (
                           <div className="mt-2">
                             <textarea
-                              className="w-full border border-[#d1d5db] rounded-lg p-2.5 text-sm text-[#4f4f4f] focus:outline-none focus:ring-2 focus:ring-[#263d92]/30"
+                              className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-600/30"
                               rows={3}
                               value={editingContent}
                               onChange={(e) => setEditingContent(e.target.value)}
@@ -604,7 +604,7 @@ const NotesSidePanel = ({
                 aria-hidden
               />
               <p
-                className={`font-semibold text-[#1a1a1a] mb-1.5 ${isCompact ? 'text-[15px]' : 'text-base'}`}
+                className={`font-semibold text-gray-900 mb-1.5 ${isCompact ? 'text-[15px]' : 'text-base'}`}
               >
                 {emptyStateTitle}
               </p>
@@ -617,7 +617,7 @@ const NotesSidePanel = ({
           ) : null}
           <div className="relative z-10">
             <textarea
-              className={`relative z-10 w-full border border-gray-300 rounded-lg pr-12 pb-9 text-sm text-[#1a1a1a] placeholder:text-[#a3a3a3] focus:outline-none focus:ring-2 focus:ring-[#263d92]/40 ${
+              className={`relative z-10 w-full border border-gray-300 rounded-lg pr-12 pb-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-600/40 ${
                 isCompact ? 'p-2 min-h-[64px]' : 'p-2.5'
               }`}
               rows={isCompact ? 2 : 3}
@@ -627,7 +627,7 @@ const NotesSidePanel = ({
             />
             <button
               type="button"
-              className="absolute z-20 text-[#263d92] hover:text-[#1d2f73] disabled:opacity-50 disabled:cursor-not-allowed bottom-2.5 right-3 pointer-events-auto p-0.5 rounded-md hover:bg-[#263d92]/10 transition-colors"
+              className="absolute z-20 text-primary-600 hover:text-primary-700 disabled:opacity-50 disabled:cursor-not-allowed bottom-2.5 right-3 pointer-events-auto p-0.5 rounded-md hover:bg-primary-600/10 transition-colors"
               onClick={() => void handlePost()}
               disabled={!newNoteContent.trim() || isPosting}
               aria-label="Post note"

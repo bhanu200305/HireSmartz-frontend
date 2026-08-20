@@ -302,6 +302,32 @@ select:focus {
   text-overflow: clip !important;
 }
 
+/* App-wide "cyan underline" tab treatment (pairs with the Tabs component
+   tokens in src/main.tsx's cfpAntdTheme) — active tab label goes bold to
+   match the wireframe's tab weight-shift instead of only a color change. */
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  font-weight: 600 !important;
+}
+.ant-tabs-tab {
+  transition:
+    color 0.15s ease,
+    font-weight 0.15s ease;
+}
+
+/* Reusable hover-lift for clickable cards/rows/KPI tiles — mirrors the
+   wireframe's .wf-kpi:hover / [data-goto]:hover treatment. Opt-in via
+   className, doesn't change any static/non-interactive card. */
+.cfp-hover-lift {
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+.cfp-hover-lift:hover {
+  box-shadow: var(--elevation-md);
+  transform: translateY(-1px);
+}
+
 @keyframes slideUp {
   from {
     transform: translateY(100%);

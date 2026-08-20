@@ -31,7 +31,9 @@ const RoleContextSwitcher: React.FC<RoleContextSwitcherProps> = ({ context, onCh
 
   return (
     <div className="flex items-center gap-3 flex-wrap bg-white border border-gray-200 rounded-xl px-4 py-2.5 mb-4">
-      <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Manage roles for</span>
+      <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+        Manage roles for
+      </span>
 
       <div className="inline-flex gap-1 bg-gray-100 rounded-lg p-1">
         <button
@@ -86,7 +88,9 @@ const RoleContextSwitcher: React.FC<RoleContextSwitcherProps> = ({ context, onCh
           <button
             type="button"
             className="underline font-semibold cursor-pointer"
-            onClick={() => onChange({ scope: 'tenant', tenantId: undefined, tenantName: undefined })}
+            onClick={() =>
+              onChange({ scope: 'tenant', tenantId: undefined, tenantName: undefined })
+            }
           >
             Switch company
           </button>

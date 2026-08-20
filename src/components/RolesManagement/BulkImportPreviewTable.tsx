@@ -26,7 +26,9 @@ const BulkImportPreviewTable: React.FC<BulkImportPreviewTableProps> = ({ rows })
             <td className="px-3.5 py-2.5">
               <span
                 className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
-                  row.scope === 'platform' ? 'bg-info-bg text-info-text' : 'bg-neutral-100 text-neutral-600'
+                  row.scope === 'platform'
+                    ? 'bg-info-bg text-info-text'
+                    : 'bg-neutral-100 text-neutral-600'
                 }`}
               >
                 {row.scope === 'platform' ? 'Platform' : 'Company'}

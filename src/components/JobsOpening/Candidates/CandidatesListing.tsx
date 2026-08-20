@@ -1648,12 +1648,12 @@ const CandidatesListing = () => {
 
                   {canViewJobNotes && (
                     <Button
-                      className={`rounded-full border border-[#a9c5e6] bg-[#eaf3ff] px-6 py-2 text-[#2c69ad] font-semibold flex items-center gap-2 ${notesPillIconClass}`}
+                      className={`rounded-full border border-primary-200 bg-primary-50 px-6 py-2 text-primary-700 font-semibold flex items-center gap-2 ${notesPillIconClass}`}
                       onClick={() => setIsJobNotesPanelOpen(true)}
                     >
                       <LuSquarePen size={18} />
                       <span>Notes</span>
-                      <span className="min-w-8 h-8 px-2 rounded-xl bg-[#2c69ad] text-white flex items-center justify-center text-sm leading-none">
+                      <span className="min-w-8 h-8 px-2 rounded-xl bg-primary-600 text-white flex items-center justify-center text-sm leading-none">
                         {jobNotes.length}
                       </span>
                     </Button>
@@ -1783,7 +1783,9 @@ const CandidatesListing = () => {
                     border: selectedCandidates[candidate.id]
                       ? `2px solid var(--primary)`
                       : '2px solid transparent',
-                    borderLeft: candidate.isNew ? '4px solid #3b82f6' : '4px solid transparent',
+                    borderLeft: candidate.isNew
+                      ? '4px solid var(--accent-400)'
+                      : '4px solid transparent',
                     borderRadius: '8px',
                     transition: 'all 0.3s ease',
                     boxShadow: selectedCandidates[candidate.id]
@@ -2008,7 +2010,7 @@ const CandidatesListing = () => {
                                   !candidate.status ? 'cursor-pointer font-semibold' : undefined
                                 }
                                 style={{
-                                  color: !candidate.status ? '#FFCC00' : undefined,
+                                  color: !candidate.status ? 'var(--warning-solid)' : undefined,
                                 }}
                               >
                                 {renderHighlightedField(
@@ -2086,33 +2088,33 @@ const CandidatesListing = () => {
 
                 <div className="flex min-w-0 flex-wrap items-center gap-2 md:gap-3">
                   <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-[#eeeeee] text-sm h-8"
+                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
                     onClick={() => handleBulkActionClick(StatusModalType.ADVANCE)}
                   >
                     <IoArrowRedoOutline size={16} /> Advance
                   </Button>
                   <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-[#eeeeee] text-sm h-8"
+                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
                     onClick={() => handleBulkActionClick(StatusModalType.NOT_SELECTED)}
                   >
                     <LuThumbsDown size={16} />
                     Reject
                   </Button>
                   <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-[#eeeeee] text-sm h-8"
+                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
                     onClick={() => handleBulkActionClick(StatusModalType.SELECTED)}
                   >
                     <LuThumbsUp size={16} /> Select
                   </Button>
                   <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-[#eeeeee] text-sm h-8 bg-white text-[#1a1a1a]"
+                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
                     onClick={handleFloatingBarEmailClick}
                   >
                     <LuMail size={16} /> Email
                   </Button>
 
                   <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-[#eeeeee] text-sm h-8 bg-white text-[#1a1a1a]"
+                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
                     onClick={handleFloatingBarSmsClick}
                   >
                     <LuMessageSquare size={16} /> SMS

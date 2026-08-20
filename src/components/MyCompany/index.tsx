@@ -99,7 +99,7 @@ const MyCompany: React.FC = () => {
             <span>Back</span>
           </button>
         </div>
-        <div className="bg-[#FAFAFA] p-6 md:p-6 rounded-2xl shadow-lg w-full max-w-6xl flex flex-col">
+        <div className="bg-neutral-50 p-6 md:p-6 rounded-2xl border border-neutral-200 shadow-xs w-full max-w-6xl flex flex-col">
           {isProfileLoading && <Loader />}
 
           <div className="flex gap-4 bg-white rounded-3xl p-4 mb-6 border border-gray-100">

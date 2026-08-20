@@ -464,7 +464,7 @@ const AcceptInvitation = () => {
           type="submit"
           appname="accept invitation"
           disabled={!isValid || isAccepting}
-          className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white transition-all duration-150 hover:brightness-105 hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
         >
           {isAccepting ? 'Activating…' : 'Activate account'}
         </Button>

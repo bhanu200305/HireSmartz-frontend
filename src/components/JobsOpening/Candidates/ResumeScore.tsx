@@ -294,7 +294,7 @@ const ResumeScore = ({
                 <button
                   type="button"
                   onClick={onOpenNotes}
-                  className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#c7d0ef] bg-[#eef2ff] text-[#263d92] transition-colors hover:border-[#263d92] hover:bg-[#e2e7fa] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#263d92]/30"
+                  className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-primary-200 bg-primary-50 text-primary-600 transition-colors hover:border-primary-600 hover:bg-primary-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/30"
                   aria-label={notesCount != null ? `Notes, ${notesCount} items` : 'Notes'}
                 >
                   <LuSquarePen size={18} strokeWidth={2} aria-hidden />

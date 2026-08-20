@@ -13,8 +13,17 @@ type MetricTileProps = {
 };
 
 const MetricTile: React.FC<MetricTileProps> = ({ title, isLoading, available, children }) => (
-  <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-2 min-h-[140px]">
-    <Typography variant="subtitle2">{title}</Typography>
+  <div className="cfp-hover-lift relative overflow-hidden bg-white rounded-xl border border-neutral-200 p-5 flex flex-col gap-2 min-h-[140px]">
+    <span
+      className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-primary-600 to-accent-400"
+      aria-hidden
+    />
+    <Typography
+      variant="subtitle2"
+      className="uppercase tracking-wide text-[11px] text-gray-500 font-bold"
+    >
+      {title}
+    </Typography>
     {isLoading ? (
       <Loader />
     ) : available ? (

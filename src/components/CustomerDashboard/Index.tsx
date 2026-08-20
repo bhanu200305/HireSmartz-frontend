@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { FaCity } from 'react-icons/fa';
 import { PlusOutlined } from '@ant-design/icons';
 import { Select } from 'antd';
-import { Link, useNavigate } from 'react-router-dom';
+import type { TableProps } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
 import { Button, Search, showToast } from '..';
 import { Loader } from '../shared/ui/loader';
 import { Badge, BadgeStatus } from '../shared/ui/badge';
+import CustomTable from '../shared/ui/table';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { useListPlatformTenantsQuery } from '../../api/organization-service/Platform/tenants';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
@@ -52,17 +54,64 @@ const CustomerTable = () => {
   }, [error]);
 
   const tenants = data?.tenants || [];
+  type TenantRow = (typeof tenants)[number] & { key: string };
+  const dataSource: TenantRow[] = tenants.map((tenant) => ({ ...tenant, key: tenant.tenant_id }));
+
+  const columns: TableProps<TenantRow>['columns'] = [
+    {
+      title: 'Company',
+      dataIndex: 'company_name',
+      key: 'company_name',
+      render: (_: unknown, tenant: TenantRow) => (
+        <span className="font-semibold text-primary-600">{tenant.company_name}</span>
+      ),
+    },
+    {
+      title: 'Admin Email',
+      dataIndex: 'admin_email',
+      key: 'admin_email',
+      render: (_: unknown, tenant: TenantRow) => (
+        <span className="text-sm text-gray-600 truncate" title={tenant.admin_email}>
+          {tenant.admin_email}
+        </span>
+      ),
+    },
+    {
+      title: 'Signup Source',
+      dataIndex: 'signup_source',
+      key: 'signup_source',
+      render: (_: unknown, tenant: TenantRow) => (
+        <span className="text-sm text-gray-600 capitalize">{tenant.signup_source}</span>
+      ),
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      render: (_: unknown, tenant: TenantRow) => (
+        <Badge status={STATUS_BADGE[tenant.status] || 'neutral'}>{tenant.status}</Badge>
+      ),
+    },
+    {
+      title: 'Joined',
+      key: 'created_at',
+      render: (_: unknown, tenant: TenantRow) => (
+        <span className="text-sm text-gray-500">
+          {tenant.created_at ? new Date(tenant.created_at).toLocaleDateString() : '-'}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <MainLayout>
       <div className="w-full p-8 justify-start pt-16">
         {isLoading && <Loader />}
-        <div className="flex space-x-4 justify-between p-2">
-          <div className="flex items-center space-x-2">
-            <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
+        <div className="flex flex-wrap gap-4 justify-between items-center p-2">
+          <div className="flex items-center gap-2.5">
+            <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
               <FaCity size={18} />
             </span>
-            <h2 className="text-xl font-semibold">Companies</h2>
+            <h2 className="font-display text-xl font-bold text-gray-900">Companies</h2>
           </div>
           <div className="flex space-x-4 items-center">
             <Search
@@ -99,44 +148,28 @@ const CustomerTable = () => {
             />
             <Button
               appname="add company"
-              className="text-white bg-button rounded-3xl px-4 py-2 flex items-center space-x-2"
+              className="text-white bg-primary-600 rounded-full px-5 py-2 flex items-center gap-1.5 text-sm font-semibold cfp-hover-lift"
               onClick={() => navigate('/add-company')}
             >
-              <PlusOutlined className="text-lg" /> <span>ADD COMPANY</span>
+              <PlusOutlined className="text-sm" /> <span>ADD COMPANY</span>
             </Button>
           </div>
         </div>
 
-        <div className="w-full divide-y border rounded-xl overflow-hidden bg-white mt-2">
-          <div className="grid grid-cols-5 gap-2 px-4 py-2 bg-[#FAFAFA] text-xs font-semibold text-gray-500">
-            <span>COMPANY</span>
-            <span>ADMIN EMAIL</span>
-            <span>SIGNUP SOURCE</span>
-            <span>STATUS</span>
-            <span>JOINED</span>
-          </div>
-          {tenants.map((tenant) => (
-            <Link
-              key={tenant.tenant_id}
-              to={`/view-company?companyId=${tenant.tenant_id}`}
-              className="grid grid-cols-5 gap-2 px-4 py-3 items-center hover:bg-gray-50"
-            >
-              <span className="font-medium text-primary underline">{tenant.company_name}</span>
-              <span className="text-sm truncate" title={tenant.admin_email}>
-                {tenant.admin_email}
-              </span>
-              <span className="text-sm capitalize">{tenant.signup_source}</span>
-              <span>
-                <Badge status={STATUS_BADGE[tenant.status] || 'neutral'}>{tenant.status}</Badge>
-              </span>
-              <span className="text-sm">
-                {tenant.created_at ? new Date(tenant.created_at).toLocaleDateString() : '-'}
-              </span>
-            </Link>
-          ))}
-          {!isLoading && tenants.length === 0 && (
-            <div className="p-8 text-center text-gray-400 text-sm">No companies found.</div>
-          )}
+        <div className="w-full border border-neutral-200 rounded-xl overflow-hidden bg-white mt-3">
+          <CustomTable<TenantRow>
+            columns={columns}
+            dataSource={dataSource}
+            onRow={(tenant) => ({
+              onClick: () => navigate(`/view-company?companyId=${tenant.tenant_id}`),
+              className: 'cursor-pointer',
+            })}
+            emptyText={
+              !isLoading ? (
+                <div className="py-10 text-center text-gray-400 text-sm">No companies found.</div>
+              ) : undefined
+            }
+          />
         </div>
 
         <MasterPagination

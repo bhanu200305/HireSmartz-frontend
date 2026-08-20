@@ -110,7 +110,11 @@ const orgSystemRoles = (tenantId?: string): Role[] => [
       {
         locationId: 2,
         locationName: 'Remote',
-        permissions: [Authorities.DASHBOARD_VIEW, Authorities.JOB_OPENING_VIEW, Authorities.ACTIVITY_FEED],
+        permissions: [
+          Authorities.DASHBOARD_VIEW,
+          Authorities.JOB_OPENING_VIEW,
+          Authorities.ACTIVITY_FEED,
+        ],
       },
     ],
   },

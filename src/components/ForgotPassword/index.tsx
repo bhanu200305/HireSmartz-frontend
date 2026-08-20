@@ -140,8 +140,8 @@ const ForgotPassword = () => {
       {(isLoading || isSubmitting.current) && <Loader />}
       {/* Left Side Image - flex-2 to take more space */}
       <div className="flex-2 h-full flex flex-col justify-center items-center px-10">
-        <h3 className="text-5xl font-bold">
-          <span className="text-primary">careerforce pro</span>
+        <h3 className="font-display text-5xl font-extrabold">
+          <span className="text-primary-600">careerforce pro</span>
         </h3>
         <span className="ai-recruitment-text mb-8 mt-2 ">AI POWERED RECRUITMENT SOLUTIONS</span>
         <img
@@ -150,10 +150,10 @@ const ForgotPassword = () => {
           className="max-w-[450px] h-auto object-cover rounded-3xl"
         />
         <div className="flex flex-col items-center mt-4 text-center">
-          <span className="text-black text-lg font-semibold">
+          <span className="font-display text-gray-900 text-lg font-semibold">
             Revolutionizing Talent Acquisition with AI Precision
           </span>
-          <span className="text-black text-sm mt-4">
+          <span className="text-gray-600 text-sm mt-4">
             careerforce pro is an end-to-end AI-powered recruitment platform that empowers
             organizations to streamline hiring processes, reduce manual effort, and secure top
             talent with unparalleled efficiency.
@@ -174,11 +174,13 @@ const ForgotPassword = () => {
         {/* Login Form Section */}
         <form
           onSubmit={handleSubmit}
-          className="w-full max-w-md flex flex-col items-center bg-white rounded-3xl px-8 py-36 shadow-lg"
+          className="cfp-hover-lift w-full max-w-md flex flex-col items-center bg-white rounded-3xl px-8 py-16 shadow-lg ring-1 ring-black/5"
         >
           <div className="text-center">
-            <h3 className="text-4xl font-medium mb-2">Forgot Password</h3>
-            <p className="w-80 text-md text-gray-600 mb-6">
+            <h3 className="font-display text-3xl font-bold text-gray-900 mb-2">
+              Forgot Password
+            </h3>
+            <p className="w-80 text-sm text-gray-500 mb-6">
               Enter your email to request a temporary password.
             </p>
           </div>
@@ -198,14 +200,14 @@ const ForgotPassword = () => {
             type="submit"
             appname="test"
             disabled={!isFormValid || isLoading || isSubmitting.current}
-            className="w-90 text-white bg-button rounded-3xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-90 text-white bg-button rounded-3xl px-4 py-2.5 font-medium transition-all duration-150 hover:brightness-105 hover:shadow-md active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
           >
             {isLoading ? 'SUBMITTING...' : 'SUBMIT'}
           </Button>
 
           <Link
             to="/login"
-            className="flex items-center justify-center text-[#000000] text-sm hover:underline mt-4"
+            className="flex items-center justify-center text-gray-600 text-sm hover:text-primary-600 hover:underline mt-4 transition-colors"
           >
             <FaArrowLeft className="mr-2 inline-block" />
             Go back to Login

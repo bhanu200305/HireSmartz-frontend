@@ -4,6 +4,7 @@ import type { TabsProps } from 'antd';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
 import { BsArrowLeft } from 'react-icons/bs';
+import { FiSettings } from 'react-icons/fi';
 import IndustriesTab from './IndustriesTab';
 import DepartmentsTab from './DepartmentsTab';
 import JobTitlesTab from './JobTitlesTab';
@@ -92,30 +93,23 @@ const CompanySettings: React.FC = () => {
     <MainLayout>
       <div className="w-full px-6 py-6 pt-16 max-w-[1400px] mx-auto">
         <div
-          className="flex items-center gap-2 text-sm text-gray-500 mb-6 cursor-pointer hover:text-black w-fit"
+          className="flex items-center gap-2 text-sm text-gray-500 mb-6 cursor-pointer hover:text-primary-600 transition-colors w-fit"
           onClick={() => navigate(-1)}
         >
           <BsArrowLeft />
           <span>Back</span>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm min-h-[calc(100vh-140px)]">
+        <div className="bg-white border border-neutral-200 rounded-xl shadow-xs min-h-[calc(100vh-140px)]">
           <div className="p-8">
-            <h1 className="text-3xl font-semibold text-gray-800 mb-8">Company Settings</h1>
-
-            <div className="bg-gray-50 p-2 rounded-lg mb-6">
-              <Tabs
-                activeKey={currentTab}
-                onChange={handleTabChange}
-                items={items}
-                type="card"
-                className="[&_.ant-tabs-nav]:mb-0 [&_.ant-tabs-content-holder]:bg-transparent [&_.ant-tabs-content-holder]:p-0"
-              />
+            <div className="flex items-center gap-2.5 mb-8">
+              <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
+                <FiSettings size={18} />
+              </span>
+              <h1 className="font-display text-2xl font-bold text-gray-900">Company Settings</h1>
             </div>
 
-            {/* In the image, the tab content is rendered right below the paragraph. 
-                But in Antd Tabs, the children content will actually appear directly inside the .ant-tabs-content-holder. 
-                So I will put the paragraph inside IndustriesTab instead. For now I keep it here for layout matching. */}
+            <Tabs activeKey={currentTab} onChange={handleTabChange} items={items} />
           </div>
         </div>
       </div>

@@ -99,7 +99,7 @@ const RolesManagement: React.FC = () => {
       <div className="w-full p-8 pt-16">
         <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
           <div className="flex items-center gap-2.5">
-            <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
+            <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
               <MdOutlineAdminPanelSettings size={18} />
             </span>
             <div>
