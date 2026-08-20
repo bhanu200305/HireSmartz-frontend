@@ -222,17 +222,11 @@ const Hero = () => (
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link
-            to="/login?view=signup"
+            to="/book-demo"
             className="group inline-flex items-center gap-2 rounded-full bg-primary-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-700 hover:shadow-xl"
           >
-            Get Started Free
-            <LuArrowRight className="transition-transform duration-200 group-hover:translate-x-1" />
-          </Link>
-          <Link
-            to="/book-demo"
-            className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-7 py-3.5 text-sm font-semibold text-neutral-700 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary-200 hover:text-primary-600"
-          >
             Book a Demo
+            <LuArrowRight className="transition-transform duration-200 group-hover:translate-x-1" />
           </Link>
         </div>
       </Reveal>
@@ -492,17 +486,11 @@ const CtaBanner = () => (
       </p>
       <div className="relative mt-8 flex flex-wrap items-center justify-center gap-4">
         <Link
-          to="/login?view=signup"
+          to="/book-demo"
           className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-bold text-primary-700 shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
         >
-          Create Free Account
-          <LuArrowRight />
-        </Link>
-        <Link
-          to="/book-demo"
-          className="inline-flex items-center gap-2 rounded-full border border-white/40 px-7 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10"
-        >
           Book a Demo
+          <LuArrowRight />
         </Link>
       </div>
     </Reveal>

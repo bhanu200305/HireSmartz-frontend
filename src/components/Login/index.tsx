@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { Button, Input, showToast } from '..';
-import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { Checkbox } from 'antd';
 import {
@@ -59,41 +59,11 @@ type FormErrors = {
   password?: string;
 };
 
-// Cosmetic only: there is no backend to register a user against yet, so this form
-// validates and then just hands control back to the Login tab. Nothing is persisted.
-const signUpSchema = z
-  .object({
-    name: z.string().min(1, 'Full name is required.'),
-    email: z
-      .string()
-      .min(1, 'Email is required.')
-      .email('Enter a valid email address.')
-      .transform((val) => val.trim())
-      .refine((val) => !val.includes(' '), 'Email cannot contain spaces.'),
-    password: z.string().min(6, 'Password must be at least 6 characters.'),
-    confirmPassword: z.string().min(1, 'Please confirm your password.'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match.',
-    path: ['confirmPassword'],
-  });
-
-type SignUpFormErrors = {
-  name?: string;
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-};
-
 const Login = () => {
-  const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const isSubmitting = useRef(false);
-  const [view, setView] = useState<'login' | 'signup'>(
-    searchParams.get('view') === 'signup' ? 'signup' : 'login'
-  );
   // Set only when POST /login returns status: "mfa_required" — while this is
   // non-null the card renders MfaChallengeStep instead of the password form.
   // Local state, not Redux: it is meaningless outside this page and holds a
@@ -136,19 +106,6 @@ const Login = () => {
   const { email, password, showPassword, errors, rememberMe, isFormValid } = localState;
   const [login, { isLoading }] = useLoginMutation();
   const [fetchUserPermissions] = useLazyGetUserPermissionsQuery();
-
-  const [signUpState, setSignUpState] = useReducer(
-    (prevState, newState) => ({ ...prevState, ...newState }),
-    {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      showPassword: false,
-      showConfirmPassword: false,
-      errors: {} as SignUpFormErrors,
-    }
-  );
 
   useEffect(() => {
     if (rememberMe) {
@@ -220,15 +177,6 @@ const Login = () => {
         validateForm(email, processedValue);
       }
     }, 0);
-  };
-
-  const onSignUpChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-    let processedValue = value;
-    if (name === 'email') {
-      processedValue = value.replace(/\s/g, '');
-    }
-    setSignUpState({ [name]: processedValue });
   };
 
   // Logs a seeded demo credential straight into the app the same way a real login
@@ -553,40 +501,6 @@ const Login = () => {
     }
   };
 
-  // Cosmetic only — see signUpSchema comment above. There's nothing to persist this to
-  // yet, so a successful submit just confirms the input looks right and hands the
-  // visitor back to the Login tab with their email prefilled.
-  const handleSignUpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const result = signUpSchema.safeParse(signUpState);
-
-    if (!result.success) {
-      const fieldErrors = result.error.flatten().fieldErrors;
-      setSignUpState({
-        errors: {
-          name: fieldErrors.name?.[0] ?? '',
-          email: fieldErrors.email?.[0] ?? '',
-          password: fieldErrors.password?.[0] ?? '',
-          confirmPassword: fieldErrors.confirmPassword?.[0] ?? '',
-        },
-      });
-      return;
-    }
-
-    showToast({
-      message: 'Account created! Please log in with your new credentials.',
-      type: 'success',
-    });
-    setLocalState({ email: signUpState.email });
-    setSignUpState({
-      name: '',
-      password: '',
-      confirmPassword: '',
-      errors: {},
-    });
-    setView('login');
-  };
-
   return (
     <>
       <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
@@ -628,32 +542,7 @@ const Login = () => {
               onVerified={(tokens) => void completeRealLogin(tokens, email.trim())}
             />
           ) : (
-            <>
-              {/* Tabs */}
-              <div className="mb-7 flex rounded-full bg-gray-100 p-1 text-sm font-medium">
-                <button
-                  type="button"
-                  onClick={() => setView('login')}
-                  className={`flex-1 rounded-full py-1.5 cursor-pointer transition-all duration-200 ${
-                    view === 'login' ? 'bg-white text-black shadow-sm' : 'text-gray-500'
-                  }`}
-                >
-                  Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView('signup')}
-                  className={`flex-1 rounded-full py-1.5 cursor-pointer transition-all duration-200 ${
-                    view === 'signup' ? 'bg-white text-black shadow-sm' : 'text-gray-500'
-                  }`}
-                >
-                  Sign Up
-                </button>
-              </div>
-
-              {view === 'login' ? (
                 <form
-                  key="login"
                   onSubmit={handleSubmit}
                   className="login-tab-fade flex flex-col gap-4"
                 >
@@ -742,91 +631,6 @@ const Login = () => {
                     </p>
                   )}
                 </form>
-              ) : (
-                <form
-                  key="signup"
-                  onSubmit={handleSignUpSubmit}
-                  className="login-tab-fade flex flex-col gap-4"
-                >
-                  <div className="text-center">
-                    <h2 className="text-xl font-semibold text-gray-900">Create account</h2>
-                    <p className="mt-1 text-sm text-gray-500">Get started with careerforce pro</p>
-                  </div>
-
-                  <Input
-                    name="name"
-                    autoFocus
-                    error={signUpState.errors.name}
-                    value={signUpState.name}
-                    onChange={onSignUpChange}
-                    placeholder="Full name"
-                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-                  />
-
-                  <Input
-                    name="email"
-                    error={signUpState.errors.email}
-                    value={signUpState.email}
-                    onChange={onSignUpChange}
-                    placeholder="Email"
-                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-                  />
-
-                  <Input
-                    type={signUpState.showPassword ? 'text' : 'password'}
-                    onChange={onSignUpChange}
-                    name="password"
-                    value={signUpState.password}
-                    placeholder="Password"
-                    error={signUpState.errors.password}
-                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-                    suffix={
-                      <button
-                        type="button"
-                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                        onClick={() => setSignUpState({ showPassword: !signUpState.showPassword })}
-                      >
-                        {signUpState.showPassword ? <FaEye /> : <FaEyeSlash />}
-                      </button>
-                    }
-                  />
-
-                  <Input
-                    type={signUpState.showConfirmPassword ? 'text' : 'password'}
-                    onChange={onSignUpChange}
-                    name="confirmPassword"
-                    value={signUpState.confirmPassword}
-                    placeholder="Confirm password"
-                    error={signUpState.errors.confirmPassword}
-                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-                    suffix={
-                      <button
-                        type="button"
-                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                        onClick={() =>
-                          setSignUpState({ showConfirmPassword: !signUpState.showConfirmPassword })
-                        }
-                      >
-                        {signUpState.showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
-                      </button>
-                    }
-                  />
-
-                  <Button
-                    type="submit"
-                    appname="test"
-                    className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white"
-                  >
-                    Create account
-                  </Button>
-
-                  <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-400">
-                    Preview only — accounts aren&apos;t saved yet. Use the demo login on the Login
-                    tab to explore the app.
-                  </p>
-                </form>
-              )}
-            </>
           )}
         </div>
         <Footer className="relative z-10 mt-8 shrink-0 text-white/70" />

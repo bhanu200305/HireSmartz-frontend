@@ -18,6 +18,7 @@ import EntitlementsPanel from './EntitlementsPanel';
 import CompanyProfilePanel from './panels/CompanyProfilePanel';
 import LocationsPanel from './panels/LocationsPanel';
 import DepartmentsPanel from './panels/DepartmentsPanel';
+import UsersPanel from './panels/UsersPanel';
 import ScoringCriteriaPanel from './panels/ScoringCriteriaPanel';
 import QrCodePanel from './panels/QrCodePanel';
 import EmailTemplatesPanel from './panels/EmailTemplatesPanel';
@@ -37,10 +38,18 @@ const STATUS_BADGE: Record<string, BadgeStatus> = {
  * Every tab below reads/writes real, already-mounted
  * /v1/platform/tenants/{tenant_id}/... routes (organization-service) or
  * /v1/platform/template-settings/tenants/{tenant_id}/... (notification-
- * service) — see the panels/ directory. Team, Activity Feed, Interview
- * Questions and SMS Templates are deliberately left out of this pass: their
+ * service) — see the panels/ directory. Activity Feed, Interview Questions
+ * and SMS Templates are deliberately left out of this pass: their
  * platform-route equivalents (if any) haven't been verified, and SMS has no
  * per-tenant override endpoint on either side of the fleet yet.
+ *
+ * Users (direct create, via users_platform_router.py's
+ * POST /v1/platform/tenants/{tenant_id}/users) IS included — same shape as
+ * Roles' platform surface: tenant_id from the path, require_platform_permission
+ * instead of require_permission. Invite-based Team management (send-an-email,
+ * they-set-their-own-password) is a SEPARATE backend surface
+ * (tenants/api/platform_router.py's /invitations + bulk-import routes) not
+ * wired up here yet.
  */
 const ViewCustomer = () => {
   const navigate = useNavigate();
@@ -83,6 +92,7 @@ const ViewCustomer = () => {
     { key: '1', label: 'Company Details', children: <CompanyProfilePanel tenantId={tenantId} /> },
     { key: '2', label: 'Locations', children: <LocationsPanel tenantId={tenantId} /> },
     { key: '3', label: 'Departments', children: <DepartmentsPanel tenantId={tenantId} /> },
+    { key: '8', label: 'Users', children: <UsersPanel tenantId={tenantId} /> },
     {
       key: '4',
       label: 'Feature Settings',
