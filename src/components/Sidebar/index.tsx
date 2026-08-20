@@ -57,6 +57,13 @@ const Sidebar: React.FC = () => {
   const userData = usersData?.items.find((u) => u.user_id === userId);
 
   const accessibleMenuItems = MenuItems.filter((item) => {
+    // No requiredAuthority by design — see menuItem.tsx's comment on this
+    // entry. Always visible to any authenticated session, matching the `/`
+    // route itself having no permission gate.
+    if (item.name === 'Dashboard') {
+      return true;
+    }
+
     if (item.name === 'Companies') {
       // COMPANY_VIEW ('tenant:read') is also a real permission a tenant's
       // own role can hold, for reading THEIR OWN tenant — so the permission
@@ -65,6 +72,14 @@ const Sidebar: React.FC = () => {
       // requires no tenant of their own, same principal-type guard
       // CustomerPage's own route already enforces.
       return !tenantId && useHasAccess(item.requiredAuthority);
+    }
+
+    if (item.name === 'Company') {
+      // Mirror image of "Companies" above: a platform caller's static
+      // permission set happens to include COMPANY_SETTINGS_VIEW too, but
+      // `/my-company` redirects anyone with no tenant of their own straight
+      // back to `/` — a dead link for them. Tenant-only.
+      return Boolean(tenantId) && useHasAccess(item.requiredAuthority);
     }
 
     // Role-gated, not Authorities-gated — see menuItem.tsx's comment on this

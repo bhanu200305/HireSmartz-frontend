@@ -185,13 +185,17 @@ export const Routes: RouteType[] = [
     name: 'ResetPassword',
     path: '/reset-password',
     component: ResetPasswordPage,
-    isPublic: true,
+    // isOpen, not isPublic: this is a token-based action link and must work
+    // regardless of whatever session happens to already be in the browser
+    // (see AcceptInvitation below for the full reasoning).
+    isOpen: true,
   },
   {
     name: 'VerifyEmail',
     path: '/verify-email',
     component: VerifyEmailPage,
-    isPublic: true,
+    // isOpen, not isPublic — same reasoning as ResetPassword above.
+    isOpen: true,
   },
   {
     name: 'SecuritySettings',
@@ -218,7 +222,14 @@ export const Routes: RouteType[] = [
     // place invite emails' link is built, and it always points here.
     path: '/invitations/:token/accept',
     component: AcceptInvitationPage,
-    isPublic: true,
+    // isOpen, not isPublic: PublicRoute redirects away whenever the browser
+    // holds ANY unexpired token, even one from an unrelated/stale session —
+    // e.g. the admin who just sent the invite opening it in their own
+    // logged-in tab. That bounced them to '/' (or, if that session turned out
+    // invalid server-side, all the way to /login) before the invite form ever
+    // rendered. An invite link must work no matter what session is sitting in
+    // the browser, so this gets no auth gate at all.
+    isOpen: true,
   },
   {
     name: 'userProfile',

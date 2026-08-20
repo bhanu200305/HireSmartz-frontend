@@ -28,16 +28,17 @@ import { HiOutlineSpeakerphone } from 'react-icons/hi';
 // Admin never holds their authority and never sees them.
 const MenuItems = [
   {
+    // DASHBOARD_VIEW is explicitly a frontend-only flag with no real backend
+    // permission behind it (see its own "No backend permission" comment in
+    // authorities.constant.ts) — the real GET /v1/roles/users/{id}/permissions
+    // call can never return it, so this never showed for any real login.
+    // The `/` route itself has no permission gate at all (HomePage shows a
+    // dashboard to anyone authenticated, platform or tenant), so the nav
+    // item shouldn't gate on one either — Sidebar special-cases this entry
+    // to always show, same treatment "Admin" already gets.
     name: 'Dashboard',
     icon: <MdOutlineDashboard size={18} />,
     path: '/',
-    requiredAuthority: Authorities.DASHBOARD_VIEW,
-  },
-  {
-    name: 'Companies',
-    icon: <MdApartment size={18} />,
-    path: ['/company', '/add-company', '/view-company', '/edit-company'],
-    requiredAuthority: Authorities.COMPANY_VIEW,
   },
   {
     // MY_COMPANY_VIEW used to gate this — a frontend-only flag the real
@@ -48,6 +49,12 @@ const MenuItems = [
     // MyCompanyPage's own RequirePermission gate already requires to render
     // the page this links to — using the same one here means the nav item
     // and the page it points at finally agree on who can see it.
+    //
+    // Tenant-only, same as the page it points to (`/my-company` redirects
+    // any caller with no tenant of their own straight back to `/`) — Sidebar
+    // additionally requires `tenantId` for this entry, since a platform
+    // caller's static permission set happens to include COMPANY_SETTINGS_VIEW
+    // too but has nowhere for this link to actually go.
     name: 'Company',
     icon: <MdApartment size={18} />,
     path: ['/my-company'],
@@ -58,6 +65,12 @@ const MenuItems = [
     icon: <FiSettings size={18} />,
     path: ['/company-settings'],
     requiredAuthority: Authorities.INDUSTRY_VIEW,
+  },
+  {
+    name: 'Companies',
+    icon: <MdApartment size={18} />,
+    path: ['/company', '/add-company', '/view-company', '/edit-company'],
+    requiredAuthority: Authorities.COMPANY_VIEW,
   },
   {
     name: 'Roles & Permissions',

@@ -5,7 +5,9 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
 import { BsArrowLeft } from 'react-icons/bs';
 import IndustriesTab from './IndustriesTab';
+import DepartmentsTab from './DepartmentsTab';
 import JobTitlesTab from './JobTitlesTab';
+import DepartmentSettingsTab from './DepartmentSettingsTab';
 import PlatformScoringDefaultsTab from './PlatformScoringDefaultsTab';
 import EmailTemplateConfigWrapper from './EmailTemplateConfigWrapper';
 import SmsTemplatesTab from './SmsTemplatesTab';
@@ -13,14 +15,15 @@ import NotificationTemplatesTab from './NotificationTemplatesTab';
 import { useGetFeatureFlagsQuery } from '../../api/authentication-service/FeatureFlags/index';
 
 /**
- * Super Admin's platform master-data hub. Industries/Job Titles/Scoring
- * Defaults are real (organization-service's `/v1/platform/...`). The old
- * "Departments"/"Department Settings" tabs are dropped, not just hidden —
- * they modeled a master-department-catalog-with-job-title-mapping feature
- * that has no endpoint anywhere in the contract and isn't planned (not the
- * same thing as CareerForcePro's own internal Sales/Support/Finance/Ops
- * departments, which live in the CFP Users section of the Users page
- * instead).
+ * Super Admin's platform master-data hub. Industries/Departments/Job Titles/
+ * Department Settings/Scoring Defaults are all real
+ * (organization-service's `/v1/platform/...`) — Departments and Department
+ * Settings (job-title<->department assignment) were previously removed on
+ * the mistaken belief that no backend endpoint existed for them; a real one
+ * does, `app/modules/masters/api/platform_router.py`'s `/master-departments`
+ * routes, confirmed and re-wired against it directly. Not the same thing as
+ * CareerForcePro's own internal Sales/Support/Finance/Ops departments, which
+ * live in the CFP Users section of the Users page instead.
  *
  * "Email Templates Config" and "SMS Templates" manage a DIFFERENT, unrelated
  * feature — candidate-facing recruiting email/SMS branding — left untouched
@@ -50,24 +53,34 @@ const CompanySettings: React.FC = () => {
       },
       {
         key: '2',
+        label: 'Departments',
+        children: <DepartmentsTab />,
+      },
+      {
+        key: '3',
         label: 'Job Titles',
         children: <JobTitlesTab />,
       },
       {
-        key: '3',
+        key: '4',
+        label: 'Department Settings',
+        children: <DepartmentSettingsTab />,
+      },
+      {
+        key: '5',
         label: 'Default Scoring Weights',
         children: <PlatformScoringDefaultsTab />,
       },
       ...(featureFlags?.emailTemplateConfig
-        ? [{ key: '5', label: 'Email Templates Config', children: <EmailTemplateConfigWrapper /> }]
+        ? [{ key: '6', label: 'Email Templates Config', children: <EmailTemplateConfigWrapper /> }]
         : []),
       {
-        key: '6',
+        key: '7',
         label: 'SMS Templates',
         children: <SmsTemplatesTab />,
       },
       {
-        key: '7',
+        key: '8',
         label: 'Notification Templates',
         children: <NotificationTemplatesTab />,
       },
