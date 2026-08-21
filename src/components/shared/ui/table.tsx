@@ -14,6 +14,14 @@ interface CustomTableProps<T> {
   onRow?: TableProps<T>['onRow'];
   /** Overrides AntD's default "No Data" empty state with a custom message/node. */
   emptyText?: ReactNode;
+  /**
+   * Off by default (`false`), same as every existing call site relied on
+   * before this prop existed — pass a config object to turn it on for a
+   * given table without changing anyone else's behavior. `paginationConfig`
+   * (below) is a ready-made "10/25/50/100 per page" config most call sites
+   * that want pagination can just pass straight through.
+   */
+  pagination?: TableProps<T>['pagination'];
 }
 
 const CustomTable = <T extends object>({
@@ -24,6 +32,7 @@ const CustomTable = <T extends object>({
   onChange,
   onRow,
   emptyText,
+  pagination = false,
 }: CustomTableProps<T>) => {
   return (
     <div className="customTable">
@@ -34,7 +43,7 @@ const CustomTable = <T extends object>({
         expandable={expandable}
         dataSource={dataSource}
         bordered={false}
-        pagination={false}
+        pagination={pagination}
         rowClassName={rowClassName}
         onChange={onChange}
         onRow={onRow}

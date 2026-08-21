@@ -60,7 +60,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
         disabled={isSubmitting}
         className="text-sm font-semibold text-white bg-primary-600 rounded-full px-5 py-2 disabled:opacity-60 cursor-pointer"
       >
-        {isSubmitting ? 'Creating…' : '✓ Create Role'}
+        {isSubmitting ? 'Creating…' : '✓ Custom Role'}
       </button>
     </div>
   </div>

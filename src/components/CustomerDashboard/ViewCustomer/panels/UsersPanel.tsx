@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
-import { MdOutlineAdd, MdPersonOff, MdRestore } from 'react-icons/md';
-import { Button, Input, Select, Typography, showToast } from '../../../shared';
+import React, { useMemo, useState } from 'react';
+import type { TableProps } from 'antd';
+import { MdOutlineAdd, MdPersonOff, MdRestore, MdSearch } from 'react-icons/md';
+import {
+  Badge,
+  Button,
+  CustomTable,
+  Input,
+  Select,
+  Typography,
+  paginationConfig,
+  showToast,
+} from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
-import { Badge } from '../../../shared/ui/badge';
 import ConfirmationModal from '../../../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import {
@@ -15,6 +24,8 @@ import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organizat
 import { useRolesCatalog } from '../../../../hooks/useRolesCatalog';
 import type { OrgUser } from '../../../../api/organization-service/Users/users';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
+
+type UserRow = OrgUser & { key: string };
 
 type FormState = {
   email: string;
@@ -50,6 +61,9 @@ const emptyForm: FormState = {
  * doesn't create an invite. That gap is already tracked as a backend fix
  * (see AddOrganisationUser's identical caveat, tenant-side) — nothing about
  * this panel makes it worse, but nothing here works around it either.
+ *
+ * Table + search/sort/filter/pagination matches CompanySettings' master-data
+ * tabs instead of the plain divided list this used to be.
  */
 const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [includeInactive, setIncludeInactive] = useState<'active' | 'all'>('active');
@@ -67,12 +81,29 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
+  const [searchText, setSearchText] = useState('');
 
   const field = (key: keyof FormState) => ({
     value: form[key] || '',
     onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value })),
   });
+
+  const departmentName = (id: string | null) =>
+    departments?.find((d) => d.org_department_id === id)?.name || '-';
+
+  const users = data?.items ?? [];
+
+  const filteredUsers = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (user) =>
+        user.full_name.toLowerCase().includes(q) ||
+        user.email.toLowerCase().includes(q) ||
+        (user.title ?? '').toLowerCase().includes(q)
+    );
+  }, [users, searchText]);
 
   const handleAdd = async () => {
     if (!form.email.trim() || !form.first_name.trim()) {
@@ -123,27 +154,115 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
   };
 
-  const users = data?.items ?? [];
-
   if (isLoading) return <Loader />;
+
+  const columns: TableProps<UserRow>['columns'] = [
+    {
+      title: 'Name',
+      key: 'full_name',
+      sorter: (a: UserRow, b: UserRow) => a.full_name.localeCompare(b.full_name),
+      render: (_: unknown, user: UserRow) => (
+        <div>
+          <div className="font-semibold text-gray-900">{user.full_name}</div>
+          <div className="text-xs text-gray-400">{user.email}</div>
+        </div>
+      ),
+    },
+    {
+      title: 'Title',
+      dataIndex: 'title',
+      key: 'title',
+      sorter: (a: UserRow, b: UserRow) => (a.title ?? '').localeCompare(b.title ?? ''),
+      render: (_: unknown, user: UserRow) => (
+        <span className="text-gray-600 text-sm">{user.title || '—'}</span>
+      ),
+    },
+    {
+      title: 'Department',
+      key: 'department',
+      sorter: (a: UserRow, b: UserRow) =>
+        departmentName(a.department_id).localeCompare(departmentName(b.department_id)),
+      render: (_: unknown, user: UserRow) =>
+        user.department_id ? (
+          <Badge status="neutral" dot={false}>
+            {departmentName(user.department_id)}
+          </Badge>
+        ) : (
+          <span className="text-gray-300 text-sm">Unassigned</span>
+        ),
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      sorter: (a: UserRow, b: UserRow) => Number(a.is_active) - Number(b.is_active),
+      render: (_: unknown, user: UserRow) => (
+        <Badge status={user.is_active ? 'success' : 'neutral'}>
+          {user.is_active ? 'Active' : 'Deactivated'}
+        </Badge>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 80,
+      render: (_: unknown, user: UserRow) =>
+        user.is_active ? (
+          <button
+            type="button"
+            aria-label="Deactivate user"
+            className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+            onClick={() => setUserToDeactivate(user)}
+          >
+            <MdPersonOff className="text-red-500" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label="Reactivate user"
+            className="p-2 hover:bg-green-50 rounded-full cursor-pointer transition-colors disabled:opacity-50"
+            disabled={isReactivating}
+            onClick={() => handleReactivate(user)}
+          >
+            <MdRestore className="text-green-600" />
+          </button>
+        ),
+    },
+  ];
+
+  const dataSource: UserRow[] = filteredUsers.map((user) => ({ ...user, key: user.user_id }));
 
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <Typography variant="h5">Users</Typography>
+        <div>
+          <Typography variant="body2">This company&apos;s team members.</Typography>
+          <span className="text-xs font-medium text-gray-400">
+            {dataSource.length} {dataSource.length === 1 ? 'user' : 'users'}
+            {searchText.trim() && ` of ${users.length}`}
+          </span>
+        </div>
         <div className="flex items-center gap-3">
-          <Select
-            appname="cfp"
-            value={includeInactive}
-            onChange={(value) => setIncludeInactive(value as 'active' | 'all')}
-            className="w-40"
-            options={[
-              { label: 'Active only', value: 'active' },
-              { label: 'Include deactivated', value: 'all' },
-            ]}
-          />
+          <div className="w-52">
+            <Input
+              prefix={<MdSearch className="text-gray-400" />}
+              placeholder="Search users..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+          </div>
+          <div className="w-44">
+            <Select
+              appname="cfp"
+              value={includeInactive}
+              onChange={(value) => setIncludeInactive(value as 'active' | 'all')}
+              options={[
+                { label: 'Active only', value: 'active' },
+                { label: 'Include deactivated', value: 'all' },
+              ]}
+            />
+          </div>
           <Button
-            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1"
+            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
             onClick={() => setIsAddOpen(true)}
           >
             <MdOutlineAdd /> Add user
@@ -151,47 +270,14 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         </div>
       </div>
 
-      {!users.length ? (
-        <div className="p-6 text-gray-500 text-center border border-dashed rounded-xl">
-          No users yet.
-        </div>
-      ) : (
-        <div className="divide-y border rounded-xl overflow-hidden">
-          {users.map((user) => (
-            <div key={user.user_id} className="flex items-center justify-between p-4 gap-3">
-              <div>
-                <Typography variant="body1">{user.full_name}</Typography>
-                <Typography variant="caption">{user.email}</Typography>
-              </div>
-              <div className="flex items-center gap-3">
-                <Badge status={user.is_active ? 'success' : 'neutral'}>
-                  {user.is_active ? 'Active' : 'Deactivated'}
-                </Badge>
-                {user.is_active ? (
-                  <button
-                    type="button"
-                    aria-label="Deactivate user"
-                    className="p-2 hover:bg-gray-100 rounded-full"
-                    onClick={() => setUserToDeactivate(user)}
-                  >
-                    <MdPersonOff className="text-red-500" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    aria-label="Reactivate user"
-                    className="p-2 hover:bg-gray-100 rounded-full disabled:opacity-50"
-                    disabled={isReactivating}
-                    onClick={() => handleReactivate(user)}
-                  >
-                    <MdRestore className="text-green-600" />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
+        <CustomTable<UserRow>
+          columns={columns}
+          dataSource={dataSource}
+          emptyText={searchText.trim() ? 'No users match your search.' : 'No users yet.'}
+          pagination={paginationConfig('users')}
+        />
+      </div>
 
       <AntdCommonModal open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add user">
         <div className="flex flex-col gap-4">

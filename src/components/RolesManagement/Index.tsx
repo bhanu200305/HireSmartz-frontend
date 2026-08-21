@@ -75,6 +75,9 @@ const RolesManagement: React.FC = () => {
     [offices]
   );
 
+  const systemRoles = useMemo(() => roles.filter((role) => role.isSystemRole), [roles]);
+  const customRoles = useMemo(() => roles.filter((role) => !role.isSystemRole), [roles]);
+
   const canCreate = effectivePermissions.includes(Authorities.ROLE_CREATE);
   const canEdit = effectivePermissions.includes(Authorities.ROLE_EDIT);
   const canDelete = effectivePermissions.includes(Authorities.ROLE_DELETE);
@@ -125,7 +128,7 @@ const RolesManagement: React.FC = () => {
               disabled={!canCreate || awaitingCompanySelection}
               className="flex items-center gap-1.5 text-sm font-semibold text-white bg-primary-600 rounded-full px-5 py-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
-              <FaPlus size={11} /> Create Role
+              <FaPlus size={11} /> Custom Role
             </button>
           </div>
         </div>
@@ -151,13 +154,57 @@ const RolesManagement: React.FC = () => {
             </p>
           </div>
         ) : (
-          <RoleTable
-            roles={roles}
-            canEdit={canEdit}
-            canDelete={canDelete}
-            onEdit={setRoleBeingEdited}
-            onDelete={setRoleBeingDeleted}
-          />
+          <div className="flex flex-col gap-6">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                System Roles
+                <span className="ml-2 text-xs font-normal text-gray-400">
+                  {systemRoles.length} built-in, non-editable
+                </span>
+              </h3>
+              {systemRoles.length > 0 ? (
+                <RoleTable
+                  roles={systemRoles}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  onEdit={setRoleBeingEdited}
+                  onDelete={setRoleBeingDeleted}
+                  hideTypeColumn
+                />
+              ) : (
+                <div className="py-8 flex items-center justify-center text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                  <p className="text-sm text-gray-500">No system roles for this scope.</p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                Custom Roles
+                <span className="ml-2 text-xs font-normal text-gray-400">
+                  {customRoles.length} created for this scope
+                </span>
+              </h3>
+              {customRoles.length > 0 ? (
+                <RoleTable
+                  roles={customRoles}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  onEdit={setRoleBeingEdited}
+                  onDelete={setRoleBeingDeleted}
+                  hideTypeColumn
+                  roleColumnLabel="Designation"
+                  showBaseRole
+                />
+              ) : (
+                <div className="py-8 flex items-center justify-center text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                  <p className="text-sm text-gray-500">
+                    No custom roles yet — create one with the button above.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
 

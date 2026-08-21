@@ -1,7 +1,33 @@
 import React, { useMemo } from 'react';
 import { CustomCheckbox } from './checkbox';
+import InfoHint from './InfoHint';
 import { Authorities, PermissionModule } from '../../../constants/authorities.constant';
 import { groupCatalogByModule } from '../../../shared/utils/auth/rbac.helpers';
+
+/** One short sentence per module — hover text for the ⓘ next to each module
+ * heading below. Covers every PermissionModule that can actually appear here
+ * (PERMISSION_CATALOG only — see that constant's own module docstring for
+ * why Dashboard/Job Configuration/Activity/My Company/Subscriptions are
+ * excluded and so have no entry here). */
+const MODULE_DESCRIPTIONS: Partial<Record<PermissionModule, string>> = {
+  Company: 'Manage client companies on the platform — add, edit, approve, and archive tenants.',
+  'Company Settings': "View and update this company's own profile and configuration.",
+  'CFP Users': "Manage CareerForce Pro's internal staff accounts.",
+  'Organization Users': "Manage a company's own team members.",
+  'Departments & Locations': 'Manage departments and office locations.',
+  'Team & Invitations': 'Send, update, and revoke invitations to join the team.',
+  'Platform Administration':
+    'Manage platform-wide staff, internal departments, and Super Admin invitations.',
+  Masters: 'Manage shared catalogs like industries, job titles, and master departments.',
+  'Interview Questions': 'Manage the question bank used during candidate interviews.',
+  'Email Templates': 'Manage templates for emails sent to candidates and staff.',
+  Candidates: 'Manage candidate records and their hiring pipeline.',
+  Billing: 'View and manage billing records and invoices.',
+  Reports: 'View and manage generated reports.',
+  'Auth & Sessions': 'Manage login credentials and active sessions.',
+  'Job Openings': 'Create, edit, close, and manage job openings.',
+  'Roles & Permissions': 'Create and manage roles and what each one is allowed to do.',
+};
 
 type PermissionMatrixProps = {
   /** Currently checked permission codes. */
@@ -69,7 +95,12 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
         return (
           <div key={moduleName} className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-200">
-              <span className="text-sm font-semibold text-gray-700">{moduleName}</span>
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+                {moduleName}
+                {MODULE_DESCRIPTIONS[moduleName] && (
+                  <InfoHint content={MODULE_DESCRIPTIONS[moduleName] as string} />
+                )}
+              </span>
               {!disabled && (
                 <CustomCheckbox
                   label="Select all"

@@ -127,7 +127,7 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
           Step {step} of {TOTAL_STEPS}
         </div>
         <h2 className="font-display text-base font-bold">
-          {step === 1 ? 'Create Role' : `Permissions for "${roleName.trim() || 'Untitled Role'}"`}
+          {step === 1 ? 'Custom Role' : `Permissions for "${roleName.trim() || 'Untitled Role'}"`}
         </h2>
         <div className="flex items-center gap-1.5 mt-2">
           {Array.from({ length: TOTAL_STEPS }).map((_, index) => (

@@ -21,7 +21,7 @@ import { HiOutlineSpeakerphone } from 'react-icons/hi';
 // FINANCES_VIEW, SUBSCRIPTIONS_VIEW and PLATFORM_VIEW, but neither
 // MY_COMPANY_VIEW, JOB_OPENING_VIEW nor ACTIVITY_FEED — filtering this list
 // down to what they can see yields, in order: Dashboard, Companies, Company
-// Settings, Roles & Permissions, Users, Admin, Finances, Subscriptions,
+// Settings, Roles & Permissions, CFP Users, Admin, Finances, Subscriptions,
 // Platform Metrics, Audit Log, Book a Demo Leads. The tenant-only entries
 // interleaved here (Company/my-company, Job Openings, Activity Feed) sit
 // wherever's natural for a tenant caller's own nav, since a Master Super
@@ -82,7 +82,7 @@ const MenuItems = [
     // CFP Users (CareerForcePro's own internal team) lives as a section on
     // this same page now, not a separate nav entry — see
     // pages/OrganisationUserPage and components/CfpUsers.
-    name: 'Users',
+    name: 'CFP Users',
     icon: <LuUsersRound size={18} />,
     path: [
       '/organisation-users',

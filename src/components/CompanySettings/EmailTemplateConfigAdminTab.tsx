@@ -59,23 +59,55 @@ const DEFAULT_THEME: ThemeColors = {
 
 const BUTTON_BORDER_RADIUS = '6px';
 
-const COLOR_FIELDS: Array<{ key: keyof ThemeColors; label: string }> = [
-  { key: 'primaryColor', label: 'Primary Color' },
-  { key: 'secondaryColor', label: 'Secondary Color' },
-  { key: 'textColor', label: 'Text Color' },
-  { key: 'titleColor', label: 'Title Color' },
-  { key: 'highlightText', label: 'Highlight Text' },
-  { key: 'greetingColor', label: 'Greeting Color' },
-  { key: 'buttonText', label: 'Button Text' },
-  { key: 'actionButtonText', label: 'Action Button Text' },
-  { key: 'buttonBackground', label: 'Button Background' },
-  { key: 'buttonBorderColor', label: 'Button Border Color' },
-  { key: 'actionButtonBackground', label: 'Action Button Background' },
-  { key: 'actionButtonBorderColor', label: 'Action Button Border Color' },
-  { key: 'footerText', label: 'Footer Text' },
-  { key: 'footerBackground', label: 'Footer Background' },
-  { key: 'backgroundColor', label: 'Background Color' },
-  { key: 'highlightBackground', label: 'Highlight Background' },
+// Grouped by where each color actually shows up in the rendered email (see
+// buildFullHTML below) rather than one flat 16-item grid — a Super Admin
+// tuning "just the button colors" shouldn't have to scan past text and
+// footer fields to find them.
+const COLOR_FIELD_GROUPS: Array<{
+  title: string;
+  description: string;
+  fields: Array<{ key: keyof ThemeColors; label: string }>;
+}> = [
+  {
+    title: 'Page & Layout',
+    description: 'The banner strip, section dividers, and overall email background.',
+    fields: [
+      { key: 'primaryColor', label: 'Primary Color' },
+      { key: 'backgroundColor', label: 'Background Color' },
+      { key: 'secondaryColor', label: 'Secondary Color' },
+    ],
+  },
+  {
+    title: 'Text',
+    description: 'Greeting, headings, body copy, and highlighted callouts.',
+    fields: [
+      { key: 'titleColor', label: 'Title Color' },
+      { key: 'greetingColor', label: 'Greeting Color' },
+      { key: 'textColor', label: 'Text Color' },
+      { key: 'highlightText', label: 'Highlight Text' },
+    ],
+  },
+  {
+    title: 'Buttons',
+    description: 'The primary action button and the secondary button beside it.',
+    fields: [
+      { key: 'actionButtonBackground', label: 'Action Button Background' },
+      { key: 'actionButtonText', label: 'Action Button Text' },
+      { key: 'actionButtonBorderColor', label: 'Action Button Border Color' },
+      { key: 'buttonBackground', label: 'Button Background' },
+      { key: 'buttonText', label: 'Button Text' },
+      { key: 'buttonBorderColor', label: 'Button Border Color' },
+    ],
+  },
+  {
+    title: 'Footer & Highlights',
+    description: 'The footer bar and the reminder box (e.g. "schedule within 48 hours").',
+    fields: [
+      { key: 'footerBackground', label: 'Footer Background' },
+      { key: 'footerText', label: 'Footer Text' },
+      { key: 'highlightBackground', label: 'Highlight Background' },
+    ],
+  },
 ];
 
 const EMAIL_BODY_TEMPLATE = `
@@ -536,7 +568,7 @@ const EmailTemplateConfigAdminTab: React.FC = () => {
             {/* Two-column layout */}
             <div className="flex gap-6 items-start">
               {/* ── Left panel ─────────────────────────────────────────── */}
-              <div className="flex-1 min-w-0 border border-gray-200 rounded-2xl p-6 bg-white">
+              <div className="flex-1 min-w-0 border border-neutral-200 rounded-2xl p-6 bg-white shadow-sm">
                 {/* Banner Image */}
                 <section className="mb-8">
                   <h3 className="heading-font text-base font-semibold text-gray-800 mb-1">
@@ -595,18 +627,30 @@ const EmailTemplateConfigAdminTab: React.FC = () => {
                   <h3 className="heading-font text-base font-semibold text-gray-800 mb-1">
                     Brand Color
                   </h3>
-                  <p className="text-sm text-gray-500 mb-4 roboto-font">
+                  <p className="text-sm text-gray-500 mb-5 roboto-font">
                     Define the colors for Email Template. These colors will be used throughout your
                     email templates for buttons, headings, text and other design elements.
                   </p>
-                  <div className="grid grid-cols-3 gap-x-4 gap-y-5">
-                    {COLOR_FIELDS.map(({ key, label }) => (
-                      <ColorField
-                        key={key}
-                        label={label}
-                        value={theme[key]}
-                        onChange={(val) => handleColorChange(key, val)}
-                      />
+                  <div className="flex flex-col gap-6">
+                    {COLOR_FIELD_GROUPS.map((group) => (
+                      <div key={group.title}>
+                        <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-0.5 roboto-font">
+                          {group.title}
+                        </h4>
+                        <p className="text-xs text-gray-400 mb-3 roboto-font">
+                          {group.description}
+                        </p>
+                        <div className="grid grid-cols-3 gap-x-4 gap-y-5">
+                          {group.fields.map(({ key, label }) => (
+                            <ColorField
+                              key={key}
+                              label={label}
+                              value={theme[key]}
+                              onChange={(val) => handleColorChange(key, val)}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </section>

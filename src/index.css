@@ -372,6 +372,25 @@ select:focus {
   cursor: not-allowed;
 }
 
+/* Company Settings' "Default Scoring Weights" company picker — its dropdown
+   options were rendering with a heavy near-black hover/selected fill
+   instead of a light brand tint, so this pins both states explicitly
+   rather than relying on whatever token was producing that. */
+.scoringCompanySelectDropdown .ant-select-item-option-active:not(
+    .ant-select-item-option-disabled
+  ) {
+  background-color: var(--color-primary-50) !important;
+  color: var(--color-neutral-900) !important;
+}
+
+.scoringCompanySelectDropdown .ant-select-item-option-selected:not(
+    .ant-select-item-option-disabled
+  ) {
+  background-color: var(--color-primary-100) !important;
+  color: var(--color-primary-700) !important;
+  font-weight: 600 !important;
+}
+
 /* LiveKit floating participant labels */
 .lk-participant-name,
 .lk-participant-metadata,

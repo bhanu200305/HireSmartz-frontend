@@ -1,6 +1,16 @@
-import React, { useState } from 'react';
-import { MdDelete, MdOutlineAdd } from 'react-icons/md';
-import { Button, Input, Select, Typography, showToast } from '../../../shared';
+import React, { useMemo, useState } from 'react';
+import type { TableProps } from 'antd';
+import { MdDelete, MdOutlineAdd, MdSearch } from 'react-icons/md';
+import {
+  Badge,
+  Button,
+  CustomTable,
+  Input,
+  Select,
+  Typography,
+  paginationConfig,
+  showToast,
+} from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import ConfirmationModal from '../../../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
@@ -13,10 +23,15 @@ import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-
 import type { TenantDepartment } from '../../../../api/organization-service/Tenants/departments';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
 
+type DepartmentRow = TenantDepartment & { key: string };
+
 /**
  * Super Admin's mirror of MyCompany/DepartmentsTab.tsx — same add/delete
  * surface (no update endpoint exists tenant-side either), platform-mounted
  * routes instead of the tenant's own ambient-context ones.
+ *
+ * Table + search/sort/filter/pagination matches CompanySettings' master-data
+ * tabs instead of the plain divided list this used to be.
  */
 const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: departments, isLoading } = useListPlatformTenantDepartmentsQuery(tenantId);
@@ -28,8 +43,19 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [name, setName] = useState('');
   const [officeId, setOfficeId] = useState<string | undefined>(undefined);
   const [departmentToDelete, setDepartmentToDelete] = useState<TenantDepartment | null>(null);
+  const [searchText, setSearchText] = useState('');
 
   const officeName = (id: string | null) => offices?.find((o) => o.office_id === id)?.city || '-';
+
+  const filteredDepartments = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return departments ?? [];
+    return (departments ?? []).filter(
+      (department) =>
+        department.name.toLowerCase().includes(q) ||
+        officeName(department.office_id).toLowerCase().includes(q)
+    );
+  }, [departments, searchText, offices]);
 
   const handleAdd = async () => {
     if (!name.trim()) {
@@ -67,42 +93,90 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
   if (isLoading) return <Loader />;
 
+  const columns: TableProps<DepartmentRow>['columns'] = [
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a: DepartmentRow, b: DepartmentRow) => a.name.localeCompare(b.name),
+      render: (_: unknown, department: DepartmentRow) => (
+        <span className="font-semibold text-gray-900">{department.name}</span>
+      ),
+    },
+    {
+      title: 'Office',
+      key: 'office',
+      sorter: (a: DepartmentRow, b: DepartmentRow) =>
+        officeName(a.office_id).localeCompare(officeName(b.office_id)),
+      render: (_: unknown, department: DepartmentRow) =>
+        department.office_id ? (
+          <Badge status="neutral" dot={false}>
+            {officeName(department.office_id)}
+          </Badge>
+        ) : (
+          <span className="text-gray-300 text-sm">Unassigned</span>
+        ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 80,
+      render: (_: unknown, department: DepartmentRow) => (
+        <button
+          type="button"
+          aria-label="Delete department"
+          className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+          onClick={() => setDepartmentToDelete(department)}
+        >
+          <MdDelete className="text-red-500" />
+        </button>
+      ),
+    },
+  ];
+
+  const dataSource: DepartmentRow[] = filteredDepartments.map((department) => ({
+    ...department,
+    key: department.org_department_id,
+  }));
+
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <Typography variant="h5">Departments</Typography>
-        <Button
-          className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1"
-          onClick={() => setIsAddOpen(true)}
-        >
-          <MdOutlineAdd /> Add department
-        </Button>
+      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+        <div>
+          <Typography variant="body2">This company&apos;s functional departments.</Typography>
+          <span className="text-xs font-medium text-gray-400">
+            {dataSource.length} {dataSource.length === 1 ? 'department' : 'departments'}
+            {searchText.trim() && ` of ${departments?.length ?? 0}`}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-52">
+            <Input
+              prefix={<MdSearch className="text-gray-400" />}
+              placeholder="Search departments..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+          </div>
+          <Button
+            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+            onClick={() => setIsAddOpen(true)}
+          >
+            <MdOutlineAdd /> Add department
+          </Button>
+        </div>
       </div>
 
-      {!departments?.length ? (
-        <div className="p-6 text-gray-500 text-center border border-dashed rounded-xl">
-          No departments yet.
-        </div>
-      ) : (
-        <div className="divide-y border rounded-xl overflow-hidden">
-          {departments.map((dept) => (
-            <div key={dept.org_department_id} className="flex items-center justify-between p-4">
-              <div>
-                <Typography variant="body1">{dept.name}</Typography>
-                <Typography variant="caption">Office: {officeName(dept.office_id)}</Typography>
-              </div>
-              <button
-                type="button"
-                aria-label="Delete department"
-                className="p-2 hover:bg-gray-100 rounded-full"
-                onClick={() => setDepartmentToDelete(dept)}
-              >
-                <MdDelete className="text-red-500" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
+        <CustomTable<DepartmentRow>
+          columns={columns}
+          dataSource={dataSource}
+          emptyText={
+            searchText.trim() ? 'No departments match your search.' : 'No departments yet.'
+          }
+          pagination={paginationConfig('departments')}
+        />
+      </div>
 
       <AntdCommonModal open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add department">
         <div className="flex flex-col gap-4">

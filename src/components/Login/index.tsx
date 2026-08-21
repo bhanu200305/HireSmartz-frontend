@@ -75,9 +75,18 @@ const Login = () => {
   const [resendVerification, { isLoading: isResendingVerification }] =
     useResendVerificationMutation();
 
+  // StrictMode (dev only) double-invokes this mount effect within the same
+  // render, before the replace-navigate below has a chance to clear
+  // location.state — so both passes see the same successMessage and, without
+  // this guard, two toasts fire for one logout. Same pattern as LogOutPage's
+  // hasStartedLogoutRef.
+  const hasShownSuccessToastRef = useRef(false);
+
   useEffect(() => {
+    if (hasShownSuccessToastRef.current) return;
     const successMessage = (location.state as { successMessage?: string } | null)?.successMessage;
     if (successMessage) {
+      hasShownSuccessToastRef.current = true;
       showToast({ message: successMessage, type: 'success' });
       // Clear the state so the toast doesn't re-appear on refresh
       navigate(location.pathname, { replace: true, state: {} });
@@ -547,95 +556,90 @@ const Login = () => {
               onVerified={(tokens) => void completeRealLogin(tokens, email.trim())}
             />
           ) : (
-                <form
-                  onSubmit={handleSubmit}
-                  className="login-tab-fade flex flex-col gap-4"
-                >
-                  <div className="text-center">
-                    <h2 className="text-xl font-semibold text-gray-900">Welcome back</h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Log in to continue to careerforce pro
-                    </p>
-                  </div>
+            <form onSubmit={handleSubmit} className="login-tab-fade flex flex-col gap-4">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-900">Welcome back</h2>
+                <p className="mt-1 text-sm text-gray-500">Log in to continue to careerforce pro</p>
+              </div>
 
-                  <Input
-                    name="email"
-                    autoFocus
-                    autoComplete="email"
-                    error={errors.email}
-                    value={email}
-                    onChange={onHandleChange}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Email"
-                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-                  />
+              <Input
+                name="email"
+                autoFocus
+                autoComplete="email"
+                error={errors.email}
+                value={email}
+                onChange={onHandleChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Email"
+                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+              />
 
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    onChange={onHandleChange}
-                    onKeyDown={handleKeyDown}
-                    name="password"
-                    autoComplete="current-password"
-                    value={password}
-                    placeholder="Password"
-                    error={errors.password}
-                    className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-                    suffix={
-                      <button
-                        type="button"
-                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                        onClick={() => setLocalState({ showPassword: !showPassword })}
-                      >
-                        {showPassword ? <FaEye /> : <FaEyeSlash />}
-                      </button>
-                    }
-                  />
-
-                  <div className="-mt-1 flex items-center justify-between">
-                    <Checkbox
-                      checked={rememberMe}
-                      onChange={(e) => setLocalState({ rememberMe: e.target.checked })}
-                      className="custom-checkbox"
-                    >
-                      Remember me
-                    </Checkbox>
-                    <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                      Forgot password?
-                    </Link>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    appname="test"
-                    disabled={!isFormValid || isLoading || isSubmitting.current}
-                    className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white transition-all duration-150 hover:brightness-105 hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                onChange={onHandleChange}
+                onKeyDown={handleKeyDown}
+                name="password"
+                autoComplete="current-password"
+                value={password}
+                placeholder="Password"
+                error={errors.password}
+                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
+                suffix={
+                  <button
+                    type="button"
+                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                    onClick={() => setLocalState({ showPassword: !showPassword })}
                   >
-                    {isLoading ? 'Logging in…' : 'Log in'}
-                  </Button>
+                    {showPassword ? <FaEye /> : <FaEyeSlash />}
+                  </button>
+                }
+              />
 
-                  {isDevAuthBypassEnabled() && (
-                    <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-400">
-                      Demo access:{' '}
-                      <span className="font-mono text-gray-500">
-                        {DEV_SEED_CREDENTIALS.email} / {DEV_SEED_CREDENTIALS.password}
-                      </span>
-                    </p>
-                  )}
+              <div className="-mt-1 flex items-center justify-between">
+                <Checkbox
+                  checked={rememberMe}
+                  onChange={(e) => setLocalState({ rememberMe: e.target.checked })}
+                  className="custom-checkbox"
+                >
+                  Remember me
+                </Checkbox>
+                <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
 
-                  {unverifiedEmail && (
-                    <p className="rounded-xl bg-amber-50 px-3 py-2 text-center text-xs text-amber-700">
-                      That email address hasn&apos;t been verified yet.{' '}
-                      <button
-                        type="button"
-                        onClick={handleResendVerification}
-                        disabled={isResendingVerification}
-                        className="font-medium underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isResendingVerification ? 'Sending…' : 'Resend verification email'}
-                      </button>
-                    </p>
-                  )}
-                </form>
+              <Button
+                type="submit"
+                appname="test"
+                disabled={!isFormValid || isLoading || isSubmitting.current}
+                className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white transition-all duration-150 hover:brightness-105 hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
+              >
+                {isLoading ? 'Logging in…' : 'Log in'}
+              </Button>
+
+              {isDevAuthBypassEnabled() && (
+                <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-400">
+                  Demo access:{' '}
+                  <span className="font-mono text-gray-500">
+                    {DEV_SEED_CREDENTIALS.email} / {DEV_SEED_CREDENTIALS.password}
+                  </span>
+                </p>
+              )}
+
+              {unverifiedEmail && (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-center text-xs text-amber-700">
+                  That email address hasn&apos;t been verified yet.{' '}
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={isResendingVerification}
+                    className="font-medium underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isResendingVerification ? 'Sending…' : 'Resend verification email'}
+                  </button>
+                </p>
+              )}
+            </form>
           )}
         </div>
         <Footer className="relative z-10 mt-8 shrink-0 text-white/70" />
