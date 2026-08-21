@@ -196,6 +196,9 @@ export enum Authorities {
   MY_COMPANY_VIEW = 'my_company:view',
   /** No dedicated backend resource yet — kept as a placeholder tab flag. */
   SUBSCRIPTIONS_VIEW = 'subscriptions:view',
+  /** No dedicated backend resource yet — kept as a placeholder tab flag,
+   * same treatment as SUBSCRIPTIONS_VIEW immediately above. */
+  FINANCES_VIEW = 'finances:view',
 
   // Roles & Permissions management itself is a permission — so access to the
   // feature that grants access is gated the same way as everything else.
@@ -619,6 +622,7 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
           Authorities.ACTIVITY_FEED,
           Authorities.MY_COMPANY_VIEW,
           Authorities.SUBSCRIPTIONS_VIEW,
+          Authorities.FINANCES_VIEW,
         ].includes(code)
     ),
     // Real backend name: cfp_admin. Verbatim from the live database.

@@ -12,6 +12,8 @@ import {
 } from '../../api/organization-service/Tenants/departments';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 /**
  * §C — GET/POST/DELETE /v1/tenants/{tenant_id}/departments. Delete needs a
@@ -24,6 +26,8 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: offices } = useListTenantOfficesQuery({ tenantId });
   const [addDepartment, { isLoading: isAdding }] = useAddTenantDepartmentMutation();
   const [deleteDepartment] = useDeleteTenantDepartmentMutation();
+  const canAdd = useHasAccess(Authorities.DEPARTMENT_ADD);
+  const canDelete = useHasAccess(Authorities.DEPARTMENT_DELETE);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [name, setName] = useState('');
@@ -72,12 +76,14 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <Typography variant="h5">Departments</Typography>
-        <Button
-          className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1"
-          onClick={() => setIsAddOpen(true)}
-        >
-          <MdOutlineAdd /> Add department
-        </Button>
+        {canAdd && (
+          <Button
+            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1"
+            onClick={() => setIsAddOpen(true)}
+          >
+            <MdOutlineAdd /> Add department
+          </Button>
+        )}
       </div>
 
       {!departments?.length ? (
@@ -92,14 +98,16 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 <Typography variant="body1">{dept.name}</Typography>
                 <Typography variant="caption">Office: {officeName(dept.office_id)}</Typography>
               </div>
-              <button
-                type="button"
-                aria-label="Delete department"
-                className="p-2 hover:bg-gray-100 rounded-full"
-                onClick={() => setDepartmentToDelete(dept)}
-              >
-                <MdDelete className="text-red-500" />
-              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  aria-label="Delete department"
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                  onClick={() => setDepartmentToDelete(dept)}
+                >
+                  <MdDelete className="text-red-500" />
+                </button>
+              )}
             </div>
           ))}
         </div>

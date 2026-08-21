@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../redux/provider/store';
 import { setActiveLocation } from '../redux/slices/loginSlice';
@@ -47,6 +47,17 @@ const useActiveLocation = () => {
       name: location.label,
     }));
   }, [roleLocations, dashboard]);
+
+  // No "all locations" union option — a multi-location user is always
+  // viewing exactly one specific location's permissions, never a combined
+  // view (the union tends to look identical to whichever location holds the
+  // most, which reads as "nothing changed" when switching). Default to the
+  // first one as soon as the list loads, rather than leaving it unset.
+  useEffect(() => {
+    if (activeLocationId == null && accessibleLocations.length > 0) {
+      dispatch(setActiveLocation(accessibleLocations[0].id));
+    }
+  }, [activeLocationId, accessibleLocations, dispatch]);
 
   return {
     activeLocationId: activeLocationId ?? null,

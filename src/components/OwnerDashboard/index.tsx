@@ -25,6 +25,8 @@ import { StatusFilters } from '../shared/ui/tableHeadbar';
 import ActivityFeed from '../Dashboard/ActivityFeed';
 import { TeamOutlined, UserOutlined, AuditOutlined, SolutionOutlined } from '@ant-design/icons';
 import { LuSquareActivity } from 'react-icons/lu';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 const OwnerDashboard = () => {
   const navigate = useNavigate();
@@ -182,8 +184,14 @@ const OwnerDashboard = () => {
     }
   }, [role, status, recruiterRoleId, hiringManagerRoleId]);
 
-  const canViewOrgStats = role.name === 'Super Admin' || role.name === 'Admin';
-  const canViewActivity = role.name !== 'User';
+  // Location-resolved via useEffectivePermissions — a widget backed by a
+  // permission this user doesn't hold at their active location disappears
+  // on switch, rather than every widget always showing regardless of role
+  // or location the way the old role.name checks did.
+  const canViewOrgStats = useHasAccess(Authorities.USER_VIEW);
+  const canViewActivity = useHasAccess(Authorities.ACTIVITY_FEED);
+  const canViewJobOpenings = useHasAccess(Authorities.JOB_OPENING_VIEW);
+  const canViewInterviews = useHasAccess(Authorities.CANDIDATE_VIEW);
 
   const greeting = (() => {
     const hour = new Date().getHours();
@@ -245,42 +253,50 @@ const OwnerDashboard = () => {
           },
         ]
       : []),
-    {
-      key: 'interviews',
-      label: 'Interviews',
-      icon: <AuditOutlined />,
-      content: (
-        <InterviewDashboard
-          interviewData={interviewData}
-          filters={interviewFilters}
-          isLoading={isLoading}
-          handleFilterChange={handleFilterChange}
-          isOwner={role?.type === 'owner' ? true : false}
-          fillHeight
-        />
-      ),
-    },
-    {
-      key: 'job-openings',
-      label: 'Job Openings',
-      icon: <SolutionOutlined />,
-      content: (
-        <CustomerTable
-          headers={jobOpeningsHeaders}
-          title="Job Openings"
-          data={jobOpeningsData?.data || []}
-          role={role.type}
-          icon={jobPostingImage}
-          onStatusChange={handleJobStatusChange}
-          currentFilters={jobOpeningFilters}
-          count={jobCount < 5 ? jobCount : 5}
-          onViewAll={handleViewAllJobs}
-          onTitleClick={() => navigate('/jobs')}
-          onIconClick={() => navigate('/jobs')}
-          fillHeight
-        />
-      ),
-    },
+    ...(canViewInterviews
+      ? [
+          {
+            key: 'interviews',
+            label: 'Interviews',
+            icon: <AuditOutlined />,
+            content: (
+              <InterviewDashboard
+                interviewData={interviewData}
+                filters={interviewFilters}
+                isLoading={isLoading}
+                handleFilterChange={handleFilterChange}
+                isOwner={role?.type === 'owner' ? true : false}
+                fillHeight
+              />
+            ),
+          },
+        ]
+      : []),
+    ...(canViewJobOpenings
+      ? [
+          {
+            key: 'job-openings',
+            label: 'Job Openings',
+            icon: <SolutionOutlined />,
+            content: (
+              <CustomerTable
+                headers={jobOpeningsHeaders}
+                title="Job Openings"
+                data={jobOpeningsData?.data || []}
+                role={role.type}
+                icon={jobPostingImage}
+                onStatusChange={handleJobStatusChange}
+                currentFilters={jobOpeningFilters}
+                count={jobCount < 5 ? jobCount : 5}
+                onViewAll={handleViewAllJobs}
+                onTitleClick={() => navigate('/jobs')}
+                onIconClick={() => navigate('/jobs')}
+                fillHeight
+              />
+            ),
+          },
+        ]
+      : []),
     ...(canViewActivity
       ? [
           {

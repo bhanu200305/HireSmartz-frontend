@@ -4,6 +4,8 @@ import { useListTenantDepartmentsQuery } from '../../../api/organization-service
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import BulkImport from './BulkImport';
 import TeamInvitationsList from './TeamInvitationsList';
+import useHasAccess from '../../../hooks/useHasAccess';
+import { Authorities } from '../../../constants/authorities.constant';
 
 type TeamTabProps = {
   tenantId: string;
@@ -41,6 +43,7 @@ const ActionCard = ({
 const TeamTab = ({ tenantId }: TeamTabProps) => {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const canInvite = useHasAccess(Authorities.INVITATION_SEND);
 
   const { data: departmentsData } = useListTenantDepartmentsQuery(tenantId, { skip: !tenantId });
   const departments = (departmentsData || []).map((department) => ({
@@ -55,24 +58,26 @@ const TeamTab = ({ tenantId }: TeamTabProps) => {
         Invite Recruiters and Hiring Managers, one at a time or in bulk.
       </p>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <ActionCard
-          icon={<MdOutlinePersonAdd />}
-          title="Invite Team Member"
-          description="Send a single invite to a Recruiter or Hiring Manager."
-          cta="Invite"
-          onClick={() => setIsInviteModalOpen(true)}
-        />
-        <ActionCard
-          icon={<MdOutlineUploadFile />}
-          title="Import Team"
-          description="Upload a spreadsheet to invite your whole team at once."
-          cta="Import"
-          onClick={() => setIsImportModalOpen(true)}
-        />
-      </div>
+      {canInvite && (
+        <div className="flex flex-col sm:flex-row gap-4">
+          <ActionCard
+            icon={<MdOutlinePersonAdd />}
+            title="Invite Team Member"
+            description="Send a single invite to a Recruiter or Hiring Manager."
+            cta="Invite"
+            onClick={() => setIsInviteModalOpen(true)}
+          />
+          <ActionCard
+            icon={<MdOutlineUploadFile />}
+            title="Import Team"
+            description="Upload a spreadsheet to invite your whole team at once."
+            cta="Import"
+            onClick={() => setIsImportModalOpen(true)}
+          />
+        </div>
+      )}
 
-      {departments.length === 0 && (
+      {canInvite && departments.length === 0 && (
         <p className="text-xs text-gray-400 mt-4">
           Departments are optional for an invite, but creating one first (under the
           &quot;Departments&quot; tab) makes assigning people easier later.

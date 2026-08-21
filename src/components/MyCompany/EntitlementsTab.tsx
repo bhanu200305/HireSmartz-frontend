@@ -9,6 +9,8 @@ import {
   Entitlements,
 } from '../../api/organization-service/Tenants/entitlements';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 type FlagKey = Exclude<keyof Entitlements, 'locked_flags'>;
 
@@ -58,6 +60,7 @@ const FLAGS: { key: FlagKey; label: string; description: string }[] = [
 const EntitlementsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useGetOwnEntitlementsQuery(tenantId);
   const [updateEntitlements] = useUpdateOwnEntitlementsMutation();
+  const canEdit = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
 
   if (isLoading) return <Loader />;
   if (!data) return <div className="p-6 text-gray-500">Feature settings are not available.</div>;
@@ -97,7 +100,7 @@ const EntitlementsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               </div>
               <Switch
                 checked={data[key]}
-                disabled={isLocked}
+                disabled={isLocked || !canEdit}
                 onChange={(checked) => handleToggle(key, checked)}
               />
             </div>

@@ -31,6 +31,7 @@ import {
 } from '../../redux/slices/globalSearchSlice';
 import { api } from '../../api';
 import NotificationBell from './NotificationBell';
+import LocationSwitcher from '../Navbar/LocationSwitcher';
 
 const { Option, OptGroup } = Select;
 
@@ -549,6 +550,8 @@ const Header = () => {
               {renderCategoryOptions()}
             </Select>
           </div>
+
+          <LocationSwitcher />
 
           <NotificationBell disabled={!canShowNotificationBell} />
 

@@ -10,6 +10,8 @@ import {
   InterviewQuestion,
 } from '../../api/organization-service/Tenants/interviewQuestions';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 /**
  * This tenant's own HR/interpersonal question set, asked in a candidate's
@@ -23,6 +25,8 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
   const { data, isLoading } = useListInterviewQuestionsQuery(tenantId);
   const [updateQuestion, { isLoading: isSaving }] = useUpdateInterviewQuestionMutation();
   const [deleteQuestion] = useDeleteInterviewQuestionMutation();
+  const canUpdate = useHasAccess(Authorities.INTERVIEW_QUESTIONS_UPDATE);
+  const canDelete = useHasAccess(Authorities.INTERVIEW_QUESTIONS_DELETE);
 
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -99,21 +103,25 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
                   }
                   className="flex-1"
                 />
-                <Button
-                  className="rounded-full border border-gray-300 px-4 py-1.5 whitespace-nowrap"
-                  onClick={() => handleSave(question)}
-                  disabled={!isDirty || (isSaving && savingId === question.question_id)}
-                >
-                  {isSaving && savingId === question.question_id ? 'Saving…' : 'Save'}
-                </Button>
-                <button
-                  type="button"
-                  aria-label="Remove question"
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                  onClick={() => setQuestionToDelete(question)}
-                >
-                  <MdDelete className="text-red-500" />
-                </button>
+                {canUpdate && (
+                  <Button
+                    className="rounded-full border border-gray-300 px-4 py-1.5 whitespace-nowrap"
+                    onClick={() => handleSave(question)}
+                    disabled={!isDirty || (isSaving && savingId === question.question_id)}
+                  >
+                    {isSaving && savingId === question.question_id ? 'Saving…' : 'Save'}
+                  </Button>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    aria-label="Remove question"
+                    className="p-2 hover:bg-gray-100 rounded-full"
+                    onClick={() => setQuestionToDelete(question)}
+                  >
+                    <MdDelete className="text-red-500" />
+                  </button>
+                )}
               </div>
             );
           })}

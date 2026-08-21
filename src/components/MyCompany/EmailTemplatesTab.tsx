@@ -13,6 +13,8 @@ import {
 import { getNotifErrorMessage } from '../../shared/utils/auth/notifError.helpers';
 import EmailTemplateOverrideModal from './EmailTemplateOverrideModal';
 import EmailLayoutSection from './EmailLayoutSection';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 const humanizeType = (value: string): string =>
   value
@@ -32,6 +34,7 @@ const PackPicker: React.FC = () => {
   const [previewTemplate, { data: preview, isLoading: isPreviewLoading }] =
     usePreviewTemplateMutation();
   const [previewingPack, setPreviewingPack] = useState<string | null>(null);
+  const canEdit = useHasAccess(Authorities.EMAIL_TEMPLATE_EDIT);
 
   if (isLoading) {
     return <Loader />;
@@ -104,7 +107,7 @@ const PackPicker: React.FC = () => {
               >
                 Preview
               </Button>
-              {!pack.is_selected && (
+              {!pack.is_selected && canEdit && (
                 <Button
                   type="button"
                   appname="select template pack"
@@ -139,6 +142,7 @@ const PackPicker: React.FC = () => {
 const OverridesTable: React.FC = () => {
   const { data, isLoading } = useListTemplateOverridesQuery();
   const [editingOverride, setEditingOverride] = useState<TemplateOverride | null>(null);
+  const canEdit = useHasAccess(Authorities.EMAIL_TEMPLATE_EDIT);
 
   if (isLoading) {
     return <Loader />;
@@ -166,14 +170,16 @@ const OverridesTable: React.FC = () => {
                 {override.is_customised ? 'Customised' : 'Default'}
               </Badge>
             </div>
-            <Button
-              type="button"
-              appname="edit notification template"
-              onClick={() => setEditingOverride(override)}
-              className="rounded-3xl border border-[var(--border)] px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Edit
-            </Button>
+            {canEdit && (
+              <Button
+                type="button"
+                appname="edit notification template"
+                onClick={() => setEditingOverride(override)}
+                className="rounded-3xl border border-[var(--border)] px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Edit
+              </Button>
+            )}
           </div>
         ))}
         {data && data.overrides.length === 0 && (

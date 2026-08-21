@@ -19,6 +19,8 @@ import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
 import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
 import { useListTenantInvitationsQuery } from '../../api/organization-service/Tenants/teamInvitations';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 /**
  * Company Admin's own company management — every tab reads/writes
@@ -53,6 +55,21 @@ const MyCompany: React.FC = () => {
     { skip: !tenantId }
   );
 
+  // Location-resolved (useEffectivePermissions already varies by
+  // useActiveLocation) — a tab a user can't view at their active location
+  // is filtered out of `items` below entirely, not just its buttons.
+  const canViewCompanyDetails = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
+  const canViewLocations = useHasAccess(Authorities.LOCATION_VIEW);
+  const canViewDepartments = useHasAccess(Authorities.DEPARTMENT_VIEW);
+  const canViewFeatureSettings = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
+  const canViewTeam = useHasAccess(Authorities.INVITATION_VIEW);
+  const canViewActivity = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
+  const canViewInterviewQuestions = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
+  const canViewEmailTemplates = useHasAccess(Authorities.EMAIL_TEMPLATE_VIEW);
+  // QR Management has no dedicated catalog permission — job-workflow-adjacent
+  // per the comingSoon note below, so it shares JOB_OPENING_VIEW.
+  const canViewQrManagement = useHasAccess(Authorities.JOB_OPENING_VIEW);
+
   const handleTabChange = (key: string) => {
     setSearchParams({ tab: key });
   };
@@ -74,18 +91,38 @@ const MyCompany: React.FC = () => {
   const comingSoon = <ComingSoonTab label="To be added soon, alongside the job posting workflow" />;
 
   const items: TabsProps['items'] = [
-    { key: '1', label: 'Company Details', children: <CompanyProfileTab tenantId={tenantId} /> },
-    { key: '2', label: 'Locations', children: <CompanyLocationsTab tenantId={tenantId} /> },
-    { key: '3', label: 'Departments', children: <DepartmentsTab tenantId={tenantId} /> },
-    { key: '4', label: 'Feature Settings', children: <EntitlementsTab tenantId={tenantId} /> },
-    { key: '5', label: 'Team', children: <TeamTab tenantId={tenantId} /> },
-    { key: '6', label: 'Activity', children: <TenantActivityFeedTab tenantId={tenantId} /> },
-    { key: '7', label: 'Interview Questions', children: comingSoon },
+    canViewCompanyDetails && {
+      key: '1',
+      label: 'Company Details',
+      children: <CompanyProfileTab tenantId={tenantId} />,
+    },
+    canViewLocations && {
+      key: '2',
+      label: 'Locations',
+      children: <CompanyLocationsTab tenantId={tenantId} />,
+    },
+    canViewDepartments && {
+      key: '3',
+      label: 'Departments',
+      children: <DepartmentsTab tenantId={tenantId} />,
+    },
+    canViewFeatureSettings && {
+      key: '4',
+      label: 'Feature Settings',
+      children: <EntitlementsTab tenantId={tenantId} />,
+    },
+    canViewTeam && { key: '5', label: 'Team', children: <TeamTab tenantId={tenantId} /> },
+    canViewActivity && {
+      key: '6',
+      label: 'Activity',
+      children: <TenantActivityFeedTab tenantId={tenantId} />,
+    },
+    canViewInterviewQuestions && { key: '7', label: 'Interview Questions', children: comingSoon },
     { key: '8', label: 'Scoring Criteria', children: comingSoon },
-    { key: '9', label: 'QR Management', children: comingSoon },
-    { key: '10', label: 'Email Templates', children: comingSoon },
+    canViewQrManagement && { key: '9', label: 'QR Management', children: comingSoon },
+    canViewEmailTemplates && { key: '10', label: 'Email Templates', children: comingSoon },
     { key: '11', label: 'SMS Templates', children: comingSoon },
-  ];
+  ].filter(Boolean) as TabsProps['items'];
 
   return (
     <MainLayout>

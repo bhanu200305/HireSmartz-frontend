@@ -80,8 +80,15 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({
       modalProps={{ width: 720 }}
     >
       <div className="mb-5">
-        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Designation</label>
-        <Input value={roleName} maxLength={60} onChange={(e) => setRoleName(e.target.value)} />
+        <label htmlFor="editRoleName" className="block text-xs font-semibold text-gray-700 mb-1.5">
+          Designation
+        </label>
+        <Input
+          id="editRoleName"
+          value={roleName}
+          maxLength={60}
+          onChange={(e) => setRoleName(e.target.value)}
+        />
       </div>
 
       <RolePermissionsEditor

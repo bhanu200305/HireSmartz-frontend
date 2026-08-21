@@ -12,6 +12,8 @@ import {
   TenantOffice,
 } from '../../api/organization-service/Tenants/offices';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 /**
  * §C — GET/POST/PATCH/DELETE /v1/tenants/{tenant_id}/offices. Delete needs no
@@ -24,6 +26,9 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [addOffice, { isLoading: isAdding }] = useAddTenantOfficeMutation();
   const [updateOffice, { isLoading: isUpdating }] = useUpdateTenantOfficeMutation();
   const [deleteOffice] = useDeleteTenantOfficeMutation();
+  const canAdd = useHasAccess(Authorities.LOCATION_ADD);
+  const canEdit = useHasAccess(Authorities.LOCATION_EDIT);
+  const canDelete = useHasAccess(Authorities.LOCATION_DELETE);
 
   const [modalState, setModalState] = useState<{
     mode: 'add' | 'edit';
@@ -69,12 +74,14 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <Typography variant="h5">Locations</Typography>
-        <Button
-          className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1"
-          onClick={() => setModalState({ mode: 'add' })}
-        >
-          <MdOutlineAdd /> Add office
-        </Button>
+        {canAdd && (
+          <Button
+            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1"
+            onClick={() => setModalState({ mode: 'add' })}
+          >
+            <MdOutlineAdd /> Add office
+          </Button>
+        )}
       </div>
 
       {!offices?.length ? (
@@ -96,22 +103,26 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 </Typography>
               </div>
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  aria-label="Edit office"
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                  onClick={() => setModalState({ mode: 'edit', office })}
-                >
-                  <MdEdit className="text-gray-600" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Delete office"
-                  className="p-2 hover:bg-gray-100 rounded-full"
-                  onClick={() => setOfficeToDelete(office)}
-                >
-                  <MdDelete className="text-red-500" />
-                </button>
+                {canEdit && (
+                  <button
+                    type="button"
+                    aria-label="Edit office"
+                    className="p-2 hover:bg-gray-100 rounded-full"
+                    onClick={() => setModalState({ mode: 'edit', office })}
+                  >
+                    <MdEdit className="text-gray-600" />
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    aria-label="Delete office"
+                    className="p-2 hover:bg-gray-100 rounded-full"
+                    onClick={() => setOfficeToDelete(office)}
+                  >
+                    <MdDelete className="text-red-500" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

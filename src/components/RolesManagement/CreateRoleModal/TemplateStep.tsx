@@ -30,10 +30,14 @@ const TemplateStep: React.FC<TemplateStepProps> = ({
   return (
     <div className="flex flex-col">
       <div className="mb-5">
-        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+        <label
+          htmlFor="createRoleName"
+          className="block text-xs font-semibold text-gray-700 mb-1.5"
+        >
           Designation <span className="text-danger-solid">*</span>
         </label>
         <Input
+          id="createRoleName"
           value={roleName}
           maxLength={60}
           placeholder="e.g. Regional Hiring Manager"

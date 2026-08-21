@@ -6,6 +6,8 @@ import {
   useUpdateTenantProfileMutation,
 } from '../../api/organization-service/Tenants/profile';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 type ProfileFormState = {
   name: string;
@@ -39,6 +41,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [updateProfile, { isLoading: isSaving }] = useUpdateTenantProfileMutation();
   const [isEditMode, setIsEditMode] = useState(false);
   const [form, setForm] = useState<ProfileFormState>(toFormState(undefined));
+  const canEdit = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
 
   useEffect(() => {
     if (profile) setForm(toFormState(profile));
@@ -97,7 +100,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <Typography variant="h5">Company profile</Typography>
-        {!isEditMode && (
+        {!isEditMode && canEdit && (
           <Button
             className="rounded-full border border-gray-300 px-4 py-1.5"
             onClick={() => setIsEditMode(true)}

@@ -113,6 +113,7 @@ export const orgApi = createApi({
     'TenantActivity',
     'Entitlements',
     'UserPermissions',
+    'UserLocations',
     'OrgUsers',
     'RoleAssignments',
     'InterviewQuestions',
