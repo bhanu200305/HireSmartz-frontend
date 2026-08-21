@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { MdDelete, MdEdit, MdOutlineAdd } from 'react-icons/md';
-import { Button, Input, Typography, showToast } from '../shared';
+import React, { useMemo, useState } from 'react';
+import type { TableProps } from 'antd';
+import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
+import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
@@ -15,6 +16,7 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 type FormState = { code: string; name: string; description: string };
 const emptyForm: FormState = { code: '', name: '', description: '' };
+type DepartmentRow = MasterDepartment & { key: string };
 
 /**
  * GET/POST/PUT/DELETE /v1/platform/master-departments — the platform's
@@ -34,6 +36,21 @@ const DepartmentsTab: React.FC = () => {
   } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [departmentToDelete, setDepartmentToDelete] = useState<MasterDepartment | null>(null);
+  const [searchText, setSearchText] = useState('');
+
+  // Hooks must run unconditionally on every render — kept above the
+  // `if (isLoading) return` below, not after it, or React sees a different
+  // number of hooks between the loading and loaded renders and throws.
+  const filteredDepartments = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return departments ?? [];
+    return (departments ?? []).filter(
+      (department) =>
+        department.name.toLowerCase().includes(q) ||
+        department.code.toLowerCase().includes(q) ||
+        (department.description ?? '').toLowerCase().includes(q)
+    );
+  }, [departments, searchText]);
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -95,54 +112,107 @@ const DepartmentsTab: React.FC = () => {
 
   if (isLoading) return <Loader />;
 
+  const columns: TableProps<DepartmentRow>['columns'] = [
+    {
+      title: 'Code',
+      dataIndex: 'code',
+      key: 'code',
+      width: 160,
+      sorter: (a: DepartmentRow, b: DepartmentRow) => a.code.localeCompare(b.code),
+      render: (_: unknown, department: DepartmentRow) => (
+        <Badge status="neutral" dot={false} className="font-mono tracking-wide">
+          {department.code}
+        </Badge>
+      ),
+    },
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a: DepartmentRow, b: DepartmentRow) => a.name.localeCompare(b.name),
+      render: (_: unknown, department: DepartmentRow) => (
+        <span className="font-semibold text-gray-900">{department.name}</span>
+      ),
+    },
+    {
+      title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
+      sorter: (a: DepartmentRow, b: DepartmentRow) =>
+        (a.description ?? '').localeCompare(b.description ?? ''),
+      render: (_: unknown, department: DepartmentRow) => (
+        <span className="text-gray-500 text-sm">{department.description || '—'}</span>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      render: (_: unknown, department: DepartmentRow) => (
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Edit department"
+            className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+            onClick={() => openEdit(department)}
+          >
+            <MdEdit className="text-gray-600" />
+          </button>
+          <button
+            type="button"
+            aria-label="Delete department"
+            className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+            onClick={() => setDepartmentToDelete(department)}
+          >
+            <MdDelete className="text-red-500" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const dataSource: DepartmentRow[] = filteredDepartments.map((department) => ({
+    ...department,
+    key: department.department_id,
+  }));
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <Typography variant="body2">
-          Global list of functional organizational units. Departments are industry-agnostic here.
-        </Typography>
-        <Button
-          className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1"
-          onClick={openAdd}
-        >
-          <MdOutlineAdd /> Add department
-        </Button>
+      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+        <div>
+          <Typography variant="body2">
+            Global list of functional organizational units. Departments are industry-agnostic here.
+          </Typography>
+          <span className="text-xs font-medium text-gray-400">
+            {dataSource.length} {dataSource.length === 1 ? 'department' : 'departments'}
+            {searchText.trim() && ` of ${departments?.length ?? 0}`}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Input
+            prefix={<MdSearch className="text-gray-400" />}
+            placeholder="Search departments..."
+            className="w-64"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          <Button
+            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+            onClick={openAdd}
+          >
+            <MdOutlineAdd /> Add department
+          </Button>
+        </div>
       </div>
 
-      <div className="divide-y border rounded-xl overflow-hidden bg-white">
-        {(departments || []).map((department) => (
-          <div key={department.department_id} className="flex items-center justify-between p-3">
-            <div>
-              <Typography variant="body1">
-                {department.name} <span className="text-gray-400 text-xs">({department.code})</span>
-              </Typography>
-              {department.description && (
-                <Typography variant="caption">{department.description}</Typography>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                aria-label="Edit department"
-                className="p-2 hover:bg-gray-100 rounded-full"
-                onClick={() => openEdit(department)}
-              >
-                <MdEdit className="text-gray-600" />
-              </button>
-              <button
-                type="button"
-                aria-label="Delete department"
-                className="p-2 hover:bg-gray-100 rounded-full"
-                onClick={() => setDepartmentToDelete(department)}
-              >
-                <MdDelete className="text-red-500" />
-              </button>
-            </div>
-          </div>
-        ))}
-        {!departments?.length && (
-          <div className="p-6 text-center text-gray-400 text-sm">No departments yet.</div>
-        )}
+      <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
+        <CustomTable<DepartmentRow>
+          columns={columns}
+          dataSource={dataSource}
+          emptyText={
+            searchText.trim() ? 'No departments match your search.' : 'No departments yet.'
+          }
+        />
       </div>
 
       <AntdCommonModal

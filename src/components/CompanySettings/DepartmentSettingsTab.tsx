@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import type { TableProps } from 'antd';
 import { Select as AntSelect } from 'antd';
 import { MdSearch } from 'react-icons/md';
-import { Input, Typography, Button, showToast } from '../shared';
+import { Badge, CustomTable, Input, Typography, Button, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import {
   useListMasterDepartmentsQuery,
@@ -9,8 +10,13 @@ import {
   useAssignJobTitleToDepartmentMutation,
   useRemoveJobTitleFromDepartmentMutation,
 } from '../../api/organization-service/Platform/masterDepartments';
-import { useListPlatformJobTitlesQuery } from '../../api/organization-service/Platform/jobTitles';
+import {
+  PlatformJobTitle,
+  useListPlatformJobTitlesQuery,
+} from '../../api/organization-service/Platform/jobTitles';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+
+type JobTitleAssignRow = PlatformJobTitle & { key: string; isMapped: boolean };
 
 /**
  * Assign job titles to a department — GET .../master-departments/{id}/job-titles
@@ -42,7 +48,9 @@ const DepartmentSettingsTab: React.FC = () => {
     const list = allJobTitles ?? [];
     if (!searchText.trim()) return list;
     const q = searchText.trim().toLowerCase();
-    return list.filter((jt) => jt.name.toLowerCase().includes(q));
+    return list.filter(
+      (jt) => jt.name.toLowerCase().includes(q) || jt.code.toLowerCase().includes(q)
+    );
   }, [allJobTitles, searchText]);
 
   const {
@@ -111,6 +119,52 @@ const DepartmentSettingsTab: React.FC = () => {
 
   if (isLoading) return <Loader />;
 
+  const columns: TableProps<JobTitleAssignRow>['columns'] = [
+    {
+      title: '',
+      key: 'assigned',
+      width: 56,
+      render: (_: unknown, row: JobTitleAssignRow) => (
+        <input
+          type="checkbox"
+          checked={row.isMapped}
+          disabled={isBusy}
+          onChange={(e) => toggle(row.job_title_id, e.target.checked)}
+          className="w-4 h-4 cursor-pointer accent-primary-600"
+        />
+      ),
+    },
+    {
+      title: 'Code',
+      dataIndex: 'code',
+      key: 'code',
+      width: 160,
+      sorter: (a: JobTitleAssignRow, b: JobTitleAssignRow) => a.code.localeCompare(b.code),
+      render: (_: unknown, row: JobTitleAssignRow) => (
+        <Badge status="neutral" dot={false} className="font-mono tracking-wide">
+          {row.code}
+        </Badge>
+      ),
+    },
+    {
+      title: 'Job Title',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a: JobTitleAssignRow, b: JobTitleAssignRow) => a.name.localeCompare(b.name),
+      render: (_: unknown, row: JobTitleAssignRow) => (
+        <span className={row.isMapped ? 'font-semibold text-primary-700' : 'text-gray-700'}>
+          {row.name}
+        </span>
+      ),
+    },
+  ];
+
+  const dataSource: JobTitleAssignRow[] = filteredJobTitles.map((jt) => ({
+    ...jt,
+    key: jt.job_title_id,
+    isMapped: stagedMappedIds.has(jt.job_title_id),
+  }));
+
   return (
     <div>
       <Typography variant="body2" className="mb-6 block">
@@ -144,46 +198,26 @@ const DepartmentSettingsTab: React.FC = () => {
           No departments yet — add one on the Departments tab first.
         </div>
       ) : (
-        <div className="border rounded-xl overflow-hidden bg-white relative">
+        <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm relative">
           {isMappedLoading && (
             <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center">
               <Loader />
             </div>
           )}
-          <div className="px-4 py-3 flex justify-between items-center border-b bg-gray-50">
+          <div className="px-4 py-3 flex justify-between items-center border-b border-neutral-200 bg-gray-50">
             <Typography variant="body1">{activeDepartmentName} — job titles</Typography>
-            <Typography variant="caption">
+            <Badge status={stagedMappedIds.size > 0 ? 'info' : 'neutral'} dot={false}>
               {stagedMappedIds.size} of {(allJobTitles ?? []).length} selected
-            </Typography>
+            </Badge>
           </div>
 
-          <div className="p-4 max-h-[480px] overflow-y-auto flex flex-col gap-2">
-            {filteredJobTitles.length === 0 ? (
-              <div className="text-center text-sm text-gray-400 py-8">No job titles found.</div>
-            ) : (
-              filteredJobTitles.map((jt) => {
-                const isMapped = stagedMappedIds.has(jt.job_title_id);
-                return (
-                  <label
-                    key={jt.job_title_id}
-                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                      isMapped
-                        ? 'border-primary-400 bg-primary-50/40'
-                        : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isMapped}
-                      disabled={isBusy}
-                      onChange={(e) => toggle(jt.job_title_id, e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    <Typography variant="body2">{jt.name}</Typography>
-                  </label>
-                );
-              })
-            )}
+          <div className="max-h-[480px] overflow-y-auto">
+            <CustomTable<JobTitleAssignRow>
+              columns={columns}
+              dataSource={dataSource}
+              rowClassName={(row) => (row.isMapped ? '!bg-primary-50/40' : '')}
+              emptyText="No job titles found."
+            />
           </div>
 
           <div className="border-t px-4 py-4 flex justify-center gap-4">

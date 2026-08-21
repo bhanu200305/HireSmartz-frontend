@@ -13,7 +13,6 @@ import PlatformScoringDefaultsTab from './PlatformScoringDefaultsTab';
 import EmailTemplateConfigWrapper from './EmailTemplateConfigWrapper';
 import SmsTemplatesTab from './SmsTemplatesTab';
 import NotificationTemplatesTab from './NotificationTemplatesTab';
-import { useGetFeatureFlagsQuery } from '../../api/authentication-service/FeatureFlags/index';
 
 /**
  * Super Admin's platform master-data hub. Industries/Departments/Job Titles/
@@ -43,8 +42,6 @@ const CompanySettings: React.FC = () => {
     setSearchParams(searchParams);
   };
 
-  const { data: featureFlags } = useGetFeatureFlagsQuery();
-
   const items = React.useMemo<TabsProps['items']>(
     () => [
       {
@@ -72,9 +69,11 @@ const CompanySettings: React.FC = () => {
         label: 'Default Scoring Weights',
         children: <PlatformScoringDefaultsTab />,
       },
-      ...(featureFlags?.emailTemplateConfig
-        ? [{ key: '6', label: 'Email Templates Config', children: <EmailTemplateConfigWrapper /> }]
-        : []),
+      {
+        key: '6',
+        label: 'Email Templates Config',
+        children: <EmailTemplateConfigWrapper />,
+      },
       {
         key: '7',
         label: 'SMS Templates',
@@ -86,23 +85,23 @@ const CompanySettings: React.FC = () => {
         children: <NotificationTemplatesTab />,
       },
     ],
-    [featureFlags]
+    []
   );
 
   return (
     <MainLayout>
-      <div className="w-full px-6 py-6 pt-16 max-w-[1400px] mx-auto">
+      <div className="w-full px-6 py-5 max-w-[1400px] mx-auto">
         <div
-          className="flex items-center gap-2 text-sm text-gray-500 mb-6 cursor-pointer hover:text-primary-600 transition-colors w-fit"
+          className="flex items-center gap-2 text-sm text-gray-500 mb-3 cursor-pointer hover:text-primary-600 transition-colors w-fit"
           onClick={() => navigate(-1)}
         >
           <BsArrowLeft />
           <span>Back</span>
         </div>
 
-        <div className="bg-white border border-neutral-200 rounded-xl shadow-xs min-h-[calc(100vh-140px)]">
-          <div className="p-8">
-            <div className="flex items-center gap-2.5 mb-8">
+        <div className="bg-white border border-neutral-200 rounded-xl shadow-xs">
+          <div className="p-6">
+            <div className="flex items-center gap-2.5 mb-5">
               <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
                 <FiSettings size={18} />
               </span>

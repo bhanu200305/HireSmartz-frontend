@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { MdDelete, MdEdit, MdOutlineAdd } from 'react-icons/md';
-import { Button, Input, Typography, showToast } from '../shared';
+import React, { useMemo, useState } from 'react';
+import type { TableProps } from 'antd';
+import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
+import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
@@ -15,6 +16,7 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 type FormState = { code: string; name: string; description: string };
 const emptyForm: FormState = { code: '', name: '', description: '' };
+type IndustryRow = Industry & { key: string };
 
 /**
  * GET/POST/PUT/DELETE /v1/platform/industries. No pagination or search on
@@ -34,6 +36,21 @@ const IndustriesTab: React.FC = () => {
   } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [industryToDelete, setIndustryToDelete] = useState<Industry | null>(null);
+  const [searchText, setSearchText] = useState('');
+
+  // Hooks must run unconditionally on every render — kept above the
+  // `if (isLoading) return` below, not after it, or React sees a different
+  // number of hooks between the loading and loaded renders and throws.
+  const filteredIndustries = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return industries ?? [];
+    return (industries ?? []).filter(
+      (industry) =>
+        industry.name.toLowerCase().includes(q) ||
+        industry.code.toLowerCase().includes(q) ||
+        (industry.description ?? '').toLowerCase().includes(q)
+    );
+  }, [industries, searchText]);
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -92,54 +109,105 @@ const IndustriesTab: React.FC = () => {
 
   if (isLoading) return <Loader />;
 
+  const columns: TableProps<IndustryRow>['columns'] = [
+    {
+      title: 'Code',
+      dataIndex: 'code',
+      key: 'code',
+      width: 160,
+      sorter: (a: IndustryRow, b: IndustryRow) => a.code.localeCompare(b.code),
+      render: (_: unknown, industry: IndustryRow) => (
+        <Badge status="neutral" dot={false} className="font-mono tracking-wide">
+          {industry.code}
+        </Badge>
+      ),
+    },
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a: IndustryRow, b: IndustryRow) => a.name.localeCompare(b.name),
+      render: (_: unknown, industry: IndustryRow) => (
+        <span className="font-semibold text-gray-900">{industry.name}</span>
+      ),
+    },
+    {
+      title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
+      sorter: (a: IndustryRow, b: IndustryRow) =>
+        (a.description ?? '').localeCompare(b.description ?? ''),
+      render: (_: unknown, industry: IndustryRow) => (
+        <span className="text-gray-500 text-sm">{industry.description || '—'}</span>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      render: (_: unknown, industry: IndustryRow) => (
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Edit industry"
+            className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+            onClick={() => openEdit(industry)}
+          >
+            <MdEdit className="text-gray-600" />
+          </button>
+          <button
+            type="button"
+            aria-label="Delete industry"
+            className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+            onClick={() => setIndustryToDelete(industry)}
+          >
+            <MdDelete className="text-red-500" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const dataSource: IndustryRow[] = filteredIndustries.map((industry) => ({
+    ...industry,
+    key: industry.industry_id,
+  }));
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <Typography variant="body2">
-          Assigned to a company at creation. The code can&apos;t change once created.
-        </Typography>
-        <Button
-          className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1"
-          onClick={openAdd}
-        >
-          <MdOutlineAdd /> Add industry
-        </Button>
+      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+        <div>
+          <Typography variant="body2">
+            Assigned to a company at creation. The code can&apos;t change once created.
+          </Typography>
+          <span className="text-xs font-medium text-gray-400">
+            {dataSource.length} {dataSource.length === 1 ? 'industry' : 'industries'}
+            {searchText.trim() && ` of ${industries?.length ?? 0}`}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Input
+            prefix={<MdSearch className="text-gray-400" />}
+            placeholder="Search industries..."
+            className="w-64"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          <Button
+            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+            onClick={openAdd}
+          >
+            <MdOutlineAdd /> Add industry
+          </Button>
+        </div>
       </div>
 
-      <div className="divide-y border rounded-xl overflow-hidden bg-white">
-        {(industries || []).map((industry) => (
-          <div key={industry.industry_id} className="flex items-center justify-between p-3">
-            <div>
-              <Typography variant="body1">
-                {industry.name} <span className="text-gray-400 text-xs">({industry.code})</span>
-              </Typography>
-              {industry.description && (
-                <Typography variant="caption">{industry.description}</Typography>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                aria-label="Edit industry"
-                className="p-2 hover:bg-gray-100 rounded-full"
-                onClick={() => openEdit(industry)}
-              >
-                <MdEdit className="text-gray-600" />
-              </button>
-              <button
-                type="button"
-                aria-label="Delete industry"
-                className="p-2 hover:bg-gray-100 rounded-full"
-                onClick={() => setIndustryToDelete(industry)}
-              >
-                <MdDelete className="text-red-500" />
-              </button>
-            </div>
-          </div>
-        ))}
-        {!industries?.length && (
-          <div className="p-6 text-center text-gray-400 text-sm">No industries yet.</div>
-        )}
+      <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
+        <CustomTable<IndustryRow>
+          columns={columns}
+          dataSource={dataSource}
+          emptyText={searchText.trim() ? 'No industries match your search.' : 'No industries yet.'}
+        />
       </div>
 
       <AntdCommonModal

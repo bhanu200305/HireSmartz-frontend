@@ -22,6 +22,15 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-neutral-500) !important;
+  padding: 10px 16px !important;
+}
+
+/* Compact row height — AntD's own default (size="large") pads every cell
+   16px top/bottom, ~60px+ per single-line row. Explicit padding here
+   (rather than the `size` prop) so it's the same everywhere CustomTable is
+   used, independent of whether a call site ever sets `size`. */
+.customTable .ant-table-tbody > tr > td {
+  padding: 10px 16px !important;
 }
 .customTable .ant-table-thead > tr > th::before {
   display: none !important;
