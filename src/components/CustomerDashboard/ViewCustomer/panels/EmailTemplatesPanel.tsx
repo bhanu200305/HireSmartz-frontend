@@ -17,6 +17,11 @@ const humanizeType = (value: string): string =>
  * editable on their behalf. No pack picker or layout editor here: only the
  * per-tenant override endpoints have a confirmed platform-mounted
  * equivalent (GET/PUT/DELETE .../platform/template-settings/tenants/{id}/overrides).
+ *
+ * Same section card styling as CompanySettings/TenantOverrideSection.tsx
+ * (its "edit a tenant's templates on their behalf" section) — this is that
+ * same list, just pre-scoped to the company this page is already on instead
+ * of needing its own company search box.
  */
 const EmailTemplatesPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useListPlatformTenantOverridesQuery(tenantId);
@@ -28,42 +33,44 @@ const EmailTemplatesPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
   return (
     <div className="p-4">
-      <Typography variant="h5" className="mb-1 block">
-        Notification copy
-      </Typography>
-      <Typography variant="body2" className="mb-4 block text-gray-500">
-        Every message CareerForce Pro can send on this company&apos;s behalf. Edit the ones that
-        need this tenant&apos;s own words — the rest use the platform&apos;s default copy.
-      </Typography>
+      <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
+        <Typography variant="h6" className="mb-1 block">
+          Notification copy
+        </Typography>
+        <Typography variant="caption" className="mb-4 block text-gray-500">
+          Every message CareerForce Pro can send on this company&apos;s behalf. Edit the ones that
+          need this tenant&apos;s own words — the rest use the platform&apos;s default copy.
+        </Typography>
 
-      <div className="divide-y overflow-hidden rounded-xl border">
-        {data?.overrides.map((override) => (
-          <div
-            key={override.notification_type}
-            className="flex items-center justify-between gap-3 p-4"
-          >
-            <div className="flex items-center gap-2">
-              <Typography variant="body1">{humanizeType(override.notification_type)}</Typography>
-              <Badge status={override.is_customised ? 'info' : 'neutral'}>
-                {override.is_customised ? 'Customised' : 'Default'}
-              </Badge>
-            </div>
-            <Button
-              type="button"
-              appname="edit notification template"
-              onClick={() => setEditingOverride(override)}
-              className="rounded-3xl border border-[var(--border)] px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        <div className="divide-y overflow-hidden rounded-xl border">
+          {data?.overrides.map((override) => (
+            <div
+              key={override.notification_type}
+              className="flex items-center justify-between gap-3 p-4"
             >
-              Edit
-            </Button>
-          </div>
-        ))}
-        {data && data.overrides.length === 0 && (
-          <p className="p-4 text-sm text-gray-500">
-            No notification templates are seeded on this environment yet.
-          </p>
-        )}
-      </div>
+              <div className="flex items-center gap-2">
+                <Typography variant="body1">{humanizeType(override.notification_type)}</Typography>
+                <Badge status={override.is_customised ? 'info' : 'neutral'}>
+                  {override.is_customised ? 'Customised' : 'Default'}
+                </Badge>
+              </div>
+              <Button
+                type="button"
+                appname="edit notification template"
+                onClick={() => setEditingOverride(override)}
+                className="rounded-3xl border border-[var(--border)] px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Edit
+              </Button>
+            </div>
+          ))}
+          {data && data.overrides.length === 0 && (
+            <p className="p-4 text-sm text-gray-500">
+              No notification templates are seeded on this environment yet.
+            </p>
+          )}
+        </div>
+      </section>
 
       <PlatformEmailTemplateOverrideModal
         open={editingOverride !== null}

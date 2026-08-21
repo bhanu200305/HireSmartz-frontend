@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Input, Typography, showToast } from '../../../shared';
+import { MdBrokenImage } from 'react-icons/md';
+import { Button, Input, Textarea, Typography, showToast } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
+import { Badge, BadgeStatus } from '../../../shared/ui/badge';
 import {
   useGetPlatformTenantProfileQuery,
   useUpdatePlatformTenantProfileMutation,
 } from '../../../../api/organization-service/Platform/tenantProfile';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
+
+const STATUS_BADGE: Record<string, BadgeStatus> = {
+  draft: 'neutral',
+  pre_approved: 'warning',
+  active: 'success',
+  suspended: 'danger',
+};
 
 type ProfileFormState = {
   name: string;
@@ -27,6 +36,33 @@ const toFormState = (
   logo: profile?.logo_url || '',
 });
 
+/** Label-above-field wrapper — same shape for every field in this form
+ * (a required marker, then a pill-bordered box underneath) so the grid of
+ * fields stays visually even regardless of what's inside the box. */
+const Field: React.FC<{ label: string; required?: boolean; children: React.ReactNode }> = ({
+  label,
+  required,
+  children,
+}) => (
+  <div>
+    <Typography variant="subtitle2" className="mb-1.5 block text-gray-700 font-semibold">
+      {label}
+      {required && <span className="text-red-500 ml-0.5">*</span>}
+    </Typography>
+    {children}
+  </div>
+);
+
+/** Non-editable pill box matching Input's own footprint — for values that
+ * are never part of this form (status, admin contact) so they still line up
+ * with the real fields around them instead of looking like a different kind
+ * of thing. */
+const ReadOnlyPill: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="w-full border rounded-3xl px-3 py-2 flex items-center bg-gray-50 text-gray-500 min-h-[42px]">
+    {children}
+  </div>
+);
+
 /**
  * Super Admin's mirror of MyCompany/CompanyProfileTab.tsx — same fields, same
  * PATCH-only-what-changed contract, GET/PATCH
@@ -38,18 +74,25 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [updateProfile, { isLoading: isSaving }] = useUpdatePlatformTenantProfileMutation();
   const [isEditMode, setIsEditMode] = useState(false);
   const [form, setForm] = useState<ProfileFormState>(toFormState(undefined));
+  const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
     if (profile) setForm(toFormState(profile));
   }, [profile]);
+
+  useEffect(() => {
+    setLogoFailed(false);
+  }, [form.logo]);
 
   if (isLoading) return <Loader />;
   if (!profile) {
     return <div className="p-6 text-gray-500">Company profile is not available.</div>;
   }
 
-  const handleField = (field: keyof ProfileFormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  const handleField =
+    (field: keyof ProfileFormState) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
   const handleCancel = () => {
     setForm(toFormState(profile));
@@ -83,22 +126,13 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
   };
 
-  const fields: { key: keyof ProfileFormState; label: string }[] = [
-    { key: 'name', label: 'Company name' },
-    { key: 'website_url', label: 'Website' },
-    { key: 'company_size', label: 'Company size' },
-    { key: 'logo', label: 'Logo URL' },
-    { key: 'description', label: 'Description' },
-    { key: 'culture_intro', label: 'About our culture' },
-  ];
-
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-7">
         <Typography variant="h5">Company profile</Typography>
         {!isEditMode && (
           <Button
-            className="rounded-full border border-gray-300 px-4 py-1.5"
+            className="rounded-full border border-gray-300 px-4 py-1.5 hover:bg-gray-50 transition-colors"
             onClick={() => setIsEditMode(true)}
           >
             Edit
@@ -106,38 +140,103 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {fields.map(({ key, label }) => (
-          <div
-            key={key}
-            className={key === 'description' || key === 'culture_intro' ? 'sm:col-span-2' : ''}
-          >
-            <Typography variant="subtitle2" className="mb-1 block">
-              {label}
+      <Typography variant="h6" className="mb-4 block font-bold text-gray-900">
+        Company Info
+      </Typography>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5 mb-8">
+        <Field label="Company name" required>
+          <Input
+            value={form.name}
+            onChange={handleField('name')}
+            placeholder="Company name"
+            disabled={!isEditMode}
+          />
+        </Field>
+        <Field label="Website">
+          <Input
+            value={form.website_url}
+            onChange={handleField('website_url')}
+            placeholder="Website"
+            disabled={!isEditMode}
+          />
+        </Field>
+        <Field label="Company size">
+          <Input
+            value={form.company_size}
+            onChange={handleField('company_size')}
+            placeholder="Company size"
+            disabled={!isEditMode}
+          />
+        </Field>
+
+        <Field label="Logo URL">
+          <Input
+            value={form.logo}
+            onChange={handleField('logo')}
+            placeholder="Logo URL"
+            disabled={!isEditMode}
+          />
+        </Field>
+        <Field label="Status">
+          <ReadOnlyPill>
+            <Badge status={STATUS_BADGE[profile.status] || 'neutral'}>{profile.status}</Badge>
+          </ReadOnlyPill>
+        </Field>
+        <Field label="Admin contact">
+          <ReadOnlyPill>
+            <span className="truncate">{profile.admin_contact || '—'}</span>
+          </ReadOnlyPill>
+        </Field>
+
+        {form.logo && (
+          <div className="sm:col-span-2 lg:col-span-3 flex items-center gap-3 -mt-2">
+            <div className="w-12 h-12 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+              {logoFailed ? (
+                <MdBrokenImage className="text-gray-300" size={18} />
+              ) : (
+                <img
+                  src={form.logo}
+                  alt="Company logo"
+                  className="w-full h-full object-contain"
+                  onError={() => setLogoFailed(true)}
+                />
+              )}
+            </div>
+            <Typography variant="body2" className="text-gray-400">
+              Logo preview
             </Typography>
-            {isEditMode ? (
-              <Input value={form[key]} onChange={handleField(key)} placeholder={label} />
-            ) : (
-              <Typography variant="body1">{form[key] || '-'}</Typography>
-            )}
           </div>
-        ))}
-        <div>
-          <Typography variant="subtitle2" className="mb-1 block">
-            Status
-          </Typography>
-          <Typography variant="body1">{profile.status}</Typography>
-        </div>
-        <div>
-          <Typography variant="subtitle2" className="mb-1 block">
-            Admin contact
-          </Typography>
-          <Typography variant="body1">{profile.admin_contact || '-'}</Typography>
-        </div>
+        )}
+      </div>
+
+      <Typography variant="h6" className="mb-4 block font-bold text-gray-900">
+        About
+      </Typography>
+      <div className="grid grid-cols-1 gap-5">
+        <Field label="Description">
+          <Textarea
+            value={form.description}
+            onChange={handleField('description')}
+            placeholder="Description"
+            rows={3}
+            disabled={!isEditMode}
+            className="rounded-2xl text-sm"
+          />
+        </Field>
+        <Field label="About our culture">
+          <Textarea
+            value={form.culture_intro}
+            onChange={handleField('culture_intro')}
+            placeholder="About our culture"
+            rows={3}
+            disabled={!isEditMode}
+            className="rounded-2xl text-sm"
+          />
+        </Field>
       </div>
 
       {isEditMode && (
-        <div className="flex gap-3 mt-6">
+        <div className="flex gap-3 mt-7 pt-5 border-t border-gray-100">
           <Button
             className="rounded-full border border-gray-300 px-6 py-2"
             onClick={handleCancel}

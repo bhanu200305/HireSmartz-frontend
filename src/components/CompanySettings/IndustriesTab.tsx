@@ -1,7 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
-import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
+import {
+  Badge,
+  Button,
+  CustomTable,
+  Input,
+  Typography,
+  paginationConfig,
+  showToast,
+} from '../shared';
 import { Loader } from '../shared/ui/loader';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
@@ -207,6 +215,7 @@ const IndustriesTab: React.FC = () => {
           columns={columns}
           dataSource={dataSource}
           emptyText={searchText.trim() ? 'No industries match your search.' : 'No industries yet.'}
+          pagination={paginationConfig('industries')}
         />
       </div>
 

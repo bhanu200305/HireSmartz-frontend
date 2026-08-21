@@ -2,7 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import { Select as AntSelect } from 'antd';
 import { MdSearch } from 'react-icons/md';
-import { Badge, CustomTable, Input, Typography, Button, showToast } from '../shared';
+import {
+  Badge,
+  CustomTable,
+  Input,
+  Typography,
+  Button,
+  paginationConfig,
+  showToast,
+} from '../shared';
 import { Loader } from '../shared/ui/loader';
 import {
   useListMasterDepartmentsQuery,
@@ -211,14 +219,13 @@ const DepartmentSettingsTab: React.FC = () => {
             </Badge>
           </div>
 
-          <div className="max-h-[480px] overflow-y-auto">
-            <CustomTable<JobTitleAssignRow>
-              columns={columns}
-              dataSource={dataSource}
-              rowClassName={(row) => (row.isMapped ? '!bg-primary-50/40' : '')}
-              emptyText="No job titles found."
-            />
-          </div>
+          <CustomTable<JobTitleAssignRow>
+            columns={columns}
+            dataSource={dataSource}
+            rowClassName={(row) => (row.isMapped ? '!bg-primary-50/40' : '')}
+            emptyText="No job titles found."
+            pagination={paginationConfig('job titles')}
+          />
 
           <div className="border-t px-4 py-4 flex justify-center gap-4">
             <Button

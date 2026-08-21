@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, Tooltip } from 'antd';
-import { MdOutlineArrowBack, MdLock } from 'react-icons/md';
+import { BsArrowLeft } from 'react-icons/bs';
+import {
+  MdEmail,
+  MdOutlineCalendarToday,
+  MdOutlineAccessTime,
+  MdOutlineCampaign,
+  MdOutlineTune,
+  MdLock,
+} from 'react-icons/md';
 import MainLayout from '../../../layouts/MainLayout';
 import { Button, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
@@ -30,6 +38,30 @@ const STATUS_BADGE: Record<string, BadgeStatus> = {
   suspended: 'danger',
 };
 
+/** One "icon + label + value" tile in the company summary strip below the
+ * header — same shape for all four fields so the row stays visually even
+ * regardless of which values are missing. */
+const MetaTile: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}> = ({ icon, label, value }) => (
+  <div className="flex items-start gap-3">
+    <span className="shrink-0 w-9 h-9 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
+      {icon}
+    </span>
+    <div className="min-w-0">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+      <p
+        className="text-sm font-medium text-gray-800 truncate"
+        title={typeof value === 'string' ? value : undefined}
+      >
+        {value}
+      </p>
+    </div>
+  </div>
+);
+
 /**
  * Super Admin's single-company view — now a full mirror of the Company
  * Admin's own "My Company" page (src/components/MyCompany/index.tsx),
@@ -50,6 +82,10 @@ const STATUS_BADGE: Record<string, BadgeStatus> = {
  * they-set-their-own-password) is a SEPARATE backend surface
  * (tenants/api/platform_router.py's /invitations + bulk-import routes) not
  * wired up here yet.
+ *
+ * Layout mirrors CompanySettings/index.tsx (the platform master-data hub) —
+ * same page shell (back link, white card, max-w-[1400px]) — so the two
+ * platform screens read as one consistent system rather than two.
  */
 const ViewCustomer = () => {
   const navigate = useNavigate();
@@ -98,11 +134,21 @@ const ViewCustomer = () => {
       label: 'Feature Settings',
       children: (
         <div className="p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Typography variant="subtitle1">Feature toggles</Typography>
-            <Tooltip title="Locking a flag here stops the company from changing it themselves.">
-              <MdLock className="text-gray-400" size={14} />
-            </Tooltip>
+          <div className="flex items-center gap-3 mb-6">
+            <span className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-primary-600 to-accent-500 text-white flex items-center justify-center shadow-sm">
+              <MdOutlineTune size={18} />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <Typography variant="h5">Feature settings</Typography>
+                <Tooltip title="Locking a flag here stops the company from changing it themselves.">
+                  <MdLock className="text-gray-400" size={14} />
+                </Tooltip>
+              </div>
+              <Typography variant="body2" className="text-gray-400 mt-0.5">
+                Control which product features this company can access.
+              </Typography>
+            </div>
           </div>
           {isEntitlementsLoading ? (
             <Loader />
@@ -128,62 +174,77 @@ const ViewCustomer = () => {
 
   return (
     <MainLayout>
-      <div className="w-full max-w-5xl mx-auto p-8 pt-16">
-        <button
+      <div className="w-full px-6 py-5 max-w-[1400px] mx-auto">
+        <div
+          className="flex items-center gap-2 text-sm text-gray-500 mb-3 cursor-pointer hover:text-primary-600 transition-colors w-fit"
           onClick={() => navigate('/company')}
-          className="flex items-center text-gray-600 hover:text-gray-800 mb-4 cursor-pointer"
         >
-          <MdOutlineArrowBack className="mr-2" /> Back
-        </button>
-
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Typography variant="h4">{tenant.company_name}</Typography>
-            <Badge status={STATUS_BADGE[tenant.status] || 'neutral'}>{tenant.status}</Badge>
-          </div>
-          {tenant.status === 'active' && (
-            <Button
-              className="rounded-full border border-red-300 text-red-600 px-5 py-2"
-              onClick={() => setShowSuspendConfirm(true)}
-            >
-              Suspend company
-            </Button>
-          )}
+          <BsArrowLeft />
+          <span>Back</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div>
-            <Typography variant="subtitle2">Admin email</Typography>
-            <Typography variant="body1">{tenant.admin_email}</Typography>
-          </div>
-          <div>
-            <Typography variant="subtitle2">Signup source</Typography>
-            <Typography variant="body1" className="capitalize">
-              {tenant.signup_source}
-            </Typography>
-          </div>
-          <div>
-            <Typography variant="subtitle2">Joined</Typography>
-            <Typography variant="body1">
-              {tenant.created_at ? new Date(tenant.created_at).toLocaleDateString() : '-'}
-            </Typography>
-          </div>
-          <div>
-            <Typography variant="subtitle2">Last active</Typography>
-            <Typography variant="body1">
-              {tenant.last_active_at
-                ? new Date(tenant.last_active_at).toLocaleDateString()
-                : 'Not available'}
-            </Typography>
+        <div className="bg-white border border-neutral-200 rounded-xl shadow-xs">
+          <div className="p-6">
+            <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
+              <div className="flex items-center gap-4">
+                <span className="shrink-0 w-14 h-14 bg-gradient-to-br from-primary-600 to-accent-500 text-white rounded-full flex items-center justify-center shadow-sm text-xl font-bold">
+                  {tenant.company_name?.[0]?.toUpperCase() || '?'}
+                </span>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h1 className="font-display text-2xl font-bold text-gray-900">
+                      {tenant.company_name}
+                    </h1>
+                    <Badge status={STATUS_BADGE[tenant.status] || 'neutral'}>{tenant.status}</Badge>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">Company overview and management</p>
+                </div>
+              </div>
+              {tenant.status === 'active' && (
+                <Button
+                  className="rounded-full border border-red-300 text-red-600 px-5 py-2 hover:bg-red-50 transition-colors shrink-0"
+                  onClick={() => setShowSuspendConfirm(true)}
+                >
+                  Suspend company
+                </Button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 pb-6 border-b border-gray-100">
+              <MetaTile
+                icon={<MdEmail size={18} />}
+                label="Admin email"
+                value={tenant.admin_email}
+              />
+              <MetaTile
+                icon={<MdOutlineCampaign size={18} />}
+                label="Signup source"
+                value={<span className="capitalize">{tenant.signup_source}</span>}
+              />
+              <MetaTile
+                icon={<MdOutlineCalendarToday size={18} />}
+                label="Joined"
+                value={tenant.created_at ? new Date(tenant.created_at).toLocaleDateString() : '-'}
+              />
+              <MetaTile
+                icon={<MdOutlineAccessTime size={18} />}
+                label="Last active"
+                value={
+                  tenant.last_active_at
+                    ? new Date(tenant.last_active_at).toLocaleDateString()
+                    : 'Not available'
+                }
+              />
+            </div>
+
+            <Tabs
+              activeKey={currentTab}
+              onChange={handleTabChange}
+              items={items}
+              className="view-customer-tabs"
+            />
           </div>
         </div>
-
-        <Tabs
-          activeKey={currentTab}
-          onChange={handleTabChange}
-          items={items}
-          className="view-customer-tabs"
-        />
       </div>
 
       {showSuspendConfirm && (

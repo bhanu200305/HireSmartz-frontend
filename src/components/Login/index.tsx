@@ -75,9 +75,18 @@ const Login = () => {
   const [resendVerification, { isLoading: isResendingVerification }] =
     useResendVerificationMutation();
 
+  // StrictMode (dev only) double-invokes this mount effect within the same
+  // render, before the replace-navigate below has a chance to clear
+  // location.state — so both passes see the same successMessage and, without
+  // this guard, two toasts fire for one logout. Same pattern as LogOutPage's
+  // hasStartedLogoutRef.
+  const hasShownSuccessToastRef = useRef(false);
+
   useEffect(() => {
+    if (hasShownSuccessToastRef.current) return;
     const successMessage = (location.state as { successMessage?: string } | null)?.successMessage;
     if (successMessage) {
+      hasShownSuccessToastRef.current = true;
       showToast({ message: successMessage, type: 'success' });
       // Clear the state so the toast doesn't re-appear on refresh
       navigate(location.pathname, { replace: true, state: {} });
