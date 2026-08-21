@@ -73,6 +73,12 @@ export type UpdateUserRequest = {
   department_id?: string;
 };
 
+// GET/PATCH /v1/users/me — self-service, no USER_UPDATE permission required:
+// the caller can only ever reach their own row (user_id comes from the
+// token server-side, never accepted from the client). Same field set as
+// UpdateUserRequest above, minus userId — always implicitly "me".
+export type UpdateOwnUserProfileRequest = Omit<UpdateUserRequest, 'userId'>;
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     listUsers: build.query<ListUsersResponse, ListUsersArgs | void>({
@@ -140,6 +146,16 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'UserPermissions', id: userId },
       ],
     }),
+    getOwnUserProfile: build.query<OrgUser, void>({
+      query: () => '/v1/users/me',
+    }),
+    updateOwnUserProfile: build.mutation<OrgUser, UpdateOwnUserProfileRequest>({
+      query: (body) => ({
+        url: '/v1/users/me',
+        method: 'PATCH',
+        body,
+      }),
+    }),
   }),
 });
 
@@ -151,4 +167,6 @@ export const {
   useListUserLocationsQuery,
   useAttachUserLocationMutation,
   useDetachUserLocationMutation,
+  useGetOwnUserProfileQuery,
+  useUpdateOwnUserProfileMutation,
 } = extendedApi;

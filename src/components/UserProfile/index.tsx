@@ -8,6 +8,7 @@ import {
 } from 'react-icons/md';
 import MainLayout from '../../layouts/MainLayout';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { Form, Select, Upload } from 'antd';
 import { Button, Input, showToast } from '../shared';
 import { Controller, useForm } from 'react-hook-form';
@@ -16,11 +17,15 @@ import { UserProfileSchema } from './UserProfileSchema';
 import { countryCodes } from '../../constants/countryCode';
 import React, { useEffect, useState } from 'react';
 import './userProfile.css';
-import { jwtDecode } from 'jwt-decode';
+import { RootState } from '../../redux/provider/store';
 import {
-  useGetUserProfileQuery,
-  useUpdateUserProfileMutation,
-} from '../../api/tenant-service/UserProfile/UserProfile';
+  useGetOwnUserProfileQuery,
+  useUpdateOwnUserProfileMutation,
+} from '../../api/organization-service/Users/users';
+import {
+  useGetOwnPlatformProfileQuery,
+  useUpdateOwnPlatformProfileMutation,
+} from '../../api/organization-service/Platform/staff';
 import {
   handlePhoneNumberChange,
   sanitizeInput,
@@ -38,23 +43,34 @@ import {
 } from '../../constants/file.constants';
 import { get } from 'lodash-es';
 import { Loader } from '../shared/ui/loader';
-import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
-import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 const { Option } = Select;
 
 const UserProfile = () => {
   const navigate = useNavigate();
-  const getUserIdFromToken = () => {
-    const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
-    if (!token) return null;
-    const decoded = jwtDecode<{ userId: string }>(token);
-    return decoded.userId;
-  };
 
-  const userId = getUserIdFromToken();
+  // Decided upfront from Redux, not by reacting to a 404 — a platform
+  // caller has no `users` row at all (see GetOwnUserProfileUseCase's
+  // docstring), so there's no reason to even attempt that query for them.
+  const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
+  const isPlatformCaller = callerKind === 'platform';
 
-  const { data: profileData, isLoading, refetch } = useGetUserProfileQuery(userId ?? '');
-  const [updateProfile, { isLoading: isUpdating }] = useUpdateUserProfileMutation();
+  const {
+    data: tenantProfileData,
+    isLoading: isTenantLoading,
+    isSuccess: isTenantProfileLoaded,
+  } = useGetOwnUserProfileQuery(undefined, { skip: isPlatformCaller });
+  const {
+    data: platformProfileData,
+    isLoading: isPlatformLoading,
+    isSuccess: isPlatformProfileLoaded,
+  } = useGetOwnPlatformProfileQuery(undefined, { skip: !isPlatformCaller });
+  const isLoading = isPlatformCaller ? isPlatformLoading : isTenantLoading;
+  const profileLoaded = isPlatformCaller ? isPlatformProfileLoaded : isTenantProfileLoaded;
+
+  const [updateTenantProfile, { isLoading: isUpdatingTenant }] = useUpdateOwnUserProfileMutation();
+  const [updatePlatformProfile, { isLoading: isUpdatingPlatform }] =
+    useUpdateOwnPlatformProfileMutation();
+  const isUpdating = isPlatformCaller ? isUpdatingPlatform : isUpdatingTenant;
   const [isHovered, setIsHovered] = useState(false);
   const [imagePreview, setImagePreview] = useState('');
   const [imageChanged, setImageChanged] = useState(false);
@@ -91,35 +107,52 @@ const UserProfile = () => {
   });
 
   useEffect(() => {
-    if (profileData) {
+    // Neither OrgUser (organization-service's `users` table) nor
+    // OwnPlatformProfile (`memberships`) has address/profilePicture/
+    // companyName fields — those stay blank via the same `|| ''` fallback
+    // already used everywhere else in this form.
+    if (isPlatformCaller && platformProfileData) {
       reset({
-        firstName: profileData.firstName || '',
-        lastName: profileData.lastName || '',
-        emailId: profileData.emailId || '',
-        phoneNumber: formatPhoneNumber(profileData.phoneNumber) || '',
-        country: profileData.country || '',
-        countryCode: profileData.countryCode || '+1',
-        state: profileData.state || '',
-        city: profileData.city || '',
-        addressLine1: profileData.addressLine1 || '',
-        addressLine2: profileData.addressLine2 || '',
-        pinCode: profileData.pinCode || '',
-        profilePicture: profileData.profilePicture || '',
-        profilePictureType: profileData.profilePictureType || '',
-        roleName: profileData.roleName || '',
-        companyName: profileData.companyName || '',
+        firstName: platformProfileData.first_name || '',
+        lastName: platformProfileData.last_name || '',
+        emailId: platformProfileData.email || '',
+        phoneNumber: formatPhoneNumber(platformProfileData.phone_no || '') || '',
+        country: '',
+        countryCode: platformProfileData.country_code || '+1',
+        state: '',
+        city: '',
+        addressLine1: '',
+        addressLine2: '',
+        pinCode: '',
+        profilePicture: '',
+        profilePictureType: '',
+        roleName: platformProfileData.role || '',
+        companyName: '',
       });
-      if (profileData.country) setSelectedCountry(profileData.country);
-      if (profileData.state) setSelectedState(profileData.state);
-      if (profileData.city) setSelectedCity(profileData.city);
-      if (profileData.profilePicture) {
-        setImagePreview(profileData.profilePicture);
-      }
+      setImageChanged(false);
+      setIsProfileDeleted(false);
+    } else if (!isPlatformCaller && tenantProfileData) {
+      reset({
+        firstName: tenantProfileData.first_name || '',
+        lastName: tenantProfileData.last_name || '',
+        emailId: tenantProfileData.email || '',
+        phoneNumber: formatPhoneNumber(tenantProfileData.phone_no || '') || '',
+        country: '',
+        countryCode: tenantProfileData.country_code || '+1',
+        state: '',
+        city: '',
+        addressLine1: '',
+        addressLine2: '',
+        pinCode: '',
+        profilePicture: '',
+        profilePictureType: '',
+        roleName: '',
+        companyName: '',
+      });
       setImageChanged(false);
       setIsProfileDeleted(false);
     }
-    refetch();
-  }, [profileData, reset, refetch]);
+  }, [isPlatformCaller, tenantProfileData, platformProfileData, reset]);
 
   const handleDeleteProfilePicture = () => {
     setImagePreview('');
@@ -203,47 +236,31 @@ const UserProfile = () => {
 
   const handleUpdateProfile = async (data: any) => {
     try {
-      if (!userId) {
-        showToast({
-          message: 'User Id not found',
-          type: 'error',
-        });
-        return;
-      }
-
-      const cleanedPhoneNumber = cleanPhoneNumber(data.phoneNumber);
-
-      // Sanitize relevant string fields
-      const sanitizedData = {
-        ...data,
-        firstName: sanitizeInput(data.firstName),
-        lastName: sanitizeInput(data.lastName),
-        emailId: sanitizeInput(data.emailId),
-        addressLine1: data.addressLine1 ? sanitizeInput(data.addressLine1) : '',
-        addressLine2: data.addressLine2 ? sanitizeInput(data.addressLine2) : '',
-        city: data.city ? sanitizeInput(data.city) : '',
-        state: data.state ? sanitizeInput(data.state) : '',
-        country: data.country ? sanitizeInput(data.country) : '',
-        pinCode: data.pinCode ? sanitizeInput(data.pinCode) : '',
-      };
-
-      const payload = {
-        ...sanitizedData,
-        id: userId,
-        phoneNumber: cleanedPhoneNumber,
-        profileDeleted: isProfileDeleted,
-      };
-      if (imageChanged) {
-        payload.profilePicture = isProfileDeleted ? null : data.profilePicture;
-        payload.profilePictureType = isProfileDeleted ? null : data.profilePictureType;
+      if (isPlatformCaller) {
+        // Membership has no email/role fields on this self-service surface
+        // — those inputs are disabled below, never sent here.
+        await updatePlatformProfile({
+          first_name: sanitizeInput(data.firstName),
+          last_name: sanitizeInput(data.lastName),
+          phone_no: cleanPhoneNumber(data.phoneNumber),
+          country_code: data.countryCode,
+        }).unwrap();
       } else {
-        payload.profilePicture = null;
-        payload.profilePictureType = null;
+        // Only the fields organization-service's UpdateUserRequest actually
+        // accepts (extra="forbid" — an unrecognised field 422s, not a
+        // silent no-op). profilePicture/address fields have no backend
+        // column to persist to (see the useEffect above), so they're never
+        // sent.
+        await updateTenantProfile({
+          email: sanitizeInput(data.emailId),
+          first_name: sanitizeInput(data.firstName),
+          last_name: sanitizeInput(data.lastName),
+          phone_no: cleanPhoneNumber(data.phoneNumber),
+          country_code: data.countryCode,
+        }).unwrap();
       }
-
-      const response = await updateProfile(payload).unwrap();
       showToast({
-        message: response?.message || 'Profile has been updated successfully',
+        message: 'Profile has been updated successfully',
         type: 'success',
       });
       navigate('/');
@@ -287,15 +304,11 @@ const UserProfile = () => {
             </button>
           </div>
           <div className="bg-[#FAFAFA] p-6 md:p-10 rounded-2xl shadow-lg w-full max-w-4xl flex flex-col">
-            {profileData?.companyName && (
-              <p className="text-center font-semibold text-black mb-2">
-                {profileData?.companyName}
-              </p>
-            )}
             <h2 className="text-center text-2xl font-semibold mb-2">User Profile</h2>
             <p className="text-center mb-6">Please enter the following details.</p>
-            <Form layout="vertical">
-              {/* <Form.Item
+            {profileLoaded && (
+              <Form layout="vertical">
+                {/* <Form.Item
                 name="image"
                 className="w-full text-center"
                 style={{ marginBottom: '12px' }}
@@ -320,116 +333,116 @@ const UserProfile = () => {
                   <p>Upload User&apos;s Image (Optional)</p>
                 </Upload.Dragger>
               </Form.Item> */}
-              <Form.Item
-                name="image"
-                className="w-full text-center"
-                style={{ marginBottom: '12px' }}
-              >
-                {imagePreview ? (
-                  <div
-                    className="relative w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden group mx-auto"
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
-                  >
-                    <img
-                      src={imagePreview}
-                      alt="Profile preview"
-                      className="w-full h-full object-cover"
-                      onError={() => setImagePreview('')}
-                    />
-                    <Upload
-                      beforeUpload={handleFileUpload}
-                      showUploadList={false}
-                      className="hidden"
-                      accept="image/png, image/jpeg, image/jpg"
+                <Form.Item
+                  name="image"
+                  className="w-full text-center"
+                  style={{ marginBottom: '12px' }}
+                >
+                  {imagePreview ? (
+                    <div
+                      className="relative w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden group mx-auto"
+                      onMouseEnter={() => setIsHovered(true)}
+                      onMouseLeave={() => setIsHovered(false)}
                     >
-                      <button ref={uploadRef} className="hidden"></button>
-                    </Upload>
-                    {isHovered && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 gap-2">
-                        <div
-                          onClick={() => uploadRef.current?.click()}
-                          className="bg-primary rounded-full p-2 cursor-pointer hover:bg-primary-dark"
-                        >
-                          <MdEdit className="text-white text-xl" />
-                        </div>
-                        {imagePreview && (
+                      <img
+                        src={imagePreview}
+                        alt="Profile preview"
+                        className="w-full h-full object-cover"
+                        onError={() => setImagePreview('')}
+                      />
+                      <Upload
+                        beforeUpload={handleFileUpload}
+                        showUploadList={false}
+                        className="hidden"
+                        accept="image/png, image/jpeg, image/jpg"
+                      >
+                        <button ref={uploadRef} className="hidden"></button>
+                      </Upload>
+                      {isHovered && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 gap-2">
                           <div
-                            className="bg-red-500 rounded-full p-2 cursor-pointer hover:bg-red-600"
-                            onClick={handleDeleteProfilePicture}
+                            onClick={() => uploadRef.current?.click()}
+                            className="bg-primary rounded-full p-2 cursor-pointer hover:bg-primary-dark"
                           >
-                            <MdDelete className="text-white text-xl" />
+                            <MdEdit className="text-white text-xl" />
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Upload.Dragger
-                    beforeUpload={handleFileUpload}
-                    listType="picture"
-                    maxCount={1}
-                    accept="image/png, image/jpeg, image/jpg"
-                    className="border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center"
-                  >
-                    <MdOutlineFileUpload className="text-xl mb-2 text-primary mx-auto" />
-                    <p>Upload User&apos;s Image (Optional)</p>
-                  </Upload.Dragger>
-                )}
-              </Form.Item>
-              <div className="grid grid-cols-2 gap-x-4">
-                <Form.Item
-                  label={
-                    <span>
-                      First Name <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                  name="firstName"
-                  style={{ marginBottom: '10px' }}
-                  // validateStatus={errors.firstName ? 'error' : ''}
-                  // help={errors.firstName?.message}
-                >
-                  <Controller
+                          {imagePreview && (
+                            <div
+                              className="bg-red-500 rounded-full p-2 cursor-pointer hover:bg-red-600"
+                              onClick={handleDeleteProfilePicture}
+                            >
+                              <MdDelete className="text-white text-xl" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Upload.Dragger
+                      beforeUpload={handleFileUpload}
+                      listType="picture"
+                      maxCount={1}
+                      accept="image/png, image/jpeg, image/jpg"
+                      className="border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center"
+                    >
+                      <MdOutlineFileUpload className="text-xl mb-2 text-primary mx-auto" />
+                      <p>Upload User&apos;s Image (Optional)</p>
+                    </Upload.Dragger>
+                  )}
+                </Form.Item>
+                <div className="grid grid-cols-2 gap-x-4">
+                  <Form.Item
+                    label={
+                      <span>
+                        First Name <span className="required-asterisk">*</span>
+                      </span>
+                    }
                     name="firstName"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        maxLength={100}
-                        type="text"
-                        placeholder="First Name"
-                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                      />
-                    )}
-                  />
-                  <p className="text-red-500">{errors.firstName?.message}</p>
-                </Form.Item>
+                    style={{ marginBottom: '10px' }}
+                    // validateStatus={errors.firstName ? 'error' : ''}
+                    // help={errors.firstName?.message}
+                  >
+                    <Controller
+                      name="firstName"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          maxLength={100}
+                          type="text"
+                          placeholder="First Name"
+                          className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                        />
+                      )}
+                    />
+                    <p className="text-red-500">{errors.firstName?.message}</p>
+                  </Form.Item>
 
-                <Form.Item
-                  label={
-                    <span>
-                      Last Name <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                  name="lastName"
-                  style={{ marginBottom: '10px' }}
-                >
-                  <Controller
+                  <Form.Item
+                    label={
+                      <span>
+                        Last Name <span className="required-asterisk">*</span>
+                      </span>
+                    }
                     name="lastName"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        type="text"
-                        maxLength={100}
-                        placeholder="Last Name"
-                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                      />
-                    )}
-                  />
-                  <p className="text-red-500">{errors.lastName?.message}</p>
-                </Form.Item>
-                {/* <Form.Item name="Title" style={{ marginBottom: '10px' }}>
+                    style={{ marginBottom: '10px' }}
+                  >
+                    <Controller
+                      name="lastName"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          type="text"
+                          maxLength={100}
+                          placeholder="Last Name"
+                          className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                        />
+                      )}
+                    />
+                    <p className="text-red-500">{errors.lastName?.message}</p>
+                  </Form.Item>
+                  {/* <Form.Item name="Title" style={{ marginBottom: '10px' }}>
                 <Input
                   placeholder="Title"
                   className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
@@ -437,106 +450,116 @@ const UserProfile = () => {
                 />
                 <p className="text-red-500">{errors.title?.message}</p>
               </Form.Item> */}
-                <Form.Item
-                  label={
-                    <span>
-                      Phone Number <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                  name="phone"
-                  style={{ marginBottom: '10px' }}
-                >
-                  <div className="phone-input-wrapper flex items-center bg-white w-full px-4 border rounded-3xl border-[var(--border)]">
-                    <Select
-                      value={watch('countryCode')}
-                      onChange={(value) =>
-                        setValue('countryCode', value, { shouldValidate: true, shouldDirty: true })
-                      }
-                      className="border-none focus:ring-0 focus:outline-none bg-transparent"
-                      dropdownStyle={{ minWidth: '300px' }}
-                      // dropdownMatchSelectWidth={false}
-                      variant="borderless"
-                      style={{ width: '80px', fontSize: '14px' }}
-                      options={countryCodes.map(({ label, value, short }) => ({
-                        label: `${short} - ${label}`,
-                        value,
-                      }))}
-                      optionLabelProp="value"
-                      showSearch
-                      filterOption={(input, option) =>
-                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                      }
-                      placeholder="Search..."
-                      tabIndex={-1}
-                    />
-                    <div className="border-l-2 border-gray-300 h-6 mx-2"></div>
-                    <Input
-                      type="tel"
-                      placeholder="(555) 123-4567"
-                      value={watch('phoneNumber')}
-                      onChange={(e) => handlePhoneNumberChange(e, setValue, 'phoneNumber', trigger)}
-                      maxLength={14}
-                      className="border-none focus:ring-0 focus:outline-none w-full"
-                    />
-                  </div>
-                  <p className="text-red-500 text-sm mt-1">{errors.countryCode?.message}</p>
+                  <Form.Item
+                    label={
+                      <span>
+                        Phone Number <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                    name="phone"
+                    style={{ marginBottom: '10px' }}
+                  >
+                    <div className="phone-input-wrapper flex items-center bg-white w-full px-4 border rounded-3xl border-[var(--border)]">
+                      <Select
+                        value={watch('countryCode')}
+                        onChange={(value) =>
+                          setValue('countryCode', value, {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          })
+                        }
+                        className="border-none focus:ring-0 focus:outline-none bg-transparent"
+                        dropdownStyle={{ minWidth: '300px' }}
+                        // dropdownMatchSelectWidth={false}
+                        variant="borderless"
+                        style={{ width: '80px', fontSize: '14px' }}
+                        options={countryCodes.map(({ label, value, short }) => ({
+                          label: `${short} - ${label}`,
+                          value,
+                        }))}
+                        optionLabelProp="value"
+                        showSearch
+                        filterOption={(input, option) =>
+                          (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                        }
+                        placeholder="Search..."
+                        tabIndex={-1}
+                      />
+                      <div className="border-l-2 border-gray-300 h-6 mx-2"></div>
+                      <Input
+                        type="tel"
+                        placeholder="(555) 123-4567"
+                        value={watch('phoneNumber')}
+                        onChange={(e) =>
+                          handlePhoneNumberChange(e, setValue, 'phoneNumber', trigger)
+                        }
+                        maxLength={14}
+                        className="border-none focus:ring-0 focus:outline-none w-full"
+                      />
+                    </div>
+                    <p className="text-red-500 text-sm mt-1">{errors.countryCode?.message}</p>
 
-                  <p className="text-red-500 text-sm mt-1">{errors.phoneNumber?.message}</p>
-                </Form.Item>
-                <Form.Item
-                  label={
-                    <span>
-                      Email Address <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                  name="email"
-                  style={{ marginBottom: '10px' }}
-                >
-                  <Controller
-                    name="emailId"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        placeholder="Email Address"
-                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\s/g, ''); // Remove all spaces
-                          field.onChange(value);
-                        }}
-                      />
+                    <p className="text-red-500 text-sm mt-1">{errors.phoneNumber?.message}</p>
+                  </Form.Item>
+                  <Form.Item
+                    label={
+                      <span>
+                        Email Address <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                    name="email"
+                    style={{ marginBottom: '10px' }}
+                  >
+                    <Controller
+                      name="emailId"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          // Changing a platform account's login email isn't
+                          // part of this self-service surface — Membership
+                          // has no writable email field here (see
+                          // UpdateOwnPlatformProfileRequest).
+                          disabled={isPlatformCaller}
+                          placeholder="Email Address"
+                          className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\s/g, ''); // Remove all spaces
+                            field.onChange(value);
+                          }}
+                        />
+                      )}
+                    />
+                    {errors.emailId && (
+                      <p className="text-red-500 text-sm mt-1">{errors.emailId.message}</p>
                     )}
-                  />
-                  {errors.emailId && (
-                    <p className="text-red-500 text-sm mt-1">{errors.emailId.message}</p>
-                  )}
-                </Form.Item>
-                <Form.Item
-                  label={
-                    <span>
-                      Role <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                  name="roleName"
-                  style={{ marginBottom: '10px' }}
-                  // validateStatus={errors.firstName ? 'error' : ''}
-                  // help={errors.firstName?.message}
-                >
-                  <Controller
+                  </Form.Item>
+                  <Form.Item
+                    label={
+                      <span>
+                        Role <span className="required-asterisk">*</span>
+                      </span>
+                    }
                     name="roleName"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        type="text"
-                        disabled
-                        placeholder="Role"
-                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                      />
-                    )}
-                  />
-                </Form.Item>
-                {/* <Form.Item name="AddressLine1" style={{ marginBottom: '10px' }}>
+                    style={{ marginBottom: '10px' }}
+                    // validateStatus={errors.firstName ? 'error' : ''}
+                    // help={errors.firstName?.message}
+                  >
+                    <Controller
+                      name="roleName"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          type="text"
+                          disabled
+                          placeholder="Role"
+                          className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                        />
+                      )}
+                    />
+                  </Form.Item>
+                  {/* <Form.Item name="AddressLine1" style={{ marginBottom: '10px' }}>
                   <Input
                     type="text"
                     placeholder="Address Line 1"
@@ -666,19 +689,20 @@ const UserProfile = () => {
                   />
                   <p className="text-red-500">{errors.pinCode?.message}</p>
                 </Form.Item> */}
-              </div>
+                </div>
 
-              <Form.Item className="flex justify-center !mt-2">
-                <Button
-                  appname="add user"
-                  disabled={(!isDirty && !imageChanged) || isUpdating}
-                  className="w-50 text-white bg-button rounded-3xl px-4 py-2 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={handleSubmit(handleUpdateProfile)}
-                >
-                  {isUpdating ? 'UPDATING...' : 'UPDATE USER'}
-                </Button>
-              </Form.Item>
-            </Form>
+                <Form.Item className="flex justify-center !mt-2">
+                  <Button
+                    appname="add user"
+                    disabled={(!isDirty && !imageChanged) || isUpdating}
+                    className="w-50 text-white bg-button rounded-3xl px-4 py-2 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleSubmit(handleUpdateProfile)}
+                  >
+                    {isUpdating ? 'UPDATING...' : 'UPDATE USER'}
+                  </Button>
+                </Form.Item>
+              </Form>
+            )}
           </div>
         </div>
       </MainLayout>

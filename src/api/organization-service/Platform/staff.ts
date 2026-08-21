@@ -17,6 +17,26 @@ export type PlatformDepartment = {
   name: string;
 };
 
+// OwnPlatformProfileView — GET/PATCH /v1/platform/staff/me. Self-service:
+// email/role are read-only display (email isn't editable here — changing a
+// platform login identifier is out of scope, same reasoning the tenant
+// self-service PATCH already applies to its own email field).
+export type OwnPlatformProfile = {
+  email: string;
+  role: string;
+  first_name: string | null;
+  last_name: string | null;
+  country_code: string | null;
+  phone_no: string | null;
+};
+
+export type UpdateOwnPlatformProfileRequest = {
+  first_name?: string;
+  last_name?: string;
+  country_code?: string;
+  phone_no?: string;
+};
+
 export type InviteSuperAdminRequest = {
   email: string;
 };
@@ -87,6 +107,16 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['PlatformStaff'],
     }),
+    getOwnPlatformProfile: build.query<OwnPlatformProfile, void>({
+      query: () => '/v1/platform/staff/me',
+    }),
+    updateOwnPlatformProfile: build.mutation<OwnPlatformProfile, UpdateOwnPlatformProfileRequest>({
+      query: (body) => ({
+        url: '/v1/platform/staff/me',
+        method: 'PATCH',
+        body,
+      }),
+    }),
   }),
 });
 
@@ -97,4 +127,6 @@ export const {
   useInviteSuperAdminMutation,
   useInvitePlatformStaffMutation,
   useOffboardPlatformStaffMutation,
+  useGetOwnPlatformProfileQuery,
+  useUpdateOwnPlatformProfileMutation,
 } = extendedApi;

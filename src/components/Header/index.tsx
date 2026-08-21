@@ -8,8 +8,8 @@ import {
   getLocalStorageItem,
   isImpersonationActive,
 } from '../../shared/utils/auth/localstorage.helpers';
-import { useGetUserProfileQuery } from '../../api/tenant-service/UserProfile/UserProfile';
-import { jwtDecode } from 'jwt-decode';
+import { useGetOwnUserProfileQuery } from '../../api/organization-service/Users/users';
+import { useGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import './header.css';
 import { Search, showToast } from '../shared';
@@ -32,6 +32,7 @@ import {
 import { api } from '../../api';
 import NotificationBell from './NotificationBell';
 import LocationSwitcher from '../Navbar/LocationSwitcher';
+import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 
 const { Option, OptGroup } = Select;
 
@@ -94,11 +95,20 @@ const Header = () => {
   const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
   const autoLogin = location?.state?.autoLogin;
 
-  const userId =
-    useSelector((state: RootState) => state.LoginSlice.userId) ||
-    (token && (jwtDecode(token) as any)?.userId);
-
   const role = useSelector((state: RootState) => state.LoginSlice.role);
+  const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
+  const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
+  const isPlatformCaller = callerKind === 'platform';
+
+  // Company branding for the profile card below — only a tenant session has
+  // a company at all (mirrors the tenantId checks already used throughout
+  // this file and Sidebar.tsx for the same tenant-vs-platform distinction).
+  // RTK Query dedupes this against any other screen already fetching the
+  // same tenant's profile (e.g. MyCompany), so this is not an extra request
+  // beyond what's already in flight for a Company Admin.
+  const { data: tenantProfile } = useGetTenantProfileQuery(tenantId ?? '', {
+    skip: !tenantId,
+  });
 
   const isNylasFeatureEnabled = import.meta.env.VITE_NYLAS_FEATURE === 'true';
   const isCalendarUser = isMultiLocationRoleName(role?.name);
@@ -116,12 +126,50 @@ const Header = () => {
 
   const [disconnectGrant, { isLoading: isDisconnecting }] = useDisconnectNylasGrantMutation();
 
-  const { data: profileData, error: profileError } = useGetUserProfileQuery(userId!, {
-    skip: autoLogin || !userId,
-    refetchOnMountOrArgChange: true,
-  });
+  // /v1/users/me self-identifies from the Bearer token server-side, no
+  // userId needed as a query arg. Decided upfront by callerKind, same as
+  // /profile — a platform caller has no `users` row at all, so there's no
+  // reason to fire that query for them; /v1/platform/staff/me is the real
+  // source for their name instead.
+  const { data: tenantProfileData, error: tenantProfileError } = useGetOwnUserProfileQuery(
+    undefined,
+    {
+      skip: autoLogin || !token || isPlatformCaller,
+      refetchOnMountOrArgChange: true,
+    }
+  );
+  const { data: platformProfileData, error: platformProfileError } = useGetOwnPlatformProfileQuery(
+    undefined,
+    {
+      skip: autoLogin || !token || !isPlatformCaller,
+      refetchOnMountOrArgChange: true,
+    }
+  );
+  const profileError = isPlatformCaller ? platformProfileError : tenantProfileError;
 
-  const userData = profileError ? { firstName: 'User', profilePicture: null } : profileData;
+  // Both OrgUser (snake_case, tenant `users` table) and OwnPlatformProfile
+  // (`memberships`) mapped to the one shape this component's JSX already
+  // expects below. profilePicture stays permanently null either way —
+  // neither table has one today.
+  const userData = profileError
+    ? { firstName: 'User', lastName: null as string | null, profilePicture: null, roleName: null }
+    : isPlatformCaller
+      ? platformProfileData
+        ? {
+            firstName: platformProfileData.first_name || 'User',
+            lastName: platformProfileData.last_name,
+            profilePicture: null,
+            roleName: platformProfileData.role,
+          }
+        : undefined
+      : tenantProfileData
+        ? {
+            firstName: tenantProfileData.first_name,
+            lastName: tenantProfileData.last_name,
+            profilePicture: null,
+            roleName: null,
+          }
+        : undefined;
 
   const { data: categoriesRes } = useGetCategoriesQuery(undefined, {
     skip: !shouldFetchCategories,
@@ -598,6 +646,68 @@ const Header = () => {
                     },
                   ],
                 }}
+                // The menu items/onClick handlers above are untouched — this
+                // only adds a richer header above them (user + company
+                // branding) when the dropdown opens.
+                dropdownRender={(menu) => (
+                  <div
+                    className="rounded-xl overflow-hidden"
+                    style={{
+                      backgroundColor: '#fff',
+                      boxShadow: '0 8px 24px rgba(16, 26, 58, 0.12)',
+                    }}
+                  >
+                    <div className="flex items-center gap-3 p-4">
+                      {userData?.profilePicture ? (
+                        <Avatar size={48} src={userData.profilePicture} alt={userData.firstName}>
+                          <span>{userData?.firstName.charAt(0).toUpperCase()}</span>
+                        </Avatar>
+                      ) : (
+                        <Avatar size={48} style={{ backgroundColor: 'var(--primary)' }}>
+                          {userData?.firstName?.charAt(0).toUpperCase()}
+                        </Avatar>
+                      )}
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-semibold text-neutral-900 truncate">
+                          {makeFirstLetterUpperCase(userData?.firstName)}
+                          {userData?.lastName ? ` ${userData.lastName}` : ''}
+                        </span>
+                        {userData?.roleName && (
+                          <span className="text-xs text-neutral-500 truncate">
+                            {userData.roleName}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {tenantId && tenantProfile && (
+                      <>
+                        <div className="border-t" style={{ borderColor: 'var(--border)' }} />
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <div className="relative w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+                            {tenantProfile.logo_url ? (
+                              <img
+                                src={tenantProfile.logo_url}
+                                alt={tenantProfile.company_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs font-semibold text-gray-500">
+                                {tenantProfile.company_name?.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-sm text-neutral-700 truncate">
+                            {tenantProfile.company_name}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="border-t" style={{ borderColor: 'var(--border)' }} />
+                    {menu}
+                  </div>
+                )}
                 trigger={['click']}
               >
                 <div className="flex items-center gap-3 px-1 py-1 text-sm cursor-pointer">

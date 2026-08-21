@@ -37,6 +37,42 @@ export type TenantStatusResponse = {
   status: string;
 };
 
+// POST /v1/tenants/{tenant_id}/logo/upload-url — same presigned-S3-POST
+// shape as RequestRosterUploadArgs/RosterUploadTarget in Tenants/imports.ts.
+// No confirm endpoint: after the direct-to-S3 upload succeeds, the caller
+// persists `storage_key` via updateTenantProfile's `logo` field directly.
+export type RequestTenantLogoUploadArgs = {
+  tenantId: string;
+  filename: string;
+  content_type: string;
+};
+
+export type TenantLogoUploadTarget = {
+  upload_url: string;
+  upload_fields: Record<string, string>;
+  storage_key: string;
+  expires_in: number;
+};
+
+/**
+ * Uploads the file directly to storage using the presigned POST from
+ * `requestTenantLogoUpload` — the bytes never pass through organization-
+ * service. Same shape as `uploadRosterFile` in `Tenants/imports.ts`.
+ */
+export const uploadTenantLogoFile = async (
+  target: TenantLogoUploadTarget,
+  file: File
+): Promise<void> => {
+  const formData = new FormData();
+  Object.entries(target.upload_fields).forEach(([key, value]) => formData.append(key, value));
+  formData.append('file', file);
+
+  const response = await fetch(target.upload_url, { method: 'POST', body: formData });
+  if (!response.ok) {
+    throw new Error(`Upload failed with status ${response.status}`);
+  }
+};
+
 export type ActivityLogEntry = {
   id: string;
   actor_id: string;
@@ -95,6 +131,13 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [{ type: 'Tenant', id: tenantId }],
     }),
+    requestTenantLogoUpload: build.mutation<TenantLogoUploadTarget, RequestTenantLogoUploadArgs>({
+      query: ({ tenantId, ...body }) => ({
+        url: `/v1/tenants/${tenantId}/logo/upload-url`,
+        method: 'POST',
+        body,
+      }),
+    }),
     getTenantDashboard: build.query<TenantDashboardSummary, string>({
       query: (tenantId) => `/v1/tenants/${tenantId}/dashboard`,
       providesTags: (_result, _error, tenantId) => [{ type: 'Tenant', id: tenantId }],
@@ -112,6 +155,7 @@ const extendedApi = orgApi.injectEndpoints({
 export const {
   useGetTenantProfileQuery,
   useUpdateTenantProfileMutation,
+  useRequestTenantLogoUploadMutation,
   useGetTenantDashboardQuery,
   useListTenantActivityQuery,
 } = extendedApi;

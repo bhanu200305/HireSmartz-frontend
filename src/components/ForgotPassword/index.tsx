@@ -177,9 +177,7 @@ const ForgotPassword = () => {
           className="cfp-hover-lift w-full max-w-md flex flex-col items-center bg-white rounded-3xl px-8 py-16 shadow-lg ring-1 ring-black/5"
         >
           <div className="text-center">
-            <h3 className="font-display text-3xl font-bold text-gray-900 mb-2">
-              Forgot Password
-            </h3>
+            <h3 className="font-display text-3xl font-bold text-gray-900 mb-2">Forgot Password</h3>
             <p className="w-80 text-sm text-gray-500 mb-6">
               Enter your email to request a temporary password.
             </p>
