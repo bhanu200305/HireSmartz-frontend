@@ -125,7 +125,7 @@ const RolesManagement: React.FC = () => {
               disabled={!canCreate || awaitingCompanySelection}
               className="flex items-center gap-1.5 text-sm font-semibold text-white bg-primary-600 rounded-full px-5 py-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
-              <FaPlus size={11} /> Create Role
+              <FaPlus size={11} /> Custom Role
             </button>
           </div>
         </div>

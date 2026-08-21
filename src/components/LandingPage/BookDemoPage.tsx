@@ -1,9 +1,11 @@
 import { useReducer, useState } from 'react';
 import { z } from 'zod';
+import { Select } from 'antd';
 import { LuHeadset, LuStar, LuCalendarCheck, LuCheck } from 'react-icons/lu';
 import { showToast } from '../shared/ui/toast';
 import { useSubmitDemoRequestMutation } from '../../api/organization-service/Platform/guestOrganizations';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+import { countryCodes } from '../../constants/countryCode';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import './landingPage.css';
@@ -20,23 +22,146 @@ const COMPANY_SIZE_TO_INT: Record<string, number> = {
   '500+': 500,
 };
 
-const demoRequestSchema = z.object({
-  firstName: z.string().min(1, 'First name is required.'),
-  lastName: z.string().min(1, 'Last name is required.'),
+const HEAR_ABOUT_US_OPTIONS = [
+  'Google Search',
+  'Social Media (LinkedIn, Facebook, X, etc.)',
+  'Referral from a colleague',
+  'Blog or Article',
+  'Event or Conference',
+  'Other',
+];
+const HEAR_ABOUT_US_OTHER = 'Other';
+
+// Dial codes for the phone field's country-code dropdown — reuses the same
+// `countryCodes` list `LocationFormModal` already draws its phone selector
+// from (see components/shared/ui/locationFormModal.tsx), so this page and
+// that one show the same set of countries/codes. Two countries can share a
+// dial code (+1 for US/Canada, +7 for Russia/Kazakhstan) — that's fine,
+// only the code itself is ever sent, not which entry was picked.
+const DEFAULT_COUNTRY_CODE = '+1';
+const PHONE_COUNTRY_CODE_REGEX = /^\+\d{1,4}$/;
+
+// Plain country names for the Location section's Country dropdown — derived
+// from the same static `countryCodes` list (no network call). A full
+// country → state → city cascade exists (`useCountryDropdown`), but it's
+// backed by an authenticated tenant-service endpoint; this page is
+// anonymous (no JWT — same as the rest of the "Book a Demo" submission), so
+// it can't call that safely. Country becomes a real dropdown; State and
+// City stay validated free-text fields.
+const COUNTRY_NAME_OPTIONS = Array.from(
+  new Set(countryCodes.map(({ label }) => label.replace(/\s*\(\+\d+\)\s*$/, '')))
+).sort((a, b) => a.localeCompare(b));
+
+// Backend's `location` (single free-text column, max 200 chars — see
+// BookDemoRequest in requests.py) has no city/state/country structure of its
+// own. The form collects the three separately for better validation and UX,
+// then joins them into one string on submit so the API contract stays
+// unchanged. Each part is capped at 60 chars so the joined value ("City,
+// State, Country") can never exceed the backend's 200-char limit.
+const LOCATION_PART_MAX = 60;
+
+// Same idea for `heard_about_us` (single optional free-text column, max 500
+// chars): the dropdown selection and the optional detail text are combined
+// into one string before submit.
+const HEAR_ABOUT_US_DETAIL_MAX = 200;
+
+// Names: letters only, with single spaces allowed between words (e.g. "Mary
+// Jane") — no digits, no punctuation. Enforced twice: this regex at submit
+// time, and `handleNameChange` strips any disallowed character as the user
+// types so an invalid one can never even land in the field.
+const NAME_REGEX = /^[A-Za-z]+(?:\s[A-Za-z]+)*$/;
+const LOCATION_PART_REGEX = /^[A-Za-z][A-Za-z\s.'-]*$/;
+const COMPANY_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s&.,'-]*$/;
+const JOB_TITLE_REGEX = /^[A-Za-z][A-Za-z\s&.,'/-]*$/;
+const PHONE_REGEX = /^\d{7,15}$/;
+// Stricter than zod's built-in `.email()` (which accepts things like
+// "user@localhost" with no TLD): requires a proper local-part and a domain
+// with at least one dot, and rejects a leading/trailing dot or @ on either
+// side.
+const EMAIL_REGEX =
+  /^[a-zA-Z0-9](?:[a-zA-Z0-9._%+-]*[a-zA-Z0-9])?@[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)+$/;
+
+const demoRequestObjectSchema = z.object({
+  firstName: z
+    .string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters.')
+    .max(100, 'First name must be under 100 characters.')
+    .regex(NAME_REGEX, 'First name can only contain letters (and single spaces between words).'),
+  lastName: z
+    .string()
+    .trim()
+    .min(2, 'Last name must be at least 2 characters.')
+    .max(100, 'Last name must be under 100 characters.')
+    .regex(NAME_REGEX, 'Last name can only contain letters (and single spaces between words).'),
   workEmail: z
     .string()
+    .trim()
     .min(1, 'Work email is required.')
+    .max(254, 'Email must be under 254 characters.')
     .email('Enter a valid email address.')
-    .transform((val) => val.trim()),
+    .regex(EMAIL_REGEX, 'Enter a valid email address (e.g. name@company.com).')
+    .transform((val) => val.trim().toLowerCase()),
+  countryCode: z
+    .string()
+    .min(1, 'Please select a country code.')
+    .regex(PHONE_COUNTRY_CODE_REGEX, 'Invalid country code.'),
   phone: z
     .string()
+    .trim()
     .min(1, 'Phone number is required.')
-    .refine((val) => /^[\d\s()+-]{7,}$/.test(val), 'Enter a valid phone number.'),
-  company: z.string().min(1, 'Company is required.'),
-  location: z.string().min(1, 'Location is required.'),
-  jobTitle: z.string().min(1, 'Job title is required.'),
+    .regex(PHONE_REGEX, 'Enter a valid phone number (7–15 digits, numbers only).'),
+  company: z
+    .string()
+    .trim()
+    .min(2, 'Company name must be at least 2 characters.')
+    .max(200, 'Company name must be under 200 characters.')
+    .regex(COMPANY_REGEX, 'Enter a valid company name.'),
+  city: z
+    .string()
+    .trim()
+    .min(2, 'City must be at least 2 characters.')
+    .max(LOCATION_PART_MAX, `City must be under ${LOCATION_PART_MAX} characters.`)
+    .regex(LOCATION_PART_REGEX, 'City can only contain letters, spaces, hyphens, and periods.'),
+  state: z
+    .string()
+    .trim()
+    .min(2, 'State must be at least 2 characters.')
+    .max(LOCATION_PART_MAX, `State must be under ${LOCATION_PART_MAX} characters.`)
+    .regex(LOCATION_PART_REGEX, 'State can only contain letters, spaces, hyphens, and periods.'),
+  // A dropdown, not free text (see COUNTRY_NAME_OPTIONS) — validated
+  // against that same list so a tampered request can't smuggle in
+  // something else.
+  country: z
+    .string()
+    .min(1, 'Please select your country.')
+    .refine((val) => COUNTRY_NAME_OPTIONS.includes(val), 'Please select a valid country.'),
+  jobTitle: z
+    .string()
+    .trim()
+    .min(2, 'Job title must be at least 2 characters.')
+    .max(150, 'Job title must be under 150 characters.')
+    .regex(JOB_TITLE_REGEX, 'Enter a valid job title.'),
   companySize: z.string().min(1, 'Please select your company size.'),
   hearAboutUs: z.string().min(1, 'Please let us know how you heard about us.'),
+  hearAboutUsDetail: z
+    .string()
+    .trim()
+    .max(HEAR_ABOUT_US_DETAIL_MAX, `Please keep this under ${HEAR_ABOUT_US_DETAIL_MAX} characters.`)
+    .default(''),
+});
+
+// `.superRefine` wraps the object in a `ZodEffects`, which no longer exposes
+// `.shape` — kept as a separate schema so per-field (onBlur) validation can
+// still validate one key at a time via `demoRequestObjectSchema.shape[key]`.
+const demoRequestSchema = demoRequestObjectSchema.superRefine((data, ctx) => {
+  if (data.hearAboutUs === HEAR_ABOUT_US_OTHER && data.hearAboutUsDetail.trim().length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['hearAboutUsDetail'],
+      message: 'Please tell us how you heard about us.',
+    });
+  }
 });
 
 type FormState = z.infer<typeof demoRequestSchema>;
@@ -46,41 +171,60 @@ const INITIAL_STATE: FormState = {
   firstName: '',
   lastName: '',
   workEmail: '',
+  countryCode: DEFAULT_COUNTRY_CODE,
   phone: '',
   company: '',
-  location: '',
+  city: '',
+  state: '',
+  country: '',
   jobTitle: '',
   companySize: '',
   hearAboutUs: '',
+  hearAboutUsDetail: '',
 };
 
 const FIELD_LABELS: Record<keyof FormState, string> = {
   firstName: 'First name',
   lastName: 'Last name',
   workEmail: 'Work Email',
+  countryCode: 'Country Code',
   phone: 'Phone',
   company: 'Company',
-  location: 'Location',
+  city: 'City',
+  state: 'State',
+  country: 'Country',
   jobTitle: 'Job Title',
   companySize: 'What is Your Company Size?',
   hearAboutUs: 'How Did You Hear About Us?',
+  hearAboutUsDetail: 'Tell us a bit more',
 };
 
 const inputClass =
-  'w-full rounded-lg border border-neutral-200 px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 transition-colors focus:border-primary-400 focus:ring-2 focus:ring-primary-100 focus:outline-none';
+  'w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 shadow-sm transition-all duration-200 hover:border-neutral-300 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 focus:outline-none';
+
+// Same visual treatment as `inputClass` (border/shadow/hover/focus), but for
+// a div wrapping an AntD `Select` instead of a plain `<input>`. The Select
+// itself renders `variant="borderless"` so this div's border is the only
+// one ever drawn — no double-border seam between AntD's chrome and ours.
+const selectWrapperClass = (hasError: boolean, extra = '') =>
+  `rounded-xl border bg-white shadow-sm transition-all duration-200 hover:border-neutral-300 focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-100 ${
+    hasError ? 'border-danger' : 'border-neutral-200'
+  } ${extra}`;
 
 const FormField = ({
   name,
   error,
+  required = true,
   children,
 }: {
   name: keyof FormState;
   error?: string;
+  required?: boolean;
   children: React.ReactNode;
 }) => (
   <div>
     <label className="mb-1.5 block text-xs font-bold text-neutral-700" htmlFor={name}>
-      {FIELD_LABELS[name]} <span className="text-danger">*</span>
+      {FIELD_LABELS[name]} {required && <span className="text-danger">*</span>}
     </label>
     {children}
     {error && <p className="mt-1 text-xs text-danger">{error}</p>}
@@ -153,12 +297,27 @@ const SuccessPanel = ({ onReset }: { onReset: () => void }) => (
     <button
       type="button"
       onClick={onReset}
-      className="mt-6 cursor-pointer rounded-full border border-neutral-200 px-6 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:border-primary-200 hover:text-primary-600"
+      className="mt-6 cursor-pointer rounded-full border border-neutral-200 px-6 py-2.5 text-sm font-semibold text-neutral-700 shadow-sm transition-all duration-200 hover:border-primary-200 hover:text-primary-600 hover:shadow-md"
     >
       Submit another request
     </button>
   </div>
 );
+
+// Joins the dropdown selection and optional detail text into the single
+// string the backend's `heard_about_us` column expects.
+const buildHeardAboutUs = (selection: string, detail: string): string => {
+  const trimmedDetail = detail.trim();
+  if (selection === HEAR_ABOUT_US_OTHER) {
+    return trimmedDetail ? `Other: ${trimmedDetail}` : HEAR_ABOUT_US_OTHER;
+  }
+  return trimmedDetail ? `${selection} — ${trimmedDetail}` : selection;
+};
+
+// Joins city/state/country into the single string the backend's `location`
+// column expects.
+const buildLocation = (city: string, state: string, country: string): string =>
+  [city.trim(), state.trim(), country.trim()].filter(Boolean).join(', ');
 
 const BookDemoPage = () => {
   const [form, setForm] = useReducer(
@@ -171,6 +330,30 @@ const BookDemoPage = () => {
 
   const handleChange = (name: keyof FormState, value: string) => {
     setForm({ [name]: value });
+  };
+
+  // Names should only ever contain letters and spaces — filtered as the
+  // user types (same reasoning as the phone filter below) so a digit or
+  // symbol can never land in the field to begin with.
+  const handleNameChange = (name: 'firstName' | 'lastName', value: string) => {
+    setForm({ [name]: value.replace(/[^A-Za-z\s]/g, '') });
+  };
+
+  // Phone should only ever contain digits — filtered as the user types
+  // rather than merely validated afterwards, so an invalid character can
+  // never make it into the field at all.
+  const handlePhoneChange = (value: string) => {
+    setForm({ phone: value.replace(/\D/g, '').slice(0, 15) });
+  };
+
+  const handleHearAboutUsChange = (value: string) => {
+    // Clear any stale "Other" detail once the caller picks a different
+    // option, so a leftover value can't sneak into the combined string.
+    if (value !== HEAR_ABOUT_US_OTHER) {
+      setForm({ hearAboutUs: value, hearAboutUsDetail: '' });
+    } else {
+      setForm({ hearAboutUs: value });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -193,12 +376,12 @@ const BookDemoPage = () => {
         first_name: result.data.firstName,
         last_name: result.data.lastName,
         email: result.data.workEmail,
-        contact_number: result.data.phone,
+        contact_number: `${result.data.countryCode}${result.data.phone}`,
         company_name: result.data.company,
-        location: result.data.location,
+        location: buildLocation(result.data.city, result.data.state, result.data.country),
         company_size: COMPANY_SIZE_TO_INT[result.data.companySize] ?? 1,
         job_title: result.data.jobTitle,
-        heard_about_us: result.data.hearAboutUs,
+        heard_about_us: buildHeardAboutUs(result.data.hearAboutUs, result.data.hearAboutUsDetail),
       }).unwrap();
       setSubmitted(true);
       showToast({ message: 'Demo request received!', type: 'success' });
@@ -241,8 +424,9 @@ const BookDemoPage = () => {
                       id="firstName"
                       className={inputClass}
                       placeholder="Jane"
+                      maxLength={100}
                       value={form.firstName}
-                      onChange={(e) => handleChange('firstName', e.target.value)}
+                      onChange={(e) => handleNameChange('firstName', e.target.value)}
                     />
                   </FormField>
                   <FormField name="lastName" error={errors.lastName}>
@@ -250,8 +434,9 @@ const BookDemoPage = () => {
                       id="lastName"
                       className={inputClass}
                       placeholder="Doe"
+                      maxLength={100}
                       value={form.lastName}
-                      onChange={(e) => handleChange('lastName', e.target.value)}
+                      onChange={(e) => handleNameChange('lastName', e.target.value)}
                     />
                   </FormField>
                 </div>
@@ -262,20 +447,53 @@ const BookDemoPage = () => {
                     type="email"
                     className={inputClass}
                     placeholder="jane@company.com"
+                    maxLength={254}
                     value={form.workEmail}
                     onChange={(e) => handleChange('workEmail', e.target.value)}
                   />
                 </FormField>
 
-                <FormField name="phone" error={errors.phone}>
-                  <input
-                    id="phone"
-                    type="tel"
-                    className={inputClass}
-                    placeholder="(555) 000-0000"
-                    value={form.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
-                  />
+                <FormField name="phone" error={errors.countryCode || errors.phone}>
+                  <div
+                    className={selectWrapperClass(
+                      !!(errors.countryCode || errors.phone),
+                      'flex items-center pl-1'
+                    )}
+                  >
+                    <Select
+                      id="countryCode"
+                      aria-label="Country code"
+                      value={form.countryCode}
+                      onChange={(value) => handleChange('countryCode', value)}
+                      variant="borderless"
+                      size="large"
+                      style={{ width: 92 }}
+                      popupMatchSelectWidth={false}
+                      showSearch
+                      optionLabelProp="value"
+                      filterOption={(input, option) =>
+                        String(option?.label ?? '')
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
+                      }
+                      options={countryCodes.map(({ short, value, label }) => ({
+                        label: `${short} — ${label}`,
+                        value,
+                      }))}
+                    />
+                    <span className="h-5 w-px bg-neutral-200" />
+                    <input
+                      id="phone"
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className="w-full border-none px-2.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
+                      placeholder="(555) 123-4567"
+                      maxLength={15}
+                      value={form.phone}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                    />
+                  </div>
                 </FormField>
 
                 <FormField name="company" error={errors.company}>
@@ -283,62 +501,128 @@ const BookDemoPage = () => {
                     id="company"
                     className={inputClass}
                     placeholder="Acme Inc."
+                    maxLength={200}
                     value={form.company}
                     onChange={(e) => handleChange('company', e.target.value)}
                   />
                 </FormField>
 
-                <FormField name="location" error={errors.location}>
-                  <input
-                    id="location"
-                    className={inputClass}
-                    placeholder="San Francisco, CA"
-                    value={form.location}
-                    onChange={(e) => handleChange('location', e.target.value)}
-                  />
-                </FormField>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+                  <FormField name="city" error={errors.city}>
+                    <input
+                      id="city"
+                      className={inputClass}
+                      placeholder="San Francisco"
+                      maxLength={LOCATION_PART_MAX}
+                      value={form.city}
+                      onChange={(e) => handleChange('city', e.target.value)}
+                    />
+                  </FormField>
+                  <FormField name="state" error={errors.state}>
+                    <input
+                      id="state"
+                      className={inputClass}
+                      placeholder="California"
+                      maxLength={LOCATION_PART_MAX}
+                      value={form.state}
+                      onChange={(e) => handleChange('state', e.target.value)}
+                    />
+                  </FormField>
+                  <FormField name="country" error={errors.country}>
+                    <div className={selectWrapperClass(!!errors.country)}>
+                      <Select
+                        id="country"
+                        className="w-full"
+                        variant="borderless"
+                        size="large"
+                        placeholder="Select country"
+                        value={form.country || undefined}
+                        onChange={(value) => handleChange('country', value)}
+                        showSearch
+                        filterOption={(input, option) =>
+                          String(option?.label ?? '')
+                            .toLowerCase()
+                            .includes(input.toLowerCase())
+                        }
+                        options={COUNTRY_NAME_OPTIONS.map((countryName) => ({
+                          label: countryName,
+                          value: countryName,
+                        }))}
+                      />
+                    </div>
+                  </FormField>
+                </div>
 
                 <FormField name="jobTitle" error={errors.jobTitle}>
                   <input
                     id="jobTitle"
                     className={inputClass}
                     placeholder="VP of Talent Acquisition"
+                    maxLength={150}
                     value={form.jobTitle}
                     onChange={(e) => handleChange('jobTitle', e.target.value)}
                   />
                 </FormField>
 
                 <FormField name="companySize" error={errors.companySize}>
-                  <select
-                    id="companySize"
-                    className={inputClass}
-                    value={form.companySize}
-                    onChange={(e) => handleChange('companySize', e.target.value)}
-                  >
-                    <option value="">Select company size</option>
-                    {COMPANY_SIZE_OPTIONS.map((size) => (
-                      <option key={size} value={size}>
-                        {size} employees
-                      </option>
-                    ))}
-                  </select>
+                  <div className={selectWrapperClass(!!errors.companySize)}>
+                    <Select
+                      id="companySize"
+                      className="w-full"
+                      variant="borderless"
+                      size="large"
+                      placeholder="Select company size"
+                      value={form.companySize || undefined}
+                      onChange={(value) => handleChange('companySize', value)}
+                      options={COMPANY_SIZE_OPTIONS.map((size) => ({
+                        label: `${size} employees`,
+                        value: size,
+                      }))}
+                    />
+                  </div>
                 </FormField>
 
                 <FormField name="hearAboutUs" error={errors.hearAboutUs}>
-                  <textarea
-                    id="hearAboutUs"
-                    rows={3}
+                  <div className={selectWrapperClass(!!errors.hearAboutUs)}>
+                    <Select
+                      id="hearAboutUs"
+                      className="w-full"
+                      variant="borderless"
+                      size="large"
+                      placeholder="Select an option"
+                      value={form.hearAboutUs || undefined}
+                      onChange={handleHearAboutUsChange}
+                      options={HEAR_ABOUT_US_OPTIONS.map((option) => ({
+                        label: option,
+                        value: option,
+                      }))}
+                    />
+                  </div>
+                </FormField>
+
+                <FormField
+                  name="hearAboutUsDetail"
+                  error={errors.hearAboutUsDetail}
+                  required={form.hearAboutUs === HEAR_ABOUT_US_OTHER}
+                >
+                  <input
+                    id="hearAboutUsDetail"
                     className={inputClass}
-                    placeholder="E.g. Google Search, YouTube, Facebook"
-                    value={form.hearAboutUs}
-                    onChange={(e) => handleChange('hearAboutUs', e.target.value)}
+                    placeholder={
+                      form.hearAboutUs === HEAR_ABOUT_US_OTHER
+                        ? 'Please tell us where you heard about us'
+                        : 'Optional — a colleague, event, or article name'
+                    }
+                    maxLength={HEAR_ABOUT_US_DETAIL_MAX}
+                    value={form.hearAboutUsDetail}
+                    onChange={(e) => handleChange('hearAboutUsDetail', e.target.value)}
                   />
                 </FormField>
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="mt-1 w-full cursor-pointer rounded-lg bg-neutral-950 py-3.5 text-sm font-bold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-1 w-full cursor-pointer rounded-xl bg-neutral-950 py-3.5 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:bg-primary-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
                 >
                   {isSubmitting ? 'Submitting…' : 'Book a Demo'}
                 </button>
