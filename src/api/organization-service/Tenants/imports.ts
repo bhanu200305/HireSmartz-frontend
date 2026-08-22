@@ -34,29 +34,29 @@ export type ParsedRosterRow = {
   department: string | null;
   designation: string | null;
   role: string | null;
-  location: string | null;
+  // bulk_import_dto.py's ParsedRosterRowView — the parse step returns
+  // `contact`, not a location. There is no location concept anywhere in the
+  // real bulk-import contract; see RosterRole/ConfirmRosterRow below.
+  contact: string | null;
 };
 
 export type ParseRosterResponse = {
   rows: ParsedRosterRow[];
 };
 
-// The 4 roles a bulk-import row may invite as — same set as the single
-// invite form (Tenants/users.ts's TenantUserRole), minus company_admin's
-// counterpart being invited THROUGH this flow being just as valid as any
-// other: organization-service validates all 4 identically here.
-export type RosterRole = 'company_admin' | 'hiring_manager' | 'recruiter' | 'interviewer';
+// Exactly the 2 roles RosterRowRequest's `role: Literal[...]` accepts on the
+// backend (api/requests.py) — same restriction as the single invite form's
+// TenantUserRole. `extra="forbid"` on that model means any other value
+// (or an unrecognised field anywhere in the row) 422s the WHOLE confirm
+// request, not just the offending row.
+export type RosterRole = 'hiring_manager' | 'recruiter';
 
 export type ConfirmRosterRow = {
   email: string;
   role: RosterRole;
   department?: string | null;
   designation?: string | null;
-  /** Free text — must match an existing office's city exactly (see
-   * OfficeRepository.get_by_city on the backend). Not auto-created: an
-   * unrecognised value is reported back in `skipped_unknown_location_emails`,
-   * not silently dropped or invented. */
-  location?: string | null;
+  contact?: string | null;
 };
 
 export type ConfirmRosterImportArgs = {
@@ -69,7 +69,6 @@ export type ConfirmRosterImportResponse = {
   invitation_ids: string[];
   skipped_duplicate_emails: string[];
   previously_suppressed_emails: string[];
-  skipped_unknown_location_emails: string[];
 };
 
 /**

@@ -6,14 +6,14 @@ import type {
   RosterRole,
 } from '../../../../api/organization-service/Tenants/imports';
 
-const KNOWN_ROLES: RosterRole[] = ['company_admin', 'hiring_manager', 'recruiter', 'interviewer'];
+const KNOWN_ROLES: RosterRole[] = ['hiring_manager', 'recruiter'];
 
 export type ReviewRow = {
   include: boolean;
   email: string;
   role: RosterRole | '';
   department: string;
-  location: string;
+  designation: string;
 };
 
 export const toReviewRows = (rows: ParsedRosterRow[]): ReviewRow[] =>
@@ -22,7 +22,7 @@ export const toReviewRows = (rows: ParsedRosterRow[]): ReviewRow[] =>
     email: row.email,
     role: (KNOWN_ROLES as string[]).includes(row.role || '') ? (row.role as RosterRole) : '',
     department: row.department || '',
-    location: row.location || '',
+    designation: row.designation || '',
   }));
 
 type BulkImportRowsProps = {
@@ -33,9 +33,9 @@ type BulkImportRowsProps = {
 /** Per-row review before confirming a bulk import — every parsed row needs a
  * valid role picked (the AI-detected value may be missing/ambiguous) before
  * it can become an invite; a row can be excluded instead of guessed at.
- * Location is free text matched against this tenant's existing offices by
- * city (see ConfirmRosterRow.location) — left blank, the grant applies
- * everywhere rather than one location. */
+ * Only `hiring_manager`/`recruiter` are real options — RosterRowRequest's
+ * `extra="forbid"` Literal role on the backend rejects anything else for the
+ * WHOLE batch, not just the one row. */
 const BulkImportRows: React.FC<BulkImportRowsProps> = ({ rows, onChange }) => {
   const updateRow = (index: number, patch: Partial<ReviewRow>) => {
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -61,10 +61,8 @@ const BulkImportRows: React.FC<BulkImportRowsProps> = ({ rows, onChange }) => {
             value={row.role || undefined}
             onChange={(value) => updateRow(index, { role: value })}
             options={[
-              { label: 'Admin', value: 'company_admin' },
               { label: 'Hiring Manager', value: 'hiring_manager' },
               { label: 'Recruiter', value: 'recruiter' },
-              { label: 'Interviewer', value: 'interviewer' },
             ]}
           />
           <Input
@@ -75,9 +73,9 @@ const BulkImportRows: React.FC<BulkImportRowsProps> = ({ rows, onChange }) => {
           />
           <Input
             className="w-28 h-8 text-sm"
-            placeholder="Location"
-            value={row.location}
-            onChange={(e) => updateRow(index, { location: e.target.value })}
+            placeholder="Designation"
+            value={row.designation}
+            onChange={(e) => updateRow(index, { designation: e.target.value })}
           />
         </div>
       ))}

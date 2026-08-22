@@ -14,6 +14,9 @@ import DepartmentsTab from './DepartmentsTab';
 import EntitlementsTab from './EntitlementsTab';
 import TeamTab from './Team';
 import TenantActivityFeedTab from './TenantActivityFeedTab';
+import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
+import EmailTemplatesTab from './EmailTemplatesTab';
+import SmsTemplatesTab from '../CompanySettings/SmsTemplatesTab';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
@@ -72,6 +75,10 @@ const MyCompany: React.FC = () => {
 
   const handleTabChange = (key: string) => {
     setSearchParams({ tab: key });
+    // `?tab=` doesn't change the route pathname, so App.tsx's route-level
+    // scroll reset never fires for it — without this, switching tabs while
+    // scrolled down leaves you scrolled down on the new tab's content too.
+    window.scrollTo(0, 0);
   };
 
   if (!tenantId) {
@@ -80,14 +87,27 @@ const MyCompany: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  // Interview Questions / Scoring Criteria / QR Management / Email Templates
-  // / SMS Templates are all job-workflow-adjacent screens (per-job question
-  // sets, per-job scoring, the jobs QR code, applicant-facing email/SMS) —
-  // parked behind an honest "coming soon" placeholder until the job posting
-  // workflow they hang off of is built, rather than surfaced ahead of it.
-  // Their real tabs (InterviewQuestionsTab, ScoringCriteriaOwnerTab,
-  // QrManagementTab, EmailTemplatesTab) are already wired to their backends
-  // and ready to swap back in once that workflow lands.
+  // Interview Questions / QR Management are per-job screens (per-job
+  // question sets, the jobs QR code) — parked behind an honest "coming soon"
+  // placeholder until the job posting workflow they hang off of is built,
+  // rather than surfaced ahead of it. Their real tabs (InterviewQuestionsTab,
+  // QrManagementTab) are already wired to their backends and ready to swap
+  // back in once that workflow lands.
+  //
+  // Scoring Criteria, Email Templates and SMS Templates aren't job-workflow-
+  // adjacent in that sense — each configures something that already exists
+  // independent of any job posting:
+  //  - Scoring Criteria: the tenant's candidate scoring weights (mirrors the
+  //    Super Admin's per-company ScoringCriteriaPanel, see
+  //    CustomerDashboard/ViewCustomer).
+  //  - Email Templates: this tenant's notification-service template pack +
+  //    per-type overrides — EmailTemplatesTab.tsx is self-contained tenant
+  //    self-service, no props needed.
+  //  - SMS Templates: candidate-facing recruiting SMS copy — the same
+  //    SmsTemplatesTab the Super Admin's Company Settings screen uses, with
+  //    `fixedCompanyId` pinned to this tenant and the company picker hidden
+  //    (that prop pair exists specifically for this "DRG / My Company" case
+  //    — see its own doc comment).
   const comingSoon = <ComingSoonTab label="To be added soon, alongside the job posting workflow" />;
 
   const items: TabsProps['items'] = [
@@ -118,71 +138,86 @@ const MyCompany: React.FC = () => {
       children: <TenantActivityFeedTab tenantId={tenantId} />,
     },
     canViewInterviewQuestions && { key: '7', label: 'Interview Questions', children: comingSoon },
-    { key: '8', label: 'Scoring Criteria', children: comingSoon },
+    {
+      key: '8',
+      label: 'Scoring Criteria',
+      children: <ScoringCriteriaOwnerTab tenantId={tenantId} />,
+    },
     canViewQrManagement && { key: '9', label: 'QR Management', children: comingSoon },
-    canViewEmailTemplates && { key: '10', label: 'Email Templates', children: comingSoon },
-    { key: '11', label: 'SMS Templates', children: comingSoon },
+    canViewEmailTemplates && {
+      key: '10',
+      label: 'Email Templates',
+      children: <EmailTemplatesTab />,
+    },
+    {
+      key: '11',
+      label: 'SMS Templates',
+      children: <SmsTemplatesTab fixedCompanyId={tenantId} showCompanySelect={false} />,
+    },
   ].filter(Boolean) as TabsProps['items'];
 
   return (
     <MainLayout>
-      <div className="flex flex-col items-center bg-white px-4 mt-4 relative pt-16">
-        <div className="mb-4 self-start px-4 absolute">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center text-gray-600 hover:text-gray-800 mb-4 cursor-pointer"
-          >
-            <MdOutlineArrowBack className="mr-2" />
-            <span>Back</span>
-          </button>
+      <div className="w-full px-6 py-5 max-w-[1400px] mx-auto">
+        <div
+          className="flex items-center gap-2 text-sm text-gray-500 mb-3 cursor-pointer hover:text-primary-600 transition-colors w-fit"
+          onClick={() => navigate('/')}
+        >
+          <MdOutlineArrowBack />
+          <span>Back</span>
         </div>
-        <div className="bg-neutral-50 p-6 md:p-6 rounded-2xl border border-neutral-200 shadow-xs w-full max-w-6xl flex flex-col">
-          {isProfileLoading && <Loader />}
 
-          <div className="flex gap-4 bg-white rounded-3xl p-4 mb-6 border border-gray-100">
-            <div className="relative w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
-              {profile?.logo_url ? (
-                <img
-                  src={profile.logo_url}
-                  alt={profile.company_name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-xl font-semibold text-white">
-                  {profile?.company_name?.toUpperCase()?.[0] || ''}
-                </span>
-              )}
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold text-gray-900">{profile?.company_name}</h2>
-              <div className="flex items-center text-sm gap-2">
-                <MdEmail size={16} />
-                <span>{profile?.admin_contact || '-'}</span>
+        <div className="bg-white border border-neutral-200 rounded-xl shadow-xs">
+          <div className="p-6">
+            {isProfileLoading && <Loader />}
+
+            <div className="flex items-center gap-4 mb-6">
+              <div className="relative w-14 h-14 shrink-0 bg-gradient-to-br from-primary-600 to-accent-500 text-white rounded-full flex items-center justify-center shadow-sm text-xl font-bold overflow-hidden">
+                {profile?.logo_url ? (
+                  <img
+                    src={profile.logo_url}
+                    alt={profile.company_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{profile?.company_name?.toUpperCase()?.[0] || ''}</span>
+                )}
               </div>
-              <div className="flex items-center text-sm gap-2">
-                <MdPhone size={16} />
-                <span>{profile?.website_url || '-'}</span>
+              <div className="min-w-0">
+                <h1 className="font-display text-2xl font-bold text-gray-900">
+                  {profile?.company_name}
+                </h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
+                  <span className="flex items-center gap-1.5">
+                    <MdEmail size={14} />
+                    {profile?.admin_contact || '-'}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <MdPhone size={14} />
+                    {profile?.website_url || '-'}
+                  </span>
+                </div>
               </div>
             </div>
+
+            <OnboardingChecklist
+              companyId={tenantId}
+              status={{
+                profileReviewed: Boolean(profile?.logo_url || profile?.culture_intro),
+                hasOffice: (offices?.length ?? 0) > 0,
+                hasDepartment: (departments?.length ?? 0) > 0,
+                hasInvitedTeam: (invitations?.total ?? 0) > 0,
+              }}
+              onNavigateToTab={handleTabChange}
+            />
+
+            <Tabs
+              activeKey={currentTab}
+              onChange={handleTabChange}
+              items={items}
+              className="my-company-tabs"
+            />
           </div>
-
-          <OnboardingChecklist
-            companyId={tenantId}
-            status={{
-              profileReviewed: Boolean(profile?.logo_url || profile?.culture_intro),
-              hasOffice: (offices?.length ?? 0) > 0,
-              hasDepartment: (departments?.length ?? 0) > 0,
-              hasInvitedTeam: (invitations?.total ?? 0) > 0,
-            }}
-            onNavigateToTab={handleTabChange}
-          />
-
-          <Tabs
-            activeKey={currentTab}
-            onChange={handleTabChange}
-            items={items}
-            className="my-company-tabs px-2 sm:px-6 py-2 sm:py-4"
-          />
         </div>
       </div>
     </MainLayout>

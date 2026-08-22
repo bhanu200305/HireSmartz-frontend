@@ -82,9 +82,10 @@ const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
         company_name: makeFirstLetterUpperCase(sanitizeInput(data.companyName)),
         // Both optional on the backend — send undefined rather than '' so an
         // unset field is actually absent, not a value that fails UUID/URL
-        // parsing server-side. Leaving website_url unset also means Create
-        // Tenant returns immediately instead of waiting on ai-service's
-        // branding-scrape RPC, which has no consumer in this stack right now.
+        // parsing server-side. A website_url here triggers ai-service's
+        // branding scrape (bounded to ~15s server-side — see
+        // HttpAiScrapeClient in organization-service); leaving it unset means
+        // Create Tenant returns immediately with no scraped_preview.
         website_url: data.websiteUrl?.trim() || undefined,
         industry_id: data.industryId || undefined,
         admin_email: data.adminEmail,
@@ -133,7 +134,7 @@ const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
 
         <div>
           <label htmlFor="websiteUrl" className="text-sm text-gray-600">
-            Website <span className="required-asterisk">*</span>
+            Website
           </label>
           <Input
             id="websiteUrl"

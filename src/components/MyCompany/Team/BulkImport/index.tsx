@@ -22,10 +22,17 @@ const IMPORT_STEPS: Step[] = [
   { key: 'done', label: 'Done' },
 ];
 
+// .xlsx ONLY. The parse step (ai-service's spreadsheet_parser.py) is
+// openpyxl-based, which reads real .xlsx (OOXML/zip) content exclusively —
+// it cannot open a genuine .csv or legacy binary .xls, regardless of what
+// content-type or extension is attached. request_roster_upload.py's
+// ROSTER_EXCEL_CONSTRAINT technically also accepts 'application/vnd.ms-excel'
+// (.xls) at the upload step, but that would only defer the same failure to
+// parse time with a more confusing error, so it's excluded here too. A .csv
+// is rejected even earlier, at upload-url time — organization-service's
+// constraint never accepted 'text/csv' at all.
 const ALLOWED_IMPORT_TYPES = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-excel',
-  'text/csv',
 ];
 
 type BulkImportProps = {
@@ -43,7 +50,6 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
     created: number;
     skipped: number;
     suppressed: number;
-    unknownLocation: number;
   } | null>(null);
 
   const [requestUpload, { isLoading: isRequestingUrl }] = useRequestRosterUploadMutation();
@@ -61,10 +67,9 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
   };
 
   const handleUpload = async (file: File) => {
-    const isAllowedType =
-      ALLOWED_IMPORT_TYPES.includes(file.type) || /\.(xlsx|xls|csv)$/i.test(file.name);
+    const isAllowedType = ALLOWED_IMPORT_TYPES.includes(file.type) || /\.xlsx$/i.test(file.name);
     if (!isAllowedType) {
-      showToast({ message: 'Please upload a .xlsx, .xls, or .csv file.', type: 'error' });
+      showToast({ message: 'Please upload a .xlsx file.', type: 'error' });
       return false;
     }
 
@@ -106,14 +111,13 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
           email: row.email,
           role: row.role as RosterRole,
           department: row.department || undefined,
-          location: row.location || undefined,
+          designation: row.designation || undefined,
         })),
       }).unwrap();
       setResult({
         created: response.created_count,
         skipped: response.skipped_duplicate_emails.length,
         suppressed: response.previously_suppressed_emails.length,
-        unknownLocation: response.skipped_unknown_location_emails.length,
       });
       setStep(3);
     } catch (error: unknown) {
@@ -154,13 +158,13 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
           <Upload.Dragger
             beforeUpload={handleUpload}
             maxCount={1}
-            accept=".xlsx,.xls,.csv"
+            accept=".xlsx"
             showUploadList={false}
             className="border-dashed border-gray-300 rounded-lg p-6"
           >
             <MdOutlineFileUpload className="text-2xl mb-2 text-primary mx-auto" />
             <p className="text-gray-600">Upload a spreadsheet of existing employees</p>
-            <p className="text-xs text-gray-400 mt-1">.xlsx, .xls, or .csv</p>
+            <p className="text-xs text-gray-400 mt-1">.xlsx only</p>
           </Upload.Dragger>
         </div>
       )}
@@ -204,11 +208,6 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
           {result.suppressed > 0 && (
             <p className="text-xs text-amber-600">
               {result.suppressed} invited but flagged as a previously-bounced address.
-            </p>
-          )}
-          {result.unknownLocation > 0 && (
-            <p className="text-xs text-amber-600">
-              {result.unknownLocation} skipped — location didn&apos;t match an existing office.
             </p>
           )}
           <Button

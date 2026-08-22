@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import type { TableProps } from 'antd';
 import { LuSquareActivity } from 'react-icons/lu';
-import { Typography, showToast } from '../shared';
+import { Badge, CustomTable, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import MasterPagination from '../shared/ui/MasterPagination';
-import { useListTenantActivityQuery } from '../../api/organization-service/Tenants/profile';
+import {
+  useListTenantActivityQuery,
+  ActivityLogEntry,
+} from '../../api/organization-service/Tenants/profile';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 const PAGE_SIZE = 20;
@@ -38,12 +42,20 @@ const describeAction = (action: string): string =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
+type ActivityRow = ActivityLogEntry & { key: string };
+
 /**
  * GET /v1/tenants/{tenant_id}/activity — this tenant's own admin activity
  * log (invites, role grants, profile/office/department edits, …). Real data
  * only: an empty page says so plainly rather than inventing a placeholder
  * entry. Same list also backs the Dashboard's "recent activity" preview
  * per docs/frontend_guide.txt — this is the full, paginated version of it.
+ *
+ * Icon-badge header + table treatment matches the rest of this page
+ * (Locations, Departments, Feature Settings) — pagination stays server-side
+ * (`limit`/`offset`) via MasterPagination below the table rather than
+ * CustomTable's own client-side pagination, since the full activity log
+ * isn't fetched at once.
  */
 const TenantActivityFeedTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [page, setPage] = useState(0);
@@ -61,40 +73,70 @@ const TenantActivityFeedTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
 
   const events = data?.events ?? [];
 
+  if (isLoading) return <Loader />;
+
+  const columns: TableProps<ActivityRow>['columns'] = [
+    {
+      title: 'Event',
+      dataIndex: 'action',
+      key: 'action',
+      render: (_: unknown, event: ActivityRow) => (
+        <span className="font-semibold text-gray-900">{describeAction(event.action)}</span>
+      ),
+    },
+    {
+      title: 'Target',
+      dataIndex: 'target_type',
+      key: 'target_type',
+      render: (_: unknown, event: ActivityRow) => (
+        <Badge status="neutral" dot={false}>
+          {event.target_type}
+        </Badge>
+      ),
+    },
+    {
+      title: 'By',
+      dataIndex: 'actor_id',
+      key: 'actor_id',
+      render: (_: unknown, event: ActivityRow) => (
+        <span className="text-gray-500 text-sm font-mono">{event.actor_id}</span>
+      ),
+    },
+    {
+      title: 'When',
+      key: 'created_at',
+      render: (_: unknown, event: ActivityRow) => (
+        <span className="text-gray-500 text-sm whitespace-nowrap">
+          {event.created_at ? new Date(event.created_at).toLocaleString() : '-'}
+        </span>
+      ),
+    },
+  ];
+
+  const dataSource: ActivityRow[] = events.map((event) => ({ ...event, key: event.id }));
+
   return (
     <div className="p-4">
-      <div className="flex items-center gap-2 mb-1">
-        <LuSquareActivity className="text-xl" />
-        <Typography variant="h5">Activity</Typography>
+      <div className="flex items-center gap-3 mb-6">
+        <span className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-primary-600 to-accent-500 text-white flex items-center justify-center shadow-sm">
+          <LuSquareActivity size={18} />
+        </span>
+        <div>
+          <Typography variant="h5">Activity</Typography>
+          <Typography variant="body2" className="text-gray-400 mt-0.5">
+            Who did what in your company, and when.
+          </Typography>
+        </div>
       </div>
-      <Typography variant="body2" className="mb-6 block">
-        Who did what in your company, and when.
-      </Typography>
 
-      {isLoading ? (
-        <Loader />
-      ) : events.length === 0 ? (
-        <div className="p-10 text-center text-gray-500 border border-dashed rounded-xl">
-          No activity yet — actions like inviting a teammate or updating a setting will show up
-          here.
-        </div>
-      ) : (
-        <div className="divide-y border rounded-xl overflow-hidden">
-          {events.map((event) => (
-            <div key={event.id} className="flex items-center justify-between gap-4 p-3">
-              <div>
-                <Typography variant="body1">{describeAction(event.action)}</Typography>
-                <Typography variant="caption">
-                  {event.target_type} · by {event.actor_id}
-                </Typography>
-              </div>
-              <Typography variant="caption" className="whitespace-nowrap">
-                {event.created_at ? new Date(event.created_at).toLocaleString() : '-'}
-              </Typography>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
+        <CustomTable<ActivityRow>
+          columns={columns}
+          dataSource={dataSource}
+          rowClassName={isLoading ? undefined : undefined}
+          emptyText="No activity yet — actions like inviting a teammate or updating a setting will show up here."
+        />
+      </div>
 
       {(data?.total ?? 0) > PAGE_SIZE && (
         <MasterPagination

@@ -119,7 +119,12 @@ const ViewCustomer = () => {
     }
   };
 
-  const handleTabChange = (key: string) => setSearchParams({ companyId: tenantId, tab: key });
+  // `?tab=` doesn't change the route pathname, so App.tsx's route-level
+  // scroll reset never fires for it.
+  const handleTabChange = (key: string) => {
+    setSearchParams({ companyId: tenantId, tab: key });
+    window.scrollTo(0, 0);
+  };
 
   if (isLoading) return <Loader />;
   if (!tenant) return <div className="p-8 text-gray-500">Company not found.</div>;

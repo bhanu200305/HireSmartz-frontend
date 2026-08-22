@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MdLock } from 'react-icons/md';
+import { MdLock, MdOutlineTune } from 'react-icons/md';
 import { Tooltip } from 'antd';
 import { Button, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
@@ -57,18 +57,27 @@ const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) =
 
   return (
     <div className="p-4">
-      <div className="flex items-center gap-2 mb-1">
-        <Typography variant="h5">Candidate scoring weights</Typography>
-        {data.is_locked && (
-          <Tooltip title="Locked by CareerForcePro — contact support to change this.">
-            <MdLock className="text-gray-400" size={16} />
-          </Tooltip>
-        )}
+      <div className="flex items-center gap-3 mb-6">
+        <span className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-primary-600 to-accent-500 text-white flex items-center justify-center shadow-sm">
+          <MdOutlineTune size={18} />
+        </span>
+        <div>
+          <div className="flex items-center gap-2">
+            <Typography variant="h5">Candidate scoring weights</Typography>
+            {data.is_locked && (
+              <Tooltip title="Locked by CareerForcePro — contact support to change this.">
+                <MdLock className="text-gray-400" size={16} />
+              </Tooltip>
+            )}
+          </div>
+          <Typography variant="body2" className="text-gray-400 mt-0.5">
+            Weights must total 100%.{' '}
+            <span className={total === 100 ? 'text-[#008A2E]' : 'text-red-500'}>
+              Current: {total}%
+            </span>
+          </Typography>
+        </div>
       </div>
-      <Typography variant="body2" className="mb-6 block">
-        Weights must total 100%.{' '}
-        <span className={total === 100 ? 'text-[#008A2E]' : 'text-red-500'}>Current: {total}%</span>
-      </Typography>
 
       <div className="flex flex-col gap-4 max-w-md">
         {Object.keys(weights).map((category) => (

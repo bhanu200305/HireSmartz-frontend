@@ -40,6 +40,9 @@ const CompanySettings: React.FC = () => {
   const handleTabChange = (key: string) => {
     searchParams.set('tab', key);
     setSearchParams(searchParams);
+    // `?tab=` doesn't change the route pathname, so App.tsx's route-level
+    // scroll reset never fires for it.
+    window.scrollTo(0, 0);
   };
 
   const items = React.useMemo<TabsProps['items']>(
