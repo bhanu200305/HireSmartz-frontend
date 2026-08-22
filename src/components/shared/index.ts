@@ -19,6 +19,7 @@ export { showToast } from './ui/toast';
 export { default as CustomTable } from './ui/table';
 export { paginationConfig } from './tablePagination';
 export { default as CustomCollapse } from './ui/collapse';
+export { default as CollapsibleSection } from './ui/CollapsibleSection';
 export { default as GlobalSearch } from './GlobalSearch';
 export { Typography } from './ui/Typography';
 export { StepIndicator } from './ui/StepIndicator';

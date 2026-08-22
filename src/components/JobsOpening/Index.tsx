@@ -32,7 +32,6 @@ import { COL } from '../shared/ui/Columns';
 import { useDuplicateJobOpeningMutation } from '../../api/job-service/JobOpening/GetJobOpeningById';
 import { showToast } from '../shared';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
-import { useCheckAtsCalStatusMutation } from '../../api/job-service/JobOpening/CheckStatusForAtsAndCal';
 import CloseJobModal from './Candidates/Modal/CloseJobModal';
 import { buildInternalGlobalSearchRequestDto } from '../../shared/utils/filters/internalSearchPayload';
 import JobListingNotesPanel from './Notes/JobListingNotesPanel';
@@ -115,7 +114,6 @@ const JobsOpening = () => {
   const [collapsedUsers, setCollapsedUsers] = useState<string[]>([]);
   const [duplicateJobOpening, { isLoading: isDuplicating }] = useDuplicateJobOpeningMutation();
   const { loginToken } = useSelector((state: any) => state.LoginSlice);
-  const [checkAtsCalStatus] = useCheckAtsCalStatusMutation();
   const [showCloseJobModal, setShowCloseJobModal] = useState(false);
   const [jobName, setJobName] = useState<string | null>(null);
   const [jobOpeningId, setJobOpeningId] = useState<number | null>(null);
@@ -596,24 +594,15 @@ const JobsOpening = () => {
       });
   };
 
-  const handleCreateNewJob = async () => {
-    try {
-      const response = await checkAtsCalStatus().unwrap();
-
-      if (response.success) {
-        setShowCreateJobModal(true);
-      } else {
-        showToast({
-          message: response.message || 'Configuration check failed',
-          type: 'error',
-        });
-      }
-    } catch (error: any) {
-      showToast({
-        message: error.data?.message || 'Failed to check system configuration',
-        type: 'error',
-      });
-    }
+  const handleCreateNewJob = () => {
+    // The pre-flight checkStatusForAtsAndCal gate is disabled: the current
+    // job-service backend (rewritten to /api/v1/job-openings/*) never
+    // implemented that endpoint — its own docs list the push-to-ATS
+    // "checkStatusForAtsAndCal direction" as explicitly not built — so the
+    // call always 404'd and silently blocked every "Add Job Opening" click.
+    // TODO: re-wire this to a real ATS/calendar readiness check once
+    // job-service exposes one (see /api/v1/ats/* for what does exist today).
+    setShowCreateJobModal(true);
   };
 
   const handleJobConfiguration = () => {
