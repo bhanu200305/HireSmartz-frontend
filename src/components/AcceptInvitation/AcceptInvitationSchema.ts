@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { nameValidation, passwordValidation } from '../../shared/utils/validation/input.helpers';
+import {
+  nameValidation,
+  passwordValidation,
+  phoneNumberValidation,
+} from '../../shared/utils/validation/input.helpers';
 
 export const acceptInvitationSchema = z
   .object({
@@ -13,6 +17,10 @@ export const acceptInvitationSchema = z
     // (nullable in the DB, never validated) — kept optional to match.
     firstName: nameValidation({ label: 'First name', required: true }),
     lastName: nameValidation({ label: 'Last name', required: false }),
+    // Same AcceptInvitationUseCase requirement as first_name — phone_number
+    // is mandatory for every tenant invite. Must come from the person
+    // accepting, not whatever the inviter typed, so there's no prefill.
+    phoneNumber: phoneNumberValidation(),
     password: passwordValidation(),
     confirmPassword: z.string().min(1, 'Please confirm your password.'),
     mfaAcknowledged: z.boolean().refine((val) => val === true, {

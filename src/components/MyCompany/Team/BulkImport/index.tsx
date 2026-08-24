@@ -31,9 +31,7 @@ const IMPORT_STEPS: Step[] = [
 // parse time with a more confusing error, so it's excluded here too. A .csv
 // is rejected even earlier, at upload-url time — organization-service's
 // constraint never accepted 'text/csv' at all.
-const ALLOWED_IMPORT_TYPES = [
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-];
+const ALLOWED_IMPORT_TYPES = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
 
 type BulkImportProps = {
   open: boolean;

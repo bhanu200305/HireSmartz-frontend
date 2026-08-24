@@ -33,6 +33,8 @@ export type AcceptInvitationRequest = {
   // through this frontend flow) doesn't need one.
   first_name: string;
   last_name?: string;
+  // Same rule as first_name — required for every tenant invite.
+  phone_number: string;
 };
 
 export type AcceptInvitationResponse = {

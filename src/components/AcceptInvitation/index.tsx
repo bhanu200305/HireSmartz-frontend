@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaCheckCircle, FaRegCopy } from 'react-icons/fa';
-import { MdLockOutline, MdErrorOutline, MdPersonOutline } from 'react-icons/md';
+import { MdLockOutline, MdErrorOutline, MdPersonOutline, MdOutlinePhone } from 'react-icons/md';
 import { get } from 'lodash-es';
 import { Button, CustomCheckbox, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
@@ -14,6 +14,7 @@ import {
   type InvitationErrorBody,
 } from '../../api/organization-service/Invitations/invitations';
 import { buildOtpAuthUri, generateBase32Secret } from '../../shared/utils/mfa.helpers';
+import { cleanPhoneNumber, formatPhoneNumber } from '../../shared/utils/methods';
 import { acceptInvitationSchema, type AcceptInvitationFormValues } from './AcceptInvitationSchema';
 
 // Copy for every documented error the two calls on this screen
@@ -194,6 +195,7 @@ const AcceptInvitation = () => {
     defaultValues: {
       firstName: '',
       lastName: '',
+      phoneNumber: '',
       password: '',
       confirmPassword: '',
       mfaAcknowledged: false,
@@ -221,6 +223,7 @@ const AcceptInvitation = () => {
         mfa_secret: mfaSecret,
         first_name: data.firstName.trim(),
         last_name: data.lastName.trim() || undefined,
+        phone_number: cleanPhoneNumber(data.phoneNumber),
       }).unwrap();
       setIsAccepted(true);
       showToast({ message: 'Account activated. You can now log in.', type: 'success' });
@@ -348,6 +351,35 @@ const AcceptInvitation = () => {
           {errors.lastName && (
             <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
               {errors.lastName.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <Controller
+            name="phoneNumber"
+            control={control}
+            render={({ field }) => (
+              <Input
+                {...field}
+                type="tel"
+                placeholder="Phone number* (555) 123-4567"
+                maxLength={14}
+                prefix={
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                    <MdOutlinePhone className="text-brand-900 text-sm" />
+                  </div>
+                }
+                className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                onChange={(e) => {
+                  field.onChange(formatPhoneNumber(e.target.value));
+                }}
+              />
+            )}
+          />
+          {errors.phoneNumber && (
+            <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
+              {errors.phoneNumber.message}
             </p>
           )}
         </div>
