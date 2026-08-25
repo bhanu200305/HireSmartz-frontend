@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Badge, Typography, Button } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
-import EmailBrandingEditor from '../../../shared/EmailBrandingEditor';
+import { EmailBrandingEditor } from '../../../shared';
 import { useListPlatformTenantOverridesQuery } from '../../../../api/notification-service/PlatformTemplateSettings/index';
 import type { TemplateOverride } from '../../../../api/notification-service/TemplateSettings/index';
 import PlatformEmailTemplateOverrideModal from './PlatformEmailTemplateOverrideModal';

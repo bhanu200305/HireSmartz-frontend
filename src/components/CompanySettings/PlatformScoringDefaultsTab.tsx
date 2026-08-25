@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Select, Tooltip } from 'antd';
+import { Select, Switch, Tooltip } from 'antd';
 import { MdLock } from 'react-icons/md';
 import {
   INTERVIEW_CATEGORY_META,
@@ -21,28 +21,26 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 /**
  * GET/PUT /v1/platform/scoring-config (platform default) and
  * /v1/platform/tenants/{tenant_id}/scoring-config (one company's override) —
- * both real organization-service routes, both proxied to ai-service. Every
- * call degrades to `available: false` until ai-service actually implements
- * this RPC (it doesn't yet — see ScoringConfigPort's own docstring), so this
- * screen honestly shows "unavailable" rather than fabricating data; nothing
- * here is mocked.
+ * both real, working organization-service routes; nothing here is mocked or
+ * proxied to a service that might not answer.
  *
- * Two real limitations this UI works around rather than fakes:
+ * One real limitation this UI works around rather than fakes: the wire
+ * format is one flat `{category: weight}` map — no resume/interview split of
+ * its own. The categories below are RESUME_CATEGORY_META /
+ * INTERVIEW_CATEGORY_META (shared with JobsOpening/JobScoringCriteriaTab, the
+ * only real "Resume/Interview scoring categories" defined anywhere in this
+ * codebase), namespaced into the flat map with a `resume:`/`interview:` key
+ * prefix so e.g. both panels' own "QUALIFICATIONS" category can coexist.
+ * This prefix convention is this frontend's own choice, not a contract
+ * organization-service defines.
  *
- * 1. The wire format is one flat `{category: weight}` map — no resume/
- *    interview split of its own. The categories below are RESUME_CATEGORY_META
- *    / INTERVIEW_CATEGORY_META (shared with JobsOpening/JobScoringCriteriaTab,
- *    the only real "Resume/Interview scoring categories" defined anywhere in
- *    this codebase), namespaced into the flat map with a `resume:`/
- *    `interview:` key prefix so e.g. both panels' own "QUALIFICATIONS"
- *    category can coexist. This prefix convention is this frontend's own
- *    choice, not a contract ai-service defines — there is no real one yet.
- * 2. There is no reset-to-default or lock-toggle endpoint here at all
- *    (`UpdateScoringConfigInput`/`UpdatePlatformTenantScoringConfigArgs` only
- *    ever accept `weights`). "Reset to Defaults" saves the standard weights
- *    (mirrors job-service's own seed constants) through the same save path
- *    rather than a separate call, and `is_locked` is shown read-only — no
- *    control here can actually flip it, so none is offered.
+ * "Reset to Defaults" saves the standard weights (mirrors job-service's own
+ * seed constants) through the same save path rather than a separate
+ * endpoint. `is_locked` is a real, settable field on the tenant-override
+ * write path only (`UpdateTenantScoringConfigAsPlatformRequest`) — the
+ * platform-wide default has no such concept, and a tenant can never set it
+ * on itself — so the lock toggle below only renders while a specific company
+ * is selected.
  */
 
 const RESUME_KEY_PREFIX = 'resume:';
@@ -90,6 +88,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
     useUpdatePlatformTenantScoringConfigMutation();
   const [isResettingResume, setIsResettingResume] = useState(false);
   const [isResettingInterview, setIsResettingInterview] = useState(false);
+  const [isTogglingLock, setIsTogglingLock] = useState(false);
 
   const data = isPlatformDefault ? platformData : tenantData;
   const isLoading = isPlatformDefault ? isPlatformLoading : isTenantLoading;
@@ -171,6 +170,31 @@ const PlatformScoringDefaultsTab: React.FC = () => {
     }
   };
 
+  const handleToggleLock = async (nextLocked: boolean) => {
+    if (isPlatformDefault) return;
+    setIsTogglingLock(true);
+    try {
+      await updateTenantConfig({
+        tenantId: selectedTenantId as string,
+        weights: flatWeights,
+        is_locked: nextLocked,
+      }).unwrap();
+      showToast({
+        message: nextLocked
+          ? 'Company locked to its current weights.'
+          : 'Company unlocked — it can set its own weights again.',
+        type: 'success',
+      });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to update lock state.'),
+        type: 'error',
+      });
+    } finally {
+      setIsTogglingLock(false);
+    }
+  };
+
   const companyOptions = useMemo(
     () => [
       { value: 'platform', label: 'Platform Default (all companies)' },
@@ -206,10 +230,17 @@ const PlatformScoringDefaultsTab: React.FC = () => {
               .includes(input.toLowerCase())
           }
         />
-        {!isPlatformDefault && data?.is_locked && (
-          <Tooltip title="This company is locked to the platform default — it can't set its own weights.">
+        {!isPlatformDefault && !isLoading && (
+          <Tooltip title="Locked means this company can't edit its own weights — only Super Admin can change them here.">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold px-2.5 py-1">
-              <MdLock size={13} /> Locked
+              <MdLock size={13} />
+              Locked
+              <Switch
+                size="small"
+                checked={!!data?.is_locked}
+                loading={isTogglingLock}
+                onChange={handleToggleLock}
+              />
             </span>
           </Tooltip>
         )}

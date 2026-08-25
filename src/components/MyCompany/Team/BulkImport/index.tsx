@@ -12,7 +12,15 @@ import {
   uploadRosterFile,
   downloadRosterTemplate,
   type RosterRole,
+  type RosterRowFailure,
 } from '../../../../api/organization-service/Tenants/imports';
+import {
+  useRequestPlatformRosterUploadMutation,
+  useParsePlatformRosterMutation,
+  useConfirmPlatformRosterImportMutation,
+  downloadPlatformRosterTemplate,
+} from '../../../../api/organization-service/Platform/imports';
+import { useListRolesQuery } from '../../../../api/organization-service/Roles/roles';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
 import BulkImportRows, { ReviewRow, toReviewRows } from './BulkImportRows';
 
@@ -22,33 +30,72 @@ const IMPORT_STEPS: Step[] = [
   { key: 'done', label: 'Done' },
 ];
 
-const ALLOWED_IMPORT_TYPES = [
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-excel',
-  'text/csv',
-];
+// .xlsx ONLY. The parse step (ai-service's spreadsheet_parser.py) is
+// openpyxl-based, which reads real .xlsx (OOXML/zip) content exclusively —
+// it cannot open a genuine .csv or legacy binary .xls, regardless of what
+// content-type or extension is attached. request_roster_upload.py's
+// ROSTER_EXCEL_CONSTRAINT technically also accepts 'application/vnd.ms-excel'
+// (.xls) at the upload step, but that would only defer the same failure to
+// parse time with a more confusing error, so it's excluded here too. A .csv
+// is rejected even earlier, at upload-url time — organization-service's
+// constraint never accepted 'text/csv' at all.
+const ALLOWED_IMPORT_TYPES = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
 
 type BulkImportProps = {
   open: boolean;
   tenantId: string;
   onClose: () => void;
+  // Set from Super Admin's per-tenant Users tab, running this exact same
+  // flow on behalf of a tenant it doesn't own — same platform_router.py
+  // "everything below reuses a use case Company Admin already has" pattern
+  // as the rest of that surface. Switches every call over to the
+  // /v1/platform/tenants/{tenant_id}/... mirror endpoints.
+  isMaster?: boolean;
 };
 
 /** The real 3-step roster flow — request an upload URL, upload straight to
  * storage, parse; then review/edit the detected rows and confirm. */
-const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
+const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportProps) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [result, setResult] = useState<{
     created: number;
     skipped: number;
     suppressed: number;
-    unknownLocation: number;
+    failures: RosterRowFailure[];
   } | null>(null);
 
-  const [requestUpload, { isLoading: isRequestingUrl }] = useRequestRosterUploadMutation();
-  const [parseRoster, { isLoading: isParsing }] = useParseRosterMutation();
-  const [confirmImport, { isLoading: isConfirming }] = useConfirmRosterImportMutation();
+  // This tenant's own role catalog — the role select in the review step
+  // offers every role here (system or custom), not a fixed two-option list.
+  const { data: roles, isLoading: isLoadingRoles } = useListRolesQuery(
+    { scope: 'tenant', tenantId, isMaster },
+    { skip: !open || !tenantId }
+  );
+
+  // Both tenant-self and platform-mirror mutation hooks are always called
+  // (React's rules of hooks — a hook can't be called conditionally), only
+  // one pair is ever actually invoked below, picked by `isMaster`.
+  const [requestTenantUpload, requestTenantUploadState] = useRequestRosterUploadMutation();
+  const [requestPlatformUpload, requestPlatformUploadState] =
+    useRequestPlatformRosterUploadMutation();
+  const [parseTenantRoster, parseTenantRosterState] = useParseRosterMutation();
+  const [parsePlatformRoster, parsePlatformRosterState] = useParsePlatformRosterMutation();
+  const [confirmTenantImport, confirmTenantImportState] = useConfirmRosterImportMutation();
+  const [confirmPlatformImport, confirmPlatformImportState] =
+    useConfirmPlatformRosterImportMutation();
+
+  const requestUpload = isMaster ? requestPlatformUpload : requestTenantUpload;
+  const parseRoster = isMaster ? parsePlatformRoster : parseTenantRoster;
+  const confirmImport = isMaster ? confirmPlatformImport : confirmTenantImport;
+  const isRequestingUrl = isMaster
+    ? requestPlatformUploadState.isLoading
+    : requestTenantUploadState.isLoading;
+  const isParsing = isMaster
+    ? parsePlatformRosterState.isLoading
+    : parseTenantRosterState.isLoading;
+  const isConfirming = isMaster
+    ? confirmPlatformImportState.isLoading
+    : confirmTenantImportState.isLoading;
   const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   const isBusy = isRequestingUrl || isParsing || isConfirming || isUploadingFile;
@@ -61,10 +108,9 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
   };
 
   const handleUpload = async (file: File) => {
-    const isAllowedType =
-      ALLOWED_IMPORT_TYPES.includes(file.type) || /\.(xlsx|xls|csv)$/i.test(file.name);
+    const isAllowedType = ALLOWED_IMPORT_TYPES.includes(file.type) || /\.xlsx$/i.test(file.name);
     if (!isAllowedType) {
-      showToast({ message: 'Please upload a .xlsx, .xls, or .csv file.', type: 'error' });
+      showToast({ message: 'Please upload a .xlsx file.', type: 'error' });
       return false;
     }
 
@@ -80,7 +126,12 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
       setIsUploadingFile(false);
 
       const parsed = await parseRoster({ tenantId, storage_key: target.storage_key }).unwrap();
-      setRows(toReviewRows(parsed.rows));
+      setRows(
+        toReviewRows(
+          parsed.rows,
+          (roles ?? []).map((role) => role.name)
+        )
+      );
       setStep(2);
     } catch (error: unknown) {
       setIsUploadingFile(false);
@@ -106,14 +157,14 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
           email: row.email,
           role: row.role as RosterRole,
           department: row.department || undefined,
-          location: row.location || undefined,
+          designation: row.designation || undefined,
         })),
       }).unwrap();
       setResult({
         created: response.created_count,
         skipped: response.skipped_duplicate_emails.length,
         suppressed: response.previously_suppressed_emails.length,
-        unknownLocation: response.skipped_unknown_location_emails.length,
+        failures: response.failures ?? [],
       });
       setStep(3);
     } catch (error: unknown) {
@@ -126,7 +177,7 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
 
   const handleDownloadTemplate = async () => {
     try {
-      await downloadRosterTemplate(tenantId);
+      await (isMaster ? downloadPlatformRosterTemplate : downloadRosterTemplate)(tenantId);
     } catch {
       showToast({ message: 'Failed to download the template.', type: 'error' });
     }
@@ -154,13 +205,13 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
           <Upload.Dragger
             beforeUpload={handleUpload}
             maxCount={1}
-            accept=".xlsx,.xls,.csv"
+            accept=".xlsx"
             showUploadList={false}
             className="border-dashed border-gray-300 rounded-lg p-6"
           >
             <MdOutlineFileUpload className="text-2xl mb-2 text-primary mx-auto" />
             <p className="text-gray-600">Upload a spreadsheet of existing employees</p>
-            <p className="text-xs text-gray-400 mt-1">.xlsx, .xls, or .csv</p>
+            <p className="text-xs text-gray-400 mt-1">.xlsx only</p>
           </Upload.Dragger>
         </div>
       )}
@@ -171,7 +222,12 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
             {rows.filter((r) => r.include).length} of {rows.length} rows will be invited. Pick a
             role for each — a row with no role can&apos;t be confirmed.
           </p>
-          <BulkImportRows rows={rows} onChange={setRows} />
+          <BulkImportRows
+            roles={roles ?? []}
+            isLoadingRoles={isLoadingRoles}
+            rows={rows}
+            onChange={setRows}
+          />
           <div className="flex items-center gap-2 mt-4">
             <Button
               type="button"
@@ -206,10 +262,23 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
               {result.suppressed} invited but flagged as a previously-bounced address.
             </p>
           )}
-          {result.unknownLocation > 0 && (
-            <p className="text-xs text-amber-600">
-              {result.unknownLocation} skipped — location didn&apos;t match an existing office.
-            </p>
+          {result.failures.length > 0 && (
+            <div className="w-full text-left mt-2">
+              <p className="text-xs font-medium text-red-600 mb-1">
+                {result.failures.length} row{result.failures.length !== 1 ? 's' : ''} could not be
+                imported:
+              </p>
+              <ul className="max-h-40 overflow-y-auto border border-red-100 rounded-lg divide-y">
+                {result.failures.map((failure) => (
+                  <li
+                    key={`${failure.row_number}-${failure.email}`}
+                    className="text-xs text-red-700 px-3 py-1.5"
+                  >
+                    Row {failure.row_number} ({failure.email}): {failure.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <Button
             type="button"

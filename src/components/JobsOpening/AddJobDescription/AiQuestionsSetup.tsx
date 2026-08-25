@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, Outlet } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
+import { stopStream } from '../../../redux/slices/streamSlice';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Loader } from '../../shared/ui/loader';
@@ -27,8 +28,24 @@ import InlineQuestionInput from './InlineQuestionInput';
 import QuestionRowItem from './QuestionRowItem';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 
+// System-fixed, view-only Sound Wave Round question set. Unlike JD Questions
+// below, this isn't scoped to a job or backed by an endpoint — no such
+// endpoint exists (see plan doc) — it's the same fixed script Iris asks on
+// every Sound Wave round, hardcoded here.
+const SOUND_WAVE_ROUND_QUESTIONS = [
+  "What's your current notice period or earliest available start date?",
+  'Can you walk me through your resume at a high level?',
+  'What are your salary expectations for this role?',
+  'Why are you interested in this position?',
+  'Are you authorized to work in the country where this role is based?',
+  "What's driving you to look for a new opportunity right now?",
+  'Do you have any scheduling constraints for interviews?',
+];
+
 const AiQuestionsSetup = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { pathname } = useLocation();
   const { id } = useParams<{ id?: string }>();
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
   const streamJobOpeningId = useSelector((state: RootState) => state.streamSlice.jobOpeningId);
@@ -299,7 +316,34 @@ const AiQuestionsSetup = () => {
 
         <div className="flex justify-between items-center bg-[#E7E4E4] border border-[var(--border)] px-6 py-4 rounded-full">
           <Typography variant="h5" className="text-gray-800 m-0">
-            AI Questions
+            Questions
+          </Typography>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+            <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
+              Sound Wave Round
+            </Typography>
+            <span className="text-xs font-semibold text-gray-400 bg-gray-100 rounded-full px-3 py-1">
+              View only
+            </span>
+          </div>
+          <div className="space-y-3">
+            {SOUND_WAVE_ROUND_QUESTIONS.map((question, idx) => (
+              <div
+                key={idx}
+                className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700"
+              >
+                {question}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center px-2">
+          <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
+            JD Questions
           </Typography>
         </div>
 
@@ -425,11 +469,14 @@ const AiQuestionsSetup = () => {
         <div className="mt-6 flex justify-center">
           <Button
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-            onClick={() =>
-              navigate(id ? `/jobs/edit/${id}/editVideoQuestions` : '/video-questions')
-            }
+            onClick={() => {
+              // Questions is now the wizard's last step (Video Questions is
+              // retired from the nav — see JobDetailsLayout.tsx).
+              dispatch(stopStream());
+              navigate(pathname.includes('/edit/') && id ? `/jobs/view/${id}/details` : '/jobs');
+            }}
           >
-            SAVE & NEXT
+            {pathname.includes('/edit/') ? 'SAVE & FINISH' : '✓ PUBLISH JOB OPENING'}
           </Button>
         </div>
         <Outlet />

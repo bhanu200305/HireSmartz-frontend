@@ -1,13 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { MdBrokenImage } from 'react-icons/md';
+import React, { useEffect, useRef, useState } from 'react';
+import { Upload } from 'antd';
+import { MdEdit, MdOutlineFileUpload } from 'react-icons/md';
 import { Button, Input, Textarea, Typography, showToast } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import { Badge, BadgeStatus } from '../../../shared/ui/badge';
 import {
   useGetPlatformTenantProfileQuery,
   useUpdatePlatformTenantProfileMutation,
+  useRequestPlatformTenantLogoUploadMutation,
 } from '../../../../api/organization-service/Platform/tenantProfile';
+import { uploadTenantLogoFile } from '../../../../api/organization-service/Tenants/profile';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
+import {
+  ALLOWED_LOGO_TYPES,
+  MAX_LOGO_FILE_SIZE_BYTES,
+  LOGO_FILE_SIZE_ERROR_MESSAGE,
+  LOGO_FILE_TYPE_ERROR_MESSAGE,
+} from '../../../../constants/file.constants';
 
 const STATUS_BADGE: Record<string, BadgeStatus> = {
   draft: 'neutral',
@@ -22,7 +31,6 @@ type ProfileFormState = {
   website_url: string;
   culture_intro: string;
   company_size: string;
-  logo: string;
 };
 
 const toFormState = (
@@ -33,7 +41,6 @@ const toFormState = (
   website_url: profile?.website_url || '',
   culture_intro: profile?.culture_intro || '',
   company_size: profile?.company_size ? String(profile.company_size) : '',
-  logo: profile?.logo_url || '',
 });
 
 /** Label-above-field wrapper — same shape for every field in this form
@@ -67,22 +74,28 @@ const ReadOnlyPill: React.FC<{ children: React.ReactNode }> = ({ children }) => 
  * Super Admin's mirror of MyCompany/CompanyProfileTab.tsx — same fields, same
  * PATCH-only-what-changed contract, GET/PATCH
  * /v1/platform/tenants/{tenant_id}/profile instead of the tenant's own
- * ambient-context route.
+ * ambient-context route. Logo upload is the same real presigned-S3 flow that
+ * tab uses too (POST /v1/platform/tenants/{tenant_id}/logo/upload-url), not
+ * a free-text "Logo URL" field — the plain text input this used to have
+ * couldn't produce a value organization-service could actually serve back.
  */
 const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: profile, isLoading, refetch } = useGetPlatformTenantProfileQuery(tenantId);
   const [updateProfile, { isLoading: isSaving }] = useUpdatePlatformTenantProfileMutation();
+  const [requestLogoUpload] = useRequestPlatformTenantLogoUploadMutation();
   const [isEditMode, setIsEditMode] = useState(false);
   const [form, setForm] = useState<ProfileFormState>(toFormState(undefined));
-  const [logoFailed, setLogoFailed] = useState(false);
+  const [logoPreview, setLogoPreview] = useState('');
+  const [isLogoHovered, setIsLogoHovered] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const logoUploadRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (profile) setForm(toFormState(profile));
+    if (profile) {
+      setForm(toFormState(profile));
+      setLogoPreview(profile.logo_url || '');
+    }
   }, [profile]);
-
-  useEffect(() => {
-    setLogoFailed(false);
-  }, [form.logo]);
 
   if (isLoading) return <Loader />;
   if (!profile) {
@@ -99,6 +112,38 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setIsEditMode(false);
   };
 
+  const handleLogoUpload = async (file: File) => {
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      showToast({ message: LOGO_FILE_TYPE_ERROR_MESSAGE, type: 'error' });
+      return Upload.LIST_IGNORE;
+    }
+    if (file.size > MAX_LOGO_FILE_SIZE_BYTES) {
+      showToast({ message: LOGO_FILE_SIZE_ERROR_MESSAGE, type: 'error' });
+      return Upload.LIST_IGNORE;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setLogoPreview(previewUrl);
+    setIsUploadingLogo(true);
+    try {
+      const target = await requestLogoUpload({
+        tenantId,
+        filename: file.name,
+        content_type: file.type,
+      }).unwrap();
+      await uploadTenantLogoFile(target, file);
+      await updateProfile({ tenantId, logo: target.storage_key }).unwrap();
+      showToast({ message: 'Company logo updated.', type: 'success' });
+      refetch();
+    } catch (err) {
+      setLogoPreview(profile?.logo_url || '');
+      showToast({ message: getOrgErrorMessage(err, 'Failed to upload logo.'), type: 'error' });
+    } finally {
+      setIsUploadingLogo(false);
+    }
+    return false;
+  };
+
   const handleSave = async () => {
     const parsedSize = form.company_size ? Number(form.company_size) : undefined;
     if (form.company_size && (!Number.isFinite(parsedSize) || Number(parsedSize) < 1)) {
@@ -113,7 +158,6 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         website_url: form.website_url,
         culture_intro: form.culture_intro,
         company_size: parsedSize,
-        logo: form.logo,
       }).unwrap();
       showToast({ message: 'Company profile updated.', type: 'success' });
       setIsEditMode(false);
@@ -143,6 +187,66 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       <Typography variant="h6" className="mb-4 block font-bold text-gray-900">
         Company Info
       </Typography>
+
+      <div className="mb-6 flex flex-col items-center">
+        <Typography variant="subtitle2" className="mb-2">
+          Company logo
+        </Typography>
+        {logoPreview ? (
+          <div
+            className="relative w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden group"
+            onMouseEnter={() => setIsLogoHovered(true)}
+            onMouseLeave={() => setIsLogoHovered(false)}
+          >
+            <img
+              src={logoPreview}
+              alt="Company logo"
+              className="w-full h-full object-cover"
+              onError={() => setLogoPreview('')}
+            />
+            {isEditMode && (
+              <Upload
+                beforeUpload={handleLogoUpload}
+                showUploadList={false}
+                className="hidden"
+                accept="image/png, image/jpeg"
+              >
+                <button ref={logoUploadRef} className="hidden"></button>
+              </Upload>
+            )}
+            {isEditMode && isLogoHovered && !isUploadingLogo && (
+              <div
+                onClick={() => logoUploadRef.current?.click()}
+                className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer"
+              >
+                <MdEdit className="text-white text-xl" />
+              </div>
+            )}
+            {isUploadingLogo && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+                <span className="text-white text-xs">Uploading…</span>
+              </div>
+            )}
+          </div>
+        ) : isEditMode ? (
+          <Upload.Dragger
+            beforeUpload={handleLogoUpload}
+            listType="picture"
+            maxCount={1}
+            accept="image/png, image/jpeg"
+            className="border-dashed border-gray-300 rounded-lg p-4 w-full max-w-xs"
+            disabled={isUploadingLogo}
+          >
+            <MdOutlineFileUpload className="text-xl mb-1 text-primary mx-auto" />
+            <p className="text-sm">{isUploadingLogo ? 'Uploading…' : 'Upload logo'}</p>
+          </Upload.Dragger>
+        ) : (
+          <div className="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center text-xl font-semibold text-white">
+            {form.name?.charAt(0).toUpperCase() || '-'}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5 mb-8">
         <Field label="Company name" required>
           <Input
@@ -169,14 +273,6 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           />
         </Field>
 
-        <Field label="Logo URL">
-          <Input
-            value={form.logo}
-            onChange={handleField('logo')}
-            placeholder="Logo URL"
-            disabled={!isEditMode}
-          />
-        </Field>
         <Field label="Status">
           <ReadOnlyPill>
             <Badge status={STATUS_BADGE[profile.status] || 'neutral'}>{profile.status}</Badge>
@@ -187,26 +283,6 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             <span className="truncate">{profile.admin_contact || '—'}</span>
           </ReadOnlyPill>
         </Field>
-
-        {form.logo && (
-          <div className="sm:col-span-2 lg:col-span-3 flex items-center gap-3 -mt-2">
-            <div className="w-12 h-12 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
-              {logoFailed ? (
-                <MdBrokenImage className="text-gray-300" size={18} />
-              ) : (
-                <img
-                  src={form.logo}
-                  alt="Company logo"
-                  className="w-full h-full object-contain"
-                  onError={() => setLogoFailed(true)}
-                />
-              )}
-            </div>
-            <Typography variant="body2" className="text-gray-400">
-              Logo preview
-            </Typography>
-          </div>
-        )}
       </div>
 
       <Typography variant="h6" className="mb-4 block font-bold text-gray-900">

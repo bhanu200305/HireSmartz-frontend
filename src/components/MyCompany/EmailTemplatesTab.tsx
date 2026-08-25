@@ -13,6 +13,7 @@ import {
 import { getNotifErrorMessage } from '../../shared/utils/auth/notifError.helpers';
 import EmailTemplateOverrideModal from './EmailTemplateOverrideModal';
 import EmailLayoutSection from './EmailLayoutSection';
+import EmailBrandingTab from './EmailBrandingTab';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 
@@ -211,6 +212,7 @@ const EmailTemplatesTab: React.FC = () => {
       <PackPicker />
       <OverridesTable />
       <EmailLayoutSection />
+      <EmailBrandingTab />
     </div>
   );
 };

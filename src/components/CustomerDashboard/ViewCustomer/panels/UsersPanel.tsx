@@ -1,6 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
-import { MdOutlineAdd, MdPersonOff, MdRestore, MdSearch } from 'react-icons/md';
+import {
+  MdOutlineAdd,
+  MdOutlineFileUpload,
+  MdPersonOff,
+  MdRestore,
+  MdSearch,
+} from 'react-icons/md';
 import {
   Badge,
   Button,
@@ -24,6 +30,7 @@ import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organizat
 import { useRolesCatalog } from '../../../../hooks/useRolesCatalog';
 import type { OrgUser } from '../../../../api/organization-service/Users/users';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
+import BulkImport from '../../../MyCompany/Team/BulkImport';
 
 type UserRow = OrgUser & { key: string };
 
@@ -79,6 +86,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [reactivateUser, { isLoading: isReactivating }] = useReactivatePlatformTenantUserMutation();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
   const [searchText, setSearchText] = useState('');
@@ -262,6 +270,12 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             />
           </div>
           <Button
+            className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1 hover:bg-gray-50 transition-colors shrink-0"
+            onClick={() => setIsBulkImportOpen(true)}
+          >
+            <MdOutlineFileUpload /> Import team
+          </Button>
+          <Button
             className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
             onClick={() => setIsAddOpen(true)}
           >
@@ -338,6 +352,13 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           onClose={() => setUserToDeactivate(null)}
         />
       )}
+
+      <BulkImport
+        open={isBulkImportOpen}
+        tenantId={tenantId}
+        isMaster
+        onClose={() => setIsBulkImportOpen(false)}
+      />
     </div>
   );
 };

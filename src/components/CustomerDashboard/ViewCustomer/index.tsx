@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Tabs, Tooltip } from 'antd';
+import { Tabs, Tooltip, Upload } from 'antd';
 import { BsArrowLeft } from 'react-icons/bs';
 import {
   MdEmail,
@@ -9,6 +9,7 @@ import {
   MdOutlineCampaign,
   MdOutlineTune,
   MdLock,
+  MdEdit,
 } from 'react-icons/md';
 import MainLayout from '../../../layouts/MainLayout';
 import { Button, Typography, showToast } from '../../shared';
@@ -20,8 +21,20 @@ import {
   useGetPlatformTenantEntitlementsQuery,
   useUpdatePlatformTenantEntitlementsMutation,
 } from '../../../api/organization-service/Platform/tenants';
+import {
+  useGetPlatformTenantProfileQuery,
+  useUpdatePlatformTenantProfileMutation,
+  useRequestPlatformTenantLogoUploadMutation,
+} from '../../../api/organization-service/Platform/tenantProfile';
+import { uploadTenantLogoFile } from '../../../api/organization-service/Tenants/profile';
 import { useSuspendTenantMutation } from '../../../api/organization-service/Tenants/tenants';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import {
+  ALLOWED_LOGO_TYPES,
+  MAX_LOGO_FILE_SIZE_BYTES,
+  LOGO_FILE_SIZE_ERROR_MESSAGE,
+  LOGO_FILE_TYPE_ERROR_MESSAGE,
+} from '../../../constants/file.constants';
 import EntitlementsPanel from './EntitlementsPanel';
 import CompanyProfilePanel from './panels/CompanyProfilePanel';
 import LocationsPanel from './panels/LocationsPanel';
@@ -30,6 +43,7 @@ import UsersPanel from './panels/UsersPanel';
 import ScoringCriteriaPanel from './panels/ScoringCriteriaPanel';
 import QrCodePanel from './panels/QrCodePanel';
 import EmailTemplatesPanel from './panels/EmailTemplatesPanel';
+import TenantActivityFeedTab from '../../MyCompany/TenantActivityFeedTab';
 
 const STATUS_BADGE: Record<string, BadgeStatus> = {
   draft: 'neutral',
@@ -101,6 +115,53 @@ const ViewCustomer = () => {
   const [suspendTenant, { isLoading: isSuspending }] = useSuspendTenantMutation();
   const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
 
+  // Same profile query CompanyProfilePanel uses (shared cache — a logo
+  // upload from either place invalidates the other's tag too), fetched here
+  // as well purely for `logo_url`: `tenant` above is PlatformTenantSummary,
+  // deliberately narrower than the profile view and has no logo field.
+  const { data: profile } = useGetPlatformTenantProfileQuery(tenantId, { skip: !tenantId });
+  const [updateProfile] = useUpdatePlatformTenantProfileMutation();
+  const [requestLogoUpload] = useRequestPlatformTenantLogoUploadMutation();
+  const [logoPreview, setLogoPreview] = useState('');
+  const [isLogoHovered, setIsLogoHovered] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const logoUploadRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setLogoPreview(profile?.logo_url || '');
+  }, [profile?.logo_url]);
+
+  const handleLogoUpload = async (file: File) => {
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      showToast({ message: LOGO_FILE_TYPE_ERROR_MESSAGE, type: 'error' });
+      return Upload.LIST_IGNORE;
+    }
+    if (file.size > MAX_LOGO_FILE_SIZE_BYTES) {
+      showToast({ message: LOGO_FILE_SIZE_ERROR_MESSAGE, type: 'error' });
+      return Upload.LIST_IGNORE;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setLogoPreview(previewUrl);
+    setIsUploadingLogo(true);
+    try {
+      const target = await requestLogoUpload({
+        tenantId,
+        filename: file.name,
+        content_type: file.type,
+      }).unwrap();
+      await uploadTenantLogoFile(target, file);
+      await updateProfile({ tenantId, logo: target.storage_key }).unwrap();
+      showToast({ message: 'Company logo updated.', type: 'success' });
+    } catch (err) {
+      setLogoPreview(profile?.logo_url || '');
+      showToast({ message: getOrgErrorMessage(err, 'Failed to upload logo.'), type: 'error' });
+    } finally {
+      setIsUploadingLogo(false);
+    }
+    return false;
+  };
+
   useEffect(() => {
     if (!tenantId) {
       showToast({ message: 'No company selected.', type: 'error' });
@@ -119,7 +180,12 @@ const ViewCustomer = () => {
     }
   };
 
-  const handleTabChange = (key: string) => setSearchParams({ companyId: tenantId, tab: key });
+  // `?tab=` doesn't change the route pathname, so App.tsx's route-level
+  // scroll reset never fires for it.
+  const handleTabChange = (key: string) => {
+    setSearchParams({ companyId: tenantId, tab: key });
+    window.scrollTo(0, 0);
+  };
 
   if (isLoading) return <Loader />;
   if (!tenant) return <div className="p-8 text-gray-500">Company not found.</div>;
@@ -170,6 +236,11 @@ const ViewCustomer = () => {
     { key: '5', label: 'Scoring Criteria', children: <ScoringCriteriaPanel tenantId={tenantId} /> },
     { key: '6', label: 'QR Management', children: <QrCodePanel tenantId={tenantId} /> },
     { key: '7', label: 'Email Templates', children: <EmailTemplatesPanel tenantId={tenantId} /> },
+    {
+      key: '9',
+      label: 'Activity',
+      children: <TenantActivityFeedTab tenantId={tenantId} isMaster />,
+    },
   ];
 
   return (
@@ -187,9 +258,45 @@ const ViewCustomer = () => {
           <div className="p-6">
             <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
               <div className="flex items-center gap-4">
-                <span className="shrink-0 w-14 h-14 bg-gradient-to-br from-primary-600 to-accent-500 text-white rounded-full flex items-center justify-center shadow-sm text-xl font-bold">
-                  {tenant.company_name?.[0]?.toUpperCase() || '?'}
-                </span>
+                <div
+                  className="relative shrink-0 w-14 h-14 rounded-full overflow-hidden group"
+                  onMouseEnter={() => setIsLogoHovered(true)}
+                  onMouseLeave={() => setIsLogoHovered(false)}
+                >
+                  {logoPreview ? (
+                    <img
+                      src={logoPreview}
+                      alt={`${tenant.company_name} logo`}
+                      className="w-full h-full object-cover"
+                      onError={() => setLogoPreview('')}
+                    />
+                  ) : (
+                    <span className="w-full h-full bg-gradient-to-br from-primary-600 to-accent-500 text-white flex items-center justify-center shadow-sm text-xl font-bold">
+                      {tenant.company_name?.[0]?.toUpperCase() || '?'}
+                    </span>
+                  )}
+                  <Upload
+                    beforeUpload={handleLogoUpload}
+                    showUploadList={false}
+                    className="hidden"
+                    accept="image/png, image/jpeg"
+                  >
+                    <button ref={logoUploadRef} className="hidden"></button>
+                  </Upload>
+                  {isLogoHovered && !isUploadingLogo && (
+                    <div
+                      onClick={() => logoUploadRef.current?.click()}
+                      className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer"
+                    >
+                      <MdEdit className="text-white text-lg" />
+                    </div>
+                  )}
+                  {isUploadingLogo && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+                      <span className="text-white text-[10px]">Uploading…</span>
+                    </div>
+                  )}
+                </div>
                 <div>
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <h1 className="font-display text-2xl font-bold text-gray-900">

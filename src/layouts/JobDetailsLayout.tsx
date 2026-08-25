@@ -44,23 +44,32 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   const fromDashboard = location.state?.fromDashboard || false;
 
+  // Create wizard: Job Details and AI Job Description are one merged,
+  // split-screen step (see jobdetails.tsx + JobDescriptionPanel.tsx) — no
+  // longer two separate steps. Scoring Criteria moved up to right after it;
+  // Video Questions is retired as its own step (JD Questions — the renamed
+  // AI Questions pool — is the one shared question bank now; see
+  // AiQuestionsSetup.tsx). VideoQuestionsSetup.tsx/its route are left
+  // in place, just unlinked from this nav.
   const baseSteps = [
-    'Job Details',
-    'AI Job Description',
-    'Interview Setup',
-    'AI Questions',
-    'Video Questions',
+    'Job Details & AI Description',
     'Scoring Criteria',
+    'Interview Setup',
+    'Questions',
   ];
 
+  // View/Edit keep Job Details and AI Job Description as two separate
+  // read-only tabs (the split-screen merge is a create-wizard-only concept —
+  // there's no interactive prompt/co-editing benefit to it once the job
+  // exists). Same Scoring-Criteria-earlier, Video-Questions-retired changes
+  // as the create wizard, for consistency.
   const viewSteps = [
     'Job Details',
     'AI Job Description',
     // 'Candidates',
-    'Interview Setup',
-    'AI Questions',
-    'Video Questions',
     'Scoring Criteria',
+    'Interview Setup',
+    'Questions',
   ];
   // const allSteps = isViewMode ? viewSteps : baseSteps
   const allSteps = isViewMode || isEditMode ? viewSteps : baseSteps;
@@ -77,27 +86,18 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
         `${basePaths.view}/details`,
         `${basePaths.view}/AiJobDescription`,
         // `${basePaths.view}/candidates`,
+        `${basePaths.view}/scoring-criteria`,
         `${basePaths.view}/interview`,
         `${basePaths.view}/aiQuestions`,
-        `${basePaths.view}/video-interview-questions`,
-        `${basePaths.view}/scoring-criteria`,
       ],
       edit: [
         `${basePaths.edit}/details`,
         `${basePaths.edit}/AiJobDescription/${aiJobDescriptionId}`,
+        `${basePaths.edit}/scoring-criteria`,
         `${basePaths.edit}/interview`,
         `${basePaths.edit}/editAiQuestions`,
-        `${basePaths.edit}/editVideoQuestions`,
-        `${basePaths.edit}/scoring-criteria`,
       ],
-      create: [
-        '/job-details',
-        '/ai-job-description',
-        '/interview-setup',
-        '/ai-questions',
-        '/video-questions',
-        '/scoring-criteria',
-      ],
+      create: ['/job-details', '/scoring-criteria', '/interview-setup', '/ai-questions'],
     };
     return isViewMode ? stepPaths.view : isEditMode ? stepPaths.edit : stepPaths.create;
   }, [isViewMode, isEditMode, id, aiJobDescriptionId]);
@@ -130,12 +130,15 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     if (currentTabIndex === -1) return; // Not on a valid tab path
 
     // Check if current tab is disabled
+    // 4-step create order: 0 Job Details & AI Description (merged, always
+    // open) -> 1 Scoring Criteria (needs the merged step saved) -> 2 Interview
+    // Setup / 3 Questions (both need isFormCompleted — set true by
+    // handleContinueToScoring's "Next", same as isTab3Completed originally
+    // meant "past the AI Job Description step").
     const isCurrentTabDisabled =
-      (currentTabIndex === 1 && (!isTab1Completed || !isTab2Completed)) ||
-      (currentTabIndex === 2 && (!isTab1Completed || !isTab2Completed || !isTab3Completed)) ||
-      (currentTabIndex === 3 && (!isTab1Completed || !isTab2Completed || !isTab3Completed)) ||
-      (currentTabIndex === 4 && (!isTab1Completed || !isTab2Completed || !isTab3Completed)) ||
-      (currentTabIndex === 5 && (!isTab1Completed || !isTab2Completed || !isTab3Completed));
+      (currentTabIndex === 1 && !(isTab1Completed && isTab2Completed)) ||
+      (currentTabIndex === 2 && !isTab3Completed) ||
+      (currentTabIndex === 3 && !isTab3Completed);
 
     if (!isCurrentTabDisabled) return; // Current tab is enabled, no redirect needed
 
@@ -144,11 +147,9 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
     // Find first available tab
     const firstAvailableIndex = currentPaths.findIndex((_: string, index: number) => {
-      if (index === 1 && (!isTab1Completed || !isTab2Completed)) return false;
-      if (index === 2 && (!isTab1Completed || !isTab2Completed || !isTab3Completed)) return false;
-      if (index === 3 && (!isTab1Completed || !isTab2Completed || !isTab3Completed)) return false;
-      if (index === 4 && (!isTab1Completed || !isTab2Completed || !isTab3Completed)) return false;
-      if (index === 5 && (!isTab1Completed || !isTab2Completed || !isTab3Completed)) return false;
+      if (index === 1 && !(isTab1Completed && isTab2Completed)) return false;
+      if (index === 2 && !isTab3Completed) return false;
+      if (index === 3 && !isTab3Completed) return false;
       return true;
     });
 
@@ -190,15 +191,9 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
                 // Determine if tab is disabled based on previous tabs completion
                 let isDisabled = false;
                 if (isCreateMode) {
-                  if (index === 1 && (!isTab1Completed || !isTab2Completed)) isDisabled = true; // AI Job Description needs job details and skills completion
-                  if (index === 2 && (!isTab1Completed || !isTab2Completed || !isTab3Completed))
-                    isDisabled = true; // Interview Setup needs previous completion
-                  if (index === 3 && (!isTab1Completed || !isTab2Completed || !isTab3Completed))
-                    isDisabled = true; // AI Questions stays after Interview Setup
-                  if (index === 4 && (!isTab1Completed || !isTab2Completed || !isTab3Completed))
-                    isDisabled = true; // Video Questions stays after Interview Setup
-                  if (index === 5 && (!isTab1Completed || !isTab2Completed || !isTab3Completed))
-                    isDisabled = true; // Scoring Criteria stays after Interview Setup
+                  if (index === 1 && !(isTab1Completed && isTab2Completed)) isDisabled = true; // Scoring Criteria needs the merged step saved
+                  if (index === 2 && !isTab3Completed) isDisabled = true; // Interview Setup needs "Next" from the merged step
+                  if (index === 3 && !isTab3Completed) isDisabled = true; // Questions needs "Next" from the merged step
                 }
 
                 const isMergedJobDetailsTab = index === 0;

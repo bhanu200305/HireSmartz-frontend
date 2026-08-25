@@ -34,29 +34,30 @@ export type ParsedRosterRow = {
   department: string | null;
   designation: string | null;
   role: string | null;
-  location: string | null;
+  // bulk_import_dto.py's ParsedRosterRowView — the parse step returns
+  // `contact`, not a location. There is no location concept anywhere in the
+  // real bulk-import contract; see RosterRole/ConfirmRosterRow below.
+  contact: string | null;
 };
 
 export type ParseRosterResponse = {
   rows: ParsedRosterRow[];
 };
 
-// The 4 roles a bulk-import row may invite as — same set as the single
-// invite form (Tenants/users.ts's TenantUserRole), minus company_admin's
-// counterpart being invited THROUGH this flow being just as valid as any
-// other: organization-service validates all 4 identically here.
-export type RosterRole = 'company_admin' | 'hiring_manager' | 'recruiter' | 'interviewer';
+// RosterRowRequest.role is free text on the backend (api/requests.py) — NOT
+// restricted to the single-invite form's fixed hiring_manager/recruiter
+// TenantUserRole literal. It's validated per-row at confirm time against the
+// tenant's own role catalog (GET /v1/roles); an unmatched name doesn't 422
+// the whole batch any more, it comes back as a per-row entry in `failures`
+// below instead.
+export type RosterRole = string;
 
 export type ConfirmRosterRow = {
   email: string;
   role: RosterRole;
   department?: string | null;
   designation?: string | null;
-  /** Free text — must match an existing office's city exactly (see
-   * OfficeRepository.get_by_city on the backend). Not auto-created: an
-   * unrecognised value is reported back in `skipped_unknown_location_emails`,
-   * not silently dropped or invented. */
-  location?: string | null;
+  contact?: string | null;
 };
 
 export type ConfirmRosterImportArgs = {
@@ -64,12 +65,23 @@ export type ConfirmRosterImportArgs = {
   rows: ConfirmRosterRow[];
 };
 
+export type RosterRowFailure = {
+  row_number: number;
+  email: string;
+  reason: string;
+};
+
 export type ConfirmRosterImportResponse = {
   created_count: number;
   invitation_ids: string[];
   skipped_duplicate_emails: string[];
   previously_suppressed_emails: string[];
-  skipped_unknown_location_emails: string[];
+  // bulk_import_dto.py's ConfirmRosterImportView.failures — rows that didn't
+  // become an invitation for a reason other than "already invited" (most
+  // commonly: role name doesn't match anything in this tenant's catalog).
+  // Defaults to [] on the backend, but treat it as possibly absent here too
+  // for older cached responses.
+  failures?: RosterRowFailure[];
 };
 
 /**

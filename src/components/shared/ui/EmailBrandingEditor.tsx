@@ -1,12 +1,30 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { AiOutlineCloudUpload } from 'react-icons/ai';
 import { ColorPicker, Modal, Spin } from 'antd';
-import { Button } from '.';
-import { showToast } from './ui/toast';
+import { Button } from '../index';
+import { showToast } from './toast';
 import {
   useGetEmailTemplateConfigQuery,
   useSaveEmailTemplateConfigMutation,
-} from '../../api/tenant-service/MyCompany/emailTemplate';
+} from '../../../api/tenant-service/MyCompany/emailTemplate';
+
+/**
+ * Candidate-facing recruiting email branding — banner + 16 named colors +
+ * a genuinely live (per-keystroke) preview. Shared by both the Super
+ * Admin's "Company Settings > Email Templates Config" tab (picks any
+ * company) and a Company Admin's own "Company > Email Templates" section
+ * (always their own tenant) — extracted here rather than duplicated, since
+ * everything except "how is `companyId` chosen" is identical between them.
+ *
+ * Backend is the legacy `tenant-service` (`/mail/template-config/*`,
+ * `api/tenant-service/MyCompany/emailTemplate.ts`) — outside CFPro2.0,
+ * predating the organization-service split. `companyId` here is the same
+ * tenant UUID organization-service already uses everywhere else (confirmed
+ * via `companiesDropdown.ts`, which sources its own `id` from
+ * `GET /v1/platform/tenants`'s `tenant_id`), so a Company Admin's own
+ * `tenantId` is already a valid value — no backend change needed to reuse
+ * this for self-service.
+ */
 
 /* ─────────────────────────────── Types ─────────────────────────────── */
 
@@ -33,6 +51,15 @@ interface ColorFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  disabled?: boolean;
+}
+
+export interface EmailBrandingEditorProps {
+  companyId: string;
+  /** Defaults to true — matches the Super Admin tab's current always-editable
+   * behavior. A Company Admin usage passes their own EMAIL_TEMPLATE_EDIT
+   * check here instead. */
+  editable?: boolean;
 }
 
 /* ─────────────────────────────── Constants ──────────────────────────── */
@@ -59,8 +86,9 @@ const DEFAULT_THEME: ThemeColors = {
 const BUTTON_BORDER_RADIUS = '6px';
 
 // Grouped by where each color actually shows up in the rendered email (see
-// buildFullHTML below) rather than one flat 16-item grid — tuning "just the
-// button colors" shouldn't require scanning past text and footer fields.
+// buildFullHTML below) rather than one flat 16-item grid — someone tuning
+// "just the button colors" shouldn't have to scan past text and footer
+// fields to find them.
 const COLOR_FIELD_GROUPS: Array<{
   title: string;
   description: string;
@@ -305,7 +333,7 @@ const buildFullHTML = (theme: ThemeColors, bannerUrl: string | null): string => 
 
 /* ─────────────────────────────── ColorField ─────────────────────────── */
 
-const ColorField: React.FC<ColorFieldProps> = ({ label, value, onChange }) => {
+const ColorField: React.FC<ColorFieldProps> = ({ label, value, onChange, disabled }) => {
   const handleHexInput = (e: React.ChangeEvent<HTMLInputElement>): void => {
     let v = e.target.value;
     if (!v.startsWith('#')) v = '#' + v;
@@ -320,10 +348,13 @@ const ColorField: React.FC<ColorFieldProps> = ({ label, value, onChange }) => {
           value={value}
           format="hex"
           disabledAlpha
+          disabled={disabled}
           onChange={(color) => onChange(color.toHexString())}
         >
           <div
-            className="w-12 h-12 rounded-xl border border-gray-200 cursor-pointer flex-shrink-0 shadow-sm hover:scale-105 transition-transform"
+            className={`w-12 h-12 rounded-xl border border-gray-200 flex-shrink-0 shadow-sm transition-transform ${
+              disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:scale-105'
+            }`}
             style={{ backgroundColor: value }}
           />
         </ColorPicker>
@@ -332,7 +363,8 @@ const ColorField: React.FC<ColorFieldProps> = ({ label, value, onChange }) => {
             type="text"
             value={value.toUpperCase()}
             onChange={handleHexInput}
-            className="w-full text-sm text-gray-700 font-mono bg-transparent outline-none roboto-font"
+            disabled={disabled}
+            className="w-full text-sm text-gray-700 font-mono bg-transparent outline-none roboto-font disabled:cursor-not-allowed"
             maxLength={7}
           />
         </div>
@@ -341,25 +373,12 @@ const ColorField: React.FC<ColorFieldProps> = ({ label, value, onChange }) => {
   );
 };
 
-/* ──────────────────────────── EmailBrandingEditor ────────────────────── */
+/* ──────────────────────── EmailBrandingEditor ────────────────────────── */
 
-/**
- * The candidate-facing recruiting-email banner/brand-color editor — banner
- * upload, grouped color fields, and a live scaled preview of the actual
- * "you're invited to a screening call" email — pre-scoped to one company via
- * `companyId`. Originally CompanySettings/EmailTemplateConfigAdminTab.tsx's
- * body; extracted so the same screen can be dropped in wherever a specific
- * company's own branding is being edited (that file keeps its company
- * PICKER around this, for the Super Admin's platform-wide tool), without a
- * second copy of the theme/preview logic to keep in sync.
- *
- * Unrelated to notification-service's "Email Templates" (pack picker +
- * per-type copy overrides + header/footer/CSS layout) — see
- * CompanySettings/index.tsx's own docstring on why those two features are
- * deliberately kept separate. This is the OTHER "Email Templates": one
- * company's own candidate-facing branding.
- */
-const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => {
+export const EmailBrandingEditor: React.FC<EmailBrandingEditorProps> = ({
+  companyId,
+  editable = true,
+}) => {
   const [theme, setTheme] = useState<ThemeColors>(DEFAULT_THEME);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [bannerFileName, setBannerFileName] = useState<string | null>(null);
@@ -380,7 +399,7 @@ const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => 
     data: configData,
     isLoading: isConfigLoading,
     isError: isConfigError,
-  } = useGetEmailTemplateConfigQuery(companyId, { skip: !companyId });
+  } = useGetEmailTemplateConfigQuery(companyId);
 
   /* ── Populate state from API response ───────────────────────── */
   useEffect(() => {
@@ -522,9 +541,9 @@ const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => 
       )}
 
       {/* Two-column layout */}
-      <div className="flex gap-6 items-start flex-col xl:flex-row">
+      <div className="flex gap-6 items-start">
         {/* ── Left panel ─────────────────────────────────────────── */}
-        <div className="flex-1 min-w-0 w-full border border-neutral-200 rounded-2xl p-6 bg-white shadow-sm">
+        <div className="flex-1 min-w-0 border border-neutral-200 rounded-2xl p-6 bg-white shadow-sm">
           {/* Banner Image */}
           <section className="mb-8">
             <h3 className="heading-font text-base font-semibold text-gray-800 mb-1">
@@ -536,12 +555,12 @@ const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => 
             </p>
 
             <div
-              className={`border-2 border-dashed rounded-xl py-10 flex flex-col items-center gap-2 cursor-pointer transition-colors ${
+              className={`border-2 border-dashed rounded-xl py-10 flex flex-col items-center gap-2 transition-colors ${
                 bannerError
                   ? 'border-red-400 bg-red-50/30 hover:border-red-500'
                   : 'border-gray-300 hover:border-brand-400 hover:bg-brand-50/20'
-              }`}
-              onClick={() => fileInputRef.current?.click()}
+              } ${editable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+              onClick={() => editable && fileInputRef.current?.click()}
             >
               {bannerUrl ? (
                 <Spin spinning={isBannerImageLoading}>
@@ -558,7 +577,9 @@ const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => 
                   className={`text-4xl ${bannerError ? 'text-red-400' : 'text-gray-400'}`}
                 />
               )}
-              <p className={`text-sm roboto-font ${bannerError ? 'text-red-400' : 'text-gray-500'}`}>
+              <p
+                className={`text-sm roboto-font ${bannerError ? 'text-red-400' : 'text-gray-500'}`}
+              >
                 {bannerFileName ?? 'Upload Banner Image'}
               </p>
             </div>
@@ -570,18 +591,17 @@ const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => 
               type="file"
               accept="image/*"
               className="sr-only"
+              disabled={!editable}
               onChange={handleBannerUpload}
             />
           </section>
 
           {/* Brand Color */}
           <section>
-            <h3 className="heading-font text-base font-semibold text-gray-800 mb-1">
-              Brand Color
-            </h3>
+            <h3 className="heading-font text-base font-semibold text-gray-800 mb-1">Brand Color</h3>
             <p className="text-sm text-gray-500 mb-5 roboto-font">
-              Define the colors for Email Template. These colors will be used throughout your
-              email templates for buttons, headings, text and other design elements.
+              Define the colors for Email Template. These colors will be used throughout your email
+              templates for buttons, headings, text and other design elements.
             </p>
             <div className="flex flex-col gap-6">
               {COLOR_FIELD_GROUPS.map((group) => (
@@ -590,13 +610,14 @@ const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => 
                     {group.title}
                   </h4>
                   <p className="text-xs text-gray-400 mb-3 roboto-font">{group.description}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-5">
+                  <div className="grid grid-cols-3 gap-x-4 gap-y-5">
                     {group.fields.map(({ key, label }) => (
                       <ColorField
                         key={key}
                         label={label}
                         value={theme[key]}
                         onChange={(val) => handleColorChange(key, val)}
+                        disabled={!editable}
                       />
                     ))}
                   </div>
@@ -607,7 +628,7 @@ const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => 
         </div>
 
         {/* ── Right panel – Live Preview ─────────────────────────── */}
-        <div className="w-full xl:w-[360px] flex-shrink-0 xl:sticky xl:top-4">
+        <div className="w-[360px] flex-shrink-0 sticky top-4">
           <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm relative">
             {isPreviewLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 rounded-2xl">
@@ -615,9 +636,7 @@ const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => 
               </div>
             )}
             <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-              <span className="heading-font text-sm font-semibold text-gray-700">
-                Live Preview
-              </span>
+              <span className="heading-font text-sm font-semibold text-gray-700">Live Preview</span>
             </div>
 
             <div
@@ -665,24 +684,25 @@ const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => 
         </div>
       </div>
 
-      {/* Bottom action buttons */}
-      <div className="flex justify-center gap-4 mt-8 pb-4">
-        <Button
-          className="px-14 h-11 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-full font-semibold text-sm roboto-font"
-          onClick={handleReset}
-          disabled={!isDirty || isSaving}
-        >
-          RESET
-        </Button>
-        <Button
-          className="px-14 h-11 bg-primary-600 text-white hover:bg-brand-700 rounded-full font-semibold text-sm roboto-font disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleSavePublish}
-          loading={isSaving}
-          disabled={!isDirty || isSaving}
-        >
-          SAVE &amp; PUBLISH
-        </Button>
-      </div>
+      {editable && (
+        <div className="flex justify-center gap-4 mt-8 pb-4">
+          <Button
+            className="px-14 h-11 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-full font-semibold text-sm roboto-font"
+            onClick={handleReset}
+            disabled={!isDirty || isSaving}
+          >
+            RESET
+          </Button>
+          <Button
+            className="px-14 h-11 bg-primary-600 text-white hover:bg-brand-700 rounded-full font-semibold text-sm roboto-font disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleSavePublish}
+            loading={isSaving}
+            disabled={!isDirty || isSaving}
+          >
+            SAVE &amp; PUBLISH
+          </Button>
+        </div>
+      )}
 
       <Modal
         open={isConfirmModalOpen}
@@ -698,7 +718,7 @@ const EmailBrandingEditor: React.FC<{ companyId: string }> = ({ companyId }) => 
             Publish Email Template
           </h3>
           <p className="text-sm text-gray-600 roboto-font mb-6">
-            Are you sure you want to publish these changes?
+            Are you sure you want to publish the changes across all Email Templates?
           </p>
           <div className="flex gap-3">
             <Button

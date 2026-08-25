@@ -1,31 +1,39 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Select } from 'antd';
 import { Input } from '../../../shared';
 import type {
   ParsedRosterRow,
   RosterRole,
 } from '../../../../api/organization-service/Tenants/imports';
-
-const KNOWN_ROLES: RosterRole[] = ['company_admin', 'hiring_manager', 'recruiter', 'interviewer'];
+import type { Role } from '../../../../api/organization-service/Roles/roles';
 
 export type ReviewRow = {
   include: boolean;
   email: string;
   role: RosterRole | '';
   department: string;
-  location: string;
+  designation: string;
 };
 
-export const toReviewRows = (rows: ParsedRosterRow[]): ReviewRow[] =>
-  rows.map((row) => ({
+// Preselect a row's role only when the parsed value matches a real role in
+// this tenant's catalog (case-insensitive — the spreadsheet's free-text role
+// column won't reliably match the catalog's exact casing). Anything else is
+// left blank for the reviewer to pick, same as an unrecognised value always
+// has been.
+export const toReviewRows = (rows: ParsedRosterRow[], knownRoleNames: string[]): ReviewRow[] => {
+  const byLowerName = new Map(knownRoleNames.map((name) => [name.toLowerCase(), name]));
+  return rows.map((row) => ({
     include: true,
     email: row.email,
-    role: (KNOWN_ROLES as string[]).includes(row.role || '') ? (row.role as RosterRole) : '',
+    role: byLowerName.get((row.role || '').toLowerCase()) ?? '',
     department: row.department || '',
-    location: row.location || '',
+    designation: row.designation || '',
   }));
+};
 
 type BulkImportRowsProps = {
+  roles: Role[];
+  isLoadingRoles?: boolean;
   rows: ReviewRow[];
   onChange: (rows: ReviewRow[]) => void;
 };
@@ -33,10 +41,22 @@ type BulkImportRowsProps = {
 /** Per-row review before confirming a bulk import — every parsed row needs a
  * valid role picked (the AI-detected value may be missing/ambiguous) before
  * it can become an invite; a row can be excluded instead of guessed at.
- * Location is free text matched against this tenant's existing offices by
- * city (see ConfirmRosterRow.location) — left blank, the grant applies
- * everywhere rather than one location. */
-const BulkImportRows: React.FC<BulkImportRowsProps> = ({ rows, onChange }) => {
+ * The role options come from this tenant's own role catalog (GET /v1/roles)
+ * — RosterRowRequest.role is free text on the backend, validated per-row
+ * against that same catalog at confirm time, so any role name the tenant has
+ * defined (system or custom) is a valid pick here, not just
+ * hiring_manager/recruiter. */
+const BulkImportRows: React.FC<BulkImportRowsProps> = ({
+  roles,
+  isLoadingRoles,
+  rows,
+  onChange,
+}) => {
+  const roleOptions = useMemo(
+    () => roles.map((role) => ({ label: role.name, value: role.name })),
+    [roles]
+  );
+
   const updateRow = (index: number, patch: Partial<ReviewRow>) => {
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
@@ -60,12 +80,10 @@ const BulkImportRows: React.FC<BulkImportRowsProps> = ({ rows, onChange }) => {
             placeholder="Role *"
             value={row.role || undefined}
             onChange={(value) => updateRow(index, { role: value })}
-            options={[
-              { label: 'Admin', value: 'company_admin' },
-              { label: 'Hiring Manager', value: 'hiring_manager' },
-              { label: 'Recruiter', value: 'recruiter' },
-              { label: 'Interviewer', value: 'interviewer' },
-            ]}
+            loading={isLoadingRoles}
+            showSearch
+            optionFilterProp="label"
+            options={roleOptions}
           />
           <Input
             className="w-28 h-8 text-sm"
@@ -75,9 +93,9 @@ const BulkImportRows: React.FC<BulkImportRowsProps> = ({ rows, onChange }) => {
           />
           <Input
             className="w-28 h-8 text-sm"
-            placeholder="Location"
-            value={row.location}
-            onChange={(e) => updateRow(index, { location: e.target.value })}
+            placeholder="Designation"
+            value={row.designation}
+            onChange={(e) => updateRow(index, { designation: e.target.value })}
           />
         </div>
       ))}

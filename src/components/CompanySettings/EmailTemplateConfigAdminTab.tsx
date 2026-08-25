@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
 import { Select } from 'antd';
-import EmailBrandingEditor from '../shared/EmailBrandingEditor';
+import { EmailBrandingEditor } from '../shared';
 import { useGetCompaniesDropdownQuery } from '../../api/tenant-service/Company/companiesDropdown';
 
 /**
- * Super Admin's platform-wide tool: pick any company, edit its own
- * candidate-facing email banner/brand colors. The actual editor (banner
- * upload, grouped color fields, live preview, save/publish) lives in
- * shared/EmailBrandingEditor.tsx, pre-scoped to one companyId — this file
- * only adds the company picker around it. The same editor, pre-scoped to a
- * fixed company instead of a picker, also appears on:
- *   - MyCompany/EmailTemplateBrandingTab.tsx (a Company Admin's own, via
- *     their session's tenantId)
- *   - CustomerDashboard/ViewCustomer/panels/EmailTemplatesPanel.tsx (Super
- *     Admin editing one specific company's branding on their behalf, via
- *     the tenant_id already fixed by that page's URL)
+ * Super Admin picks any company, then edits/publishes its candidate-facing
+ * email branding via the shared `EmailBrandingEditor` (banner + 16 named
+ * colors + live preview) — same component `MyCompany/EmailBrandingTab.tsx`
+ * uses for a Company Admin's self-service version of this, extracted here
+ * rather than duplicated since only "how is the company chosen" differs
+ * between the two.
  */
 const EmailTemplateConfigAdminTab: React.FC = () => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -49,6 +44,9 @@ const EmailTemplateConfigAdminTab: React.FC = () => {
           Select a company above to load its email template configuration.
         </div>
       ) : (
+        // key forces a clean remount per company — the editor's internal
+        // dirty/theme/banner state must not leak from one company to the
+        // next, same as the old handleCompanyChange reset used to guarantee.
         <EmailBrandingEditor key={selectedCompanyId} companyId={selectedCompanyId} />
       )}
     </div>

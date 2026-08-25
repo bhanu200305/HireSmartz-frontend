@@ -1,8 +1,10 @@
 import { orgApi } from '../orgApi';
 
-// ScoringConfigView — proxied from ai-service. `available: false` means
-// ai-service didn't answer; render "not available", never empty weights as
-// if they were real (docs/frontend_guide.txt's repeated instruction).
+// ScoringConfigView. `available` used to mean "ai-service didn't answer" back
+// when this was a live proxy — scoring config is now a real, working
+// org-service feature of its own, so `available` is always `true` on the
+// wire today. Kept on the type for backward compatibility with any cached
+// response shape, but nothing should branch on it any more.
 export type ScoringConfig = {
   available: boolean;
   weights: Record<string, number>;

@@ -29,8 +29,19 @@ export const getPlatformErrorBody = (err: unknown): PlatformApiErrorBody | undef
 export const getPlatformErrorMessage = (err: unknown, fallback: string): string =>
   get(err, 'data.message', fallback);
 
+/**
+ * On an error response, the shared exception handler's shape
+ * ({error_code, message, request_id, details}) has `message` promoted to
+ * the envelope's own top-level `message` and everything else — including
+ * `error_code` — left nested under `data` (see cfp_platform's
+ * ResponseEnvelopeMiddleware._build_envelope). RTK Query's `err.data` is
+ * that whole envelope, so error_code lives at `data.data.error_code`, one
+ * level deeper than `getPlatformErrorMessage`'s `data.message`. The
+ * `data.error_code` fallback covers a caller not sitting behind the
+ * envelope middleware.
+ */
 export const getPlatformErrorCode = (err: unknown): string | undefined =>
-  get(err, 'data.error_code');
+  get(err, 'data.data.error_code') ?? get(err, 'data.error_code');
 
 export const getPlatformErrorRequestId = (err: unknown): string | undefined =>
   get(err, 'data.request_id') || undefined;

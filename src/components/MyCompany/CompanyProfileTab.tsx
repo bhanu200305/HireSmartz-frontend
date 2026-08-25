@@ -168,63 +168,67 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       icon: <MdDescription size={16} />,
       fullWidth: true,
     },
-    { key: 'culture_intro', label: 'About our culture', icon: <MdInfo size={16} />, fullWidth: true },
+    {
+      key: 'culture_intro',
+      label: 'About our culture',
+      icon: <MdInfo size={16} />,
+      fullWidth: true,
+    },
   ];
 
-  const logoNode =
-    logoPreview ? (
-      <div
-        className="relative w-20 h-20 shrink-0 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden group ring-4 ring-white shadow-sm"
-        onMouseEnter={() => setIsLogoHovered(true)}
-        onMouseLeave={() => setIsLogoHovered(false)}
-      >
-        <img
-          src={logoPreview}
-          alt="Company logo"
-          className="w-full h-full object-cover"
-          onError={() => setLogoPreview('')}
-        />
-        {isEditMode && canEdit && (
-          <Upload
-            beforeUpload={handleLogoUpload}
-            showUploadList={false}
-            className="hidden"
-            accept="image/png, image/jpeg"
-          >
-            <button ref={logoUploadRef} className="hidden"></button>
-          </Upload>
-        )}
-        {isEditMode && canEdit && isLogoHovered && !isUploadingLogo && (
-          <div
-            onClick={() => logoUploadRef.current?.click()}
-            className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer"
-          >
-            <MdEdit className="text-white text-xl" />
-          </div>
-        )}
-        {isUploadingLogo && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-            <span className="text-white text-xs">Uploading…</span>
-          </div>
-        )}
-      </div>
-    ) : isEditMode && canEdit ? (
-      <Upload.Dragger
-        beforeUpload={handleLogoUpload}
-        listType="picture"
-        maxCount={1}
-        accept="image/png, image/jpeg"
-        className="border-dashed border-gray-300 rounded-lg p-2 w-24 shrink-0"
-        disabled={isUploadingLogo}
-      >
-        <MdOutlineFileUpload className="text-lg mb-0.5 text-primary mx-auto" />
-        <p className="text-xs leading-tight">{isUploadingLogo ? 'Uploading…' : 'Upload'}</p>
-      </Upload.Dragger>
-    ) : (
-      <div className="w-20 h-20 shrink-0 bg-gradient-to-br from-primary-600 to-accent-500 rounded-full flex items-center justify-center text-xl font-semibold text-white ring-4 ring-white shadow-sm">
-        {form.name?.charAt(0).toUpperCase() || '-'}
-      </div>
-    );
+  const logoNode = logoPreview ? (
+    <div
+      className="relative w-20 h-20 shrink-0 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden group ring-4 ring-white shadow-sm"
+      onMouseEnter={() => setIsLogoHovered(true)}
+      onMouseLeave={() => setIsLogoHovered(false)}
+    >
+      <img
+        src={logoPreview}
+        alt="Company logo"
+        className="w-full h-full object-cover"
+        onError={() => setLogoPreview('')}
+      />
+      {isEditMode && canEdit && (
+        <Upload
+          beforeUpload={handleLogoUpload}
+          showUploadList={false}
+          className="hidden"
+          accept="image/png, image/jpeg"
+        >
+          <button ref={logoUploadRef} className="hidden"></button>
+        </Upload>
+      )}
+      {isEditMode && canEdit && isLogoHovered && !isUploadingLogo && (
+        <div
+          onClick={() => logoUploadRef.current?.click()}
+          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer"
+        >
+          <MdEdit className="text-white text-xl" />
+        </div>
+      )}
+      {isUploadingLogo && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+          <span className="text-white text-xs">Uploading…</span>
+        </div>
+      )}
+    </div>
+  ) : isEditMode && canEdit ? (
+    <Upload.Dragger
+      beforeUpload={handleLogoUpload}
+      listType="picture"
+      maxCount={1}
+      accept="image/png, image/jpeg"
+      className="border-dashed border-gray-300 rounded-lg p-2 w-24 shrink-0"
+      disabled={isUploadingLogo}
+    >
+      <MdOutlineFileUpload className="text-lg mb-0.5 text-primary mx-auto" />
+      <p className="text-xs leading-tight">{isUploadingLogo ? 'Uploading…' : 'Upload'}</p>
+    </Upload.Dragger>
+  ) : (
+    <div className="w-20 h-20 shrink-0 bg-gradient-to-br from-primary-600 to-accent-500 rounded-full flex items-center justify-center text-xl font-semibold text-white ring-4 ring-white shadow-sm">
+      {form.name?.charAt(0).toUpperCase() || '-'}
+    </div>
+  );
 
   return (
     <div className="p-4">

@@ -1,5 +1,10 @@
 import { orgApi } from '../orgApi';
-import type { TenantProfile, TenantStatusResponse } from '../Tenants/profile';
+import type {
+  RequestTenantLogoUploadArgs,
+  TenantLogoUploadTarget,
+  TenantProfile,
+  TenantStatusResponse,
+} from '../Tenants/profile';
 
 // Super Admin's platform-mounted mirror of Tenants/profile.ts's GET/PATCH
 // .../profile — same TenantProfileView/UpdateTenantProfileRequest shapes,
@@ -36,8 +41,25 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'PlatformTenants', id: tenantId },
       ],
     }),
+    // POST /v1/platform/tenants/{tenant_id}/logo/upload-url — platform mirror
+    // of Tenants/profile.ts's requestTenantLogoUpload, same presigned-S3-POST
+    // contract; only the guard differs (TENANT_UPDATE instead of
+    // require_own_tenant, which a platform caller can never satisfy).
+    requestPlatformTenantLogoUpload: build.mutation<
+      TenantLogoUploadTarget,
+      RequestTenantLogoUploadArgs
+    >({
+      query: ({ tenantId, ...body }) => ({
+        url: `/v1/platform/tenants/${tenantId}/logo/upload-url`,
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
 });
 
-export const { useGetPlatformTenantProfileQuery, useUpdatePlatformTenantProfileMutation } =
-  extendedApi;
+export const {
+  useGetPlatformTenantProfileQuery,
+  useUpdatePlatformTenantProfileMutation,
+  useRequestPlatformTenantLogoUploadMutation,
+} = extendedApi;

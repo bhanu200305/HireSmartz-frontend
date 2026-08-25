@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaCheckCircle, FaRegCopy } from 'react-icons/fa';
-import { MdLockOutline, MdErrorOutline, MdPersonOutline } from 'react-icons/md';
+import { MdLockOutline, MdErrorOutline, MdPersonOutline, MdOutlinePhone } from 'react-icons/md';
 import { get } from 'lodash-es';
 import { Button, CustomCheckbox, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
@@ -14,6 +14,7 @@ import {
   type InvitationErrorBody,
 } from '../../api/organization-service/Invitations/invitations';
 import { buildOtpAuthUri, generateBase32Secret } from '../../shared/utils/mfa.helpers';
+import { handlePhoneNumberChange } from '../../shared/utils/validation/input.helpers';
 import { acceptInvitationSchema, type AcceptInvitationFormValues } from './AcceptInvitationSchema';
 
 // Copy for every documented error the two calls on this screen
@@ -189,18 +190,31 @@ const AcceptInvitation = () => {
     [invitation?.invited_email, mfaSecret]
   );
 
-  const { control, handleSubmit, trigger, formState } = useForm<AcceptInvitationFormValues>({
-    resolver: zodResolver(acceptInvitationSchema),
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      password: '',
-      confirmPassword: '',
-      mfaAcknowledged: false,
-    },
-    mode: 'onChange',
-  });
+  const { control, handleSubmit, trigger, setValue, formState } =
+    useForm<AcceptInvitationFormValues>({
+      resolver: zodResolver(acceptInvitationSchema),
+      defaultValues: {
+        firstName: '',
+        lastName: '',
+        phoneNumber: '',
+        isPlatformInvite: false,
+        password: '',
+        confirmPassword: '',
+        mfaAcknowledged: false,
+      },
+      mode: 'onChange',
+    });
   const { errors, isValid } = formState;
+
+  // is_platform_invite only becomes known once the token validates — until
+  // then `isPlatformInvite` stays at its `false` default, which is harmless
+  // since the form isn't rendered before `invitation` loads anyway (see the
+  // isFetching/isError early returns below).
+  useEffect(() => {
+    if (invitation) {
+      setValue('isPlatformInvite', invitation.is_platform_invite, { shouldValidate: true });
+    }
+  }, [invitation, setValue]);
 
   const handleCopySecret = async () => {
     try {
@@ -221,6 +235,7 @@ const AcceptInvitation = () => {
         mfa_secret: mfaSecret,
         first_name: data.firstName.trim(),
         last_name: data.lastName.trim() || undefined,
+        phone_number: data.isPlatformInvite ? undefined : data.phoneNumber?.trim() || undefined,
       }).unwrap();
       setIsAccepted(true);
       showToast({ message: 'Account activated. You can now log in.', type: 'success' });
@@ -351,6 +366,35 @@ const AcceptInvitation = () => {
             </p>
           )}
         </div>
+
+        {!invitation.is_platform_invite && (
+          <div>
+            <Controller
+              name="phoneNumber"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  type="tel"
+                  placeholder="Phone number*"
+                  maxLength={14}
+                  prefix={
+                    <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                      <MdOutlinePhone className="text-brand-900 text-sm" />
+                    </div>
+                  }
+                  className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                  onChange={(e) => handlePhoneNumberChange(e, setValue, 'phoneNumber', trigger)}
+                />
+              )}
+            />
+            {errors.phoneNumber && (
+              <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
+                {errors.phoneNumber.message}
+              </p>
+            )}
+          </div>
+        )}
 
         <div>
           <Controller

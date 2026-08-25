@@ -71,8 +71,19 @@ export const handleRefreshToken = async (): Promise<{
     return null;
   }
 
-  const data = await response.json();
-  const tokens = { token: data.access_token, refreshToken: data.refresh_token };
+  const body = await response.json();
+  // This endpoint sits behind authentication-service's ResponseEnvelopeMiddleware
+  // (wrapped_prefixes includes /api/v1), so the real payload is nested under
+  // `data` — {status_code, status, message, data: {access_token, refresh_token}}.
+  // Reading top-level fields here silently produced { token: undefined,
+  // refreshToken: undefined }, which setTokens() then wrote into localStorage
+  // as the literal string "undefined".
+  const payload = body?.data ?? body;
+  if (!payload?.access_token || !payload?.refresh_token) {
+    return null;
+  }
+
+  const tokens = { token: payload.access_token, refreshToken: payload.refresh_token };
   setTokens(tokens.token, tokens.refreshToken);
   return tokens;
 };
