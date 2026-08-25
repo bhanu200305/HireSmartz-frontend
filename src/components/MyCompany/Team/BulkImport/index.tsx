@@ -12,7 +12,15 @@ import {
   uploadRosterFile,
   downloadRosterTemplate,
   type RosterRole,
+  type RosterRowFailure,
 } from '../../../../api/organization-service/Tenants/imports';
+import {
+  useRequestPlatformRosterUploadMutation,
+  useParsePlatformRosterMutation,
+  useConfirmPlatformRosterImportMutation,
+  downloadPlatformRosterTemplate,
+} from '../../../../api/organization-service/Platform/imports';
+import { useListRolesQuery } from '../../../../api/organization-service/Roles/roles';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
 import BulkImportRows, { ReviewRow, toReviewRows } from './BulkImportRows';
 
@@ -37,22 +45,57 @@ type BulkImportProps = {
   open: boolean;
   tenantId: string;
   onClose: () => void;
+  // Set from Super Admin's per-tenant Users tab, running this exact same
+  // flow on behalf of a tenant it doesn't own — same platform_router.py
+  // "everything below reuses a use case Company Admin already has" pattern
+  // as the rest of that surface. Switches every call over to the
+  // /v1/platform/tenants/{tenant_id}/... mirror endpoints.
+  isMaster?: boolean;
 };
 
 /** The real 3-step roster flow — request an upload URL, upload straight to
  * storage, parse; then review/edit the detected rows and confirm. */
-const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
+const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportProps) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [result, setResult] = useState<{
     created: number;
     skipped: number;
     suppressed: number;
+    failures: RosterRowFailure[];
   } | null>(null);
 
-  const [requestUpload, { isLoading: isRequestingUrl }] = useRequestRosterUploadMutation();
-  const [parseRoster, { isLoading: isParsing }] = useParseRosterMutation();
-  const [confirmImport, { isLoading: isConfirming }] = useConfirmRosterImportMutation();
+  // This tenant's own role catalog — the role select in the review step
+  // offers every role here (system or custom), not a fixed two-option list.
+  const { data: roles, isLoading: isLoadingRoles } = useListRolesQuery(
+    { scope: 'tenant', tenantId, isMaster },
+    { skip: !open || !tenantId }
+  );
+
+  // Both tenant-self and platform-mirror mutation hooks are always called
+  // (React's rules of hooks — a hook can't be called conditionally), only
+  // one pair is ever actually invoked below, picked by `isMaster`.
+  const [requestTenantUpload, requestTenantUploadState] = useRequestRosterUploadMutation();
+  const [requestPlatformUpload, requestPlatformUploadState] =
+    useRequestPlatformRosterUploadMutation();
+  const [parseTenantRoster, parseTenantRosterState] = useParseRosterMutation();
+  const [parsePlatformRoster, parsePlatformRosterState] = useParsePlatformRosterMutation();
+  const [confirmTenantImport, confirmTenantImportState] = useConfirmRosterImportMutation();
+  const [confirmPlatformImport, confirmPlatformImportState] =
+    useConfirmPlatformRosterImportMutation();
+
+  const requestUpload = isMaster ? requestPlatformUpload : requestTenantUpload;
+  const parseRoster = isMaster ? parsePlatformRoster : parseTenantRoster;
+  const confirmImport = isMaster ? confirmPlatformImport : confirmTenantImport;
+  const isRequestingUrl = isMaster
+    ? requestPlatformUploadState.isLoading
+    : requestTenantUploadState.isLoading;
+  const isParsing = isMaster
+    ? parsePlatformRosterState.isLoading
+    : parseTenantRosterState.isLoading;
+  const isConfirming = isMaster
+    ? confirmPlatformImportState.isLoading
+    : confirmTenantImportState.isLoading;
   const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   const isBusy = isRequestingUrl || isParsing || isConfirming || isUploadingFile;
@@ -83,7 +126,12 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
       setIsUploadingFile(false);
 
       const parsed = await parseRoster({ tenantId, storage_key: target.storage_key }).unwrap();
-      setRows(toReviewRows(parsed.rows));
+      setRows(
+        toReviewRows(
+          parsed.rows,
+          (roles ?? []).map((role) => role.name)
+        )
+      );
       setStep(2);
     } catch (error: unknown) {
       setIsUploadingFile(false);
@@ -116,6 +164,7 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
         created: response.created_count,
         skipped: response.skipped_duplicate_emails.length,
         suppressed: response.previously_suppressed_emails.length,
+        failures: response.failures ?? [],
       });
       setStep(3);
     } catch (error: unknown) {
@@ -128,7 +177,7 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
 
   const handleDownloadTemplate = async () => {
     try {
-      await downloadRosterTemplate(tenantId);
+      await (isMaster ? downloadPlatformRosterTemplate : downloadRosterTemplate)(tenantId);
     } catch {
       showToast({ message: 'Failed to download the template.', type: 'error' });
     }
@@ -173,7 +222,12 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
             {rows.filter((r) => r.include).length} of {rows.length} rows will be invited. Pick a
             role for each — a row with no role can&apos;t be confirmed.
           </p>
-          <BulkImportRows rows={rows} onChange={setRows} />
+          <BulkImportRows
+            roles={roles ?? []}
+            isLoadingRoles={isLoadingRoles}
+            rows={rows}
+            onChange={setRows}
+          />
           <div className="flex items-center gap-2 mt-4">
             <Button
               type="button"
@@ -207,6 +261,24 @@ const BulkImport = ({ open, tenantId, onClose }: BulkImportProps) => {
             <p className="text-xs text-amber-600">
               {result.suppressed} invited but flagged as a previously-bounced address.
             </p>
+          )}
+          {result.failures.length > 0 && (
+            <div className="w-full text-left mt-2">
+              <p className="text-xs font-medium text-red-600 mb-1">
+                {result.failures.length} row{result.failures.length !== 1 ? 's' : ''} could not be
+                imported:
+              </p>
+              <ul className="max-h-40 overflow-y-auto border border-red-100 rounded-lg divide-y">
+                {result.failures.map((failure) => (
+                  <li
+                    key={`${failure.row_number}-${failure.email}`}
+                    className="text-xs text-red-700 px-3 py-1.5"
+                  >
+                    Row {failure.row_number} ({failure.email}): {failure.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <Button
             type="button"

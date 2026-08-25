@@ -9,6 +9,8 @@ import { publicQrApi } from '../../api/candidate-service/PublicQr/index';
 import { authApi } from '../../api/authentication-service/authApi';
 import { orgApi } from '../../api/organization-service/orgApi';
 import { notifApi } from '../../api/notification-service/notifApi';
+import { jobApi } from '../../api/job-service/jobApi';
+import { aiApi } from '../../api/ai-service/aiApi';
 
 export type RootState = ReturnType<typeof rootReducer>;
 
@@ -28,6 +30,8 @@ const middleware: Middleware[] = [
   authApi.middleware,
   orgApi.middleware,
   notifApi.middleware,
+  jobApi.middleware,
+  aiApi.middleware,
 ];
 const store = configureStore({
   reducer: persistedReducer,

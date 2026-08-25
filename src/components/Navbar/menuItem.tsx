@@ -69,13 +69,13 @@ const MenuItems = [
   {
     name: 'Companies',
     icon: <MdApartment size={18} />,
-    path: ['/company', '/add-company', '/view-company', '/edit-company'],
+    path: ['/company', '/add-company', '/view-company'],
     requiredAuthority: Authorities.COMPANY_VIEW,
   },
   {
     name: 'Roles & Permissions',
     icon: <MdOutlineAdminPanelSettings size={18} />,
-    path: ['/roles', '/add-role', '/view-role', '/edit-role'],
+    path: ['/roles'],
     requiredAuthority: Authorities.ROLE_VIEW,
   },
   {

@@ -1,12 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Select } from 'antd';
 import { Input } from '../../../shared';
 import type {
   ParsedRosterRow,
   RosterRole,
 } from '../../../../api/organization-service/Tenants/imports';
-
-const KNOWN_ROLES: RosterRole[] = ['hiring_manager', 'recruiter'];
+import type { Role } from '../../../../api/organization-service/Roles/roles';
 
 export type ReviewRow = {
   include: boolean;
@@ -16,16 +15,25 @@ export type ReviewRow = {
   designation: string;
 };
 
-export const toReviewRows = (rows: ParsedRosterRow[]): ReviewRow[] =>
-  rows.map((row) => ({
+// Preselect a row's role only when the parsed value matches a real role in
+// this tenant's catalog (case-insensitive — the spreadsheet's free-text role
+// column won't reliably match the catalog's exact casing). Anything else is
+// left blank for the reviewer to pick, same as an unrecognised value always
+// has been.
+export const toReviewRows = (rows: ParsedRosterRow[], knownRoleNames: string[]): ReviewRow[] => {
+  const byLowerName = new Map(knownRoleNames.map((name) => [name.toLowerCase(), name]));
+  return rows.map((row) => ({
     include: true,
     email: row.email,
-    role: (KNOWN_ROLES as string[]).includes(row.role || '') ? (row.role as RosterRole) : '',
+    role: byLowerName.get((row.role || '').toLowerCase()) ?? '',
     department: row.department || '',
     designation: row.designation || '',
   }));
+};
 
 type BulkImportRowsProps = {
+  roles: Role[];
+  isLoadingRoles?: boolean;
   rows: ReviewRow[];
   onChange: (rows: ReviewRow[]) => void;
 };
@@ -33,10 +41,22 @@ type BulkImportRowsProps = {
 /** Per-row review before confirming a bulk import — every parsed row needs a
  * valid role picked (the AI-detected value may be missing/ambiguous) before
  * it can become an invite; a row can be excluded instead of guessed at.
- * Only `hiring_manager`/`recruiter` are real options — RosterRowRequest's
- * `extra="forbid"` Literal role on the backend rejects anything else for the
- * WHOLE batch, not just the one row. */
-const BulkImportRows: React.FC<BulkImportRowsProps> = ({ rows, onChange }) => {
+ * The role options come from this tenant's own role catalog (GET /v1/roles)
+ * — RosterRowRequest.role is free text on the backend, validated per-row
+ * against that same catalog at confirm time, so any role name the tenant has
+ * defined (system or custom) is a valid pick here, not just
+ * hiring_manager/recruiter. */
+const BulkImportRows: React.FC<BulkImportRowsProps> = ({
+  roles,
+  isLoadingRoles,
+  rows,
+  onChange,
+}) => {
+  const roleOptions = useMemo(
+    () => roles.map((role) => ({ label: role.name, value: role.name })),
+    [roles]
+  );
+
   const updateRow = (index: number, patch: Partial<ReviewRow>) => {
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
@@ -60,10 +80,10 @@ const BulkImportRows: React.FC<BulkImportRowsProps> = ({ rows, onChange }) => {
             placeholder="Role *"
             value={row.role || undefined}
             onChange={(value) => updateRow(index, { role: value })}
-            options={[
-              { label: 'Hiring Manager', value: 'hiring_manager' },
-              { label: 'Recruiter', value: 'recruiter' },
-            ]}
+            loading={isLoadingRoles}
+            showSearch
+            optionFilterProp="label"
+            options={roleOptions}
           />
           <Input
             className="w-28 h-8 text-sm"

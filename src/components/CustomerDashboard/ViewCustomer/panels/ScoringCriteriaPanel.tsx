@@ -63,11 +63,10 @@ const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   );
 
   if (isLoading) return <Loader />;
-  if (!data?.available) {
+  if (!data) {
     return (
       <div className="p-6 text-center text-gray-500 border border-dashed rounded-xl">
-        Scoring configuration isn&apos;t available right now — the scoring service didn&apos;t
-        respond.
+        Scoring configuration is not available right now.
       </div>
     );
   }

@@ -59,14 +59,11 @@ const SecuritySettingsPage = lazy(() => import('./pages/SecuritySettingsPage'));
 const NotificationSettingsPage = lazy(() => import('./pages/NotificationSettingsPage'));
 const AdminToolsPage = lazy(() => import('./pages/AdminToolsPage'));
 const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
+const ActivityFeedPage = lazy(() => import('./pages/ActivityFeedPage'));
 const JobsOpeningPage = lazyImport(() => import('./pages/JobsOpening'), 'JobsOpeningPage');
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const OrganisationUserPage = lazy(() => import('./pages/OrganisationUserPage'));
 const RolesPage = lazy(() => import('./pages/RolesPage'));
-const AddRolePage = lazy(() => import('./pages/AddRolePage'));
-const EditRolePage = lazy(() => import('./pages/EditRolePage'));
-const ViewRolePage = lazy(() => import('./pages/ViewRolePage'));
-const InviteUserPage = lazy(() => import('./pages/InviteUserPage'));
 const SyncAtsPage = lazyImport(() => import('./pages/JobsOpening'), 'SyncAtsPage');
 const JobConfigurationPage = lazyImport(
   () => import('./pages/JobsOpening'),
@@ -100,7 +97,6 @@ const FinancesPage = lazy(() => import('./pages/FinancesPage'));
 const InterviewEndedPage = lazy(() => import('./pages/InterviewEnded'));
 const AiCallBookingPage = lazy(() => import('./pages/AiCallBookingPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
-const EditCompanyPage = lazy(() => import('./pages/EditCompanyPage'));
 const EditInterviewRoundPage = lazy(() => import('./pages/EditInterviewRoundPage'));
 const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 const InterviewLiveKit = lazy(() => import('./components/Interview/InterviewLiveKit'));
@@ -148,7 +144,6 @@ const UpdatePackage = lazy(
 const UpdatePayment = lazy(
   () => import('./components/CustomerDashboard/Subscriptions/updatePayment')
 );
-const ActivityFeed = lazy(() => import('./components/Dashboard/ActivityFeed'));
 
 export const Routes: RouteType[] = [
   {
@@ -365,34 +360,9 @@ export const Routes: RouteType[] = [
     component: ViewCompanyPage,
   },
   {
-    name: 'editCompany',
-    path: '/edit-company',
-    component: EditCompanyPage,
-  },
-  {
     name: 'Roles',
     path: '/roles',
     component: RolesPage,
-  },
-  {
-    name: 'AddRole',
-    path: '/add-role',
-    component: AddRolePage,
-  },
-  {
-    name: 'ViewRole',
-    path: '/view-role',
-    component: ViewRolePage,
-  },
-  {
-    name: 'EditRole',
-    path: '/edit-role',
-    component: EditRolePage,
-  },
-  {
-    name: 'InviteUser',
-    path: '/invite-user',
-    component: InviteUserPage,
   },
   {
     name: 'Jobs',
@@ -402,7 +372,7 @@ export const Routes: RouteType[] = [
   {
     name: 'ActivityFeed',
     path: '/activityFeed',
-    component: () => <ActivityFeed fullPage />,
+    component: ActivityFeedPage,
   },
   {
     name: 'AddJobDescription',

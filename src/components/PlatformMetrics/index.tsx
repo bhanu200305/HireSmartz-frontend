@@ -57,7 +57,7 @@ const PlatformMetrics: React.FC = () => {
               {health?.expiring_platform_invites_count ?? 0} staff invites expiring soon
             </Typography>
             <Typography variant="caption">
-              Inactive companies: not wired up yet — always 0.
+              Inactive companies: {health?.inactive_tenant_count ?? 0}
             </Typography>
           </MetricTile>
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Select } from 'antd';
-import { Badge, Button, Typography } from '../shared';
+import { MdOutlineDescription, MdEdit, MdOutlineSearch } from 'react-icons/md';
+import { Badge, Typography } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import { useListPlatformTenantsQuery } from '../../api/organization-service/Platform/tenants';
 import { useListPlatformTenantOverridesQuery } from '../../api/notification-service/PlatformTemplateSettings/index';
@@ -42,58 +43,67 @@ const TenantOverrideSection: React.FC = () => {
         themselves from My Company → Email Templates.
       </Typography>
 
-      <Select
-        showSearch
-        allowClear
-        placeholder="Search companies by name…"
-        filterOption={false}
-        loading={isSearching}
-        value={selectedTenantId}
-        onSearch={setSearch}
-        onChange={(value) => setSelectedTenantId(value ?? null)}
-        onClear={() => setSelectedTenantId(null)}
-        options={tenantResults?.tenants.map((tenant) => ({
-          value: tenant.tenant_id,
-          label: tenant.company_name,
-        }))}
-        style={{ width: '100%', maxWidth: 420 }}
-      />
+      <div className="relative max-w-[420px]">
+        <MdOutlineSearch
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          size={16}
+        />
+        <Select
+          showSearch
+          allowClear
+          placeholder="Search companies by name…"
+          filterOption={false}
+          loading={isSearching}
+          value={selectedTenantId}
+          onSearch={setSearch}
+          onChange={(value) => setSelectedTenantId(value ?? null)}
+          onClear={() => setSelectedTenantId(null)}
+          options={tenantResults?.tenants.map((tenant) => ({
+            value: tenant.tenant_id,
+            label: tenant.company_name,
+          }))}
+          className="w-full [&_.ant-select-selector]:!rounded-full [&_.ant-select-selector]:!pl-8"
+        />
+      </div>
 
       {selectedTenantId && (
         <div className="mt-4">
           {isLoadingOverrides ? (
             <Loader />
           ) : (
-            <div className="divide-y overflow-hidden rounded-xl border">
-              {overrides?.overrides.map((override) => (
-                <div
-                  key={override.notification_type}
-                  className="flex items-center justify-between gap-3 p-4"
-                >
-                  <div className="flex items-center gap-2">
-                    <Typography variant="body1">
-                      {humanizeType(override.notification_type)}
-                    </Typography>
-                    <Badge status={override.is_customised ? 'info' : 'neutral'}>
+            <>
+              <div className="grid max-h-[380px] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+                {overrides?.overrides.map((override) => (
+                  <button
+                    key={override.notification_type}
+                    type="button"
+                    onClick={() => setEditingOverride(override)}
+                    className="group relative flex cursor-pointer flex-col items-start gap-2.5 rounded-xl border border-[var(--border)] bg-gray-50/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary-300 hover:bg-white hover:shadow-md"
+                  >
+                    <Badge
+                      status={override.is_customised ? 'info' : 'neutral'}
+                      className="absolute right-3 top-3"
+                    >
                       {override.is_customised ? 'Customised' : 'Default'}
                     </Badge>
-                  </div>
-                  <Button
-                    type="button"
-                    appname="edit tenant template as platform"
-                    onClick={() => setEditingOverride(override)}
-                    className="rounded-3xl border border-[var(--border)] px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Edit
-                  </Button>
-                </div>
-              ))}
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-600 to-accent-500 text-white shadow-sm">
+                      <MdOutlineDescription size={15} />
+                    </span>
+                    <Typography variant="body2" className="pr-16 font-medium text-gray-800">
+                      {humanizeType(override.notification_type)}
+                    </Typography>
+                    <span className="mt-auto flex items-center gap-1 text-xs font-medium text-primary-600 opacity-0 transition-opacity group-hover:opacity-100">
+                      <MdEdit size={13} /> Edit
+                    </span>
+                  </button>
+                ))}
+              </div>
               {overrides && overrides.overrides.length === 0 && (
-                <p className="p-4 text-sm text-gray-500">
+                <p className="rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-gray-500">
                   No notification templates are seeded on this environment yet.
                 </p>
               )}
-            </div>
+            </>
           )}
         </div>
       )}

@@ -10,6 +10,12 @@ import type { ScoringConfig } from '../Tenants/scoringConfig';
 export type UpdatePlatformTenantScoringConfigArgs = {
   tenantId: string;
   weights: Record<string, number>;
+  // UpdateTenantScoringConfigAsPlatformRequest — Super Admin-only lever, not
+  // present on the tenant's own self-service PUT. Omitted (not sent) leaves
+  // the current lock state unchanged; the backend requires `weights` on
+  // every call regardless, so a lock-only toggle still resends the current
+  // weights alongside it.
+  is_locked?: boolean;
 };
 
 const extendedApi = orgApi.injectEndpoints({
@@ -39,10 +45,10 @@ const extendedApi = orgApi.injectEndpoints({
       ScoringConfig,
       UpdatePlatformTenantScoringConfigArgs
     >({
-      query: ({ tenantId, weights }) => ({
+      query: ({ tenantId, weights, is_locked }) => ({
         url: `/v1/platform/tenants/${tenantId}/scoring-config`,
         method: 'PUT',
-        body: { weights },
+        body: is_locked === undefined ? { weights } : { weights, is_locked },
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [
         { type: 'ScoringConfig', id: `platform-${tenantId}` },

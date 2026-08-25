@@ -44,12 +44,13 @@ export type ParseRosterResponse = {
   rows: ParsedRosterRow[];
 };
 
-// Exactly the 2 roles RosterRowRequest's `role: Literal[...]` accepts on the
-// backend (api/requests.py) — same restriction as the single invite form's
-// TenantUserRole. `extra="forbid"` on that model means any other value
-// (or an unrecognised field anywhere in the row) 422s the WHOLE confirm
-// request, not just the offending row.
-export type RosterRole = 'hiring_manager' | 'recruiter';
+// RosterRowRequest.role is free text on the backend (api/requests.py) — NOT
+// restricted to the single-invite form's fixed hiring_manager/recruiter
+// TenantUserRole literal. It's validated per-row at confirm time against the
+// tenant's own role catalog (GET /v1/roles); an unmatched name doesn't 422
+// the whole batch any more, it comes back as a per-row entry in `failures`
+// below instead.
+export type RosterRole = string;
 
 export type ConfirmRosterRow = {
   email: string;
@@ -64,11 +65,23 @@ export type ConfirmRosterImportArgs = {
   rows: ConfirmRosterRow[];
 };
 
+export type RosterRowFailure = {
+  row_number: number;
+  email: string;
+  reason: string;
+};
+
 export type ConfirmRosterImportResponse = {
   created_count: number;
   invitation_ids: string[];
   skipped_duplicate_emails: string[];
   previously_suppressed_emails: string[];
+  // bulk_import_dto.py's ConfirmRosterImportView.failures — rows that didn't
+  // become an invitation for a reason other than "already invited" (most
+  // commonly: role name doesn't match anything in this tenant's catalog).
+  // Defaults to [] on the backend, but treat it as possibly absent here too
+  // for older cached responses.
+  failures?: RosterRowFailure[];
 };
 
 /**

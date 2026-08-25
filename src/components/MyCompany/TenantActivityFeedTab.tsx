@@ -8,6 +8,7 @@ import {
   useListTenantActivityQuery,
   ActivityLogEntry,
 } from '../../api/organization-service/Tenants/profile';
+import { useListPlatformTenantActivityQuery } from '../../api/organization-service/Platform/tenantActivity';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 const PAGE_SIZE = 20;
@@ -56,14 +57,27 @@ type ActivityRow = ActivityLogEntry & { key: string };
  * (`limit`/`offset`) via MasterPagination below the table rather than
  * CustomTable's own client-side pagination, since the full activity log
  * isn't fetched at once.
+ *
+ * `isMaster` switches to GET /v1/platform/tenants/{tenant_id}/activity —
+ * same shape, ORGANIZATION_READ guard instead of require_own_tenant — so
+ * Super Admin's ViewCustomer tabs can reuse this exact component instead of
+ * reimplementing it.
  */
-const TenantActivityFeedTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
+const TenantActivityFeedTab: React.FC<{ tenantId: string; isMaster?: boolean }> = ({
+  tenantId,
+  isMaster = false,
+}) => {
   const [page, setPage] = useState(0);
-  const { data, isLoading, error } = useListTenantActivityQuery({
-    tenantId,
-    limit: PAGE_SIZE,
-    offset: page * PAGE_SIZE,
-  });
+  // Both hooks are always called (rules of hooks); only one is ever skipped.
+  const tenantResult = useListTenantActivityQuery(
+    { tenantId, limit: PAGE_SIZE, offset: page * PAGE_SIZE },
+    { skip: isMaster }
+  );
+  const platformResult = useListPlatformTenantActivityQuery(
+    { tenantId, limit: PAGE_SIZE, offset: page * PAGE_SIZE },
+    { skip: !isMaster }
+  );
+  const { data, isLoading, error } = isMaster ? platformResult : tenantResult;
 
   useEffect(() => {
     if (error) {

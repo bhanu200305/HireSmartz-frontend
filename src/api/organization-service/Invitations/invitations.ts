@@ -5,6 +5,11 @@ export type ValidateInvitationResponse = {
   invited_email: string;
   role: string;
   organization_name: string;
+  // invite.tenant_id is None on the backend — true for Super Admin/staff
+  // invites, false for a Company Admin/Recruiter/Hiring Manager invite.
+  // Determines whether phone_number is required to accept (see
+  // AcceptInvitationRequest below).
+  is_platform_invite: boolean;
 };
 
 // Wire shape of every error this endpoint (and validateInvitation) returns —
@@ -33,8 +38,8 @@ export type AcceptInvitationRequest = {
   // through this frontend flow) doesn't need one.
   first_name: string;
   last_name?: string;
-  // Same rule as first_name — required for every tenant invite.
-  phone_number: string;
+  // Same tenant-invite-only requirement as first_name above.
+  phone_number?: string;
 };
 
 export type AcceptInvitationResponse = {
