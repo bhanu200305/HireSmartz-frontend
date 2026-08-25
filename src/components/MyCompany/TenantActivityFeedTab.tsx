@@ -143,55 +143,13 @@ const TenantActivityFeedTab: React.FC<{ tenantId: string; isMaster?: boolean }> 
         </div>
       </div>
 
-<<<<<<< HEAD
-      {isLoading ? (
-        <Loader />
-      ) : events.length === 0 ? (
-        <div className="p-10 text-center text-gray-500 border border-dashed border-gray-200 rounded-xl">
-          No activity yet — actions like inviting a teammate or updating a setting will show up
-          here.
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {events.map((event) => (
-            <div
-              key={event.id}
-              className="flex items-center justify-between gap-4 p-4 rounded-xl border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all"
-            >
-              <div className="flex items-start gap-3 min-w-0">
-                <span className="w-9 h-9 shrink-0 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
-                  <LuSquareActivity size={16} />
-                </span>
-                <div className="min-w-0">
-                  <Typography variant="body1" className="font-medium text-gray-900">
-                    {describeAction(event.action)}
-                  </Typography>
-                  <Typography variant="caption" className="text-gray-400 truncate block">
-                    {event.target_type} · by{' '}
-                    <span className="font-mono">{event.actor_id}</span>
-                  </Typography>
-                </div>
-              </div>
-              <Typography
-                variant="caption"
-                className="whitespace-nowrap text-gray-400 shrink-0 pl-4"
-              >
-                {event.created_at ? new Date(event.created_at).toLocaleString() : '-'}
-              </Typography>
-            </div>
-          ))}
-        </div>
-      )}
-=======
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable<ActivityRow>
           columns={columns}
           dataSource={dataSource}
-          rowClassName={isLoading ? undefined : undefined}
           emptyText="No activity yet — actions like inviting a teammate or updating a setting will show up here."
         />
       </div>
->>>>>>> 5d48ed00e8cb97930fa1441a5492ad09f6452257
 
       {(data?.total ?? 0) > PAGE_SIZE && (
         <MasterPagination
