@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { FaCheckCircle } from 'react-icons/fa';
 import { MdErrorOutline } from 'react-icons/md';
 import { AuthPageShell } from '../shared';
@@ -11,13 +11,17 @@ type ScreenState = 'verifying' | 'verified' | 'already_verified' | 'invalid';
 
 /**
  * Lands here from the link verify-email / resend-verification emails.
- * Anonymous, no session — the token in the query string is the entire
- * proof (docs/API_CONTRACT.md §5 "POST /verify-email"). There's nothing for
- * the visitor to do but wait for the one call this page makes on mount.
+ * Anonymous, no session — the token in the URL is the entire proof
+ * (docs/API_CONTRACT.md §5 "POST /verify-email"). notification-service's
+ * LinkBuilder.email_verification_url() places it in the path
+ * (routes.tsx's /verify-email/:token); the query-string read is kept only
+ * as a fallback for any older link still in flight. There's nothing for the
+ * visitor to do but wait for the one call this page makes on mount.
  */
 const VerifyEmail = () => {
+  const { token: pathToken } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const token = pathToken || searchParams.get('token');
   const navigate = useNavigate();
   const [screen, setScreen] = useState<ScreenState>(token ? 'verifying' : 'invalid');
   const [errorMessage, setErrorMessage] = useState('');

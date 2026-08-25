@@ -183,7 +183,10 @@ export const Routes: RouteType[] = [
   },
   {
     name: 'ResetPassword',
-    path: '/reset-password',
+    // Must match notification-service's LinkBuilder.password_reset_url()
+    // exactly (services/notification-service/app/core/links.py) — the token
+    // is placed in the path there, not the query string.
+    path: '/reset-password/:token',
     component: ResetPasswordPage,
     // isOpen, not isPublic: this is a token-based action link and must work
     // regardless of whatever session happens to already be in the browser
@@ -192,7 +195,9 @@ export const Routes: RouteType[] = [
   },
   {
     name: 'VerifyEmail',
-    path: '/verify-email',
+    // Must match notification-service's LinkBuilder.email_verification_url()
+    // exactly, same reasoning as ResetPassword above.
+    path: '/verify-email/:token',
     component: VerifyEmailPage,
     // isOpen, not isPublic — same reasoning as ResetPassword above.
     isOpen: true,

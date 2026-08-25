@@ -480,8 +480,19 @@ const Header = () => {
   const isRecruiter = normalizedRoleName === 'recruiter';
   const isInterviewer = normalizedRoleName === 'interviewer';
 
+  // Platform callers (Super Admin, internal staff) have no tenant but still
+  // get an in-app feed from notification-service (invite-accepted, MFA/
+  // security alerts, etc. — see feed_router.py's module docstring). Gate on
+  // isPlatformCaller directly rather than role name/type, since platform
+  // sessions carry role.type === 'owner' and role.name === PLATFORM_CALLER_
+  // ROLE_NAME, neither of which the tenant-role checks above match.
   const canShowNotificationBell =
-    isCompanySuperAdmin || isCompanyAdmin || isHiringManager || isRecruiter || isInterviewer;
+    isPlatformCaller ||
+    isCompanySuperAdmin ||
+    isCompanyAdmin ||
+    isHiringManager ||
+    isRecruiter ||
+    isInterviewer;
 
   const globalSearchNavigationConfig = {
     candidatesViewAllPath: '/candidates',

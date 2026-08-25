@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaCheckCircle } from 'react-icons/fa';
 import { MdErrorOutline, MdLockOutline } from 'react-icons/md';
 import { AuthPageShell, Button, Input, showToast } from '../shared';
@@ -11,14 +11,17 @@ import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/a
 import { resetPasswordSchema, type ResetPasswordFormValues } from './ResetPasswordSchema';
 
 /**
- * Lands here from the link forgot-password emails. The token in the query
- * string IS the authorisation (docs/API_CONTRACT.md §5 "POST /reset-password")
- * — there is no session, no bearer token, nothing else to check before
- * showing the form.
+ * Lands here from the link forgot-password emails. The token in the URL IS
+ * the authorisation (docs/API_CONTRACT.md §5 "POST /reset-password") — there
+ * is no session, no bearer token, nothing else to check before showing the
+ * form. notification-service's LinkBuilder.password_reset_url() places it in
+ * the path (routes.tsx's /reset-password/:token); the query-string read is
+ * kept only as a fallback for any older link still in flight.
  */
 const ResetPassword = () => {
+  const { token: pathToken } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const token = pathToken || searchParams.get('token');
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
