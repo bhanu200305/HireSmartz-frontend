@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MdDelete, MdEdit, MdOutlineAdd } from 'react-icons/md';
+import { MdDelete, MdEdit, MdOutlineAdd, MdLocationOn } from 'react-icons/md';
 import { Button, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
@@ -85,42 +85,50 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       </div>
 
       {!offices?.length ? (
-        <div className="p-6 text-gray-500 text-center border border-dashed rounded-xl">
+        <div className="p-8 text-gray-500 text-center border border-dashed border-gray-200 rounded-xl">
           No office locations yet.
         </div>
       ) : (
-        <div className="divide-y border rounded-xl overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {offices.map((office) => (
-            <div key={office.office_id} className="flex items-center justify-between p-4">
-              <div>
-                <Typography variant="body1">
-                  {[office.address_line_1, office.address_line_2].filter(Boolean).join(', ')}
-                </Typography>
-                <Typography variant="caption">
-                  {[office.city, office.state, office.country, office.zip_code]
-                    .filter(Boolean)
-                    .join(', ')}
-                </Typography>
+            <div
+              key={office.office_id}
+              className="flex items-center justify-between gap-3 p-4 rounded-xl border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all"
+            >
+              <div className="flex items-start gap-3 min-w-0">
+                <span className="w-9 h-9 shrink-0 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
+                  <MdLocationOn size={18} />
+                </span>
+                <div className="min-w-0">
+                  <Typography variant="body1" className="font-medium text-gray-900 truncate">
+                    {[office.address_line_1, office.address_line_2].filter(Boolean).join(', ')}
+                  </Typography>
+                  <Typography variant="caption" className="text-gray-400">
+                    {[office.city, office.state, office.country, office.zip_code]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </Typography>
+                </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1 shrink-0">
                 {canEdit && (
                   <button
                     type="button"
                     aria-label="Edit office"
-                    className="p-2 hover:bg-gray-100 rounded-full"
+                    className="p-2 rounded-full text-gray-500 bg-gray-50 hover:bg-gray-100 hover:text-gray-700 transition-colors"
                     onClick={() => setModalState({ mode: 'edit', office })}
                   >
-                    <MdEdit className="text-gray-600" />
+                    <MdEdit size={16} />
                   </button>
                 )}
                 {canDelete && (
                   <button
                     type="button"
                     aria-label="Delete office"
-                    className="p-2 hover:bg-gray-100 rounded-full"
+                    className="p-2 rounded-full text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
                     onClick={() => setOfficeToDelete(office)}
                   >
-                    <MdDelete className="text-red-500" />
+                    <MdDelete size={16} />
                   </button>
                 )}
               </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Badge, Typography, Button } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
+import EmailBrandingEditor from '../../../shared/EmailBrandingEditor';
 import { useListPlatformTenantOverridesQuery } from '../../../../api/notification-service/PlatformTemplateSettings/index';
 import type { TemplateOverride } from '../../../../api/notification-service/TemplateSettings/index';
 import PlatformEmailTemplateOverrideModal from './PlatformEmailTemplateOverrideModal';
@@ -12,16 +13,21 @@ const humanizeType = (value: string): string =>
     .join(' ');
 
 /**
- * Super Admin's mirror of the "notification copy" half of
- * MyCompany/EmailTemplatesTab.tsx — one specific tenant's overrides,
- * editable on their behalf. No pack picker or layout editor here: only the
- * per-tenant override endpoints have a confirmed platform-mounted
- * equivalent (GET/PUT/DELETE .../platform/template-settings/tenants/{id}/overrides).
+ * Super Admin's per-company Email Templates tab. Two, deliberately
+ * unrelated, features stacked in one tab (same convention MyCompany's own
+ * EmailTemplatesTab.tsx uses for its PackPicker/OverridesTable/
+ * EmailLayoutSection trio):
  *
- * Same section card styling as CompanySettings/TenantOverrideSection.tsx
- * (its "edit a tenant's templates on their behalf" section) — this is that
- * same list, just pre-scoped to the company this page is already on instead
- * of needing its own company search box.
+ *   1. EmailBrandingEditor — this company's candidate-facing recruiting
+ *      email banner/brand colors (CompanySettings/EmailTemplateConfigAdminTab.tsx's
+ *      platform-wide tool, pre-scoped to this one tenant_id instead of a
+ *      company picker).
+ *   2. The "notification copy" section below — this tenant's overrides for
+ *      notification-service's security/onboarding/lifecycle messages,
+ *      editable on their behalf. No pack picker or layout editor here: only
+ *      the per-tenant override endpoints have a confirmed platform-mounted
+ *      equivalent (GET/PUT/DELETE .../platform/template-settings/tenants/{id}/overrides).
+ *      Same section card styling as CompanySettings/TenantOverrideSection.tsx.
  */
 const EmailTemplatesPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useListPlatformTenantOverridesQuery(tenantId);
@@ -32,7 +38,9 @@ const EmailTemplatesPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 flex flex-col gap-6">
+      <EmailBrandingEditor companyId={tenantId} />
+
       <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
         <Typography variant="h6" className="mb-1 block">
           Notification copy

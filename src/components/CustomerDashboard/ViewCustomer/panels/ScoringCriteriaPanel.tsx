@@ -63,14 +63,16 @@ const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   );
 
   if (isLoading) return <Loader />;
-  if (!data?.available) {
-    return (
-      <div className="p-6 text-center text-gray-500 border border-dashed rounded-xl">
-        Scoring configuration isn&apos;t available right now — the scoring service didn&apos;t
-        respond.
-      </div>
-    );
-  }
+  // No `available` flag on this contract (organization-service owns this
+  // outright now — see migration 0030's docstring) — a missing/empty
+  // `weights` map just means this company hasn't overridden anything yet,
+  // and buildWeightRows already falls back to each category's default
+  // percentage, so the cards render with sensible defaults instead of an
+  // error box. `!data` past this point means the query itself genuinely
+  // failed (network/auth), not "service unavailable" — nothing sensible to
+  // render, so bail quietly rather than crash on `isLocked` below.
+  if (!data) return null;
+  const isLocked = data.is_locked;
 
   const persist = (nextFlatWeights: Record<string, number>) =>
     updateConfig({ tenantId, weights: nextFlatWeights }).unwrap();
@@ -133,7 +135,7 @@ const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     <div className="p-4">
       <div className="flex items-center gap-2 mb-1">
         <h2 className="text-2xl font-semibold text-gray-800">AI Scoring Weight Distribution</h2>
-        {data.is_locked && (
+        {isLocked && (
           <Tooltip title="This company is locked to the platform default — it can't set its own weights.">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold px-2.5 py-1">
               <MdLock size={13} /> Locked
@@ -158,7 +160,7 @@ const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           }
           isSaving={isSaving}
           isResetting={isResettingResume}
-          editable={!data.is_locked}
+          editable={!isLocked}
         />
 
         <ScoringWeightCard
@@ -178,7 +180,7 @@ const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           }
           isSaving={isSaving}
           isResetting={isResettingInterview}
-          editable={!data.is_locked}
+          editable={!isLocked}
         />
       </div>
     </div>

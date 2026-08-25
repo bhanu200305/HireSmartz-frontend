@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MdDelete, MdOutlineAdd } from 'react-icons/md';
+import { MdDelete, MdOutlineAdd, MdOutlineApartment } from 'react-icons/md';
 import { Button, Input, Select, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
@@ -87,25 +87,37 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       </div>
 
       {!departments?.length ? (
-        <div className="p-6 text-gray-500 text-center border border-dashed rounded-xl">
+        <div className="p-8 text-gray-500 text-center border border-dashed border-gray-200 rounded-xl">
           No departments yet.
         </div>
       ) : (
-        <div className="divide-y border rounded-xl overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {departments.map((dept) => (
-            <div key={dept.org_department_id} className="flex items-center justify-between p-4">
-              <div>
-                <Typography variant="body1">{dept.name}</Typography>
-                <Typography variant="caption">Office: {officeName(dept.office_id)}</Typography>
+            <div
+              key={dept.org_department_id}
+              className="flex items-center justify-between gap-3 p-4 rounded-xl border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all"
+            >
+              <div className="flex items-start gap-3 min-w-0">
+                <span className="w-9 h-9 shrink-0 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
+                  <MdOutlineApartment size={18} />
+                </span>
+                <div className="min-w-0">
+                  <Typography variant="body1" className="font-medium text-gray-900 truncate">
+                    {dept.name}
+                  </Typography>
+                  <Typography variant="caption" className="text-gray-400">
+                    Office: {officeName(dept.office_id)}
+                  </Typography>
+                </div>
               </div>
               {canDelete && (
                 <button
                   type="button"
                   aria-label="Delete department"
-                  className="p-2 hover:bg-gray-100 rounded-full"
+                  className="p-2 rounded-full text-red-500 bg-red-50 hover:bg-red-100 transition-colors shrink-0"
                   onClick={() => setDepartmentToDelete(dept)}
                 >
-                  <MdDelete className="text-red-500" />
+                  <MdDelete size={16} />
                 </button>
               )}
             </div>

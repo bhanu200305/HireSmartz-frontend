@@ -15,6 +15,9 @@ import EntitlementsTab from './EntitlementsTab';
 import TeamTab from './Team';
 import TenantActivityFeedTab from './TenantActivityFeedTab';
 import OnboardingChecklist from './OnboardingChecklist';
+import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
+import QrManagementTab from './QrManagementTab';
+import EmailBrandingEditor from '../shared/EmailBrandingEditor';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
 import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
@@ -80,14 +83,15 @@ const MyCompany: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  // Interview Questions / Scoring Criteria / QR Management / Email Templates
-  // / SMS Templates are all job-workflow-adjacent screens (per-job question
-  // sets, per-job scoring, the jobs QR code, applicant-facing email/SMS) —
-  // parked behind an honest "coming soon" placeholder until the job posting
-  // workflow they hang off of is built, rather than surfaced ahead of it.
-  // Their real tabs (InterviewQuestionsTab, ScoringCriteriaOwnerTab,
-  // QrManagementTab, EmailTemplatesTab) are already wired to their backends
-  // and ready to swap back in once that workflow lands.
+  // Interview Questions / SMS Templates are still job-workflow-adjacent
+  // screens parked behind an honest "coming soon" placeholder until the job
+  // posting workflow they hang off of is built. Scoring Criteria, QR
+  // Management and Email Templates were swapped back in below — same real
+  // components (ScoringCriteriaOwnerTab, QrManagementTab,
+  // EmailBrandingEditor) the Super Admin's per-company view
+  // (CustomerDashboard/ViewCustomer) already shows via
+  // ScoringCriteriaPanel/QrCodePanel/EmailTemplatesPanel, just tenant-scoped
+  // to the signed-in session instead of an arbitrary tenant_id from the URL.
   const comingSoon = <ComingSoonTab label="To be added soon, alongside the job posting workflow" />;
 
   const items: TabsProps['items'] = [
@@ -118,9 +122,25 @@ const MyCompany: React.FC = () => {
       children: <TenantActivityFeedTab tenantId={tenantId} />,
     },
     canViewInterviewQuestions && { key: '7', label: 'Interview Questions', children: comingSoon },
-    { key: '8', label: 'Scoring Criteria', children: comingSoon },
-    canViewQrManagement && { key: '9', label: 'QR Management', children: comingSoon },
-    canViewEmailTemplates && { key: '10', label: 'Email Templates', children: comingSoon },
+    {
+      key: '8',
+      label: 'Scoring Criteria',
+      children: <ScoringCriteriaOwnerTab tenantId={tenantId} />,
+    },
+    canViewQrManagement && {
+      key: '9',
+      label: 'QR Management',
+      children: <QrManagementTab tenantId={tenantId} />,
+    },
+    canViewEmailTemplates && {
+      key: '10',
+      label: 'Email Templates',
+      children: (
+        <div className="p-4">
+          <EmailBrandingEditor companyId={tenantId} />
+        </div>
+      ),
+    },
     { key: '11', label: 'SMS Templates', children: comingSoon },
   ].filter(Boolean) as TabsProps['items'];
 
