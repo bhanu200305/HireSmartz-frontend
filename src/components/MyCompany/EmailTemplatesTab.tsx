@@ -4,23 +4,14 @@ import { Loader } from '../shared/ui/loader';
 import TemplatePreviewModal from '../shared/ui/TemplatePreviewModal';
 import {
   PACK_PREVIEW_SAMPLE_TYPE,
-  TemplateOverride,
   usePreviewTemplateMutation,
   useGetTemplatePacksQuery,
-  useListTemplateOverridesQuery,
   useSelectTemplatePackMutation,
 } from '../../api/notification-service/TemplateSettings/index';
 import { getNotifErrorMessage } from '../../shared/utils/auth/notifError.helpers';
-import EmailTemplateOverrideModal from './EmailTemplateOverrideModal';
 import EmailLayoutSection from './EmailLayoutSection';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
-
-const humanizeType = (value: string): string =>
-  value
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
 
 /**
  * `GET /v1/template-settings/packs` — the three prebuilt themes and which
@@ -134,76 +125,16 @@ const PackPicker: React.FC = () => {
 };
 
 /**
- * `GET /v1/template-settings/overrides` — every notification type this
- * tenant can customise, whether or not they have (the whole catalogue, per
- * the backend's own reasoning: a list of only the three things already
- * edited is a list nobody can act on).
- */
-const OverridesTable: React.FC = () => {
-  const { data, isLoading } = useListTemplateOverridesQuery();
-  const [editingOverride, setEditingOverride] = useState<TemplateOverride | null>(null);
-  const canEdit = useHasAccess(Authorities.EMAIL_TEMPLATE_EDIT);
-
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  return (
-    <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
-      <Typography variant="h6" className="mb-1 block">
-        Notification copy
-      </Typography>
-      <Typography variant="caption" className="mb-4 block text-gray-500">
-        Every message CareerForce Pro can send on your behalf. Edit the ones you&apos;d like in your
-        own words — the rest use the platform&apos;s default copy inside your chosen pack.
-      </Typography>
-
-      <div className="divide-y overflow-hidden rounded-xl border">
-        {data?.overrides.map((override) => (
-          <div
-            key={override.notification_type}
-            className="flex items-center justify-between gap-3 p-4"
-          >
-            <div className="flex items-center gap-2">
-              <Typography variant="body1">{humanizeType(override.notification_type)}</Typography>
-              <Badge status={override.is_customised ? 'info' : 'neutral'}>
-                {override.is_customised ? 'Customised' : 'Default'}
-              </Badge>
-            </div>
-            {canEdit && (
-              <Button
-                type="button"
-                appname="edit notification template"
-                onClick={() => setEditingOverride(override)}
-                className="rounded-3xl border border-[var(--border)] px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Edit
-              </Button>
-            )}
-          </div>
-        ))}
-        {data && data.overrides.length === 0 && (
-          <p className="p-4 text-sm text-gray-500">
-            No notification templates are seeded on this environment yet.
-          </p>
-        )}
-      </div>
-
-      <EmailTemplateOverrideModal
-        open={editingOverride !== null}
-        override={editingOverride}
-        onClose={() => setEditingOverride(null)}
-      />
-    </section>
-  );
-};
-
-/**
- * Journey 6, step 4 — the tenant self-service pack picker + per-type
- * overrides + layout, replacing the `ComingSoonTab` placeholder MyCompany
- * carried while this integration was pending. Email-only: see
- * TemplateSettings/index.ts's module docstring on why there is no per-tenant
- * SMS override here.
+ * Journey 6, step 4 — the tenant self-service pack picker + layout,
+ * replacing the `ComingSoonTab` placeholder MyCompany carried while this
+ * integration was pending. Email-only: see TemplateSettings/index.ts's
+ * module docstring on why there is no per-tenant SMS override here.
+ *
+ * Per-type notification copy overrides used to be stacked here too — split
+ * out to its own "Notification copy" tab (see NotificationCopyTab.tsx),
+ * beside this one, since editing individual message copy is a different job
+ * from picking a pack/layout even though both hang off the same
+ * notification-service settings.
  *
  * Used to also stack a legacy `EmailBrandingTab` here — banner + 16 colors
  * against a `tenant-service` backend that predates the organization-service
@@ -215,7 +146,6 @@ const EmailTemplatesTab: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 p-4">
       <PackPicker />
-      <OverridesTable />
       <EmailLayoutSection />
     </div>
   );

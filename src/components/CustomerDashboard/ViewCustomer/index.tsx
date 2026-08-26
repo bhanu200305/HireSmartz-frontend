@@ -44,6 +44,7 @@ import UsersPanel from './panels/UsersPanel';
 import ScoringCriteriaPanel from './panels/ScoringCriteriaPanel';
 import QrCodePanel from './panels/QrCodePanel';
 import EmailTemplatesPanel from './panels/EmailTemplatesPanel';
+import NotificationCopyPanel from './panels/NotificationCopyPanel';
 import TenantActivityFeedTab from '../../MyCompany/TenantActivityFeedTab';
 
 const STATUS_BADGE: Record<string, BadgeStatus> = {
@@ -238,6 +239,11 @@ const ViewCustomer = () => {
     { key: '5', label: 'Scoring Criteria', children: <ScoringCriteriaPanel tenantId={tenantId} /> },
     { key: '6', label: 'QR Management', children: <QrCodePanel tenantId={tenantId} /> },
     { key: '7', label: 'Email Templates', children: <EmailTemplatesPanel tenantId={tenantId} /> },
+    {
+      key: '10',
+      label: 'Notification copy',
+      children: <NotificationCopyPanel tenantId={tenantId} />,
+    },
     {
       key: '9',
       label: 'Activity',

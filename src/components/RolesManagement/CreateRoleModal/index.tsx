@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Modal } from 'antd';
+import { MdClose } from 'react-icons/md';
 import { showToast } from '../../shared';
 import TemplateStep from './TemplateStep';
 import PermissionsStep from './PermissionsStep';
@@ -119,10 +120,24 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
       footer={null}
       centered
       maskClosable={false}
-      width={760}
+      width={620}
       className="ant-custom-modal"
+      // The gradient header below has to stay outside the scrollable region
+      // set up further down: it used to bleed to the modal's edges via
+      // negative margins against the body's default padding, but a
+      // scrollable ancestor (`overflow-y: auto`) clips anything a negative
+      // margin pulls above its own top edge — that's what was cutting off
+      // "Step X of Y" and crowding the close button once Step 2's matrix
+      // needed a scroll cap. Zeroing the body padding here and letting the
+      // header own its own padding sidesteps that entirely.
+      styles={{ body: { padding: 0 } }}
+      closeIcon={
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white">
+          <MdClose size={18} />
+        </span>
+      }
     >
-      <div className="-mx-6 -mt-6 mb-5 px-6 py-4 rounded-t-2xl bg-gradient-to-r from-primary-700 via-primary-500 to-accent-500 text-white">
+      <div className="rounded-t-2xl bg-gradient-to-r from-primary-700 via-primary-500 to-accent-500 px-6 py-4 text-white">
         <div className="text-[10.5px] font-bold uppercase tracking-wide text-white/70 mb-0.5">
           Step {step} of {TOTAL_STEPS}
         </div>
@@ -139,30 +154,47 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
         </div>
       </div>
 
-      {step === 1 ? (
-        <TemplateStep
-          scope={scope}
-          roleName={roleName}
-          onRoleNameChange={setRoleName}
-          selectedTemplateKey={template?.key ?? null}
-          onSelectTemplate={setTemplate}
-          onCancel={handleClose}
-          onContinue={handleContinue}
-        />
-      ) : (
-        <PermissionsStep
-          permissions={permissions}
-          onPermissionsChange={setPermissions}
-          ceiling={ceiling}
-          locationOverrides={locationOverrides}
-          onLocationOverridesChange={setLocationOverrides}
-          availableLocations={availableLocations}
-          showLocationOverrides={scope === 'tenant'}
-          onBack={() => setStep(1)}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-        />
-      )}
+      {/* Only this region scrolls — the header above stays put. Step 2's
+          permission matrix (every module, up to 2 columns each, plus any
+          number of per-location overrides) is comfortably taller than most
+          viewports at full height; without a cap the modal's own bottom
+          edge (Back/Submit buttons included) ran off the browser window
+          with no way to reach it.
+          `overflowX: 'hidden'` isn't decorative: per the CSS overflow spec,
+          setting overflow-y to anything but `visible` while overflow-x is
+          left at its default `visible` computes overflow-x to `auto` too
+          (the "orthogonal overflow" rule) — that silently opened a
+          horizontal scrollbar and clipped a sliver off this content's width. */}
+      <div
+        className="thin-scrollbar px-6 pt-4 pb-6"
+        style={{ maxHeight: '68vh', overflowY: 'auto', overflowX: 'hidden' }}
+      >
+        {step === 1 ? (
+          <TemplateStep
+            scope={scope}
+            roleName={roleName}
+            onRoleNameChange={setRoleName}
+            selectedTemplateKey={template?.key ?? null}
+            onSelectTemplate={setTemplate}
+            onCancel={handleClose}
+            onContinue={handleContinue}
+          />
+        ) : (
+          <PermissionsStep
+            permissions={permissions}
+            onPermissionsChange={setPermissions}
+            ceiling={ceiling}
+            scope={scope}
+            locationOverrides={locationOverrides}
+            onLocationOverridesChange={setLocationOverrides}
+            availableLocations={availableLocations}
+            showLocationOverrides={scope === 'tenant'}
+            onBack={() => setStep(1)}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+          />
+        )}
+      </div>
     </Modal>
   );
 };

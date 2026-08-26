@@ -163,6 +163,16 @@ const Sidebar: React.FC = () => {
       <nav className="flex-1 px-3 flex flex-col gap-0.5 overflow-y-auto">
         {accessibleMenuItems.map((item) => {
           const isActive = isItemActive(item.path);
+          // Display-only relabel, this item's underlying `name` (used above
+          // for permission filtering and as this list's `key`) is untouched.
+          // "CFP Users" is accurate for the platform staff roster this same
+          // nav entry links a Super Admin to (see menuItem.tsx's own
+          // comment), but a Company Admin — identified by `tenantId` — only
+          // ever sees their own tenant's roster at that link
+          // (OrganisationUserPage renders OrganisationUserTable, titled
+          // "Users", for them; CfpUsers never renders without PLATFORM_VIEW)
+          // — "CFP Users" reads as someone else's team there.
+          const label = item.name === 'CFP Users' && tenantId ? 'Users' : item.name;
           return (
             <button
               key={item.name}
@@ -178,7 +188,7 @@ const Sidebar: React.FC = () => {
                 className="text-sm flex-1 truncate heading-font"
                 style={{ fontWeight: isActive ? 500 : 400 }}
               >
-                {item.name}
+                {label}
               </span>
             </button>
           );

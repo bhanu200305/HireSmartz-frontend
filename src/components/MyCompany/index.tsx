@@ -17,6 +17,7 @@ import TenantActivityFeedTab from './TenantActivityFeedTab';
 import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
 import QrManagementTab from './QrManagementTab';
 import EmailTemplatesTab from './EmailTemplatesTab';
+import NotificationCopyTab from './NotificationCopyTab';
 import SmsTemplatesTab from '../CompanySettings/SmsTemplatesTab';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
@@ -103,11 +104,16 @@ const MyCompany: React.FC = () => {
   //    CustomerDashboard/ViewCustomer), just tenant-scoped to the signed-in
   //    session instead of an arbitrary tenant_id from the URL.
   //  - Email Templates: this tenant's notification-service template pack +
-  //    per-type overrides + layout (banner + 16 brand colors, all real
-  //    against the CFPro2.0 backend) — self-contained tenant self-service,
-  //    no props needed. (Used to also stack a legacy `EmailBrandingTab`
-  //    here, backed by a `tenant-service` endpoint that no longer exists
-  //    anywhere in this backend — removed rather than fixed.)
+  //    layout (banner + 16 brand colors, all real against the CFPro2.0
+  //    backend) — self-contained tenant self-service, no props needed.
+  //    (Used to also stack a legacy `EmailBrandingTab` here, backed by a
+  //    `tenant-service` endpoint that no longer exists anywhere in this
+  //    backend — removed rather than fixed.)
+  //  - Notification copy: this tenant's per-type overrides for
+  //    notification-service's messages — its own tab beside Email
+  //    Templates rather than stacked inside it (see NotificationCopyTab.tsx).
+  //    Same EMAIL_TEMPLATE_VIEW gate as Email Templates: both configure the
+  //    same underlying notification-service settings.
   //  - SMS Templates: candidate-facing recruiting SMS copy — the same
   //    SmsTemplatesTab the Super Admin's Company Settings screen uses, with
   //    `fixedCompanyId` pinned to this tenant and the company picker hidden
@@ -157,6 +163,11 @@ const MyCompany: React.FC = () => {
       key: '10',
       label: 'Email Templates',
       children: <EmailTemplatesTab />,
+    },
+    canViewEmailTemplates && {
+      key: '12',
+      label: 'Notification copy',
+      children: <NotificationCopyTab />,
     },
     {
       key: '11',

@@ -3,6 +3,7 @@ import { CustomCheckbox } from './checkbox';
 import InfoHint from './InfoHint';
 import { Authorities, PermissionModule } from '../../../constants/authorities.constant';
 import { groupCatalogByModule } from '../../../shared/utils/auth/rbac.helpers';
+import type { RoleScope } from '../../../types';
 
 /** One short sentence per module — hover text for the ⓘ next to each module
  * heading below. Covers every PermissionModule that can actually appear here
@@ -29,6 +30,29 @@ const MODULE_DESCRIPTIONS: Partial<Record<PermissionModule, string>> = {
   'Roles & Permissions': 'Create and manage roles and what each one is allowed to do.',
 };
 
+/**
+ * "CFP Users" and "Organization Users" are two headings over the exact same
+ * `USER_VIEW`/`USER_ADD`/`USER_EDIT`/`USER_ARCHIVE` codes (see
+ * authorities.constant.ts) — one for CareerForce Pro's own internal staff
+ * (platform scope), one for a tenant's own team (tenant scope). Without this
+ * filter, anyone who holds those codes sees the identical checkboxes twice,
+ * under two headings, because both modules pass the same ceiling test. Only
+ * one is ever relevant to a given role's scope, so the other is dropped
+ * entirely rather than shown as a second, meaningless copy.
+ */
+const HIDDEN_MODULE_BY_SCOPE: Record<RoleScope, PermissionModule> = {
+  tenant: 'CFP Users',
+  platform: 'Organization Users',
+};
+
+/** Display label override — the surviving "Users" module (see above) reads
+ * as plain "Users" rather than the audience-specific catalog heading, since
+ * scope already makes clear which "users" are meant. */
+const MODULE_DISPLAY_LABEL: Partial<Record<PermissionModule, string>> = {
+  'CFP Users': 'Users',
+  'Organization Users': 'Users',
+};
+
 type PermissionMatrixProps = {
   /** Currently checked permission codes. */
   value: Authorities[];
@@ -41,6 +65,8 @@ type PermissionMatrixProps = {
    * useful to show for a box nobody in this conversation can ever check.
    */
   ceiling: Authorities[];
+  /** Which audience this matrix is being built for — see HIDDEN_MODULE_BY_SCOPE. */
+  scope: RoleScope;
   /** Renders every checkbox disabled/read-only (e.g. an immutable system role). */
   disabled?: boolean;
   className?: string;
@@ -55,10 +81,12 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
   value,
   onChange,
   ceiling,
+  scope,
   disabled = false,
   className = '',
 }) => {
   const groups = useMemo(() => groupCatalogByModule(), []);
+  const hiddenModule = HIDDEN_MODULE_BY_SCOPE[scope];
   const selected = useMemo(() => new Set(value), [value]);
   const ceilingSet = useMemo(() => new Set(ceiling), [ceiling]);
 
@@ -83,6 +111,8 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
   return (
     <div className={`flex flex-col gap-y-6 ${className}`}>
       {(Object.keys(groups) as PermissionModule[]).map((moduleName) => {
+        if (moduleName === hiddenModule) return null;
+
         // Only permissions the acting user actually holds are ever shown —
         // a module where they hold none of them has nothing to render.
         const grantable = groups[moduleName].filter((entry) => ceilingSet.has(entry.code));
@@ -96,7 +126,7 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
           <div key={moduleName} className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-200">
               <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700">
-                {moduleName}
+                {MODULE_DISPLAY_LABEL[moduleName] ?? moduleName}
                 {MODULE_DESCRIPTIONS[moduleName] && (
                   <InfoHint content={MODULE_DESCRIPTIONS[moduleName] as string} />
                 )}
@@ -111,7 +141,11 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
+            {/* Capped at 2 columns (was 3 at `lg:`) — that breakpoint keys off
+                the viewport, not this matrix's own container, so on a wide
+                screen it used to force 3 columns into whatever narrower
+                width the enclosing modal actually gave it. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 px-4 py-3">
               {grantable.map((entry) => (
                 <CustomCheckbox
                   key={entry.code}

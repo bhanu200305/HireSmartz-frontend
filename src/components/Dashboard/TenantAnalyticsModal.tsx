@@ -110,8 +110,14 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
         // plus `.thin-scrollbar` (index.css) keep the scrollbar itself from
         // overlapping the rightmost column of cards — some Windows/Chrome
         // setups render the default scrollbar as a wide overlay rather
-        // than reserving its own track space.
-        styles: { body: { maxHeight: '70vh', overflowY: 'auto', paddingRight: 14 } },
+        // than reserving its own track space. `overflowX: 'hidden'` is
+        // required alongside `overflowY: 'auto'` — per the CSS overflow
+        // spec, leaving overflow-x at its default `visible` while
+        // overflow-y isn't computes overflow-x to `auto` too, opening a
+        // stray horizontal scrollbar that clips a sliver off this content.
+        styles: {
+          body: { maxHeight: '70vh', overflowY: 'auto', overflowX: 'hidden', paddingRight: 14 },
+        },
         classNames: { body: 'thin-scrollbar' },
       }}
     >
