@@ -85,7 +85,6 @@ const CompanyThemeSection: React.FC = () => {
     });
     setTheme(loaded);
     refreshPreview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const handleChange = (key: keyof EmailThemeColors, value: string) => {

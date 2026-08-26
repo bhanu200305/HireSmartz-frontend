@@ -86,7 +86,7 @@ export const THEME_COLOR_GROUPS: ThemeColorGroup[] = [
   },
   {
     title: 'Button',
-    description: "The primary call-to-action button — e.g. \"Reset your password\".",
+    description: 'The primary call-to-action button — e.g. "Reset your password".',
     fields: [
       { key: 'button_background', label: 'Button background' },
       { key: 'button_text', label: 'Button text' },

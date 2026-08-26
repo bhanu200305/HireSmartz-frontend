@@ -128,7 +128,6 @@ const MasterThemeSection: React.FC = () => {
     });
     setTheme(loaded);
     refreshPreview(activePack);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const handleChange = (key: keyof EmailThemeColors, value: string) => {
