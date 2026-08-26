@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import TextArea from 'antd/es/input/TextArea';
 import { Button, Input, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
+import PlainTextEmailBodyEditor from '../../../shared/ui/PlainTextEmailBodyEditor';
 import type { TemplateOverride } from '../../../../api/notification-service/TemplateSettings/index';
 import {
   useSaveTenantOverrideAsPlatformMutation,
@@ -15,6 +15,12 @@ type PlatformEmailTemplateOverrideModalProps = {
   override: TemplateOverride | null;
   onClose: () => void;
 };
+
+const humanizeType = (value: string): string =>
+  value
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 
 /**
  * Super Admin's mirror of MyCompany/EmailTemplateOverrideModal.tsx — edits a
@@ -81,7 +87,8 @@ const PlatformEmailTemplateOverrideModal: React.FC<PlatformEmailTemplateOverride
     <AntdCommonModal
       open={open}
       onClose={onClose}
-      title={`Edit template — ${override.notification_type}`}
+      title={`Edit template — ${humanizeType(override.notification_type)}`}
+      subtitle="Change the words this message sends on this company's behalf. Layout, colors and branding come from this tenant's Email Templates layout instead."
       modalProps={{ width: 720 }}
     >
       <div className="flex flex-col gap-4">
@@ -96,21 +103,11 @@ const PlatformEmailTemplateOverrideModal: React.FC<PlatformEmailTemplateOverride
           <Input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            placeholder="Jinja source — may reference the event's variables"
+            placeholder="e.g. {{ code }} is your sign-in code"
           />
         </div>
 
-        <div>
-          <p className="mb-1 block text-sm font-medium text-gray-700">
-            Body (HTML — without header/footer, those come from this tenant&apos;s layout)
-          </p>
-          <TextArea
-            value={htmlBody}
-            onChange={(e) => setHtmlBody(e.target.value)}
-            rows={14}
-            className="font-mono text-xs"
-          />
-        </div>
+        <PlainTextEmailBodyEditor htmlBody={htmlBody} onChange={setHtmlBody} />
 
         <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
           {override.is_customised && (

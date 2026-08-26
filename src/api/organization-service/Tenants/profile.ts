@@ -25,6 +25,7 @@ export type UpdateTenantProfileRequest = {
   tenantId: string;
   name?: string;
   logo?: string;
+  email_banner?: string;
   description?: string;
   website_url?: string;
   industry_id?: string;
@@ -47,20 +48,37 @@ export type RequestTenantLogoUploadArgs = {
   content_type: string;
 };
 
-export type TenantLogoUploadTarget = {
+// POST /v1/tenants/{tenant_id}/email-banner/upload-url — identical shape to
+// the logo upload above (`TenantEmailBannerUploadView` mirrors
+// `TenantLogoUploadView` on the backend); the caller persists `storage_key`
+// via updateTenantProfile's `email_banner` field. Tenant self-service only —
+// this route is `require_own_tenant`-guarded the same way the logo one is,
+// so there is no platform-on-behalf-of-a-tenant equivalent.
+export type RequestTenantEmailBannerUploadArgs = {
+  tenantId: string;
+  filename: string;
+  content_type: string;
+};
+
+export type TenantFileUploadTarget = {
   upload_url: string;
   upload_fields: Record<string, string>;
   storage_key: string;
   expires_in: number;
 };
 
+/** @deprecated use `TenantFileUploadTarget` — kept as an alias so existing
+ * call sites naming the logo-specific type don't need to change. */
+export type TenantLogoUploadTarget = TenantFileUploadTarget;
+
 /**
- * Uploads the file directly to storage using the presigned POST from
- * `requestTenantLogoUpload` — the bytes never pass through organization-
- * service. Same shape as `uploadRosterFile` in `Tenants/imports.ts`.
+ * Uploads a file directly to storage using a presigned POST from either
+ * `requestTenantLogoUpload` or `requestTenantEmailBannerUpload` — the bytes
+ * never pass through organization-service. Same shape as `uploadRosterFile`
+ * in `Tenants/imports.ts`.
  */
-export const uploadTenantLogoFile = async (
-  target: TenantLogoUploadTarget,
+export const uploadTenantAssetFile = async (
+  target: TenantFileUploadTarget,
   file: File
 ): Promise<void> => {
   const formData = new FormData();
@@ -72,6 +90,10 @@ export const uploadTenantLogoFile = async (
     throw new Error(`Upload failed with status ${response.status}`);
   }
 };
+
+/** @deprecated use `uploadTenantAssetFile` — kept so existing logo-upload
+ * call sites don't need to change. */
+export const uploadTenantLogoFile = uploadTenantAssetFile;
 
 export type ActivityLogEntry = {
   id: string;
@@ -131,9 +153,19 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [{ type: 'Tenant', id: tenantId }],
     }),
-    requestTenantLogoUpload: build.mutation<TenantLogoUploadTarget, RequestTenantLogoUploadArgs>({
+    requestTenantLogoUpload: build.mutation<TenantFileUploadTarget, RequestTenantLogoUploadArgs>({
       query: ({ tenantId, ...body }) => ({
         url: `/v1/tenants/${tenantId}/logo/upload-url`,
+        method: 'POST',
+        body,
+      }),
+    }),
+    requestTenantEmailBannerUpload: build.mutation<
+      TenantFileUploadTarget,
+      RequestTenantEmailBannerUploadArgs
+    >({
+      query: ({ tenantId, ...body }) => ({
+        url: `/v1/tenants/${tenantId}/email-banner/upload-url`,
         method: 'POST',
         body,
       }),
@@ -156,6 +188,7 @@ export const {
   useGetTenantProfileQuery,
   useUpdateTenantProfileMutation,
   useRequestTenantLogoUploadMutation,
+  useRequestTenantEmailBannerUploadMutation,
   useGetTenantDashboardQuery,
   useListTenantActivityQuery,
 } = extendedApi;

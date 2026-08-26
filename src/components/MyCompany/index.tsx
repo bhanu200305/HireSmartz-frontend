@@ -103,10 +103,11 @@ const MyCompany: React.FC = () => {
   //    CustomerDashboard/ViewCustomer), just tenant-scoped to the signed-in
   //    session instead of an arbitrary tenant_id from the URL.
   //  - Email Templates: this tenant's notification-service template pack +
-  //    per-type overrides + layout, PLUS (stacked inside EmailTemplatesTab)
-  //    the candidate-facing email banner/brand-color editor
-  //    (EmailBrandingTab) — self-contained tenant self-service, no props
-  //    needed.
+  //    per-type overrides + layout (banner + 16 brand colors, all real
+  //    against the CFPro2.0 backend) — self-contained tenant self-service,
+  //    no props needed. (Used to also stack a legacy `EmailBrandingTab`
+  //    here, backed by a `tenant-service` endpoint that no longer exists
+  //    anywhere in this backend — removed rather than fixed.)
   //  - SMS Templates: candidate-facing recruiting SMS copy — the same
   //    SmsTemplatesTab the Super Admin's Company Settings screen uses, with
   //    `fixedCompanyId` pinned to this tenant and the company picker hidden

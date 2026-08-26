@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import TextArea from 'antd/es/input/TextArea';
 import { MdEmail, MdEdit } from 'react-icons/md';
 import { Button, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
+import PlainTextEmailBodyEditor from '../shared/ui/PlainTextEmailBodyEditor';
 import type { MasterTemplate } from '../../api/notification-service/PlatformTemplateSettings/index';
 import {
   useListMasterTemplatesQuery,
@@ -56,7 +56,7 @@ const EditMasterTemplateModal: React.FC<{
     <AntdCommonModal
       open={template !== null}
       onClose={onClose}
-      title={`Edit platform default — ${template.notification_type}`}
+      title={`Edit platform default — ${humanizeType(template.notification_type)}`}
       subtitle="Changes what every tenant without their own override receives. Test-rendered before saving."
       modalProps={{ width: 720 }}
     >
@@ -68,17 +68,13 @@ const EditMasterTemplateModal: React.FC<{
         )}
         <div>
           <p className="mb-1 block text-sm font-medium text-gray-700">Subject</p>
-          <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-        </div>
-        <div>
-          <p className="mb-1 block text-sm font-medium text-gray-700">Body (HTML)</p>
-          <TextArea
-            value={htmlBody}
-            onChange={(e) => setHtmlBody(e.target.value)}
-            rows={14}
-            className="font-mono text-xs"
+          <Input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="e.g. {{ code }} is your sign-in code"
           />
         </div>
+        <PlainTextEmailBodyEditor htmlBody={htmlBody} onChange={setHtmlBody} />
         <div className="flex justify-end">
           <Button
             type="button"

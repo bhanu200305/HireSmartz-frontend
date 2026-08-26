@@ -13,7 +13,6 @@ import {
 import { getNotifErrorMessage } from '../../shared/utils/auth/notifError.helpers';
 import EmailTemplateOverrideModal from './EmailTemplateOverrideModal';
 import EmailLayoutSection from './EmailLayoutSection';
-import EmailBrandingTab from './EmailBrandingTab';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 
@@ -205,6 +204,12 @@ const OverridesTable: React.FC = () => {
  * carried while this integration was pending. Email-only: see
  * TemplateSettings/index.ts's module docstring on why there is no per-tenant
  * SMS override here.
+ *
+ * Used to also stack a legacy `EmailBrandingTab` here — banner + 16 colors
+ * against a `tenant-service` backend that predates the organization-service
+ * split and no longer exists anywhere in CFPro2.0. Retired: `EmailLayoutSection`
+ * above already covers banner + colors for real, against a backend that
+ * actually exists locally.
  */
 const EmailTemplatesTab: React.FC = () => {
   return (
@@ -212,7 +217,6 @@ const EmailTemplatesTab: React.FC = () => {
       <PackPicker />
       <OverridesTable />
       <EmailLayoutSection />
-      <EmailBrandingTab />
     </div>
   );
 };

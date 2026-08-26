@@ -99,6 +99,8 @@ export const notifApi = createApi({
     'PlatformMasterTemplates',
     'PlatformMasterSmsTemplates',
     'PlatformTenantOverrides',
+    'PlatformMasterLayout',
+    'PlatformTenantLayout',
   ],
   endpoints: () => ({}),
 });

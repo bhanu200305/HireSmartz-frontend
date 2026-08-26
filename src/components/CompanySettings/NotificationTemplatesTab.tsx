@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
-import { MdEmail, MdSms, MdSwapHoriz, MdOutlineNotifications } from 'react-icons/md';
+import {
+  MdEmail,
+  MdSms,
+  MdSwapHoriz,
+  MdOutlineNotifications,
+  MdPalette,
+  MdOutlineBusiness,
+} from 'react-icons/md';
 import MasterEmailTemplatesSection from './MasterEmailTemplatesSection';
 import MasterSmsTemplatesSection from './MasterSmsTemplatesSection';
 import TenantOverrideSection from './TenantOverrideSection';
+import MasterThemeSection from './MasterThemeSection';
+import CompanyThemeSection from './CompanyThemeSection';
 
-type SectionKey = 'email' | 'sms' | 'overrides';
+type SectionKey = 'email' | 'theme' | 'companyTheme' | 'sms' | 'overrides';
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: 'email', label: 'Email defaults', icon: <MdEmail size={16} /> },
+  { key: 'theme', label: 'Theme defaults', icon: <MdPalette size={16} /> },
+  { key: 'companyTheme', label: 'Company theme', icon: <MdOutlineBusiness size={16} /> },
   { key: 'sms', label: 'SMS defaults', icon: <MdSms size={16} /> },
   { key: 'overrides', label: 'Tenant overrides', icon: <MdSwapHoriz size={16} /> },
 ];
@@ -71,6 +82,8 @@ const NotificationTemplatesTab: React.FC = () => {
       </div>
 
       {active === 'email' && <MasterEmailTemplatesSection />}
+      {active === 'theme' && <MasterThemeSection />}
+      {active === 'companyTheme' && <CompanyThemeSection />}
       {active === 'sms' && <MasterSmsTemplatesSection />}
       {active === 'overrides' && <TenantOverrideSection />}
     </div>

@@ -1,4 +1,5 @@
 import { notifApi } from '../notifApi';
+import type { EmailThemeColors } from '../../../shared/utils/notifications/emailTheme';
 
 /**
  * Tenant self-service template settings — `/v1/template-settings/*`,
@@ -41,7 +42,7 @@ export interface TemplateOverrideListView {
   overrides: TemplateOverride[];
 }
 
-export interface TemplateLayout {
+export interface TemplateLayout extends EmailThemeColors {
   has_layout: boolean;
   header_html?: string | null;
   footer_html?: string | null;
@@ -64,7 +65,7 @@ export interface SaveOverrideRequest {
   organization_layout_id?: string | null;
 }
 
-export interface SaveLayoutRequest {
+export interface SaveLayoutRequest extends EmailThemeColors {
   header_html?: string | null;
   footer_html?: string | null;
   css?: string | null;

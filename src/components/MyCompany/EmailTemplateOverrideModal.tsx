@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import TextArea from 'antd/es/input/TextArea';
 import { Button, Input, showToast } from '../shared';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
+import PlainTextEmailBodyEditor from '../shared/ui/PlainTextEmailBodyEditor';
 import type { TemplateOverride } from '../../api/notification-service/TemplateSettings/index';
 import {
   usePreviewTemplateMutation,
@@ -16,6 +16,12 @@ type EmailTemplateOverrideModalProps = {
   override: TemplateOverride | null;
   onClose: () => void;
 };
+
+const humanizeType = (value: string): string =>
+  value
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 
 /**
  * Edit (or revert) one notification type's email copy —
@@ -105,7 +111,8 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
       <AntdCommonModal
         open={open}
         onClose={onClose}
-        title={`Edit template — ${override.notification_type}`}
+        title={`Edit template — ${humanizeType(override.notification_type)}`}
+        subtitle="Change the words this message sends. Layout, colors and branding come from your Email Templates pack instead — see the sections above."
         modalProps={{ width: 720 }}
       >
         <div className="flex flex-col gap-4">
@@ -120,21 +127,11 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
             <Input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Jinja source — may reference the event's variables"
+              placeholder="e.g. {{ code }} is your sign-in code"
             />
           </div>
 
-          <div>
-            <p className="mb-1 block text-sm font-medium text-gray-700">
-              Body (HTML — without header/footer, those come from your layout)
-            </p>
-            <TextArea
-              value={htmlBody}
-              onChange={(e) => setHtmlBody(e.target.value)}
-              rows={14}
-              className="font-mono text-xs"
-            />
-          </div>
+          <PlainTextEmailBodyEditor htmlBody={htmlBody} onChange={setHtmlBody} />
 
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
             <Button

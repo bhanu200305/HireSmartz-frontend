@@ -29,8 +29,6 @@ export { default as InfoHint } from './ui/InfoHint';
 export { AuthPageShell } from './ui/authPageShell';
 export { ScoringWeightCard } from './ui/scoringWeightCard';
 export type { ScoringWeightCardProps } from './ui/scoringWeightCard';
-export { EmailBrandingEditor } from './ui/EmailBrandingEditor';
-export type { EmailBrandingEditorProps } from './ui/EmailBrandingEditor';
 export { normalizeScoringWeights } from './scoringWeight';
 export type { ScoringWeight } from './scoringWeight';
 export { RESUME_CATEGORY_META, INTERVIEW_CATEGORY_META } from './scoringCategories';

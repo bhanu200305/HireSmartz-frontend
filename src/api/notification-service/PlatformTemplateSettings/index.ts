@@ -1,5 +1,5 @@
 import { notifApi } from '../notifApi';
-import type { TemplateOverride } from '../TemplateSettings/index';
+import type { TemplateOverride, TemplateLayout, SaveLayoutRequest } from '../TemplateSettings/index';
 
 /**
  * Super Admin's template management — `/v1/platform/template-settings/*`,
@@ -108,6 +108,60 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       }),
       invalidatesTags: ['PlatformTenantOverrides'],
     }),
+
+    // -- a pack's platform-default chrome + 16 brand colours ----------------
+    // `GET/PUT /v1/platform/template-settings/master-layout/{layout_name}` —
+    // `layout_name` is one of the three fixed packs ("Corporate", "Modern",
+    // "Minimal"; see TemplatePack.layout_name). Editing this changes what
+    // every tenant on that pack sees UNLESS they've saved their own theme.
+    getMasterLayout: build.query<TemplateLayout, string>({
+      query: (layoutName) => ({
+        url: `/v1/platform/template-settings/master-layout/${layoutName}`,
+        method: 'GET',
+      }),
+      providesTags: (_result, _error, layoutName) => [
+        { type: 'PlatformMasterLayout', id: layoutName },
+      ],
+    }),
+    saveMasterLayout: build.mutation<TemplateLayout, { layoutName: string; body: SaveLayoutRequest }>({
+      query: ({ layoutName, body }) => ({
+        url: `/v1/platform/template-settings/master-layout/${layoutName}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { layoutName }) => [
+        { type: 'PlatformMasterLayout', id: layoutName },
+      ],
+    }),
+
+    // -- one specific tenant's own chrome + 16 brand colours, edited on
+    // their behalf -----------------------------------------------------------
+    // `GET/PUT /v1/platform/template-settings/tenants/{tenant_id}/layout` —
+    // no banner upload here: uploading a file to storage is still tenant
+    // self-service only (`POST /{tenant_id}/email-banner/upload-url` on
+    // organization-service requires `require_own_tenant`, same as the logo
+    // upload it mirrors) — a Super Admin can restyle a tenant's colors here,
+    // not swap their banner image.
+    getTenantLayout: build.query<TemplateLayout, string>({
+      query: (tenantId) => ({
+        url: `/v1/platform/template-settings/tenants/${tenantId}/layout`,
+        method: 'GET',
+      }),
+      providesTags: (_result, _error, tenantId) => [{ type: 'PlatformTenantLayout', id: tenantId }],
+    }),
+    saveTenantLayoutAsPlatform: build.mutation<
+      TemplateLayout,
+      { tenantId: string; body: SaveLayoutRequest }
+    >({
+      query: ({ tenantId, body }) => ({
+        url: `/v1/platform/template-settings/tenants/${tenantId}/layout`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'PlatformTenantLayout', id: tenantId },
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -120,4 +174,8 @@ export const {
   useListTenantOverridesQuery: useListPlatformTenantOverridesQuery,
   useSaveTenantOverrideAsPlatformMutation,
   useRevertTenantOverrideAsPlatformMutation,
+  useGetMasterLayoutQuery,
+  useSaveMasterLayoutMutation,
+  useGetTenantLayoutQuery,
+  useSaveTenantLayoutAsPlatformMutation,
 } = platformTemplateSettingsApi;
