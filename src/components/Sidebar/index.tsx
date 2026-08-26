@@ -74,11 +74,12 @@ const Sidebar: React.FC = () => {
       return !tenantId && useHasAccess(item.requiredAuthority);
     }
 
-    if (item.name === 'Company' || item.name === 'Company Metrics') {
+    if (item.name === 'Company' || item.name === 'Company Metrics' || item.name === 'Audit Log') {
       // Mirror image of "Companies" above: a platform caller's static
       // permission set happens to include COMPANY_SETTINGS_VIEW too, but
-      // `/my-company` (and `/company-metrics`) redirects anyone with no
-      // tenant of their own straight back to `/` — a dead link for them.
+      // `/my-company`, `/company-metrics` and `/activityFeed` all redirect
+      // anyone with no tenant of their own straight back to `/` (or fetch
+      // against `tenantId ?? ''`, same dead end) — a dead link for them.
       // Tenant-only.
       return Boolean(tenantId) && useHasAccess(item.requiredAuthority);
     }
@@ -163,6 +164,16 @@ const Sidebar: React.FC = () => {
       <nav className="flex-1 px-3 flex flex-col gap-0.5 overflow-y-auto">
         {accessibleMenuItems.map((item) => {
           const isActive = isItemActive(item.path);
+          // Display-only relabel, this item's underlying `name` (used above
+          // for permission filtering and as this list's `key`) is untouched.
+          // "CFP Users" is accurate for the platform staff roster this same
+          // nav entry links a Super Admin to (see menuItem.tsx's own
+          // comment), but a Company Admin — identified by `tenantId` — only
+          // ever sees their own tenant's roster at that link
+          // (OrganisationUserPage renders OrganisationUserTable, titled
+          // "Users", for them; CfpUsers never renders without PLATFORM_VIEW)
+          // — "CFP Users" reads as someone else's team there.
+          const label = item.name === 'CFP Users' && tenantId ? 'Users' : item.name;
           return (
             <button
               key={item.name}
@@ -178,13 +189,7 @@ const Sidebar: React.FC = () => {
                 className="text-sm flex-1 truncate heading-font"
                 style={{ fontWeight: isActive ? 500 : 400 }}
               >
-                {/* This nav entry is one shared USER_ADD-gated page whose
-                    data scope follows the caller's token (see menuItem.tsx's
-                    comment on this entry) — CFP's own staff for a platform
-                    caller, but this tenant's own team for a Company Admin,
-                    who should never see the label "CFP Users" for a screen
-                    showing their own people. */}
-                {item.name === 'CFP Users' && tenantId ? 'Users' : item.name}
+                {label}
               </span>
             </button>
           );

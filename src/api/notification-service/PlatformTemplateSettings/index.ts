@@ -158,7 +158,10 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
         { type: 'PlatformMasterLayout', id: layoutName },
       ],
     }),
-    saveMasterLayout: build.mutation<TemplateLayout, { layoutName: string; body: SaveLayoutRequest }>({
+    saveMasterLayout: build.mutation<
+      TemplateLayout,
+      { layoutName: string; body: SaveLayoutRequest }
+    >({
       query: ({ layoutName, body }) => ({
         url: `/v1/platform/template-settings/master-layout/${layoutName}`,
         method: 'PUT',

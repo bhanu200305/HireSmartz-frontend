@@ -112,7 +112,6 @@ const EmailLayoutSection: React.FC = () => {
       setTheme(loaded);
       refreshPreview();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   useEffect(() => {
@@ -123,7 +122,6 @@ const EmailLayoutSection: React.FC = () => {
     if (profile?.email_banner_url && !bannerFile) {
       setBannerUrl(profile.email_banner_url);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.email_banner_url]);
 
   const isBusy = isSaving || isReverting || isRequestingUpload || isSavingBanner;
@@ -203,8 +201,8 @@ const EmailLayoutSection: React.FC = () => {
       </Typography>
       <Typography variant="caption" className="mb-4 block text-gray-500">
         Applies to candidate-facing mail only — your company logo already shows there. This never
-        changes the Company-Admin invite or sign-in emails, which always carry CareerForce Pro's
-        own branding.
+        changes the Company-Admin invite or sign-in emails, which always carry CareerForce
+        Pro&apos;s own branding.
       </Typography>
 
       {formError && (

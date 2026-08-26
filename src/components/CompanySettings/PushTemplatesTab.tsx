@@ -116,9 +116,9 @@ const PushTemplatesTab: React.FC = () => {
         Bulk-revert companies to the platform default
       </Typography>
       <Typography variant="caption" className="mb-4 block text-gray-500">
-        Selected companies lose any customised email wording and fall back to the platform
-        default — same effect as reverting each notification type by hand, for several companies
-        at once. Their saved brand colors and banner are untouched.
+        Selected companies lose any customised email wording and fall back to the platform default —
+        same effect as reverting each notification type by hand, for several companies at once.
+        Their saved brand colors and banner are untouched.
       </Typography>
 
       <Select

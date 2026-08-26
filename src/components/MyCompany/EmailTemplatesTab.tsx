@@ -131,7 +131,10 @@ const PackPicker: React.FC = () => {
  * used to live here too as "Notification copy" — moved to its own tab
  * (`NotificationCopyTab`) since 38 notification types made this screen
  * compete with theme controls for space, and buried system-SMS editing
- * next to the unrelated candidate-messaging "SMS Templates" tab.
+ * next to the unrelated candidate-messaging "SMS Templates" tab: picking a
+ * pack/layout ("what CFP mail looks like") and editing individual message
+ * copy ("what CFP mail says") are different jobs even though both hang off
+ * the same notification-service settings.
  *
  * Used to also stack a legacy `EmailBrandingTab` here — banner + 16 colors
  * against a `tenant-service` backend that predates the organization-service

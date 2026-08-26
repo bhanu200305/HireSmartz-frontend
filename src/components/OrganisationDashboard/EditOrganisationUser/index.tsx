@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { MdOutlineArrowBack } from 'react-icons/md';
 import { Select } from 'antd';
 import MainLayout from '../../../layouts/MainLayout';
-import { Button, Input, Typography, showToast } from '../../shared';
+import { Button, Input, PhoneNumberField, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { RootState } from '../../../redux/provider/store';
@@ -22,9 +22,15 @@ type FormState = {
   first_name: string;
   last_name: string;
   title: string;
+  country_code: string;
   phone_no: string;
   department_id: string | undefined;
 };
+
+// Same default every other phone field in this app starts from (see
+// EditCandidate.tsx/UserProfile) when this user has no country_code on file
+// yet.
+const DEFAULT_COUNTRY_CODE = '+1';
 
 /**
  * §"Users": PATCH /v1/users/{user_id}. Email is deliberately its own
@@ -84,6 +90,7 @@ const EditOrgUser = () => {
     first_name: '',
     last_name: '',
     title: '',
+    country_code: DEFAULT_COUNTRY_CODE,
     phone_no: '',
     department_id: undefined,
   });
@@ -96,6 +103,7 @@ const EditOrgUser = () => {
         first_name: user.first_name,
         last_name: user.last_name || '',
         title: user.title || '',
+        country_code: user.country_code || DEFAULT_COUNTRY_CODE,
         phone_no: user.phone_no || '',
         department_id: user.department_id || undefined,
       });
@@ -115,6 +123,9 @@ const EditOrgUser = () => {
         first_name: form.first_name.trim() || undefined,
         last_name: form.last_name.trim() || undefined,
         title: form.title.trim() || undefined,
+        // Only sent alongside an actual number — a bare country code with no
+        // digits isn't a phone number.
+        country_code: form.phone_no.trim() ? form.country_code : undefined,
         phone_no: form.phone_no.trim() || undefined,
         department_id: form.department_id,
         ...(email ? { email } : {}),
@@ -155,7 +166,12 @@ const EditOrgUser = () => {
           <Input placeholder="First name *" {...field('first_name')} />
           <Input placeholder="Last name" {...field('last_name')} />
           <Input placeholder="Title" {...field('title')} />
-          <Input placeholder="Phone number" {...field('phone_no')} />
+          <PhoneNumberField
+            countryCode={form.country_code}
+            onCountryCodeChange={(value) => setForm((prev) => ({ ...prev, country_code: value }))}
+            phoneNumber={form.phone_no}
+            onPhoneNumberChange={(value) => setForm((prev) => ({ ...prev, phone_no: value }))}
+          />
           <Select
             placeholder="Department (optional)"
             value={form.department_id}

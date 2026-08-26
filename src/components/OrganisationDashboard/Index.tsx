@@ -1,27 +1,54 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import { LuUsersRound } from 'react-icons/lu';
 import { PlusOutlined } from '@ant-design/icons';
-import { Select } from 'antd';
+import { MdSearch } from 'react-icons/md';
+import { Select, Switch, Tooltip } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { Button, showToast } from '../shared';
+import { Button, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { Badge } from '../shared/ui/badge';
 import CustomTable from '../shared/ui/table';
+import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 import { RootState } from '../../redux/provider/store';
-import { useListUsersQuery } from '../../api/organization-service/Users/users';
+import {
+  OrgUser,
+  useDeactivateUserMutation,
+  useListUsersQuery,
+} from '../../api/organization-service/Users/users';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 const PAGE_SIZE = 20;
+// GET /v1/users has no search param (see the module docstring below) — while
+// actively searching this pulls one larger page instead of the normal 20 at
+// a time and filters it client-side, so a query at least covers this
+// tenant's whole roster rather than just whatever 20 rows the pager happened
+// to be on. 200 is the backend's own hard cap on `limit` (both the route
+// model and the repository enforce it), so this can't ask for more anyway.
+const SEARCH_PAGE_SIZE = 200;
 
 /** §"Users — Organization Directory": GET /v1/users. Tenant comes from the
  * caller's own session — no company/tenant selector, unlike the Super
  * Admin's Companies screen. Only what the real API supports: an
  * active/inactive filter and offset pagination — no server-side search,
  * sort, role filter, or "archived" tri-state (organization-service has
- * exactly one deactivated state, not a separate archive concept).
+ * exactly one deactivated state, not a separate archive concept). The search
+ * box is a client-side name/email filter over a 200-row page fetched for
+ * that purpose — see SEARCH_PAGE_SIZE above.
+ *
+ * The Status column's Switch is one-directional: it calls the real
+ * `DELETE /v1/users/{id}` (a reversible suspension, not a hard delete — see
+ * that route's own docstring) to turn an active user off, but there is no
+ * tenant-scoped `POST .../reactivate` here to turn one back on — that route
+ * only exists on organization-service's platform router, for a CareerForce
+ * Pro operator acting on a tenant's behalf (see UsersPanel.tsx, Super
+ * Admin's mirror of this screen, which has both directions). So a
+ * deactivated row's switch is disabled with a tooltip explaining that,
+ * rather than silently doing nothing or pretending to work.
  *
  * A section rendered inside the Users page (pages/OrganisationUserPage),
  * alongside CfpUsers — no MainLayout/page chrome of its own, the composing
@@ -31,11 +58,19 @@ const OrganisationUserTable = () => {
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
   const [includeInactive, setIncludeInactive] = useState<'active' | 'all'>('active');
   const [page, setPage] = useState(0);
+  const [searchText, setSearchText] = useState('');
+  const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
+  const canArchive = useHasAccess(Authorities.USER_ARCHIVE);
+
+  const isSearching = searchText.trim().length > 0;
 
   const { data, isLoading, error } = useListUsersQuery(
-    { includeInactive: includeInactive === 'all', limit: PAGE_SIZE, offset: page * PAGE_SIZE },
+    isSearching
+      ? { includeInactive: includeInactive === 'all', limit: SEARCH_PAGE_SIZE, offset: 0 }
+      : { includeInactive: includeInactive === 'all', limit: PAGE_SIZE, offset: page * PAGE_SIZE },
     { skip: !tenantId }
   );
+  const [deactivateUser, { isLoading: isDeactivating }] = useDeactivateUserMutation();
 
   useEffect(() => {
     if (error) {
@@ -43,9 +78,30 @@ const OrganisationUserTable = () => {
     }
   }, [error]);
 
+  const handleDeactivate = async () => {
+    if (!userToDeactivate) return;
+    try {
+      await deactivateUser(userToDeactivate.user_id).unwrap();
+      showToast({ message: `${userToDeactivate.full_name} was deactivated.`, type: 'success' });
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to deactivate user.'), type: 'error' });
+    } finally {
+      setUserToDeactivate(null);
+    }
+  };
+
   const users = data?.items || [];
   type UserRow = (typeof users)[number] & { key: string };
-  const dataSource: UserRow[] = users.map((user) => ({ ...user, key: user.user_id }));
+
+  const filteredUsers = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (user) => user.full_name.toLowerCase().includes(q) || user.email.toLowerCase().includes(q)
+    );
+  }, [users, searchText]);
+
+  const dataSource: UserRow[] = filteredUsers.map((user) => ({ ...user, key: user.user_id }));
 
   const columns: TableProps<UserRow>['columns'] = [
     {
@@ -84,9 +140,33 @@ const OrganisationUserTable = () => {
       title: 'Status',
       key: 'status',
       render: (_: unknown, user: UserRow) => (
-        <Badge status={user.is_active ? 'success' : 'neutral'}>
-          {user.is_active ? 'Active' : 'Deactivated'}
-        </Badge>
+        <div className="flex items-center gap-2.5">
+          <Tooltip
+            title={
+              !canArchive
+                ? "You don't have permission to change a user's status."
+                : user.is_active
+                  ? 'Deactivate this user'
+                  : // Deactivating is self-service (DELETE /v1/users/{id}), but
+                    // reactivating a user isn't exposed on this tenant-scoped
+                    // API yet — only a CareerForce Pro platform operator can
+                    // restore access (a separate, platform-only endpoint), so
+                    // this switch can only ever be turned off from here, never
+                    // back on.
+                    'Reactivating a user isn’t available from this screen yet — contact CareerForce Pro support.'
+            }
+          >
+            <Switch
+              size="small"
+              checked={user.is_active}
+              disabled={!canArchive || !user.is_active}
+              onChange={() => setUserToDeactivate(user)}
+            />
+          </Tooltip>
+          <Badge status={user.is_active ? 'success' : 'neutral'}>
+            {user.is_active ? 'Active' : 'Deactivated'}
+          </Badge>
+        </div>
       ),
     },
     {
@@ -114,7 +194,15 @@ const OrganisationUserTable = () => {
           </span>
           <h2 className="font-display text-xl font-bold text-gray-900">Users</h2>
         </div>
-        <div className="flex space-x-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="w-56">
+            <Input
+              prefix={<MdSearch className="text-gray-400" />}
+              placeholder="Search..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+          </div>
           <Select
             value={includeInactive}
             onChange={(value) => {
@@ -127,9 +215,12 @@ const OrganisationUserTable = () => {
               { label: 'Include deactivated', value: 'all' },
             ]}
           />
+          {/* Extra gap ahead of Add User specifically — it's the row's one
+              destructive-adjacent action-button among filter controls, and
+              sat too close to the dropdown beside it. */}
           <Button
             appname="add user"
-            className="text-white bg-primary-600 rounded-full px-5 py-2 flex items-center gap-1.5 text-sm font-semibold cfp-hover-lift"
+            className="text-white bg-primary-600 rounded-full px-5 py-2 flex items-center gap-1.5 text-sm font-semibold cfp-hover-lift ml-2"
             onClick={() => navigate('/add-organisation-users')}
           >
             <PlusOutlined className="text-sm" /> <span>ADD USER</span>
@@ -149,13 +240,35 @@ const OrganisationUserTable = () => {
         />
       </div>
 
-      <MasterPagination
-        current={page + 1}
-        pageSize={PAGE_SIZE}
-        total={data?.total || 0}
-        itemLabel="Users"
-        onPageChange={(p) => setPage(p - 1)}
-      />
+      {isSearching ? (
+        // Real offset pagination doesn't apply to a client-filtered page —
+        // this is however many of the (up to SEARCH_PAGE_SIZE) fetched rows
+        // matched, not a slice of a larger total.
+        <p className="px-2 py-3 text-sm text-gray-500">
+          {filteredUsers.length} {filteredUsers.length === 1 ? 'result' : 'results'} for &quot;
+          {searchText.trim()}&quot;
+          {users.length >= SEARCH_PAGE_SIZE &&
+            ` (searched the first ${SEARCH_PAGE_SIZE} users only)`}
+        </p>
+      ) : (
+        <MasterPagination
+          current={page + 1}
+          pageSize={PAGE_SIZE}
+          total={data?.total || 0}
+          itemLabel="Users"
+          onPageChange={(p) => setPage(p - 1)}
+        />
+      )}
+
+      {userToDeactivate && (
+        <ConfirmationModal
+          title={`Deactivate "${userToDeactivate.full_name}"? They'll immediately lose access.`}
+          confirmText="DEACTIVATE"
+          isLoading={isDeactivating}
+          onConfirm={handleDeactivate}
+          onClose={() => setUserToDeactivate(null)}
+        />
+      )}
     </div>
   );
 };

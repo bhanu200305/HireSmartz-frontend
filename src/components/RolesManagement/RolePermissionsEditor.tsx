@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { PermissionMatrix } from '../shared';
+import ReplicateToLocations from './ReplicateToLocations';
 import type { Authorities } from '../../constants/authorities.constant';
-import type { RoleLocationPermissions } from '../../types';
+import type { RoleLocationPermissions, RoleScope } from '../../types';
 
 export type LocationOption = { id: string; name: string };
 
@@ -9,6 +10,7 @@ type RolePermissionsEditorProps = {
   permissions: Authorities[];
   onPermissionsChange: (next: Authorities[]) => void;
   ceiling: Authorities[];
+  scope: RoleScope;
   locationOverrides: RoleLocationPermissions[];
   onLocationOverridesChange: (next: RoleLocationPermissions[]) => void;
   availableLocations: LocationOption[];
@@ -35,6 +37,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   permissions,
   onPermissionsChange,
   ceiling,
+  scope,
   locationOverrides,
   onLocationOverridesChange,
   availableLocations,
@@ -44,7 +47,12 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
 
   if (!showLocationOverrides) {
     return (
-      <PermissionMatrix value={permissions} onChange={onPermissionsChange} ceiling={ceiling} />
+      <PermissionMatrix
+        value={permissions}
+        onChange={onPermissionsChange}
+        ceiling={ceiling}
+        scope={scope}
+      />
     );
   }
 
@@ -79,6 +87,33 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
         override.locationId === locationId ? { ...override, permissions: next } : override
       )
     );
+  };
+
+  /** Copies `sourcePermissions` onto every location in `targetLocationIds` —
+   * an existing override there is overwritten in place, a location with no
+   * override yet gets a brand-new one. Used by "Replicate to locations" from
+   * both the Default baseline and any single location's own override. */
+  const replicateTo = (sourcePermissions: Authorities[], targetLocationIds: string[]) => {
+    const targetSet = new Set(targetLocationIds);
+    const existingIds = new Set(locationOverrides.map((override) => override.locationId));
+
+    const updated = locationOverrides.map((override) =>
+      targetSet.has(override.locationId)
+        ? { ...override, permissions: [...sourcePermissions] }
+        : override
+    );
+
+    const created: RoleLocationPermissions[] = targetLocationIds
+      .filter((id) => !existingIds.has(id))
+      .map((id) => availableLocations.find((location) => location.id === id))
+      .filter((location): location is LocationOption => Boolean(location))
+      .map((location) => ({
+        locationId: location.id,
+        locationName: location.name,
+        permissions: [...sourcePermissions],
+      }));
+
+    onLocationOverridesChange([...updated, ...created]);
   };
 
   return (
@@ -138,7 +173,22 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
       </div>
 
       {activeTab === DEFAULT_TAB && (
-        <PermissionMatrix value={permissions} onChange={onPermissionsChange} ceiling={ceiling} />
+        <div>
+          {availableLocations.length > 0 && (
+            <div className="flex justify-end mb-2">
+              <ReplicateToLocations
+                targets={availableLocations}
+                onReplicate={(ids) => replicateTo(permissions, ids)}
+              />
+            </div>
+          )}
+          <PermissionMatrix
+            value={permissions}
+            onChange={onPermissionsChange}
+            ceiling={ceiling}
+            scope={scope}
+          />
+        </div>
       )}
 
       {activeTab !== DEFAULT_TAB && activeLocation && !activeOverride && (
@@ -159,11 +209,17 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
 
       {activeTab !== DEFAULT_TAB && activeOverride && (
         <div>
-          <div className="flex items-center justify-end mb-2">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <ReplicateToLocations
+              targets={availableLocations.filter(
+                (location) => location.id !== activeOverride.locationId
+              )}
+              onReplicate={(ids) => replicateTo(activeOverride.permissions, ids)}
+            />
             <button
               type="button"
               onClick={() => removeOverride(activeOverride.locationId)}
-              className="text-xs font-semibold text-danger-text hover:underline cursor-pointer"
+              className="text-xs font-semibold text-danger-text hover:underline cursor-pointer whitespace-nowrap"
             >
               − Remove override (use Default instead)
             </button>
@@ -172,6 +228,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
             value={activeOverride.permissions}
             onChange={(next) => updateOverride(activeOverride.locationId, next)}
             ceiling={ceiling}
+            scope={scope}
           />
         </div>
       )}

@@ -1,12 +1,13 @@
 import React from 'react';
 import RolePermissionsEditor, { type LocationOption } from '../RolePermissionsEditor';
 import type { Authorities } from '../../../constants/authorities.constant';
-import type { RoleLocationPermissions } from '../../../types';
+import type { RoleLocationPermissions, RoleScope } from '../../../types';
 
 type PermissionsStepProps = {
   permissions: Authorities[];
   onPermissionsChange: (next: Authorities[]) => void;
   ceiling: Authorities[];
+  scope: RoleScope;
   locationOverrides: RoleLocationPermissions[];
   onLocationOverridesChange: (next: RoleLocationPermissions[]) => void;
   availableLocations: LocationOption[];
@@ -21,6 +22,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   permissions,
   onPermissionsChange,
   ceiling,
+  scope,
   locationOverrides,
   onLocationOverridesChange,
   availableLocations,
@@ -39,6 +41,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
       permissions={permissions}
       onPermissionsChange={onPermissionsChange}
       ceiling={ceiling}
+      scope={scope}
       locationOverrides={locationOverrides}
       onLocationOverridesChange={onLocationOverridesChange}
       availableLocations={availableLocations}

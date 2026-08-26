@@ -77,7 +77,20 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({
       onClose={onClose}
       title={`Edit permissions for "${role.roleName}"`}
       subtitle="Adjust this role's baseline permissions and location-specific overrides."
-      modalProps={{ width: 720 }}
+      modalProps={{
+        width: 760,
+        // Same overflow cap as CreateRoleModal's Step 2 — this renders the
+        // identical RolePermissionsEditor and can grow just as tall. Title
+        // and subtitle scroll along with it here (unlike CreateRoleModal's
+        // fixed gradient header, there's nothing else eating into the
+        // viewport budget), so this can safely cap a bit higher.
+        // `overflowX: 'hidden'` avoids the same stray-horizontal-scrollbar
+        // quirk documented in CreateRoleModal's own styles.body comment.
+        styles: {
+          body: { maxHeight: '76vh', overflowY: 'auto', overflowX: 'hidden', paddingRight: 14 },
+        },
+        classNames: { body: 'thin-scrollbar' },
+      }}
     >
       <div className="mb-5">
         <label htmlFor="editRoleName" className="block text-xs font-semibold text-gray-700 mb-1.5">
@@ -95,6 +108,7 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({
         permissions={permissions}
         onPermissionsChange={setPermissions}
         ceiling={ceiling}
+        scope={role.scope}
         locationOverrides={locationOverrides}
         onLocationOverridesChange={setLocationOverrides}
         availableLocations={availableLocations}
