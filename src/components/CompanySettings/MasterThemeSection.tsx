@@ -3,15 +3,25 @@ import { MdPalette } from 'react-icons/md';
 import { Button, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import EmailThemeColorFields from '../shared/ui/EmailThemeColorFields';
+import EmailLivePreviewPanel from '../shared/ui/EmailLivePreviewPanel';
 import {
   useGetMasterLayoutQuery,
   useSaveMasterLayoutMutation,
+  usePreviewMasterTemplateMutation,
 } from '../../api/notification-service/PlatformTemplateSettings/index';
 import {
   EmailThemeColors,
   THEME_COLOR_KEYS,
+  THEME_PREVIEW_SAMPLE_TYPE,
 } from '../../shared/utils/notifications/emailTheme';
 import { getNotifErrorMessage } from '../../shared/utils/auth/notifError.helpers';
+
+// `layout_name` (what master-layout GET/PUT key on, capitalized — "Corporate")
+// vs `PackKey` (what /preview's `pack_key` needs, lowercase — "corporate").
+// Two different wire vocabularies for the same three packs; this screen's
+// own `PACKS[].key` follows the layout_name one since that's what the rest
+// of it already calls, so /preview needs the one translation.
+const toPackKey = (layoutName: string): string => layoutName.toLowerCase();
 
 // `TemplatePack.layout_name` — a fixed, closed set (see migration
 // 0015_email_theme_colors's docstring); not a list this screen can add to.
@@ -99,7 +109,16 @@ const MasterThemeSection: React.FC = () => {
 
   const { data, isLoading } = useGetMasterLayoutQuery(activePack);
   const [saveLayout, { isLoading: isSaving }] = useSaveMasterLayoutMutation();
+  const [fetchPreview, { data: preview, isLoading: isPreviewLoading }] =
+    usePreviewMasterTemplateMutation();
   const [theme, setTheme] = useState<EmailThemeColors>({});
+
+  const refreshPreview = (layoutName: string) => {
+    void fetchPreview({
+      notificationType: THEME_PREVIEW_SAMPLE_TYPE,
+      packKey: toPackKey(layoutName),
+    });
+  };
 
   useEffect(() => {
     if (!data) return;
@@ -108,6 +127,8 @@ const MasterThemeSection: React.FC = () => {
       loaded[key] = data[key] ?? null;
     });
     setTheme(loaded);
+    refreshPreview(activePack);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const handleChange = (key: keyof EmailThemeColors, value: string) => {
@@ -127,6 +148,7 @@ const MasterThemeSection: React.FC = () => {
         },
       }).unwrap();
       showToast({ message: `${pack.label}'s default theme was updated.`, type: 'success' });
+      refreshPreview(activePack);
     } catch (err) {
       showToast({
         message: getNotifErrorMessage(err, 'Failed to save this pack.'),
@@ -173,25 +195,32 @@ const MasterThemeSection: React.FC = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <>
-          <EmailThemeColorFields
-            theme={theme}
-            fallback={pack.defaults}
-            onChange={handleChange}
-            disabled={isSaving}
-          />
-          <div className="mt-6 flex justify-end">
-            <Button
-              type="button"
-              appname="save master theme"
-              onClick={handleSave}
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="min-w-0 flex-1">
+            <EmailThemeColorFields
+              theme={theme}
+              fallback={pack.defaults}
+              onChange={handleChange}
               disabled={isSaving}
-              className="rounded-3xl bg-primary px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSaving ? 'Saving…' : `Save ${pack.label} defaults`}
-            </Button>
+            />
+            <div className="mt-6 flex justify-end">
+              <Button
+                type="button"
+                appname="save master theme"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="rounded-3xl bg-primary px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSaving ? 'Saving…' : `Save ${pack.label} defaults`}
+              </Button>
+            </div>
           </div>
-        </>
+          <EmailLivePreviewPanel
+            isLoading={isPreviewLoading}
+            preview={preview}
+            onRefresh={() => refreshPreview(activePack)}
+          />
+        </div>
       )}
     </section>
   );

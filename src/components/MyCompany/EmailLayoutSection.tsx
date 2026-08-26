@@ -14,6 +14,7 @@ import {
   SaveLayoutRequest,
 } from '../../api/notification-service/TemplateSettings/index';
 import {
+  useGetTenantProfileQuery,
   useRequestTenantEmailBannerUploadMutation,
   useUpdateTenantProfileMutation,
   uploadTenantAssetFile,
@@ -69,18 +70,15 @@ const CORPORATE_DEFAULTS: Required<EmailThemeColors> = {
  * client-reconstructed guess. It reflects the last SAVE, not unsaved
  * keystrokes — refreshed automatically right after a successful save.
  *
- * KNOWN GAP: `GET /tenants/{id}/profile` does not yet return
- * `email_banner_url` (only `GET /tenants/{id}/branding`, notification-
- * service's own internal read, does) — so a banner uploaded in a PREVIOUS
- * session can't be shown back here on reload. This session's own upload
- * still previews correctly (`URL.createObjectURL`), and the Live Preview
- * panel on the right always reflects the true saved banner regardless.
- * Needs a small backend addition (`TenantProfileView.email_banner_url`) to
- * close.
+ * The banner preview shown here loads from `TenantProfile.email_banner_url`
+ * (now resolved on `GET /tenants/{id}/profile`, the same way `logo_url`
+ * already is) — so a banner uploaded in a PREVIOUS session shows correctly
+ * on reload, not just the one just picked this session.
  */
 const EmailLayoutSection: React.FC = () => {
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
   const { data, isLoading } = useGetTemplateLayoutQuery();
+  const { data: profile } = useGetTenantProfileQuery(tenantId ?? '', { skip: !tenantId });
   const [saveLayout, { isLoading: isSaving }] = useSaveTemplateLayoutMutation();
   const [revertLayout, { isLoading: isReverting }] = useRevertTemplateLayoutMutation();
   const [requestBannerUpload, { isLoading: isRequestingUpload }] =
@@ -116,6 +114,17 @@ const EmailLayoutSection: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  useEffect(() => {
+    // Only from the server, and only while nothing picked THIS session
+    // stands in front of it — `handleBannerPick` is the only other writer
+    // of `bannerUrl`, and a freshly-chosen file must never be clobbered by
+    // a slower profile refetch landing after it.
+    if (profile?.email_banner_url && !bannerFile) {
+      setBannerUrl(profile.email_banner_url);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.email_banner_url]);
 
   const isBusy = isSaving || isReverting || isRequestingUpload || isSavingBanner;
 

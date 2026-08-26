@@ -4,14 +4,17 @@ import { MdOutlineSearch } from 'react-icons/md';
 import { Button, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import EmailThemeColorFields from '../shared/ui/EmailThemeColorFields';
+import EmailLivePreviewPanel from '../shared/ui/EmailLivePreviewPanel';
 import { useListPlatformTenantsQuery } from '../../api/organization-service/Platform/tenants';
 import {
   useGetTenantLayoutQuery,
   useSaveTenantLayoutAsPlatformMutation,
+  usePreviewTenantTemplateAsPlatformMutation,
 } from '../../api/notification-service/PlatformTemplateSettings/index';
 import {
   EmailThemeColors,
   THEME_COLOR_KEYS,
+  THEME_PREVIEW_SAMPLE_TYPE,
 } from '../../shared/utils/notifications/emailTheme';
 import { getNotifErrorMessage } from '../../shared/utils/auth/notifError.helpers';
 
@@ -63,6 +66,16 @@ const CompanyThemeSection: React.FC = () => {
     skip: !selectedTenantId,
   });
   const [saveLayout, { isLoading: isSaving }] = useSaveTenantLayoutAsPlatformMutation();
+  const [fetchPreview, { data: preview, isLoading: isPreviewLoading }] =
+    usePreviewTenantTemplateAsPlatformMutation();
+
+  const refreshPreview = () => {
+    if (!selectedTenantId) return;
+    void fetchPreview({
+      tenantId: selectedTenantId,
+      body: { notification_type: THEME_PREVIEW_SAMPLE_TYPE },
+    });
+  };
 
   useEffect(() => {
     if (!data) return;
@@ -71,6 +84,8 @@ const CompanyThemeSection: React.FC = () => {
       loaded[key] = data[key] ?? null;
     });
     setTheme(loaded);
+    refreshPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const handleChange = (key: keyof EmailThemeColors, value: string) => {
@@ -82,6 +97,7 @@ const CompanyThemeSection: React.FC = () => {
     try {
       await saveLayout({ tenantId: selectedTenantId, body: theme }).unwrap();
       showToast({ message: "This company's theme was updated.", type: 'success' });
+      refreshPreview();
     } catch (err) {
       showToast({
         message: getNotifErrorMessage(err, 'Failed to save this theme.'),
@@ -128,25 +144,32 @@ const CompanyThemeSection: React.FC = () => {
           {isLoading ? (
             <Loader />
           ) : (
-            <>
-              <EmailThemeColorFields
-                theme={theme}
-                fallback={CORPORATE_DEFAULTS}
-                onChange={handleChange}
-                disabled={isSaving}
-              />
-              <div className="mt-6 flex justify-end">
-                <Button
-                  type="button"
-                  appname="save company theme"
-                  onClick={handleSave}
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+              <div className="min-w-0 flex-1">
+                <EmailThemeColorFields
+                  theme={theme}
+                  fallback={CORPORATE_DEFAULTS}
+                  onChange={handleChange}
                   disabled={isSaving}
-                  className="rounded-3xl bg-primary px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isSaving ? 'Saving…' : 'Save'}
-                </Button>
+                />
+                <div className="mt-6 flex justify-end">
+                  <Button
+                    type="button"
+                    appname="save company theme"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="rounded-3xl bg-primary px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSaving ? 'Saving…' : 'Save'}
+                  </Button>
+                </div>
               </div>
-            </>
+              <EmailLivePreviewPanel
+                isLoading={isPreviewLoading}
+                preview={preview}
+                onRefresh={refreshPreview}
+              />
+            </div>
           )}
         </div>
       )}

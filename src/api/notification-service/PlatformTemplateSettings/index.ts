@@ -1,5 +1,11 @@
 import { notifApi } from '../notifApi';
-import type { TemplateOverride, TemplateLayout, SaveLayoutRequest } from '../TemplateSettings/index';
+import type {
+  TemplateOverride,
+  TemplateLayout,
+  SaveLayoutRequest,
+  TemplatePreview,
+  PreviewTemplateRequest,
+} from '../TemplateSettings/index';
 
 /**
  * Super Admin's template management — `/v1/platform/template-settings/*`,
@@ -35,6 +41,28 @@ export interface MasterSmsTemplateListView {
 export interface SaveMasterTemplateRequest {
   subject: string;
   html_body: string;
+}
+
+export interface ImpactedTenant {
+  tenant_id: string;
+  tenant_name: string;
+}
+
+export interface PushResult {
+  total_affected: number;
+  notification_types: string[];
+}
+
+export interface PushTemplatesToTenantsView {
+  requires_confirmation: boolean;
+  impacted_tenants: ImpactedTenant[];
+  push_result: PushResult | null;
+}
+
+export interface PushTemplatesToTenantsArgs {
+  tenantIds: string[];
+  performChanges: boolean;
+  confirmed: boolean;
 }
 
 export interface SaveMasterSmsTemplateRequest {
@@ -162,6 +190,55 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
         { type: 'PlatformTenantLayout', id: tenantId },
       ],
     }),
+
+    // `POST /v1/platform/template-settings/preview` — the third point on the
+    // same preview axis: no tenant at all, just a pack's platform-default
+    // theme. `pack_key` is required here (unlike the tenant-scoped siblings)
+    // since there's no tenant's "current pack" to fall back to.
+    previewMasterTemplate: build.mutation<
+      TemplatePreview,
+      { notificationType: string; packKey: string }
+    >({
+      query: ({ notificationType, packKey }) => ({
+        url: '/v1/platform/template-settings/preview',
+        method: 'POST',
+        body: { notification_type: notificationType, pack_key: packKey },
+      }),
+    }),
+
+    // `POST /v1/platform/template-settings/tenants/push` — bulk-revert every
+    // tenant-editable email type for several tenants at once, back to the
+    // platform default. Two-step: call with performChanges=false first to
+    // find out which tenants hold customisations that would be lost, then
+    // again with performChanges=true (and confirmed=true if any were found).
+    pushTemplatesToTenants: build.mutation<PushTemplatesToTenantsView, PushTemplatesToTenantsArgs>({
+      query: ({ tenantIds, performChanges, confirmed }) => ({
+        url: '/v1/platform/template-settings/tenants/push',
+        method: 'POST',
+        body: {
+          tenant_ids: tenantIds,
+          perform_changes: performChanges,
+          confirmed,
+        },
+      }),
+      invalidatesTags: ['PlatformTenantOverrides'],
+    }),
+
+    // `POST /v1/platform/template-settings/tenants/{tenant_id}/preview` —
+    // sibling to the tenant's own `/template-settings/preview`, binding the
+    // tenant explicitly from the path since a platform operator has none of
+    // their own. Same doc-template-first rendering, so this reflects that
+    // company's real saved copy, colors and banner.
+    previewTenantTemplateAsPlatform: build.mutation<
+      TemplatePreview,
+      { tenantId: string; body: PreviewTemplateRequest }
+    >({
+      query: ({ tenantId, body }) => ({
+        url: `/v1/platform/template-settings/tenants/${tenantId}/preview`,
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -178,4 +255,7 @@ export const {
   useSaveMasterLayoutMutation,
   useGetTenantLayoutQuery,
   useSaveTenantLayoutAsPlatformMutation,
+  usePreviewTenantTemplateAsPlatformMutation,
+  usePushTemplatesToTenantsMutation,
+  usePreviewMasterTemplateMutation,
 } = platformTemplateSettingsApi;

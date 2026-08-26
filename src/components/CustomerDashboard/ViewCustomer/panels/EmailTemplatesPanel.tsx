@@ -2,15 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { Badge, Typography, Button, showToast } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import EmailThemeColorFields from '../../../shared/ui/EmailThemeColorFields';
+import EmailLivePreviewPanel from '../../../shared/ui/EmailLivePreviewPanel';
 import {
   useListPlatformTenantOverridesQuery,
   useGetTenantLayoutQuery,
   useSaveTenantLayoutAsPlatformMutation,
+  usePreviewTenantTemplateAsPlatformMutation,
 } from '../../../../api/notification-service/PlatformTemplateSettings/index';
 import type { TemplateOverride } from '../../../../api/notification-service/TemplateSettings/index';
 import {
   EmailThemeColors,
   THEME_COLOR_KEYS,
+  THEME_PREVIEW_SAMPLE_TYPE,
 } from '../../../../shared/utils/notifications/emailTheme';
 import { getNotifErrorMessage } from '../../../../shared/utils/auth/notifError.helpers';
 import PlatformEmailTemplateOverrideModal from './PlatformEmailTemplateOverrideModal';
@@ -47,7 +50,13 @@ const CORPORATE_DEFAULTS: Required<EmailThemeColors> = {
 const TenantThemeSection: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useGetTenantLayoutQuery(tenantId);
   const [saveLayout, { isLoading: isSaving }] = useSaveTenantLayoutAsPlatformMutation();
+  const [fetchPreview, { data: preview, isLoading: isPreviewLoading }] =
+    usePreviewTenantTemplateAsPlatformMutation();
   const [theme, setTheme] = useState<EmailThemeColors>({});
+
+  const refreshPreview = () => {
+    void fetchPreview({ tenantId, body: { notification_type: THEME_PREVIEW_SAMPLE_TYPE } });
+  };
 
   useEffect(() => {
     if (!data) return;
@@ -56,6 +65,8 @@ const TenantThemeSection: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       loaded[key] = data[key] ?? null;
     });
     setTheme(loaded);
+    refreshPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   if (isLoading) {
@@ -70,6 +81,7 @@ const TenantThemeSection: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     try {
       await saveLayout({ tenantId, body: theme }).unwrap();
       showToast({ message: "This company's theme was updated.", type: 'success' });
+      refreshPreview();
     } catch (err) {
       showToast({
         message: getNotifErrorMessage(err, 'Failed to save this theme.'),
@@ -100,12 +112,21 @@ const TenantThemeSection: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           {isSaving ? 'Saving…' : 'Save'}
         </Button>
       </div>
-      <EmailThemeColorFields
-        theme={theme}
-        fallback={CORPORATE_DEFAULTS}
-        onChange={handleChange}
-        disabled={isSaving}
-      />
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1">
+          <EmailThemeColorFields
+            theme={theme}
+            fallback={CORPORATE_DEFAULTS}
+            onChange={handleChange}
+            disabled={isSaving}
+          />
+        </div>
+        <EmailLivePreviewPanel
+          isLoading={isPreviewLoading}
+          preview={preview}
+          onRefresh={refreshPreview}
+        />
+      </div>
     </section>
   );
 };
