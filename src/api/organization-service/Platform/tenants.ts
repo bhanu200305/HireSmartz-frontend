@@ -30,6 +30,19 @@ export type ListPlatformTenantsResponse = {
   total: number;
 };
 
+// GET /v1/platform/tenants/{tenant_id}/dashboard — same
+// TenantDashboardSummaryView as the tenant-scoped `/v1/tenants/{tenant_id}
+// /dashboard` (Tenants/profile.ts's `getTenantDashboard`), just reachable
+// for ANY tenant under `require_platform_permission` instead of
+// `require_own_tenant`. `open_job_count` here is job-service's real count
+// (org-service proxies it internally) — not a placeholder.
+export type PlatformTenantDashboard = {
+  team_size: number;
+  pending_invite_count: number;
+  /** `null` means job-service didn't answer — render "not available", never 0. */
+  open_job_count: number | null;
+};
+
 export type PlatformEntitlements = {
   is_culture_intro_enabled: boolean;
   is_config_score_enabled: boolean;
@@ -72,6 +85,10 @@ const extendedApi = orgApi.injectEndpoints({
       query: (tenantId) => `/v1/platform/tenants/${tenantId}`,
       providesTags: (_result, _error, tenantId) => [{ type: 'PlatformTenants', id: tenantId }],
     }),
+    getPlatformTenantDashboard: build.query<PlatformTenantDashboard, string>({
+      query: (tenantId) => `/v1/platform/tenants/${tenantId}/dashboard`,
+      providesTags: (_result, _error, tenantId) => [{ type: 'PlatformTenants', id: tenantId }],
+    }),
     getPlatformTenantEntitlements: build.query<PlatformEntitlements, string>({
       query: (tenantId) => `/v1/platform/tenants/${tenantId}/entitlements`,
       providesTags: (_result, _error, tenantId) => [
@@ -98,6 +115,7 @@ const extendedApi = orgApi.injectEndpoints({
 export const {
   useListPlatformTenantsQuery,
   useGetPlatformTenantQuery,
+  useGetPlatformTenantDashboardQuery,
   useGetPlatformTenantEntitlementsQuery,
   useUpdatePlatformTenantEntitlementsMutation,
 } = extendedApi;

@@ -1,60 +1,20 @@
 import { useEffect, useState } from 'react';
 import MainLayout from '../../layouts/MainLayout';
-import customerImage from '../../assets/svgs/customers.svg';
-import { cfpCustomersHeaders } from '../../constants/dashboardConstants';
-import { useNavigate } from 'react-router-dom';
-import CustomerTable from './CustomerTable';
 import InterviewDashboard from './InterviewDashboard';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import RevenueGenerated from './RevenueGenerated';
 import UpcomingRevenue from './UpcomingRevenue';
-import useFetchRoles from '../../hooks/useRoles';
-import { useCFPDashboardQuery } from '../../api/analytics-service/Dashboard/CFPDashboard';
-
-import { setcfpDashboardFilters } from '../../redux/slices/CFPDashboardFilterSlice';
 import { useInterviewSummaryDashboardMutation } from '../../api/job-service/Dashboard/JobOpening';
-import { StatusFilters } from '../shared/ui/tableHeadbar';
 import DashboardCarousel, { DashboardSlide } from './DashboardCarousel';
 import { BankOutlined, AuditOutlined, DollarOutlined, RiseOutlined } from '@ant-design/icons';
+import { MdOutlineInsights } from 'react-icons/md';
+import PlatformOverviewSlide from './PlatformOverviewSlide';
+import HiringOverviewSlide from './HiringOverviewSlide';
+import TenantsPreviewCard from './TenantsPreviewCard';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const filters = useSelector((state: RootState) => state.cfpDashboardFiltersSlice);
-  const { role } = useSelector((state: RootState) => state.LoginSlice);
-  const { roles } = useFetchRoles();
-
-  const matchedRole = (roles as any)?.data?.find(
-    (r: any) => r.roleName.toLowerCase() === role?.name?.toLowerCase()
-  );
-
-  const { data: dashboardData } = useCFPDashboardQuery(
-    {
-      page: filters.page,
-      pageSize: filters.size,
-      value: {
-        roleTypeMappingId: matchedRole?.id || 0,
-        searchQuery: filters.searchQuery,
-        status: filters.status,
-        isArchived: filters.isArchived,
-        startDateTime: filters.startDateTime,
-        endDateTime: filters.endDateTime,
-      },
-    },
-    { skip: !matchedRole?.id, refetchOnMountOrArgChange: true }
-  );
-  const cfpuserCount = dashboardData?.totalElements || 0;
-
-  const handleStatusChange = (filters: StatusFilters) => {
-    dispatch(
-      setcfpDashboardFilters({
-        ...filters,
-        status: filters.status,
-        page: 0,
-      })
-    );
-  };
+  const { role, tenantId } = useSelector((state: RootState) => state.LoginSlice);
 
   // Interview Dashboard
   const [fetchInterviewData, { data: interviewData, isLoading }] =
@@ -91,26 +51,31 @@ const Dashboard = () => {
 
   const canViewRevenue = role.name !== 'Admin' && role.name !== 'User';
 
+  // A no-tenant caller is platform staff (Super Admin/internal) — same test
+  // `CustomerPage`/`CompanyMetrics` already use to tell the two apart. Each
+  // sees their own top-line KPI slide first, before the existing
+  // CFP-company/interview/revenue slides.
+  const overviewSlide: DashboardSlide = tenantId
+    ? {
+        key: 'hiring-overview',
+        label: 'Hiring Overview',
+        icon: <MdOutlineInsights />,
+        content: <HiringOverviewSlide fillHeight />,
+      }
+    : {
+        key: 'platform-overview',
+        label: 'Platform Overview',
+        icon: <MdOutlineInsights />,
+        content: <PlatformOverviewSlide fillHeight />,
+      };
+
   const slides: DashboardSlide[] = [
+    overviewSlide,
     {
       key: 'cfp-company',
       label: 'CFP Company',
       icon: <BankOutlined />,
-      content: (
-        <CustomerTable
-          headers={cfpCustomersHeaders}
-          title="CFP Company"
-          role={role.type}
-          data={dashboardData}
-          icon={customerImage}
-          onStatusChange={handleStatusChange}
-          count={cfpuserCount < 5 ? cfpuserCount : 5}
-          onViewAll={() => navigate('/company')}
-          onTitleClick={() => navigate('/company')}
-          onIconClick={() => navigate('/company')}
-          fillHeight
-        />
-      ),
+      content: <TenantsPreviewCard fillHeight />,
     },
     {
       key: 'interviews',

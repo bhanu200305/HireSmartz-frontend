@@ -11,6 +11,7 @@ export type TenantProfile = {
   industry_id: string | null;
   admin_contact: string | null;
   logo_url: string | null;
+  email_banner_url: string | null;
   colors: string[];
   description: string | null;
   culture_intro: string | null;

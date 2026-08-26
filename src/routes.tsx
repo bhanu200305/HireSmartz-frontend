@@ -101,6 +101,7 @@ const EditInterviewRoundPage = lazy(() => import('./pages/EditInterviewRoundPage
 const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 const InterviewLiveKit = lazy(() => import('./components/Interview/InterviewLiveKit'));
 const MyCompanyPage = lazy(() => import('./pages/MyCompanyPage'));
+const CompanyMetricsPage = lazy(() => import('./pages/CompanyMetricsPage'));
 const CompanySettingsPage = lazy(() => import('./pages/CompanySettingsPage'));
 const PlatformAuditPage = lazy(() => import('./pages/PlatformAuditPage'));
 const PlatformMetricsPage = lazy(() => import('./pages/PlatformMetricsPage'));
@@ -323,6 +324,11 @@ export const Routes: RouteType[] = [
     name: 'MyCompany',
     path: '/my-company',
     component: MyCompanyPage,
+  },
+  {
+    name: 'CompanyMetrics',
+    path: '/company-metrics',
+    component: CompanyMetricsPage,
   },
   {
     name: 'Finances',

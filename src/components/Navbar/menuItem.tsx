@@ -61,6 +61,18 @@ const MenuItems = [
     requiredAuthority: Authorities.COMPANY_SETTINGS_VIEW,
   },
   {
+    // Company Admin's own equivalent of the Super Admin's "Platform
+    // Metrics" — same permission as "Company" above (both are this same
+    // tenant's own management area), and same Sidebar tenantId guard for
+    // the same reason: a platform caller's static permission set happens
+    // to include COMPANY_SETTINGS_VIEW too, but this page has nowhere to
+    // go for them (CompanyMetrics redirects home with no tenant of its own).
+    name: 'Company Metrics',
+    icon: <MdOutlineInsights size={18} />,
+    path: ['/company-metrics'],
+    requiredAuthority: Authorities.COMPANY_SETTINGS_VIEW,
+  },
+  {
     name: 'Company Settings',
     icon: <FiSettings size={18} />,
     path: ['/company-settings'],

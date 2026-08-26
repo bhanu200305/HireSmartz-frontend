@@ -27,6 +27,8 @@ import { TeamOutlined, UserOutlined, AuditOutlined, SolutionOutlined } from '@an
 import { LuSquareActivity } from 'react-icons/lu';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
+import { MdOutlineInsights } from 'react-icons/md';
+import HiringOverviewSlide from '../Dashboard/HiringOverviewSlide';
 
 const OwnerDashboard = () => {
   const navigate = useNavigate();
@@ -200,7 +202,22 @@ const OwnerDashboard = () => {
     return 'Good evening';
   })();
 
+  // Job openings, applications and interviews together — shown to anyone
+  // who can see at least one of those, same permission-per-slide pattern
+  // every other entry in this array already follows.
+  const canViewHiringOverview = canViewJobOpenings || canViewOrgStats || canViewInterviews;
+
   const slides: DashboardSlide[] = [
+    ...(canViewHiringOverview
+      ? [
+          {
+            key: 'hiring-overview',
+            label: 'Hiring Overview',
+            icon: <MdOutlineInsights />,
+            content: <HiringOverviewSlide fillHeight />,
+          },
+        ]
+      : []),
     ...(canViewOrgStats
       ? [
           {

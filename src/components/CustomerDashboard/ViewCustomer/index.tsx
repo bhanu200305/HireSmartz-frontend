@@ -36,6 +36,7 @@ import {
   LOGO_FILE_TYPE_ERROR_MESSAGE,
 } from '../../../constants/file.constants';
 import EntitlementsPanel from './EntitlementsPanel';
+import MetricsPanel from './panels/MetricsPanel';
 import CompanyProfilePanel from './panels/CompanyProfilePanel';
 import LocationsPanel from './panels/LocationsPanel';
 import DepartmentsPanel from './panels/DepartmentsPanel';
@@ -191,6 +192,7 @@ const ViewCustomer = () => {
   if (!tenant) return <div className="p-8 text-gray-500">Company not found.</div>;
 
   const items = [
+    { key: '0', label: 'Metrics', children: <MetricsPanel tenantId={tenantId} /> },
     { key: '1', label: 'Company Details', children: <CompanyProfilePanel tenantId={tenantId} /> },
     { key: '2', label: 'Locations', children: <LocationsPanel tenantId={tenantId} /> },
     { key: '3', label: 'Departments', children: <DepartmentsPanel tenantId={tenantId} /> },

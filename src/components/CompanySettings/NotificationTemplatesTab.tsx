@@ -6,14 +6,16 @@ import {
   MdOutlineNotifications,
   MdPalette,
   MdOutlineBusiness,
+  MdRestartAlt,
 } from 'react-icons/md';
 import MasterEmailTemplatesSection from './MasterEmailTemplatesSection';
 import MasterSmsTemplatesSection from './MasterSmsTemplatesSection';
 import TenantOverrideSection from './TenantOverrideSection';
 import MasterThemeSection from './MasterThemeSection';
 import CompanyThemeSection from './CompanyThemeSection';
+import PushTemplatesTab from './PushTemplatesTab';
 
-type SectionKey = 'email' | 'theme' | 'companyTheme' | 'sms' | 'overrides';
+type SectionKey = 'email' | 'theme' | 'companyTheme' | 'sms' | 'overrides' | 'bulkRevert';
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: 'email', label: 'Email defaults', icon: <MdEmail size={16} /> },
@@ -21,15 +23,14 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: 'companyTheme', label: 'Company theme', icon: <MdOutlineBusiness size={16} /> },
   { key: 'sms', label: 'SMS defaults', icon: <MdSms size={16} /> },
   { key: 'overrides', label: 'Tenant overrides', icon: <MdSwapHoriz size={16} /> },
+  { key: 'bulkRevert', label: 'Bulk revert', icon: <MdRestartAlt size={16} /> },
 ];
 
 /**
  * Super Admin's notification-service template management —
- * `/v1/platform/template-settings/*`. Deliberately a SEPARATE tab from the
- * existing "Email Templates Config" / "SMS Templates" tabs on this page,
- * which manage a different, unrelated feature (candidate-facing recruiting
- * email/SMS branding, not this platform's system notification catalogue —
- * see this integration's notes for why those two were left untouched).
+ * `/v1/platform/template-settings/*`. "SMS Templates" (the sibling tab on
+ * this page) manages a different, unrelated feature — candidate-facing
+ * per-interview-round SMS copy, its own separate backend — left untouched.
  *
  * Used to stack all three sections vertically, each rendering its own full
  * list — with enough notification types (and, for overrides, enough
@@ -86,6 +87,7 @@ const NotificationTemplatesTab: React.FC = () => {
       {active === 'companyTheme' && <CompanyThemeSection />}
       {active === 'sms' && <MasterSmsTemplatesSection />}
       {active === 'overrides' && <TenantOverrideSection />}
+      {active === 'bulkRevert' && <PushTemplatesTab />}
     </div>
   );
 };

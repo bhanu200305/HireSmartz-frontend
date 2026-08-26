@@ -10,13 +10,9 @@ export const inviteTeamMemberSchema = z.object({
   // picker exists yet; the backend resolves it by name, auto-creating if
   // new — see InviteTenantUserInput.designation).
   designation: z.string().optional(),
-  // InviteTenantUserRequest's `role` is `Literal["recruiter",
-  // "hiring_manager"]` — the only two roles this endpoint (or the bulk
-  // roster import) will accept; `company_admin` and `interviewer` 422
-  // immediately (see requests.py). A Company Admin invite goes through a
-  // separate flow (ADMIN_ROLE_REQUIRES_INVITE), and there's no self-serve
-  // interviewer invite at all yet.
-  role: z.enum(['hiring_manager', 'recruiter'], {
+  // InviteTenantUserRequest's `role` is every tenant-invitable SystemRole —
+  // company_admin, hiring_manager, recruiter, interviewer (see requests.py).
+  role: z.enum(['company_admin', 'hiring_manager', 'recruiter', 'interviewer'], {
     errorMap: () => ({ message: 'Role is required.' }),
   }),
 });

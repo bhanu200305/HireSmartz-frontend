@@ -608,3 +608,24 @@ select:focus {
   min-height: 200px;
   border-radius: 24px !important;
 }
+
+/* Slim scrollbar for scrollable modal bodies (AntdCommonModal's
+   `classNames.body`) — some Windows/Chrome configurations render the
+   default scrollbar as a wide overlay that sits on top of the last column
+   of content instead of reserving its own track space, reading as an
+   overlap. A fixed, narrow track avoids that regardless of OS scrollbar
+   settings. */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--gray-300);
+  border-radius: 999px;
+}

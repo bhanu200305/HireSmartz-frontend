@@ -2,11 +2,15 @@ import CompanyMetrics from '../../components/CompanyMetrics';
 import RequirePermission from '../../components/RequirePermission';
 import { Authorities } from '../../constants/authorities.constant';
 
-// Same frontend-only visibility flag as the "Company" (MyCompany) nav item —
-// this is that same tenant's own management area, just the metrics view of
-// it, not a new backend-checked permission.
+// COMPANY_SETTINGS_VIEW ('organization:read'), not MY_COMPANY_VIEW — that
+// flag has no real backend permission behind it (see its own "No backend
+// permission" comment in authorities.constant.ts), so the real
+// GET /v1/roles/users/{id}/permissions call can never return it and this
+// page would redirect home for every real login. Same fix already applied
+// to the "Company" (MyCompany) nav item and MyCompanyPage's own gate — this
+// is that same tenant's own management area, just the metrics view of it.
 const CompanyMetricsPage = () => (
-  <RequirePermission permission={Authorities.MY_COMPANY_VIEW}>
+  <RequirePermission permission={Authorities.COMPANY_SETTINGS_VIEW}>
     <CompanyMetrics />
   </RequirePermission>
 );

@@ -45,8 +45,8 @@ const PlainTextEmailBodyEditor: React.FC<PlainTextEmailBodyEditorProps> = ({
           Body (HTML — without header/footer, those come from the layout)
         </p>
         <p className="mb-2 text-xs text-amber-600">
-          This template&apos;s content doesn&apos;t match the usual shape, so it&apos;s shown as
-          raw HTML rather than plain text.
+          This template&apos;s content doesn&apos;t match the usual shape, so it&apos;s shown as raw
+          HTML rather than plain text.
         </p>
         <TextArea
           value={htmlBody}

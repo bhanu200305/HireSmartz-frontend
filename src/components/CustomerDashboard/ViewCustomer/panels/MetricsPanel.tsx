@@ -1,0 +1,115 @@
+import React from 'react';
+import {
+  MdOutlineGroups,
+  MdOutlineWorkOutline,
+  MdOutlineDescription,
+  MdOutlineEventAvailable,
+} from 'react-icons/md';
+import { StatCardRow, ChartCard } from '../../../shared';
+import type { StatCardData } from '../../../shared';
+import { useGetPlatformTenantDashboardQuery } from '../../../../api/organization-service/Platform/tenants';
+
+const COMING_SOON = 'Coming soon — needs a platform-scoped job-service/candidate-service endpoint.';
+
+/**
+ * 1.5 Tenants — the analytics popup for one company, Super Admin side.
+ * Active users and Open jobs are real (`GET /v1/platform/tenants/{tenant_id}
+ * /dashboard`, same summary org-service already exposes tenant-side, just
+ * reachable for any tenant here). Everything else the dashboard-inventory
+ * doc lists for this popup — Total applications, Applications over time,
+ * Jobs by status, Hiring funnel, Interviews by Status & Type, Completed
+ * interviews, AI score distribution — needs a cross-tenant read of
+ * job-service/candidate-service that doesn't exist yet: both services scope
+ * their stats endpoints to the caller's own tenant via RLS, with no
+ * platform-proxied "read tenant X's stats" route the way tenants/job-stats
+ * has. Shown honestly as "coming soon" rather than faked.
+ */
+const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
+  const { data, isLoading } = useGetPlatformTenantDashboardQuery(tenantId);
+
+  const cards: StatCardData[] = [
+    {
+      icon: <MdOutlineGroups />,
+      variant: 'neutral',
+      label: 'Active users',
+      value: isLoading ? undefined : data?.team_size?.toLocaleString(),
+    },
+    {
+      icon: <MdOutlineWorkOutline />,
+      variant: 'blue',
+      label: 'Open jobs',
+      value: isLoading ? undefined : (data?.open_job_count?.toLocaleString() ?? null),
+    },
+    {
+      icon: <MdOutlineDescription />,
+      variant: 'green',
+      label: 'Total applications',
+      value: null,
+      footer: <p className="text-[11px] text-neutral-400">{COMING_SOON}</p>,
+    },
+    {
+      icon: <MdOutlineEventAvailable />,
+      variant: 'orange',
+      label: 'Completed interviews',
+      value: null,
+      footer: <p className="text-[11px] text-neutral-400">{COMING_SOON}</p>,
+    },
+  ];
+
+  return (
+    <div className="p-4">
+      <StatCardRow cards={cards} columns={4} className="mb-4" />
+
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        <ChartCard
+          title="Applications over time"
+          subtitle="Weekly application volume and recruitment activity"
+          typeTag="Line"
+          available={false}
+          unavailableLabel={COMING_SOON}
+        >
+          <div />
+        </ChartCard>
+        <ChartCard
+          title="Jobs by status"
+          subtitle="Open, closed and draft jobs for this tenant"
+          typeTag="Donut"
+          available={false}
+          unavailableLabel={COMING_SOON}
+        >
+          <div />
+        </ChartCard>
+        <ChartCard
+          title="Hiring funnel"
+          subtitle="Applied → Audio Round → AI Interview → Panel Interview → Selected / Rejected"
+          typeTag="Funnel"
+          span={2}
+          available={false}
+          unavailableLabel={COMING_SOON}
+        >
+          <div />
+        </ChartCard>
+        <ChartCard
+          title="Interviews by Status & Type"
+          subtitle="Scheduled / Completed / Cancelled, by Audio Round, AI Interview & Panel Interview"
+          typeTag="Grouped bar"
+          available={false}
+          unavailableLabel={COMING_SOON}
+        >
+          <div />
+        </ChartCard>
+        <ChartCard
+          title="AI score distribution"
+          subtitle="Candidates grouped by resume-score band"
+          typeTag="Bar"
+          available={false}
+          unavailableLabel="Coming soon — no scoring-distribution endpoint yet."
+        >
+          <div />
+        </ChartCard>
+      </div>
+    </div>
+  );
+};
+
+export default MetricsPanel;

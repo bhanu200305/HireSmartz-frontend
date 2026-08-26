@@ -18,12 +18,13 @@ type InviteTeamMemberModalProps = {
   onInvited: () => void;
 };
 
-// The only 2 roles POST /v1/tenants/{id}/users/invitations accepts — see
-// InviteTeamMemberSchema.ts. Company Admin and Interviewer aren't invitable
-// through this form.
+// Every tenant-invitable SystemRole POST /v1/tenants/{id}/users/invitations
+// accepts — see InviteTeamMemberSchema.ts.
 const ROLE_OPTIONS = [
+  { label: 'Company Admin', value: 'company_admin' },
   { label: 'Hiring Manager', value: 'hiring_manager' },
   { label: 'Recruiter', value: 'recruiter' },
+  { label: 'Interviewer', value: 'interviewer' },
 ];
 
 const InviteTeamMemberModal = ({
