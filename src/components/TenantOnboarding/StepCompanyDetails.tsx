@@ -43,7 +43,11 @@ const formatPrefillPhone = (raw: string): string => {
 };
 
 type StepCompanyDetailsProps = {
-  onCreated: (draft: TenantDraft) => void;
+  onCreated: (draft: TenantDraft, formValues: TenantDetailsFormValues) => void;
+  // What the rep last typed here, handed back by the wizard after a trip to
+  // step 2 and Back — see index.tsx's `companyDetails` state. `null` on a
+  // fresh visit.
+  initialValues?: TenantDetailsFormValues | null;
 };
 
 // The industry catalog itself (add/edit/delete) is a Super Admin action —
@@ -52,7 +56,7 @@ type StepCompanyDetailsProps = {
 // exists there; it doesn't need (and the person doing it may not hold
 // permission for) an inline "add a new industry" shortcut, which is also
 // why this no longer reuses DropdownWithAddOption.
-const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
+const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProps) => {
   const [createTenant, { isLoading }] = useCreateTenantMutation();
   const { data: industries, isLoading: loadingIndustries } = useListIndustriesQuery();
 
@@ -62,14 +66,20 @@ const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
   const { register, handleSubmit, watch, setValue, trigger, formState } =
     useForm<TenantDetailsFormValues>({
       resolver: zodResolver(tenantDetailsSchema),
+      // `initialValues` (what was typed before Back) wins over the
+      // Book-a-Demo prefill, which only ever applies to a blank, first visit.
       defaultValues: {
-        companyName: fromGuestOrg?.companyName ?? '',
-        websiteUrl: '',
-        industryId: '',
-        adminEmail: fromGuestOrg?.adminEmail ?? '',
+        companyName: initialValues?.companyName ?? fromGuestOrg?.companyName ?? '',
+        websiteUrl: initialValues?.websiteUrl ?? '',
+        industryId: initialValues?.industryId ?? '',
+        adminEmail: initialValues?.adminEmail ?? fromGuestOrg?.adminEmail ?? '',
         adminContactCountryCode:
-          countryCodes.find((code) => code.label === 'United States & Canada (+1)')?.value || '+1',
-        adminContactPhone: fromGuestOrg ? formatPrefillPhone(fromGuestOrg.contactNumber) : '',
+          initialValues?.adminContactCountryCode ??
+          countryCodes.find((code) => code.label === 'United States & Canada (+1)')?.value ??
+          '+1',
+        adminContactPhone:
+          initialValues?.adminContactPhone ??
+          (fromGuestOrg ? formatPrefillPhone(fromGuestOrg.contactNumber) : ''),
       },
       mode: 'onChange',
     });
@@ -93,12 +103,15 @@ const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
         source_guest_organization_id: fromGuestOrg?.id,
       }).unwrap();
 
-      onCreated({
-        tenantId: response.tenant_id,
-        companyName: data.companyName,
-        adminEmail: data.adminEmail,
-        scrapedPreview: response.scraped_preview,
-      });
+      onCreated(
+        {
+          tenantId: response.tenant_id,
+          companyName: data.companyName,
+          adminEmail: data.adminEmail,
+          scrapedPreview: response.scraped_preview,
+        },
+        data
+      );
     } catch (error: unknown) {
       showToast({
         message: get(error, 'data.message', 'Failed to create tenant. Please try again.'),
@@ -147,9 +160,10 @@ const StepCompanyDetails = ({ onCreated }: StepCompanyDetailsProps) => {
 
         <div>
           <p className="text-sm text-gray-600">Industry</p>
-          <div className="mt-1">
+          <div className="industry-select-wrapper flex items-center bg-white w-full px-4 mt-1 border rounded-3xl border-[var(--border)]">
             <Select
               className="w-full custom-select-jobs placeholder-style"
+              variant="borderless"
               value={watch('industryId') || undefined}
               onChange={(value) =>
                 setValue('industryId', value ?? '', { shouldDirty: true, shouldValidate: true })

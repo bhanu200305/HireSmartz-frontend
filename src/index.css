@@ -271,6 +271,21 @@ select:focus {
   box-shadow: none !important;
 }
 
+/* Same pill-shaped wrapper as .phone-input-wrapper, for a single borderless
+   Select — e.g. TenantOnboarding's Industry field, which used to render
+   antd's own small-radius border and look out of place next to the rest of
+   that form's rounded-3xl fields. */
+.industry-select-wrapper:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+}
+
+.industry-select-wrapper .ant-select-focused .ant-select-selector,
+.industry-select-wrapper .ant-select-selector:focus {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
 .view-candidate-tabs .ant-tabs-tab.ant-tabs-tab-active {
   border-bottom: 2px solid var(--primary) !important;
 }

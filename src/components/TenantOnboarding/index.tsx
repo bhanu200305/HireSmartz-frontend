@@ -7,6 +7,7 @@ import StepCompanyDetails from './StepCompanyDetails';
 import StepConfirmProfile from './StepConfirmProfile';
 import StepDone from './StepDone';
 import type { ScrapedTenantPreview } from '../../api/organization-service/Tenants/tenants';
+import type { TenantDetailsFormValues } from './TenantOnboardingSchema';
 
 const WIZARD_STEPS: Step[] = [
   { key: 'details', label: 'Company details' },
@@ -32,9 +33,16 @@ const TenantOnboardingWizard = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [draft, setDraft] = useState<TenantDraft | null>(null);
   const [invitationId, setInvitationId] = useState<string | null>(null);
+  // Step 1 unmounts when we move to step 2, and remounts from scratch when
+  // the rep clicks Back — react-hook-form's `defaultValues` only apply at
+  // mount, so without this every field the rep typed reverts to blank on
+  // Back. Keeping the last-submitted values here and handing them back in as
+  // `initialValues` is what lets the remount pick up where it left off.
+  const [companyDetails, setCompanyDetails] = useState<TenantDetailsFormValues | null>(null);
 
-  const handleDraftCreated = (createdDraft: TenantDraft) => {
+  const handleDraftCreated = (createdDraft: TenantDraft, formValues: TenantDetailsFormValues) => {
     setDraft(createdDraft);
+    setCompanyDetails(formValues);
     setCurrentStep(2);
   };
 
@@ -65,7 +73,9 @@ const TenantOnboardingWizard = () => {
           <StepIndicator steps={WIZARD_STEPS} currentStep={currentStep} className="mb-8" />
 
           <div className="bg-[#FAFAFA] p-8 rounded-2xl shadow-lg w-full">
-            {currentStep === 1 && <StepCompanyDetails onCreated={handleDraftCreated} />}
+            {currentStep === 1 && (
+              <StepCompanyDetails onCreated={handleDraftCreated} initialValues={companyDetails} />
+            )}
             {currentStep === 2 && draft && (
               <StepConfirmProfile
                 draft={draft}
