@@ -5,6 +5,9 @@ export type AddTenantOfficeRequest = {
   address: string;
   city: string;
   country: string;
+  address_line_2?: string;
+  state?: string;
+  zip_code?: string;
 };
 
 export type AddTenantOfficeResponse = {

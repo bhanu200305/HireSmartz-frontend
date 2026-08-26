@@ -116,7 +116,14 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       {
         tenantId: string;
         notificationType: string;
-        body: { subject: string; html_body: string; organization_layout_id?: string | null };
+        body: {
+          subject: string;
+          html_body: string;
+          organization_layout_id?: string | null;
+          /** Omit to leave SMS wording untouched; `null` reverts it to the
+           * platform default. Ignored for a type with no SMS variant. */
+          sms_message?: string | null;
+        };
       }
     >({
       query: ({ tenantId, notificationType, body }) => ({
@@ -197,12 +204,12 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
     // since there's no tenant's "current pack" to fall back to.
     previewMasterTemplate: build.mutation<
       TemplatePreview,
-      { notificationType: string; packKey: string }
+      { notificationType: string; packKey: string; channel?: 'email' | 'sms' }
     >({
-      query: ({ notificationType, packKey }) => ({
+      query: ({ notificationType, packKey, channel }) => ({
         url: '/v1/platform/template-settings/preview',
         method: 'POST',
-        body: { notification_type: notificationType, pack_key: packKey },
+        body: { notification_type: notificationType, pack_key: packKey, channel },
       }),
     }),
 

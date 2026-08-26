@@ -81,6 +81,9 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           address: values.address_line_1,
           city: values.city,
           country: values.country,
+          address_line_2: values.address_line_2 || undefined,
+          state: values.state || undefined,
+          zip_code: values.zip_code || undefined,
         }).unwrap();
         showToast({ message: 'Office added.', type: 'success' });
       }

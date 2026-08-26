@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Input, showToast } from '../shared';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import type { TenantOffice } from '../../api/organization-service/Tenants/offices';
@@ -14,8 +14,6 @@ export type OfficeFormValues = {
 
 type OfficeFormModalProps = {
   open: boolean;
-  /** Add is deliberately a shorter form than Edit (address/city/country only)
-   * — docs/frontend_guide.txt: "a shorter form than editing". */
   mode: 'add' | 'edit';
   initial?: TenantOffice | null;
   isSaving: boolean;
@@ -40,18 +38,29 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
   onClose,
   onSubmit,
 }) => {
-  const [form, setForm] = useState<OfficeFormValues>(
-    initial
-      ? {
-          address_line_1: initial.address_line_1,
-          address_line_2: initial.address_line_2 || '',
-          city: initial.city,
-          state: initial.state || '',
-          country: initial.country,
-          zip_code: initial.zip_code || '',
-        }
-      : emptyForm
-  );
+  const [form, setForm] = useState<OfficeFormValues>(emptyForm);
+
+  // This modal is rendered once and stays mounted for the page's lifetime
+  // (the parent toggles `open`/`initial`, it doesn't mount/unmount the
+  // component) — so `useState`'s initial value only ever applied on the
+  // very first render. Re-syncing here on every open is what actually makes
+  // "Edit" show that office's data instead of whatever was left over from
+  // the last time the modal was used (or nothing, the first time).
+  useEffect(() => {
+    if (!open) return;
+    setForm(
+      initial
+        ? {
+            address_line_1: initial.address_line_1,
+            address_line_2: initial.address_line_2 || '',
+            city: initial.city,
+            state: initial.state || '',
+            country: initial.country,
+            zip_code: initial.zip_code || '',
+          }
+        : emptyForm
+    );
+  }, [open, initial]);
 
   if (!open) return null;
 
@@ -77,11 +86,11 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input placeholder="Address line 1 *" {...field('address_line_1')} />
-        {mode === 'edit' && <Input placeholder="Address line 2" {...field('address_line_2')} />}
+        <Input placeholder="Address line 2" {...field('address_line_2')} />
         <Input placeholder="City *" {...field('city')} />
-        {mode === 'edit' && <Input placeholder="State" {...field('state')} />}
+        <Input placeholder="State" {...field('state')} />
         <Input placeholder="Country *" {...field('country')} />
-        {mode === 'edit' && <Input placeholder="Zip code" {...field('zip_code')} />}
+        <Input placeholder="Zip code" {...field('zip_code')} />
       </div>
       <div className="grid grid-cols-2 gap-4 mt-6">
         <Button

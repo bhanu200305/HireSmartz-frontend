@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import TextArea from 'antd/es/input/TextArea';
 import { Button, Input, showToast } from '../shared';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import PlainTextEmailBodyEditor from '../shared/ui/PlainTextEmailBodyEditor';
@@ -43,6 +44,7 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
 }) => {
   const [subject, setSubject] = useState('');
   const [htmlBody, setHtmlBody] = useState('');
+  const [smsMessage, setSmsMessage] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
@@ -51,10 +53,13 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
   const [previewTemplate, { data: preview, isLoading: isPreviewLoading }] =
     usePreviewTemplateMutation();
 
+  const hasSms = override?.sms_message != null;
+
   useEffect(() => {
     if (override) {
       setSubject(override.subject);
       setHtmlBody(override.html_body);
+      setSmsMessage(override.sms_message ?? '');
       setFormError(null);
     }
   }, [override]);
@@ -68,7 +73,11 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
     try {
       await saveOverride({
         notificationType: override.notification_type,
-        body: { subject, html_body: htmlBody },
+        body: {
+          subject,
+          html_body: htmlBody,
+          ...(hasSms ? { sms_message: smsMessage } : {}),
+        },
       }).unwrap();
       showToast({ message: 'Template updated.', type: 'success' });
       onClose();
@@ -94,10 +103,10 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
     }
   };
 
-  const handlePreviewCurrent = async () => {
+  const handlePreviewCurrent = async (channel: 'email' | 'sms' = 'email') => {
     setIsPreviewOpen(true);
     try {
-      await previewTemplate({ notification_type: override.notification_type }).unwrap();
+      await previewTemplate({ notification_type: override.notification_type, channel }).unwrap();
     } catch (err) {
       showToast({
         message: getNotifErrorMessage(err, 'Failed to render a preview.'),
@@ -133,15 +142,38 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
 
           <PlainTextEmailBodyEditor htmlBody={htmlBody} onChange={setHtmlBody} />
 
+          {hasSms && (
+            <div>
+              <p className="mb-1 block text-sm font-medium text-gray-700">SMS message</p>
+              <TextArea
+                value={smsMessage}
+                onChange={(e) => setSmsMessage(e.target.value)}
+                rows={3}
+              />
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-            <Button
-              type="button"
-              appname="preview current template"
-              onClick={handlePreviewCurrent}
-              className="rounded-3xl border border-[var(--border)] px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Preview what&apos;s live now
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                appname="preview current template"
+                onClick={() => handlePreviewCurrent('email')}
+                className="rounded-3xl border border-[var(--border)] px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Preview what&apos;s live now
+              </Button>
+              {hasSms && (
+                <Button
+                  type="button"
+                  appname="preview current sms"
+                  onClick={() => handlePreviewCurrent('sms')}
+                  className="rounded-3xl border border-[var(--border)] px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Preview SMS
+                </Button>
+              )}
+            </div>
 
             <div className="flex items-center gap-2">
               {override.is_customised && (

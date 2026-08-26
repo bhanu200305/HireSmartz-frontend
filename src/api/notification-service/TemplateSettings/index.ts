@@ -6,11 +6,12 @@ import type { EmailThemeColors } from '../../../shared/utils/notifications/email
  * `tenant:read`/`tenant:write` gated. Matches
  * app/modules/templates/api/{responses,requests}.py field-for-field.
  *
- * This is EMAIL-only. There is no per-tenant SMS override endpoint on this
- * router — SMS copy is a platform-wide default only (see
- * `PlatformTemplateSettings`) — so there is nothing here to build an
- * "SMS Templates" tab against; MyCompany's SMS tab stays a placeholder for
- * that reason, not an oversight.
+ * Mostly email, but eight notification types also carry SMS wording
+ * (`TemplateOverride.sms_message`, `null` for every type without an SMS
+ * variant) — a tenant may override that text the same way they override
+ * `subject`/`html_body`, via the same PUT. There is still no separate
+ * per-tenant SMS "pack" or theme: SMS text has no chrome, so the only thing
+ * to customise is the message itself.
  */
 export interface TemplatePack {
   key: string;
@@ -36,6 +37,11 @@ export interface TemplateOverride {
   subject: string;
   html_body: string;
   organization_layout_id?: string | null;
+  /** `null` means this notification type has no SMS variant at all — don't
+   * show an SMS field for it. Any other value is the SMS wording that will
+   * actually send: this tenant's own if customised, the platform's default
+   * otherwise (see `is_customised`, which only reflects copy, not chrome). */
+  sms_message?: string | null;
 }
 
 export interface TemplateOverrideListView {
@@ -57,12 +63,20 @@ export interface PreviewTemplateRequest {
   notification_type: string;
   /** Omit to preview the tenant's currently-selected pack. */
   pack_key?: string;
+  /** Defaults to email. Set to `'sms'` to preview a type's SMS wording
+   * instead — rendering the email half tells you nothing about whether the
+   * SMS text will actually fit or render. */
+  channel?: 'email' | 'sms';
 }
 
 export interface SaveOverrideRequest {
   subject: string;
   html_body: string;
   organization_layout_id?: string | null;
+  /** Omit to leave this type's SMS wording untouched; `null` reverts an
+   * existing SMS override back to the platform's default text. Ignored by
+   * the backend for a type with no SMS variant at all. */
+  sms_message?: string | null;
 }
 
 export interface SaveLayoutRequest extends EmailThemeColors {

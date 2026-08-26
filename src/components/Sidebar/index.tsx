@@ -178,7 +178,13 @@ const Sidebar: React.FC = () => {
                 className="text-sm flex-1 truncate heading-font"
                 style={{ fontWeight: isActive ? 500 : 400 }}
               >
-                {item.name}
+                {/* This nav entry is one shared USER_ADD-gated page whose
+                    data scope follows the caller's token (see menuItem.tsx's
+                    comment on this entry) — CFP's own staff for a platform
+                    caller, but this tenant's own team for a Company Admin,
+                    who should never see the label "CFP Users" for a screen
+                    showing their own people. */}
+                {item.name === 'CFP Users' && tenantId ? 'Users' : item.name}
               </span>
             </button>
           );

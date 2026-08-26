@@ -17,6 +17,7 @@ import TenantActivityFeedTab from './TenantActivityFeedTab';
 import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
 import QrManagementTab from './QrManagementTab';
 import EmailTemplatesTab from './EmailTemplatesTab';
+import NotificationCopyTab from './NotificationCopyTab';
 import SmsTemplatesTab from '../CompanySettings/SmsTemplatesTab';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
@@ -103,16 +104,24 @@ const MyCompany: React.FC = () => {
   //    CustomerDashboard/ViewCustomer), just tenant-scoped to the signed-in
   //    session instead of an arbitrary tenant_id from the URL.
   //  - Email Templates: this tenant's notification-service template pack +
-  //    per-type overrides + layout (banner + 16 brand colors, all real
-  //    against the CFPro2.0 backend) — self-contained tenant self-service,
-  //    no props needed. (Used to also stack a legacy `EmailBrandingTab`
-  //    here, backed by a `tenant-service` endpoint that no longer exists
-  //    anywhere in this backend — removed rather than fixed.)
-  //  - SMS Templates: candidate-facing recruiting SMS copy — the same
-  //    SmsTemplatesTab the Super Admin's Company Settings screen uses, with
-  //    `fixedCompanyId` pinned to this tenant and the company picker hidden
-  //    (that prop pair exists specifically for this "My Company" case — see
-  //    its own doc comment).
+  //    layout (banner + 16 brand colors, all real against the CFPro2.0
+  //    backend) — self-contained tenant self-service, no props needed.
+  //    (Used to also stack a legacy `EmailBrandingTab` here, backed by a
+  //    `tenant-service` endpoint that no longer exists anywhere in this
+  //    backend — removed rather than fixed.)
+  //  - Notification Copy: per-event wording for system notifications this
+  //    tenant can send (invites, password resets, MFA codes, account-locked
+  //    alerts, …) — email always, SMS for the ~8 types that have one. Split
+  //    out of Email Templates into its own tab so it isn't competing for
+  //    space with theme controls, and so system-SMS editing isn't buried
+  //    next to the unrelated "SMS Templates" tab below.
+  //  - SMS Templates: candidate-facing RECRUITING SMS copy — a different
+  //    system entirely (its own backend, job/candidate-workflow-adjacent),
+  //    not to be confused with Notification Copy's system-alert SMS above.
+  //    Same SmsTemplatesTab the Super Admin's Company Settings screen uses,
+  //    with `fixedCompanyId` pinned to this tenant and the company picker
+  //    hidden (that prop pair exists specifically for this "My Company"
+  //    case — see its own doc comment).
   const comingSoon = <ComingSoonTab label="To be added soon, alongside the job posting workflow" />;
 
   const items: TabsProps['items'] = [
@@ -157,6 +166,11 @@ const MyCompany: React.FC = () => {
       key: '10',
       label: 'Email Templates',
       children: <EmailTemplatesTab />,
+    },
+    canViewEmailTemplates && {
+      key: '12',
+      label: 'Notification Copy',
+      children: <NotificationCopyTab />,
     },
     {
       key: '11',
