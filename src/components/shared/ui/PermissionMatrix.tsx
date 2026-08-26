@@ -141,11 +141,7 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
               )}
             </div>
 
-            {/* Capped at 2 columns (was 3 at `lg:`) — that breakpoint keys off
-                the viewport, not this matrix's own container, so on a wide
-                screen it used to force 3 columns into whatever narrower
-                width the enclosing modal actually gave it. */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 px-4 py-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
               {grantable.map((entry) => (
                 <CustomCheckbox
                   key={entry.code}

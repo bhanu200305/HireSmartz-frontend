@@ -120,7 +120,7 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
       footer={null}
       centered
       maskClosable={false}
-      width={620}
+      width={760}
       className="ant-custom-modal"
       // The gradient header below has to stay outside the scrollable region
       // set up further down: it used to bleed to the modal's edges via
@@ -159,7 +159,12 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
           number of per-location overrides) is comfortably taller than most
           viewports at full height; without a cap the modal's own bottom
           edge (Back/Submit buttons included) ran off the browser window
-          with no way to reach it.
+          with no way to reach it. This box's cap plus the fixed header
+          above it (~90px) has to stay comfortably under 100vh — `centered`
+          only centers what fits; content taller than the viewport still
+          pushes the modal itself past the top/bottom edge. 74vh leaves that
+          margin even on a shorter laptop screen while still noticeably
+          taller than before.
           `overflowX: 'hidden'` isn't decorative: per the CSS overflow spec,
           setting overflow-y to anything but `visible` while overflow-x is
           left at its default `visible` computes overflow-x to `auto` too
@@ -167,7 +172,7 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
           horizontal scrollbar and clipped a sliver off this content's width. */}
       <div
         className="thin-scrollbar px-6 pt-4 pb-6"
-        style={{ maxHeight: '68vh', overflowY: 'auto', overflowX: 'hidden' }}
+        style={{ maxHeight: '74vh', overflowY: 'auto', overflowX: 'hidden' }}
       >
         {step === 1 ? (
           <TemplateStep

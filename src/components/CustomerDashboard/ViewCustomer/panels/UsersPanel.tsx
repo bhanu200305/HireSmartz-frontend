@@ -12,6 +12,7 @@ import {
   Button,
   CustomTable,
   Input,
+  PhoneNumberField,
   Select,
   Typography,
   paginationConfig,
@@ -39,16 +40,22 @@ type FormState = {
   first_name: string;
   last_name: string;
   title: string;
+  country_code: string;
   phone_no: string;
   department_id: string | undefined;
   role_id: string | undefined;
 };
+
+// Same default every other phone field in this app starts from (see
+// EditCandidate.tsx/UserProfile).
+const DEFAULT_COUNTRY_CODE = '+1';
 
 const emptyForm: FormState = {
   email: '',
   first_name: '',
   last_name: '',
   title: '',
+  country_code: DEFAULT_COUNTRY_CODE,
   phone_no: '',
   department_id: undefined,
   role_id: undefined,
@@ -125,6 +132,9 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim() || undefined,
         title: form.title.trim() || undefined,
+        // Only sent alongside an actual number — a bare country code with no
+        // digits isn't a phone number.
+        country_code: form.phone_no.trim() ? form.country_code : undefined,
         phone_no: form.phone_no.trim() || undefined,
         department_id: form.department_id,
         role_id: form.role_id,
@@ -302,7 +312,12 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input placeholder="Title" {...field('title')} />
-            <Input placeholder="Phone number" {...field('phone_no')} />
+            <PhoneNumberField
+              countryCode={form.country_code}
+              onCountryCodeChange={(value) => setForm((prev) => ({ ...prev, country_code: value }))}
+              phoneNumber={form.phone_no}
+              onPhoneNumberChange={(value) => setForm((prev) => ({ ...prev, phone_no: value }))}
+            />
           </div>
           <Select
             appname="cfp"

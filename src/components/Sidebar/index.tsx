@@ -74,11 +74,12 @@ const Sidebar: React.FC = () => {
       return !tenantId && useHasAccess(item.requiredAuthority);
     }
 
-    if (item.name === 'Company' || item.name === 'Company Metrics') {
+    if (item.name === 'Company' || item.name === 'Company Metrics' || item.name === 'Audit Log') {
       // Mirror image of "Companies" above: a platform caller's static
       // permission set happens to include COMPANY_SETTINGS_VIEW too, but
-      // `/my-company` (and `/company-metrics`) redirects anyone with no
-      // tenant of their own straight back to `/` — a dead link for them.
+      // `/my-company`, `/company-metrics` and `/activityFeed` all redirect
+      // anyone with no tenant of their own straight back to `/` (or fetch
+      // against `tenantId ?? ''`, same dead end) — a dead link for them.
       // Tenant-only.
       return Boolean(tenantId) && useHasAccess(item.requiredAuthority);
     }
