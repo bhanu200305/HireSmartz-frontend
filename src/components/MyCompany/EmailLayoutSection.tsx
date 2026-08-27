@@ -3,6 +3,7 @@ import TextArea from 'antd/es/input/TextArea';
 import { AiOutlineCloudUpload } from 'react-icons/ai';
 import { useSelector } from 'react-redux';
 import { Button, Typography, showToast } from '../shared';
+import CollapsibleSection from '../shared/ui/CollapsibleSection';
 import { Loader } from '../shared/ui/loader';
 import EmailThemeColorFields from '../shared/ui/EmailThemeColorFields';
 import EmailLivePreviewPanel from '../shared/ui/EmailLivePreviewPanel';
@@ -211,13 +212,18 @@ const EmailLayoutSection: React.FC = () => {
         </div>
       )}
 
+      {/* Side by side: fields on the left, Live Preview sticky on the
+          right — the three edit sections below are collapsible (closed by
+          default, Brand colours starts open since that's the most common
+          edit) instead of all standing open and stacked at once, which is
+          what made this column run so much taller than the preview beside
+          it. See EmailLivePreviewPanel's own comment for why the preview
+          itself grew from 500px to 640px tall (that box being too short for
+          a typical rendered email was the real "not fully visible" bug). */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-col gap-6">
-            <div>
-              <Typography variant="body2" className="mb-1 block font-medium text-gray-700">
-                Banner image
-              </Typography>
+          <div className="flex flex-col divide-y divide-gray-100">
+            <CollapsibleSection title="Banner image">
               <Typography variant="caption" className="mb-3 block text-gray-400">
                 Shown at the top of every candidate-facing email. Recommended: under 5 MB, roughly
                 1200×500px.
@@ -246,25 +252,19 @@ const EmailLayoutSection: React.FC = () => {
                 className="sr-only"
                 onChange={handleBannerPick}
               />
-            </div>
+            </CollapsibleSection>
 
-            <div>
-              <Typography variant="body2" className="mb-3 block font-medium text-gray-700">
-                Brand colours
-              </Typography>
+            <CollapsibleSection title="Brand colours" defaultOpen>
               <EmailThemeColorFields
                 theme={theme}
                 fallback={CORPORATE_DEFAULTS}
                 onChange={handleColorChange}
                 disabled={isBusy}
               />
-            </div>
+            </CollapsibleSection>
 
-            <details className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-              <summary className="cursor-pointer text-sm font-medium text-gray-600">
-                Advanced: raw header / footer / CSS
-              </summary>
-              <div className="mt-4 flex flex-col gap-4">
+            <CollapsibleSection title="Advanced: raw header / footer / CSS">
+              <div className="flex flex-col gap-4">
                 <div>
                   <p className="mb-1 block text-sm font-medium text-gray-700">Header HTML</p>
                   <TextArea
@@ -296,30 +296,30 @@ const EmailLayoutSection: React.FC = () => {
                   />
                 </div>
               </div>
-            </details>
+            </CollapsibleSection>
+          </div>
 
-            <div className="flex items-center justify-end gap-2">
-              {data?.has_layout && (
-                <Button
-                  type="button"
-                  appname="revert layout to default"
-                  onClick={handleRevert}
-                  disabled={isBusy}
-                  className="rounded-3xl border border-red-200 px-4 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isReverting ? 'Reverting…' : 'Revert to default'}
-                </Button>
-              )}
+          <div className="mt-6 flex items-center justify-end gap-2">
+            {data?.has_layout && (
               <Button
                 type="button"
-                appname="save layout"
-                onClick={handleSave}
+                appname="revert layout to default"
+                onClick={handleRevert}
                 disabled={isBusy}
-                className="rounded-3xl bg-primary px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-3xl border border-red-200 px-4 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isSaving || isRequestingUpload || isSavingBanner ? 'Saving…' : 'Save layout'}
+                {isReverting ? 'Reverting…' : 'Revert to default'}
               </Button>
-            </div>
+            )}
+            <Button
+              type="button"
+              appname="save layout"
+              onClick={handleSave}
+              disabled={isBusy}
+              className="rounded-3xl bg-primary px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSaving || isRequestingUpload || isSavingBanner ? 'Saving…' : 'Save layout'}
+            </Button>
           </div>
         </div>
 

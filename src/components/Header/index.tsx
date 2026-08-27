@@ -92,6 +92,14 @@ const Header = () => {
   const [showSwitchCalendarModal, setShowSwitchCalendarModal] = useState(false);
   const [showDisconnectCalendarModal, setShowDisconnectCalendarModal] = useState(false);
 
+  // getLocalStorageItem now falls back to sessionStorage for this key (see
+  // that helper's own comment) — this used to read straight from
+  // localStorage, which Login/index.tsx only populates via a second call
+  // (`setTokens`) after its own unconditional sessionStorage write. `token`
+  // going stale here meant `skip: !token` below always skipped BOTH profile
+  // queries, `userData` never resolved, and the avatar/"Welcome"/Logout
+  // dropdown this whole block gates on (`{userData && (...)}`, further
+  // down) silently never rendered.
   const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
   const autoLogin = location?.state?.autoLogin;
 

@@ -1,15 +1,29 @@
 import { TextareaHTMLAttributes } from 'react';
 import clsx from 'clsx';
-import { sanitizeInput } from '../../../shared/utils/validation/input.helpers';
+import {
+  sanitizeInput,
+  capitalizeFirstLetter,
+} from '../../../shared/utils/validation/input.helpers';
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   className?: string;
   error?: string;
   disabled?: boolean;
   onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
+  /** Opt out of the automatic first-letter capitalization every other
+   * textarea gets — for anything where the value's exact leading case
+   * matters (a code snippet, a field meant to be pasted verbatim, etc.). */
+  noAutoCapitalize?: boolean;
 }
 
-export const Textarea = ({ className, error, disabled, onBlur, ...restProps }: TextareaProps) => {
+export const Textarea = ({
+  className,
+  error,
+  disabled,
+  onBlur,
+  noAutoCapitalize,
+  ...restProps
+}: TextareaProps) => {
   return (
     <>
       <textarea
@@ -20,6 +34,12 @@ export const Textarea = ({ className, error, disabled, onBlur, ...restProps }: T
           error && 'border-red-500',
           className
         )}
+        onChange={(e) => {
+          if (!noAutoCapitalize) {
+            e.target.value = capitalizeFirstLetter(e.target.value);
+          }
+          restProps.onChange?.(e);
+        }}
         onBlur={(e) => {
           e.target.value = sanitizeInput(e.target.value);
           onBlur?.(e);

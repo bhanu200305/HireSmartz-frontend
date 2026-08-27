@@ -2,7 +2,10 @@
 
 import { InputHTMLAttributes, ReactNode } from 'react';
 import clsx from 'clsx';
-import { sanitizeInput } from '../../../shared/utils/validation/input.helpers';
+import {
+  sanitizeInput,
+  capitalizeFirstLetter,
+} from '../../../shared/utils/validation/input.helpers';
 
 interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> {
   className?: string;
@@ -11,7 +14,35 @@ interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix
   prefix?: ReactNode;
   suffix?: ReactNode;
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  /** Opt out of the automatic first-letter capitalization every other text
+   * field on this component gets — for a `type` not already excluded below
+   * (e.g. a free-text search box, a code/ID field) where forcing the first
+   * character to uppercase would be wrong even though it's technically
+   * `type="text"`. */
+  noAutoCapitalize?: boolean;
 }
+
+// Field types where auto-capitalizing the first character would be actively
+// wrong — an email/password/URL/phone number's case is meaningful and must
+// round-trip exactly as typed, and a search term should match whatever the
+// user actually typed, not a guess at what they meant.
+const AUTO_CAPITALIZE_EXCLUDED_TYPES = new Set([
+  'email',
+  'password',
+  'url',
+  'tel',
+  'number',
+  'search',
+  'date',
+  'time',
+  'datetime-local',
+  'month',
+  'week',
+  'color',
+  'file',
+  'hidden',
+  'range',
+]);
 
 export const Input = ({
   className,
@@ -20,6 +51,7 @@ export const Input = ({
   prefix,
   suffix,
   onBlur,
+  noAutoCapitalize,
   ...restProps
 }: InputProps) => {
   const handleOnWheel = (e: React.WheelEvent<HTMLInputElement>) => {
@@ -50,6 +82,12 @@ export const Input = ({
             let value = e.target.value;
             value = value.replace(/^ +/, '');
             value = value.replace(/\s+/g, ' ');
+            if (
+              !noAutoCapitalize &&
+              !AUTO_CAPITALIZE_EXCLUDED_TYPES.has(restProps.type ?? 'text')
+            ) {
+              value = capitalizeFirstLetter(value);
+            }
             e.target.value = value;
             if (restProps.onChange) {
               restProps.onChange(e);

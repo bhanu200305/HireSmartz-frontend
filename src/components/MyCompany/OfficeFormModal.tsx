@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Input, showToast } from '../shared';
+import { MdMyLocation } from 'react-icons/md';
+import { Button, Input, LocationCascadeFields, showToast } from '../shared';
+import type { LocationCascadeValue } from '../shared';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
+import useGeolocateAddress from '../../hooks/useGeolocateAddress';
 import type { TenantOffice } from '../../api/organization-service/Tenants/offices';
 
 export type OfficeFormValues = {
@@ -39,6 +42,7 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
   onSubmit,
 }) => {
   const [form, setForm] = useState<OfficeFormValues>(emptyForm);
+  const { locate, isLocating } = useGeolocateAddress();
 
   // This modal is rendered once and stays mounted for the page's lifetime
   // (the parent toggles `open`/`initial`, it doesn't mount/unmount the
@@ -70,6 +74,19 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
       setForm((prev) => ({ ...prev, [key]: e.target.value })),
   });
 
+  const handleLocationChange = (next: LocationCascadeValue) => {
+    setForm((prev) => ({ ...prev, ...next }));
+  };
+
+  const handleUseMyLocation = async () => {
+    const result = await locate();
+    if (result.status === 'error') {
+      showToast({ message: result.message, type: 'error' });
+      return;
+    }
+    setForm((prev) => ({ ...prev, ...result.value }));
+  };
+
   const handleSubmit = async () => {
     if (!form.address_line_1.trim() || !form.city.trim() || !form.country.trim()) {
       showToast({ message: 'Address, city, and country are required.', type: 'error' });
@@ -87,11 +104,24 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input placeholder="Address line 1 *" {...field('address_line_1')} />
         <Input placeholder="Address line 2" {...field('address_line_2')} />
-        <Input placeholder="City *" {...field('city')} />
-        <Input placeholder="State" {...field('state')} />
-        <Input placeholder="Country *" {...field('country')} />
+        <LocationCascadeFields
+          value={{ country: form.country, state: form.state, city: form.city }}
+          onChange={handleLocationChange}
+          className="w-full"
+        />
         <Input placeholder="Zip code" {...field('zip_code')} />
       </div>
+
+      <button
+        type="button"
+        onClick={handleUseMyLocation}
+        disabled={isLocating}
+        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <MdMyLocation size={14} />
+        {isLocating ? 'Locating…' : 'Use my location'}
+      </button>
+
       <div className="grid grid-cols-2 gap-4 mt-6">
         <Button
           className="w-full border border-gray-300 rounded-full py-2"

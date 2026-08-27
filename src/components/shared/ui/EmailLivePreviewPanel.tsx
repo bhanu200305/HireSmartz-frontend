@@ -35,7 +35,24 @@ const EmailLivePreviewPanel: React.FC<EmailLivePreviewPanelProps> = ({
   };
 
   return (
-    <div className="w-full flex-shrink-0 lg:w-[360px]">
+    // Back to a sticky side column beside the fields (not full-width above
+    // them) — widened from 360px to 420px and the box itself grown from
+    // 500px to 640px tall, which is what was actually making it feel cut
+    // off before: a typical rendered email (header + greeting + body +
+    // button + footer) is usually taller than 500px, so a chunk of it
+    // needed an extra scroll inside a small box to see. Sticky still earns
+    // its keep here since the fields column beside it can run taller once
+    // "Brand colours" (open by default) is expanded.
+    //
+    // The iframe still can't auto-size to its content's real height —
+    // `sandbox=""` (no `allow-same-origin`) deliberately makes this
+    // content's origin opaque to the parent page, so a tenant's own
+    // Advanced HTML/CSS can never reach back into this app's page even via
+    // script. Reading `contentDocument.scrollHeight` to auto-fit the box
+    // would require loosening that, which isn't worth trading away for a
+    // cosmetic auto-height — anything taller than 640px scrolls inside the
+    // box, or use "Full screen preview" below.
+    <div className="w-full flex-shrink-0 lg:w-[420px]">
       <div className="sticky top-4 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3">
           <span className="text-sm font-semibold text-gray-700">Live Preview</span>
@@ -48,7 +65,7 @@ const EmailLivePreviewPanel: React.FC<EmailLivePreviewPanelProps> = ({
           </button>
         </div>
 
-        <div className="relative h-[500px]">
+        <div className="relative h-[640px]">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
               <Spin size="large" />

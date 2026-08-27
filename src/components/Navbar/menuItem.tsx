@@ -144,18 +144,29 @@ const MenuItems = [
     // component against, so nav and destination finally agree on who can
     // see it.
     //
-    // Renamed from "Activity Feed" to "Audit Log": same GET
+    // Displayed as "Audit Log" (see Sidebar's label override) — same GET
     // /v1/tenants/{tenant_id}/activity trail of this tenant's own admin
     // actions (invites, role grants, profile/office/department edits, …)
     // that name describes more plainly, and the label a Company Admin
     // asked for to sit alongside Super Admin's own "Audit Log" entry below.
+    //
+    // Internal `name` kept as "Tenant Audit Log", NOT "Audit Log" —
+    // Sidebar's own gating filter matches by `item.name`, and the two
+    // "Audit Log"-displayed entries need genuinely different gates (this
+    // one tenant-only, the platform one below tenant-NEVER). A brief
+    // version of this file gave both the literal name "Audit Log", which
+    // made Sidebar's tenant-only filter (matching by that name) catch BOTH
+    // entries — including the platform one, which then always failed its
+    // now-incorrectly-applied `Boolean(tenantId)` check and disappeared for
+    // every Super Admin. `key={item.name}` in Sidebar's list render also
+    // needs these to be unique, independent of the collision above.
     //
     // Tenant-only, same as "Company"/"Company Metrics" above and for the
     // same reason: a platform caller's static permission set happens to
     // include COMPANY_SETTINGS_VIEW too, but `/activityFeed` (ActivityFeedPage)
     // reads `tenantId ?? ''` — a dead fetch for them. See Sidebar's own
     // tenantId guard for this entry.
-    name: 'Audit Log',
+    name: 'Tenant Audit Log',
     icon: <LuSquareActivity size={18} />,
     path: '/activityFeed',
     requiredAuthority: Authorities.COMPANY_SETTINGS_VIEW,

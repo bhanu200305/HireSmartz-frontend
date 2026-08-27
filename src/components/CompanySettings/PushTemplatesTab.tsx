@@ -12,9 +12,9 @@ import { getNotifErrorMessage } from '../../shared/utils/auth/notifError.helpers
  * Bulk-revert several companies' email-copy customisations back to the
  * platform default in one action — `POST /v1/platform/template-settings/
  * tenants/push`. Real backend, real tenant search (same browsable-without-
- * typing pattern as `CompanyThemeSection`) — replaces the original version of
- * this tab, which called a legacy endpoint that no longer exists anywhere in
- * this backend.
+ * typing pattern `TenantOverrideSection` uses) — replaces the original
+ * version of this tab, which called a legacy endpoint that no longer exists
+ * anywhere in this backend.
  *
  * Two-step, mirroring the backend's own dry-run/confirm contract: the first
  * call (`performChanges: false`) only reports which selected companies would

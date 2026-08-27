@@ -33,6 +33,20 @@ export const sanitizeInput = (input: string): string => {
 };
 
 /**
+ * Uppercases the first character of a string, leaving everything else
+ * untouched — "new york" -> "New york", not "New York" (that would be full
+ * title-casing every word, a different, more invasive behavior nobody asked
+ * for here). Used by the shared `Input` component's onChange to
+ * auto-capitalize as the user types; see that component's own comment for
+ * which field types are deliberately excluded (email, password, etc.,
+ * where forcing a case change would be wrong).
+ */
+export const capitalizeFirstLetter = (value: string): string => {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+};
+
+/**
  * Generic utility that returns the subset of `fields` whose values differ
  * between two form state snapshots.
  *

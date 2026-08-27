@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   MdOutlineApartment,
   MdOutlinePersonAddAlt,
@@ -12,6 +12,7 @@ import {
   useGetLoginMetricsQuery,
   useGetSessionMetricsQuery,
 } from '../../api/organization-service/Platform/metrics';
+import PlatformTenantsListModal from '../Dashboard/PlatformTenantsListModal';
 
 /**
  * 1.1 "Platform overview" — Total customers / New customers this month /
@@ -19,11 +20,18 @@ import {
  * (`StatCardRow`), fetched from its own independent metrics call so one
  * slow/unavailable dependency never blocks the rest — same reasoning
  * `PlatformMetrics` already documents for its tile grid.
+ *
+ * "Total customers" is the one card with a real paginated list behind it
+ * today (`GET /v1/platform/tenants`, the same call the "CFP Company" card
+ * and the full `/company` page use) — clicking it opens
+ * `PlatformTenantsListModal`. The other three stay display-only until their
+ * own list endpoints exist (see the KPI backend request list).
  */
 const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = ({
   columns = 4,
   tall,
 }) => {
+  const [showCustomers, setShowCustomers] = useState(false);
   const { data: growth, isLoading: isGrowthLoading } = useGetGrowthMetricsQuery();
   // Monthly Active Users — successful sign-ins, distinct users, 30-day window.
   const { data: logins, isLoading: isLoginsLoading } = useGetLoginMetricsQuery({
@@ -39,6 +47,7 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
       variant: 'blue',
       label: 'Total customers',
       value: isLoading ? undefined : growth?.total_customers?.toLocaleString(),
+      onClick: () => setShowCustomers(true),
     },
     {
       icon: <MdOutlinePersonAddAlt />,
@@ -68,7 +77,12 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
     },
   ];
 
-  return <StatCardRow cards={cards} columns={columns} tall={tall} />;
+  return (
+    <>
+      <StatCardRow cards={cards} columns={columns} tall={tall} />
+      {showCustomers && <PlatformTenantsListModal onClose={() => setShowCustomers(false)} />}
+    </>
+  );
 };
 
 export default PlatformOverviewStats;

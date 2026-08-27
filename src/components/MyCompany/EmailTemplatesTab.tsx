@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Tabs } from 'antd';
 import { Badge, Button, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import TemplatePreviewModal from '../shared/ui/TemplatePreviewModal';
@@ -141,13 +142,27 @@ const PackPicker: React.FC = () => {
  * split and no longer exists anywhere in CFPro2.0. Retired: `EmailLayoutSection`
  * above already covers banner + colors for real, against a backend that
  * actually exists locally.
+ *
+ * "Customize" (EmailLayoutSection: banner + 16 brand colours + advanced
+ * HTML/CSS + live preview) and "Explore Templates" (PackPicker: the 3
+ * prebuilt packs) used to render stacked on one page — a genuinely tall
+ * combination (16 color swatches plus a full email preview plus 3 pack
+ * cards, all at once) that made the tab feel broken rather than just long.
+ * Split into two tabs instead: each one is its own reasonably-sized screen,
+ * and only one is ever on the page at a time. Customize first since editing
+ * your current pack's look is the more common action; Explore Templates
+ * (switching packs entirely) sits right below it, not competing for the
+ * same scroll.
  */
 const EmailTemplatesTab: React.FC = () => {
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <PackPicker />
-      <EmailLayoutSection />
-    </div>
+    <Tabs
+      className="p-4"
+      items={[
+        { key: 'customize', label: 'Customize', children: <EmailLayoutSection /> },
+        { key: 'explore', label: 'Explore Templates', children: <PackPicker /> },
+      ]}
+    />
   );
 };
 

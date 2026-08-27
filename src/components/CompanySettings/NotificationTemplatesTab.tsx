@@ -5,22 +5,19 @@ import {
   MdSwapHoriz,
   MdOutlineNotifications,
   MdPalette,
-  MdOutlineBusiness,
   MdRestartAlt,
 } from 'react-icons/md';
 import MasterEmailTemplatesSection from './MasterEmailTemplatesSection';
 import MasterSmsTemplatesSection from './MasterSmsTemplatesSection';
 import TenantOverrideSection from './TenantOverrideSection';
 import MasterThemeSection from './MasterThemeSection';
-import CompanyThemeSection from './CompanyThemeSection';
 import PushTemplatesTab from './PushTemplatesTab';
 
-type SectionKey = 'email' | 'theme' | 'companyTheme' | 'sms' | 'overrides' | 'bulkRevert';
+type SectionKey = 'email' | 'theme' | 'sms' | 'overrides' | 'bulkRevert';
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: 'email', label: 'Email defaults', icon: <MdEmail size={16} /> },
   { key: 'theme', label: 'Theme defaults', icon: <MdPalette size={16} /> },
-  { key: 'companyTheme', label: 'Company theme', icon: <MdOutlineBusiness size={16} /> },
   { key: 'sms', label: 'SMS defaults', icon: <MdSms size={16} /> },
   { key: 'overrides', label: 'Tenant overrides', icon: <MdSwapHoriz size={16} /> },
   { key: 'bulkRevert', label: 'Bulk revert', icon: <MdRestartAlt size={16} /> },
@@ -32,14 +29,22 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
  * this page) manages a different, unrelated feature — candidate-facing
  * per-interview-round SMS copy, its own separate backend — left untouched.
  *
- * Used to stack all three sections vertically, each rendering its own full
- * list — with enough notification types (and, for overrides, enough
- * searched-up tenants) seeded, that pushed the page into several screens of
- * scroll before a Super Admin ever reached "Tenant overrides". A segmented
+ * Used to stack all sections vertically, each rendering its own full list —
+ * with enough notification types (and, for overrides, enough searched-up
+ * tenants) seeded, that pushed the page into several screens of scroll
+ * before a Super Admin ever reached "Tenant overrides". A segmented
  * switcher now shows exactly one section at a time, and each section bounds
  * its own list to an internal scroll area (see the `max-h-*` grids inside
  * each section) instead of growing the page — so the tab stays roughly one
  * viewport tall no matter how many templates or tenants exist.
+ *
+ * Used to also have a "Company theme" section here — search a company, edit
+ * their 16 brand colours. Removed as a genuine duplicate: the exact same
+ * action, against the exact same `/v1/platform/template-settings/tenants/
+ * {id}/layout` endpoint, is already reachable from Companies → (a company)
+ * → Email Templates — and that version is more complete (it also shows the
+ * company's banner alongside the colours, which this one never could,
+ * banner upload being tenant-self-service-only).
  */
 const NotificationTemplatesTab: React.FC = () => {
   const [active, setActive] = useState<SectionKey>('email');
@@ -84,7 +89,6 @@ const NotificationTemplatesTab: React.FC = () => {
 
       {active === 'email' && <MasterEmailTemplatesSection />}
       {active === 'theme' && <MasterThemeSection />}
-      {active === 'companyTheme' && <CompanyThemeSection />}
       {active === 'sms' && <MasterSmsTemplatesSection />}
       {active === 'overrides' && <TenantOverrideSection />}
       {active === 'bulkRevert' && <PushTemplatesTab />}

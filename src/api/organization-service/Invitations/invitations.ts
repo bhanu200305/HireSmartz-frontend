@@ -38,7 +38,13 @@ export type AcceptInvitationRequest = {
   // through this frontend flow) doesn't need one.
   first_name: string;
   last_name?: string;
-  // Same tenant-invite-only requirement as first_name above.
+  // Same tenant-invite-only requirement as first_name above — the backend
+  // 422s a tenant accept missing either one (AcceptInvitationUseCase,
+  // "country_code is required to accept a tenant invitation"). Max 5 chars
+  // on the wire (Field(max_length=5) on AcceptInvitationRequest), same as
+  // every other country_code field in this app — a dial code like "+971"
+  // fits, a full country name would not.
+  country_code?: string;
   phone_number?: string;
 };
 

@@ -1,11 +1,21 @@
-import { useReducer, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { z } from 'zod';
 import { Select } from 'antd';
-import { LuHeadset, LuStar, LuCalendarCheck, LuCheck } from 'react-icons/lu';
+import { LuHeadset, LuStar, LuCalendarCheck, LuCheck, LuMapPin } from 'react-icons/lu';
 import { showToast } from '../shared/ui/toast';
 import { useSubmitDemoRequestMutation } from '../../api/organization-service/Platform/guestOrganizations';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import { countryCodes } from '../../constants/countryCode';
+import { capitalizeFirstLetter } from '../../shared/utils/validation/input.helpers';
+import {
+  getCountries,
+  getStates,
+  getCities,
+  type GeoCountry,
+  type GeoState,
+  type GeoCity,
+} from '../../shared/utils/geo/countryStateCity';
+import useGeolocateAddress from '../../hooks/useGeolocateAddress';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import './landingPage.css';
@@ -41,17 +51,15 @@ const HEAR_ABOUT_US_OTHER = 'Other';
 const DEFAULT_COUNTRY_CODE = '+1';
 const PHONE_COUNTRY_CODE_REGEX = /^\+\d{1,4}$/;
 
-// Plain country names for the Location section's Country dropdown — derived
-// from the same static `countryCodes` list (no network call). A full
-// country → state → city cascade exists (`useCountryDropdown`), but it's
-// backed by an authenticated tenant-service endpoint; this page is
-// anonymous (no JWT — same as the rest of the "Book a Demo" submission), so
-// it can't call that safely. Country becomes a real dropdown; State and
-// City stay validated free-text fields.
-const COUNTRY_NAME_OPTIONS = Array.from(
-  new Set(countryCodes.map(({ label }) => label.replace(/\s*\(\+\d+\)\s*$/, '')))
-).sort((a, b) => a.localeCompare(b));
-
+// City/State/Country are a real cascading dropdown, backed by the static
+// data under public/data/geo/ (see that folder's SOURCE.md) — same-origin
+// static files, no auth needed, so this anonymous page (no JWT — same as
+// the rest of the "Book a Demo" submission) can use it directly. This
+// replaced an older setup where Country was a dropdown built from the
+// phone-code list (countryCodes.ts) and State/City were free text, because
+// the real cascade (`useCountryDropdown`) was wired to a dead, pre-
+// microservices tenant-service endpoint no current backend implements.
+//
 // Backend's `location` (single free-text column, max 200 chars — see
 // BookDemoRequest in requests.py) has no city/state/country structure of its
 // own. The form collects the three separately for better validation and UX,
@@ -129,13 +137,7 @@ const demoRequestObjectSchema = z.object({
     .min(2, 'State must be at least 2 characters.')
     .max(LOCATION_PART_MAX, `State must be under ${LOCATION_PART_MAX} characters.`)
     .regex(LOCATION_PART_REGEX, 'State can only contain letters, spaces, hyphens, and periods.'),
-  // A dropdown, not free text (see COUNTRY_NAME_OPTIONS) — validated
-  // against that same list so a tampered request can't smuggle in
-  // something else.
-  country: z
-    .string()
-    .min(1, 'Please select your country.')
-    .refine((val) => COUNTRY_NAME_OPTIONS.includes(val), 'Please select a valid country.'),
+  country: z.string().min(1, 'Please select your country.'),
   jobTitle: z
     .string()
     .trim()
@@ -328,15 +330,82 @@ const BookDemoPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [submitDemoRequest, { isLoading: isSubmitting }] = useSubmitDemoRequestMutation();
 
+  // Country → State → City cascade — see the comment above the schema for
+  // why this reads a self-hosted static dataset instead of the old
+  // phone-code-derived country list.
+  const [countries, setCountries] = useState<GeoCountry[]>([]);
+  const [states, setStates] = useState<GeoState[]>([]);
+  const [cities, setCities] = useState<GeoCity[]>([]);
+  const [selectedCountryId, setSelectedCountryId] = useState<number | undefined>();
+  const [selectedStateId, setSelectedStateId] = useState<number | undefined>();
+  const { locate, isLocating } = useGeolocateAddress();
+
+  useEffect(() => {
+    getCountries().then(setCountries);
+  }, []);
+
   const handleChange = (name: keyof FormState, value: string) => {
     setForm({ [name]: value });
   };
 
+  const handleCountrySelect = async (countryId: number) => {
+    const country = countries.find((c) => c.id === countryId);
+    setSelectedCountryId(countryId);
+    setSelectedStateId(undefined);
+    setCities([]);
+    setForm({ country: country?.name ?? '', state: '', city: '' });
+    setStates(await getStates(countryId));
+  };
+
+  const handleStateSelect = async (stateId: number) => {
+    const state = states.find((s) => s.id === stateId);
+    setSelectedStateId(stateId);
+    setForm({ state: state?.name ?? '', city: '' });
+    setCities(selectedCountryId != null ? await getCities(selectedCountryId, stateId) : []);
+  };
+
+  const handleCitySelect = (cityId: number) => {
+    const city = cities.find((c) => c.id === cityId);
+    setForm({ city: city?.name ?? '' });
+  };
+
+  // "Use my location" — browser geolocation + free reverse geocoding (see
+  // useGeolocateAddress), matched back against this same dataset so the
+  // three selects land in the exact same state a manual pick would leave
+  // them in (ids resolved, State/City options loaded).
+  const handleUseMyLocation = async () => {
+    const result = await locate();
+    if (result.status === 'error') {
+      showToast({ message: result.message, type: 'error' });
+      return;
+    }
+    const { country: countryName, state: stateName, city: cityName } = result.value;
+    setForm({ country: countryName, state: stateName, city: cityName });
+
+    const country = countries.find((c) => c.name === countryName);
+    setSelectedCountryId(country?.id);
+    if (!country) {
+      setStates([]);
+      setSelectedStateId(undefined);
+      setCities([]);
+      return;
+    }
+    const stateList = await getStates(country.id);
+    setStates(stateList);
+    const state = stateList.find((s) => s.name === stateName);
+    setSelectedStateId(state?.id);
+    setCities(state ? await getCities(country.id, state.id) : []);
+  };
+
   // Names should only ever contain letters and spaces — filtered as the
   // user types (same reasoning as the phone filter below) so a digit or
-  // symbol can never land in the field to begin with.
+  // symbol can never land in the field to begin with. Auto-capitalized the
+  // same way the shared Input/Textarea components do everywhere else in the
+  // app — this page uses hand-rolled `<input>` elements instead of that
+  // shared component (its own styling doesn't match this page's design),
+  // so it needs the same behavior wired in by hand.
   const handleNameChange = (name: 'firstName' | 'lastName', value: string) => {
-    setForm({ [name]: value.replace(/[^A-Za-z\s]/g, '') });
+    setForm({ [name]: capitalizeFirstLetter(value.replace(/[^A-Za-z\s]/g, '')) });
   };
 
   // Phone should only ever contain digits — filtered as the user types
@@ -503,31 +572,23 @@ const BookDemoPage = () => {
                     placeholder="Acme Inc."
                     maxLength={200}
                     value={form.company}
-                    onChange={(e) => handleChange('company', e.target.value)}
+                    onChange={(e) => handleChange('company', capitalizeFirstLetter(e.target.value))}
                   />
                 </FormField>
 
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-700">Location</span>
+                  <button
+                    type="button"
+                    onClick={handleUseMyLocation}
+                    disabled={isLocating}
+                    className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <LuMapPin className="text-sm" />
+                    {isLocating ? 'Locating…' : 'Use my location'}
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-                  <FormField name="city" error={errors.city}>
-                    <input
-                      id="city"
-                      className={inputClass}
-                      placeholder="San Francisco"
-                      maxLength={LOCATION_PART_MAX}
-                      value={form.city}
-                      onChange={(e) => handleChange('city', e.target.value)}
-                    />
-                  </FormField>
-                  <FormField name="state" error={errors.state}>
-                    <input
-                      id="state"
-                      className={inputClass}
-                      placeholder="California"
-                      maxLength={LOCATION_PART_MAX}
-                      value={form.state}
-                      onChange={(e) => handleChange('state', e.target.value)}
-                    />
-                  </FormField>
                   <FormField name="country" error={errors.country}>
                     <div className={selectWrapperClass(!!errors.country)}>
                       <Select
@@ -536,18 +597,57 @@ const BookDemoPage = () => {
                         variant="borderless"
                         size="large"
                         placeholder="Select country"
-                        value={form.country || undefined}
-                        onChange={(value) => handleChange('country', value)}
+                        value={selectedCountryId}
+                        onChange={handleCountrySelect}
                         showSearch
                         filterOption={(input, option) =>
                           String(option?.label ?? '')
                             .toLowerCase()
                             .includes(input.toLowerCase())
                         }
-                        options={COUNTRY_NAME_OPTIONS.map((countryName) => ({
-                          label: countryName,
-                          value: countryName,
-                        }))}
+                        options={countries.map((c) => ({ label: c.name, value: c.id }))}
+                      />
+                    </div>
+                  </FormField>
+                  <FormField name="state" error={errors.state}>
+                    <div className={selectWrapperClass(!!errors.state)}>
+                      <Select
+                        id="state"
+                        className="w-full"
+                        variant="borderless"
+                        size="large"
+                        placeholder="Select state"
+                        disabled={!selectedCountryId}
+                        value={selectedStateId}
+                        onChange={handleStateSelect}
+                        showSearch
+                        filterOption={(input, option) =>
+                          String(option?.label ?? '')
+                            .toLowerCase()
+                            .includes(input.toLowerCase())
+                        }
+                        options={states.map((s) => ({ label: s.name, value: s.id }))}
+                      />
+                    </div>
+                  </FormField>
+                  <FormField name="city" error={errors.city}>
+                    <div className={selectWrapperClass(!!errors.city)}>
+                      <Select
+                        id="city"
+                        className="w-full"
+                        variant="borderless"
+                        size="large"
+                        placeholder="Select city"
+                        disabled={!selectedStateId}
+                        value={cities.find((c) => c.name === form.city)?.id}
+                        onChange={handleCitySelect}
+                        showSearch
+                        filterOption={(input, option) =>
+                          String(option?.label ?? '')
+                            .toLowerCase()
+                            .includes(input.toLowerCase())
+                        }
+                        options={cities.map((c) => ({ label: c.name, value: c.id }))}
                       />
                     </div>
                   </FormField>
@@ -560,7 +660,9 @@ const BookDemoPage = () => {
                     placeholder="VP of Talent Acquisition"
                     maxLength={150}
                     value={form.jobTitle}
-                    onChange={(e) => handleChange('jobTitle', e.target.value)}
+                    onChange={(e) =>
+                      handleChange('jobTitle', capitalizeFirstLetter(e.target.value))
+                    }
                   />
                 </FormField>
 
@@ -615,7 +717,9 @@ const BookDemoPage = () => {
                     }
                     maxLength={HEAR_ABOUT_US_DETAIL_MAX}
                     value={form.hearAboutUsDetail}
-                    onChange={(e) => handleChange('hearAboutUsDetail', e.target.value)}
+                    onChange={(e) =>
+                      handleChange('hearAboutUsDetail', capitalizeFirstLetter(e.target.value))
+                    }
                   />
                 </FormField>
 

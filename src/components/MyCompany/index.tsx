@@ -16,9 +16,7 @@ import TeamTab from './Team';
 import TenantActivityFeedTab from './TenantActivityFeedTab';
 import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
 import QrManagementTab from './QrManagementTab';
-import EmailTemplatesTab from './EmailTemplatesTab';
-import NotificationCopyTab from './NotificationCopyTab';
-import SmsTemplatesTab from '../CompanySettings/SmsTemplatesTab';
+import NotificationSettingsTab from './NotificationSettingsTab';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
@@ -95,33 +93,22 @@ const MyCompany: React.FC = () => {
   // ahead of it. Its real tab (InterviewQuestionsTab) is already wired to
   // its backend and ready to swap back in once that workflow lands.
   //
-  // Scoring Criteria, QR Management, Email Templates and SMS Templates
-  // aren't job-workflow-adjacent in that sense — each configures something
-  // that already exists independent of any job posting, and each has a real
-  // tab wired below:
+  // Scoring Criteria, QR Management and Notification Settings aren't
+  // job-workflow-adjacent in that sense — each configures something that
+  // already exists independent of any job posting, and each has a real tab
+  // wired below:
   //  - Scoring Criteria / QR Management: mirror the Super Admin's
   //    per-company ScoringCriteriaPanel/QrCodePanel (see
   //    CustomerDashboard/ViewCustomer), just tenant-scoped to the signed-in
   //    session instead of an arbitrary tenant_id from the URL.
-  //  - Email Templates: this tenant's notification-service template pack +
-  //    layout (banner + 16 brand colors, all real against the CFPro2.0
-  //    backend) — self-contained tenant self-service, no props needed.
-  //    (Used to also stack a legacy `EmailBrandingTab` here, backed by a
-  //    `tenant-service` endpoint that no longer exists anywhere in this
-  //    backend — removed rather than fixed.)
-  //  - Notification Copy: per-event wording for system notifications this
-  //    tenant can send (invites, password resets, MFA codes, account-locked
-  //    alerts, …) — email always, SMS for the ~8 types that have one. Split
-  //    out of Email Templates into its own tab so it isn't competing for
-  //    space with theme controls, and so system-SMS editing isn't buried
-  //    next to the unrelated "SMS Templates" tab below.
-  //  - SMS Templates: candidate-facing RECRUITING SMS copy — a different
-  //    system entirely (its own backend, job/candidate-workflow-adjacent),
-  //    not to be confused with Notification Copy's system-alert SMS above.
-  //    Same SmsTemplatesTab the Super Admin's Company Settings screen uses,
-  //    with `fixedCompanyId` pinned to this tenant and the company picker
-  //    hidden (that prop pair exists specifically for this "My Company"
-  //    case — see its own doc comment).
+  //  - Notification Settings: one tab collecting Email Templates,
+  //    Notification Copy, and SMS Templates as sub-tabs — those three used
+  //    to be separate top-level tabs here, each real and independently
+  //    working, just sitting side by side with every other My Company
+  //    section instead of grouped under the one thing they're all actually
+  //    about. See NotificationSettingsTab's own doc comment for what each
+  //    sub-tab is and why they're distinct systems, not one feature split
+  //    three ways.
   const comingSoon = <ComingSoonTab label="To be added soon, alongside the job posting workflow" />;
 
   const items: TabsProps['items'] = [
@@ -162,20 +149,21 @@ const MyCompany: React.FC = () => {
       label: 'QR Management',
       children: <QrManagementTab tenantId={tenantId} />,
     },
-    canViewEmailTemplates && {
-      key: '10',
-      label: 'Email Templates',
-      children: <EmailTemplatesTab />,
-    },
-    canViewEmailTemplates && {
-      key: '12',
-      label: 'Notification Copy',
-      children: <NotificationCopyTab />,
-    },
+    // Not gated on canViewEmailTemplates itself — "SMS Templates" (one of
+    // this tab's 3 sub-tabs) never had a permission gate of its own before
+    // this consolidation, so hiding the whole tab behind EMAIL_TEMPLATE_VIEW
+    // would take that access away from anyone who held it without also
+    // holding EMAIL_TEMPLATE_VIEW. The gate applies per sub-tab instead —
+    // see NotificationSettingsTab's own canViewEmailTemplates prop.
     {
-      key: '11',
-      label: 'SMS Templates',
-      children: <SmsTemplatesTab fixedCompanyId={tenantId} showCompanySelect={false} />,
+      key: '10',
+      label: 'Notification Settings',
+      children: (
+        <NotificationSettingsTab
+          tenantId={tenantId}
+          canViewEmailTemplates={canViewEmailTemplates}
+        />
+      ),
     },
   ].filter(Boolean) as TabsProps['items'];
 

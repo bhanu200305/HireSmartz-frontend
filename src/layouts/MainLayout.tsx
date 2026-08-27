@@ -1,13 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
-import Sidebar, { SIDEBAR_WIDTH } from '../components/Sidebar';
+import Sidebar, { SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_WIDTH_EXPANDED } from '../components/Sidebar';
 import {
   clearLocalStorage,
   clearImpersonationStorage,
   getLocalStorageItem,
+  setLocalStorageItem,
 } from '../shared/utils/auth/localstorage.helpers';
 import { LOCALSTORAGE_KEYS } from '../constants/webAPI';
 
@@ -23,6 +24,28 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
   const navigate = useNavigate();
+  // Owned here, not inside Sidebar — this component renders both Sidebar
+  // and the content column that has to shift by the exact same amount, so
+  // one shared value (not two components each tracking their own) is what
+  // keeps them from drifting apart. Persisted so the choice survives a
+  // reload/new tab instead of silently re-expanding every navigation.
+  //
+  // `=== 'true'` (a string), not `=== true`: setLocalStorageItem always
+  // JSON.stringifies its value before storing, and getLocalStorageItem's
+  // own JSON.parse(JSON.stringify(...)) round-trip is a no-op identity for
+  // a string — passing the real boolean `true` in ends up stored as the
+  // 4-character string `true`, read back as that same string, never as an
+  // actual boolean.
+  const [collapsed, setCollapsed] = useState<boolean>(
+    () => getLocalStorageItem(LOCALSTORAGE_KEYS.SIDEBAR_COLLAPSED) === 'true'
+  );
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      setLocalStorageItem(LOCALSTORAGE_KEYS.SIDEBAR_COLLAPSED, next);
+      return next;
+    });
+  };
   const hideNavbarPaths = ['/profile', '/change-password'];
   const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
   const lastActivityRef = useRef<number>(Date.now());
@@ -150,10 +173,19 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
         fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'
       )}
     >
-      {!hideSidebar && <Sidebar />}
+      {!hideSidebar && <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} />}
       <div
-        className={clsx('flex flex-col', fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen')}
-        style={{ marginLeft: hideSidebar ? 0 : SIDEBAR_WIDTH }}
+        className={clsx(
+          'flex flex-col transition-[margin-left] duration-200 ease-in-out',
+          fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'
+        )}
+        style={{
+          marginLeft: hideSidebar
+            ? 0
+            : collapsed
+              ? SIDEBAR_WIDTH_COLLAPSED
+              : SIDEBAR_WIDTH_EXPANDED,
+        }}
       >
         <Header />
         <div

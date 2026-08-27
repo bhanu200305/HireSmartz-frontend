@@ -7,6 +7,7 @@ export const LOCALSTORAGE_KEYS = {
   REMEMBER_ME: 'rememberMe',
   REMEMBER_CREDENTIALS: 'rememberedCredentials',
   ROLE: 'role',
+  SIDEBAR_COLLAPSED: 'sidebarCollapsed',
 };
 
 export const BASE_URL = `${import.meta.env.VITE_BACKEND_ENDPOINT}${import.meta.env.VITE_BACKEND_PREFIX}`;

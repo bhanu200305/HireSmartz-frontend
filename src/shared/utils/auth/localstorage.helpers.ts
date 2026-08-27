@@ -6,6 +6,23 @@ export const getLocalStorageItem = (key: string): any | null => {
   let item: string | null = null;
   try {
     item = get(localStorage, key);
+    // The access/refresh tokens are the one thing ~35 call sites across
+    // this app read through this same generic helper
+    // (`getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS)`), but Login/index.tsx
+    // writes them to sessionStorage UNCONDITIONALLY on every login path,
+    // and to localStorage only via `setTokens` — a real, working call today,
+    // but a second step nonetheless, and a component like Header.tsx that
+    // read localStorage exclusively went stale for an entire session's
+    // worth of the profile/logout UI in exactly this gap (see Header's own
+    // fix comment). Falling back to sessionStorage here for just these two
+    // keys — the same fallback order `isImpersonationActive`/
+    // `validateImpersonationSessionOwnership` below already use — fixes
+    // every one of those call sites at once instead of chasing each one
+    // individually, and matches this file's own established precedent
+    // rather than inventing a new one.
+    if (!item && (key === LOCALSTORAGE_KEYS.ACCESS || key === LOCALSTORAGE_KEYS.REFRESH)) {
+      item = sessionStorage.getItem(key);
+    }
     return item ? JSON.parse(JSON.stringify(item)) : null;
   } catch {
     // console.error(`Error retrieving item from localStorage: ${error}`)

@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaCheckCircle, FaRegCopy } from 'react-icons/fa';
 import { MdLockOutline, MdErrorOutline, MdPersonOutline, MdOutlinePhone } from 'react-icons/md';
 import { get } from 'lodash-es';
+import { Select } from 'antd';
 import { Button, CustomCheckbox, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import Footer from '../Footer';
@@ -15,7 +16,12 @@ import {
 } from '../../api/organization-service/Invitations/invitations';
 import { buildOtpAuthUri, generateBase32Secret } from '../../shared/utils/mfa.helpers';
 import { handlePhoneNumberChange } from '../../shared/utils/validation/input.helpers';
+import { countryCodes } from '../../constants/countryCode';
 import { acceptInvitationSchema, type AcceptInvitationFormValues } from './AcceptInvitationSchema';
+
+// Same default every other phone field in this app starts from (see
+// EditCandidate.tsx/UserProfile).
+const DEFAULT_COUNTRY_CODE = '+1';
 
 // Copy for every documented error the two calls on this screen
 // (validateInvitation / acceptInvitation) can return. Centralised so the
@@ -196,6 +202,7 @@ const AcceptInvitation = () => {
       defaultValues: {
         firstName: '',
         lastName: '',
+        countryCode: DEFAULT_COUNTRY_CODE,
         phoneNumber: '',
         isPlatformInvite: false,
         password: '',
@@ -235,6 +242,7 @@ const AcceptInvitation = () => {
         mfa_secret: mfaSecret,
         first_name: data.firstName.trim(),
         last_name: data.lastName.trim() || undefined,
+        country_code: data.isPlatformInvite ? undefined : data.countryCode?.trim() || undefined,
         phone_number: data.isPlatformInvite ? undefined : data.phoneNumber?.trim() || undefined,
       }).unwrap();
       setIsAccepted(true);
@@ -369,28 +377,58 @@ const AcceptInvitation = () => {
 
         {!invitation.is_platform_invite && (
           <div>
-            <Controller
-              name="phoneNumber"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  {...field}
-                  type="tel"
-                  placeholder="Phone number*"
-                  maxLength={14}
-                  prefix={
-                    <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
-                      <MdOutlinePhone className="text-brand-900 text-sm" />
-                    </div>
-                  }
-                  className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                  onChange={(e) => handlePhoneNumberChange(e, setValue, 'phoneNumber', trigger)}
+            <div className="flex gap-2">
+              <Controller
+                name="countryCode"
+                control={control}
+                render={({ field }) => (
+                  <div className="w-24 shrink-0 rounded-3xl border bg-white px-1 border-[var(--border)] focus-within:ring focus-within:ring-brand-300">
+                    <Select
+                      value={field.value}
+                      onChange={field.onChange}
+                      variant="borderless"
+                      className="w-full"
+                      showSearch
+                      popupMatchSelectWidth={280}
+                      filterOption={(input, option) =>
+                        String(option?.label ?? '')
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
+                      }
+                      optionLabelProp="value"
+                      options={countryCodes.map(({ short, value, label }) => ({
+                        label: `${short} - ${label}`,
+                        value,
+                      }))}
+                    />
+                  </div>
+                )}
+              />
+              <div className="min-w-0 flex-1">
+                <Controller
+                  name="phoneNumber"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      type="tel"
+                      placeholder="Phone number*"
+                      maxLength={14}
+                      prefix={
+                        <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                          <MdOutlinePhone className="text-brand-900 text-sm" />
+                        </div>
+                      }
+                      className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                      onChange={(e) => handlePhoneNumberChange(e, setValue, 'phoneNumber', trigger)}
+                    />
+                  )}
                 />
-              )}
-            />
-            {errors.phoneNumber && (
+              </div>
+            </div>
+            {(errors.countryCode || errors.phoneNumber) && (
               <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
-                {errors.phoneNumber.message}
+                {errors.countryCode?.message || errors.phoneNumber?.message}
               </p>
             )}
           </div>

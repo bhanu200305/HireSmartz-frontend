@@ -8,24 +8,12 @@ import {
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import { StatCardRow, ChartCard } from '../shared';
 import type { StatCardData } from '../shared';
-import { Badge, BadgeStatus } from '../shared/ui/badge';
+import { Badge } from '../shared/ui/badge';
 import {
   useGetPlatformTenantDashboardQuery,
   type PlatformTenantSummary,
 } from '../../api/organization-service/Platform/tenants';
-
-const STATUS_BADGE: Record<string, BadgeStatus> = {
-  draft: 'neutral',
-  pre_approved: 'warning',
-  active: 'success',
-  suspended: 'danger',
-};
-
-const formatStatusLabel = (status: string): string =>
-  status
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+import { TENANT_STATUS_BADGE, formatTenantStatusLabel } from './tenantDisplay.helpers';
 
 const initials = (name: string): string =>
   name
@@ -137,8 +125,8 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
               {tenant.company_name}
             </h2>
             <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-              <Badge status={STATUS_BADGE[tenant.status] ?? 'neutral'}>
-                {formatStatusLabel(tenant.status)}
+              <Badge status={TENANT_STATUS_BADGE[tenant.status] ?? 'neutral'}>
+                {formatTenantStatusLabel(tenant.status)}
               </Badge>
               <span>·</span>
               <span>Last activity {formatRelativeTime(tenant.last_active_at)}</span>

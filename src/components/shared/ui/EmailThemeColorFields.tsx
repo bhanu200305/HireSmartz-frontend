@@ -80,14 +80,20 @@ const EmailThemeColorFields: React.FC<EmailThemeColorFieldsProps> = ({
   onChange,
   disabled = false,
 }) => (
-  <div className="flex flex-col gap-6">
+  // Reverted a `lg:grid-cols-2` group-side-by-side split tried here — nesting
+  // that on top of this section's own `sm:grid-cols-3` field grid, combined
+  // with EmailLayoutSection's fields-vs-live-preview split kicking in at the
+  // exact same `lg:` breakpoint, squeezed each color field down to roughly
+  // 90px wide: nowhere near enough room for a 40px swatch plus a hex-input
+  // pill, so every row looked crushed/misaligned instead of shorter.
+  <div className="flex flex-col gap-5">
     {THEME_COLOR_GROUPS.map((group) => (
       <div key={group.title}>
         <h4 className="mb-0.5 text-xs font-bold uppercase tracking-wide text-gray-500">
           {group.title}
         </h4>
-        <p className="mb-3 text-xs text-gray-400">{group.description}</p>
-        <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-3">
+        <p className="mb-2 text-xs text-gray-400">{group.description}</p>
+        <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-3">
           {group.fields.map(({ key, label, reserved }) => {
             const value = theme[key] || fallback[key];
             return (

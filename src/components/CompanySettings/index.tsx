@@ -10,8 +10,7 @@ import DepartmentsTab from './DepartmentsTab';
 import JobTitlesTab from './JobTitlesTab';
 import DepartmentSettingsTab from './DepartmentSettingsTab';
 import PlatformScoringDefaultsTab from './PlatformScoringDefaultsTab';
-import SmsTemplatesTab from './SmsTemplatesTab';
-import NotificationTemplatesTab from './NotificationTemplatesTab';
+import NotificationSettingsTab from './NotificationSettingsTab';
 
 /**
  * Super Admin's platform master-data hub. Industries/Departments/Job Titles/
@@ -24,21 +23,11 @@ import NotificationTemplatesTab from './NotificationTemplatesTab';
  * CareerForcePro's own internal Sales/Support/Finance/Ops departments, which
  * live in the CFP Users section of the Users page instead.
  *
- * "SMS Templates" manages a DIFFERENT, unrelated feature — candidate-facing
- * per-interview-round SMS copy (its own `tenant-service/CompanySettings/
- * smsTemplates` backend) — left untouched on purpose. "Notification Templates"
- * is the real notification-service surface (`/v1/platform/template-settings/*`):
- * the platform's own security/onboarding/lifecycle notification catalogue,
- * plus (its "Theme defaults" section) the platform-wide banner/brand-color
- * defaults for every candidate-facing email.
- *
- * There used to be a separate "Email Templates Config" tab here (a company
- * picker + banner/16-color editor) backed by a legacy `tenant-service`
- * (`/mail/template-config/*`) that predates the organization-service split
- * and no longer exists in this backend — every save 404'd locally. Removed
- * in favor of "Notification Templates → Theme defaults", which does the
- * same job against the real, working backend (verified end-to-end:
- * migration `0015_email_theme_colors`, `GET/PUT .../master-layout/{pack}`).
+ * "Notification Settings" collects everything notification-related as its
+ * own sub-tabs (Notification Templates, SMS Templates) instead of two
+ * separate top-level tabs — see NotificationSettingsTab's own doc comment
+ * for what each sub-tab is and why they're distinct systems, not one
+ * feature split two ways.
  */
 const CompanySettings: React.FC = () => {
   const navigate = useNavigate();
@@ -82,13 +71,8 @@ const CompanySettings: React.FC = () => {
       },
       {
         key: '7',
-        label: 'SMS Templates',
-        children: <SmsTemplatesTab />,
-      },
-      {
-        key: '8',
-        label: 'Notification Templates',
-        children: <NotificationTemplatesTab />,
+        label: 'Notification Settings',
+        children: <NotificationSettingsTab />,
       },
     ],
     []

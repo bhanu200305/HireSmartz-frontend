@@ -2,35 +2,23 @@ import React, { useState } from 'react';
 import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { MdApartment } from 'react-icons/md';
-import { Badge, BadgeStatus } from '../shared/ui/badge';
+import { Select } from 'antd';
+import { Badge } from '../shared/ui/badge';
 import { Loader } from '../shared/ui/loader';
+import MasterPagination from '../shared/ui/MasterPagination';
+import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import {
   useListPlatformTenantsQuery,
   type PlatformTenantSummary,
 } from '../../api/organization-service/Platform/tenants';
 import TenantAnalyticsModal from './TenantAnalyticsModal';
+import {
+  TENANT_STATUS_BADGE,
+  formatTenantStatusLabel,
+  formatTenantDate,
+} from './tenantDisplay.helpers';
 
-const STATUS_BADGE: Record<string, BadgeStatus> = {
-  draft: 'neutral',
-  pre_approved: 'warning',
-  active: 'success',
-  suspended: 'danger',
-};
-
-const formatStatusLabel = (status: string): string =>
-  status
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-
-const formatDate = (isoDate: string | null): string =>
-  isoDate
-    ? new Date(isoDate).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : '—';
+const PAGE_SIZE_OPTIONS = [5, 10, 20];
 
 /**
  * Super Admin's "CFP Company" Dashboard slide, replaced to point at real
@@ -39,19 +27,34 @@ const formatDate = (isoDate: string | null): string =>
  * backend behind it anywhere in this repo (confirmed: not one of the ten
  * real services implements it), so it always rendered "0 CFP Company".
  * This pulls the same `GET /v1/platform/tenants` the real Companies page
- * already uses, same 5-rows-plus-"View all" shape as every other preview
- * slide in this carousel.
+ * already uses.
+ *
+ * PAGINATED IN PLACE, not just a "top 5 + View all" static preview: the
+ * endpoint already supports `limit`/`offset` (the full `/company` page has
+ * used it for filtering/paging from the start — see `CustomerTable`), so
+ * this card gets the same browsing without leaving the dashboard. Rows per
+ * page is a `usePersistedPageSize` choice — a per-browser convenience, not
+ * a setting stored anywhere on the backend.
  *
  * Clicking a company opens its analytics in a modal (`TenantAnalyticsModal`)
  * rather than navigating to `/view-company` — that page-load/route-change
  * is exactly the friction this was asked to remove; the modal renders the
  * same content in place, instantly. An earlier hover-preview popover on
  * each row was pulled — this click-through modal replaced it outright.
+ * "View all" still links to `/company` for the status/search filters this
+ * compact card has no room for.
  */
 const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) => {
   const navigate = useNavigate();
-  const { data, isLoading } = useListPlatformTenantsQuery({ limit: 5 });
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('tenants_preview_card', 5);
+
+  const { data, isLoading } = useListPlatformTenantsQuery({
+    limit: pageSize,
+    offset: page * pageSize,
+  });
   const tenants = data?.tenants ?? [];
+  const total = data?.total ?? 0;
 
   const [selectedTenant, setSelectedTenant] = useState<PlatformTenantSummary | null>(null);
 
@@ -63,19 +66,34 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
       )}
       style={{ borderColor: 'var(--border)' }}
     >
-      <div className="flex shrink-0 items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-lg text-primary-600">
-          <MdApartment />
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-lg text-primary-600">
+            <MdApartment />
+          </div>
+          <h2 className="font-display text-lg font-semibold text-neutral-900">
+            <button
+              type="button"
+              className="transition-colors hover:text-primary"
+              onClick={() => navigate('/company')}
+            >
+              CFP Company
+            </button>
+          </h2>
         </div>
-        <h2 className="font-display text-lg font-semibold text-neutral-900">
-          <button
-            type="button"
-            className="transition-colors hover:text-primary"
-            onClick={() => navigate('/company')}
-          >
-            CFP Company
-          </button>
-        </h2>
+        <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+          <span>Rows</span>
+          <Select
+            size="small"
+            value={pageSize}
+            className="w-16"
+            options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
+            onChange={(size) => {
+              setPageSize(size);
+              setPage(0);
+            }}
+          />
+        </div>
       </div>
 
       <div
@@ -117,12 +135,14 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
                     </button>
                   </td>
                   <td className="py-3 px-3">
-                    <Badge status={STATUS_BADGE[tenant.status] ?? 'neutral'}>
-                      {formatStatusLabel(tenant.status)}
+                    <Badge status={TENANT_STATUS_BADGE[tenant.status] ?? 'neutral'}>
+                      {formatTenantStatusLabel(tenant.status)}
                     </Badge>
                   </td>
                   <td className="py-3 px-3 text-neutral-600">{tenant.admin_email || '—'}</td>
-                  <td className="py-3 px-3 text-neutral-600">{formatDate(tenant.created_at)}</td>
+                  <td className="py-3 px-3 text-neutral-600">
+                    {formatTenantDate(tenant.created_at)}
+                  </td>
                 </tr>
               ))}
               {tenants.length === 0 && (
@@ -137,20 +157,26 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
         )}
       </div>
 
-      <div className="mt-4 flex shrink-0 items-center justify-between border-t border-neutral-100 pt-4 text-sm text-neutral-500">
-        <span>
-          Showing latest {tenants.length} of {data?.total ?? 0} companies
-        </span>
-        <button
-          type="button"
-          onClick={() => navigate('/company')}
-          className="group flex items-center gap-1 text-xs font-semibold tracking-wide text-primary uppercase transition-colors hover:text-primary-700"
-        >
-          View all
-          <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">
-            →
-          </span>
-        </button>
+      <div className="mt-4 shrink-0 border-t border-neutral-100 pt-3">
+        <MasterPagination
+          current={page + 1}
+          pageSize={pageSize}
+          total={total}
+          itemLabel="companies"
+          onPageChange={(nextPage) => setPage(nextPage - 1)}
+        />
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => navigate('/company')}
+            className="group flex items-center gap-1 text-xs font-semibold tracking-wide text-primary uppercase transition-colors hover:text-primary-700"
+          >
+            View all / filter
+            <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">
+              →
+            </span>
+          </button>
+        </div>
       </div>
 
       {selectedTenant && (
