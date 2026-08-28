@@ -95,13 +95,18 @@ const EmailThemeColorFields: React.FC<EmailThemeColorFieldsProps> = ({
         <p className="mb-2 text-xs text-gray-400">{group.description}</p>
         <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-3">
           {group.fields.map(({ key, label, reserved }) => {
-            const value = theme[key] || fallback[key];
+            // `Required<EmailThemeColors>` strips the `?` off each field but
+            // not the `| null` — `fallback` is meant to always carry a real
+            // platform-default hex string, but the type still allows null,
+            // so this coerces to '' at the boundary (isHexColor('') is
+            // false, same effective fallback behavior as before).
+            const value = theme[key] || fallback[key] || '';
             return (
               <ColorField
                 key={key}
                 label={label}
                 reserved={reserved}
-                value={isHexColor(value) ? value : fallback[key]}
+                value={isHexColor(value) ? value : (fallback[key] ?? '')}
                 disabled={disabled}
                 onChange={(next) => onChange(key, next)}
               />

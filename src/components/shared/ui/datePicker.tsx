@@ -240,15 +240,15 @@ const DateTimeRangePicker: React.FC<DateTimeProps> = ({ value, onApply, onReset 
         placement="bottomRight"
       >
         <div
-          className="flex items-center cursor-pointer space-x-3 rounded-full bg-white px-4 py-2.5 border border-gray-300"
+          className="cfp-dropdown-trigger cursor-pointer"
           onClick={() => setShowDropdown(!showDropdown)}
         >
-          <GoClock className="text-primary text-lg" />
-          <span className="text-sm whitespace-nowrap">Date - Time</span>
+          <GoClock className="cfp-dropdown-filter-icon" />
+          <span className="text-sm whitespace-nowrap text-gray-800">Date - Time</span>
           {showDropdown ? (
-            <FaChevronUp className="text-gray-600 text-xs" />
+            <FaChevronUp className="text-gray-800 text-xs ml-auto" />
           ) : (
-            <FaChevronDown className="text-gray-600 text-xs" />
+            <FaChevronDown className="text-gray-800 text-xs ml-auto" />
           )}
         </div>
       </Dropdown>

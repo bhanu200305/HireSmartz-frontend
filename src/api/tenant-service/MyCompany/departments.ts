@@ -1,4 +1,5 @@
 import { api } from '../../index';
+import { jobServiceOrigin } from '../../jobServiceOrigin';
 
 export type DepartmentRequest = {
   status?: string;
@@ -89,7 +90,7 @@ const extendedApi = api.injectEndpoints({
         sortBy = 'createdAt',
         sortDirection = 'DESC',
       }) => {
-        let url = `/job-opening/company-org/departments?page=${page}&size=${size}&sortBy=${sortBy}&sortDirection=${sortDirection}`;
+        let url = `${jobServiceOrigin()}/job-opening/company-org/departments?page=${page}&size=${size}&sortBy=${sortBy}&sortDirection=${sortDirection}`;
         if (status && status !== 'all') url += `&status=${status}`;
         if (source && source !== 'all') url += `&source=${source}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
@@ -103,14 +104,14 @@ const extendedApi = api.injectEndpoints({
     }),
     getDepartmentImportList: build.query<ImportListResponse, void>({
       query: () => ({
-        url: `/job-opening/company-org/departments/import-list`,
+        url: `${jobServiceOrigin()}/job-opening/company-org/departments/import-list`,
         method: 'GET',
       }),
       providesTags: ['Departments'],
     }),
     importDepartments: build.mutation<void, { masterDepartmentIds: number[] }>({
       query: (body) => ({
-        url: `/job-opening/company-org/departments/import`,
+        url: `${jobServiceOrigin()}/job-opening/company-org/departments/import`,
         method: 'POST',
         body,
       }),
@@ -118,7 +119,7 @@ const extendedApi = api.injectEndpoints({
     }),
     addCustomDepartment: build.mutation<void, { name: string; status: string | boolean }>({
       query: (body) => ({
-        url: `/job-opening/company-org/departments/custom`,
+        url: `${jobServiceOrigin()}/job-opening/company-org/departments/custom`,
         method: 'POST',
         body,
       }),
@@ -129,7 +130,7 @@ const extendedApi = api.injectEndpoints({
       { id: number; name: string; status: string | boolean }
     >({
       query: ({ id, ...body }) => ({
-        url: `/job-opening/company-org/departments/${id}`,
+        url: `${jobServiceOrigin()}/job-opening/company-org/departments/${id}`,
         method: 'PUT',
         body,
       }),
@@ -137,7 +138,7 @@ const extendedApi = api.injectEndpoints({
     }),
     getDepartmentJobTitles: build.query<MappedJobTitle[], { departmentId: number }>({
       query: ({ departmentId }) => ({
-        url: `/job-opening/company-org/departments/${departmentId}/job-titles`,
+        url: `${jobServiceOrigin()}/job-opening/company-org/departments/${departmentId}/job-titles`,
         method: 'GET',
       }),
       providesTags: ['JobRoles'],
@@ -147,7 +148,7 @@ const extendedApi = api.injectEndpoints({
       { departmentId: number; jobTitleIds: number[] }
     >({
       query: (body) => ({
-        url: `/job-opening/company-org/departments/configure-job-titles`,
+        url: `${jobServiceOrigin()}/job-opening/company-org/departments/configure-job-titles`,
         method: 'POST',
         body,
       }),
@@ -155,7 +156,7 @@ const extendedApi = api.injectEndpoints({
     }),
     deleteCustomDepartment: build.mutation<void, number>({
       query: (id) => ({
-        url: `/job-opening/company-org/departments/${id}`,
+        url: `${jobServiceOrigin()}/job-opening/company-org/departments/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Departments', 'JobRoles'],

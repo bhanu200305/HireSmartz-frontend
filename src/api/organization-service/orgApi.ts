@@ -109,6 +109,7 @@ export const orgApi = createApi({
     'Tenant',
     'TenantInvitations',
     'TenantDepartments',
+    'TenantJobTitles',
     'TenantOffices',
     'TenantActivity',
     'Entitlements',

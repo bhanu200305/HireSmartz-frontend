@@ -7,6 +7,7 @@ import { Select, Switch, Tooltip } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Button, Input, showToast } from '../shared';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { Loader } from '../shared/ui/loader';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { Badge } from '../shared/ui/badge';
@@ -203,18 +204,22 @@ const OrganisationUserTable = () => {
               onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
-          <Select
-            value={includeInactive}
-            onChange={(value) => {
-              setIncludeInactive(value);
-              setPage(0);
-            }}
-            className="w-40"
-            options={[
-              { label: 'Active only', value: 'active' },
-              { label: 'Include deactivated', value: 'all' },
-            ]}
-          />
+          <div className="cfp-dropdown-trigger w-40">
+            <FilterSelectIcon />
+            <Select
+              value={includeInactive}
+              onChange={(value) => {
+                setIncludeInactive(value);
+                setPage(0);
+              }}
+              className="w-full custom-select"
+              variant="borderless"
+              options={[
+                { label: 'Active only', value: 'active' },
+                { label: 'Include deactivated', value: 'all' },
+              ]}
+            />
+          </div>
           {/* Extra gap ahead of Add User specifically — it's the row's one
               destructive-adjacent action-button among filter controls, and
               sat too close to the dropdown beside it. */}

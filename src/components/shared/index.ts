@@ -20,6 +20,7 @@ export { Textarea } from './ui/textarea';
 export { Search } from './ui/search';
 export { CustomCheckbox } from './ui/checkbox';
 export { Select } from './ui/select';
+export { FilterSelectIcon } from './ui/FilterSelectIcon';
 export { default as LocationFormModal } from './ui/locationFormModal';
 export { default as LocationCascadeFields } from './ui/LocationCascadeFields';
 export type { LocationCascadeValue } from './ui/LocationCascadeFields';

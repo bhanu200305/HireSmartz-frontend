@@ -5,7 +5,7 @@ const extendedApi = api.injectEndpoints({
   endpoints: (build) => ({
     getAiInterviewQuestionsByRound: build.query<
       GetAiInterviewQuestionsByRoundResponse,
-      { interviewRoundId: string | number; jobOpeningId: number }
+      { interviewRoundId: string | number; jobOpeningId: string | number }
     >({
       query: ({ interviewRoundId, jobOpeningId }) => ({
         url: `/ai-interview-questions/getAllByRoundID?interviewRoundId=${interviewRoundId}&jobOpeningId=${jobOpeningId}`,
@@ -36,7 +36,12 @@ const extendedApi = api.injectEndpoints({
     }),
     editAiInterviewQuestion: build.mutation<
       { status: boolean; message: string },
-      { questionID: number; interviewRoundId: number; categoryId?: number; question?: string }
+      {
+        questionID: number;
+        interviewRoundId: number;
+        categoryId?: string | number;
+        question?: string;
+      }
     >({
       query: ({ questionID, interviewRoundId, ...body }) => ({
         url: `/ai-interview-questions/edit?questionID=${questionID}&interviewRoundId=${interviewRoundId}`,

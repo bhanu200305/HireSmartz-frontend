@@ -1,8 +1,8 @@
 import React from 'react';
 import { Row, Col, Select } from 'antd';
-import { MdOutlineFilterAlt } from 'react-icons/md';
 import { Search } from './search';
 import { Button } from './button';
+import { FilterSelectIcon } from './FilterSelectIcon';
 import { CommonCard } from './card';
 import { COL } from './Columns';
 import MasterPagination from './MasterPagination';
@@ -110,19 +110,17 @@ export const MasterTable = React.forwardRef<HTMLDivElement, MasterTableProps<any
             />
 
             {filters?.filterOptions?.map((filter) => (
-              <div
-                key={filter.value}
-                className="border border-[var(--border)] p-1 rounded-3xl w-40 max-h-12 flex items-center"
-              >
+              <div key={filter.value} className="cfp-dropdown-trigger w-40">
+                <FilterSelectIcon />
                 <Select
                   placeholder={filter.label}
-                  prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />}
                   onChange={(value: string | undefined) =>
                     onFilterChange?.(filter.value, value || '')
                   }
                   allowClear
                   className="w-full custom-select"
                   popupClassName="rounded-3xl"
+                  variant="borderless"
                   options={filter.options}
                 />
               </div>

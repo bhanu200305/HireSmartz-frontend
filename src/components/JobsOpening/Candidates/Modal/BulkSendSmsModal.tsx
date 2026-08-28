@@ -16,7 +16,7 @@ const SMS_MAX_LEN = 160;
 type BulkSendSmsModalProps = {
   open: boolean;
   onClose: () => void;
-  jobOpeningId: number;
+  jobOpeningId: string | number;
   /** All candidates currently selected in the floating bar */
   candidates: any[];
 };

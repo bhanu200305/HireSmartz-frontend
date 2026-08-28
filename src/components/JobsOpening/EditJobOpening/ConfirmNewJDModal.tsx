@@ -1,6 +1,8 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { MdClose } from 'react-icons/md';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
+import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
+import { asJobId } from '../../../api/job-service/jobId';
 import { useSelector, shallowEqual, useDispatch } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 
@@ -28,73 +30,35 @@ const ConfirmNewJDModal = () => {
     }),
     shallowEqual
   );
-  const handleSubmit = async (generateAiJd: boolean) => {
-    const jobOpeningId = Number(id);
-    const selectedLocationId = Number(details.officeLocation?.[0]);
-    const locationId = Number.isFinite(selectedLocationId) ? selectedLocationId : undefined;
-
-    const processedPayload = {
-      jobProfileCode: details.jobProfileCode || '',
-      jobTitle: details.jobTitle || [],
-      department: details.department || [],
-      locationId,
-      jobType: details.jobType || [],
-      isMultilingual: details.isMultilingual || false,
-      useCultureIntro: Boolean(details.useCultureIntro),
-      shift:
-        details.shiftStart && details.shiftEnd
-          ? `${details.shiftStart} - ${details.shiftEnd}`
-          : null,
-      openings: details.openings ?? null,
-      minSalary: details.minSalary ? Number(details.minSalary) : null,
-      maxSalary: details.maxSalary ? Number(details.maxSalary) : null,
-      minExperience: details.minExperience ?? null,
-      maxExperience: details.maxExperience ?? null,
-      openDate: details.openDate || '',
-      hiringManagers: details.hiringManagers || [],
-      recruiters: details.recruiters || [],
-      mandatorySkills: description.mandatorySkills || [],
-      optionalSkills: description.optionalSkills || [],
-      educationPreference: description.educationPreference || [],
-      communicationSkills: '',
-      otherRequirements: description.otherRequirements || '',
-      responsibilities: description.responsibilities || '',
-      exemptionStatus: details.exemptionStatus ?? null,
-      referralBonus:
-        details.referralBonus === null ||
-        details.referralBonus === undefined ||
-        details.referralBonus === ''
-          ? ''
-          : details.referralBonus,
-      generateAiJd,
-      isDraft: false,
-    };
+  const handleSubmit = async (_generateAiJd: boolean) => {
+    const jobOpeningId = asJobId(id);
+    const body = buildSaveJobDetailsPayload({
+      data: {
+        ...details,
+        ...description,
+        useCultureIntro: Boolean(details.useCultureIntro),
+      },
+    });
     updateJobOpening({
-      body: processedPayload as any,
+      body,
       jobOpeningId,
     })
       .unwrap()
       .then((res) => {
-        if (res?.success) {
-          showToast({
-            message: get(res, 'message', 'Job opening has been updated successfully'),
-            type: 'success',
-          });
-          dispatch(setEditJobOpeningId(res.data.jobOpeningId));
-          dispatch(
-            updateEditAiJobDescription({
-              id: res.data.aiJobDescriptionId,
-              jobOpeningId: res.data.jobOpeningId || 0,
-            })
-          );
-          dispatch(setIsChanged(false));
-          navigate(`/jobs/edit/${id}/AiJobDescription/${res.data.aiJobDescriptionId}`);
-        } else {
-          showToast({
-            message: get(res, 'message', 'Failed to update job opening. Please try again.'),
-            type: 'error',
-          });
-        }
+        const savedId = res.org_job_opening_id || jobOpeningId;
+        showToast({
+          message: 'Job opening has been updated successfully',
+          type: 'success',
+        });
+        dispatch(setEditJobOpeningId(savedId));
+        dispatch(
+          updateEditAiJobDescription({
+            id: savedId,
+            jobOpeningId: savedId,
+          })
+        );
+        dispatch(setIsChanged(false));
+        navigate(`/jobs/edit/${id}/AiJobDescription/${savedId}`);
       })
       .catch((err) => {
         showToast({

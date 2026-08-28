@@ -13,23 +13,29 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Loader } from '../shared/ui/loader';
 import MainLayout from '../../layouts/MainLayout';
 import { TbBriefcase2 } from 'react-icons/tb';
-import { AiFillStar } from 'react-icons/ai';
 import { hasFeatureAccess } from '../../shared/utils/auth/getAccess';
 import useEffectivePermissions from '../../hooks/useEffectivePermissions';
+import { useSessionTenantId } from '../../hooks/useSessionTenantId';
 import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useGetJobOpeningsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
-import { useGetMyLocationsQuery } from '../../api/job-service/JobOpening/GetJobLocations';
+import {
+  officeDisplayName,
+  useListTenantOfficesQuery,
+} from '../../api/organization-service/Tenants/offices';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { setJobOpeningFilters } from '../../redux/slices/jobOpeningFilterSlice';
 import { Col, Dropdown, Modal, Row, Select, MenuProps, Tooltip } from 'antd';
-import { MdOutlineFilterAlt } from 'react-icons/md';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { DateTimePayload, Jobs, SortDirection } from '../../types';
 import DateTimeRangePicker from '../shared/ui/datePicker';
 import { handleDateValue, safeDecodeToken } from '../../shared/utils/methods';
 import { COL } from '../shared/ui/Columns';
 import { useDuplicateJobOpeningMutation } from '../../api/job-service/JobOpening/GetJobOpeningById';
+import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
+import { useListUsersQuery } from '../../api/organization-service/Users/users';
+import { useListJobTypesQuery } from '../../api/job-service/JobOpening/catalogs';
 import { showToast } from '../shared';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import CloseJobModal from './Candidates/Modal/CloseJobModal';
@@ -42,6 +48,8 @@ import {
   useToggleQrActiveMutation,
 } from '../../api/tenant-service/MyCompany/qrCode';
 import { resetJobState } from '../../redux/slices/jobOpeningSlice';
+import { useStartManualJobOpening } from '../../hooks/useStartManualJobOpening';
+import { getJobErrorMessage } from '../../shared/utils/auth/jobError.helpers';
 import {
   useUploadBulkJdMutation,
   useUploadSingleJdMutation,
@@ -105,25 +113,27 @@ const JobsOpening = () => {
   const location = useLocation();
   const dispatch = useDispatch();
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-  const [jobToDuplicate, setJobToDuplicate] = useState<number | null>(null);
+  const [jobToDuplicate, setJobToDuplicate] = useState<string | null>(null);
   const [isFromGlobalSearch, setIsFromGlobalSearch] = useState(false);
   const [, setGlobalSearchBaseQuery] = useState('');
   const [, setGlobalSearchField] = useState('');
-  const { role } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const { role, callerKind } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const tenantId = useSessionTenantId();
   const authorities = useEffectivePermissions();
   const [collapsedUsers, setCollapsedUsers] = useState<string[]>([]);
   const [duplicateJobOpening, { isLoading: isDuplicating }] = useDuplicateJobOpeningMutation();
+  const { startManualJobOpening, isStartingManualJob } = useStartManualJobOpening();
   const { loginToken } = useSelector((state: any) => state.LoginSlice);
   const [showCloseJobModal, setShowCloseJobModal] = useState(false);
   const [jobName, setJobName] = useState<string | null>(null);
-  const [jobOpeningId, setJobOpeningId] = useState<number | null>(null);
+  const [closeJobOpeningId, setCloseJobOpeningId] = useState<string | null>(null);
   const [interviewCount, setInterviewCount] = useState({
     selectedCount: 0,
     bookingCreatedCount: 0,
     inProgressCount: 0,
     invitationSentCount: 0,
   });
-  const [jobNotesFor, setJobNotesFor] = useState<{ id: number; title: string } | null>(null);
+  const [jobNotesFor, setJobNotesFor] = useState<{ id: string; title: string } | null>(null);
 
   const decodedToken = safeDecodeToken<{ companyName: string; companyId?: number }>(loginToken);
   const companyId = decodedToken?.companyId ?? 0;
@@ -131,7 +141,7 @@ const JobsOpening = () => {
   const [showCreateJobModal, setShowCreateJobModal] = useState<boolean>(false);
   const [showJdUploadModal, setShowJdUploadModal] = useState<boolean>(false);
   const [jdFiles, setJdFiles] = useState<File[]>([]);
-  const [uploadedJobOpeningId, setUploadedJobOpeningId] = useState<number | null>(null);
+  const [uploadedJobOpeningId, setUploadedJobOpeningId] = useState<string | null>(null);
   const [jdBatchId, setJdBatchId] = useState<string | null>(null);
   const [jdProgress, setJdProgress] = useState<number>(0);
   const [, setJdProgressMessage] = useState<string>('');
@@ -222,14 +232,57 @@ const JobsOpening = () => {
   const persistedGlobalSearchField = useSelector(
     (state: RootState) => state.globalSearchSlice.selectedCategoryField
   );
+  const hasTenantContext = Boolean(tenantId);
   const { data, isLoading, refetch } = useGetJobOpeningsQuery(filters, {
+    skip: !hasTenantContext,
     refetchOnMountOrArgChange: true,
   });
-
-  const { data: locationsData, refetch: refetchLocations } = useGetMyLocationsQuery({
-    activeOnly: false,
+  const { data: orgDepartments = [] } = useListTenantDepartmentsQuery(tenantId ?? '', {
+    skip: !hasTenantContext,
   });
-  const locations = locationsData?.data || [];
+  const { data: jobTypes = [] } = useListJobTypesQuery({ isMaster: callerKind === 'platform' });
+  const { data: orgUsers } = useListUsersQuery({ limit: 200 }, { skip: !hasTenantContext });
+
+  const listedJobs = useMemo((): Jobs[] => {
+    const deptMap = Object.fromEntries(
+      orgDepartments.map((department) => [department.org_department_id, department.name])
+    );
+    const typeMap = Object.fromEntries(jobTypes.map((jobType) => [jobType.id, jobType.name]));
+    const userMap = Object.fromEntries(
+      (orgUsers?.items ?? []).map((user) => [user.user_id, user.full_name || user.email])
+    );
+    return (data?.data ?? []).map((job: Jobs) => ({
+      ...job,
+      departmentName: job.departmentId
+        ? deptMap[job.departmentId] || job.departmentName
+        : job.departmentName,
+      jobTypeName: job.jobTypeId ? typeMap[job.jobTypeId] || job.jobTypeName : job.jobTypeName,
+      hiringManager:
+        (job.hiringManagerIds ?? [])
+          .map((userId) => userMap[userId])
+          .filter(Boolean)
+          .join(', ') || job.hiringManager,
+      recruiter:
+        (job.recruiterIds ?? [])
+          .map((userId) => userMap[userId])
+          .filter(Boolean)
+          .join(', ') || job.recruiter,
+    }));
+  }, [data?.data, orgDepartments, jobTypes, orgUsers]);
+
+  const {
+    data: offices = [],
+    refetch: refetchLocations,
+    isUninitialized: locationsUninitialized,
+  } = useListTenantOfficesQuery({ tenantId: tenantId ?? '' }, { skip: !hasTenantContext });
+  const locations = (offices ?? []).map((office) => ({
+    id: office.office_id,
+    name: officeDisplayName(office),
+  }));
+  const safeRefetchLocations = () => {
+    if (!hasTenantContext || locationsUninitialized) return;
+    void refetchLocations();
+  };
 
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: SortDirection }>({
     key: filters.sortBy || '',
@@ -263,7 +316,7 @@ const JobsOpening = () => {
           sortDir: undefined,
         })
       );
-      refetchLocations();
+      safeRefetchLocations();
 
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -304,12 +357,13 @@ const JobsOpening = () => {
     } else {
       setCollapsedUsers([]);
     }
-    refetchLocations();
+    safeRefetchLocations();
   }, [filters.text, filters.globalSearchRequestDto?.text, data?.data]);
 
   useEventSource({
     type: 'batch',
-    restUrl: jdBatchId ? `/job-opening/jd-upload/batch/${jdBatchId}/progress` : '',
+    restUrl: jdBatchId ? `/job-openings/upload-jd/batch/${jdBatchId}/progress` : '',
+    baseUrlOverride: import.meta.env.VITE_JOB_SERVICE_ENDPOINT as string,
     token: streamToken,
     onMessage: (payload: unknown) => {
       if (!payload || typeof payload !== 'object') {
@@ -402,15 +456,17 @@ const JobsOpening = () => {
       })
     );
 
-    refetchLocations();
-    refetch();
+    safeRefetchLocations();
+    if (hasTenantContext) {
+      void refetch();
+    }
   }, [
     globalSearchQuery,
     isFromGlobalSearch,
     filters.globalSearchRequestDto?.text,
     dispatch,
     refetch,
-    refetchLocations,
+    hasTenantContext,
   ]);
 
   const handleSort = (key: string, direction: SortDirection) => {
@@ -524,7 +580,7 @@ const JobsOpening = () => {
     }
   };
 
-  const handleLocationChange = (value: number | undefined) => {
+  const handleLocationChange = (value: string | undefined) => {
     dispatch(
       setJobOpeningFilters({
         locationId: value,
@@ -533,53 +589,30 @@ const JobsOpening = () => {
     );
   };
 
-  const generateJobProfileCodeHelper = () => {
-    const companyName = decodedToken?.companyName || '';
-
-    let initials = 'CFP';
-    if (companyName.length >= 3) {
-      initials = companyName.slice(0, 3).toUpperCase();
-    } else if (companyName.length === 2) {
-      initials = companyName.slice(0, 2).toUpperCase();
-    } else if (companyName.length === 1) {
-      initials = companyName.slice(0, 1).toUpperCase();
-    }
-
-    const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `${initials}-${randomPart}`;
-  };
-
   const handleDuplicate = () => {
     if (!jobToDuplicate) return;
 
-    const jobProfileCode = generateJobProfileCodeHelper();
-
     duplicateJobOpening({
       jobOpeningId: jobToDuplicate,
-      jobProfileCode,
     })
       .unwrap()
       .then((res) => {
-        if (res?.status === 'OK' || res?.status === true) {
-          showToast({
-            message: res?.message || 'Job duplicated successfully',
-            type: 'success',
-          });
-          if (filters.page > 0) {
-            dispatch(
-              setJobOpeningFilters({
-                page: 0,
-              })
-            );
-          } else {
-            refetch();
-          }
-          window.scrollTo(0, 0);
+        showToast({
+          message: 'Job duplicated successfully',
+          type: 'success',
+        });
+        if (filters.page > 0) {
+          dispatch(
+            setJobOpeningFilters({
+              page: 0,
+            })
+          );
         } else {
-          showToast({
-            message: res?.message || 'Failed to duplicate job opening',
-            type: 'error',
-          });
+          refetch();
+        }
+        window.scrollTo(0, 0);
+        if (res?.org_job_opening_id) {
+          navigate(`/jobs/edit/${res.org_job_opening_id}/details`);
         }
       })
       .catch((err) => {
@@ -659,7 +692,7 @@ const JobsOpening = () => {
       }
 
       if (filesToUpload.length === 1 && response?.data?.jobOpeningId) {
-        setUploadedJobOpeningId(response.data.jobOpeningId);
+        setUploadedJobOpeningId(String(response.data.jobOpeningId));
       }
 
       setIsJdUploading(false);
@@ -748,16 +781,17 @@ const JobsOpening = () => {
     return Array.from(new Set([globalQuery, internalQuery].filter(Boolean)));
   };
 
-  const renderHighlightedField = (text: string, _fieldName: string) => {
+  const renderHighlightedField = (text: string | number | null | undefined, _fieldName: string) => {
+    const value = text == null ? '' : String(text);
     const highlightTerms = getHighlightTerms();
 
     if (!highlightTerms.length) {
-      return <span>{text}</span>;
+      return <span>{value}</span>;
     }
 
     return (
       <HighlightText
-        text={text || ''}
+        text={value}
         highlights={highlightTerms}
         highlightClassName="bg-yellow-300 text-black px-0.5 rounded"
       />
@@ -804,7 +838,7 @@ const JobsOpening = () => {
           label: 'Close Job',
           onClick: () => {
             setJobName(record?.jobTitleName);
-            setJobOpeningId(record.jobOpeningId);
+            setCloseJobOpeningId(record.jobOpeningId);
             setShowCloseJobModal(true);
             setInterviewCount({
               selectedCount: record.selectedCount,
@@ -895,14 +929,15 @@ const JobsOpening = () => {
                 onApply={handleDateTimeChange}
                 onReset={handleReset}
               />
-              <div className="border border-[var(--border)] p-1 rounded-3xl w-40 max-h-12 flex items-center">
+              <div className="cfp-dropdown-trigger w-40">
+                <FilterSelectIcon />
                 <Select
                   placeholder="Status"
-                  prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />}
                   onChange={handleStatusChange}
                   allowClear
                   className="w-full custom-select"
                   popupClassName="rounded-3xl"
+                  variant="borderless"
                   value={
                     filters.isDraft
                       ? 'Draft'
@@ -923,25 +958,20 @@ const JobsOpening = () => {
                   <Option value="Closed">Closed</Option>
                 </Select>
               </div>
-              <div className="border border-[var(--border)] p-1 rounded-3xl w-40 max-h-12 flex items-center">
+              <div className="cfp-dropdown-trigger w-40">
+                <FilterSelectIcon />
                 <Select
                   placeholder="All Locations"
-                  prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />}
                   onChange={handleLocationChange}
                   allowClear
                   className="w-full custom-select"
                   popupClassName="rounded-3xl"
+                  variant="borderless"
                   value={filters.locationId}
                 >
                   {locations.map((loc) => (
                     <Option key={loc.id} value={loc.id}>
                       {loc.name}
-                      {loc.primary && (
-                        <AiFillStar
-                          className="ml-1 inline-block flex-shrink-0 text-amber-400"
-                          title="Primary Location"
-                        />
-                      )}
                     </Option>
                   ))}
                 </Select>
@@ -1008,7 +1038,7 @@ const JobsOpening = () => {
             </Row>
           </div>
           <div className="w-full">
-            {data?.data.map((jobs) => (
+            {listedJobs.map((jobs) => (
               <div key={jobs.jobOpeningId} className="mb-2">
                 <CommonCard>
                   <Row gutter={[16, 16]} align="middle">
@@ -1078,10 +1108,7 @@ const JobsOpening = () => {
                           className="text-primary hover:underline roboto-font"
                         >
                           <span className="text-primary font-semibold">
-                            {renderHighlightedField(
-                              jobs.candidateCount?.toString(),
-                              'candidateCount'
-                            )}
+                            {renderHighlightedField(jobs.candidateCount ?? 0, 'candidateCount')}
                           </span>
                         </Link>
                         {(jobs.newCandidateCount ?? 0) > 0 && (
@@ -1097,7 +1124,7 @@ const JobsOpening = () => {
                     <Col span={3}>
                       <p className="roboto-font">
                         {renderHighlightedField(
-                          jobs.interviewedCandidateCount?.toString(),
+                          jobs.interviewedCandidateCount ?? 0,
                           'interviewedCandidateCount'
                         )}
                       </p>
@@ -1142,10 +1169,10 @@ const JobsOpening = () => {
           visible={showCloseJobModal}
           onClose={() => {
             setShowCloseJobModal(false);
-            setJobOpeningId(null);
+            setCloseJobOpeningId(null);
           }}
           title={`Close Job Opening - ${jobName}`}
-          jobOpeningId={jobOpeningId}
+          jobOpeningId={closeJobOpeningId}
           interviewCount={interviewCount}
           onSuccess={refetch}
         />
@@ -1204,10 +1231,19 @@ const JobsOpening = () => {
 
               <Button
                 className="w-full border border-[var(--border)] rounded-md h-12 flex items-center justify-center"
-                onClick={() => {
-                  dispatch(resetJobState());
-                  setShowCreateJobModal(false);
-                  navigate('/job-details');
+                loading={isStartingManualJob}
+                disabled={isStartingManualJob}
+                onClick={async () => {
+                  try {
+                    const { jobId } = await startManualJobOpening();
+                    setShowCreateJobModal(false);
+                    navigate(`/job-details?jobOpeningId=${encodeURIComponent(jobId)}`);
+                  } catch (error) {
+                    showToast({
+                      message: getJobErrorMessage(error, 'Failed to start job opening'),
+                      type: 'error',
+                    });
+                  }
                 }}
               >
                 CREATE JOB MANUALLY

@@ -1,78 +1,103 @@
-import api from '../..';
+import { jobApi } from '../jobApi';
+import type { ImportAtsJobRequest, ImportAtsJobResponse } from '../types';
 
-type SyncJobOpeningRequest = {
-  jobOpeningId: number;
-  isSync: boolean;
-};
-
-type SyncJobOpeningResponse = {
-  success: boolean;
-  message?: string;
-};
-
-interface ATS {
-  id: string;
-  name: string;
-}
-
-type GetAllAtsNamesByCompanyIdResponse = {
-  success: boolean;
-  message?: string;
-  data: ATS[];
-  errorCode?: string;
-  providerName?: string;
-  operationId?: string;
-};
-
-type SyncAtsJobOpeningRequest = {
-  jobOpeningId: number;
-  atsJobOpeningId: string;
-  isSync: boolean;
-  jobBoardIds: string[];
-  isNewJob: boolean;
-};
-
-type SyncAtsJobOpeningResponse = {
-  success: boolean;
-  message?: string;
-};
-
-const extendedApi = api.injectEndpoints({
+const extendedApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
-    syncJobOpening: build.mutation<SyncJobOpeningResponse, SyncJobOpeningRequest>({
+    getAtsConfig: build.query<{ connections: Array<Record<string, unknown>> }, void>({
+      query: () => ({ url: '/ats/config', method: 'GET' }),
+      providesTags: ['AtsConfig'],
+    }),
+
+    listAtsJobs: build.query<
+      { jobs: Array<{ ats_job_id: string; title?: string; [key: string]: unknown }> },
+      { provider?: string } | void
+    >({
+      query: (args) => ({
+        url: '/ats/jobs',
+        method: 'GET',
+        params: args?.provider ? { ats_provider: args.provider } : undefined,
+      }),
+      providesTags: ['AtsJobs'],
+    }),
+
+    importAtsJob: build.mutation<ImportAtsJobResponse, ImportAtsJobRequest>({
       query: (body) => ({
-        url: '/job-opening/sync',
+        url: '/job-openings/import-ats',
         method: 'POST',
         body,
       }),
+      invalidatesTags: [{ type: 'JobOpenings', id: 'LIST' }, 'JobStats'],
     }),
-    getAllAtsNamesByCompanyId: build.query<GetAllAtsNamesByCompanyIdResponse, void>({
-      query: () => ({
-        url: '/ats/getAllAtsNamesByCompanyId',
-        method: 'GET',
+
+    connectAts: build.mutation<
+      Record<string, unknown>,
+      { ats_provider: string; tenant_identifier: string }
+    >({
+      query: (body) => ({
+        url: '/ats/connect',
+        method: 'POST',
+        body,
       }),
+      invalidatesTags: ['AtsConfig'],
     }),
+
+    disconnectAts: build.mutation<void, { ats_provider: string }>({
+      query: ({ ats_provider }) => ({
+        url: '/ats/disconnect',
+        method: 'DELETE',
+        params: { ats_provider },
+      }),
+      invalidatesTags: ['AtsConfig'],
+    }),
+
+    /**
+     * Push-to-ATS sync is explicitly not built on job-service yet
+     * (API_CONTRACT Known gaps / Index.tsx comment). This mutation exists
+     * only so screens that still call it get a clear error instead of a
+     * silent 404 against a fictional legacy path.
+     */
     syncAtsJobOpening: build.mutation<
-      SyncAtsJobOpeningResponse,
+      { success: boolean; message: string },
       {
-        body: SyncAtsJobOpeningRequest;
+        body: Record<string, unknown>;
         providerName: string;
       }
     >({
-      query: ({ body, providerName }) => ({
-        url: '/ats/sync',
-        method: 'POST',
-        body,
-        headers: {
-          'X-Provider-Name': providerName,
+      queryFn: () => ({
+        error: {
+          status: 501,
+          data: {
+            message:
+              'ATS push-sync is not available on job-service yet. Use import-ats to pull a requisition.',
+            error_code: 'NOT_IMPLEMENTED',
+          },
         },
       }),
+    }),
+
+    getAllAtsNamesByCompanyId: build.query<
+      { success: boolean; data: Array<{ id: string; name: string }> },
+      void
+    >({
+      query: () => ({ url: '/ats/config', method: 'GET' }),
+      transformResponse: (response: { connections: Array<Record<string, unknown>> }) => ({
+        success: true,
+        data: (response.connections ?? []).map((c) => ({
+          id: String(c.ats_provider ?? ''),
+          name: String(c.ats_provider ?? ''),
+        })),
+      }),
+      providesTags: ['AtsConfig'],
     }),
   }),
 });
 
 export const {
-  useSyncJobOpeningMutation,
-  useGetAllAtsNamesByCompanyIdQuery,
+  useGetAtsConfigQuery,
+  useListAtsJobsQuery,
+  useImportAtsJobMutation,
+  useConnectAtsMutation,
+  useDisconnectAtsMutation,
   useSyncAtsJobOpeningMutation,
+  useGetAllAtsNamesByCompanyIdQuery,
 } = extendedApi;

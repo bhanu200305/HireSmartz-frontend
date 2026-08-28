@@ -22,6 +22,7 @@ import { useGetJobOpeningNotesQuery } from '../../../api/job-service/JobOpening/
 import { Search } from '../../shared/ui/search';
 import { Loader } from '../../shared/ui/loader';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
+import { asJobId } from '../../../api/job-service/jobId';
 import { Button } from '../../shared/ui/button';
 import FilterMenu from './FilterMenu';
 import {
@@ -84,7 +85,7 @@ const CandidatesListing = () => {
   const effectivePermissions = useEffectivePermissions();
   const { id } = useParams<{ id: string }>();
   // const pathname = useLocation().pathname;
-  const parsedJobId = Number(id);
+  const parsedJobId = asJobId(id);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
@@ -211,7 +212,7 @@ const CandidatesListing = () => {
     data: jobOpeningData,
     isLoading: isJobOpeningLoading,
     // error: jobOpeningError,
-  } = useGetJobOpeningByIdQuery({ jobOpeningId: parsedJobId });
+  } = useGetJobOpeningByIdQuery({ jobOpeningId: parsedJobId }, { skip: !parsedJobId });
 
   const isDraft = jobOpeningData?.data?.isDraft || false;
   const isClosed = jobOpeningData?.data?.isClosed || false;
@@ -724,7 +725,7 @@ const CandidatesListing = () => {
   const getInviteActionState = (candidate: any) => {
     const interviewRounds = (candidate?.interviewRounds || []) as InterviewRoundResponseDTO[];
 
-    if (!parsedJobId || !Number.isFinite(parsedJobId)) {
+    if (!parsedJobId) {
       return {
         shouldShow: false,
         isDisabled: true,

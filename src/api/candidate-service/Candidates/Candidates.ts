@@ -229,7 +229,7 @@ const extendedApi = api.injectEndpoints({
     }),
     getCandidateMessagingDetails: build.query<
       unknown,
-      { candidateIds: number[]; jobOpeningId: number }
+      { candidateIds: number[]; jobOpeningId: string | number }
     >({
       query: ({ candidateIds, jobOpeningId }) => {
         const params = new URLSearchParams();
@@ -312,7 +312,7 @@ const extendedApi = api.injectEndpoints({
     }),
     sendBulkCandidateSms: build.mutation<
       unknown,
-      { candidateIds: number[]; jobOpeningId: number; messageText: string }
+      { candidateIds: number[]; jobOpeningId: string | number; messageText: string }
     >({
       query: (body) => ({
         url: '/job-opening/candidate-messaging/sms/send/bulk',
@@ -324,7 +324,7 @@ const extendedApi = api.injectEndpoints({
       unknown,
       {
         candidateId: number;
-        jobOpeningId: number;
+        jobOpeningId: string | number;
         subject: string;
         header: string;
         body: string;
@@ -346,7 +346,7 @@ const extendedApi = api.injectEndpoints({
       unknown,
       {
         candidateIds: number[];
-        jobOpeningId: number;
+        jobOpeningId: string | number;
         subject: string;
         header: string;
         body: string;

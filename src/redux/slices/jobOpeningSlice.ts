@@ -5,15 +5,17 @@ import { ATS, InterviewRoundState, JobDescriptionState, JobDetailsState } from '
 type JobState = {
   details: JobDetailsState;
   description: JobDescriptionState;
-  jobOpeningId: number;
+  /** UUID from job-service (`org_job_opening_id`). Empty string = not created yet. */
+  jobOpeningId: string;
   interviewRounds: InterviewRoundState[];
   ats: ATS;
-  aiJobDescriptionId: number | null;
+  /** Same as jobOpeningId on the real contract — JD hangs off the job, not a separate entity. */
+  aiJobDescriptionId: string | null;
   isFormCompleted?: boolean;
 };
 
 const initialState: JobState = {
-  jobOpeningId: 0,
+  jobOpeningId: '',
   aiJobDescriptionId: null,
   isFormCompleted: false,
   details: {
@@ -75,13 +77,13 @@ const jobSlice = createSlice({
     updateInterviewRound: (state, action: PayloadAction<InterviewRoundState[]>) => {
       state.interviewRounds = action.payload;
     },
-    setJobOpeningId: (state, action: PayloadAction<number>) => {
+    setJobOpeningId: (state, action: PayloadAction<string>) => {
       state.jobOpeningId = action.payload;
     },
     setIsFormCompleted: (state, action: PayloadAction<boolean>) => {
       state.isFormCompleted = action.payload;
     },
-    setAiJobDescriptionId: (state, action: PayloadAction<number>) => {
+    setAiJobDescriptionId: (state, action: PayloadAction<string | null>) => {
       state.aiJobDescriptionId = action.payload;
     },
     resetJobDescription: (state) => {

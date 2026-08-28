@@ -1,129 +1,111 @@
-import api from '../..';
+import { jobApi } from '../jobApi';
 import { mapApiNotesResponseToItems } from './notesResponseMappers';
 import type { CandidateNoteItem } from '../../../components/JobsOpening/Notes/notesTypes';
+import type { JobNoteResponse } from '../types';
+import api from '../..';
 
-export type NotesParentType = 'JOB' | 'CANDIDATE' | 'CANDIDATE_ROUND';
-
-type InvalidateNotesArg = {
-  invalidateJobId?: number;
+type CreateJobNoteRequest = {
+  jobOpeningId?: string;
+  noteText: string;
+  parentType?: string;
+  parentId?: string | number;
   invalidateCandidateId?: number;
   invalidateRoundBookingId?: number;
+  invalidateJobId?: string | number;
 };
 
-export type CreateJobOpeningNoteRequest = {
-  parentType: NotesParentType | string;
-  parentId: number;
+type UpdateJobNoteRequest = {
+  jobOpeningId?: string;
+  noteId: string;
   noteText: string;
-} & InvalidateNotesArg;
+  invalidateCandidateId?: number;
+  invalidateRoundBookingId?: number;
+  invalidateJobId?: string | number;
+};
 
-export type UpdateJobOpeningNoteRequest = {
-  noteId: number;
-  noteText: string;
-} & InvalidateNotesArg;
+type DeleteJobNoteRequest = {
+  jobOpeningId?: string;
+  noteId: string;
+  invalidateCandidateId?: number;
+  invalidateRoundBookingId?: number;
+  invalidateJobId?: string | number;
+};
 
-export type DeleteJobOpeningNoteRequest = {
-  noteId: number;
-} & InvalidateNotesArg;
-
-function invalidateTagsForNotes(arg: InvalidateNotesArg) {
-  const tags: Array<
-    | 'JobOpeningNotes'
-    | 'CandidateNotes'
-    | { type: 'JobOpeningNotes'; id: string }
-    | { type: 'CandidateNotes'; id: string }
-  > = [];
-  if (arg.invalidateJobId != null) {
-    tags.push({ type: 'JobOpeningNotes', id: `job-${arg.invalidateJobId}` });
-  }
-  if (arg.invalidateCandidateId != null) {
-    tags.push({ type: 'CandidateNotes', id: `all-${arg.invalidateCandidateId}` });
-    tags.push({ type: 'CandidateNotes', id: `candidate-${arg.invalidateCandidateId}` });
-  }
-  if (arg.invalidateRoundBookingId != null) {
-    tags.push({ type: 'CandidateNotes', id: `round-${arg.invalidateRoundBookingId}` });
-  }
-  return tags;
-}
-
-const extendedApi = api.injectEndpoints({
+const jobNotesApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
-    getJobOpeningNotes: build.query<CandidateNoteItem[], number>({
+    getJobOpeningNotes: build.query<CandidateNoteItem[], string>({
       query: (jobId) => ({
-        url: `/job-opening/notes/job/${jobId}`,
+        url: `/job-openings/${jobId}/notes`,
         method: 'GET',
       }),
-      transformResponse: (response: unknown) => mapApiNotesResponseToItems(response),
-      providesTags: (_r, _e, jobId) => [{ type: 'JobOpeningNotes', id: `job-${jobId}` }],
+      transformResponse: (response: { notes: JobNoteResponse[] }) =>
+        mapApiNotesResponseToItems({ notes: response.notes }),
+      providesTags: (_r, _e, jobId) => [{ type: 'JobNotes', id: `job-${jobId}` }],
     }),
-    getCandidateNotesAll: build.query<CandidateNoteItem[], number>({
+
+    createJobOpeningNote: build.mutation<JobNoteResponse, CreateJobNoteRequest>({
+      query: ({ jobOpeningId, noteText, parentId }) => ({
+        url: `/job-openings/${jobOpeningId ?? parentId}/notes`,
+        method: 'POST',
+        body: { note_text: noteText },
+      }),
+      invalidatesTags: (_r, _e, { jobOpeningId, invalidateJobId, parentId }) => [
+        { type: 'JobNotes', id: `job-${jobOpeningId ?? invalidateJobId ?? parentId}` },
+      ],
+    }),
+
+    updateJobOpeningNote: build.mutation<JobNoteResponse, UpdateJobNoteRequest>({
+      query: ({ jobOpeningId, noteId, noteText, invalidateJobId }) => ({
+        url: `/job-openings/${jobOpeningId ?? invalidateJobId}/notes/${noteId}`,
+        method: 'PUT',
+        body: { note_text: noteText },
+      }),
+      invalidatesTags: (_r, _e, { jobOpeningId, invalidateJobId }) => [
+        { type: 'JobNotes', id: `job-${jobOpeningId ?? invalidateJobId}` },
+      ],
+    }),
+
+    deleteJobOpeningNote: build.mutation<void, DeleteJobNoteRequest>({
+      query: ({ jobOpeningId, noteId, invalidateJobId }) => ({
+        url: `/job-openings/${jobOpeningId ?? invalidateJobId}/notes/${noteId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_r, _e, { jobOpeningId, invalidateJobId }) => [
+        { type: 'JobNotes', id: `job-${jobOpeningId ?? invalidateJobId}` },
+      ],
+    }),
+  }),
+});
+
+// Candidate / round notes are NOT on job-service — they belong to
+// candidate-service (out of this integration's scope). Left on the shared
+// legacy `api` so existing candidate screens keep compiling; those calls
+// will 404 until candidate-service is wired the same way.
+const candidateNotesApi = api.injectEndpoints({
+  endpoints: (build) => ({
+    getCandidateNotesAll: build.query<CandidateNoteItem[], number | string>({
       query: (candidateId) => ({
         url: `/job-opening/notes/candidate/${candidateId}/all`,
         method: 'GET',
       }),
       transformResponse: (response: unknown) => mapApiNotesResponseToItems(response),
-      providesTags: (_r, _e, candidateId) => [{ type: 'CandidateNotes', id: `all-${candidateId}` }],
     }),
-    getRoundNotes: build.query<CandidateNoteItem[], number>({
+    getRoundNotes: build.query<CandidateNoteItem[], number | string>({
       query: (bookingId) => ({
         url: `/job-opening/notes/round/${bookingId}`,
         method: 'GET',
       }),
       transformResponse: (response: unknown) => mapApiNotesResponseToItems(response),
-      providesTags: (_r, _e, bookingId) => [{ type: 'CandidateNotes', id: `round-${bookingId}` }],
-    }),
-    createJobOpeningNote: build.mutation<unknown, CreateJobOpeningNoteRequest>({
-      query: ({
-        invalidateJobId: _j,
-        invalidateCandidateId: _c,
-        invalidateRoundBookingId: _r,
-        ...body
-      }) => ({
-        url: '/job-opening/notes/create',
-        method: 'POST',
-        body: {
-          parentType: body.parentType,
-          parentId: body.parentId,
-          noteText: body.noteText,
-        },
-      }),
-      invalidatesTags: (_r, _e, arg) => invalidateTagsForNotes(arg),
-    }),
-    updateJobOpeningNote: build.mutation<unknown, UpdateJobOpeningNoteRequest>({
-      query: ({
-        noteId,
-        noteText,
-        invalidateJobId: _j,
-        invalidateCandidateId: _c,
-        invalidateRoundBookingId: _r,
-      }) => ({
-        url: `/job-opening/notes/update/${noteId}`,
-        method: 'PUT',
-        body: { noteText },
-      }),
-      invalidatesTags: (_r, _e, arg) => invalidateTagsForNotes(arg),
-    }),
-    deleteJobOpeningNote: build.mutation<unknown, DeleteJobOpeningNoteRequest>({
-      query: ({
-        noteId,
-        invalidateJobId: _j,
-        invalidateCandidateId: _c,
-        invalidateRoundBookingId: _r,
-      }) => ({
-        url: `/job-opening/notes/delete/${noteId}`,
-        method: 'DELETE',
-      }),
-      invalidatesTags: (_r, _e, arg) => invalidateTagsForNotes(arg),
     }),
   }),
-  overrideExisting: false,
+  overrideExisting: true,
 });
 
 export const {
   useGetJobOpeningNotesQuery,
-  useLazyGetJobOpeningNotesQuery,
-  useGetCandidateNotesAllQuery,
-  useGetRoundNotesQuery,
   useCreateJobOpeningNoteMutation,
   useUpdateJobOpeningNoteMutation,
   useDeleteJobOpeningNoteMutation,
-} = extendedApi;
+} = jobNotesApi;
+
+export const { useGetCandidateNotesAllQuery, useGetRoundNotesQuery } = candidateNotesApi;

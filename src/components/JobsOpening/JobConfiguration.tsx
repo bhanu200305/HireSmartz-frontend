@@ -161,12 +161,12 @@ const JobConfiguration = () => {
 
   return (
     <MainLayout>
-      <div className="flex flex-col items-center bg-white px-4 mt-4 relative pt-16">
-        {/* Back Button */}
-        <div className="mb-4 self-start px-4 absolute">
+      <div className="flex flex-col items-center px-4 mt-4 w-full">
+        <div className="w-full max-w-6xl mb-3">
           <button
+            type="button"
             onClick={() => navigate(-1)}
-            className="flex items-center text-gray-600 hover:text-gray-800 mb-4 cursor-pointer"
+            className="flex items-center text-gray-600 hover:text-gray-800 cursor-pointer"
           >
             <MdOutlineArrowBack className="mr-2" />
             <span>Back</span>

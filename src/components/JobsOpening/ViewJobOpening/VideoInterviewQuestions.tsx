@@ -4,13 +4,13 @@ import { useParams } from 'react-router-dom';
 import { Select } from 'antd';
 import { Typography } from '../../shared';
 import { useGetAiInterviewQuestionsByRoundQuery } from '../../../api/interview-service/VideoInterviewQuestions/VideoInterviewQuestion';
-import { GetAiInterviewQuestionsByRoundResponse } from '../../../types';
+import { asJobId } from '../../../api/job-service/jobId';
 
 const { Option } = Select;
 
 const VideoInterviewQuestions = () => {
   const { id } = useParams();
-  const jobId = Number(id);
+  const jobId = asJobId(id);
 
   const { data: jobData, isLoading: jobLoading } = useGetJobOpeningByIdQuery(
     { jobOpeningId: jobId },
@@ -36,7 +36,7 @@ const VideoInterviewQuestions = () => {
 
   const { data: questionsData, isLoading: questionsLoading } =
     useGetAiInterviewQuestionsByRoundQuery(
-      { interviewRoundId: selectedRoundData?.id || '', jobOpeningId: jobId },
+      { interviewRoundId: selectedRoundData?.id || '', jobOpeningId: jobId || 0 },
       {
         skip: !selectedRoundData?.id || !jobId,
         refetchOnMountOrArgChange: true,
@@ -48,7 +48,7 @@ const VideoInterviewQuestions = () => {
   };
 
   const categories: {
-    key: keyof GetAiInterviewQuestionsByRoundResponse['categories'];
+    key: string;
     title: string;
   }[] = [
     { key: 'Competency-Based Questions', title: 'Competency-Based Questions' },
@@ -97,7 +97,7 @@ const VideoInterviewQuestions = () => {
 
       <div className="questions-container">
         {categories.map((category) => {
-          const questions = categoriesMap?.[category.key];
+          const questions = (categoriesMap as Record<string, unknown> | undefined)?.[category.key];
           if (questionsLoading) {
             return (
               <div key={category.key} className="category-section mb-8">

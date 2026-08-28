@@ -2,6 +2,7 @@ import { useParams, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import JobScoringCriteriaTab from '../../components/JobsOpening/JobScoringCriteriaTab';
+import { asJobId } from '../../api/job-service/jobId';
 
 const JobScoringCriteriaPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -9,18 +10,16 @@ const JobScoringCriteriaPage = () => {
   const isViewMode = pathname.includes('/jobs/view/');
   const isEditMode = pathname.includes('/jobs/edit/');
 
-  // For view/edit flows, jobId comes from URL param
-  // For create flow, jobId comes from Redux (set after job is created)
   const jobOpeningIdFromRedux = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
   const editJobOpeningIdFromRedux = useSelector(
     (state: RootState) => state.EditJobSlice.jobOpeningId
   );
 
-  let jobId: number;
+  let jobId = '';
   if (isViewMode || isEditMode) {
-    jobId = Number(id);
+    jobId = asJobId(id);
   } else {
-    jobId = editJobOpeningIdFromRedux || jobOpeningIdFromRedux;
+    jobId = asJobId(editJobOpeningIdFromRedux) || asJobId(jobOpeningIdFromRedux);
   }
 
   if (!jobId) {

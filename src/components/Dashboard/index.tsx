@@ -14,7 +14,8 @@ import HiringOverviewSlide from './HiringOverviewSlide';
 import TenantsPreviewCard from './TenantsPreviewCard';
 
 const Dashboard = () => {
-  const { role, tenantId } = useSelector((state: RootState) => state.LoginSlice);
+  const { role, tenantId, callerKind } = useSelector((state: RootState) => state.LoginSlice);
+  const isPlatformCaller = callerKind === 'platform';
 
   // Interview Dashboard
   const [fetchInterviewData, { data: interviewData, isLoading }] =
@@ -35,12 +36,13 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
+    if (isPlatformCaller) return;
     fetchInterviewData({
       year: interviewFilters.year,
       month: interviewFilters.month,
       isOwner: role?.type === 'owner' ? true : false,
     });
-  }, [interviewFilters.year, interviewFilters.month]);
+  }, [interviewFilters.year, interviewFilters.month, isPlatformCaller, role?.type]);
 
   const greeting = (() => {
     const hour = new Date().getHours();

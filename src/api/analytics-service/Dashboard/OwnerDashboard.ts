@@ -13,7 +13,7 @@ type OwnerDashboardRequest = {
     searchQuery?: string;
     startDateTime?: string; // ISO 8601 date-time format
     endDateTime?: string;
-    roleTypeMappingId: number;
+    roleTypeMappingId: string | number;
   };
   pageSize?: number;
 };

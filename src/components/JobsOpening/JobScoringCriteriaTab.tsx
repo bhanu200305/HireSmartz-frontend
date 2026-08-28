@@ -1,10 +1,5 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { showToast } from '../shared/ui/toast';
-import { useSelector, shallowEqual } from 'react-redux';
-import { RootState } from '../../redux/provider/store';
-import { safeDecodeToken } from '../../shared/utils/methods';
-import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
-import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import {
   useGetJobScoringConfigQuery,
   useUpdateJobScoringConfigMutation,
@@ -20,92 +15,119 @@ import {
   ScoringWeightCard,
 } from '../shared';
 import type { ScoringWeight } from '../shared';
+import { getJobErrorMessage } from '../../shared/utils/auth/jobError.helpers';
+import { asJobId } from '../../api/job-service/jobId';
 
 const normalizeWeights = (weights: unknown): JobScoringWeight[] =>
-  normalizeScoringWeights(weights).map((w) => ({ ...w, id: Number(w.id) }));
-
-/* ─────────────────────── Main component ─────────────────────── */
+  normalizeScoringWeights(weights).map((w) => ({
+    ...w,
+    id: w.id,
+    categoryName: w.categoryName,
+    weightPercentage: w.weightPercentage,
+  }));
 
 interface JobScoringCriteriaTabProps {
-  jobId: number;
+  jobId: string;
   isViewMode?: boolean;
 }
 
 const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
-  jobId,
+  jobId: rawJobId,
   isViewMode = false,
 }) => {
-  const { loginToken } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
-  const tokenFromStorage = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS) as string | null;
-  const authToken = loginToken || tokenFromStorage;
-  const decodedToken = safeDecodeToken<{ isScoringConfigEditable?: boolean }>(authToken);
-  const isTokenEditable = decodedToken?.isScoringConfigEditable ?? false;
-
-  // Editable only in create/edit mode AND token allows it
+  const jobId = asJobId(rawJobId);
   const navigate = useNavigate();
-  const isEditable = !isViewMode && isTokenEditable;
 
   const { data: jobScoringData, isLoading } = useGetJobScoringConfigQuery(jobId, {
     skip: !jobId,
   });
 
-  const [updateResume, { isLoading: isSavingResume }] = useUpdateJobScoringConfigMutation();
-  const [updateInterview, { isLoading: isSavingInterview }] = useUpdateJobScoringConfigMutation();
-  const [resetResume, { isLoading: isResettingResume }] = useResetJobScoringConfigMutation();
-  const [resetInterview, { isLoading: isResettingInterview }] = useResetJobScoringConfigMutation();
+  const [updateScoring, { isLoading: isSaving }] = useUpdateJobScoringConfigMutation();
+  const [resetScoring, { isLoading: isResetting }] = useResetJobScoringConfigMutation();
+
+  const isLocked = Boolean(jobScoringData?.data?.isLocked);
+  const isEditable = !isViewMode && !isLocked;
+
+  const resumeWeights = useMemo(
+    () => normalizeWeights(jobScoringData?.data?.resumeConfig?.weights),
+    [jobScoringData]
+  );
+  const interviewWeights = useMemo(
+    () => normalizeWeights(jobScoringData?.data?.interviewConfig?.weights),
+    [jobScoringData]
+  );
 
   const handleSaveResume = useCallback(
     async (weights: ScoringWeight[]) => {
       try {
-        const payload: JobScoringWeight[] = weights.map((w) => ({ ...w, id: Number(w.id) }));
-        await updateResume({ jobId, stage: 'RESUME', weights: payload }).unwrap();
+        await updateScoring({
+          jobId,
+          resumeWeights: weights.map((w) => ({
+            id: w.id,
+            categoryName: w.categoryName,
+            weightPercentage: w.weightPercentage,
+          })),
+          interviewWeights,
+        }).unwrap();
         showToast({ message: 'Resume scoring configuration saved successfully.', type: 'success' });
-      } catch {
-        showToast({ message: 'Failed to save resume scoring configuration.', type: 'error' });
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Failed to save resume scoring configuration.'),
+          type: 'error',
+        });
       }
     },
-    [jobId, updateResume]
+    [jobId, interviewWeights, updateScoring]
   );
 
   const handleSaveInterview = useCallback(
     async (weights: ScoringWeight[]) => {
       try {
-        const payload: JobScoringWeight[] = weights.map((w) => ({ ...w, id: Number(w.id) }));
-        await updateInterview({ jobId, stage: 'INTERVIEW', weights: payload }).unwrap();
+        await updateScoring({
+          jobId,
+          resumeWeights,
+          interviewWeights: weights.map((w) => ({
+            id: w.id,
+            categoryName: w.categoryName,
+            weightPercentage: w.weightPercentage,
+          })),
+        }).unwrap();
         showToast({
           message: 'Interview scoring configuration saved successfully.',
           type: 'success',
         });
-      } catch {
-        showToast({ message: 'Failed to save interview scoring configuration.', type: 'error' });
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Failed to save interview scoring configuration.'),
+          type: 'error',
+        });
       }
     },
-    [jobId, updateInterview]
+    [jobId, resumeWeights, updateScoring]
   );
 
-  const handleResetResume = useCallback(async () => {
+  const handleReset = useCallback(async () => {
     try {
-      const res = await resetResume({ jobId, stage: 'RESUME' }).unwrap();
+      await resetScoring({ jobId }).unwrap();
       showToast({
-        message: res?.message || 'Resume scoring configuration reset successfully.',
+        message: 'Scoring configuration reset successfully.',
         type: 'success',
       });
-    } catch {
-      showToast({ message: 'Failed to reset resume scoring configuration.', type: 'error' });
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Failed to reset scoring configuration.'),
+        type: 'error',
+      });
     }
-  }, [jobId, resetResume]);
+  }, [jobId, resetScoring]);
 
-  const handleResetInterview = useCallback(async () => {
-    try {
-      const res = await resetInterview({ jobId, stage: 'INTERVIEW' }).unwrap();
-      showToast({
-        message: res?.message || 'Interview scoring configuration reset successfully.',
-        type: 'success',
-      });
-    } catch {
-      showToast({ message: 'Failed to reset interview scoring configuration.', type: 'error' });
-    }
-  }, [jobId, resetInterview]);
+  if (!jobId) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
+        Job not found. Please complete the previous steps first.
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -123,9 +145,6 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
     );
   }
 
-  const resumeWeights = normalizeWeights(jobScoringData?.data?.resumeConfig?.weights);
-  const interviewWeights = normalizeWeights(jobScoringData?.data?.interviewConfig?.weights);
-
   if (!resumeWeights.length && !interviewWeights.length) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
@@ -138,22 +157,24 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
     <div className="py-4">
       <h2 className="text-2xl font-semibold text-gray-800 mb-1">AI Scoring Weight Distribution</h2>
       <p className="text-sm text-gray-500 mb-6">
-        {isEditable
-          ? 'Customize scoring weights for this specific job opening.'
-          : 'Scoring weights configured for this job opening.'}
+        {isLocked
+          ? 'Scoring weights are locked for this job.'
+          : isEditable
+            ? 'Customize scoring weights for this specific job opening. Both panels are saved together.'
+            : 'Scoring weights configured for this job opening.'}
       </p>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <ScoringWeightCard
           title="Resume Scoring Categories"
           subtitle="Applies to Resume Screening"
-          infoText="Resume categories are always evaluated. All 4 categories must total exactly 100%."
+          infoText="Resume categories are always evaluated. All categories must total exactly 100%."
           weights={resumeWeights}
           categoryMeta={RESUME_CATEGORY_META}
           onSave={handleSaveResume}
-          onReset={handleResetResume}
-          isSaving={isSavingResume}
-          isResetting={isResettingResume}
+          onReset={handleReset}
+          isSaving={isSaving}
+          isResetting={isResetting}
           editable={isEditable}
         />
 
@@ -164,9 +185,9 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
           weights={interviewWeights}
           categoryMeta={INTERVIEW_CATEGORY_META}
           onSave={handleSaveInterview}
-          onReset={handleResetInterview}
-          isSaving={isSavingInterview}
-          isResetting={isResettingInterview}
+          onReset={handleReset}
+          isSaving={isSaving}
+          isResetting={isResetting}
           editable={isEditable}
         />
       </div>
@@ -175,7 +196,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
         <div className="mt-8 flex justify-center">
           <Button
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-            onClick={() => navigate('/jobs')}
+            onClick={() => navigate('/interview-setup')}
           >
             SAVE &amp; NEXT
           </Button>

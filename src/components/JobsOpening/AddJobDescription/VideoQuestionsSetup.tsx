@@ -20,6 +20,7 @@ import {
 } from '../../../api/interview-service/VideoInterviewQuestions/VideoInterviewQuestion';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
+import { asJobId } from '../../../api/job-service/jobId';
 import { stopStream } from '../../../redux/slices/streamSlice';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
@@ -47,7 +48,7 @@ const VideoQuestionsSetup = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<any>(null);
   const [editedQuestionText, setEditedQuestionText] = useState('');
-  const [editedCategoryId, setEditedCategoryId] = useState<number | undefined>();
+  const [editedCategoryId, setEditedCategoryId] = useState<string | number | undefined>();
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
   // Inline inputs state per category
@@ -91,12 +92,12 @@ const VideoQuestionsSetup = () => {
   );
 
   const activeJobOpeningId = useMemo(
-    () => (id ? Number(id) : streamJobOpeningId || reduxJobOpeningId),
-    [id, streamJobOpeningId, reduxJobOpeningId]
+    () => asJobId(id) || asJobId(reduxJobOpeningId),
+    [id, reduxJobOpeningId]
   );
 
   const { data: jobData } = useGetJobOpeningByIdQuery(
-    { jobOpeningId: Number(activeJobOpeningId) },
+    { jobOpeningId: activeJobOpeningId },
     { skip: !activeJobOpeningId }
   );
 
@@ -121,7 +122,7 @@ const VideoQuestionsSetup = () => {
       null,
     [streamInterviewRoundId, videoRounds, interviewRounds]
   );
-  const [selectedRoundId, setSelectedRoundId] = useState<number | null>(null);
+  const [selectedRoundId, setSelectedRoundId] = useState<string | number | null>(null);
 
   useEffect(() => {
     if (defaultRoundId !== null && selectedRoundId === null) setSelectedRoundId(defaultRoundId);
@@ -137,7 +138,7 @@ const VideoQuestionsSetup = () => {
     isLoading: isLoadingVideoQuestions,
     refetch: refetchVideoQuestions,
   } = useGetAiInterviewQuestionsByRoundQuery(
-    { interviewRoundId: activeInterviewRoundId ?? 0, jobOpeningId: activeJobOpeningId ?? 0 },
+    { interviewRoundId: activeInterviewRoundId ?? 0, jobOpeningId: activeJobOpeningId || 0 },
     { skip: !activeInterviewRoundId || !activeJobOpeningId }
   );
 

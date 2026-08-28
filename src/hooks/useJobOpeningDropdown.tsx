@@ -1,27 +1,197 @@
-import { useGetJobOpeningDropdownQuery } from '../api/job-service/JobOpening/jobOpeningDropdown';
+import {
+  useListClosureReasonsQuery,
+  useListInterviewRoundTypesQuery,
+  useListJobTypesQuery,
+  useLazySearchSkillsQuery,
+  useSearchSkillsQuery,
+} from '../api/job-service/JobOpening/catalogs';
+import { useListUsersQuery } from '../api/organization-service/Users/users';
+import { useListPlatformTenantUsersQuery } from '../api/organization-service/Platform/users';
+import { useListPlatformTenantsQuery } from '../api/organization-service/Platform/tenants';
+import { useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../redux/provider/store';
+import { useSessionTenantId } from './useSessionTenantId';
 
+export type JobOpeningDropdownOption = {
+  id: string;
+  name: string;
+  description?: string;
+  roundType?: string;
+  used?: boolean;
+  isDeleted?: boolean;
+  requires_duration?: boolean;
+  available_variants?: string[] | null;
+  max_occurrences?: number | null;
+};
+
+/** SaveJobDetails takes free-text strings — there is no education catalogue. */
+const EDUCATION_PREFERENCE_OPTIONS: JobOpeningDropdownOption[] = [
+  { id: 'High School', name: 'High School' },
+  { id: 'Diploma', name: 'Diploma' },
+  { id: "Associate's Degree", name: "Associate's Degree" },
+  { id: "Bachelor's Degree", name: "Bachelor's Degree" },
+  { id: "Master's Degree", name: "Master's Degree" },
+  { id: 'Doctorate / PhD', name: 'Doctorate / PhD' },
+  { id: 'Any', name: 'Any' },
+];
+
+const DUMMY_SKILL_OPTIONS: JobOpeningDropdownOption[] = [
+  { id: 'Python', name: 'Python' },
+  { id: 'Java', name: 'Java' },
+  { id: 'JavaScript', name: 'JavaScript' },
+  { id: 'SQL', name: 'SQL' },
+  { id: 'Communication', name: 'Communication' },
+];
+
+const isSkillsEndpoint = (endpoint: string) =>
+  endpoint === 'MANDATORY_SKILLS' || endpoint === 'OPTIONAL_SKILLS';
+
+const isPeopleEndpoint = (endpoint: string) =>
+  endpoint === 'HIRING_MANAGER' || endpoint === 'RECRUITER';
+
+/**
+ * Replaces the fictional `/job-opening/getDropdownsByType` with the real
+ * catalogues each dropdown actually needs. Return shape stays
+ * `{ id, name }[]` so DropdownWithAddOption keeps working.
+ */
 const useJobOpeningDropdown = (
   endpoint: string,
-  mode: string,
-  jobOpeningId?: number,
+  _mode: string,
+  _jobOpeningId?: string | number,
   skip?: boolean,
-  locationId?: number,
-  isRemote?: boolean
+  _locationId?: string | number,
+  _isRemote?: boolean
 ) => {
-  const { data, error, isLoading, refetch } = useGetJobOpeningDropdownQuery(
-    { endpoint, mode, jobOpeningId, locationId, isRemote },
-    {
-      refetchOnMountOrArgChange: true,
-      skip,
-    }
+  const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
+  const sessionTenantId = useSessionTenantId();
+  const needsPeople = isPeopleEndpoint(endpoint);
+  const { data: platformTenants } = useListPlatformTenantsQuery(
+    { limit: 50 },
+    { skip: skip || !needsPeople || Boolean(sessionTenantId) }
+  );
+  const tenantId = sessionTenantId ?? platformTenants?.tenants?.[0]?.tenant_id;
+  const isMaster = Boolean(!sessionTenantId && tenantId);
+
+  const jobTypes = useListJobTypesQuery(
+    { isMaster: callerKind === 'platform' },
+    { skip: skip || endpoint !== 'JOB_TYPE' }
+  );
+  const closureReasons = useListClosureReasonsQuery(undefined, {
+    skip: skip || endpoint !== 'CLOSURE_REASON',
+  });
+  const roundTypes = useListInterviewRoundTypesQuery(undefined, {
+    skip: skip || endpoint !== 'ROUNDS',
+  });
+  const tenantUsers = useListUsersQuery({ limit: 200 }, { skip: skip || !needsPeople || isMaster });
+  const platformUsers = useListPlatformTenantUsersQuery(
+    { tenantId: tenantId ?? '', limit: 200 },
+    { skip: skip || !needsPeople || !isMaster || !tenantId }
+  );
+  const users = isMaster ? platformUsers : tenantUsers;
+
+  const [searchSkills, skillsResult] = useLazySearchSkillsQuery();
+  const preloadedSkills = useSearchSkillsQuery(
+    { q: 'ja' },
+    { skip: skip || !isSkillsEndpoint(endpoint) || callerKind === 'platform' }
   );
 
+  const jobOpeningDropdown: JobOpeningDropdownOption[] = useMemo(() => {
+    switch (endpoint) {
+      case 'JOB_TYPE':
+        return (jobTypes.data ?? []).map((item) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description ?? undefined,
+        }));
+      case 'CLOSURE_REASON':
+        return (closureReasons.data ?? []).map((item) => ({
+          id: item.reason_id,
+          name: item.reason,
+          description: item.description ?? undefined,
+        }));
+      case 'ROUNDS':
+        return (roundTypes.data ?? []).map((item) => ({
+          id: item.round_id,
+          name: item.name,
+          description: item.description ?? undefined,
+          requires_duration: item.requires_duration,
+          available_variants: item.available_variants,
+          max_occurrences: item.max_occurrences,
+        }));
+      case 'HIRING_MANAGER':
+      case 'RECRUITER':
+        return (users.data?.items ?? []).map((user) => ({
+          id: user.user_id,
+          name: user.full_name || user.email,
+        }));
+      case 'EXEMPTION_STATUS':
+        return [
+          { id: 'true', name: 'Exempt' },
+          { id: 'false', name: 'Non-Exempt' },
+        ];
+      case 'EDUCATION_PREFERENCE':
+        return EDUCATION_PREFERENCE_OPTIONS;
+      case 'MANDATORY_SKILLS':
+      case 'OPTIONAL_SKILLS': {
+        const searched = skillsResult.data;
+        const catalog = !skillsResult.isUninitialized
+          ? (searched ?? [])
+          : (preloadedSkills.data ?? []);
+        if (catalog.length === 0) {
+          return callerKind === 'platform' ? DUMMY_SKILL_OPTIONS : [];
+        }
+        return catalog.map((skill) => ({
+          id: skill.skill_id,
+          name: skill.skill_label,
+        }));
+      }
+      default:
+        return [];
+    }
+  }, [
+    endpoint,
+    jobTypes.data,
+    closureReasons.data,
+    roundTypes.data,
+    users.data,
+    skillsResult.data,
+    skillsResult.isUninitialized,
+    preloadedSkills.data,
+    callerKind,
+  ]);
+
+  const loading =
+    jobTypes.isLoading ||
+    closureReasons.isLoading ||
+    roundTypes.isLoading ||
+    users.isLoading ||
+    preloadedSkills.isLoading ||
+    skillsResult.isFetching;
+
+  const refetch = () => {
+    if (endpoint === 'JOB_TYPE') jobTypes.refetch();
+    if (endpoint === 'CLOSURE_REASON') closureReasons.refetch();
+    if (endpoint === 'ROUNDS') roundTypes.refetch();
+    if (needsPeople) users.refetch();
+    if (isSkillsEndpoint(endpoint)) preloadedSkills.refetch();
+  };
+
   return {
-    jobOpeningDropdown: Array.isArray(data) ? data : [],
-    loading: isLoading,
-    error: error ? 'Failed to fetch job openings' : null,
+    jobOpeningDropdown,
+    loading,
+    error: null as string | null,
     refetch,
+    searchSkills: (q: string) => {
+      if (!isSkillsEndpoint(endpoint)) return;
+      const query = q.trim();
+      if (query.length >= 2) {
+        void searchSkills({ q: query });
+      }
+    },
   };
 };
 
 export default useJobOpeningDropdown;
+
+export { useJobOpeningDropdown };

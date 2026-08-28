@@ -9,38 +9,30 @@ import { Loader } from '../../shared/ui/loader';
 import { Button, showToast, Typography } from '../../shared';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import QuestionFormModal from './QuestionFormModal';
-import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
-import { get } from 'lodash-es';
 import {
-  useGetAllAiGeneralQuestionsByJobIdQuery,
-  useDeleteAiGeneralQuestionMutation,
-  useEditAiGeneralQuestionMutation,
-  useReorderAiGeneralQuestionMutation,
-  useGenerateAiGeneralQuestionsMutation,
-  usePasteAiGeneralQuestionsMutation,
-  useUploadAiGeneralQuestionsExcelMutation,
-  useDeleteAllAiGeneralQuestionsMutation,
-  useDownloadAiGeneralQuestionsTemplateMutation,
-} from '../../../api/ai-service/AiQuestion/GeneralQuestions';
+  useGetJobQuestionsQuery,
+  useGetAudioQuestionsQuery,
+  useSaveJobQuestionsMutation,
+  useGenerateJobQuestionsMutation,
+  useRegenerateJobQuestionsMutation,
+  useBulkImportJobQuestionsMutation,
+  useLazyGetQuestionImportTemplateQuery,
+} from '../../../api/job-service/JobOpening/jobQuestions';
+import { useListInterviewRoundTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
+import {
+  useLazyValidateForPublishQuery,
+  usePublishJobMutation,
+} from '../../../api/job-service/JobOpening/CloseJob';
+import type { QuestionRequest, QuestionResponse } from '../../../api/job-service/types';
+import { asJobId } from '../../../api/job-service/jobId';
+import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 
 import UploadAndGenerateHeader from './UploadAndGenerateHeader';
 import InlineQuestionInput from './InlineQuestionInput';
 import QuestionRowItem from './QuestionRowItem';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 
-// System-fixed, view-only Sound Wave Round question set. Unlike JD Questions
-// below, this isn't scoped to a job or backed by an endpoint — no such
-// endpoint exists (see plan doc) — it's the same fixed script Iris asks on
-// every Sound Wave round, hardcoded here.
-const SOUND_WAVE_ROUND_QUESTIONS = [
-  "What's your current notice period or earliest available start date?",
-  'Can you walk me through your resume at a high level?',
-  'What are your salary expectations for this role?',
-  'Why are you interested in this position?',
-  'Are you authorized to work in the country where this role is based?',
-  "What's driving you to look for a new opportunity right now?",
-  'Do you have any scheduling constraints for interviews?',
-];
+const DEFAULT_QUESTION_COUNT = 10;
 
 const AiQuestionsSetup = () => {
   const navigate = useNavigate();
@@ -48,25 +40,21 @@ const AiQuestionsSetup = () => {
   const { pathname } = useLocation();
   const { id } = useParams<{ id?: string }>();
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
-  const streamJobOpeningId = useSelector((state: RootState) => state.streamSlice.jobOpeningId);
-  const streamLastEvent = useSelector((state: RootState) => state.streamSlice.lastEvent);
+  const editJobOpeningId = useSelector((state: RootState) => state.EditJobSlice.jobOpeningId);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [isDeleteInProgress, setIsDeleteInProgress] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Edit modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState<any>(null);
+  const [editingQuestion, setEditingQuestion] = useState<QuestionResponse | null>(null);
   const [editedQuestionText, setEditedQuestionText] = useState('');
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
-  // Inline add state
   const [inlineInputText, setInlineInputText] = useState('');
   const [isInlineSubmitting, setIsInlineSubmitting] = useState(false);
 
-  // Excel upload feedback states
   const [warnings, setWarnings] = useState<string[]>([]);
   const [skippedCount, setSkippedCount] = useState<number>(0);
   const [importedCount, setImportedCount] = useState<number>(0);
@@ -75,86 +63,103 @@ const AiQuestionsSetup = () => {
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
 
   const activeJobOpeningId = useMemo(
-    () => (id ? Number(id) : streamJobOpeningId || reduxJobOpeningId),
-    [id, streamJobOpeningId, reduxJobOpeningId]
+    () => asJobId(id) || asJobId(editJobOpeningId) || asJobId(reduxJobOpeningId),
+    [id, reduxJobOpeningId, editJobOpeningId]
   );
 
-  const [deleteAiQuestion] = useDeleteAiGeneralQuestionMutation();
-  const [editAiQuestion] = useEditAiGeneralQuestionMutation();
-  const [reorderAiGeneralQuestion] = useReorderAiGeneralQuestionMutation();
-  const [generateAiQuestions, { isLoading: isGenerating }] =
-    useGenerateAiGeneralQuestionsMutation();
-  const [pasteQuestions] = usePasteAiGeneralQuestionsMutation();
-  const [uploadExcel, { isLoading: isUploadingExcel }] = useUploadAiGeneralQuestionsExcelMutation();
-  const [deleteAllQuestions] = useDeleteAllAiGeneralQuestionsMutation();
-  const [downloadTemplate, { isLoading: isDownloadingTemplate }] =
-    useDownloadAiGeneralQuestionsTemplateMutation();
+  const { data: roundTypes = [] } = useListInterviewRoundTypesQuery();
+  const audioRoundTypeIds = useMemo(
+    () => new Set(roundTypes.filter((item) => item.is_audio_round).map((item) => item.round_id)),
+    [roundTypes]
+  );
 
   const {
     data: questionsData,
     isLoading: isLoadingQuestions,
     refetch: refetchQuestions,
-  } = useGetAllAiGeneralQuestionsByJobIdQuery(
-    { jobOpeningId: Number(activeJobOpeningId) },
-    { skip: !activeJobOpeningId }
-  );
+  } = useGetJobQuestionsQuery(activeJobOpeningId, { skip: !activeJobOpeningId });
 
-  const { data: roundsData } = useGetInterviewRoundsByJobIdQuery(activeJobOpeningId, {
+  const { data: audioData } = useGetAudioQuestionsQuery(activeJobOpeningId, {
     skip: !activeJobOpeningId,
   });
-  const aiRoundId = useMemo(
-    () => roundsData?.find((round) => round.roundType === 'AI')?.id ?? null,
-    [roundsData]
+
+  const [saveJobQuestions] = useSaveJobQuestionsMutation();
+  const [generateJobQuestions, { isLoading: isGenerating }] = useGenerateJobQuestionsMutation();
+  const [regenerateJobQuestions] = useRegenerateJobQuestionsMutation();
+  const [bulkImportJobQuestions, { isLoading: isUploadingExcel }] =
+    useBulkImportJobQuestionsMutation();
+  const [downloadTemplate, { isLoading: isDownloadingTemplate }] =
+    useLazyGetQuestionImportTemplateQuery();
+  const [validateForPublish] = useLazyValidateForPublishQuery();
+  const [publishJob, { isLoading: isPublishing }] = usePublishJobMutation();
+
+  const jdRounds = useMemo(
+    () => (questionsData?.rounds ?? []).filter((round) => !audioRoundTypeIds.has(round.round_id)),
+    [questionsData, audioRoundTypeIds]
   );
 
-  useEffect(() => {
-    if (
-      (streamLastEvent === 'GENERAL_QUESTIONS_READY' || activeJobOpeningId) &&
-      activeJobOpeningId
-    ) {
-      refetchQuestions();
-    }
-  }, [streamLastEvent, activeJobOpeningId, refetchQuestions]);
+  const questions = useMemo(() => jdRounds.flatMap((round) => round.questions ?? []), [jdRounds]);
+  const defaultRoundInstanceId = jdRounds[0]?.round_instance_id ?? null;
+  const audioQuestions = audioData?.questions ?? [];
 
-  const questions = useMemo(() => questionsData?.data ?? [], [questionsData]);
   const isAllSelected = questions.length > 0 && selectedIds.length === questions.length;
+
+  const toQuestionRequest = (question: QuestionResponse): QuestionRequest => ({
+    id: question.id,
+    question_text: question.question_text,
+    answer_text: question.answer_text,
+    interview_round_id: question.interview_round_id,
+    topic_skill: question.topic_skill,
+  });
+
+  const persistQuestions = async (next: QuestionRequest[]) => {
+    if (!activeJobOpeningId) return;
+    await saveJobQuestions({ jobOpeningId: activeJobOpeningId, questions: next }).unwrap();
+    await refetchQuestions();
+  };
 
   const handleSelectAll = (checked: boolean) =>
     setSelectedIds(checked ? questions.map((q) => q.id) : []);
-  const handleSelectOne = (id: number, checked: boolean) =>
-    setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((item) => item !== id)));
+  const handleSelectOne = (questionId: string, checked: boolean) =>
+    setSelectedIds((prev) =>
+      checked ? [...prev, questionId] : prev.filter((item) => item !== questionId)
+    );
 
   const handleGenerateDefaultQuestions = async (mode: 'ADD' | 'REPLACE') => {
-    if (!activeJobOpeningId || !aiRoundId)
-      return showToast({ message: 'Missing Job ID or Round ID', type: 'error' });
+    if (!activeJobOpeningId) {
+      showToast({ message: 'Missing Job ID', type: 'error' });
+      return;
+    }
     try {
-      const res = await generateAiQuestions({
-        jobOpeningId: Number(activeJobOpeningId),
-        interviewRoundId: aiRoundId,
-        mode: mode,
-      }).unwrap();
-      if (res?.status || res?.success) {
-        showToast({ message: res?.message || 'Questions generated successfully', type: 'success' });
-        refetchQuestions();
-        setShowGenerateConsentModal(false);
+      if (mode === 'REPLACE') {
+        await regenerateJobQuestions({
+          jobOpeningId: activeJobOpeningId,
+          question_count: DEFAULT_QUESTION_COUNT,
+        }).unwrap();
+      } else {
+        await generateJobQuestions({
+          jobOpeningId: activeJobOpeningId,
+          question_count: DEFAULT_QUESTION_COUNT,
+        }).unwrap();
       }
+      showToast({ message: 'Question generation started', type: 'success' });
+      refetchQuestions();
+      setShowGenerateConsentModal(false);
     } catch (err) {
-      showToast({ message: get(err, 'data.message', 'Error generating questions'), type: 'error' });
+      showToast({
+        message: getJobErrorMessage(err, 'Error generating questions'),
+        type: 'error',
+      });
     }
   };
 
   const handleDownloadTemplate = async () => {
     try {
-      const blob = await downloadTemplate().unwrap();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'ai_general_questions_template.xlsx';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      showToast({ message: 'Template downloaded successfully', type: 'success' });
+      const result = await downloadTemplate().unwrap();
+      if (result?.download_url) {
+        window.open(result.download_url, '_blank');
+        showToast({ message: 'Template downloaded successfully', type: 'success' });
+      }
     } catch {
       showToast({ message: 'Failed to download template', type: 'error' });
     }
@@ -162,77 +167,75 @@ const AiQuestionsSetup = () => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !activeJobOpeningId || !aiRoundId) return;
+    if (!file || !activeJobOpeningId) return;
     try {
-      const res = await uploadExcel({
+      const res = await bulkImportJobQuestions({
+        jobOpeningId: activeJobOpeningId,
         file,
-        jobOpeningId: Number(activeJobOpeningId),
-        interviewRoundId: aiRoundId,
       }).unwrap();
-      if (res?.success) {
-        setUploadedFileName(file.name);
-        setImportedCount(res.data?.importedCount || 0);
-        setSkippedCount(res.data?.skippedRows || 0);
-        setWarnings(res.data?.warnings || []);
-        showToast({ message: res?.message || 'Questions uploaded successfully', type: 'success' });
-        refetchQuestions();
-      }
+      setUploadedFileName(file.name);
+      setImportedCount(res.imported_count || 0);
+      setSkippedCount(res.skipped_duplicate_rows?.length || 0);
+      setWarnings(
+        (res.failed_rows ?? []).map((row) => (typeof row === 'string' ? row : JSON.stringify(row)))
+      );
+      showToast({ message: 'Questions uploaded successfully', type: 'success' });
+      refetchQuestions();
     } catch (err) {
-      showToast({ message: get(err, 'data.message', 'Error uploading file'), type: 'error' });
+      showToast({
+        message: getJobErrorMessage(err, 'Error uploading file'),
+        type: 'error',
+      });
     }
     e.target.value = '';
   };
 
   const handleInlineSubmit = async () => {
     const trimmedInput = inlineInputText.trim();
-    if (!trimmedInput || !activeJobOpeningId || !aiRoundId) return;
+    if (!trimmedInput || !activeJobOpeningId || !defaultRoundInstanceId) return;
     setIsInlineSubmitting(true);
     try {
-      const res = await pasteQuestions({
-        jobOpeningId: Number(activeJobOpeningId),
-        interviewRoundId: aiRoundId,
-        text: trimmedInput,
-      }).unwrap();
-      if (res?.success) {
-        showToast({ message: res?.message || 'Questions added successfully', type: 'success' });
-        setInlineInputText('');
-        refetchQuestions();
-      }
+      const lines = trimmedInput
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+      const next: QuestionRequest[] = [
+        ...questions.map(toQuestionRequest),
+        ...lines.map((question_text) => ({
+          question_text,
+          interview_round_id: defaultRoundInstanceId,
+        })),
+      ];
+      await persistQuestions(next);
+      showToast({ message: 'Questions added successfully', type: 'success' });
+      setInlineInputText('');
     } catch (err) {
-      showToast({ message: get(err, 'data.message', 'Error saving questions'), type: 'error' });
+      showToast({
+        message: getJobErrorMessage(err, 'Error saving questions'),
+        type: 'error',
+      });
     }
     setIsInlineSubmitting(false);
   };
 
   const confirmDelete = () => {
-    if (isDeleteInProgress) return;
+    if (isDeleteInProgress || !activeJobOpeningId) return;
     setIsDeleteInProgress(true);
-    const allSelected = selectedIds.length === questions.length;
-    const deletePromise =
-      selectedIds.length > 0
-        ? allSelected
-          ? deleteAllQuestions({
-              jobOpeningId: Number(activeJobOpeningId),
-              interviewRoundId: aiRoundId,
-            }).unwrap()
-          : Promise.all(
-              selectedIds.map((qId) =>
-                deleteAiQuestion({ questionID: qId, interviewRoundId: aiRoundId }).unwrap()
-              )
-            )
-        : deleteAiQuestion({
-            questionID: Number(selectedQuestionId),
-            interviewRoundId: aiRoundId,
-          }).unwrap();
+    const idsToRemove = new Set(
+      selectedIds.length > 0 ? selectedIds : selectedQuestionId ? [selectedQuestionId] : []
+    );
+    const remaining = questions.filter((q) => !idsToRemove.has(q.id)).map(toQuestionRequest);
 
-    deletePromise
+    persistQuestions(remaining)
       .then(() => {
         showToast({ message: 'Deleted successfully', type: 'success' });
         setSelectedIds([]);
-        refetchQuestions();
       })
       .catch((err) =>
-        showToast({ message: get(err, 'data.message', 'Error deleting'), type: 'error' })
+        showToast({
+          message: getJobErrorMessage(err, 'Error deleting'),
+          type: 'error',
+        })
       )
       .finally(() => {
         setIsDeleteInProgress(false);
@@ -246,13 +249,7 @@ const AiQuestionsSetup = () => {
     const newItems = [...questions];
     const [movedItem] = newItems.splice(fromIndex, 1);
     newItems.splice(toIndex, 0, movedItem);
-    reorderAiGeneralQuestion({
-      jobOpeningId: Number(activeJobOpeningId),
-      interviewRoundId: aiRoundId,
-      items: newItems.map((item, idx) => ({ id: item.id, order: idx + 1 })),
-    })
-      .unwrap()
-      .then(() => refetchQuestions());
+    void persistQuestions(newItems.map(toQuestionRequest));
   };
 
   const closeEditModal = () => {
@@ -270,38 +267,59 @@ const AiQuestionsSetup = () => {
       return;
     }
 
-    const resolvedRoundId = editingQuestion.interviewRoundId || aiRoundId;
-    if (!resolvedRoundId) {
-      showToast({ message: 'Interview round is missing', type: 'error' });
+    setIsEditSubmitting(true);
+    try {
+      const next = questions.map((q) =>
+        q.id === editingQuestion.id
+          ? { ...toQuestionRequest(q), question_text: normalizedQuestion }
+          : toQuestionRequest(q)
+      );
+      await persistQuestions(next);
+      showToast({ message: 'Question updated successfully', type: 'success' });
+      closeEditModal();
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Error updating question'),
+        type: 'error',
+      });
+    } finally {
+      setIsEditSubmitting(false);
+    }
+  };
+
+  const handlePublishOrFinish = async () => {
+    dispatch(stopStream());
+    const isEdit = pathname.includes('/edit/') && id;
+    if (isEdit) {
+      navigate(`/jobs/view/${id}/details`);
       return;
     }
-
-    setIsEditSubmitting(true);
-    editAiQuestion({
-      questionID: editingQuestion.id,
-      question: normalizedQuestion,
-      interviewRoundId: Number(resolvedRoundId),
-    })
-      .unwrap()
-      .then((res) => {
-        if (res?.status) {
-          showToast({
-            message: get(res, 'message', 'Question updated successfully'),
-            type: 'success',
-          });
-          refetchQuestions();
-          closeEditModal();
-        } else {
-          showToast({ message: get(res, 'message', 'Failed to update question'), type: 'error' });
-        }
-      })
-      .catch((err) => {
-        showToast({ message: get(err, 'data.message', 'Error updating question'), type: 'error' });
-      })
-      .finally(() => {
-        setIsEditSubmitting(false);
+    if (!activeJobOpeningId) return;
+    try {
+      const validation = await validateForPublish(activeJobOpeningId).unwrap();
+      if (!validation.is_valid) {
+        showToast({
+          message: `Cannot publish yet: ${(validation.failed_checks ?? []).join(', ')}`,
+          type: 'error',
+        });
+        return;
+      }
+      await publishJob(activeJobOpeningId).unwrap();
+      showToast({ message: 'Job opening published', type: 'success' });
+      navigate('/jobs');
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Failed to publish job opening'),
+        type: 'error',
       });
+    }
   };
+
+  useEffect(() => {
+    if (activeJobOpeningId) {
+      refetchQuestions();
+    }
+  }, [activeJobOpeningId, refetchQuestions]);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -312,7 +330,8 @@ const AiQuestionsSetup = () => {
           isDownloadingTemplate ||
           isDeleteInProgress ||
           isEditSubmitting ||
-          isInlineSubmitting) && <Loader />}
+          isInlineSubmitting ||
+          isPublishing) && <Loader />}
 
         <div className="flex justify-between items-center bg-[#E7E4E4] border border-[var(--border)] px-6 py-4 rounded-full">
           <Typography variant="h5" className="text-gray-800 m-0">
@@ -330,14 +349,18 @@ const AiQuestionsSetup = () => {
             </span>
           </div>
           <div className="space-y-3">
-            {SOUND_WAVE_ROUND_QUESTIONS.map((question, idx) => (
-              <div
-                key={idx}
-                className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700"
-              >
-                {question}
-              </div>
-            ))}
+            {audioQuestions.length === 0 ? (
+              <p className="text-gray-400 italic text-sm">No audio-round questions configured.</p>
+            ) : (
+              audioQuestions.map((question) => (
+                <div
+                  key={question.question_id}
+                  className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700"
+                >
+                  {question.question_text}
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -408,14 +431,14 @@ const AiQuestionsSetup = () => {
               {questions.map((q, idx) => (
                 <QuestionRowItem
                   key={q.id}
-                  question={q}
+                  question={{ id: q.id, question: q.question_text }}
                   index={idx}
                   onDrop={handleDrop}
                   checked={selectedIds.includes(q.id)}
                   onCheckChange={(checked) => handleSelectOne(q.id, checked)}
                   onEdit={() => {
                     setEditingQuestion(q);
-                    setEditedQuestionText(q.question);
+                    setEditedQuestionText(q.question_text);
                     setIsEditModalOpen(true);
                   }}
                   onDelete={() => {
@@ -469,12 +492,7 @@ const AiQuestionsSetup = () => {
         <div className="mt-6 flex justify-center">
           <Button
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-            onClick={() => {
-              // Questions is now the wizard's last step (Video Questions is
-              // retired from the nav — see JobDetailsLayout.tsx).
-              dispatch(stopStream());
-              navigate(pathname.includes('/edit/') && id ? `/jobs/view/${id}/details` : '/jobs');
-            }}
+            onClick={() => void handlePublishOrFinish()}
           >
             {pathname.includes('/edit/') ? 'SAVE & FINISH' : '✓ PUBLISH JOB OPENING'}
           </Button>

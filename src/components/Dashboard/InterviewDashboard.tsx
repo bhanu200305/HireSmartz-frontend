@@ -1,7 +1,7 @@
 import { Select } from 'antd';
 import clsx from 'clsx';
 import InterviewClosureImage from '../../assets/svgs/interviewClosure.svg';
-import { MdOutlineFilterAlt } from 'react-icons/md';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { monthlyOptions, yearlyOptions } from '../../shared/utils/business-logic';
 import { formatEnumString } from '../../shared/utils/methods';
@@ -118,17 +118,16 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
           <div className="flex flex-wrap justify-between items-center gap-2">
             <div className="flex items-center gap-2">
               <div className="flex gap-2">
-                <div className="border border-[var(--border)] p-1 rounded-lg w-full flex items-center gap-1 bg-white">
+                <div className="cfp-dropdown-trigger">
+                  <FilterSelectIcon />
                   <Select
                     dropdownStyle={{ minWidth: '100px' }}
-                    prefix={
-                      <MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />
-                    }
                     style={{ width: '100px', fontSize: '14px' }}
                     placeholder="Year"
                     allowClear
                     className="w-full custom-select"
                     popupClassName="rounded-xl"
+                    variant="borderless"
                     value={filters?.year}
                     onChange={(value: number) => handleFilterChange('year', value)}
                   >
@@ -140,17 +139,16 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
                   </Select>
                 </div>
 
-                <div className="border border-[var(--border)] p-1 rounded-lg w-full flex items-center gap-1 bg-white">
+                <div className="cfp-dropdown-trigger">
+                  <FilterSelectIcon />
                   <Select
                     dropdownStyle={{ minWidth: '100px' }}
                     style={{ width: '100px', fontSize: '14px' }}
-                    prefix={
-                      <MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />
-                    }
                     placeholder="Month"
                     allowClear
                     className="w-full custom-select"
                     popupClassName="rounded-xl"
+                    variant="borderless"
                     value={filters?.month}
                     onChange={(value: number) => handleFilterChange('month', value)}
                   >
@@ -162,17 +160,16 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
                   </Select>
                 </div>
 
-                <div className="border border-[var(--border)] p-1 rounded-lg w-full flex items-center gap-1 bg-white">
+                <div className="cfp-dropdown-trigger">
+                  <FilterSelectIcon />
                   <Select
                     dropdownStyle={{ minWidth: '100px' }}
                     style={{ width: '130px', fontSize: '14px' }}
-                    prefix={
-                      <MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />
-                    }
                     placeholder="All Rounds"
                     allowClear
                     className="w-full custom-select"
                     popupClassName="rounded-xl"
+                    variant="borderless"
                     value={filters?.roundType}
                     onChange={(value: string) => handleFilterChange('roundType', value)}
                     options={interviewRoundOptions}

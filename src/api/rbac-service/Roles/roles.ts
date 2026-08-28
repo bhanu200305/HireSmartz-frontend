@@ -8,7 +8,7 @@ import { devRoleStore } from '../../../shared/utils/dev/devRoleStore';
 // Roles & Permissions management screens lives in src/types/rbac.d.ts and
 // is fetched via getRoleById/createRole/updateRole instead.
 export type Role = {
-  id: number;
+  id: string;
   roleName: string;
 };
 

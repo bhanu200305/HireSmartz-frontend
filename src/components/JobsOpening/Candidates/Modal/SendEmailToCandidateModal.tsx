@@ -38,7 +38,7 @@ type SendEmailToCandidateModalProps = {
   open: boolean;
   onClose: () => void;
   candidate?: CandidateByIdResponse | null;
-  jobOpeningId: number;
+  jobOpeningId: string | number;
   /** Prefills To with these addresses (e.g. multiple selected candidates) */
   bulkRecipientEmails?: string[];
   /** When set (e.g. floating bar), drives single vs bulk API */

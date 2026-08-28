@@ -1,5 +1,5 @@
 import { Form, Select } from 'antd';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, showToast } from '../../shared';
 import { MdClose } from 'react-icons/md';
 import TextArea from 'antd/es/input/TextArea';
@@ -8,23 +8,30 @@ import { SaveInterviewRoundRequest } from '../../../types';
 import { Controller, useForm } from 'react-hook-form';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
-import { get } from 'lodash-es';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import { Loader } from '../../shared/ui/loader';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import { asJobId } from '../../../api/job-service/jobId';
+import {
+  toInterviewRoundRequest,
+  toInterviewSequencePayload,
+} from '../../../api/job-service/interviewSequenceHelpers';
+import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 
 const { Option } = Select;
 
 const AddNewRound = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [form] = Form.useForm();
-  const { id: jobIdFromParams } = useParams();
   const { jobOpeningDropdown: interviewRounds, loading: interviewRoundsLoading } =
     useJobOpeningDropdown('ROUNDS', 'create');
   const [saveInterviewRound, { isLoading }] = useSaveInterviewRoundMutation();
   const jobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
-  const resolvedJobId = jobIdFromParams || jobOpeningId;
-  const { data: rounds = [] } = useGetInterviewRoundsByJobIdQuery(Number(resolvedJobId), {
+  const editJobOpeningId = useSelector((state: RootState) => state.EditJobSlice.jobOpeningId);
+  const jobFromPath = location.pathname.match(/\/jobs\/edit\/([^/]+)/)?.[1];
+  const resolvedJobId = asJobId(jobFromPath) || asJobId(editJobOpeningId) || asJobId(jobOpeningId);
+  const { data: rounds = [] } = useGetInterviewRoundsByJobIdQuery(resolvedJobId, {
     skip: !resolvedJobId,
   });
 
@@ -36,18 +43,18 @@ const AddNewRound = () => {
   } = useForm<SaveInterviewRoundRequest>({
     defaultValues: {
       sequence: rounds.length + 1,
-      jobId: resolvedJobId ? Number(resolvedJobId) : undefined,
+      jobId: resolvedJobId,
       roundType: '',
       description: '',
     },
   });
 
-  const handleRoundChange = (value: number | null) => {
+  const handleRoundChange = (value: string | number | null) => {
     if (value === null || value === undefined) {
       setValue('description', '', { shouldValidate: true });
       setValue('roundType', '', { shouldValidate: true });
     } else {
-      const selectedRound = interviewRounds.find((round) => round.id === value);
+      const selectedRound = interviewRounds.find((round) => String(round.id) === String(value));
       if (selectedRound) {
         setValue('description', selectedRound.description || '', { shouldValidate: true });
         setValue('roundType', selectedRound.roundType || '', { shouldValidate: true });
@@ -56,33 +63,44 @@ const AddNewRound = () => {
   };
 
   const onSubmit = async (data: SaveInterviewRoundRequest) => {
-    if (isLoading) return;
+    if (isLoading || !resolvedJobId) return;
 
-    saveInterviewRound(data)
+    const existing = toInterviewSequencePayload(rounds);
+    const nextSequence = existing.length + 1;
+    const selectedType = interviewRounds.find((round) => String(round.id) === String(data.round));
+
+    saveInterviewRound({
+      jobOpeningId: resolvedJobId,
+      rounds: [
+        ...existing,
+        toInterviewRoundRequest(
+          {
+            roundId: String(data.round),
+            sequence: nextSequence,
+            description: data.description,
+            duration: selectedType?.requires_duration ? 30 : null,
+            variant: selectedType?.available_variants?.[0] ?? null,
+          },
+          { isNew: true }
+        ),
+      ],
+    })
       .unwrap()
       .then((res) => {
-        if (res?.status === 'OK') {
-          showToast({
-            message: get(res, 'message', 'Interview round has been saved successfully'),
-            type: 'success',
-          });
-          if (jobIdFromParams) {
-            navigate(`/jobs/edit/${jobIdFromParams}/interview`, { state: { refresh: true } });
-          } else {
-            navigate('/interview-setup', { state: { refresh: true } });
-          }
+        showToast({
+          message: res?.message || 'Interview round has been saved successfully',
+          type: 'success',
+        });
+        if (jobFromPath) {
+          navigate(`/jobs/edit/${jobFromPath}/interview`, { state: { refresh: true } });
         } else {
-          showToast({
-            message: get(res, 'message', 'Failed to save interview round.'),
-            type: 'error',
-          });
+          navigate('/interview-setup', { state: { refresh: true } });
         }
       })
       .catch((err) => {
         showToast({
-          message: get(
+          message: getJobErrorMessage(
             err,
-            'data.message',
             'Something went wrong while saving the interview round.'
           ),
           type: 'error',
@@ -209,8 +227,8 @@ const AddNewRound = () => {
           <Button
             className="absolute top-4 right-4 text-primary cursor-pointer"
             onClick={() =>
-              jobIdFromParams
-                ? navigate(`/jobs/edit/${jobIdFromParams}/interview`)
+              jobFromPath
+                ? navigate(`/jobs/edit/${jobFromPath}/interview`)
                 : navigate('/interview-setup')
             }
           >

@@ -21,13 +21,13 @@ const LocationSwitcher: React.FC = () => {
   if (!hasMultipleLocations) return null;
 
   return (
-    <div className="flex items-center gap-2">
-      <MdOutlineLocationOn size={18} className="text-gray-500" />
+    <div className="cfp-dropdown-trigger w-44">
+      <MdOutlineLocationOn className="cfp-dropdown-filter-icon" aria-hidden />
       <Select
         value={activeLocationId ?? undefined}
         onChange={(value) => setActiveLocationId(value)}
-        className="w-44"
-        size="middle"
+        className="w-full custom-select"
+        variant="borderless"
         options={accessibleLocations.map((location) => ({
           value: location.id,
           label: location.name,

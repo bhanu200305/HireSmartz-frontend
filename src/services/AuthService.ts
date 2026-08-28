@@ -10,11 +10,40 @@ import { AppDispatch } from '../redux/provider/store';
 import axios from 'axios';
 import { extractCanManageCompanySettings } from '../shared/utils/auth/permission.helpers';
 
+type RefreshedTokens = { token: string; refreshToken: string };
+
+// authentication-service's refresh tokens are SINGLE-USE and rotate on every
+// call — presenting one twice trips reuse detection and revokes the entire
+// session chain (see auth_router.py's /auth/refresh docstring). This app has
+// three independent RTK Query clients (src/api/index.ts, authApi.ts,
+// orgApi.ts — job-service's own client makes a fourth), each with its own
+// baseQueryWithReauth that calls handleRefreshToken() on a 401. With no
+// coordination, a page that fires several queries at once against an
+// already-expired access token causes each one to 401 in the same tick and
+// each one to call this function independently — several concurrent
+// POST /auth/refresh calls carrying the SAME refresh token. One wins and
+// rotates it; every other caller then presents an already-used token, which
+// the backend cannot distinguish from theft, and revokes the whole session —
+// logging the user out immediately after what looked like a successful
+// refresh.
+//
+// This module-level promise is the fix: the first caller in a burst starts
+// the real request and stores the in-flight promise here; every other caller
+// arriving before it settles just awaits that same promise instead of firing
+// its own. Cleared in `finally` so the next genuine expiry starts a fresh
+// call rather than replaying a stale result.
+let inFlightRefresh: Promise<RefreshedTokens | null> | null = null;
+
 /**
  * Handles token refresh when access token expires.
  *
  * This function is called automatically by RTK Query's baseQuery when a 401 error occurs.
  * It calls authentication-service's real POST /auth/refresh endpoint directly.
+ *
+ * Safe to call from multiple concurrent callers: only one network request is
+ * ever in flight at a time (see `inFlightRefresh` above) — every caller that
+ * arrives while a refresh is already running awaits that same call instead of
+ * spending the single-use refresh token a second time.
  *
  * @returns Promise with new tokens { token, refreshToken } on success, null on failure
  *
@@ -35,10 +64,18 @@ import { extractCanManageCompanySettings } from '../shared/utils/auth/permission
  * @throws Errors are caught silently and null is returned
  * @see verifyTokenLogin for initial token verification
  */
-export const handleRefreshToken = async (): Promise<{
-  token: string;
-  refreshToken: string;
-} | null> => {
+export const handleRefreshToken = async (): Promise<RefreshedTokens | null> => {
+  if (inFlightRefresh) {
+    return inFlightRefresh;
+  }
+
+  inFlightRefresh = performRefresh().finally(() => {
+    inFlightRefresh = null;
+  });
+  return inFlightRefresh;
+};
+
+const performRefresh = async (): Promise<RefreshedTokens | null> => {
   const refreshToken = getLocalStorageItem(LOCALSTORAGE_KEYS.REFRESH);
   if (!refreshToken) {
     return null;
