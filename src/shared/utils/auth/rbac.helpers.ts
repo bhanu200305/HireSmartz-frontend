@@ -56,3 +56,34 @@ export const groupCatalogByModule = (): Record<PermissionModule, PermissionCatal
     {} as Record<PermissionModule, PermissionCatalogEntry[]>
   );
 };
+
+/** `code -> catalog entry` — built once per call site via `useMemo`, not
+ * module scope, since `PERMISSION_CATALOG` itself is a plain array and this
+ * is cheap to derive on demand. */
+const catalogByCode = (): Map<Authorities, PermissionCatalogEntry> =>
+  new Map(PERMISSION_CATALOG.map((entry) => [entry.code, entry]));
+
+/**
+ * A role's actual `permissions` codes, resolved to their human-readable
+ * labels and grouped by module, in catalog order — what a hover preview
+ * needs to answer "what does this role actually grant" without dumping raw
+ * `resource:action` strings on the reader. Codes with no catalog entry
+ * (frontend-only concepts like `dashboard:view` — see PERMISSION_CATALOG's
+ * own module docstring) are silently dropped rather than shown unlabelled;
+ * a role can hold one of these but it confers nothing a backend enforces,
+ * so a preview of what the role DOES is correct to omit it.
+ */
+export const groupPermissionsByModule = (
+  codes: Authorities[]
+): Partial<Record<PermissionModule, PermissionCatalogEntry[]>> => {
+  const byCode = catalogByCode();
+  return codes.reduce(
+    (groups, code) => {
+      const entry = byCode.get(code);
+      if (!entry) return groups;
+      (groups[entry.module] ||= []).push(entry);
+      return groups;
+    },
+    {} as Partial<Record<PermissionModule, PermissionCatalogEntry[]>>
+  );
+};

@@ -1,5 +1,10 @@
 import { orgApi } from '../orgApi';
-import type { CreateUserRequest, ListUsersResponse, OrgUser } from '../Users/users';
+import type {
+  CreateUserRequest,
+  ListUsersResponse,
+  OrgUser,
+  UpdateUserRequest,
+} from '../Users/users';
 
 // Super Admin's platform-mounted mirror of Users/users.ts — same
 // request/response shapes as POST/GET/DELETE /v1/users, tenant bound from
@@ -16,6 +21,10 @@ export type ListPlatformTenantUsersArgs = {
 };
 
 export type CreatePlatformTenantUserRequest = CreateUserRequest & {
+  tenantId: string;
+};
+
+export type UpdatePlatformTenantUserRequest = UpdateUserRequest & {
   tenantId: string;
 };
 
@@ -40,6 +49,23 @@ const extendedApi = orgApi.injectEndpoints({
       query: ({ tenantId, ...body }) => ({
         url: usersBasePath(tenantId),
         method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'OrgUsers', id: `platform-${tenantId}` },
+      ],
+    }),
+    // Platform mirror of Users/users.ts's updateUser — the tenant-ambient
+    // PATCH /v1/users/{user_id} 403s for a platform caller
+    // (users_router.py reads get_tenant_context()), so
+    // users_platform_router.py's update_user_as_platform exists for exactly
+    // this. Same UpdateUserUseCase/UpdateUserCommand either way — only the
+    // guard and where tenant_id comes from differ, same as every other route
+    // in this file.
+    updatePlatformTenantUser: build.mutation<OrgUser, UpdatePlatformTenantUserRequest>({
+      query: ({ tenantId, userId, ...body }) => ({
+        url: `${usersBasePath(tenantId)}/${userId}`,
+        method: 'PATCH',
         body,
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [
@@ -76,6 +102,7 @@ const extendedApi = orgApi.injectEndpoints({
 export const {
   useListPlatformTenantUsersQuery,
   useCreatePlatformTenantUserMutation,
+  useUpdatePlatformTenantUserMutation,
   useDeactivatePlatformTenantUserMutation,
   useReactivatePlatformTenantUserMutation,
 } = extendedApi;

@@ -32,7 +32,10 @@ import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-
 import { useAssignRoleAsPlatformMutation } from '../../../../api/organization-service/Roles/assignments';
 import { useRolesCatalog } from '../../../../hooks/useRolesCatalog';
 import type { OrgUser } from '../../../../api/organization-service/Users/users';
-import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
+import {
+  getOrgErrorCode,
+  getOrgErrorMessage,
+} from '../../../../shared/utils/auth/orgError.helpers';
 import {
   isPhoneValidForCountry,
   PHONE_VALIDATION_MESSAGE,
@@ -52,7 +55,7 @@ type FormState = {
   phone_no: string;
   department_id: string | undefined;
   role_id: string | undefined;
-  location_id: string | undefined;
+  location_ids: string[];
 };
 
 // Same default every other phone field in this app starts from (see
@@ -68,7 +71,7 @@ const emptyForm: FormState = {
   phone_no: '',
   department_id: undefined,
   role_id: undefined,
-  location_id: undefined,
+  location_ids: [],
 };
 
 /**
@@ -97,7 +100,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   });
   const { data: departments } = useListPlatformTenantDepartmentsQuery(tenantId);
   const { data: offices } = useListPlatformTenantOfficesQuery(tenantId);
-  const { roles } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: true });
+  const { roles, createRole } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: true });
 
   const [createUser, { isLoading: isCreating }] = useCreatePlatformTenantUserMutation();
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivatePlatformTenantUserMutation();
@@ -153,12 +156,15 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     try {
       // A location-scoped role can't be granted in the same call as creation
       // — CreateUserCommand has no location_id at all, only role_id (an
-      // everywhere grant). So when a location was also picked, create
-      // without a role first and grant role+location as an explicit second
-      // step right after, instead of the everywhere-grant this form would
-      // otherwise produce silently. Still one click for whoever's filling
-      // this in — the two calls are this function's problem, not theirs.
-      const grantLocationScoped = Boolean(form.role_id && form.location_id);
+      // everywhere grant). So when one or more locations were also picked,
+      // create without a role first and grant one assignment PER selected
+      // location right after — a role like "head_recruiter" can carry
+      // different permissions at each office (Roles & Permissions' own
+      // per-location overrides), so naming every office this person should
+      // hold it at is the point, not a limitation to work around. Still one
+      // click for whoever's filling this in — the multiple calls are this
+      // function's problem, not theirs.
+      const grantLocationScoped = Boolean(form.role_id && form.location_ids.length > 0);
       const user = await createUser({
         tenantId,
         email: form.email.trim(),
@@ -174,22 +180,33 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       }).unwrap();
 
       if (grantLocationScoped && form.role_id) {
-        try {
-          await assignRole({
-            tenantId,
-            user_id: user.user_id,
-            role_id: form.role_id,
-            location_id: form.location_id,
-          }).unwrap();
-        } catch (err) {
-          // The user themselves was created fine — only the role grant
-          // failed. Said plainly rather than a generic "failed to create
-          // user", since that would be actively wrong: they DO now exist.
+        const failedLocations: string[] = [];
+        // Sequential, not Promise.all — the same role granted at several
+        // locations for the same user shouldn't race the backend's
+        // duplicate-assignment check non-deterministically.
+        for (const locationId of form.location_ids) {
+          try {
+            await assignRole({
+              tenantId,
+              user_id: user.user_id,
+              role_id: form.role_id,
+              location_id: locationId,
+            }).unwrap();
+          } catch (err) {
+            const label = offices?.find((o) => o.office_id === locationId)?.city ?? locationId;
+            failedLocations.push(
+              getOrgErrorCode(err) === 'DUPLICATE_ROLE_ASSIGNMENT'
+                ? `${label} (already held)`
+                : label
+            );
+          }
+        }
+        if (failedLocations.length > 0) {
+          // The user, and whichever grants DID succeed, are real — only the
+          // remainder failed. Named plainly rather than a generic failure,
+          // since that would understate what actually happened.
           showToast({
-            message: getOrgErrorMessage(
-              err,
-              `${user.full_name} was created, but the role grant failed — assign it from their profile instead.`
-            ),
+            message: `${user.full_name} was created, but the role grant failed at: ${failedLocations.join(', ')}. Assign it from their profile instead.`,
             type: 'error',
           });
           setIsAddOpen(false);
@@ -399,9 +416,11 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             offices={offices ?? []}
             roleId={form.role_id}
             onRoleChange={(value) => setForm((prev) => ({ ...prev, role_id: value }))}
-            locationId={form.location_id}
-            onLocationChange={(value) => setForm((prev) => ({ ...prev, location_id: value }))}
+            locationIds={form.location_ids}
+            onLocationIdsChange={(value) => setForm((prev) => ({ ...prev, location_ids: value }))}
             rolePlaceholder="Role (optional — can be assigned later)"
+            tenantId={tenantId}
+            onCreateRole={createRole}
           />
           <div className="grid grid-cols-2 gap-4">
             <Button

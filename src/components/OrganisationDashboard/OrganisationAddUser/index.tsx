@@ -8,11 +8,15 @@ import { Button, Input, PhoneNumberField, Typography, showToast } from '../../sh
 import { RootState } from '../../../redux/provider/store';
 import { useCreateUserMutation } from '../../../api/organization-service/Users/users';
 import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
-import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import { useListTenantOfficesQuery } from '../../../api/organization-service/Tenants/offices';
+import { useAssignRoleMutation } from '../../../api/organization-service/Roles/assignments';
+import { useRolesCatalog } from '../../../hooks/useRolesCatalog';
+import { getOrgErrorCode, getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import {
   isPhoneValidForCountry,
   PHONE_VALIDATION_MESSAGE,
 } from '../../../shared/utils/validation/phoneValidation';
+import RoleLocationPicker from '../../CustomerDashboard/ViewCustomer/panels/RoleLocationPicker';
 
 type FormState = {
   email: string;
@@ -22,6 +26,8 @@ type FormState = {
   country_code: string;
   phone_no: string;
   department_id: string | undefined;
+  role_id: string | undefined;
+  location_ids: string[];
 };
 
 // Same default every other phone field in this app starts from (see
@@ -37,20 +43,37 @@ const emptyForm: FormState = {
   country_code: DEFAULT_COUNTRY_CODE,
   phone_no: '',
   department_id: undefined,
+  role_id: undefined,
+  location_ids: [],
 };
 
 /** §"Users": POST /v1/users. Email and first name are the only required
- * fields — everything else is optional, per docs/frontend_guide.txt. No
- * role picker here: organization-service has no endpoint to list the role
- * catalog, so a role can only be granted after creation, via a flow that
- * already knows a `role_id` (see RolesManagement's "not available yet"
- * note for why that's a real backend gap, not an oversight here). */
+ * fields — everything else is optional, per docs/frontend_guide.txt.
+ *
+ * Role + location are folded into the same flow as UsersPanel's (Super
+ * Admin's) mirror of this page: `CreateUserCommand.role_id` grants an
+ * everywhere role in the same call as creation; a location-SCOPED grant has
+ * no field on that command at all, so it's a second `assignRole` call
+ * chained onto the same click when a location was also picked. Tenant-
+ * ambient here (`useAssignRoleMutation`, not the platform mirror) since this
+ * page only ever runs inside a real tenant session. */
 const AddOrganisationUser = () => {
   const navigate = useNavigate();
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [createUser, { isLoading }] = useCreateUserMutation();
+  const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
+  const [assignRole, { isLoading: isAssigning }] = useAssignRoleMutation();
+  const isLoading = isCreating || isAssigning;
   const { data: departments } = useListTenantDepartmentsQuery(tenantId ?? '', { skip: !tenantId });
+  const { data: offices } = useListTenantOfficesQuery(
+    { tenantId: tenantId ?? '', isMaster: false },
+    { skip: !tenantId }
+  );
+  const { roles, createRole } = useRolesCatalog({
+    scope: 'tenant',
+    tenantId: tenantId ?? undefined,
+    isMaster: false,
+  });
 
   const field = (key: keyof FormState) => ({
     value: form[key] || '',
@@ -68,7 +91,13 @@ const AddOrganisationUser = () => {
       return;
     }
     try {
-      await createUser({
+      // A location-scoped role can't be granted in the same call as creation
+      // — CreateUserCommand has no location_id at all, only role_id (an
+      // everywhere grant). One or more locations picked means a separate
+      // grant PER office — same reasoning as UsersPanel's identical
+      // handleAdd (Super Admin's mirror of this page).
+      const grantLocationScoped = Boolean(form.role_id && form.location_ids.length > 0);
+      const user = await createUser({
         email: form.email.trim(),
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim() || undefined,
@@ -78,7 +107,37 @@ const AddOrganisationUser = () => {
         country_code: form.phone_no.trim() ? form.country_code : undefined,
         phone_no: form.phone_no.trim() || undefined,
         department_id: form.department_id,
+        role_id: grantLocationScoped ? undefined : form.role_id,
       }).unwrap();
+
+      if (grantLocationScoped && form.role_id) {
+        const failedLocations: string[] = [];
+        for (const locationId of form.location_ids) {
+          try {
+            await assignRole({
+              user_id: user.user_id,
+              role_id: form.role_id,
+              location_id: locationId,
+            }).unwrap();
+          } catch (err) {
+            const label = offices?.find((o) => o.office_id === locationId)?.city ?? locationId;
+            failedLocations.push(
+              getOrgErrorCode(err) === 'DUPLICATE_ROLE_ASSIGNMENT'
+                ? `${label} (already held)`
+                : label
+            );
+          }
+        }
+        if (failedLocations.length > 0) {
+          showToast({
+            message: `${user.full_name} was created, but the role grant failed at: ${failedLocations.join(', ')}. Assign it from their profile instead.`,
+            type: 'error',
+          });
+          navigate('/organisation-users');
+          return;
+        }
+      }
+
       showToast({ message: 'User created.', type: 'success' });
       navigate('/organisation-users');
     } catch (err) {
@@ -119,6 +178,20 @@ const AddOrganisationUser = () => {
               label: d.name,
               value: d.org_department_id,
             }))}
+          />
+        </div>
+
+        <div className="mt-4">
+          <RoleLocationPicker
+            roles={roles}
+            offices={offices ?? []}
+            roleId={form.role_id}
+            onRoleChange={(value) => setForm((prev) => ({ ...prev, role_id: value }))}
+            locationIds={form.location_ids}
+            onLocationIdsChange={(value) => setForm((prev) => ({ ...prev, location_ids: value }))}
+            rolePlaceholder="Role (optional — can be assigned later)"
+            tenantId={tenantId ?? undefined}
+            onCreateRole={createRole}
           />
         </div>
 
