@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import { Select as AntSelect } from 'antd';
 import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
 import {
   Badge,
@@ -20,10 +21,16 @@ import {
   useDeletePlatformJobTitleMutation,
   PlatformJobTitle,
 } from '../../api/organization-service/Platform/jobTitles';
+import { useListMasterDepartmentsQuery } from '../../api/organization-service/Platform/masterDepartments';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
-type FormState = { code: string; name: string; description: string };
-const emptyForm: FormState = { code: '', name: '', description: '' };
+// `code` isn't collected here — the backend derives it from `name` (see
+// CreateJobTitleRequest's docstring) and a create requires a `department_id`
+// to seed the title's first department mapping (many-to-many after that,
+// managed from DepartmentSettingsTab). Editing only ever touches name/
+// description, never the department, so departmentId is add-only state.
+type FormState = { name: string; description: string; departmentId: string | null };
+const emptyForm: FormState = { name: '', description: '', departmentId: null };
 type JobTitleRow = PlatformJobTitle & { key: string };
 
 /**
@@ -34,6 +41,7 @@ type JobTitleRow = PlatformJobTitle & { key: string };
  */
 const JobTitlesTab: React.FC = () => {
   const { data: jobTitles, isLoading } = useListPlatformJobTitlesQuery();
+  const { data: departments } = useListMasterDepartmentsQuery();
   const [createJobTitle, { isLoading: isCreating }] = useCreatePlatformJobTitleMutation();
   const [updateJobTitle, { isLoading: isUpdating }] = useUpdatePlatformJobTitleMutation();
   const [deleteJobTitle] = useDeletePlatformJobTitleMutation();
@@ -65,13 +73,13 @@ const JobTitlesTab: React.FC = () => {
     setModalState({ mode: 'add' });
   };
   const openEdit = (jobTitle: PlatformJobTitle) => {
-    setForm({ code: jobTitle.code, name: jobTitle.name, description: jobTitle.description || '' });
+    setForm({ name: jobTitle.name, description: jobTitle.description || '', departmentId: null });
     setModalState({ mode: 'edit', jobTitle });
   };
 
   const handleSubmit = async () => {
-    if (!form.name.trim() || (modalState?.mode === 'add' && !form.code.trim())) {
-      showToast({ message: 'Code and name are required.', type: 'error' });
+    if (!form.name.trim() || (modalState?.mode === 'add' && !form.departmentId)) {
+      showToast({ message: 'Name and department are required.', type: 'error' });
       return;
     }
     try {
@@ -87,9 +95,9 @@ const JobTitlesTab: React.FC = () => {
         showToast({ message: 'Job title updated.', type: 'success' });
       } else {
         await createJobTitle({
-          code: form.code.trim(),
           name: form.name.trim(),
           description: form.description.trim() || undefined,
+          department_id: form.departmentId as string,
         }).unwrap();
         showToast({ message: 'Job title added.', type: 'success' });
       }
@@ -226,16 +234,22 @@ const JobTitlesTab: React.FC = () => {
       >
         <div className="flex flex-col gap-4">
           <Input
-            placeholder="Code *"
-            value={form.code}
-            disabled={modalState?.mode === 'edit'}
-            onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
-          />
-          <Input
             placeholder="Name *"
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           />
+          {modalState?.mode === 'add' && (
+            <AntSelect
+              placeholder="Department *"
+              className="w-full"
+              value={form.departmentId ?? undefined}
+              onChange={(value) => setForm((prev) => ({ ...prev, departmentId: value }))}
+              options={(departments ?? []).map((department) => ({
+                label: department.name,
+                value: department.department_id,
+              }))}
+            />
+          )}
           <Input
             placeholder="Description (optional)"
             value={form.description}

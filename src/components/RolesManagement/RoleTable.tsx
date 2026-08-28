@@ -1,6 +1,6 @@
 import React from 'react';
 import type { TableProps } from 'antd';
-import { CustomTable, Badge, InfoHint } from '../shared';
+import { CustomTable, Badge, InfoHint, RolePermissionsHint } from '../shared';
 import type { Role } from '../../types';
 
 type RoleRow = Role & { key: string };
@@ -30,7 +30,7 @@ const shortenDescription = (description: string): string => {
 /** One-time explainer for the Permissions column header — what the count
  * next to each role actually means, in a couple of short sentences. */
 const PERMISSIONS_COLUMN_HELP =
-  'The number of actions this role is allowed to perform, such as viewing, adding, editing, deleting, approving, or exporting records. Open a role to see exactly which modules it covers.';
+  'The number of actions this role is allowed to perform, such as viewing, adding, editing, deleting, approving, or exporting records. Hover the count on any row to see exactly which ones.';
 
 type RoleTableProps = {
   roles: Role[];
@@ -116,7 +116,7 @@ const RoleTable: React.FC<RoleTableProps> = ({
       ),
       key: 'permissions',
       render: (_: unknown, role: RoleRow) => (
-        <span className="text-gray-500 text-sm">{role.permissions.length} permissions</span>
+        <RolePermissionsHint permissions={role.permissions} className="text-gray-500 text-sm" />
       ),
     },
     {

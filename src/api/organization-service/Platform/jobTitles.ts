@@ -5,12 +5,19 @@ export type PlatformJobTitle = {
   code: string;
   name: string;
   description: string | null;
+  // Only populated on the create response (the department the title was just
+  // mapped to) — null on list/get/update, since a title can sit under
+  // several departments (many-to-many). See CreateJobTitleUseCase.
+  department_id?: string | null;
 };
 
 export type CreateJobTitleRequest = {
-  code: string;
+  // `code` is derived server-side from `name`, not client-supplied (see
+  // JobTitle.create on the backend) — sending it 422s with "extra fields
+  // not permitted".
   name: string;
   description?: string;
+  department_id: string;
 };
 
 export type UpdateJobTitleRequest = {
