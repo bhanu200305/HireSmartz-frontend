@@ -336,6 +336,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           <div className="w-44">
             <Select
               appname="cfp"
+              showFilterIcon
               value={includeInactive}
               onChange={(value) => setIncludeInactive(value as 'active' | 'all')}
               options={[

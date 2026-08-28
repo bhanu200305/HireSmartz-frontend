@@ -256,6 +256,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
           className={`w-full capitalize ${className}`}
           placeholder={placeholder}
           popupClassName="rounded-3xl"
+          variant="borderless"
           loading={loading}
           showSearch
           onSearch={handleSearch}

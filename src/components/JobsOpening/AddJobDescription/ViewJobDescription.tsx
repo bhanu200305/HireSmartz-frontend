@@ -16,10 +16,7 @@ import { useForm } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
-import {
-  useSyncAtsJobOpeningMutation,
-  useSyncJobOpeningMutation,
-} from '../../../api/job-service/JobOpening/JobOpeningSync';
+import { useSyncAtsJobOpeningMutation } from '../../../api/job-service/JobOpening/JobOpeningSync';
 import { getFullURL, makeFirstLetterUpperCase } from '../../../shared/utils/methods';
 import MainLayout from '../../../layouts/MainLayout';
 import JobDetailsLayout from '../../../layouts/JobDetailsLayout';
@@ -56,7 +53,6 @@ const ViewJobDescription = () => {
   const [initialFormValues] = useState(formValues);
   const isFromATS = location.state?.refresh;
   const atsJobOpeningId = location.state?.atsJobOpeningId;
-  const [, { isLoading: isSyncing }] = useSyncJobOpeningMutation();
   const [updateJobDescription, { isLoading: isUpdating }] = useUpdateJobDescriptionMutation();
   const [syncAtsJobOpening, { isLoading: isSyncingAts }] = useSyncAtsJobOpeningMutation();
   const atsProvider = useSelector((state: RootState) => state.JobSlice.ats.name);
@@ -302,7 +298,7 @@ const ViewJobDescription = () => {
       <MainLayout>
         <JobDetailsLayout>
           <div className="flex items-start justify-between w-full">
-            {(isLoading || isRegenerating || isSyncing || isSyncingAts) && <Loader />}
+            {(isLoading || isRegenerating || isSyncingAts) && <Loader />}
             <div className="w-[84%] relative z-30">
               <Input
                 {...register('description')}

@@ -1,8 +1,13 @@
-import { api } from '../../index';
+import {
+  officeDisplayName,
+  useListTenantOfficesQuery,
+} from '../../organization-service/Tenants/offices';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../redux/provider/store';
 
 export type JobLocation = {
-  id: number;
-  companyId: number;
+  id: string;
+  companyId?: string;
   name: string;
   code: string;
   addressLine1: string;
@@ -11,11 +16,9 @@ export type JobLocation = {
   state: string;
   city: string;
   zipCode: string;
-  timezone: string;
-  primary: boolean;
-  status: boolean;
-  createdAt: string;
-  userCount: number;
+  timezone?: string;
+  primary?: boolean;
+  status?: boolean;
 };
 
 export type GetJobLocationsResponse = {
@@ -24,26 +27,44 @@ export type GetJobLocationsResponse = {
   data: JobLocation[];
 };
 
-type GetJobLocationsParams = {
-  companyId: number;
-  activeOnly?: boolean;
+/**
+ * Locations for the job flow come from organization-service offices
+ * (`GET /v1/tenants/{id}/offices`), not from a fictional job-service path.
+ * Hook names kept so JobsOpening / jobdetails imports stay stable.
+ */
+export const useGetMyLocationsQuery = (
+  _args?: { activeOnly?: boolean },
+  options?: { skip?: boolean }
+) => {
+  const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
+  const result = useListTenantOfficesQuery(
+    { tenantId: tenantId ?? '' },
+    { skip: !tenantId || options?.skip }
+  );
+
+  const data: GetJobLocationsResponse | undefined = result.data
+    ? {
+        success: true,
+        message: 'OK',
+        data: result.data.map((office) => ({
+          id: office.office_id,
+          name: officeDisplayName(office),
+          code: office.location_code ?? '',
+          addressLine1: office.address_line_1,
+          addressLine2: office.address_line_2 ?? '',
+          country: office.country,
+          state: office.state ?? '',
+          city: office.city,
+          zipCode: office.zip_code ?? '',
+        })),
+      }
+    : undefined;
+
+  return {
+    ...result,
+    data,
+    refetch: result.refetch,
+  };
 };
 
-const extendedApi = api.injectEndpoints({
-  endpoints: (build) => ({
-    getJobLocations: build.query<GetJobLocationsResponse, GetJobLocationsParams>({
-      query: (params) => ({
-        url: `/orguserservice/locations/company/${params.companyId}?activeOnly=${params.activeOnly ?? false}`,
-        method: 'GET',
-      }),
-    }),
-    getMyLocations: build.query<GetJobLocationsResponse, { activeOnly?: boolean }>({
-      query: (params) => ({
-        url: `/orguserservice/locations/my-locations?activeOnly=${params.activeOnly ?? false}`,
-        method: 'GET',
-      }),
-    }),
-  }),
-});
-
-export const { useGetJobLocationsQuery, useGetMyLocationsQuery } = extendedApi;
+export const useGetJobLocationsQuery = useGetMyLocationsQuery;

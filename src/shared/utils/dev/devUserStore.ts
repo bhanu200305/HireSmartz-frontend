@@ -21,8 +21,8 @@ export type InvitedUser = {
   lastName?: string;
   email: string;
   tempPassword: string;
-  roleId: number;
-  locationId: number | null;
+  roleId: string;
+  locationId: string | null;
   createdAt: string;
 };
 
@@ -63,8 +63,8 @@ export const devUserStore = {
     firstName: string;
     lastName?: string;
     email: string;
-    roleId: number;
-    locationId: number | null;
+    roleId: string;
+    locationId: string | null;
   }): InvitedUser => {
     const all = readStore();
     const normalizedEmail = input.email.trim().toLowerCase();

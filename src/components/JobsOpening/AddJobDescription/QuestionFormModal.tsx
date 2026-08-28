@@ -5,7 +5,7 @@ import { Button } from '../../shared';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 
 type QuestionCategoryOption = {
-  id: number;
+  id: string | number;
   name: string;
 };
 
@@ -23,10 +23,10 @@ type QuestionFormModalProps = {
   maxLength?: number;
   showCount?: boolean;
   roundName?: string;
-  categoryId?: number;
+  categoryId?: string | number;
   isCategoryLoading?: boolean;
   categoryOptions?: QuestionCategoryOption[];
-  onCategoryChange?: (value: number) => void;
+  onCategoryChange?: (value: string | number) => void;
 };
 
 const QuestionFormModal = ({

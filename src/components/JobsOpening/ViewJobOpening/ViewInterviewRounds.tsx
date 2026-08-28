@@ -3,12 +3,16 @@ import { Outlet, useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { Loader } from '../../shared/ui/loader';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
+import { asJobId } from '../../../api/job-service/jobId';
 
 const ViewInterviewRound = () => {
   const [collapsedRounds, setCollapsedRounds] = useState<string[]>([]);
   const { id } = useParams();
-  const jobId = Number(id);
-  const { data: jobData, isLoading } = useGetJobOpeningByIdQuery({ jobOpeningId: Number(jobId) });
+  const jobId = asJobId(id);
+  const { data: jobData, isLoading } = useGetJobOpeningByIdQuery(
+    { jobOpeningId: jobId },
+    { skip: !jobId }
+  );
 
   const toggleRound = (roundId: string) => {
     setCollapsedRounds((prev) =>

@@ -16,7 +16,7 @@ export const Button = ({
   children,
   className,
   onClick,
-  disabled,
+  disabled = false,
   type,
   loading,
   ...props
@@ -25,12 +25,13 @@ export const Button = ({
     <button
       {...props}
       type={type}
+      disabled={disabled}
       className={clsx(
         disabled ? 'cursor-not-allowed pointer-events-none opacity-50' : 'cursor-pointer',
         'roboto-font',
         className
       )}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
     >
       {children}
     </button>

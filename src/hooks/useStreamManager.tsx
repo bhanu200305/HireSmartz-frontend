@@ -21,7 +21,7 @@ export const useStreamManager = () => {
   const activeControllerRef = useRef<AbortController | null>(null);
 
   const startStream = useCallback(
-    async (jobOpeningId: number) => {
+    async (jobOpeningId: string | number) => {
       // Stop any existing stream
       if (activeControllerRef.current) {
         activeControllerRef.current.abort();

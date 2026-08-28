@@ -6,9 +6,9 @@ import { MdEdit } from 'react-icons/md';
 import { DraggableItem } from '../../shared/ui/DragAndDrop';
 
 type InterviewRound = {
-  id: number;
+  id: string | number;
   round: {
-    id: number;
+    id: string | number;
     name: string;
   };
   sequence: number;
@@ -19,7 +19,7 @@ type SortableInterviewRoundsProps = {
   rounds: InterviewRound[];
   onRoundsReorder: (reorderedRounds: InterviewRound[]) => void;
   onEdit: (round: InterviewRound) => void;
-  onDelete: (roundId: number) => void;
+  onDelete: (roundId: string | number) => void;
   isEditMode?: boolean;
 };
 

@@ -4,11 +4,15 @@ import ReactMarkdown from 'react-markdown';
 import { Loader } from '../../shared/ui/loader';
 import { makeFirstLetterUpperCase } from '../../../shared/utils/methods';
 import { formatAiJobDescription } from '../../../shared/utils/business-logic';
+import { asJobId } from '../../../api/job-service/jobId';
 
 const ViewJdDetails = () => {
   const { id } = useParams();
-  const jobId = Number(id);
-  const { data: jobData, isLoading } = useGetJobOpeningByIdQuery({ jobOpeningId: Number(jobId) });
+  const jobId = asJobId(id);
+  const { data: jobData, isLoading } = useGetJobOpeningByIdQuery(
+    { jobOpeningId: jobId },
+    { skip: !jobId }
+  );
   const formatMarkdownHeadings = (children: React.ReactNode): React.ReactNode => {
     if (typeof children === 'string') {
       const parts = children.split(':');

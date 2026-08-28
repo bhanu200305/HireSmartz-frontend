@@ -6,6 +6,7 @@ import type { TableProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
 import { Button, Search, showToast } from '..';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { Loader } from '../shared/ui/loader';
 import { Badge, BadgeStatus } from '../shared/ui/badge';
 import CustomTable from '../shared/ui/table';
@@ -124,28 +125,32 @@ const CustomerTable = () => {
               allowClear
               value={search}
             />
-            <Select
-              placeholder="Status"
-              className="w-40"
-              // The Select's own value can't be `undefined` and still show as
-              // selected — Ant Design treats that as "nothing chosen" and
-              // falls back to the placeholder. 'all' is a UI-only sentinel;
-              // it's translated back to `undefined` (no status filter) below,
-              // same as clearing the field used to do before this option
-              // existed.
-              value={status ?? 'all'}
-              onChange={(value) => {
-                setStatus(value === 'all' ? undefined : value);
-                setPage(0);
-              }}
-              options={[
-                { label: 'All', value: 'all' },
-                { label: 'Draft', value: 'draft' },
-                { label: 'Pending approval', value: 'pre_approved' },
-                { label: 'Active', value: 'active' },
-                { label: 'Suspended', value: 'suspended' },
-              ]}
-            />
+            <div className="cfp-dropdown-trigger w-40">
+              <FilterSelectIcon />
+              <Select
+                placeholder="Status"
+                className="w-full custom-select"
+                variant="borderless"
+                // The Select's own value can't be `undefined` and still show as
+                // selected — Ant Design treats that as "nothing chosen" and
+                // falls back to the placeholder. 'all' is a UI-only sentinel;
+                // it's translated back to `undefined` (no status filter) below,
+                // same as clearing the field used to do before this option
+                // existed.
+                value={status ?? 'all'}
+                onChange={(value) => {
+                  setStatus(value === 'all' ? undefined : value);
+                  setPage(0);
+                }}
+                options={[
+                  { label: 'All', value: 'all' },
+                  { label: 'Draft', value: 'draft' },
+                  { label: 'Pending approval', value: 'pre_approved' },
+                  { label: 'Active', value: 'active' },
+                  { label: 'Suspended', value: 'suspended' },
+                ]}
+              />
+            </div>
             <Button
               appname="add company"
               className="text-white bg-primary-600 rounded-full px-5 py-2 flex items-center gap-1.5 text-sm font-semibold cfp-hover-lift"

@@ -9,13 +9,13 @@ import JobDetailsLayout from '../../../layouts/JobDetailsLayout';
 import JobDescriptionPanel from './JobDescriptionPanel';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import dayjs from 'dayjs';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { RootState } from '../../../redux/provider/store';
 import { useDispatch, useSelector } from 'react-redux';
-import { JobDetailsState, SaveJobOpeningRequest } from '../../../types';
+import { JobDetailsState } from '../../../types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { jobDetailsDraftSchema, jobDetailsSchema } from './AddJobSchema';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   setAiJobDescriptionId,
   setIsFormCompleted,
@@ -23,7 +23,7 @@ import {
   updateJobDescription,
   updateJobDetails,
 } from '../../../redux/slices/jobOpeningSlice';
-import { lazy, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   useDeleteDropdownMutation,
   useEditDropdownMutation,
@@ -32,24 +32,39 @@ import {
 } from '../../../api/job-service/AddableDropdown/UpdateDropdownByType';
 import { get } from 'lodash-es';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
-import {
-  useAddCustomDepartmentMutation,
-  useConfigureDepartmentJobTitlesMutation,
-  useGetDepartmentsQuery,
-  useGetDepartmentJobTitlesQuery,
-  useUpdateCustomDepartmentMutation,
-} from '../../../api/tenant-service/MyCompany/departments';
-import {
-  useAddCustomJobRoleMutation,
-  useGetJobRolesQuery,
-  useUpdateCustomJobRoleMutation,
-} from '../../../api/tenant-service/MyCompany/jobRoles';
-import { useSaveJobOpeningMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
 import { useLazyGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
-import { useGetMyLocationsQuery } from '../../../api/job-service/JobOpening/GetJobLocations';
 import { useGetCompanyDetailsQuery } from '../../../api/tenant-service/Company/viewCompany';
-import { useSyncAtsJobOpeningMutation } from '../../../api/job-service/JobOpening/JobOpeningSync';
+import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
+import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { asJobId } from '../../../api/job-service/jobId';
+import {
+  officeDisplayName,
+  useListTenantOfficesQuery,
+} from '../../../api/organization-service/Tenants/offices';
+import { useListPlatformTenantsQuery } from '../../../api/organization-service/Platform/tenants';
+import {
+  useAddTenantDepartmentMutation,
+  useDeleteTenantDepartmentMutation,
+  useListTenantDepartmentsQuery,
+  useUpdateTenantDepartmentMutation,
+} from '../../../api/organization-service/Tenants/departments';
+import {
+  idsMatch,
+  tenantJobTitleFormId,
+  useAssignTenantJobTitleToDepartmentMutation,
+  useCreateTenantJobTitleMutation,
+  useDeleteTenantJobTitleMutation,
+  useImportMasterJobTitleMutation,
+  useListTenantDepartmentJobTitlesQuery,
+  useListTenantJobTitleCatalogueQuery,
+  useListTenantJobTitlesQuery,
+  useUpdateTenantJobTitleMutation,
+  type TenantJobTitle,
+} from '../../../api/organization-service/Tenants/jobTitles';
+import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
+import { useCreateOrganizationSkillMutation } from '../../../api/job-service/JobOpening/catalogs';
 import {
   capitalizeWordsAdvanced,
   changeNullValuesToEmptyArray,
@@ -60,7 +75,7 @@ import {
 
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
-import { useStreamManager } from '../../../hooks/useStreamManager';
+import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
@@ -70,6 +85,7 @@ const JobDetails = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [openModalFor, setOpenModalFor] = useState<
     | null
     | 'jobTitle'
@@ -89,14 +105,19 @@ const JobDetails = () => {
     jobOpeningId: state.JobSlice.jobOpeningId,
   }));
   const { loginToken } = useSelector((state: any) => state.LoginSlice);
+  const sessionTenantId = useSessionTenantId();
+  const { data: platformTenants } = useListPlatformTenantsQuery(
+    { limit: 50 },
+    { skip: Boolean(sessionTenantId) }
+  );
+  const tenantId = sessionTenantId ?? platformTenants?.tenants?.[0]?.tenant_id;
+  const isMaster = Boolean(!sessionTenantId && tenantId);
 
   const decodedToken = safeDecodeToken<{ companyName: string; companyId?: number | string }>(
     loginToken
   );
   const parsedCompanyId = Number(decodedToken?.companyId || 0);
-  const [selectedLocationIdForUsers, setSelectedLocationIdForUsers] = useState<number | undefined>(
-    undefined
-  );
+  const [, setSelectedLocationIdForUsers] = useState<string | undefined>(undefined);
   const [isRemoteJob, setIsRemoteJob] = useState(false);
 
   const [allowNavigation, setAllowNavigation] = useState(false);
@@ -105,17 +126,12 @@ const JobDetails = () => {
   const [isRecruiterDropdownOpen, setIsRecruiterDropdownOpen] = useState(false);
   const [isMandatorySkillsDropdownOpen, setIsMandatorySkillsDropdownOpen] = useState(false);
   const [isOptionalSkillsDropdownOpen, setIsOptionalSkillsDropdownOpen] = useState(false);
-  const [departmentSearchText, setDepartmentSearchText] = useState('');
-  const [debouncedDepartmentSearch, setDebouncedDepartmentSearch] = useState('');
 
-  const [saveJobOpening, { isLoading: isSavingDraft }] = useSaveJobOpeningMutation();
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
-  const { startStream } = useStreamManager();
-  // Right-panel AI description + "advance to Scoring Criteria" — carried over
-  // from the old, separate `/ai-job-description` step (`ViewJobDescription.tsx`)
-  // now that the two are one page. See handleContinueToScoring below.
-  const [syncAtsJobOpening, { isLoading: isSyncingAts }] = useSyncAtsJobOpeningMutation();
-  const atsProvider = useSelector((state: RootState) => state.JobSlice.ats.name);
+  const jobIdFromUrl = asJobId(searchParams.get('jobOpeningId'));
+  const jobIdRef = useRef(asJobId(jobOpeningId) || jobIdFromUrl);
+  const [enhanceJd] = useEnhanceJdMutation();
+  const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
   const [isSyncingWithATS, setIsSyncingWithATS] = useState(false);
   const [showRegenerateConfirmModal, setShowRegenerateConfirmModal] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
@@ -125,23 +141,29 @@ const JobDetails = () => {
   const [editDropdown] = useEditDropdownMutation();
   const [deleteDropdown] = useDeleteDropdownMutation();
   const [reuseDropdown] = useReuseDropdownMutation();
-  const {
-    data: departmentsResponse,
-    isFetching: departmentsLoading,
-    refetch: refetchDepartments,
-  } = useGetDepartmentsQuery({
-    page: 0,
-    size: 1000,
-    status: 'ALL',
-    search: debouncedDepartmentSearch || undefined,
-    sortBy: 'name',
-    sortDirection: 'ASC',
-  });
-  const [addCustomDepartment] = useAddCustomDepartmentMutation();
-  const [updateCustomDepartment] = useUpdateCustomDepartmentMutation();
-  const [addCustomJobRole] = useAddCustomJobRoleMutation();
-  const [updateCustomJobRole] = useUpdateCustomJobRoleMutation();
-  const [configureDepartmentJobTitles] = useConfigureDepartmentJobTitlesMutation();
+  const { data: offices = [], isFetching: loadingJobLocations } = useListTenantOfficesQuery(
+    { tenantId: tenantId ?? '', isMaster },
+    { skip: !tenantId }
+  );
+  const { data: orgDepartments = [], isFetching: departmentsLoading } =
+    useListTenantDepartmentsQuery({ tenantId: tenantId ?? '', isMaster }, { skip: !tenantId });
+  const [addTenantDepartment] = useAddTenantDepartmentMutation();
+  const [updateTenantDepartment] = useUpdateTenantDepartmentMutation();
+  const [deleteTenantDepartment] = useDeleteTenantDepartmentMutation();
+  const [createTenantJobTitle] = useCreateTenantJobTitleMutation();
+  const [updateTenantJobTitle] = useUpdateTenantJobTitleMutation();
+  const [deleteTenantJobTitle] = useDeleteTenantJobTitleMutation();
+  const [importMasterJobTitle] = useImportMasterJobTitleMutation();
+  const [assignTenantJobTitleToDepartment] = useAssignTenantJobTitleToDepartmentMutation();
+  const { data: jobTitleCatalogue = [], isFetching: loadingCatalogue } =
+    useListTenantJobTitleCatalogueQuery(
+      { tenantId: tenantId ?? '', isMaster },
+      { skip: !tenantId }
+    );
+  const { data: tenantJobTitles = [] } = useListTenantJobTitlesQuery(
+    { tenantId: tenantId ?? '', isMaster },
+    { skip: !tenantId }
+  );
   const {
     jobOpeningDropdown: jobTypes,
     loading: jobTypesLoading,
@@ -160,34 +182,22 @@ const JobDetails = () => {
     jobOpeningDropdown: mandatorySkills,
     loading: mandatorySkillsLoading,
     refetch: refetchMandatorySkills,
+    searchSkills: searchMandatorySkills,
   } = useJobOpeningDropdown('MANDATORY_SKILLS', 'create');
   const {
     jobOpeningDropdown: optionalSkills,
     loading: optionalSkillsLoading,
     refetch: refetchOptionalSkills,
+    searchSkills: searchOptionalSkills,
   } = useJobOpeningDropdown('OPTIONAL_SKILLS', 'create');
 
   const { jobOpeningDropdown: hiringManagers, loading: hiringManagerLoading } =
-    useJobOpeningDropdown(
-      'HIRING_MANAGER',
-      'create',
-      undefined,
-      !selectedLocationIdForUsers && !isRemoteJob,
-      isRemoteJob ? undefined : selectedLocationIdForUsers,
-      isRemoteJob
-    );
+    useJobOpeningDropdown('HIRING_MANAGER', 'create');
   const { jobOpeningDropdown: recruiters, loading: recruitersLoading } = useJobOpeningDropdown(
     'RECRUITER',
-    'create',
-    undefined,
-    !selectedLocationIdForUsers && !isRemoteJob,
-    isRemoteJob ? undefined : selectedLocationIdForUsers,
-    isRemoteJob
+    'create'
   );
 
-  const { data: jobLocationsResponse, isFetching: loadingJobLocations } = useGetMyLocationsQuery({
-    activeOnly: false,
-  });
   const { data: companyDetails } = useGetCompanyDetailsQuery(
     { companyId: parsedCompanyId },
     { skip: !parsedCompanyId }
@@ -209,13 +219,14 @@ const JobDetails = () => {
     return `${initials}-${randomPart}`;
   };
 
-  const handleLocationChange = (locationId: number) => {
-    const selectedLocation = jobLocationsResponse?.data?.find(
-      (location) => location.id === locationId
-    );
+  const handleLocationChange = (locationId: string | number) => {
+    const id = locationId != null && locationId !== '' ? String(locationId) : '';
+    const selectedLocation = offices.find((office) => idsMatch(office.office_id, locationId));
 
-    setSelectedLocationIdForUsers(locationId || undefined);
-    setValue('officeLocation', locationId ? [locationId] : [], { shouldValidate: true });
+    setSelectedLocationIdForUsers(id || undefined);
+    setValue('officeLocation', id ? [id] : [], {
+      shouldValidate: true,
+    });
     setValue('country', selectedLocation?.country ?? '', { shouldValidate: true });
     setValue('state', selectedLocation?.state ?? '', { shouldValidate: true });
     setValue('hiringManagers', [], { shouldValidate: true });
@@ -249,7 +260,7 @@ const JobDetails = () => {
     trigger,
     formState: { errors },
   } = useForm<JobDetailsState>({
-    resolver: zodResolver(jobDetailsSchema),
+    resolver: zodResolver(jobDetailsSchema) as Resolver<JobDetailsState>,
     mode: 'onChange',
     defaultValues: {
       ...jobDetails,
@@ -260,6 +271,42 @@ const JobDetails = () => {
       useCultureIntro: jobDetails?.useCultureIntro ?? false,
     },
   });
+
+  const persistJobId = useCallback(
+    (jobId: string) => {
+      if (!jobId) return;
+      jobIdRef.current = jobId;
+      if (asJobId(jobOpeningId) !== jobId) {
+        dispatch(setJobOpeningId(jobId));
+      }
+      if (jobIdFromUrl !== jobId) {
+        const next = new URLSearchParams(searchParams);
+        next.set('jobOpeningId', jobId);
+        setSearchParams(next, { replace: true });
+      }
+    },
+    [dispatch, jobIdFromUrl, jobOpeningId, searchParams, setSearchParams]
+  );
+
+  useEffect(() => {
+    const id = asJobId(jobOpeningId) || jobIdFromUrl;
+    if (id) persistJobId(id);
+  }, [jobIdFromUrl, jobOpeningId, persistJobId]);
+
+  useEffect(() => {
+    if (jobDetails?.jobProfileCode) {
+      setValue('jobProfileCode', jobDetails.jobProfileCode);
+    }
+  }, [jobDetails?.jobProfileCode, setValue]);
+
+  const resolveExistingJobId = useCallback((): string => {
+    const existing = jobIdRef.current || asJobId(jobOpeningId) || jobIdFromUrl;
+    if (existing) {
+      persistJobId(existing);
+      return existing;
+    }
+    return '';
+  }, [jobIdFromUrl, jobOpeningId, persistJobId]);
   const formValues = watch();
   const selectedDepartmentId = formValues.department?.[0];
   const selectedOfficeLocation = useWatch({
@@ -267,22 +314,22 @@ const JobDetails = () => {
     name: 'officeLocation',
   });
   const selectedOfficeLocationId = selectedOfficeLocation?.[0];
-  const selectedHiringManagerIds = (watch('hiringManagers') || []).map((id) => Number(id));
-  const selectedRecruiterIds = (watch('recruiters') || []).map((id) => Number(id));
-  const selectedMandatorySkillIds = (watch('mandatorySkills') || []).map((id) => Number(id));
-  const selectedOptionalSkillIds = (watch('optionalSkills') || []).map((id) => Number(id));
+  const selectedHiringManagerIds = (watch('hiringManagers') || []).map((id) => String(id));
+  const selectedRecruiterIds = (watch('recruiters') || []).map((id) => String(id));
+  const selectedMandatorySkillIds = (watch('mandatorySkills') || []).map((id) => String(id));
+  const selectedOptionalSkillIds = (watch('optionalSkills') || []).map((id) => String(id));
 
   const selectedHiringManagers = hiringManagers.filter((option) =>
-    selectedHiringManagerIds.includes(Number(option.id))
+    selectedHiringManagerIds.includes(String(option.id))
   );
   const selectedRecruiters = recruiters.filter((option) =>
-    selectedRecruiterIds.includes(Number(option.id))
+    selectedRecruiterIds.includes(String(option.id))
   );
   const selectedMandatorySkills = mandatorySkills.filter((option) =>
-    selectedMandatorySkillIds.includes(Number(option.id))
+    selectedMandatorySkillIds.includes(String(option.id))
   );
   const selectedOptionalSkills = optionalSkills.filter((option) =>
-    selectedOptionalSkillIds.includes(Number(option.id))
+    selectedOptionalSkillIds.includes(String(option.id))
   );
   const [jobTitleSearchText, setJobTitleSearchText] = useState('');
   const [debouncedJobTitleSearch, setDebouncedJobTitleSearch] = useState('');
@@ -295,99 +342,75 @@ const JobDetails = () => {
     return () => clearTimeout(timer);
   }, [jobTitleSearchText]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedDepartmentSearch(departmentSearchText.trim());
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [departmentSearchText]);
-
   const jobLocationOptions = useMemo(
     () =>
-      (jobLocationsResponse?.data ?? []).map((location) => ({
-        id: location.id,
-        name: location.name,
-        isDeleted: location.status === false,
-        isPrimary: location.primary === true,
+      (offices ?? []).map((office) => ({
+        id: office.office_id,
+        name: officeDisplayName(office),
       })),
-    [jobLocationsResponse]
+    [offices]
   );
 
   const selectedLocationDetails = useMemo(
-    () =>
-      (jobLocationsResponse?.data ?? []).find(
-        (location) => location.id === selectedOfficeLocationId
-      ),
-    [jobLocationsResponse, selectedOfficeLocationId]
+    () => offices.find((office) => idsMatch(office.office_id, selectedOfficeLocationId)),
+    [offices, selectedOfficeLocationId]
   );
 
-  const {
-    data: departmentJobTitlesData,
-    isFetching: loadingDepartmentJobTitles,
-    refetch: refetchJobTitles,
-  } = useGetDepartmentJobTitlesQuery(
-    { departmentId: selectedDepartmentId as number },
-    { skip: !selectedDepartmentId, refetchOnMountOrArgChange: true }
-  );
+  const { data: departmentJobTitlesData = [], isFetching: loadingDepartmentJobTitles } =
+    useListTenantDepartmentJobTitlesQuery(
+      { tenantId: tenantId ?? '', departmentId: String(selectedDepartmentId), isMaster },
+      { skip: !tenantId || !selectedDepartmentId }
+    );
 
-  const mappedJobTitles =
-    departmentJobTitlesData
-      ?.filter((jt) => jt.status === 'ACTIVE')
-      .map((jt) => ({
-        id: jt.id,
-        name: jt.name,
-        isDeleted: false,
-        source: 'department' as const,
-      })) || [];
+  const resolveOrgJobTitleId = (id: string | number): string | undefined => {
+    const match = (title: TenantJobTitle) =>
+      idsMatch(title.org_job_title_id, id) || idsMatch(title.source_job_title_id, id);
+    return (
+      departmentJobTitlesData.find(match)?.org_job_title_id ||
+      tenantJobTitles.find(match)?.org_job_title_id
+    );
+  };
 
-  const shouldFetchGlobalJobTitles = Boolean(debouncedJobTitleSearch);
+  const mappedDepartmentJobTitles = departmentJobTitlesData.map((jt) => ({
+    id: tenantJobTitleFormId(jt),
+    name: jt.name,
+    isDeleted: false,
+    source: 'department' as const,
+  }));
 
-  const { data: globalJobTitlesData, isFetching: loadingGlobalJobTitles } = useGetJobRolesQuery(
-    {
-      page: 0,
-      size: 50,
-      sortBy: 'name',
-      sortDirection: 'ASC',
-      search: debouncedJobTitleSearch || undefined,
-    },
-    {
-      skip: !shouldFetchGlobalJobTitles,
-    }
-  );
-
-  const globalFallbackJobTitles =
-    globalJobTitlesData?.content
-      ?.filter((jobTitle) => jobTitle.status === 'ACTIVE')
-      .map((jobTitle) => ({
-        id: jobTitle.id,
-        name: jobTitle.name,
-        isDeleted: false,
-        source: 'global' as const,
-      })) || [];
+  const mappedCatalogueJobTitles = (jobTitleCatalogue ?? []).map((jt) => ({
+    id: jt.job_title_id,
+    name: jt.name,
+    isDeleted: false,
+    source: 'catalogue' as const,
+  }));
 
   const jobTitleOptions = useMemo(() => {
-    if (debouncedJobTitleSearch) {
-      const allGlobalTitles = [...globalFallbackJobTitles];
-      const uniqueGlobalTitles = allGlobalTitles.filter(
-        (title, index, self) => index === self.findIndex((t) => t.id === title.id)
-      );
-      return uniqueGlobalTitles;
-    }
+    const search = debouncedJobTitleSearch.toLowerCase();
+    const merged = search
+      ? [...mappedDepartmentJobTitles, ...mappedCatalogueJobTitles].filter((title) =>
+          title.name.toLowerCase().includes(search)
+        )
+      : selectedDepartmentId
+        ? mappedDepartmentJobTitles.length > 0
+          ? mappedDepartmentJobTitles
+          : mappedCatalogueJobTitles
+        : [];
+    return merged.filter(
+      (title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id))
+    );
+  }, [
+    debouncedJobTitleSearch,
+    mappedCatalogueJobTitles,
+    mappedDepartmentJobTitles,
+    selectedDepartmentId,
+  ]);
 
-    if (selectedDepartmentId) {
-      return mappedJobTitles;
-    }
-
-    return [];
-  }, [debouncedJobTitleSearch, globalFallbackJobTitles, selectedDepartmentId, mappedJobTitles]);
-
-  const departments =
-    departmentsResponse?.content?.map((department) => ({
-      id: department.id,
-      name: department.name,
-      isDeleted: department.status !== 'ACTIVE',
-    })) || [];
+  const departments = (orgDepartments ?? []).map((department) => ({
+    id: department.org_department_id,
+    name: department.name,
+    isDeleted: false,
+  }));
   const cultureInfoText = String(companyDetails?.cultureIntroText || '').trim();
   const hasCultureInfo = Boolean(cultureInfoText);
   const isCultureIntroDefaultEnabled = Boolean(companyDetails?.cultureIntroDefaultEnabled);
@@ -415,6 +438,13 @@ const JobDetails = () => {
     true,
     isFormDirty && !allowNavigation
   );
+
+  useEffect(() => {
+    if (!asJobId(jobOpeningId) && aiJobDescriptionId) {
+      dispatch(setAiJobDescriptionId(null));
+    }
+  }, [aiJobDescriptionId, dispatch, jobOpeningId]);
+
   useEffect(() => {
     if (atsJobData && isFromAts) {
       const officeLocation = atsJobData?.officeLocation?.[0] || {};
@@ -448,7 +478,11 @@ const JobDetails = () => {
       Object.entries(transformedAtsData).forEach(([key, value]) => {
         setValue(key as keyof JobDetailsState, value as any);
       });
-      setSelectedLocationIdForUsers(transformedAtsData.officeLocation?.[0]);
+      setSelectedLocationIdForUsers(
+        transformedAtsData.officeLocation?.[0] != null
+          ? String(transformedAtsData.officeLocation[0])
+          : undefined
+      );
       refetchEducationPreference?.();
       refetchMandatorySkills?.();
       refetchOptionalSkills?.();
@@ -456,7 +490,9 @@ const JobDetails = () => {
       setValue('country', jobDetails.country || '');
       setValue('state', jobDetails.state || '');
       setValue('officeLocation', jobDetails.officeLocation || []);
-      setSelectedLocationIdForUsers(jobDetails.officeLocation?.[0]);
+      setSelectedLocationIdForUsers(
+        jobDetails.officeLocation?.[0] != null ? String(jobDetails.officeLocation[0]) : undefined
+      );
     }
   }, [atsJobData, isFromAts, jobDetails, setValue]);
 
@@ -501,20 +537,14 @@ const JobDetails = () => {
   ]);
 
   /**
-   * Handle Job Title validation and restoration after department selection.
-   *
-   * This effect ensures that:
-   * 1. Job titles are only displayed if a department is selected
-   * 2. If a department is not selected, job title field is cleared
-   * 3. After a department is selected, previously stored job titles are restored
-   *    if they exist in the department's job titles list
+   * Job titles require a department. Keep a stored title when it still exists
+   * on the department mapping or in the platform catalogue.
    */
   useEffect(() => {
-    if (loadingDepartmentJobTitles) return;
+    if (loadingDepartmentJobTitles || loadingCatalogue) return;
 
     const currentJobTitleIds = formValues.jobTitle || [];
 
-    // If no department selected, clear job titles
     if (!selectedDepartmentId) {
       if (currentJobTitleIds.length > 0) {
         setValue('jobTitle', [], { shouldValidate: true });
@@ -522,22 +552,26 @@ const JobDetails = () => {
       return;
     }
 
-    if (!departmentJobTitlesData) return;
-
-    // If department is selected, validate that job titles exist in the department
-    const validJobTitleIds = currentJobTitleIds.filter((titleId: number) =>
-      mappedJobTitles.some((jt) => jt.id === titleId)
+    const validJobTitleIds = currentJobTitleIds.filter(
+      (titleId) =>
+        jobTitleOptions.some((jt) => idsMatch(jt.id, titleId)) ||
+        jobTitleCatalogue.some((jt) => idsMatch(jt.job_title_id, titleId)) ||
+        tenantJobTitles.some(
+          (jt) =>
+            idsMatch(tenantJobTitleFormId(jt), titleId) || idsMatch(jt.org_job_title_id, titleId)
+        )
     );
 
-    // If stored job title IDs don't match valid ones, update the form
     if (validJobTitleIds.length !== currentJobTitleIds.length) {
       setValue('jobTitle', validJobTitleIds, { shouldValidate: true });
     }
   }, [
     selectedDepartmentId,
-    mappedJobTitles,
+    jobTitleOptions,
+    jobTitleCatalogue,
+    tenantJobTitles,
     loadingDepartmentJobTitles,
-    departmentJobTitlesData,
+    loadingCatalogue,
     formValues.jobTitle,
     setValue,
   ]);
@@ -592,43 +626,35 @@ const JobDetails = () => {
       const normalizedValue = formattedValue.trim().toLowerCase();
 
       if (addType === 'department') {
-        const existingDepartment = departmentsResponse?.content?.find(
-          (department) => department.name.trim().toLowerCase() === normalizedValue
-        );
-
-        if (existingDepartment) {
-          if (existingDepartment.status !== 'ACTIVE') {
-            showToast({
-              message:
-                'Department already exists in a deactivated state. Reactivate the existing department instead of creating a new one.',
-              type: 'error',
-            });
-            setDepartmentSearchText(existingDepartment.name);
-          }
+        if (!tenantId) {
+          showToast({
+            message: 'Unable to add a department without a company context.',
+            type: 'error',
+          });
           return;
         }
 
-        await addCustomDepartment({
-          name: formattedValue,
-          status: 'ACTIVE',
-        }).unwrap();
-
-        const refreshedDepartments = await refetchDepartments();
-        const createdDepartment = refreshedDepartments?.data?.content?.find(
-          (department) => department.name.toLowerCase() === formattedValue.toLowerCase()
+        const existingDepartment = orgDepartments.find(
+          (department) => department.name.trim().toLowerCase() === normalizedValue
         );
+        if (existingDepartment) {
+          setValue('department', [existingDepartment.org_department_id], { shouldValidate: true });
+          return;
+        }
+
+        const createdDepartment = await addTenantDepartment({
+          tenantId,
+          department_name: formattedValue,
+          isMaster,
+        }).unwrap();
 
         showToast({
           message: 'Department added successfully',
           type: 'success',
         });
 
-        if (createdDepartment) {
-          setValue('department', [createdDepartment.id], { shouldValidate: true });
-          setValue('jobTitle', [], { shouldValidate: true });
-        }
-        setDepartmentSearchText('');
-        setDebouncedDepartmentSearch('');
+        setValue('department', [createdDepartment.org_department_id], { shouldValidate: true });
+        setValue('jobTitle', [], { shouldValidate: true });
         return;
       }
 
@@ -640,32 +666,62 @@ const JobDetails = () => {
           });
           return;
         }
+        if (!tenantId) {
+          showToast({
+            message: 'Unable to add a job title without a company context.',
+            type: 'error',
+          });
+          return;
+        }
 
-        await addCustomJobRole({
-          name: formattedValue,
-          status: true,
-          departmentIds: [Number(selectedDepartmentId)],
-        }).unwrap();
-
-        const refreshedJobTitles = await refetchJobTitles();
-        const createdJobTitle = refreshedJobTitles?.data?.find(
+        const existingTitle = [...departmentJobTitlesData, ...tenantJobTitles].find(
           (jobTitle) => jobTitle.name.toLowerCase() === formattedValue.toLowerCase()
         );
+        if (existingTitle) {
+          setValue('jobTitle', [tenantJobTitleFormId(existingTitle)], { shouldValidate: true });
+          setJobTitleSearchText('');
+          setDebouncedJobTitleSearch('');
+          return;
+        }
+
+        const createdJobTitle = await createTenantJobTitle({
+          tenantId,
+          name: formattedValue,
+          department_id: String(selectedDepartmentId),
+          isMaster,
+        }).unwrap();
 
         showToast({
           message: 'Job title added successfully',
           type: 'success',
         });
 
-        if (createdJobTitle) {
-          setValue('jobTitle', [createdJobTitle.id], { shouldValidate: true });
-          setJobTitleSearchText('');
-          setDebouncedJobTitleSearch('');
-        }
+        setValue('jobTitle', [tenantJobTitleFormId(createdJobTitle)], { shouldValidate: true });
+        setJobTitleSearchText('');
+        setDebouncedJobTitleSearch('');
         return;
       }
 
-      const currentValues = (watch(addType as keyof JobDetailsState) || []) as number[];
+      if (addType === 'educationPreference') {
+        setValue('educationPreference', [formattedValue], { shouldValidate: true });
+        showToast({ message: 'Education preference added', type: 'success' });
+        return;
+      }
+
+      if (addType === 'mandatorySkills' || addType === 'optionalSkills') {
+        const currentValues = (watch(addType) || []).map(String);
+        const existingSkill = [...mandatorySkills, ...optionalSkills].find(
+          (skill) => skill.name.toLowerCase() === normalizedValue
+        );
+        if (existingSkill) {
+          setValue(addType, [...currentValues, existingSkill.id], { shouldValidate: true });
+          return;
+        }
+        const createdSkill = await createOrganizationSkill({ name: formattedValue }).unwrap();
+        showToast({ message: 'Skill added successfully', type: 'success' });
+        setValue(addType, [...currentValues, createdSkill.skill_id], { shouldValidate: true });
+        return;
+      }
 
       const res = await updateDropdownByType({
         type: mappedType,
@@ -679,29 +735,13 @@ const JobDetails = () => {
         });
 
         // Wait for the refetch to complete before setting the value
-        const refetchPromise =
-          addType === 'jobType'
-            ? refetchJobTypes?.()
-            : addType === 'educationPreference'
-              ? refetchEducationPreference?.()
-              : addType === 'mandatorySkills'
-                ? refetchMandatorySkills?.()
-                : addType === 'optionalSkills'
-                  ? refetchOptionalSkills?.()
-                  : undefined;
-
-        // Wait for refetch to complete before setting the value
-        if (refetchPromise) {
-          await refetchPromise;
+        if (addType === 'jobType') {
+          refetchJobTypes?.();
         }
 
         // Now set the value after the dropdown data is updated
         if (addType === 'jobType') {
           setValue('jobType', [res.data.id], { shouldValidate: true });
-        } else if (addType === 'educationPreference') {
-          setValue('educationPreference', [res.data.id], { shouldValidate: true });
-        } else if (addType === 'mandatorySkills' || addType === 'optionalSkills') {
-          setValue(addType, [...currentValues, res.data.id], { shouldValidate: true });
         }
       } else {
         showToast({
@@ -728,107 +768,59 @@ const JobDetails = () => {
       return;
     }
 
-    const selectedJobTitleId = Number(value);
-
-    if (selectedDepartmentId) {
-      const isAlreadyMappedToDepartment = mappedJobTitles.some(
-        (jobTitle) => Number(jobTitle.id) === selectedJobTitleId
-      );
-
-      if (!isAlreadyMappedToDepartment) {
-        const departmentDropdownJobTitleIds = mappedJobTitles
-          .map((jobTitle) => Number(jobTitle.id))
-          .filter((id) => Number.isFinite(id));
-
-        const configureJobTitleIds = Array.from(
-          new Set([...departmentDropdownJobTitleIds, selectedJobTitleId])
-        ).filter((id): id is number => typeof id === 'number' && Number.isFinite(id));
-
-        try {
-          await configureDepartmentJobTitles({
-            departmentId: Number(selectedDepartmentId),
-            jobTitleIds: configureJobTitleIds,
-          }).unwrap();
-
-          await refetchJobTitles();
-        } catch (error) {
-          showToast({
-            message: get(
-              error,
-              'data.message',
-              'Failed to configure job title for the department.'
-            ),
-            type: 'error',
-          });
-          return;
-        }
-      }
-    }
-
+    const selectedJobTitleId = String(value);
     setValue('jobTitle', [selectedJobTitleId], { shouldValidate: true });
     setJobTitleSearchText('');
     setDebouncedJobTitleSearch('');
+
+    if (!tenantId || !selectedDepartmentId) return;
+
+    const alreadyMappedToDepartment = departmentJobTitlesData.some(
+      (jobTitle) =>
+        idsMatch(tenantJobTitleFormId(jobTitle), selectedJobTitleId) ||
+        idsMatch(jobTitle.org_job_title_id, selectedJobTitleId)
+    );
+    if (alreadyMappedToDepartment) return;
+
+    const existingOrgId = resolveOrgJobTitleId(selectedJobTitleId);
+    try {
+      if (existingOrgId) {
+        await assignTenantJobTitleToDepartment({
+          tenantId,
+          departmentId: String(selectedDepartmentId),
+          job_title_id: existingOrgId,
+          isMaster,
+        }).unwrap();
+      } else {
+        await importMasterJobTitle({
+          tenantId,
+          master_job_title_id: selectedJobTitleId,
+          department_id: String(selectedDepartmentId),
+          isMaster,
+        }).unwrap();
+      }
+    } catch (error) {
+      showToast({
+        message: getOrgErrorMessage(error, 'Failed to map this job title to the department.'),
+        type: 'error',
+      });
+    }
   };
 
   const handleReuseOption = async (id: string | number, type: string) => {
     if (type === 'department') {
-      const targetDepartment = departmentsResponse?.content?.find(
-        (department) => department.id === Number(id)
-      );
-
-      if (!targetDepartment) return;
-
-      try {
-        await updateCustomDepartment({
-          id: Number(id),
-          name: targetDepartment.name,
-          status: 'ACTIVE',
-        }).unwrap();
-
-        showToast({
-          message: 'Department activated successfully',
-          type: 'success',
-        });
-
-        refetchDepartments();
-      } catch (err) {
-        showToast({
-          message: get(err, 'data.message', 'Something went wrong while activating department.'),
-          type: 'error',
-        });
-      }
-
+      showToast({
+        message: 'Removed departments cannot be restored from this screen.',
+        type: 'error',
+      });
       return;
     }
 
     if (type === 'jobTitle') {
-      const targetJobTitle = departmentJobTitlesData?.find(
-        (jobTitle) => jobTitle.id === Number(id)
-      );
-
-      if (!targetJobTitle) return;
-
-      try {
-        await updateCustomJobRole({
-          id: Number(id),
-          name: targetJobTitle.name,
-          status: true,
-          departmentIds: selectedDepartmentId ? [Number(selectedDepartmentId)] : [],
-        }).unwrap();
-
-        showToast({
-          message: 'Job title activated successfully',
-          type: 'success',
-        });
-
-        refetchJobTitles();
-      } catch (err) {
-        showToast({
-          message: get(err, 'data.message', 'Something went wrong while activating job title.'),
-          type: 'error',
-        });
-      }
-
+      showToast({
+        message: 'Removed job titles cannot be restored from this screen.',
+        type: 'error',
+      });
       return;
     }
 
@@ -862,12 +854,6 @@ const JobDetails = () => {
 
         // Refetch the dropdown data
         switch (type) {
-          case 'jobTitle':
-            refetchJobTitles?.();
-            break;
-          case 'department':
-            refetchDepartments?.();
-            break;
           case 'jobType':
             refetchJobTypes?.();
             break;
@@ -899,28 +885,29 @@ const JobDetails = () => {
   };
   const handleEditOption = async (id: string | number, newName: string, type: string) => {
     if (type === 'department') {
-      const targetDepartment = departmentsResponse?.content?.find(
-        (department) => department.id === Number(id)
-      );
-
-      if (!targetDepartment) return;
+      if (!tenantId) {
+        showToast({
+          message: 'Unable to update a department without a company context.',
+          type: 'error',
+        });
+        return;
+      }
 
       try {
-        await updateCustomDepartment({
-          id: Number(id),
-          name: capitalizeWordsAdvanced(newName),
-          status: targetDepartment.status,
+        await updateTenantDepartment({
+          tenantId,
+          departmentId: String(id),
+          department_name: capitalizeWordsAdvanced(newName),
+          isMaster,
         }).unwrap();
 
         showToast({
           message: 'Department updated successfully',
           type: 'success',
         });
-
-        refetchDepartments();
       } catch (err) {
         showToast({
-          message: get(err, 'data.message', 'Something went wrong while updating department.'),
+          message: getOrgErrorMessage(err, 'Something went wrong while updating department.'),
           type: 'error',
         });
       }
@@ -929,29 +916,30 @@ const JobDetails = () => {
     }
 
     if (type === 'jobTitle') {
-      const targetJobTitle = departmentJobTitlesData?.find(
-        (jobTitle) => jobTitle.id === Number(id)
-      );
-
-      if (!targetJobTitle) return;
+      const orgJobTitleId = resolveOrgJobTitleId(id);
+      if (!orgJobTitleId || !tenantId) {
+        showToast({
+          message: 'This title is from the platform catalogue and cannot be renamed here.',
+          type: 'error',
+        });
+        return;
+      }
 
       try {
-        await updateCustomJobRole({
-          id: Number(id),
+        await updateTenantJobTitle({
+          tenantId,
+          jobTitleId: orgJobTitleId,
           name: capitalizeWordsAdvanced(newName),
-          status: targetJobTitle.status === 'ACTIVE',
-          departmentIds: selectedDepartmentId ? [Number(selectedDepartmentId)] : [],
+          isMaster,
         }).unwrap();
 
         showToast({
           message: 'Job title updated successfully',
           type: 'success',
         });
-
-        refetchJobTitles();
       } catch (err) {
         showToast({
-          message: get(err, 'data.message', 'Something went wrong while updating job title.'),
+          message: getOrgErrorMessage(err, 'Something went wrong while updating job title.'),
           type: 'error',
         });
       }
@@ -997,12 +985,6 @@ const JobDetails = () => {
 
         // Refetch the dropdown data
         switch (type) {
-          case 'jobTitle':
-            refetchJobTitles?.();
-            break;
-          case 'department':
-            refetchDepartments?.();
-            break;
           case 'jobType':
             refetchJobTypes?.();
             break;
@@ -1037,34 +1019,37 @@ const JobDetails = () => {
 
   const handleDeleteOption = async (id: string | number, type: string) => {
     if (type === 'department') {
-      const targetDepartment = departmentsResponse?.content?.find(
-        (department) => department.id === Number(id)
-      );
-
-      if (!targetDepartment) return;
+      if (!tenantId) {
+        showToast({
+          message: 'Unable to remove a department without a company context.',
+          type: 'error',
+        });
+        return;
+      }
 
       try {
-        await updateCustomDepartment({
-          id: Number(id),
-          name: targetDepartment.name,
-          status: 'INACTIVE',
+        await deleteTenantDepartment({
+          tenantId,
+          departmentId: String(id),
+          isMaster,
         }).unwrap();
 
         showToast({
-          message: 'Department deactivated successfully',
+          message: 'Department removed successfully',
           type: 'success',
         });
 
         const currentDepartment = watch('department');
-        if (Array.isArray(currentDepartment) && currentDepartment.includes(Number(id))) {
+        if (
+          Array.isArray(currentDepartment) &&
+          currentDepartment.some((item) => idsMatch(item, id))
+        ) {
           setValue('department', [], { shouldValidate: true });
           setValue('jobTitle', [], { shouldValidate: true });
         }
-
-        refetchDepartments();
       } catch (err) {
         showToast({
-          message: get(err, 'data.message', 'Something went wrong while deactivating department.'),
+          message: getOrgErrorMessage(err, 'Something went wrong while removing department.'),
           type: 'error',
         });
       }
@@ -1073,34 +1058,34 @@ const JobDetails = () => {
     }
 
     if (type === 'jobTitle') {
-      const targetJobTitle = departmentJobTitlesData?.find(
-        (jobTitle) => jobTitle.id === Number(id)
-      );
-
-      if (!targetJobTitle) return;
+      const orgJobTitleId = resolveOrgJobTitleId(id);
+      if (!orgJobTitleId || !tenantId) {
+        showToast({
+          message: 'This title is from the platform catalogue and cannot be removed here.',
+          type: 'error',
+        });
+        return;
+      }
 
       try {
-        await updateCustomJobRole({
-          id: Number(id),
-          name: targetJobTitle.name,
-          status: false,
-          departmentIds: selectedDepartmentId ? [Number(selectedDepartmentId)] : [],
+        await deleteTenantJobTitle({
+          tenantId,
+          jobTitleId: orgJobTitleId,
+          isMaster,
         }).unwrap();
 
         showToast({
-          message: 'Job title deactivated successfully',
+          message: 'Job title removed successfully',
           type: 'success',
         });
 
         const currentJobTitle = watch('jobTitle');
-        if (Array.isArray(currentJobTitle) && currentJobTitle.includes(Number(id))) {
+        if (Array.isArray(currentJobTitle) && currentJobTitle.some((item) => idsMatch(item, id))) {
           setValue('jobTitle', [], { shouldValidate: true });
         }
-
-        refetchJobTitles();
       } catch (err) {
         showToast({
-          message: get(err, 'data.message', 'Something went wrong while deactivating job title.'),
+          message: getOrgErrorMessage(err, 'Something went wrong while removing job title.'),
           type: 'error',
         });
       }
@@ -1146,12 +1131,6 @@ const JobDetails = () => {
 
         // Refetch the dropdown data
         switch (type) {
-          case 'jobTitle':
-            refetchJobTitles?.();
-            break;
-          case 'department':
-            refetchDepartments?.();
-            break;
           case 'jobType':
             refetchJobTypes?.();
             break;
@@ -1184,6 +1163,8 @@ const JobDetails = () => {
     }
   };
 
+  const resolveSavedJobId = (): string => resolveExistingJobId();
+
   const onSaveDraft = async (data: Partial<JobDetailsState>) => {
     setAllowNavigation(true);
     const { errors } = validateDraft<JobDetailsState>(data, jobDetailsDraftSchema);
@@ -1204,57 +1185,38 @@ const JobDetails = () => {
     }
 
     try {
-      const apiPayload: SaveJobOpeningRequest = {
-        jobProfileCode: data.jobProfileCode || '',
-        locationId: data.officeLocation?.[0],
-        jobTitle: data.jobTitle || [],
-        department: data.department || [],
-        officeLocation: data.officeLocation || [],
-        jobType: data.jobType || [],
-        shift: data.shiftStart && data.shiftEnd ? `${data.shiftStart} - ${data.shiftEnd}` : null,
-        openings: data.openings || undefined,
-        minSalary: data.minSalary ? parseFloat(data.minSalary) : undefined,
-        maxSalary: data.maxSalary ? parseFloat(data.maxSalary) : undefined,
-        minExperience: data.minExperience ?? undefined,
-        maxExperience: data.maxExperience ?? undefined,
-        openDate: data.openDate,
-        hiringManagers: data.hiringManagers || [],
-        recruiters: data.recruiters || [],
-        mandatorySkills: data.mandatorySkills || [],
-        optionalSkills: data.optionalSkills || [],
-        educationPreference: data.educationPreference || [],
-        communicationSkills: '',
-        responsibilities: data.responsibilities || undefined,
-        otherRequirements: data.otherRequirements || undefined,
-        exemptionStatus: data.exemptionStatus || undefined,
-        referralBonus:
-          data.referralBonus === null ||
-          data.referralBonus === undefined ||
-          data.referralBonus === ''
-            ? ''
-            : data.referralBonus,
-        isMultilingual: data.isMultilingual || false,
-        useCultureIntro: Boolean(data.useCultureIntro),
-        isRemote: data.isRemote || false,
-        isDraft: true,
-      };
-      const response = await saveJobOpening(apiPayload).unwrap();
-
-      if (response?.success) {
+      const details = buildSaveJobDetailsPayload({
+        data: {
+          ...data,
+          jobTitle: (() => {
+            const selected = data.jobTitle?.[0];
+            const orgId = selected != null ? resolveOrgJobTitleId(selected) : undefined;
+            return orgId ? [orgId] : data.jobTitle;
+          })(),
+          isRemote: data.isRemote ?? isRemoteJob,
+        },
+        offices,
+      });
+      const savedId = resolveSavedJobId();
+      if (!savedId) {
         showToast({
-          message: get(response, 'message', 'Job saved as draft successfully'),
-          type: 'success',
-        });
-        navigate('/jobs');
-      } else {
-        showToast({
-          message: get(response, 'message', 'Failed to save draft'),
+          message: 'Job opening is not ready yet. Start from Create Job Opening Manually.',
           type: 'error',
         });
+        return;
       }
+
+      await updateJobOpening({ jobOpeningId: savedId, body: details }).unwrap();
+      dispatch(setJobOpeningId(savedId));
+
+      showToast({
+        message: 'Job saved as draft successfully',
+        type: 'success',
+      });
+      navigate('/jobs');
     } catch (error) {
       showToast({
-        message: get(error, 'data.message', 'Failed to save draft'),
+        message: getJobErrorMessage(error, 'Failed to save draft'),
         type: 'error',
       });
     }
@@ -1309,7 +1271,7 @@ const JobDetails = () => {
       setIsSubmittingWithModal(true);
       try {
         const jdData = await triggerGetJobDescriptionById({
-          aiJobDescriptionID: aiJobDescriptionId,
+          jobOpeningId: asJobId(aiJobDescriptionId || jobOpeningId),
         }).unwrap();
         if (jdData?.source === 'UPLOADED') {
           isSourceUploaded = true;
@@ -1332,50 +1294,63 @@ const JobDetails = () => {
   const executeSubmit = async (processedPayload: any, generateAiJd: boolean) => {
     setAllowNavigation(true);
     setIsSubmittingWithModal(true);
-    const body = { ...processedPayload, generateAiJd };
-    const apiCall = jobOpeningId ? updateJobOpening({ jobOpeningId, body }) : saveJobOpening(body);
+    const selectedTitle = processedPayload.jobTitle?.[0];
+    const orgTitleId = selectedTitle != null ? resolveOrgJobTitleId(selectedTitle) : undefined;
+    const details = buildSaveJobDetailsPayload({
+      data: {
+        ...processedPayload,
+        jobTitle: orgTitleId ? [orgTitleId] : processedPayload.jobTitle,
+        isRemote: processedPayload.isRemote ?? isRemoteJob,
+      },
+      offices,
+    });
 
     try {
-      const res = await apiCall.unwrap();
-      if (!res?.success) {
+      const savedId = resolveExistingJobId();
+      if (!savedId) {
         showToast({
-          message: get(res, 'message', 'Failed to save job opening. Please try again.'),
+          message: 'Job opening is not ready yet. Start from Create Job Opening Manually.',
           type: 'error',
         });
         setIsSubmittingWithModal(false);
         return;
       }
 
+      await updateJobOpening({ jobOpeningId: savedId, body: details }).unwrap();
+      dispatch(setJobOpeningId(savedId));
+      dispatch(setAiJobDescriptionId(savedId));
+      dispatch(setIsFormCompleted(true));
+
       showToast({
-        message: get(
-          res,
-          'message',
-          jobOpeningId
-            ? 'Job opening has been updated successfully'
-            : 'Job opening has been saved successfully'
-        ),
+        message: 'Job opening has been saved successfully',
         type: 'success',
       });
-      dispatch(setJobOpeningId(res.data.jobOpeningId));
-      dispatch(setAiJobDescriptionId(res.data.aiJobDescriptionId));
 
-      if (res.data.jobOpeningId && generateAiJd) {
-        startStream(res.data.jobOpeningId);
+      if (savedId && generateAiJd) {
+        enhanceJd(savedId)
+          .unwrap()
+          .catch((enhanceError) => {
+            showToast({
+              message: getJobErrorMessage(
+                enhanceError,
+                'Job saved. AI description could not be started — try Refine on the next step.'
+              ),
+              type: 'warning',
+            });
+          });
       }
 
       setShowRegenerateConfirmModal(false);
       setPendingSubmitData(null);
       setIsSubmittingWithModal(false);
 
-      // Stay on this page — Job Details and the AI description are now one
-      // split-screen step, not two. Setting aiJobDescriptionId above is what
-      // makes the right-hand panel start showing the generated description;
-      // moving to Scoring Criteria is now a separate, explicit action (see
-      // handleContinueToScoring), same as the old ViewJobDescription step's
-      // "SAVE & NEXT" was distinct from its "REFINE"/"REGENERATE".
+      const fullUrl = getFullURL('/scoring-criteria', true);
+      const safeUrl =
+        typeof fullUrl === 'string' && fullUrl.startsWith('/') ? fullUrl : '/scoring-criteria';
+      navigate(safeUrl, { viewTransition: true });
     } catch (err) {
       showToast({
-        message: get(err, 'data.message', 'Something went wrong while saving job opening.'),
+        message: getJobErrorMessage(err, 'Something went wrong while saving job opening.'),
         type: 'error',
       });
       setIsSubmittingWithModal(false);
@@ -1403,48 +1378,16 @@ const JobDetails = () => {
   // (button below is disabled until then).
   const handleContinueToScoring = async () => {
     setAllowNavigation(true);
-    try {
-      const payload = {
-        jobOpeningId,
-        atsJobOpeningId: isFromAts ? atsJobOpeningId || '' : isSyncingWithATS ? atsProvider : '',
-        isSync: isSyncingWithATS,
-        jobBoardIds: ['string'],
-        isNewJob: !isFromAts,
-      };
-
-      const result = await syncAtsJobOpening({
-        body: payload,
-        providerName: isSyncingWithATS ? atsProvider : '',
-      }).unwrap();
-
-      showToast({
-        message:
-          result?.message ||
-          (isSyncingWithATS
-            ? isFromAts
-              ? 'Job updated in ATS successfully'
-              : 'Job created in ATS successfully'
-            : 'Job has been saved successfully'),
-        type: 'success',
-      });
-      dispatch(setIsFormCompleted(true));
-      const fullUrl = getFullURL('/scoring-criteria', true);
-      const safeUrl =
-        typeof fullUrl === 'string' && fullUrl.startsWith('/') ? fullUrl : '/scoring-criteria';
-      navigate(safeUrl, { viewTransition: true });
-    } catch (error: any) {
-      showToast({
-        message:
-          error?.data?.message ||
-          (isSyncingWithATS ? 'Failed to sync with ATS' : 'Failed to save job'),
-        type: 'error',
-      });
-    }
+    dispatch(setIsFormCompleted(true));
+    const fullUrl = getFullURL('/scoring-criteria', true);
+    const safeUrl =
+      typeof fullUrl === 'string' && fullUrl.startsWith('/') ? fullUrl : '/scoring-criteria';
+    navigate(safeUrl, { viewTransition: true });
   };
 
   return (
     <>
-      {(isSavingDraft || isSubmittingWithModal) && <Loader />}
+      {(isUpdating || isSubmittingWithModal) && <Loader />}
       <MainLayout>
         <JobDetailsLayout>
           <Form layout="vertical" autoComplete="off" onFinish={handleSubmit(onSubmit)}>
@@ -1486,7 +1429,6 @@ const JobDetails = () => {
                           setJobTitleSearchText('');
                           setDebouncedJobTitleSearch('');
                         }}
-                        onSearchChange={setDepartmentSearchText}
                         options={departments}
                         loading={departmentsLoading || isAddingToDropdown === 'department'}
                         label="Department"
@@ -1515,7 +1457,7 @@ const JobDetails = () => {
                         options={jobTitleOptions}
                         loading={
                           loadingDepartmentJobTitles ||
-                          loadingGlobalJobTitles ||
+                          loadingCatalogue ||
                           isAddingToDropdown === 'jobTitle'
                         }
                         placeholder={
@@ -1559,38 +1501,42 @@ const JobDetails = () => {
                       />
                     </Form.Item>
                     <Form.Item label={<span>Shift</span>}>
-                      <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">
-                        <TimePicker
-                          value={watch('shiftStart') ? dayjs(watch('shiftStart'), 'HH:mm') : null}
-                          onChange={(time: dayjs.Dayjs | null) => {
-                            const newValue = time ? time.format('HH:mm') : '';
-                            setValue('shiftStart', newValue, {
-                              shouldValidate: true,
-                            });
-                            trigger(['shiftStart', 'shiftEnd']);
-                          }}
-                          className="w-full custom-time-picker placeholder-style"
-                          variant="borderless"
-                          format="hh:mm A"
-                          placeholder="Start Time"
-                          showNow={false}
-                        />
-                        <span className="px-2 text-gray-500">-</span>
-                        <TimePicker
-                          className="w-full custom-time-picker placeholder-style"
-                          variant="borderless"
-                          format="hh:mm A"
-                          placeholder="End Time"
-                          showNow={false}
-                          value={watch('shiftEnd') ? dayjs(watch('shiftEnd'), 'HH:mm') : null}
-                          onChange={(time: dayjs.Dayjs | null) => {
-                            const newValue = time ? time.format('HH:mm') : '';
-                            setValue('shiftEnd', newValue, {
-                              shouldValidate: true,
-                            });
-                            trigger(['shiftStart', 'shiftEnd']);
-                          }}
-                        />
+                      <div className="flex items-center gap-2">
+                        <div className="border-wrapper border border-[var(--border)] p-1 flex-1 min-w-0 flex items-center">
+                          <TimePicker
+                            value={watch('shiftStart') ? dayjs(watch('shiftStart'), 'HH:mm') : null}
+                            onChange={(time: dayjs.Dayjs | null) => {
+                              const newValue = time ? time.format('HH:mm') : '';
+                              setValue('shiftStart', newValue, {
+                                shouldValidate: true,
+                              });
+                              trigger(['shiftStart', 'shiftEnd']);
+                            }}
+                            className="w-full custom-time-picker placeholder-style"
+                            variant="borderless"
+                            format="hh:mm A"
+                            placeholder="Start Time"
+                            showNow={false}
+                          />
+                        </div>
+                        <span className="text-gray-500 shrink-0">–</span>
+                        <div className="border-wrapper border border-[var(--border)] p-1 flex-1 min-w-0 flex items-center">
+                          <TimePicker
+                            className="w-full custom-time-picker placeholder-style"
+                            variant="borderless"
+                            format="hh:mm A"
+                            placeholder="End Time"
+                            showNow={false}
+                            value={watch('shiftEnd') ? dayjs(watch('shiftEnd'), 'HH:mm') : null}
+                            onChange={(time: dayjs.Dayjs | null) => {
+                              const newValue = time ? time.format('HH:mm') : '';
+                              setValue('shiftEnd', newValue, {
+                                shouldValidate: true,
+                              });
+                              trigger(['shiftStart', 'shiftEnd']);
+                            }}
+                          />
+                        </div>
                       </div>
                       {(errors.shiftStart || errors.shiftEnd) && (
                         <p className="text-red-500 text-sm mt-1">
@@ -1699,7 +1645,7 @@ const JobDetails = () => {
                       <>
                         <Form.Item label={<span>Location Code</span>}>
                           <Input
-                            value={selectedLocationDetails?.code ?? ''}
+                            value={selectedLocationDetails?.location_code ?? ''}
                             readOnly
                             disabled
                             placeholder="Location Code"
@@ -1714,7 +1660,7 @@ const JobDetails = () => {
                       <div className="grid grid-cols-3 gap-x-4 mt-2">
                         <Form.Item label={<span>Address Line 1</span>}>
                           <Input
-                            value={selectedLocationDetails?.addressLine1 ?? ''}
+                            value={selectedLocationDetails?.address_line_1 ?? ''}
                             readOnly
                             disabled
                             placeholder="Address Line 1"
@@ -1726,7 +1672,7 @@ const JobDetails = () => {
                         </Form.Item>
                         <Form.Item label={<span>Address Line 2</span>}>
                           <Input
-                            value={selectedLocationDetails?.addressLine2 ?? ''}
+                            value={selectedLocationDetails?.address_line_2 ?? ''}
                             readOnly
                             disabled
                             placeholder="Address Line 2"
@@ -1756,7 +1702,7 @@ const JobDetails = () => {
                         </Form.Item>
                         <Form.Item label={<span>Zip Code</span>}>
                           <Input
-                            value={selectedLocationDetails?.zipCode ?? ''}
+                            value={selectedLocationDetails?.zip_code ?? ''}
                             readOnly
                             disabled
                             placeholder="Zip Code"
@@ -1780,20 +1726,9 @@ const JobDetails = () => {
                   )}
                 </CollapsibleSection>
                 <CollapsibleSection title="Hiring Panel">
-                  <div className="w-full">
-                    <span className="text-sm">
-                      &bull; Select Job Location to assign Hiring Manager and Recruiter
-                    </span>
-                  </div>
                   <div className="grid grid-cols-3 gap-x-4 mt-2">
                     {' '}
-                    <Form.Item
-                      label={
-                        <span>
-                          Hiring Manager <span className="required-asterisk">*</span>
-                        </span>
-                      }
-                    >
+                    <Form.Item label={<span>Hiring Manager</span>}>
                       <div className="space-y-3">
                         <DropdownWithAddOption
                           className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
@@ -1823,7 +1758,7 @@ const JobDetails = () => {
                                 )
                               : null
                           }
-                          disabled={!selectedLocationIdForUsers}
+                          disabled={false}
                           enableEditDelete={false}
                           error={errors.hiringManagers?.message}
                         />
@@ -1853,7 +1788,7 @@ const JobDetails = () => {
                                     type="button"
                                     onClick={() => {
                                       const updated = selectedHiringManagerIds.filter(
-                                        (id) => id !== Number(manager.id)
+                                        (id) => String(id) !== String(manager.id)
                                       );
                                       setValue('hiringManagers', updated, {
                                         shouldDirty: true,
@@ -1901,7 +1836,7 @@ const JobDetails = () => {
                                 )
                               : null
                           }
-                          disabled={!selectedLocationIdForUsers}
+                          disabled={false}
                           enableEditDelete={false}
                           error={errors.recruiters?.message as string | undefined}
                         />
@@ -1931,7 +1866,7 @@ const JobDetails = () => {
                                     type="button"
                                     onClick={() => {
                                       const updated = selectedRecruiterIds.filter(
-                                        (id) => id !== Number(recruiter.id)
+                                        (id) => String(id) !== String(recruiter.id)
                                       );
                                       setValue('recruiters', updated, {
                                         shouldDirty: true,
@@ -2085,8 +2020,9 @@ const JobDetails = () => {
                         decimalScale={2}
                         prefix="$"
                         suffix={
-                          exemptionStatus?.find((status) => status.id === watch('exemptionStatus'))
-                            ?.name === 'Exempt'
+                          exemptionStatus?.find(
+                            (status) => String(status.id) === String(watch('exemptionStatus'))
+                          )?.name === 'Exempt'
                             ? ''
                             : '/hr'
                         }
@@ -2117,8 +2053,9 @@ const JobDetails = () => {
                         decimalScale={2}
                         prefix="$"
                         suffix={
-                          exemptionStatus?.find((status) => status.id === watch('exemptionStatus'))
-                            ?.name === 'Exempt'
+                          exemptionStatus?.find(
+                            (status) => String(status.id) === String(watch('exemptionStatus'))
+                          )?.name === 'Exempt'
                             ? ''
                             : '/hr'
                         }
@@ -2133,7 +2070,7 @@ const JobDetails = () => {
                   </div>
                 </CollapsibleSection>
                 <CollapsibleSection title="Job Skills">
-                  <div className="grid grid-cols-3 gap-x-4 mt-4">
+                  <div className="form-grid-equal-labels grid grid-cols-3 gap-x-4 mt-4">
                     <Form.Item label={<span>Referral Bonus (in USD)</span>}>
                       <Controller
                         name="referralBonus"
@@ -2218,13 +2155,7 @@ const JobDetails = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-x-4 mt-2">
-                    <Form.Item
-                      label={
-                        <span>
-                          Required Skills <span className="required-asterisk">*</span>
-                        </span>
-                      }
-                    >
+                    <Form.Item label={<span>Required Skills</span>}>
                       <div className="space-y-3">
                         <DropdownWithAddOption
                           className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
@@ -2246,6 +2177,7 @@ const JobDetails = () => {
                           placeholder="Select Required Skills"
                           label="Required Skills"
                           onAddOption={(value) => handleAddOption(value, 'mandatorySkills')}
+                          onSearchChange={searchMandatorySkills}
                           type="mandatorySkills"
                           error={errors.mandatorySkills?.message}
                           enableEditDelete
@@ -2290,7 +2222,7 @@ const JobDetails = () => {
                                     type="button"
                                     onClick={() => {
                                       const updated = selectedMandatorySkillIds.filter(
-                                        (id) => id !== Number(skill.id)
+                                        (id) => String(id) !== String(skill.id)
                                       );
                                       setValue('mandatorySkills', updated, {
                                         shouldDirty: true,
@@ -2329,6 +2261,7 @@ const JobDetails = () => {
                           placeholder="Select Optional Skills"
                           label="Optional Skills"
                           onAddOption={(value) => handleAddOption(value, 'optionalSkills')}
+                          onSearchChange={searchOptionalSkills}
                           type="optionalSkills"
                           error={errors.optionalSkills?.message}
                           enableEditDelete
@@ -2373,7 +2306,7 @@ const JobDetails = () => {
                                     type="button"
                                     onClick={() => {
                                       const updated = selectedOptionalSkillIds.filter(
-                                        (id) => id !== Number(skill.id)
+                                        (id) => String(id) !== String(skill.id)
                                       );
                                       setValue('optionalSkills', updated, {
                                         shouldDirty: true,
@@ -2394,13 +2327,7 @@ const JobDetails = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-x-4 mt-2">
-                    <Form.Item
-                      label={
-                        <span>
-                          Education Preference <span className="required-asterisk">*</span>
-                        </span>
-                      }
-                    >
+                    <Form.Item label={<span>Education Preference</span>}>
                       <DropdownWithAddOption
                         className="w-full custom-select-jobs placeholder-style"
                         value={watch('educationPreference')?.[0]}
@@ -2479,7 +2406,7 @@ const JobDetails = () => {
               </div>
             </div>
 
-            {aiJobDescriptionId && (
+            {false && aiJobDescriptionId && (
               <div className="flex w-full justify-center py-2">
                 <Checkbox
                   checked={isSyncingWithATS}
@@ -2497,7 +2424,6 @@ const JobDetails = () => {
                   type="button"
                   className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
                   onClick={() => onSaveDraft(watch())}
-                  disabled={isSavingDraft || isUpdating}
                 >
                   SAVE AS DRAFT
                 </Button>
@@ -2506,8 +2432,12 @@ const JobDetails = () => {
                 <Button
                   type="button"
                   className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-                  onClick={handleSubmit(onSubmit)}
-                  disabled={isSavingDraft || isUpdating}
+                  onClick={handleSubmit(onSubmit, () => {
+                    showToast({
+                      message: 'Please fill all required fields before saving.',
+                      type: 'error',
+                    });
+                  })}
                 >
                   SAVE & GENERATE DESCRIPTION
                 </Button>
@@ -2516,7 +2446,7 @@ const JobDetails = () => {
                   type="button"
                   className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
                   onClick={handleContinueToScoring}
-                  disabled={isSyncingAts}
+                  disabled={false}
                 >
                   NEXT: SCORING CRITERIA →
                 </Button>

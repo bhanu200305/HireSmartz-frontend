@@ -11,13 +11,12 @@ import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helper
 import { handleRefreshToken } from '../../services/AuthService';
 
 // job-service is a SEPARATE deployable from the one VITE_BACKEND_ENDPOINT
-// points at (see .env.local's comment on this and VITE_ORG_SERVICE_ENDPOINT)
-// — same pattern as api/organization-service/orgApi.ts: own reducerPath, own
-// baseQuery, registered separately in redux/reducers and redux/provider/store.
-// Every file under api/job-service/** rides on this instead of the legacy
-// shared `api` in src/api/index.ts (which pointed at whatever
-// VITE_BACKEND_ENDPOINT happened to be set to locally, not a real dedicated
-// job-service host).
+// points at (see .env comments on VITE_JOB_SERVICE_ENDPOINT) — same
+// reasoning and same pattern as api/organization-service/orgApi.ts and
+// api/authentication-service/authApi.ts: own reducerPath, own baseQuery,
+// registered separately in redux/reducers and redux/provider/store. Every
+// file under api/job-service/** rides on this instead of the shared `api`
+// in src/api/index.ts.
 //
 // Includes the /api/v1 prefix (unlike orgApi's bare /v1) — that's how
 // job-service mounts its public routes (app/main.py); every endpoint path in
@@ -48,13 +47,15 @@ const fetchJobBaseQuery = fetchBaseQuery({
   },
 });
 
-// job-service's ResponseEnvelopeMiddleware wraps every /api/v1/* JSON body —
-// success or error — in {status_code, status, message, data}, identical
-// shape to organization-service's (both install the same shared
-// cfp_platform middleware; see that module's own docstring). Unwrapped
-// centrally here for the same reason orgApi.ts does it: every endpoint file
-// can assume its declared response type directly instead of re-deriving
-// `.data.data` by hand.
+// job-service's ResponseEnvelopeMiddleware wraps every /api/v1/* JSON body
+// — success or error — in {status_code, status, message, data}
+// (services/job-service/docs/API_CONTRACT.md §1). On success the real
+// payload sits one level down under `data`; every endpoint file below
+// assumes it's looking at that unwrapped payload directly. Unwrapped
+// centrally here, same pattern as orgApi.ts / authApi.ts / notifApi.ts.
+// Error responses are untouched: getJobErrorMessage reads the envelope's
+// top-level `message`. SSE streams (bulk JD progress) are not JSON and
+// never hit this path.
 const rawJobBaseQuery: typeof fetchJobBaseQuery = async (args, api, extraOptions) => {
   const result = await fetchJobBaseQuery(args, api, extraOptions);
   if (
@@ -68,7 +69,11 @@ const rawJobBaseQuery: typeof fetchJobBaseQuery = async (args, api, extraOptions
   return result;
 };
 
-/** Same refresh-on-401 shape as orgApi.ts's orgBaseQueryWithReauth. */
+/**
+ * Same refresh-on-401 shape as orgApi.ts. Every browser-facing job-service
+ * route requires a user token — there is no anonymous route on this
+ * service.
+ */
 const jobBaseQueryWithReauth: BaseQueryFn<
   string | FetchArgs,
   unknown,
@@ -101,20 +106,38 @@ export const jobApi = createApi({
   reducerPath: 'jobApiReducer',
   baseQuery: jobBaseQueryWithReauth,
   tagTypes: [
-    'Jobs',
+    // Tags used by the job-creation-flow endpoints (api/job-service/JobOpening/**).
+    'JobOpenings',
+    'JobOpeningById',
     'JobDetails',
+    'JobDescription',
+    'JobScoring',
+    'InterviewSequence',
+    'JobQuestions',
     'JobNotes',
+    'JobStats',
+    'JobTypes',
+    'Shifts',
+    'JobModes',
+    'ClosureReasons',
+    'InterviewRoundTypes',
+    'Skills',
+    'AtsConfig',
+    'AtsJobs',
+    'JdUploadBatch',
+    'WizardState',
+    // Older tags still referenced by pre-existing job-service endpoint files
+    // (api/job-service/JobOpenings, JobTypes, Master, Shifts, Batches, etc.).
+    'Jobs',
     'JobSuggestedSkills',
     'JobScoringCriteria',
     'JobInterviewSequence',
     'JobAudioQuestions',
-    'JobQuestions',
     'JobJdStatus',
     'JobJdEnhancement',
     'JobWizardState',
     'JobPublishValidation',
     'JobBatches',
-    'Skills',
     'MasterInterviewRounds',
     'MasterClosureReasons',
     'MasterShiftTypes',
@@ -125,8 +148,6 @@ export const jobApi = createApi({
     'MasterSkillTypes',
     'OrgShifts',
     'OrgJobTypes',
-    'AtsConfig',
-    'AtsJobs',
   ],
   endpoints: () => ({}),
 });

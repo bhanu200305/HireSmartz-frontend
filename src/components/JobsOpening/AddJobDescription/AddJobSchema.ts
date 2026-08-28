@@ -1,12 +1,14 @@
 import { z } from 'zod';
 
+const catalogId = z.union([z.string().min(1), z.number()]);
+
 export const jobDetailsSchema = z
   .object({
     jobProfileCode: z.string().min(1, 'Job profile code is required.'),
-    jobTitle: z.array(z.number()),
-    department: z.array(z.number()).min(1, 'Department is required.'),
-    officeLocation: z.array(z.number()).min(1, 'Location Name is required.'),
-    jobType: z.array(z.number()).min(1, 'Job Type is required.'),
+    jobTitle: z.array(catalogId),
+    department: z.array(catalogId).min(1, 'Department is required.'),
+    officeLocation: z.array(catalogId).min(1, 'Location Name is required.'),
+    jobType: z.array(catalogId).min(1, 'Job Type is required.'),
     shiftStart: z.string().optional(),
     shiftEnd: z.string().optional(),
     isMultilingual: z.boolean().optional(),
@@ -25,10 +27,9 @@ export const jobDetailsSchema = z
         })
     ),
     exemptionStatus: z
-      .number()
-      .min(1, 'Salary exemption status is required.')
+      .union([z.string(), z.number(), z.boolean()])
       .nullable()
-      .refine((val) => !!val, {
+      .refine((val) => val !== null && val !== undefined && val !== '', {
         message: 'Salary exemption status is required.',
       }),
     minSalary: z.preprocess(
@@ -190,17 +191,17 @@ export const jobDetailsSchema = z
           message: 'Open date cannot be in the past.',
         }
       ),
-    hiringManagers: z.array(z.number()).min(1, 'Hiring Manager is required.'),
-    recruiters: z.array(z.number()).optional(),
+    hiringManagers: z.array(catalogId).optional(),
+    recruiters: z.array(catalogId).optional(),
     state: z.string().nonempty('State is required.'),
     country: z.string().nonempty('Country is required.'),
-    educationPreference: z.array(z.number()).min(1, 'Education preference is required.'),
+    educationPreference: z.array(catalogId).optional(),
     mandatorySkills: z
-      .array(z.number().min(1))
-      .min(1, 'At least one required skill is needed.')
-      .max(15, 'You can select up to 15 required skills.'),
+      .array(catalogId)
+      .max(15, 'You can select up to 15 required skills.')
+      .optional(),
     optionalSkills: z
-      .array(z.number().min(1))
+      .array(catalogId)
       .max(15, 'You can select up to 15 optional skills.')
       .optional(),
     responsibilities: z.string().optional(),
@@ -307,17 +308,13 @@ export const jobDetailsSchema = z
 // })
 
 export const jobDescriptionSchema = z.object({
-  jobTitle: z.array(z.number()).min(1, 'Job Title is required.').default([]).optional(),
-  educationPreference: z.array(z.number()).min(1, 'Education preference is required.'),
-  // communicationSkills: z.string().min(1, 'Communication skill level is required.')
+  jobTitle: z.array(catalogId).min(1, 'Job Title is required.').default([]).optional(),
+  educationPreference: z.array(catalogId).optional(),
   mandatorySkills: z
-    .array(z.number().min(1))
-    .min(1, 'At least one required skill is needed.')
-    .max(15, 'You can select up to 15 required skills.'),
-  optionalSkills: z
-    .array(z.number().min(1))
-    .max(15, 'You can select up to 15 optional skills.')
+    .array(catalogId)
+    .max(15, 'You can select up to 15 required skills.')
     .optional(),
+  optionalSkills: z.array(catalogId).max(15, 'You can select up to 15 optional skills.').optional(),
   responsibilities: z.string().optional(),
   otherRequirements: z
     .string()
@@ -346,40 +343,40 @@ export type JobDetailsSchemaType = z.infer<typeof jobDetailsSchema>;
 
 export const jobDetailsDraftSchema = z.object({
   jobProfileCode: z.string().min(1, 'Job Profile Code is required.'),
-  jobTitle: z.array(z.number()).min(1, 'Job Title is required.'),
-  department: z.array(z.number()).min(1, 'Department is required.'),
-  officeLocation: z.array(z.number()).optional(),
-  jobType: z.array(z.number()).optional(),
+  jobTitle: z.array(catalogId).min(1, 'Job Title is required.'),
+  department: z.array(catalogId).min(1, 'Department is required.'),
+  officeLocation: z.array(catalogId).optional(),
+  jobType: z.array(catalogId).optional(),
   shiftStart: z.string().optional(),
   shiftEnd: z.string().optional(),
   isMultilingual: z.boolean().optional(),
   useCultureIntro: z.boolean().optional(),
   isRemote: z.boolean().optional(),
   openings: z.number().optional().nullable(),
-  exemptionStatus: z.number().optional().nullable(),
+  exemptionStatus: z.union([z.string(), z.number(), z.boolean()]).optional().nullable(),
   minSalary: z.string().optional().nullable(),
   maxSalary: z.string().optional().nullable(),
   referralBonus: z.union([z.number(), z.string()]).optional().nullable(),
   minExperience: z.number().optional().nullable(),
   maxExperience: z.number().optional().nullable(),
   openDate: z.string().optional(),
-  hiringManagers: z.array(z.number()).optional(),
-  recruiters: z.array(z.number()).optional(),
+  hiringManagers: z.array(catalogId).optional(),
+  recruiters: z.array(catalogId).optional(),
   state: z.string().optional(),
   country: z.string().optional(),
-  educationPreference: z.array(z.number()).optional(),
-  mandatorySkills: z.array(z.number()).optional(),
-  optionalSkills: z.array(z.number()).optional(),
+  educationPreference: z.array(catalogId).optional(),
+  mandatorySkills: z.array(catalogId).optional(),
+  optionalSkills: z.array(catalogId).optional(),
   responsibilities: z.string().optional(),
   otherRequirements: z.string().optional(),
 });
 
 export const jobDescriptionDraftSchema = z.object({
-  jobTitle: z.array(z.number()).min(1, 'Job Title is required.').default([]).optional(),
-  educationPreference: z.array(z.number()).optional(),
+  jobTitle: z.array(catalogId).min(1, 'Job Title is required.').default([]).optional(),
+  educationPreference: z.array(catalogId).optional(),
   communicationSkills: z.string().optional(),
-  mandatorySkills: z.array(z.number()).optional(),
-  optionalSkills: z.array(z.number()).optional(),
+  mandatorySkills: z.array(catalogId).optional(),
+  optionalSkills: z.array(catalogId).optional(),
   responsibilities: z.string().optional(),
   otherRequirements: z.string().optional(),
 });

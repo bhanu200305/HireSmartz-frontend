@@ -6,7 +6,7 @@ type OrgUserFiltersState = {
     text: string;
     field: string;
   };
-  roleTypeMappingId: number | null;
+  roleTypeMappingId: string | number | null;
   status: boolean | undefined;
   isArchived: boolean | undefined;
   isAll?: boolean | undefined;

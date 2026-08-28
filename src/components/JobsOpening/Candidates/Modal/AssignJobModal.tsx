@@ -38,7 +38,7 @@ const AssignJobModal: React.FC<AssignJobModalProps> = ({
     () => assignedJobs.filter((job) => !job.isCurrentJob),
     [assignedJobs]
   );
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
@@ -248,7 +248,7 @@ const AssignJobModal: React.FC<AssignJobModalProps> = ({
           placeholder="Search for Job title or Job Id"
           optionFilterProp="label"
           value={selectedJobId ?? undefined}
-          onChange={(value: number) => setSelectedJobId(value)}
+          onChange={(value: string) => setSelectedJobId(value)}
           onSearch={setSearchText}
           onPopupScroll={handlePopupScroll}
           filterOption={false}

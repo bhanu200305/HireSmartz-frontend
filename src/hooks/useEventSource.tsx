@@ -8,6 +8,8 @@ interface UseEventSourceProps {
   restUrl: string;
   token?: string;
   queryParams?: Record<string, string | number | boolean>;
+  /** Absolute service base URL override (e.g. VITE_JOB_SERVICE_ENDPOINT). */
+  baseUrlOverride?: string;
   // requestBody?: Record<string, any>
   onMessage: (data: any) => void;
   onAbort?: (controller?: any, eventData?: any) => void | Promise<void>;
@@ -18,6 +20,7 @@ const useEventSource = ({
   restUrl,
   token,
   queryParams,
+  baseUrlOverride,
   // requestBody,
   onMessage,
   onAbort,
@@ -30,9 +33,11 @@ const useEventSource = ({
   // to the same URL (which tells the server "client closed" on the first abort).
   const activeUrlRef = useRef<string | null>(null);
 
-  const baseUrl = `${import.meta.env.VITE_BACKEND_ENDPOINT}${import.meta.env.VITE_BACKEND_PREFIX}`;
+  const baseUrl =
+    baseUrlOverride ||
+    `${import.meta.env.VITE_BACKEND_ENDPOINT}${import.meta.env.VITE_BACKEND_PREFIX}`;
   const getFullUrl = () => {
-    const url = new URL(baseUrl + restUrl);
+    const url = new URL(baseUrl.replace(/\/$/, '') + restUrl);
 
     if (queryParams) {
       Object.entries(queryParams).forEach(([key, value]) => {
@@ -139,8 +144,7 @@ const useEventSource = ({
           }
         }
       } catch (err: any) {
-        if (err.name === 'AbortError') {
-        } else {
+        if (err.name !== 'AbortError') {
           console.error('SSE stream error:', err);
           if (type === 'batch') {
             activeUrlRef.current = null;
@@ -157,8 +161,7 @@ const useEventSource = ({
         }
       }
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-      } else {
+      if (error.name !== 'AbortError') {
         console.error('SSE connection error:', error);
         if (type === 'batch') {
           activeUrlRef.current = null;

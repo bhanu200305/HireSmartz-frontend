@@ -7,7 +7,7 @@ import {
 } from '../../types';
 
 type EditJobState = {
-  jobOpeningId: number;
+  jobOpeningId: string;
   atsJobOpeningId: string;
   details: JobDetailsState;
   description: JobDescriptionState;
@@ -19,7 +19,7 @@ type EditJobState = {
 
 const initialState: EditJobState = {
   atsJobOpeningId: '',
-  jobOpeningId: 0,
+  jobOpeningId: '',
   isDraft: false,
   isChanged: false,
   details: {
@@ -56,9 +56,9 @@ const initialState: EditJobState = {
   },
   interviewRounds: [],
   aiJobDescription: {
-    id: 0,
+    id: '',
     jobDescription: '',
-    jobOpeningId: 0,
+    jobOpeningId: '',
   },
 };
 
@@ -66,7 +66,7 @@ const editJobSlice = createSlice({
   name: 'editJob',
   initialState,
   reducers: {
-    setEditJobOpeningId: (state, action: PayloadAction<number>) => {
+    setEditJobOpeningId: (state, action: PayloadAction<string>) => {
       state.jobOpeningId = action.payload;
     },
     setAtsJobOpeningId: (state, action: PayloadAction<string>) => {

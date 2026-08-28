@@ -29,7 +29,7 @@ export type CandidateJobAssignment = {
  * Used in POST /candidate/{candidateId}/assign-to-job
  */
 export type AssignCandidateToJobPayload = {
-  targetJobOpeningId: number;
+  targetJobOpeningId: string | number;
 };
 
 /**

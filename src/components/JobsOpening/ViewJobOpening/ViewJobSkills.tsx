@@ -5,15 +5,16 @@ import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/G
 import { useParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Loader } from '../../shared/ui/loader';
+import { asJobId } from '../../../api/job-service/jobId';
 
 const ViewJobSkills = () => {
   const { id } = useParams();
-  const jobId = Number(id);
+  const jobId = asJobId(id);
   const {
     data: jobData,
     isLoading,
     refetch,
-  } = useGetJobOpeningByIdQuery({ jobOpeningId: Number(jobId) });
+  } = useGetJobOpeningByIdQuery({ jobOpeningId: jobId }, { skip: !jobId });
   useEffect(() => {
     refetch();
   }, [refetch]);
@@ -36,13 +37,7 @@ const ViewJobSkills = () => {
               disabled
             />
           </Form.Item> */}
-          <Form.Item
-            label={
-              <span>
-                Required Skills <span className="required-asterisk">*</span>
-              </span>
-            }
-          >
+          <Form.Item label={<span>Required Skills</span>}>
             <Input
               type="text"
               className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
@@ -113,13 +108,7 @@ const ViewJobSkills = () => {
               disabled
             />
           </Form.Item>
-          <Form.Item
-            label={
-              <span>
-                Education Preference <span className="required-asterisk">*</span>
-              </span>
-            }
-          >
+          <Form.Item label={<span>Education Preference</span>}>
             <Input
               type="text"
               className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"

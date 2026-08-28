@@ -10,8 +10,8 @@ interface StreamPayload {
 interface StreamState {
   isStreaming: boolean;
   streamError: string | null;
-  jobOpeningId: number | null;
-  interviewRoundId: number | null;
+  jobOpeningId: string | number | null;
+  interviewRoundId: string | number | null;
   lastPayload: StreamPayload | null;
   lastEvent: string | null;
 }
@@ -29,7 +29,7 @@ const streamSlice = createSlice({
   name: 'stream',
   initialState,
   reducers: {
-    startStream: (state, action: PayloadAction<{ jobOpeningId: number }>) => {
+    startStream: (state, action: PayloadAction<{ jobOpeningId: string | number }>) => {
       state.isStreaming = true;
       state.streamError = null;
       state.jobOpeningId = action.payload.jobOpeningId;

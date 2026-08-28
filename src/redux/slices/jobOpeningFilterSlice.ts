@@ -17,7 +17,7 @@ type JobOpeningFiltersState = {
   isDraft: boolean | undefined;
   isClosed: boolean | undefined;
   isAll: boolean | undefined;
-  locationId?: number;
+  locationId?: string;
 };
 
 const initialState: JobOpeningFiltersState = {

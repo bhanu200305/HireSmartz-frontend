@@ -6,7 +6,7 @@ import { devRoleStore } from '../../../shared/utils/dev/devRoleStore';
 // (this hits /roles/all/list, the cross-scope listing) rather than importing
 // from roles.ts, so the two endpoints stay independently swappable.
 export type Role = {
-  id: number;
+  id: string;
   roleName: string;
 };
 

@@ -13,7 +13,7 @@ import { useGetOwnPlatformProfileQuery } from '../../api/organization-service/Pl
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import './header.css';
 import { Search, showToast } from '../shared';
-import { MdOutlineFilterAlt } from 'react-icons/md';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { useState, useEffect } from 'react';
 import GlobalSearch from '../shared/GlobalSearch';
 import { useGetCategoriesQuery } from '../../api/search-service/Dashboard/GlobalSearch';
@@ -602,16 +602,14 @@ const Header = () => {
             </div>
           </Dropdown>
 
-          <div
-            className="border border-[var(--border)] p-1 rounded-lg w-40 sm:w-50 gap-1 flex items-center"
-            style={{ backgroundColor: 'white' }}
-          >
+          <div className="cfp-dropdown-trigger w-40 sm:w-50">
+            <FilterSelectIcon />
             <Select
               placeholder="Categories"
-              prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />}
               allowClear
               className="w-full custom-select my-select-with-divider"
               popupClassName="rounded-xl"
+              variant="borderless"
               value={getDisplayValue()}
               onChange={(value) => {
                 if (!value) {
