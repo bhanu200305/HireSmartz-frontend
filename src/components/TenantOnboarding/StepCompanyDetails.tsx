@@ -6,10 +6,8 @@ import { get } from 'lodash-es';
 import { Button, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import { countryCodes } from '../../constants/countryCode';
-import {
-  handlePhoneNumberChange,
-  sanitizeInput,
-} from '../../shared/utils/validation/input.helpers';
+import { sanitizeInput } from '../../shared/utils/validation/input.helpers';
+import { restrictPhoneDigits } from '../../shared/utils/validation/phoneValidation';
 import { cleanPhoneNumber, makeFirstLetterUpperCase } from '../../shared/utils/methods';
 import { useListIndustriesQuery } from '../../api/organization-service/Platform/industries';
 import { useCreateTenantMutation } from '../../api/organization-service/Tenants/tenants';
@@ -29,17 +27,15 @@ export type GuestOrgPrefill = {
 };
 
 // Best-effort only: the demo form collects one free-text phone field with no
-// guaranteed format, while this step's own validation
-// (phoneNumberValidation()) requires exactly "(xxx) xxx-xxxx". Rather than
-// seed a value that fails validation in a way that confuses
-// handlePhoneNumberChange's keystroke-diffing, this only prefills when it
-// can produce something that actually validates — taking the last 10 digits
-// drops a leading country code like "+1" or "1" without guessing at others.
-// Anything else is left blank for the Super Admin to type in.
+// guaranteed format or known country, while this step's phone field is
+// validated against whichever country is selected (defaults to US/Canada —
+// see adminContactCountryCode's own default below). Rather than seed a
+// value that fails that validation, this only prefills when the last 10
+// digits look like a plausible US/Canada number; anything else is left
+// blank for the Super Admin to type in themselves.
 const formatPrefillPhone = (raw: string): string => {
   const digits = raw.replace(/\D/g, '').slice(-10);
-  if (digits.length !== 10) return '';
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  return digits.length === 10 ? digits : '';
 };
 
 type StepCompanyDetailsProps = {
@@ -229,10 +225,16 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
             <div className="border-l-2 border-gray-300 h-6 mx-2" />
             <Input
               type="tel"
-              placeholder="(555) 123-4567"
+              placeholder="Phone number"
               value={watch('adminContactPhone')}
-              onChange={(e) => handlePhoneNumberChange(e, setValue, 'adminContactPhone', trigger)}
-              maxLength={14}
+              onChange={(e) => {
+                setValue('adminContactPhone', restrictPhoneDigits(e.target.value), {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+                trigger('adminContactPhone');
+              }}
+              maxLength={15}
               className="border-none focus:ring-0 focus:outline-none w-full"
             />
           </div>

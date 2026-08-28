@@ -8,14 +8,11 @@ import { useEditCandidateMutation } from '../../../api/candidate-service/Candida
 // import { useUpdateDropdownByTypeMutation } from '../../../api/job-service/AddableDropdown/UpdateDropdownByType';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import { countryCodes } from '../../../constants/countryCode';
-import {
-  handlePhoneNumberChange,
-  sanitizeInput,
-} from '../../../shared/utils/validation/input.helpers';
+import { sanitizeInput } from '../../../shared/utils/validation/input.helpers';
+import { restrictPhoneDigits } from '../../../shared/utils/validation/phoneValidation';
 import { Loader } from '../../shared/ui/loader';
 import {
   // capitalizeWordsAdvanced,
-  formatPhoneNumber,
   cleanPhoneNumber,
 } from '../../../shared/utils/methods';
 import { FaCheckCircle } from 'react-icons/fa';
@@ -156,7 +153,7 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
           candidate?.countryCode ||
           countryCodes.find((code) => code.label === 'United States & Canada (+1)')?.value ||
           '+1',
-        phoneNumber: formatPhoneNumber(candidate?.phoneNumber || ''),
+        phoneNumber: cleanPhoneNumber(candidate?.phoneNumber || ''),
         email: candidate?.email || '',
         education: candidate?.education || '',
         address: candidate?.address ?? '',
@@ -282,16 +279,19 @@ const EditCandidate: React.FC<EditCandidateProps> = ({
                 className="border-none bg-transparent focus:outline-none focus:!ring-0"
                 placeholder="Phone number"
                 value={watch('phoneNumber')}
-                onChange={(e) => handlePhoneNumberChange(e, setValue, 'phoneNumber', trigger)}
+                onChange={(e) => {
+                  setValue('phoneNumber', restrictPhoneDigits(e.target.value), {
+                    shouldDirty: true,
+                  });
+                  trigger('phoneNumber');
+                }}
                 onPaste={(e) => {
                   e.preventDefault();
                   const pastedText = e.clipboardData.getData('text');
-                  const digits = pastedText.replace(/\D/g, '');
-                  const formattedNumber = formatPhoneNumber(digits);
-                  setValue('phoneNumber', formattedNumber, { shouldDirty: true });
+                  setValue('phoneNumber', restrictPhoneDigits(pastedText), { shouldDirty: true });
                   trigger('phoneNumber');
                 }}
-                maxLength={20}
+                maxLength={15}
                 disabled={!isEditing}
               />
             </div>

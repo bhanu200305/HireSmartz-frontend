@@ -15,7 +15,7 @@ import {
   type InvitationErrorBody,
 } from '../../api/organization-service/Invitations/invitations';
 import { buildOtpAuthUri, generateBase32Secret } from '../../shared/utils/mfa.helpers';
-import { handlePhoneNumberChange } from '../../shared/utils/validation/input.helpers';
+import { restrictPhoneDigits } from '../../shared/utils/validation/phoneValidation';
 import { countryCodes } from '../../constants/countryCode';
 import { acceptInvitationSchema, type AcceptInvitationFormValues } from './AcceptInvitationSchema';
 
@@ -413,14 +413,20 @@ const AcceptInvitation = () => {
                       {...field}
                       type="tel"
                       placeholder="Phone number*"
-                      maxLength={14}
+                      maxLength={15}
                       prefix={
                         <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
                           <MdOutlinePhone className="text-brand-900 text-sm" />
                         </div>
                       }
                       className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                      onChange={(e) => handlePhoneNumberChange(e, setValue, 'phoneNumber', trigger)}
+                      onChange={(e) => {
+                        setValue('phoneNumber', restrictPhoneDigits(e.target.value), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                        trigger('phoneNumber');
+                      }}
                     />
                   )}
                 />

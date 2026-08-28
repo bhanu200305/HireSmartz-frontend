@@ -9,6 +9,10 @@ import { RootState } from '../../../redux/provider/store';
 import { useCreateUserMutation } from '../../../api/organization-service/Users/users';
 import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import {
+  isPhoneValidForCountry,
+  PHONE_VALIDATION_MESSAGE,
+} from '../../../shared/utils/validation/phoneValidation';
 
 type FormState = {
   email: string;
@@ -57,6 +61,10 @@ const AddOrganisationUser = () => {
   const handleSubmit = async () => {
     if (!form.email.trim() || !form.first_name.trim()) {
       showToast({ message: 'Email and first name are required.', type: 'error' });
+      return;
+    }
+    if (form.phone_no.trim() && !isPhoneValidForCountry(form.phone_no, form.country_code)) {
+      showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
       return;
     }
     try {

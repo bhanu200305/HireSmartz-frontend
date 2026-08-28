@@ -28,10 +28,18 @@ import {
   useReactivatePlatformTenantUserMutation,
 } from '../../../../api/organization-service/Platform/users';
 import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organization-service/Platform/departments';
+import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-service/Platform/offices';
+import { useAssignRoleAsPlatformMutation } from '../../../../api/organization-service/Roles/assignments';
 import { useRolesCatalog } from '../../../../hooks/useRolesCatalog';
 import type { OrgUser } from '../../../../api/organization-service/Users/users';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
+import {
+  isPhoneValidForCountry,
+  PHONE_VALIDATION_MESSAGE,
+} from '../../../../shared/utils/validation/phoneValidation';
 import BulkImport from '../../../MyCompany/Team/BulkImport';
+import ViewPlatformUserModal from './ViewPlatformUserModal';
+import RoleLocationPicker from './RoleLocationPicker';
 
 type UserRow = OrgUser & { key: string };
 
@@ -44,6 +52,7 @@ type FormState = {
   phone_no: string;
   department_id: string | undefined;
   role_id: string | undefined;
+  location_id: string | undefined;
 };
 
 // Same default every other phone field in this app starts from (see
@@ -59,6 +68,7 @@ const emptyForm: FormState = {
   phone_no: '',
   department_id: undefined,
   role_id: undefined,
+  location_id: undefined,
 };
 
 /**
@@ -86,16 +96,27 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     includeInactive: includeInactive === 'all',
   });
   const { data: departments } = useListPlatformTenantDepartmentsQuery(tenantId);
+  const { data: offices } = useListPlatformTenantOfficesQuery(tenantId);
   const { roles } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: true });
 
   const [createUser, { isLoading: isCreating }] = useCreatePlatformTenantUserMutation();
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivatePlatformTenantUserMutation();
   const [reactivateUser, { isLoading: isReactivating }] = useReactivatePlatformTenantUserMutation();
+  // Only used when a location was also picked for the new hire's role — see
+  // handleAdd. CreateUserCommand.role_id alone (the common case, no
+  // follow-up call needed) already grants the role at creation, applying
+  // everywhere; there is no location_id on that command at all (confirmed
+  // against CreateUserCommand's own fields), so a location-SCOPED grant has
+  // to be the same second step AssignRoleModal already uses elsewhere, just
+  // chained onto the same "Create user" click instead of a separate visit
+  // to this person's profile afterward.
+  const [assignRole] = useAssignRoleAsPlatformMutation();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
+  const [viewingUser, setViewingUser] = useState<OrgUser | null>(null);
   const [searchText, setSearchText] = useState('');
 
   const field = (key: keyof FormState) => ({
@@ -125,8 +146,20 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       showToast({ message: 'Email and first name are required.', type: 'error' });
       return;
     }
+    if (form.phone_no.trim() && !isPhoneValidForCountry(form.phone_no, form.country_code)) {
+      showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
+      return;
+    }
     try {
-      await createUser({
+      // A location-scoped role can't be granted in the same call as creation
+      // — CreateUserCommand has no location_id at all, only role_id (an
+      // everywhere grant). So when a location was also picked, create
+      // without a role first and grant role+location as an explicit second
+      // step right after, instead of the everywhere-grant this form would
+      // otherwise produce silently. Still one click for whoever's filling
+      // this in — the two calls are this function's problem, not theirs.
+      const grantLocationScoped = Boolean(form.role_id && form.location_id);
+      const user = await createUser({
         tenantId,
         email: form.email.trim(),
         first_name: form.first_name.trim(),
@@ -137,8 +170,34 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         country_code: form.phone_no.trim() ? form.country_code : undefined,
         phone_no: form.phone_no.trim() || undefined,
         department_id: form.department_id,
-        role_id: form.role_id,
+        role_id: grantLocationScoped ? undefined : form.role_id,
       }).unwrap();
+
+      if (grantLocationScoped && form.role_id) {
+        try {
+          await assignRole({
+            tenantId,
+            user_id: user.user_id,
+            role_id: form.role_id,
+            location_id: form.location_id,
+          }).unwrap();
+        } catch (err) {
+          // The user themselves was created fine — only the role grant
+          // failed. Said plainly rather than a generic "failed to create
+          // user", since that would be actively wrong: they DO now exist.
+          showToast({
+            message: getOrgErrorMessage(
+              err,
+              `${user.full_name} was created, but the role grant failed — assign it from their profile instead.`
+            ),
+            type: 'error',
+          });
+          setIsAddOpen(false);
+          setForm(emptyForm);
+          return;
+        }
+      }
+
       showToast({ message: 'User created.', type: 'success' });
       setIsAddOpen(false);
       setForm(emptyForm);
@@ -180,10 +239,16 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       key: 'full_name',
       sorter: (a: UserRow, b: UserRow) => a.full_name.localeCompare(b.full_name),
       render: (_: unknown, user: UserRow) => (
-        <div>
-          <div className="font-semibold text-gray-900">{user.full_name}</div>
+        <button
+          type="button"
+          onClick={() => setViewingUser(user)}
+          className="text-left cursor-pointer"
+        >
+          <div className="font-semibold text-gray-900 hover:text-primary-600 hover:underline">
+            {user.full_name}
+          </div>
           <div className="text-xs text-gray-400">{user.email}</div>
-        </div>
+        </button>
       ),
     },
     {
@@ -329,15 +394,14 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               value: d.org_department_id,
             }))}
           />
-          <Select
-            appname="cfp"
-            placeholder="Role (optional — can be assigned later)"
-            value={form.role_id}
-            onChange={(value) => setForm((prev) => ({ ...prev, role_id: value }))}
-            options={roles.map((role) => ({
-              label: role.roleName,
-              value: role.id,
-            }))}
+          <RoleLocationPicker
+            roles={roles}
+            offices={offices ?? []}
+            roleId={form.role_id}
+            onRoleChange={(value) => setForm((prev) => ({ ...prev, role_id: value }))}
+            locationId={form.location_id}
+            onLocationChange={(value) => setForm((prev) => ({ ...prev, location_id: value }))}
+            rolePlaceholder="Role (optional — can be assigned later)"
           />
           <div className="grid grid-cols-2 gap-4">
             <Button
@@ -373,6 +437,13 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         tenantId={tenantId}
         isMaster
         onClose={() => setIsBulkImportOpen(false)}
+      />
+
+      <ViewPlatformUserModal
+        open={viewingUser !== null}
+        tenantId={tenantId}
+        user={viewingUser}
+        onClose={() => setViewingUser(null)}
       />
     </div>
   );

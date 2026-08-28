@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isValidPhoneNumber } from 'libphonenumber-js';
 import { MdOutlineSecurity } from 'react-icons/md';
 import { FaRegCopy } from 'react-icons/fa';
 import { Badge, Button, Input, showToast } from '..';
@@ -21,7 +22,13 @@ const METHOD_LABELS: Record<MfaMethodType, string> = {
   email: 'Email',
 };
 
-const phoneNumberPattern = /^\+[1-9]\d{7,14}$/; // E.164, matches the backend's own check
+// E.164 shape, matches the backend's own check — the fast pre-check;
+// `isValidPhoneNumber` (below, where this is used) additionally confirms
+// the digit count is actually right for whichever country the leading
+// dial code implies, which this shape alone can't tell (it'd happily
+// accept a 14-digit "+91..." number, well past what a real Indian number
+// is).
+const phoneNumberPattern = /^\+[1-9]\d{7,14}$/;
 
 /** In-place "enter the code we just sent / that's on your app" step, shared
  * by every method type once /enable has returned. */
@@ -268,7 +275,7 @@ const AddMethodButton = ({
   };
 
   if (methodType === 'sms' && showPhoneInput) {
-    const isValidPhone = phoneNumberPattern.test(phoneNumber);
+    const isValidPhone = phoneNumberPattern.test(phoneNumber) && isValidPhoneNumber(phoneNumber);
     return (
       <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-[var(--border)] p-4 sm:flex-row sm:items-center">
         <Input

@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { nameValidation, passwordValidation } from '../../shared/utils/validation/input.helpers';
+import {
+  isPhoneValidForCountry,
+  PHONE_VALIDATION_MESSAGE,
+} from '../../shared/utils/validation/phoneValidation';
 
-const PHONE_FORMAT_MESSAGE = 'Phone number must be in (xxx) xxx-xxxx format.';
-const PHONE_REGEX = /^\(\d{3}\) \d{3}-\d{4}$/;
 const FAKE_PHONE_DIGITS = new Set(['0000000000', '0123456789', '1234567890']);
 // Same shape BookDemoPage's countryCode field validates against — a dial
 // code like "+1"/"+971", not a country name. Matches the backend's own
@@ -66,19 +68,19 @@ export const acceptInvitationSchema = z
       });
       return;
     }
-    if (!PHONE_REGEX.test(value)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['phoneNumber'],
-        message: PHONE_FORMAT_MESSAGE,
-      });
-      return;
-    }
     if (FAKE_PHONE_DIGITS.has(value.replace(/\D/g, ''))) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['phoneNumber'],
         message: 'Please enter a valid phone number.',
+      });
+      return;
+    }
+    if (countryCode && !isPhoneValidForCountry(value, countryCode)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['phoneNumber'],
+        message: PHONE_VALIDATION_MESSAGE,
       });
     }
   });

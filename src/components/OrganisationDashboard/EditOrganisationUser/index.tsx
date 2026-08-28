@@ -17,6 +17,10 @@ import { useListRolesQuery } from '../../../api/organization-service/Roles/roles
 import { useListTenantOfficesQuery } from '../../../api/organization-service/Tenants/offices';
 import { useAssignRoleMutation } from '../../../api/organization-service/Roles/assignments';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import {
+  isPhoneValidForCountry,
+  PHONE_VALIDATION_MESSAGE,
+} from '../../../shared/utils/validation/phoneValidation';
 
 type FormState = {
   first_name: string;
@@ -117,6 +121,10 @@ const EditOrgUser = () => {
   });
 
   const save = async (email?: string) => {
+    if (form.phone_no.trim() && !isPhoneValidForCountry(form.phone_no, form.country_code)) {
+      showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
+      return;
+    }
     try {
       await updateUser({
         userId,

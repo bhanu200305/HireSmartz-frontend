@@ -37,6 +37,8 @@ export type GetUserDashboardArgs = {
   refresh?: boolean;
 };
 
+export type GetPlatformUserDashboardArgs = GetUserDashboardArgs & { tenantId: string };
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     getUserDashboard: build.query<GetUserDashboardResponse, GetUserDashboardArgs>({
@@ -50,7 +52,29 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       providesTags: (_result, _error, { userId }) => [{ type: 'UserPermissions', id: userId }],
     }),
+    // Super Admin's mirror — same ResolveUserDashboardUseCase, reached via
+    // `/v1/platform/tenants/{tenant_id}/roles/users/{user_id}/dashboard`
+    // (require_platform_permission, tenant_id from the path) instead of the
+    // ambient-tenant route above, which 403s for any platform caller
+    // regardless of target tenant. See platform_router.py's own comment on
+    // this route for why it needed the use case itself extended with an
+    // explicit tenant_id, not just a new route.
+    getPlatformUserDashboard: build.query<GetUserDashboardResponse, GetPlatformUserDashboardArgs>({
+      query: ({ tenantId, userId, locationId, refresh }) => ({
+        url: `/v1/platform/tenants/${tenantId}/roles/users/${userId}/dashboard`,
+        method: 'GET',
+        params: {
+          ...(locationId ? { location_id: locationId } : {}),
+          ...(refresh ? { refresh: true } : {}),
+        },
+      }),
+      providesTags: (_result, _error, { userId }) => [{ type: 'UserPermissions', id: userId }],
+    }),
   }),
 });
 
-export const { useGetUserDashboardQuery, useLazyGetUserDashboardQuery } = extendedApi;
+export const {
+  useGetUserDashboardQuery,
+  useLazyGetUserDashboardQuery,
+  useGetPlatformUserDashboardQuery,
+} = extendedApi;

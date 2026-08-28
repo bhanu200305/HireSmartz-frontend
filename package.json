@@ -46,6 +46,7 @@
     "immutable": "^4.3.8",
     "install": "^0.13.0",
     "jwt-decode": "^4.0.0",
+    "libphonenumber-js": "^1.13.11",
     "livekit-client": "^2.17.0",
     "lodash-es": "^4.17.23",
     "markdown-draft-js": "^2.4.0",

@@ -26,15 +26,9 @@ import {
   useGetOwnPlatformProfileQuery,
   useUpdateOwnPlatformProfileMutation,
 } from '../../api/organization-service/Platform/staff';
-import {
-  handlePhoneNumberChange,
-  sanitizeInput,
-} from '../../shared/utils/validation/input.helpers';
-import {
-  cleanPhoneNumber,
-  convertFileToBase64,
-  formatPhoneNumber,
-} from '../../shared/utils/methods';
+import { sanitizeInput } from '../../shared/utils/validation/input.helpers';
+import { restrictPhoneDigits } from '../../shared/utils/validation/phoneValidation';
+import { cleanPhoneNumber, convertFileToBase64 } from '../../shared/utils/methods';
 import {
   ALLOWED_LOGO_TYPES,
   MAX_LOGO_FILE_SIZE_BYTES,
@@ -116,7 +110,7 @@ const UserProfile = () => {
         firstName: platformProfileData.first_name || '',
         lastName: platformProfileData.last_name || '',
         emailId: platformProfileData.email || '',
-        phoneNumber: formatPhoneNumber(platformProfileData.phone_no || '') || '',
+        phoneNumber: cleanPhoneNumber(platformProfileData.phone_no || ''),
         country: '',
         countryCode: platformProfileData.country_code || '+1',
         state: '',
@@ -136,7 +130,7 @@ const UserProfile = () => {
         firstName: tenantProfileData.first_name || '',
         lastName: tenantProfileData.last_name || '',
         emailId: tenantProfileData.email || '',
-        phoneNumber: formatPhoneNumber(tenantProfileData.phone_no || '') || '',
+        phoneNumber: cleanPhoneNumber(tenantProfileData.phone_no || ''),
         country: '',
         countryCode: tenantProfileData.country_code || '+1',
         state: '',
@@ -488,12 +482,16 @@ const UserProfile = () => {
                       <div className="border-l-2 border-gray-300 h-6 mx-2"></div>
                       <Input
                         type="tel"
-                        placeholder="(555) 123-4567"
+                        placeholder="Phone number"
                         value={watch('phoneNumber')}
-                        onChange={(e) =>
-                          handlePhoneNumberChange(e, setValue, 'phoneNumber', trigger)
-                        }
-                        maxLength={14}
+                        onChange={(e) => {
+                          setValue('phoneNumber', restrictPhoneDigits(e.target.value), {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          });
+                          trigger('phoneNumber');
+                        }}
+                        maxLength={15}
                         className="border-none focus:ring-0 focus:outline-none w-full"
                       />
                     </div>

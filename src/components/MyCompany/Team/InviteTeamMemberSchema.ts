@@ -10,11 +10,10 @@ export const inviteTeamMemberSchema = z.object({
   // picker exists yet; the backend resolves it by name, auto-creating if
   // new — see InviteTenantUserInput.designation).
   designation: z.string().optional(),
-  // InviteTenantUserRequest's `role` is every tenant-invitable SystemRole —
-  // company_admin, hiring_manager, recruiter, interviewer (see requests.py).
-  role: z.enum(['company_admin', 'hiring_manager', 'recruiter', 'interviewer'], {
-    errorMap: () => ({ message: 'Role is required.' }),
-  }),
+  // Free text — validated against this tenant's own assignable-role catalog
+  // server-side (GET /roles: system roles plus any custom ones), not a
+  // fixed set here. See InviteTenantUserRequest's own docstring.
+  role: z.string().min(1, 'Role is required.'),
 });
 
 export type InviteTeamMemberFormValues = z.infer<typeof inviteTeamMemberSchema>;

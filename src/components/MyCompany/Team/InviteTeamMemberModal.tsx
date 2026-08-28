@@ -5,6 +5,7 @@ import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import { Button, Input, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import { useInviteTenantUserMutation } from '../../../api/organization-service/Tenants/users';
+import { useListRolesQuery } from '../../../api/organization-service/Roles/roles';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { inviteTeamMemberSchema, type InviteTeamMemberFormValues } from './InviteTeamMemberSchema';
 
@@ -18,15 +19,6 @@ type InviteTeamMemberModalProps = {
   onInvited: () => void;
 };
 
-// Every tenant-invitable SystemRole POST /v1/tenants/{id}/users/invitations
-// accepts — see InviteTeamMemberSchema.ts.
-const ROLE_OPTIONS = [
-  { label: 'Company Admin', value: 'company_admin' },
-  { label: 'Hiring Manager', value: 'hiring_manager' },
-  { label: 'Recruiter', value: 'recruiter' },
-  { label: 'Interviewer', value: 'interviewer' },
-];
-
 const InviteTeamMemberModal = ({
   open,
   tenantId,
@@ -35,6 +27,17 @@ const InviteTeamMemberModal = ({
   onInvited,
 }: InviteTeamMemberModalProps) => {
   const [inviteTenantUser, { isLoading }] = useInviteTenantUserMutation();
+  // Same catalog AssignRoleModal's role picker reads from (GET /roles) — the
+  // tenant's seeded system roles plus any custom ones it's created. This
+  // used to be a hardcoded 4-option list matching only the system roles, so
+  // a custom role could never be picked at invite time — the whole reason
+  // "invite, then edit their role afterward" was the only way to get a
+  // custom role onto a new hire. Skipped while the modal is closed so it
+  // doesn't fetch before Team tab actually opens it.
+  const { data: roles, isLoading: isLoadingRoles } = useListRolesQuery(
+    { scope: 'tenant', isMaster: false },
+    { skip: !open }
+  );
 
   const { control, handleSubmit, reset, formState } = useForm<InviteTeamMemberFormValues>({
     resolver: zodResolver(inviteTeamMemberSchema),
@@ -42,7 +45,7 @@ const InviteTeamMemberModal = ({
       email: '',
       departmentId: '',
       designation: '',
-      role: 'recruiter',
+      role: '',
     },
     mode: 'onChange',
   });
@@ -154,8 +157,10 @@ const InviteTeamMemberModal = ({
                 id="inviteRole"
                 {...field}
                 onChange={field.onChange}
+                loading={isLoadingRoles}
+                placeholder="Select a role"
                 className="w-full mt-1"
-                options={ROLE_OPTIONS}
+                options={(roles ?? []).map((role) => ({ label: role.name, value: role.name }))}
               />
             )}
           />

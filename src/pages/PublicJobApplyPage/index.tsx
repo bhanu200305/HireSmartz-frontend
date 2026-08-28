@@ -22,6 +22,10 @@ import {
 import { usePublicBranding } from '../../hooks/usePublicBranding';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import type { PublicJob } from '../../types/PublicQr';
+import {
+  isPhoneValidForCountry,
+  restrictPhoneDigits,
+} from '../../shared/utils/validation/phoneValidation';
 
 const formatSalary = (min: number, max: number): string => {
   const fmt = (n: number): string => (n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${n}`);
@@ -81,7 +85,7 @@ export const PublicJobApplyPage = () => {
   const [resumeRequired, setResumeRequired] = useState(false);
   const [firstNameError, setFirstNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
-  const [phoneError, setPhoneError] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [smsConsent, setSmsConsent] = useState(false);
   const [tosConsent, setTosConsent] = useState(false);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
@@ -161,15 +165,22 @@ export const PublicJobApplyPage = () => {
     const noFirstName = !firstName.trim();
     const noEmail = !email.trim();
     const noPhone = !phone.trim();
+    const phoneInvalid = !noPhone && !isPhoneValidForCountry(phone, countryCode);
     const noCaptcha = !captchaToken;
 
     setResumeRequired(noResume);
     setFirstNameError(noFirstName);
     setEmailError(noEmail);
-    setPhoneError(noPhone);
+    setPhoneError(
+      noPhone
+        ? 'Phone number is required'
+        : phoneInvalid
+          ? 'Enter a valid phone number for the selected country code'
+          : null
+    );
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
 
-    if (noResume || noFirstName || noEmail || noPhone || noCaptcha) return;
+    if (noResume || noFirstName || noEmail || noPhone || phoneInvalid || noCaptcha) return;
 
     const body = {
       firstName: firstName.trim(),
@@ -207,12 +218,14 @@ export const PublicJobApplyPage = () => {
 
   const handleApplyLater = async () => {
     const noEmail = !email.trim();
+    const phoneInvalid = !!phone.trim() && !isPhoneValidForCountry(phone, countryCode);
     const noCaptcha = !captchaToken;
 
     setEmailError(noEmail);
+    setPhoneError(phoneInvalid ? 'Enter a valid phone number for the selected country code' : null);
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
 
-    if (noEmail || noCaptcha) return;
+    if (noEmail || phoneInvalid || noCaptcha) return;
     try {
       const res = await applyLater({
         qrCode: qrCode ?? '',
@@ -461,10 +474,11 @@ export const PublicJobApplyPage = () => {
                   id="phone"
                   value={phone}
                   onChange={(e) => {
-                    setPhone(e.target.value);
-                    if (e.target.value.trim()) setPhoneError(false);
+                    setPhone(restrictPhoneDigits(e.target.value));
+                    setPhoneError(null);
                   }}
-                  placeholder="(555) 123-4567"
+                  placeholder="Phone number"
+                  maxLength={15}
                   className="flex-1 rounded-full"
                   style={{
                     height: 44,
@@ -474,7 +488,7 @@ export const PublicJobApplyPage = () => {
                   }}
                 />
               </div>
-              {phoneError && <p className="text-sm text-red-500 mt-1">Phone number is required</p>}
+              {phoneError && <p className="text-sm text-red-500 mt-1">{phoneError}</p>}
             </div>
           </div>
 

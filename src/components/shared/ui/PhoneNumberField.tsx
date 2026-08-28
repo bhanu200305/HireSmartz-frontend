@@ -2,6 +2,7 @@ import React from 'react';
 import { Select } from 'antd';
 import clsx from 'clsx';
 import { countryCodes } from '../../../constants/countryCode';
+import { restrictPhoneDigits } from '../../../shared/utils/validation/phoneValidation';
 
 type PhoneNumberFieldProps = {
   countryCode: string | undefined;
@@ -64,7 +65,8 @@ const PhoneNumberField: React.FC<PhoneNumberFieldProps> = ({
         placeholder={placeholder}
         value={phoneNumber}
         disabled={disabled}
-        onChange={(e) => onPhoneNumberChange(e.target.value)}
+        maxLength={15}
+        onChange={(e) => onPhoneNumberChange(restrictPhoneDigits(e.target.value))}
       />
     </div>
   );

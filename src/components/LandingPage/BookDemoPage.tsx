@@ -8,6 +8,10 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import { countryCodes } from '../../constants/countryCode';
 import { capitalizeFirstLetter } from '../../shared/utils/validation/input.helpers';
 import {
+  isPhoneValidForCountry,
+  restrictPhoneDigits,
+} from '../../shared/utils/validation/phoneValidation';
+import {
   getCountries,
   getStates,
   getCities,
@@ -81,7 +85,6 @@ const NAME_REGEX = /^[A-Za-z]+(?:\s[A-Za-z]+)*$/;
 const LOCATION_PART_REGEX = /^[A-Za-z][A-Za-z\s.'-]*$/;
 const COMPANY_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s&.,'-]*$/;
 const JOB_TITLE_REGEX = /^[A-Za-z][A-Za-z\s&.,'/-]*$/;
-const PHONE_REGEX = /^\d{7,15}$/;
 // Stricter than zod's built-in `.email()` (which accepts things like
 // "user@localhost" with no TLD): requires a proper local-part and a domain
 // with at least one dot, and rejects a leading/trailing dot or @ on either
@@ -114,11 +117,7 @@ const demoRequestObjectSchema = z.object({
     .string()
     .min(1, 'Please select a country code.')
     .regex(PHONE_COUNTRY_CODE_REGEX, 'Invalid country code.'),
-  phone: z
-    .string()
-    .trim()
-    .min(1, 'Phone number is required.')
-    .regex(PHONE_REGEX, 'Enter a valid phone number (7–15 digits, numbers only).'),
+  phone: z.string().trim().min(1, 'Phone number is required.'),
   company: z
     .string()
     .trim()
@@ -153,15 +152,22 @@ const demoRequestObjectSchema = z.object({
     .default(''),
 });
 
-// `.superRefine` wraps the object in a `ZodEffects`, which no longer exposes
-// `.shape` — kept as a separate schema so per-field (onBlur) validation can
-// still validate one key at a time via `demoRequestObjectSchema.shape[key]`.
 const demoRequestSchema = demoRequestObjectSchema.superRefine((data, ctx) => {
   if (data.hearAboutUs === HEAR_ABOUT_US_OTHER && data.hearAboutUsDetail.trim().length === 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['hearAboutUsDetail'],
       message: 'Please tell us how you heard about us.',
+    });
+  }
+
+  // Phone validity depends on the selected country, not a fixed 7-15-digit
+  // range every country would need to fit — see phoneValidation.ts.
+  if (data.phone && data.countryCode && !isPhoneValidForCountry(data.phone, data.countryCode)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['phone'],
+      message: 'Enter a valid phone number for the selected country.',
     });
   }
 });
@@ -412,7 +418,7 @@ const BookDemoPage = () => {
   // rather than merely validated afterwards, so an invalid character can
   // never make it into the field at all.
   const handlePhoneChange = (value: string) => {
-    setForm({ phone: value.replace(/\D/g, '').slice(0, 15) });
+    setForm({ phone: restrictPhoneDigits(value) });
   };
 
   const handleHearAboutUsChange = (value: string) => {
@@ -557,7 +563,7 @@ const BookDemoPage = () => {
                       inputMode="numeric"
                       pattern="[0-9]*"
                       className="w-full border-none px-2.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
-                      placeholder="(555) 123-4567"
+                      placeholder="Phone number"
                       maxLength={15}
                       value={form.phone}
                       onChange={(e) => handlePhoneChange(e.target.value)}

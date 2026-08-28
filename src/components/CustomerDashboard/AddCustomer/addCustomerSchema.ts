@@ -2,16 +2,18 @@ import { z } from 'zod';
 import {
   emailValidation,
   nameValidation,
-  phoneNumberValidation,
-  phoneNumberValidationSecondary,
   websiteLinkValidation,
 } from '../../../shared/utils/validation/input.helpers';
+import {
+  isPhoneValidForCountry,
+  phoneWithCountry,
+} from '../../../shared/utils/validation/phoneValidation';
 
 export const addCustomerSchema = z
   .object({
     firstNamePrimary: nameValidation({ label: 'First name', required: true }),
     lastNamePrimary: nameValidation({ label: 'Last name', required: true }),
-    phonePrimary: phoneNumberValidation(),
+    phonePrimary: z.string(),
     countryCodePrimary: z.string().nonempty('Country code is required.'),
     emailPrimary: emailValidation(),
 
@@ -46,7 +48,7 @@ export const addCustomerSchema = z
 
     firstNameSecondary: z.string().optional().or(z.literal('')),
     lastNameSecondary: z.string().optional().or(z.literal('')),
-    phoneSecondary: phoneNumberValidationSecondary(),
+    phoneSecondary: z.string().optional().or(z.literal('')),
     countryCodeSecondary: z.string().optional().or(z.literal('')),
     emailSecondary: z.string().optional().or(z.literal('')),
     roleIdPrimary: z.string().optional().or(z.literal('')),
@@ -55,6 +57,7 @@ export const addCustomerSchema = z
     companyLogo: z.string().optional().nullable(),
     companyLogoType: z.string().optional().nullable(),
   })
+  .superRefine(phoneWithCountry('countryCodePrimary', 'phonePrimary'))
   .superRefine((data, ctx) => {
     const hasSecondaryContact =
       data.firstNameSecondary?.trim() ||
@@ -85,21 +88,15 @@ export const addCustomerSchema = z
           message: 'Phone number is required.',
           path: ['phoneSecondary'],
         });
-      } else {
-        const digits = data.phoneSecondary.replace(/\D/g, '');
-        if (digits.length < 10) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Phone number must be at least 10 digits.',
-            path: ['phoneSecondary'],
-          });
-        } else if (digits.length > 10) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Phone number cannot exceed 10 digits.',
-            path: ['phoneSecondary'],
-          });
-        }
+      } else if (
+        data.countryCodeSecondary?.trim() &&
+        !isPhoneValidForCountry(data.phoneSecondary, data.countryCodeSecondary)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Enter a valid phone number for the selected country.',
+          path: ['phoneSecondary'],
+        });
       }
 
       if (!data.countryCodeSecondary?.trim()) {
