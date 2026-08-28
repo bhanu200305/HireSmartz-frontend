@@ -58,12 +58,37 @@ const OverviewSlide: React.FC<OverviewSlideProps> = ({
       </div>
 
       <div
-        className={clsx('mt-6', fillHeight && 'flex min-h-0 flex-1 items-center justify-center')}
+        className={clsx(
+          'mt-6',
+          fillHeight &&
+            'flex min-h-0 flex-1 items-center justify-center overflow-y-auto [container-type:size]'
+        )}
       >
         {/* Widened from an earlier, tighter cap that left dead margins on
             both sides — this still keeps the 2-column stat-card grid from
             stretching edge-to-edge (which is what made the cards short and
-            wide originally), just with less empty space either side of it. */}
+            wide originally), just with less empty space either side of it.
+
+            `[container-type:size]`: turns THIS box into a CSS size query
+            container, so `StatCardRow`'s `tall` cards (padding, min-height,
+            icon size, value text) can be sized in `cqh` — a percentage of
+            THIS box's actual rendered height — instead of fixed pixels. That
+            is what makes them genuinely shrink/grow with whatever room the
+            carousel stage actually has (a shorter laptop screen, a smaller
+            browser window) rather than sitting at one fixed size and either
+            leaving dead space or not fitting.
+
+            Fixed pixel cards used to have exactly one failure mode when they
+            didn't fit: something has to give, and centering (`items-center`)
+            let that overflow bleed both up (over the header — the original
+            "overlapping" bug) and down. Fluid sizing removes the OVERFLOW
+            itself in all but the most extreme cases, which is what makes
+            `items-center` safe to use again here — the perfectly centered
+            look this component's own comment used to describe. `overflow-
+            y-auto` stays as a last-resort safety net: the cards still have a
+            floor (see `StatCardRow`), because shrinking indefinitely trades
+            one bug (overlap) for another (illegible text) — past that floor,
+            it scrolls instead of overlapping, same as before. */}
         <div className="w-full max-w-2xl">{children}</div>
       </div>
 

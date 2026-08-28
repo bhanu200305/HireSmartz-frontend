@@ -529,7 +529,21 @@ const Header = () => {
         className="sticky top-0 z-30 bg-white px-7 py-3.5 flex justify-end items-center w-full border-b"
         style={{ borderColor: 'var(--border)' }}
       >
-        <div className="flex items-center justify-end gap-4">
+        {/* `overflow-x-auto`: this row's widths (`w-[180px] sm:w-[250px]
+            lg:w-[350px]` on Search, `w-40 sm:w-50` on Categories) react to
+            the raw VIEWPORT width via Tailwind's breakpoints, not to how
+            much of it the sidebar has already claimed — a `sm:` breakpoint
+            (640px+) is satisfied on, say, a 768px-wide iPad in portrait,
+            but the sidebar's fixed 240px still leaves only ~530px of real
+            content width there, less than these controls actually need.
+            Rather than re-deriving every width against the sidebar (fragile
+            the next time either changes), this guarantees every control —
+            notably the profile/logout menu, otherwise the one item that can
+            get pushed off the end — stays reachable by scrolling this row
+            horizontally, instead of silently overflowing or (with the
+            site-wide overflow guard in index.css) getting clipped away
+            entirely. Nothing about what's IN the row changes. */}
+        <div className="flex items-center justify-end gap-4 overflow-x-auto">
           <Dropdown
             open={showGlobal}
             placement="bottomLeft"

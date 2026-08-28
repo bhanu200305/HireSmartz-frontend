@@ -41,6 +41,25 @@
   inset-inline-start: 11px !important;
 }
 
+/* Whole-site horizontal-overflow guard. Without this, ANY single element
+   anywhere in the app that's wider than the viewport (a fixed-width table,
+   an oversized modal, a stray min-w) pushes the page itself into a
+   horizontal scrollbar — every layout on the page shifts, not just the
+   offending element. This confines that failure to the element itself
+   (which gets its own scrollbar/clipping in context) instead of taking the
+   whole page down with it. Purely a safety net: it changes nothing for any
+   element that already fits, which is everything today at normal sizes —
+   this only matters the moment something doesn't. `#root` too, not just
+   html/body, because React mounts into a div that establishes its own box;
+   guarding only the ancestors would still let #root itself stretch wide and
+   drag body's scrollable area with it via min-content sizing in some
+   browsers. */
+html,
+body,
+#root {
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #ffffff;

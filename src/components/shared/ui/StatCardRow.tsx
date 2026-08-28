@@ -126,7 +126,12 @@ const StatCard = ({
       {icon && (
         <div
           className={clsx(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base',
+            'flex shrink-0 items-center justify-center rounded-lg text-base',
+            // `size-[clamp(...)]` (cqh, see StatCardRow's tall-card comment
+            // below) instead of a fixed `h-9 w-9` — shrinks/grows with the
+            // card instead of the card having to make room for one fixed
+            // size regardless of how much room IT was given.
+            tall ? 'size-[clamp(22px,9cqh,32px)]' : 'h-9 w-9',
             styles.badge
           )}
           aria-hidden
@@ -141,7 +146,10 @@ const StatCard = ({
             'font-display font-bold tracking-tight mt-1',
             isPlaceholder
               ? 'text-sm font-medium text-neutral-400 italic'
-              : 'text-[26px] leading-none text-neutral-900'
+              : clsx(
+                  'leading-none text-neutral-900',
+                  tall ? 'text-[clamp(14px,6cqh,20px)]' : 'text-[26px]'
+                )
           )}
         >
           {displayValue}
@@ -180,7 +188,20 @@ const StatCard = ({
         'transition-all duration-200 ease-out hover:-translate-y-0.5',
         tall
           ? clsx(
-              'rounded-2xl border-2 border-neutral-300 p-5 min-h-[140px] justify-center',
+              // Fluid, not fixed: `cqh` is a percentage of the QUERY
+              // CONTAINER's height — the stat grid's own wrapper in
+              // `OverviewSlide`, which marked itself `[container-type:size]`
+              // for exactly this. `min-h`'s preferred value is "half this
+              // row's share of the container, minus half the row gap" —
+              // i.e. exactly enough for 2 rows to fill whatever height the
+              // carousel stage actually has, so it doesn't matter which
+              // desktop or laptop this opens on: the cards themselves
+              // compact or spread to fit, continuously, with no dead space
+              // and (down to the 60px floor) no overflow either. Capped at
+              // 100px — the size these were before this became fluid — so a
+              // roomy screen looks exactly as it always did; only a
+              // genuinely tight one shrinks below that.
+              'rounded-2xl border-2 border-neutral-300 p-[clamp(0.5rem,8cqh,1rem)] min-h-[clamp(60px,calc(50cqh_-_6px),100px)] justify-center',
               styles.hoverBorder,
               styles.hoverGlow
             )
@@ -215,12 +236,7 @@ const StatCard = ({
 export const StatCardRow = ({ cards, className, columns, tall }: StatCardRowProps) => {
   return (
     <div
-      className={clsx(
-        'grid grid-cols-1',
-        tall ? 'gap-5' : 'gap-3',
-        columns && COLUMN_CLASSES[columns],
-        className
-      )}
+      className={clsx('grid grid-cols-1 gap-3', columns && COLUMN_CLASSES[columns], className)}
       style={columns ? undefined : { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}
     >
       {cards.map((card, index) => (
