@@ -173,11 +173,13 @@ const ViewOrgUser = () => {
                   key={office.office_id}
                   className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 pl-3 pr-1.5 py-1 text-sm text-gray-700"
                 >
-                  {office.city}
+                  {/* City alone isn't unique — two offices in the same city
+                      with no location_code read identically otherwise. */}
+                  {office.city} — {office.address_line_1}
                   {user.is_active && (
                     <button
                       type="button"
-                      aria-label={`Detach ${office.city}`}
+                      aria-label={`Detach ${office.city} — ${office.address_line_1}`}
                       disabled={isDetaching}
                       onClick={() => handleDetachLocation(office.office_id)}
                       className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50"
@@ -202,7 +204,7 @@ const ViewOrgUser = () => {
                 onChange={(value) => setPendingLocationId(value ?? undefined)}
                 disabled={attachableOffices.length === 0}
                 options={attachableOffices.map((office) => ({
-                  label: office.city,
+                  label: `${office.city} — ${office.address_line_1}`,
                   value: office.office_id,
                 }))}
               />

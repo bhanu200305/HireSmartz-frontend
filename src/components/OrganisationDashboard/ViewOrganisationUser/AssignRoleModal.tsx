@@ -103,7 +103,9 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
             value={locationId ?? undefined}
             onChange={(value) => setLocationId(value ?? null)}
             options={(offices ?? []).map((office) => ({
-              label: office.city,
+              // City alone isn't unique — two offices in the same city read
+              // identically otherwise.
+              label: `${office.city} — ${office.address_line_1}`,
               value: office.office_id,
             }))}
           />

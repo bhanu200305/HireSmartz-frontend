@@ -26,6 +26,7 @@ import {
   useCreatePlatformTenantUserMutation,
   useDeactivatePlatformTenantUserMutation,
   useReactivatePlatformTenantUserMutation,
+  useAttachPlatformTenantUserLocationMutation,
 } from '../../../../api/organization-service/Platform/users';
 import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organization-service/Platform/departments';
 import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-service/Platform/offices';
@@ -114,6 +115,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   // chained onto the same "Create user" click instead of a separate visit
   // to this person's profile afterward.
   const [assignRole] = useAssignRoleAsPlatformMutation();
+  const [attachLocation] = useAttachPlatformTenantUserLocationMutation();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
@@ -192,6 +194,22 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               role_id: form.role_id,
               location_id: locationId,
             }).unwrap();
+            // The grant alone doesn't attach this new hire to the office —
+            // organization_role and user_location_mapping are separate
+            // tables (see ViewPlatformUserModal's handleAssign for the full
+            // reasoning). Without this their OWN location switcher stays
+            // empty for a spot they just gained a role at. Best-effort and
+            // silent — a brand-new user can't already be attached anywhere.
+            try {
+              await attachLocation({
+                tenantId,
+                userId: user.user_id,
+                orgAddressLocationId: locationId,
+              }).unwrap();
+            } catch {
+              // Not worth failing "Create user" over — they can still be
+              // attached manually from their profile afterward.
+            }
           } catch (err) {
             const label = offices?.find((o) => o.office_id === locationId)?.city ?? locationId;
             failedLocations.push(

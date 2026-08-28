@@ -106,7 +106,7 @@ const RoleLocationPicker: React.FC<RoleLocationPickerProps> = ({
     () =>
       offices.map((office) => ({
         id: office.office_id,
-        name: office.state ? `${office.city}, ${office.state}` : office.city,
+        name: officeLabel(office.office_id),
       })),
     [offices]
   );

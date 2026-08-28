@@ -6,7 +6,10 @@ import { Select } from 'antd';
 import MainLayout from '../../../layouts/MainLayout';
 import { Button, Input, PhoneNumberField, Typography, showToast } from '../../shared';
 import { RootState } from '../../../redux/provider/store';
-import { useCreateUserMutation } from '../../../api/organization-service/Users/users';
+import {
+  useCreateUserMutation,
+  useAttachUserLocationMutation,
+} from '../../../api/organization-service/Users/users';
 import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
 import { useListTenantOfficesQuery } from '../../../api/organization-service/Tenants/offices';
 import { useAssignRoleMutation } from '../../../api/organization-service/Roles/assignments';
@@ -63,6 +66,7 @@ const AddOrganisationUser = () => {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
   const [assignRole, { isLoading: isAssigning }] = useAssignRoleMutation();
+  const [attachLocation] = useAttachUserLocationMutation();
   const isLoading = isCreating || isAssigning;
   const { data: departments } = useListTenantDepartmentsQuery(tenantId ?? '', { skip: !tenantId });
   const { data: offices } = useListTenantOfficesQuery(
@@ -119,6 +123,21 @@ const AddOrganisationUser = () => {
               role_id: form.role_id,
               location_id: locationId,
             }).unwrap();
+            // The grant alone doesn't attach this new hire to the office —
+            // organization_role and user_location_mapping are separate
+            // tables (see ViewPlatformUserModal's handleAssign for the full
+            // reasoning). Without this their OWN location switcher stays
+            // empty for a spot they just gained a role at. Best-effort and
+            // silent — a brand-new user can't already be attached anywhere.
+            try {
+              await attachLocation({
+                userId: user.user_id,
+                orgAddressLocationId: locationId,
+              }).unwrap();
+            } catch {
+              // Not worth failing "Create user" over — can be attached
+              // manually from their profile afterward.
+            }
           } catch (err) {
             const label = offices?.find((o) => o.office_id === locationId)?.city ?? locationId;
             failedLocations.push(
