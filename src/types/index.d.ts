@@ -199,28 +199,28 @@ type UpdateOrgUserRequest = {
 
 export type JobDetailsState = {
   jobProfileCode: string;
-  jobTitle: number[];
-  department: number[];
-  jobType: number[];
+  jobTitle: Array<string | number>;
+  department: Array<string | number>;
+  jobType: Array<string | number>;
   shiftStart?: string;
   shiftEnd?: string;
   openings: number | null;
-  exemptionStatus: number | null;
+  exemptionStatus: string | number | boolean | null;
   minSalary: string | null;
   maxSalary: string | null;
   referralBonus?: number | string | null;
   minExperience: number | null;
   maxExperience?: number | null;
   openDate: string;
-  hiringManagers: number[];
-  recruiters?: number[];
+  hiringManagers: Array<string | number>;
+  recruiters?: Array<string | number>;
   country: string;
   state: string;
-  officeLocation: number[];
+  officeLocation: Array<string | number>;
   responsibilities?: string;
-  educationPreference: number[];
-  mandatorySkills: number[];
-  optionalSkills?: number[];
+  educationPreference: Array<string | number>;
+  mandatorySkills: Array<string | number>;
+  optionalSkills?: Array<string | number>;
   otherRequirements?: string;
   isMultilingual?: boolean;
   useCultureIntro?: boolean;
@@ -234,11 +234,11 @@ export type ATS = {
 };
 
 export type JobDescriptionState = {
-  educationPreference: number[];
+  educationPreference: Array<string | number>;
   // // experience: number
   // communicationSkills: string;
-  mandatorySkills: number[];
-  optionalSkills?: number[];
+  mandatorySkills: Array<string | number>;
+  optionalSkills?: Array<string | number>;
   responsibilities?: string;
   otherRequirements?: string;
   candidateCommunicationLanguage?: string;
@@ -283,7 +283,7 @@ export type SaveJobOpeningRequest = {
   recruiters?: number[];
   mandatorySkills?: number[];
   optionalSkills?: number[];
-  exemptionStatus?: number;
+  exemptionStatus?: string | number | boolean | null;
   referralBonus?: number | string | null;
   educationPreference?: number[];
   communicationSkills?: string;
@@ -352,7 +352,8 @@ export type JobFilterResponse = {
 
 export type Jobs = {
   key: string;
-  jobOpeningId: number;
+  /** UUID from job-service (`org_job_opening_id`). */
+  jobOpeningId: string;
   jobProfileCode: string;
   shift: string;
   openings: number;
@@ -379,16 +380,26 @@ export type Jobs = {
   optionalSkills: string | null;
   isDraft: boolean;
   isClosed: boolean;
+  isPublished?: boolean;
+  isRemote?: boolean | null;
   selectedCount: number;
+  rejectedCount?: number;
   bookingCreatedCount: number;
   inProgressCount: number;
   invitationSentCount: number;
+  candidateCount?: number;
   newCandidateCount?: number;
   interviewedCandidateCount?: number;
   location?: {
-    id: number;
+    id: string | number;
     name: string;
   };
+  /** Raw ids from JobSummaryResponse — used to resolve display names. */
+  jobTitleId?: string | null;
+  departmentId?: string | null;
+  jobTypeId?: string | null;
+  hiringManagerIds?: string[];
+  recruiterIds?: string[];
 };
 
 export type OrgUser = {
@@ -410,7 +421,7 @@ export type JobOpeningByIdResponse = {
   success: boolean;
   message: string;
   data: {
-    id: number;
+    id: string | number;
     atsJobOpeningId: string;
     jobProfileCode: string;
     shift: string;
@@ -549,10 +560,10 @@ export type JobOpeningByIdResponse = {
 };
 
 export type InterviewRound = {
-  id: number;
-  jobId: number;
+  id: string | number;
+  jobId: string | number;
   round: {
-    id: number;
+    id: string | number;
     name: string;
     status: boolean;
   };
@@ -560,23 +571,30 @@ export type InterviewRound = {
   sequence: number;
   description: string;
   uniqueRoundIdentifier: string;
+  duration?: number | null;
+  variant?: string | null;
+  roundId?: string;
+  roundName?: string | null;
 };
 
 export type SaveInterviewRoundRequest = {
-  // id: number
-  jobId: number;
-  round: number;
+  jobId: string | number;
+  round: string | number;
   roundType: string;
   sequence: number;
   description: string;
+  duration?: number | null;
+  variant?: string | null;
 };
 export type EditInterviewRoundRequest = {
-  id: number;
-  jobId: number;
-  round: number;
+  id: string | number;
+  jobId: string | number;
+  round: string | number;
   roundType: string;
   sequence: number;
   description: string;
+  duration?: number | null;
+  variant?: string | null;
 };
 
 export type UpdateJobOpeningRequest = {
@@ -592,7 +610,7 @@ export type UpdateJobOpeningRequest = {
   shiftStart?: string;
   shiftEnd?: string;
   openings?: number | null;
-  exemptionStatus?: number | null;
+  exemptionStatus?: string | number | boolean | null;
   minSalary: string | null;
   maxSalary: string | null;
   referralBonus?: number | string | null;
@@ -618,9 +636,9 @@ export type UpdateJobOpeningRequest = {
 };
 
 export type AiJobDescriptionState = {
-  id: number;
+  id: string;
   jobDescription?: string;
-  jobOpeningId: number;
+  jobOpeningId: string;
 };
 
 export type SaveAiQuestionRequest = {
@@ -687,7 +705,7 @@ export type ExtractMultipleResumesResponse = {
 export type ExtractResumeRequest = FormData;
 
 export type GetAllCandidatesRequest = {
-  jobOpeningId: number;
+  jobOpeningId: string | number;
   page?: number;
   size?: number;
   text?: string;
@@ -1120,7 +1138,7 @@ export type InterviewScheduleResponse = {
 export type BulkScheduleInterviewResult = {
   candidateId: number;
   candidateName: string;
-  jobId: number;
+  jobId: string | number;
   roundId: number;
   success: boolean;
   message: string;
@@ -1501,7 +1519,7 @@ export type GetAiInterviewQuestionsByRoundResponse = {
 };
 
 export type CandidateStatusUpdateItem = {
-  jobOpeningId: number;
+  jobOpeningId: string | number;
   candidateId: number;
   roundId: number | null;
   status: string;
@@ -1542,7 +1560,7 @@ export type CandidateStatusProps = {
   onAdvanceInviteRequested?: (eligibleCandidateIds?: number[]) => Promise<void> | void;
   candidateDetails: Array<{
     candidateId: number;
-    jobOpeningId: number;
+    jobOpeningId: string | number;
     roundId: number | null;
     candidateName?: string;
     isResumeStatusUpdated?: boolean;

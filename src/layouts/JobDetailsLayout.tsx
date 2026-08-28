@@ -36,6 +36,8 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     ? Object.keys(jobDescription).length > 0 && jobDescription.educationPreference?.length > 0
     : true;
   const isTab3Completed = isCreateMode ? isFormCompleted === true : true;
+  const isScoringUnlocked =
+    !isCreateMode || isTab3Completed || (isTab1Completed && isTab2Completed);
 
   const isActiveTab = (path: string) => location.pathname.includes(path);
 
@@ -136,7 +138,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     // handleContinueToScoring's "Next", same as isTab3Completed originally
     // meant "past the AI Job Description step").
     const isCurrentTabDisabled =
-      (currentTabIndex === 1 && !(isTab1Completed && isTab2Completed)) ||
+      (currentTabIndex === 1 && !isScoringUnlocked) ||
       (currentTabIndex === 2 && !isTab3Completed) ||
       (currentTabIndex === 3 && !isTab3Completed);
 
@@ -147,7 +149,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
     // Find first available tab
     const firstAvailableIndex = currentPaths.findIndex((_: string, index: number) => {
-      if (index === 1 && !(isTab1Completed && isTab2Completed)) return false;
+      if (index === 1 && !isScoringUnlocked) return false;
       if (index === 2 && !isTab3Completed) return false;
       if (index === 3 && !isTab3Completed) return false;
       return true;
@@ -159,9 +161,8 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       navigate(safePath, { replace: true });
     }
   }, [
-    isTab1Completed,
-    isTab2Completed,
     isTab3Completed,
+    isScoringUnlocked,
     isCreateMode,
     isCandidatePage,
     location.pathname,
@@ -171,11 +172,12 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   ]);
 
   return (
-    <div className="flex flex-col items-center bg-white px-4 mt-4 relative pt-16">
-      <div className="mb-4 self-start px-4 absolute">
+    <div className="flex flex-col items-center px-4 mt-4 w-full">
+      <div className="w-full max-w-6xl mb-3">
         <button
+          type="button"
           onClick={handleBackNavigation}
-          className="flex items-center text-gray-600 hover:text-gray-800 mb-4 cursor-pointer"
+          className="flex items-center text-gray-600 hover:text-gray-800 cursor-pointer"
         >
           <MdOutlineArrowBack className="mr-2" />
           <span>Back</span>
@@ -191,9 +193,9 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
                 // Determine if tab is disabled based on previous tabs completion
                 let isDisabled = false;
                 if (isCreateMode) {
-                  if (index === 1 && !(isTab1Completed && isTab2Completed)) isDisabled = true; // Scoring Criteria needs the merged step saved
-                  if (index === 2 && !isTab3Completed) isDisabled = true; // Interview Setup needs "Next" from the merged step
-                  if (index === 3 && !isTab3Completed) isDisabled = true; // Questions needs "Next" from the merged step
+                  if (index === 1 && !isScoringUnlocked) isDisabled = true;
+                  if (index === 2 && !isTab3Completed) isDisabled = true;
+                  if (index === 3 && !isTab3Completed) isDisabled = true;
                 }
 
                 const isMergedJobDetailsTab = index === 0;

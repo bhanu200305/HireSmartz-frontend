@@ -180,7 +180,7 @@ const CandidateNotesPanel = ({
       onUpdate: async (noteId: string, noteText: string) => {
         try {
           await updateNote({
-            noteId: Number(noteId),
+            noteId: String(noteId),
             noteText,
             ...invBase,
             ...(hasRound ? { invalidateRoundBookingId: bookingId } : {}),
@@ -193,7 +193,7 @@ const CandidateNotesPanel = ({
       onDelete: async (noteId: string) => {
         try {
           await deleteNote({
-            noteId: Number(noteId),
+            noteId: String(noteId),
             ...invBase,
             ...(hasRound ? { invalidateRoundBookingId: bookingId } : {}),
           }).unwrap();

@@ -1,7 +1,7 @@
 import { Select, Tabs } from 'antd';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MdOutlineFilterAlt } from 'react-icons/md';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { HiOutlineDocumentText } from 'react-icons/hi';
 import { IoIosArrowForward } from 'react-icons/io';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -261,9 +261,9 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
               onReset={handleReset}
             />
 
-            <div className="border border-[var(--border)] p-1 rounded-3xl bg-white">
+            <div className="cfp-dropdown-trigger">
+              <FilterSelectIcon />
               <Select
-                prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-brand-600" />}
                 allowClear
                 options={[
                   { value: 'JOB', label: 'Job Opening' },
@@ -274,6 +274,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
                 onChange={handleChange}
                 className="w-full custom-select"
                 popupClassName="rounded-3xl"
+                variant="borderless"
                 style={{ width: 150, fontSize: 14 }}
               />
             </div>

@@ -68,6 +68,26 @@ h6 {
 }
 .ant-form-item-label > label {
   font-family: var(--font-sans) !important;
+  height: auto !important;
+  min-height: 32px;
+}
+
+/* Keep inputs in a multi-column form row aligned when labels wrap. */
+.form-grid-equal-labels {
+  align-items: start;
+}
+.form-grid-equal-labels > .ant-form-item .ant-form-item-label,
+.form-grid-equal-labels > .ant-form-item .ant-form-item-label > label {
+  min-height: 2.75rem;
+}
+.form-grid-equal-labels > .ant-form-item .ant-form-item-label > label {
+  display: flex !important;
+  align-items: flex-end;
+  white-space: normal;
+  line-height: 1.25;
+}
+.form-grid-equal-labels > .ant-form-item .ant-form-item-control {
+  flex-grow: 0 !important;
 }
 
 .required-asterisk {
@@ -152,6 +172,139 @@ canvas[data-agora-recording='true'] {
   padding-right: 25px !important;
 }
 
+/* ============================================================
+   Dropdown triggers — white pill with gray border, matching the
+   compact filter control (icon + label + chevron) used app-wide.
+   ============================================================ */
+
+.cfp-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #ffffff;
+  border: 1px solid var(--gray-200);
+  border-radius: 9999px;
+  padding: 2px 10px 2px 10px;
+  min-height: 36px;
+  max-height: 40px;
+}
+
+.cfp-dropdown-trigger:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+}
+
+.cfp-dropdown-filter-icon {
+  font-size: 18px;
+  color: var(--gray-800);
+  flex-shrink: 0;
+}
+
+.cfp-dropdown-trigger .ant-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.cfp-dropdown-trigger .ant-select-prefix,
+.cfp-dropdown-trigger .ant-select-arrow,
+.cfp-dropdown-trigger .ant-select-selection-item,
+.cfp-dropdown-trigger .ant-select-selection-placeholder {
+  color: var(--gray-800) !important;
+}
+
+.cfp-dropdown-trigger .custom-select .ant-select-selector,
+.cfp-dropdown-trigger .custom-select-jobs .ant-select-selector,
+.cfp-dropdown-trigger .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 0 22px 0 2px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.cfp-dropdown-trigger .ant-select-focused .ant-select-selector,
+.cfp-dropdown-trigger .custom-select.ant-select-focused .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.custom-select .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 24px 0 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  background-color: transparent !important;
+}
+
+.custom-select .ant-select-selection-placeholder,
+.custom-select .ant-select-selection-item {
+  color: var(--gray-800) !important;
+}
+
+.custom-select .ant-select-arrow {
+  color: var(--gray-800) !important;
+}
+
+.custom-select.ant-select-focused .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Form / unwrapped Ant Design Select & TreeSelect */
+.ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(
+    .ant-select-borderless
+  ):not(.send-email-cc-bcc-select)
+  .ant-select-selector {
+  border-radius: 9999px !important;
+  background-color: #ffffff !important;
+  min-height: 36px !important;
+  padding-inline: 14px 28px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(
+    .ant-select-borderless
+  )
+  .ant-select-arrow {
+  color: var(--gray-800);
+}
+
+.ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(
+    .ant-select-borderless
+  )
+  .ant-select-selection-item,
+.ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(
+    .ant-select-borderless
+  )
+  .ant-select-selection-placeholder {
+  color: var(--gray-800);
+}
+
+.phone-input-wrapper .ant-select .ant-select-selector {
+  border-radius: 0 !important;
+  min-height: auto !important;
+  height: auto !important;
+  padding-inline: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.border-wrapper {
+  border-radius: 9999px !important;
+}
+
+.border-wrapper .ant-select .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
 input:focus,
 textarea:focus,
 select:focus {
@@ -186,7 +339,9 @@ select:focus {
 .border-wrapper .ant-select-selector:focus,
 .border-wrapper .ant-select-selection-search-input:focus,
 .border-wrapper .ant-input:focus,
-.border-wrapper .ant-input-focused {
+.border-wrapper .ant-input-focused,
+.cfp-dropdown-trigger .ant-select-focused .ant-select-selector,
+.cfp-dropdown-trigger .ant-select-selector:focus {
   border-color: transparent !important;
   box-shadow: none !important;
 }

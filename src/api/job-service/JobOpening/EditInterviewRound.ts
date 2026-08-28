@@ -1,36 +1,53 @@
-import { EditInterviewRoundRequest, ReorderInterviewRoundsRequest } from '../../../types';
-import { api } from '../../index';
+import { jobApi } from '../jobApi';
+import type { InterviewRoundRequest, InterviewSequenceResponse } from '../types';
 
-export type EditInterviewRoundResponse = {
-  status: string;
-  message: string;
+type SequenceMutationRequest = {
+  jobOpeningId: string;
+  rounds: InterviewRoundRequest[];
 };
 
-export type ReorderInterviewRoundsResponse = {
+type SequenceMutationResponse = {
   status: string;
   message: string;
+  data?: InterviewSequenceResponse;
 };
 
-const extendedApi = api.injectEndpoints({
+const extendedApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
-    editInterviewRound: build.mutation<EditInterviewRoundResponse, EditInterviewRoundRequest[]>({
-      query: (body) => ({
-        url: '/interview-rounds/update',
+    editInterviewRound: build.mutation<SequenceMutationResponse, SequenceMutationRequest>({
+      query: ({ jobOpeningId, rounds }) => ({
+        url: `/job-openings/${jobOpeningId}/interview-sequence`,
         method: 'PUT',
-        body,
+        body: { rounds },
       }),
+      transformResponse: (response: InterviewSequenceResponse): SequenceMutationResponse => ({
+        status: 'OK',
+        message: 'Interview round updated successfully',
+        data: response,
+      }),
+      invalidatesTags: (_r, _e, { jobOpeningId }) => [
+        { type: 'InterviewSequence', id: jobOpeningId },
+        { type: 'JobOpeningById', id: jobOpeningId },
+      ],
     }),
-    reorderInterviewRounds: build.mutation<
-      ReorderInterviewRoundsResponse,
-      ReorderInterviewRoundsRequest
-    >({
-      query: (body) => ({
-        url: '/interview-rounds/update',
+
+    reorderInterviewRounds: build.mutation<SequenceMutationResponse, SequenceMutationRequest>({
+      query: ({ jobOpeningId, rounds }) => ({
+        url: `/job-openings/${jobOpeningId}/interview-sequence`,
         method: 'PUT',
-        body,
+        body: { rounds },
       }),
+      transformResponse: (response: InterviewSequenceResponse): SequenceMutationResponse => ({
+        status: 'OK',
+        message: 'Interview rounds reordered successfully',
+        data: response,
+      }),
+      invalidatesTags: (_r, _e, { jobOpeningId }) => [
+        { type: 'InterviewSequence', id: jobOpeningId },
+      ],
     }),
   }),
+  overrideExisting: true,
 });
 
 export const { useEditInterviewRoundMutation, useReorderInterviewRoundsMutation } = extendedApi;

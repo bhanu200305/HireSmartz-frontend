@@ -5,7 +5,7 @@ import { HiDotsVertical, HiOutlineTrash } from 'react-icons/hi';
 import { MdEdit } from 'react-icons/md';
 
 interface QuestionRowItemProps {
-  question: { id: number; question: string };
+  question: { id: string | number; question: string };
   index: number;
   onDrop: (fromIndex: number, toIndex: number) => void;
   checked: boolean;

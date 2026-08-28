@@ -43,6 +43,7 @@ import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
 import { useSelector, shallowEqual } from 'react-redux';
 import { useScheduleInterviewMutation } from '../../../api/candidate-service/Candidates/Candidates';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
+import { asJobId } from '../../../api/job-service/jobId';
 import { get } from 'lodash-es';
 
 import { MdOutlineKeyboardArrowLeft, MdOutlineKeyboardArrowRight } from 'react-icons/md';
@@ -161,8 +162,8 @@ const ViewCandidateDetails = () => {
   const [, setCandidateStatus] = useState<string>('');
   const [scheduleInterview, { isLoading: isScheduleLoading }] = useScheduleInterviewMutation();
   const { data: jobOpeningData } = useGetJobOpeningByIdQuery(
-    { jobOpeningId: Number(jobIdFromParams) || 0 },
-    { skip: !jobIdFromParams }
+    { jobOpeningId: asJobId(jobIdFromParams) },
+    { skip: !asJobId(jobIdFromParams) }
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const page = searchParams.get('page');
@@ -1358,13 +1359,14 @@ const ViewCandidateDetails = () => {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 {Array.isArray(candidate?.assignedJobs) && candidate.assignedJobs.length > 0 && (
-                  <div className="border border-[var(--border)] py-1 pr-1 pl-3 rounded-3xl w-40 sm:w-50 gap-1 flex items-center">
+                  <div className="cfp-dropdown-trigger w-40 sm:w-50">
                     <Select
                       value={Number(jobIdFromParams)}
                       onChange={(value) => {
                         handleAssignedJobChange(value);
                       }}
                       className="w-full custom-select my-select-with-divider"
+                      variant="borderless"
                       options={candidate.assignedJobs.map((job) => ({
                         label: `${job.jobTitle}${Number(job.jobOpeningId) === Number(jobIdFromParams) ? ' ' : ''}`,
                         value: job.jobOpeningId,

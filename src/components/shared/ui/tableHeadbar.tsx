@@ -1,6 +1,6 @@
 import { Select } from 'antd';
-import { MdOutlineFilterAlt } from 'react-icons/md';
 import { Status } from '../../../shared/utils/enums';
+import { FilterSelectIcon } from './FilterSelectIcon';
 
 export interface StatusFilters {
   status?: boolean | undefined;
@@ -73,14 +73,15 @@ const TableHeadBar: React.FC<TableHeadBarProps> = ({
       <div className="flex flex-wrap justify-between items-center gap-2">
         {title === 'Job Openings' && (
           <>
-            <div className="border border-[var(--border)] p-1 rounded-lg w-full flex items-center gap-1 bg-white">
+            <div className="cfp-dropdown-trigger w-full">
+              <FilterSelectIcon />
               <Select
                 style={{ width: '120px', fontSize: '14px' }}
-                prefix={<MdOutlineFilterAlt className="ml-2 text-lg text-primary self-center" />}
                 placeholder="Status"
                 allowClear
                 className="w-full custom-select"
                 popupClassName="rounded-xl"
+                variant="borderless"
                 onChange={handleStatusChange}
                 value={getSelectValue()}
               >

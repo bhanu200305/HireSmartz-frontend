@@ -1,29 +1,36 @@
-import api from '../..';
-import { UpdateJobOpeningRequest } from '../../../types';
+import { jobApi } from '../jobApi';
+import type { JobDetailsResponse, SaveJobDetailsRequest } from '../types';
 
-type UpdateJobOpeningResponse = {
-  success: boolean;
-  message?: string;
-  data: {
-    aiJobDescriptionId: number;
-    jobOpeningId: number;
-  };
+/**
+ * Legacy filename kept for import stability. Updates go through
+ * PUT /job-openings/{id}/details on the real job-service.
+ */
+type UpdateJobOpeningArgs = {
+  jobOpeningId: string;
+  body: SaveJobDetailsRequest;
 };
 
-const extendedApi = api.injectEndpoints({
+const extendedApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
-    updateJobOpening: build.mutation<
-      UpdateJobOpeningResponse,
-      { body: UpdateJobOpeningRequest; jobOpeningId: number }
-    >({
-      query: ({ body, jobOpeningId }) => ({
-        url: `/job-opening/update?jobOpeningId=${jobOpeningId}`,
-        method: 'POST',
+    // Alias also exported from AddJobOpening — overrideExisting lets either
+    // import path work without colliding at inject time.
+    updateJobOpeningDetails: build.mutation<JobDetailsResponse, UpdateJobOpeningArgs>({
+      query: ({ jobOpeningId, body }) => ({
+        url: `/job-openings/${jobOpeningId}/details`,
+        method: 'PUT',
         body,
       }),
-      invalidatesTags: ['JobOpenings', 'JobOpeningById'],
+      invalidatesTags: (_r, _e, { jobOpeningId }) => [
+        { type: 'JobOpenings', id: 'LIST' },
+        { type: 'JobOpeningById', id: jobOpeningId },
+        { type: 'JobDetails', id: jobOpeningId },
+      ],
     }),
   }),
+  overrideExisting: true,
 });
 
-export const { useUpdateJobOpeningMutation } = extendedApi;
+// Re-export the primary update hook from AddJobOpening so existing
+// `from '.../UpdateJobOpening'` imports keep working.
+export { useUpdateJobOpeningMutation } from './AddJobOpening';
+export const { useUpdateJobOpeningDetailsMutation } = extendedApi;

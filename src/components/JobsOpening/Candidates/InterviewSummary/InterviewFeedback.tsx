@@ -5,6 +5,7 @@ import { FaPlus, FaMinus } from 'react-icons/fa';
 import { LuUserRound } from 'react-icons/lu';
 import { useParams } from 'react-router-dom';
 import { useGetJobOpeningByIdQuery } from '../../../../api/job-service/JobOpening/GetJobOpeningById';
+import { asJobId } from '../../../../api/job-service/jobId';
 import {
   useEditAiQuestionForScoringMutation,
   useSaveScoreMutation,
@@ -36,8 +37,8 @@ const InterviewFeedback: React.FC<InterviewFeedbackProps> = ({
 }) => {
   const { roundType } = interviewRecord;
   const { id, candidateId } = useParams<{ id: string; candidateId: string }>();
-  const jobId = Number(id);
-  const { data: jobData } = useGetJobOpeningByIdQuery({ jobOpeningId: jobId });
+  const jobId = asJobId(id);
+  const { data: jobData } = useGetJobOpeningByIdQuery({ jobOpeningId: jobId }, { skip: !jobId });
 
   const { data: interviewerData, isFetching: isInterviewerDataFetching } =
     useGetAiQuestionsByUserIdQuery(

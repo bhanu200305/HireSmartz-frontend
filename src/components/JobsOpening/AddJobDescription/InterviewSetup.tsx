@@ -8,71 +8,64 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import { useDeleteInterviewRoundMutation } from '../../../api/job-service/JobOpening/DeleteInterviewRounds';
-import { get } from 'lodash-es';
 import { Loader } from '../../shared/ui/loader';
 
 import { useReorderInterviewRoundsMutation } from '../../../api/job-service/JobOpening/EditInterviewRound';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { SortableInterviewRounds } from '../EditJobOpening/sortableInterviewRounds';
+import { asJobId } from '../../../api/job-service/jobId';
+import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
+import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 
 const InterviewSetup = () => {
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedRoundId, setSelectedRoundId] = useState<number | null>(null);
-  const jobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
+  const [selectedRoundId, setSelectedRoundId] = useState<string | number | null>(null);
+  const rawJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
+  const jobOpeningId = asJobId(rawJobOpeningId);
   const location = useLocation();
   const [deleteInterviewRound, { isLoading: isDeleting }] = useDeleteInterviewRoundMutation();
-  const { data, isLoading, refetch } = useGetInterviewRoundsByJobIdQuery(jobOpeningId);
+  const { data, isLoading, refetch } = useGetInterviewRoundsByJobIdQuery(jobOpeningId, {
+    skip: !jobOpeningId,
+  });
   const [reorderInterviewRounds, { isLoading: isReordering }] = useReorderInterviewRoundsMutation();
   useEffect(() => {
     if (location.state?.refresh && jobOpeningId) {
       refetch();
     }
-  }, [location, jobOpeningId]);
+  }, [location, jobOpeningId, refetch]);
   const handleEdit = (round: any) => {
     navigate(`edit-interview-round/${round.id}`, {
       state: {
         roundId: round.id,
-        round: round.round?.id,
-        roundName: round.round?.name,
+        round: round.roundId || round.round?.id,
+        roundName: round.roundName || round.round?.name,
         roundType: round.roundType,
         sequence: round.sequence,
         description: round.description,
+        duration: round.duration,
+        variant: round.variant,
       },
     });
   };
 
-  const handleRoundsReorder = async (reorderedRounds: any) => {
+  const handleRoundsReorder = async (reorderedRounds: any[]) => {
+    if (!jobOpeningId) return;
     try {
-      const payload = reorderedRounds.map((round: any) => ({
-        id: round.id,
-        jobId: jobOpeningId,
-        round: round.round?.id || null,
-        roundType: round.roundType || 'MANUAL',
-        sequence: round.sequence,
-        description: round.description || '',
-      }));
+      const result = await reorderInterviewRounds({
+        jobOpeningId,
+        rounds: toInterviewSequencePayload(reorderedRounds),
+      }).unwrap();
 
-      const result = await reorderInterviewRounds(payload).unwrap();
-
-      if (result?.status === 'OK') {
-        showToast({
-          message: get(result, 'message', 'Interview rounds reordered successfully!'),
-          type: 'success',
-        });
-        refetch();
-      } else {
-        showToast({
-          message: get(result, 'message', 'Failed to reorder interview rounds.'),
-          type: 'error',
-        });
-      }
-    } catch (err) {
-      console.error('Error reordering rounds:', err);
       showToast({
-        message: get(
+        message: result.message || 'Interview rounds reordered successfully!',
+        type: 'success',
+      });
+      refetch();
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(
           err,
-          'data.message',
           'Something went wrong while reordering the interview rounds.'
         ),
         type: 'error',
@@ -80,29 +73,25 @@ const InterviewSetup = () => {
     }
   };
   const confirmDelete = () => {
-    if (selectedRoundId === null || isDeleting) return;
+    if (selectedRoundId === null || isDeleting || !jobOpeningId) return;
 
-    deleteInterviewRound(selectedRoundId)
+    const remaining = (data ?? []).filter((round) => String(round.id) !== String(selectedRoundId));
+    deleteInterviewRound({
+      jobOpeningId,
+      rounds: toInterviewSequencePayload(remaining),
+    })
       .unwrap()
       .then((res) => {
-        if (res?.status === 'OK') {
-          showToast({
-            message: get(res, 'message', 'Interview round has been deleted successfully'),
-            type: 'success',
-          });
-          refetch();
-        } else {
-          showToast({
-            message: get(res, 'message', 'Failed to delete interview round.'),
-            type: 'error',
-          });
-        }
+        showToast({
+          message: res?.message || 'Interview round has been deleted successfully',
+          type: 'success',
+        });
+        refetch();
       })
       .catch((err) => {
         showToast({
-          message: get(
+          message: getJobErrorMessage(
             err,
-            'data.message',
             'Something went wrong while deleting the interview round.'
           ),
           type: 'error',

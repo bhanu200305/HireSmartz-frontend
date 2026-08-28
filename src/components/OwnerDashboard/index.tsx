@@ -65,7 +65,7 @@ const OwnerDashboard = () => {
   const hiringManagerRoleId = hiringManagerRole?.id;
 
   // Fetch recruiter or hiring manager data
-  const getDashboardData = async (roleId: number, key: string, countKey: string) => {
+  const getDashboardData = async (roleId: string | number, key: string, countKey: string) => {
     if (!roleId) return;
 
     try {

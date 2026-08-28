@@ -4,17 +4,29 @@ import TextArea from 'antd/es/input/TextArea';
 import { Input } from '../../shared';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
+import { useListJobTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
 import { useGetCompanyDetailsQuery } from '../../../api/tenant-service/Company/viewCompany';
+import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
 import {
-  useGetDepartmentsQuery,
-  useGetDepartmentJobTitlesQuery,
-} from '../../../api/tenant-service/MyCompany/departments';
+  officeDisplayName,
+  useListTenantOfficesQuery,
+} from '../../../api/organization-service/Tenants/offices';
+import {
+  idsMatch,
+  tenantJobTitleFormId,
+  useListTenantDepartmentJobTitlesQuery,
+  useListTenantJobTitleCatalogueQuery,
+} from '../../../api/organization-service/Tenants/jobTitles';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import { useParams } from 'react-router-dom';
 import { lazy, useEffect, useMemo } from 'react';
 import { Loader } from '../../shared/ui/loader';
 import dayjs from 'dayjs';
 import { JobOpeningByIdResponse } from '../../../types';
+import { asJobId } from '../../../api/job-service/jobId';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../redux/provider/store';
 
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
@@ -40,12 +52,14 @@ type ViewJobData = JobOpeningByIdResponse['data'] & {
 
 const ViewJobDetails = () => {
   const { id } = useParams();
-  const jobId = Number(id);
+  const jobId = asJobId(id);
+  const tenantId = useSessionTenantId();
+  const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
   const {
     data: jobData,
     isLoading,
     refetch,
-  } = useGetJobOpeningByIdQuery({ jobOpeningId: Number(jobId) });
+  } = useGetJobOpeningByIdQuery({ jobOpeningId: jobId }, { skip: !jobId });
   useEffect(() => {
     refetch();
   }, [refetch]);
@@ -53,12 +67,24 @@ const ViewJobDetails = () => {
   const viewData = jobData?.data as ViewJobData | undefined;
   const companyId = viewData?.location?.companyId;
 
-  const { data: departmentsResponse } = useGetDepartmentsQuery({ page: 0, size: 1000 });
+  const { data: orgDepartments = [] } = useListTenantDepartmentsQuery(tenantId ?? '', {
+    skip: !tenantId,
+  });
+  const { data: offices = [], isSuccess: officesLoaded } = useListTenantOfficesQuery(
+    { tenantId: tenantId ?? '' },
+    { skip: !tenantId }
+  );
 
   const jobDepartmentId = jobData?.data.department?.[0]?.id;
-  const { data: jobTitlesData } = useGetDepartmentJobTitlesQuery(
-    { departmentId: Number(jobDepartmentId) },
-    { skip: !jobDepartmentId }
+  const { data: jobTitleCatalogue = [] } = useListTenantJobTitleCatalogueQuery(tenantId ?? '', {
+    skip: !tenantId,
+  });
+  const { data: masterJobTypes = [] } = useListJobTypesQuery({
+    isMaster: callerKind === 'platform',
+  });
+  const { data: departmentJobTitles = [] } = useListTenantDepartmentJobTitlesQuery(
+    { tenantId: tenantId ?? '', departmentId: String(jobDepartmentId) },
+    { skip: !tenantId || !jobDepartmentId }
   );
   const { data: companyDetails } = useGetCompanyDetailsQuery(
     { companyId: Number(companyId) },
@@ -66,33 +92,56 @@ const ViewJobDetails = () => {
   );
   const locationData = viewData?.location;
   const fallbackOfficeLocation = jobData?.data?.officeLocation?.[0];
-  const isLocationDeactivated = locationData?.status === false;
+  const selectedOffice = offices.find((office) => idsMatch(office.office_id, locationData?.id));
+  const isLocationDeactivated = Boolean(locationData?.id) && officesLoaded && !selectedOffice;
 
-  const locationName = locationData?.name || '';
+  const locationName = selectedOffice
+    ? officeDisplayName(selectedOffice)
+    : locationData?.name || '';
   const locationDisplayName = isLocationDeactivated
     ? `${locationName} (Deactivated)`
     : locationName;
 
   const departmentItems =
     jobData?.data.department?.map((item) => {
-      const apiDepartment = departmentsResponse?.content?.find((d) => d.id === item.id);
-      const isDeactivated = apiDepartment ? apiDepartment.status !== 'ACTIVE' : false;
-      return { name: item.departmentName, isDeactivated };
+      const orgDepartment = orgDepartments.find((d) => idsMatch(d.org_department_id, item.id));
+      return {
+        name: orgDepartment?.name || item.departmentName,
+        isDeactivated: Boolean(item.id) && !orgDepartment,
+      };
     }) || [];
 
   const jobTitleItems =
     jobData?.data.jobTitle?.map((item) => {
-      const apiJobTitle = jobTitlesData?.find((jt) => jt.id === item.id);
-      const isDeactivated = apiJobTitle ? apiJobTitle.status !== 'ACTIVE' : false;
-      return { name: item.jobTypeName, isDeactivated };
+      const catalogueTitle = jobTitleCatalogue.find((jt) => idsMatch(jt.job_title_id, item.id));
+      const departmentTitle = departmentJobTitles.find(
+        (jt) =>
+          idsMatch(tenantJobTitleFormId(jt), item.id) || idsMatch(jt.org_job_title_id, item.id)
+      );
+      return {
+        name: catalogueTitle?.name || departmentTitle?.name || item.jobTypeName,
+        isDeactivated: false,
+      };
     }) || [];
-  const locationCode = locationData?.code || '';
-  const locationAddressLine1 = locationData?.addressLine1 || '';
-  const locationAddressLine2 = locationData?.addressLine2 || '';
-  const locationCity = locationData?.city || fallbackOfficeLocation?.city?.name || '';
-  const locationState = locationData?.state || fallbackOfficeLocation?.state?.name || '';
-  const locationCountry = locationData?.country || fallbackOfficeLocation?.country?.name || '';
-  const locationZipCode = locationData?.zipCode || locationData?.zip || '';
+  const jobTypeName =
+    jobData?.data.jobType
+      ?.map((item) => {
+        const catalogueType = masterJobTypes.find((jobType) => idsMatch(jobType.id, item.id));
+        return catalogueType?.name || item.jobTypeName;
+      })
+      .filter(Boolean)
+      .join(', ') || '';
+  const locationCode = selectedOffice?.location_code || locationData?.code || '';
+  const locationAddressLine1 = selectedOffice?.address_line_1 || locationData?.addressLine1 || '';
+  const locationAddressLine2 = selectedOffice?.address_line_2 || locationData?.addressLine2 || '';
+  const locationCity =
+    selectedOffice?.city || locationData?.city || fallbackOfficeLocation?.city?.name || '';
+  const locationState =
+    selectedOffice?.state || locationData?.state || fallbackOfficeLocation?.state?.name || '';
+  const locationCountry =
+    selectedOffice?.country || locationData?.country || fallbackOfficeLocation?.country?.name || '';
+  const locationZipCode =
+    selectedOffice?.zip_code || locationData?.zipCode || locationData?.zip || '';
   const cultureInfoText = String(companyDetails?.cultureIntroText || '').trim();
   const hasCultureInfo = Boolean(cultureInfoText);
   const selectedLocationIdForUsers = locationData?.id;
@@ -246,7 +295,7 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                value={jobData?.data.jobType?.map((item) => item.jobTypeName).join(', ') || ''}
+                value={jobTypeName}
                 disabled
               />
             </Form.Item>
@@ -395,13 +444,7 @@ const ViewJobDetails = () => {
             <span className="text-lg font-semibold">Hiring Panel</span>
           </div>
           <div className="grid grid-cols-3 gap-x-4 mt-2">
-            <Form.Item
-              label={
-                <span>
-                  Hiring Manager <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
+            <Form.Item label={<span>Hiring Manager</span>}>
               <div className="space-y-3">
                 <DropdownWithAddOption
                   className="w-full custom-select-jobs placeholder-style"
@@ -596,8 +639,8 @@ const ViewJobDetails = () => {
             </Form.Item>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-x-4 mt-2">
-          <Form.Item label={<span>Referral Bonus(in USD)</span>}>
+        <div className="form-grid-equal-labels grid grid-cols-3 gap-x-4 mt-2">
+          <Form.Item label={<span>Referral Bonus (in USD)</span>}>
             <CurrencyInput
               value={jobData?.data.referralBonus || ''}
               disableGroupSeparators
@@ -639,13 +682,7 @@ const ViewJobDetails = () => {
             <span className="text-lg font-semibold">Job Skills</span>
           </div>
           <div className="grid grid-cols-2 gap-x-4 mt-2">
-            <Form.Item
-              label={
-                <span>
-                  Required Skills <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
+            <Form.Item label={<span>Required Skills</span>}>
               <Input
                 type="text"
                 className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
@@ -711,13 +748,7 @@ const ViewJobDetails = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-x-4 mt-2">
-            <Form.Item
-              label={
-                <span>
-                  Education Preference <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
+            <Form.Item label={<span>Education Preference</span>}>
               <Input
                 type="text"
                 className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"

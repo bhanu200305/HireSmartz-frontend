@@ -10,8 +10,8 @@ export type InviteUserRequest = {
   firstName: string;
   lastName?: string;
   email: string;
-  roleId: number;
-  locationId: number | null;
+  roleId: string;
+  locationId: string | null;
 };
 
 export type InviteUserResponse = {

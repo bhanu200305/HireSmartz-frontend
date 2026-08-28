@@ -54,7 +54,7 @@ export const bulkImportPlaceholderRows = (scope: RoleScope): BulkImportRoleRow[]
       templateLabel: 'Recruiter',
       permissions: permissionsFor('recruiter'),
       locationPermissions: [
-        { locationId: 1, locationName: 'Austin, TX', permissions: permissionsFor('recruiter') },
+        { locationId: '1', locationName: 'Austin, TX', permissions: permissionsFor('recruiter') },
       ],
       status: 'ready',
     },
@@ -66,7 +66,7 @@ export const bulkImportPlaceholderRows = (scope: RoleScope): BulkImportRoleRow[]
       templateLabel: 'Recruiter',
       permissions: permissionsFor('recruiter'),
       locationPermissions: [
-        { locationId: 2, locationName: 'Chicago, IL', permissions: permissionsFor('recruiter') },
+        { locationId: '2', locationName: 'Chicago, IL', permissions: permissionsFor('recruiter') },
       ],
       status: 'ready',
     },
@@ -78,7 +78,11 @@ export const bulkImportPlaceholderRows = (scope: RoleScope): BulkImportRoleRow[]
       templateLabel: 'Interviewer',
       permissions: permissionsFor('interviewer'),
       locationPermissions: [
-        { locationId: 3, locationName: 'New York, NY', permissions: permissionsFor('interviewer') },
+        {
+          locationId: '3',
+          locationName: 'New York, NY',
+          permissions: permissionsFor('interviewer'),
+        },
       ],
       status: 'ready',
     },

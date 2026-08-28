@@ -6,6 +6,7 @@ import { Select } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Button, showToast } from '../shared';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { Loader } from '../shared/ui/loader';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { Badge } from '../shared/ui/badge';
@@ -115,18 +116,22 @@ const OrganisationUserTable = () => {
           <h2 className="font-display text-xl font-bold text-gray-900">Users</h2>
         </div>
         <div className="flex space-x-4">
-          <Select
-            value={includeInactive}
-            onChange={(value) => {
-              setIncludeInactive(value);
-              setPage(0);
-            }}
-            className="w-40"
-            options={[
-              { label: 'Active only', value: 'active' },
-              { label: 'Include deactivated', value: 'all' },
-            ]}
-          />
+          <div className="cfp-dropdown-trigger w-40">
+            <FilterSelectIcon />
+            <Select
+              value={includeInactive}
+              onChange={(value) => {
+                setIncludeInactive(value);
+                setPage(0);
+              }}
+              className="w-full custom-select"
+              variant="borderless"
+              options={[
+                { label: 'Active only', value: 'active' },
+                { label: 'Include deactivated', value: 'all' },
+              ]}
+            />
+          </div>
           <Button
             appname="add user"
             className="text-white bg-primary-600 rounded-full px-5 py-2 flex items-center gap-1.5 text-sm font-semibold cfp-hover-lift"

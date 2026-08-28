@@ -109,9 +109,18 @@ const loginSlice = createSlice({
     setActiveLocation: (state, action: PayloadAction<string | null>) => {
       state.activeLocationId = action.payload;
     },
+    setSessionTenant: (state, action: PayloadAction<string>) => {
+      state.tenantId = action.payload;
+      state.callerKind = 'tenant';
+    },
   },
 });
 
-export const { loginStore, resetState, setAllowedAuthorities, setActiveLocation } =
-  loginSlice.actions;
+export const {
+  loginStore,
+  resetState,
+  setAllowedAuthorities,
+  setActiveLocation,
+  setSessionTenant,
+} = loginSlice.actions;
 export default loginSlice.reducer;

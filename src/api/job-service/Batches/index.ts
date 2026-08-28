@@ -49,7 +49,7 @@ export const parseDuplicatesJson = (raw: string | null): DuplicateCandidate[] =>
 
 const batchesApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    getJobBatches: builder.query<GetJobBatchesResponse, { jobId: number }>({
+    getJobBatches: builder.query<GetJobBatchesResponse, { jobId: string | number }>({
       query: ({ jobId }) => `/job/batches?jobId=${jobId}`,
       providesTags: (_result, _error, { jobId }) => [{ type: 'JobBatches' as const, id: jobId }],
     }),

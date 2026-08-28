@@ -6,6 +6,7 @@ import { publicQrApi } from '../../api/candidate-service/PublicQr/index';
 import { authApi } from '../../api/authentication-service/authApi';
 import { orgApi } from '../../api/organization-service/orgApi';
 import { notifApi } from '../../api/notification-service/notifApi';
+import { jobApi } from '../../api/job-service/jobApi';
 import LoginSlice from '../slices/loginSlice';
 import CompanyFilterSlice from '../slices/companyFilterSlice';
 import RoleFilterSlice from '../slices/roleFilterSlice';
@@ -43,6 +44,7 @@ const rootReducer = combineReducers({
   [authApi.reducerPath]: authApi.reducer,
   [orgApi.reducerPath]: orgApi.reducer,
   [notifApi.reducerPath]: notifApi.reducer,
+  [jobApi.reducerPath]: jobApi.reducer,
 });
 
 export default rootReducer;

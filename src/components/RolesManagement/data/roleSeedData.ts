@@ -6,7 +6,7 @@ const templatePermissions = (key: string): Authorities[] => getRoleTemplate(key)
 
 const PLATFORM_SYSTEM_ROLES: Role[] = [
   {
-    id: 1,
+    id: '1',
     roleName: 'Super Admin',
     scope: 'platform',
     isSystemRole: true,
@@ -14,7 +14,7 @@ const PLATFORM_SYSTEM_ROLES: Role[] = [
     locationPermissions: [],
   },
   {
-    id: 2,
+    id: '2',
     roleName: 'CFP Admin',
     scope: 'platform',
     isSystemRole: true,
@@ -22,7 +22,7 @@ const PLATFORM_SYSTEM_ROLES: Role[] = [
     locationPermissions: [],
   },
   {
-    id: 3,
+    id: '3',
     roleName: 'CFP Support',
     scope: 'platform',
     isSystemRole: true,
@@ -37,7 +37,7 @@ const PLATFORM_SYSTEM_ROLES: Role[] = [
 // purely this seed example's own illustrative data.
 const orgSystemRoles = (tenantId?: string): Role[] => [
   {
-    id: 11,
+    id: '11',
     roleName: 'Company Admin',
     scope: 'tenant',
     tenantId,
@@ -46,7 +46,7 @@ const orgSystemRoles = (tenantId?: string): Role[] => [
     locationPermissions: [],
   },
   {
-    id: 12,
+    id: '12',
     roleName: 'Hiring Manager',
     scope: 'tenant',
     tenantId,
@@ -55,7 +55,7 @@ const orgSystemRoles = (tenantId?: string): Role[] => [
     locationPermissions: [],
   },
   {
-    id: 13,
+    id: '13',
     roleName: 'Recruiter',
     scope: 'tenant',
     tenantId,
@@ -64,7 +64,7 @@ const orgSystemRoles = (tenantId?: string): Role[] => [
     locationPermissions: [],
   },
   {
-    id: 14,
+    id: '14',
     roleName: 'Interviewer',
     scope: 'tenant',
     tenantId,
@@ -73,7 +73,7 @@ const orgSystemRoles = (tenantId?: string): Role[] => [
     locationPermissions: [],
   },
   {
-    id: 15,
+    id: '15',
     roleName: 'Viewer',
     scope: 'tenant',
     tenantId,
@@ -82,7 +82,7 @@ const orgSystemRoles = (tenantId?: string): Role[] => [
     locationPermissions: [],
   },
   {
-    id: 16,
+    id: '16',
     roleName: 'Regional Hiring Manager',
     scope: 'tenant',
     tenantId,
@@ -96,7 +96,7 @@ const orgSystemRoles = (tenantId?: string): Role[] => [
     ],
     locationPermissions: [
       {
-        locationId: 1,
+        locationId: '1',
         locationName: 'Austin, TX',
         permissions: [
           Authorities.DASHBOARD_VIEW,
@@ -108,7 +108,7 @@ const orgSystemRoles = (tenantId?: string): Role[] => [
         ],
       },
       {
-        locationId: 2,
+        locationId: '2',
         locationName: 'Remote',
         permissions: [
           Authorities.DASHBOARD_VIEW,

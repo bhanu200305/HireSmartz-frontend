@@ -32,7 +32,7 @@ const buildSeedRoles = (): Role[] => {
 
     Object.entries(rolesByName).forEach(([roleKey, permissions]) => {
       roles.push({
-        id: seedIdCounter--,
+        id: String(seedIdCounter--),
         roleName: humanize(roleKey),
         scope,
         isSystemRole: true,
@@ -71,12 +71,13 @@ export const devRoleStore = {
     return scope ? all.filter((role) => role.scope === scope) : all;
   },
 
-  getById: (roleId: number): Role | undefined => readStore().find((role) => role.id === roleId),
+  getById: (roleId: string): Role | undefined =>
+    readStore().find((role) => role.id === String(roleId)),
 
   create: (payload: CreateRolePayload): Role => {
     const all = readStore();
     const newRole: Role = {
-      id: Date.now(),
+      id: String(Date.now()),
       roleName: payload.roleName,
       scope: payload.scope,
       tenantId: payload.tenantId,
@@ -107,11 +108,12 @@ export const devRoleStore = {
     return updated;
   },
 
-  remove: (roleId: number): void => {
+  remove: (roleId: string): void => {
     const all = readStore();
-    const role = all.find((r) => r.id === roleId);
+    const id = String(roleId);
+    const role = all.find((r) => r.id === id);
     if (!role) throw new DevRoleStoreError('Role not found.');
     if (role.isSystemRole) throw new DevRoleStoreError('System roles cannot be deleted.');
-    writeStore(all.filter((r) => r.id !== roleId));
+    writeStore(all.filter((r) => r.id !== id));
   },
 };

@@ -1,7 +1,7 @@
 import { Badge, Button, Dropdown, Empty, Spin, Select } from 'antd';
 const { Option } = Select;
 import { BellOutlined } from '@ant-design/icons';
-import { MdOutlineFilterAlt } from 'react-icons/md';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -227,16 +227,17 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
                   Mark all as read
                 </button>
                 {/* Filter dropdown */}
-                <div className="notification-filter-wrapper">
+                <div className="cfp-dropdown-trigger notification-filter-wrapper">
+                  <FilterSelectIcon />
                   <Select<NotificationFilterValue>
                     placeholder="All"
                     value={notificationFilter}
                     onSelect={setNotificationFilter}
-                    prefix={<MdOutlineFilterAlt className="notification-filter-icon" />}
                     allowClear={false}
                     style={{ width: 100 }}
                     className="custom-select notification-filter-select"
                     popupClassName="rounded-3xl"
+                    variant="borderless"
                   >
                     <Option value="all">All</Option>
                     <Option value="read">Read</Option>

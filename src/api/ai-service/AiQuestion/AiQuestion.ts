@@ -1,4 +1,5 @@
 import api from '../..';
+import { jobServiceOrigin } from '../../jobServiceOrigin';
 import {
   EditAiQuestionRequest,
   SaveAiQuestionRequest,
@@ -80,7 +81,12 @@ const extendedApi = api.injectEndpoints({
     }),
     getAiQuestionsByUserId: build.query<
       GetAiQuestionsByUserIdResponse,
-      { userId: number; jobOpeningId: number; interviewRoundId?: number; candidateId: number }
+      {
+        userId: number;
+        jobOpeningId: string | number;
+        interviewRoundId?: number;
+        candidateId: number;
+      }
     >({
       query: ({ userId, jobOpeningId, interviewRoundId, candidateId }) => ({
         url: `/ai-interview-questions/getByUserID?userId=${userId}&jobOpeningId=${jobOpeningId}&interviewRoundId=${interviewRoundId}&candidateId=${candidateId}`,
@@ -89,7 +95,7 @@ const extendedApi = api.injectEndpoints({
     }),
     getTopFivePrompt: build.query<TopFivePromptResponse, { mode: string }>({
       query: ({ mode }) => ({
-        url: `/ai/prompts/top-five/by-user?mode=${mode}`,
+        url: `${jobServiceOrigin()}/ai/prompts/top-five/by-user?mode=${mode}`,
         method: 'GET',
       }),
     }),

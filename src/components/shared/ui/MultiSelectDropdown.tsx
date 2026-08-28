@@ -165,14 +165,14 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
           tabIndex={disabled ? -1 : 0}
           onClick={() => !disabled && setIsOpen((v) => !v)}
           onKeyDown={handleTriggerKeyDown}
-          className={`border rounded-3xl px-4 py-2 min-h-[44px] w-full bg-white flex items-center justify-between cursor-pointer select-none transition-colors
-            ${isOpen ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-300 hover:border-gray-400'}
+          className={`border rounded-full px-4 py-2 min-h-[36px] w-full bg-white flex items-center justify-between cursor-pointer select-none transition-colors
+            ${isOpen ? 'border-brand-500 ring-1 ring-brand-500' : 'border-[var(--border)] hover:border-gray-400'}
             ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
           `}
         >
-          <span className="text-gray-700 text-sm truncate">{displayText}</span>
+          <span className="text-gray-800 text-sm truncate">{displayText}</span>
           <MdOutlineKeyboardArrowDown
-            className={`text-gray-600 text-lg transition-transform shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`}
+            className={`text-gray-800 text-lg transition-transform shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`}
           />
         </div>
 

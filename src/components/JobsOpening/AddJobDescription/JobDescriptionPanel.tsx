@@ -9,18 +9,25 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { Loader } from '../../shared/ui/loader';
 import { useRegenerateJobDescriptionMutation } from '../../../api/job-service/JobOpening/RegenerateJd';
+import {
+  useGetJdStatusQuery,
+  useGetJdEnhanceResultQuery,
+  useReviewJdEnhancementMutation,
+} from '../../../api/job-service/JobOpening/JdUpload';
 import { useForm } from 'react-hook-form';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import TurndownService from 'turndown';
 import { RichTextEditor } from '../../shared/ui/RichTextEditor';
 import { formatAiJobDescription } from '../../../shared/utils/business-logic';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { makeFirstLetterUpperCase } from '../../../shared/utils/methods';
 import { useGetTopFivePromptQuery } from '../../../api/ai-service/AiQuestion/AiQuestion';
+import { asJobId } from '../../../api/job-service/jobId';
+import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 
 interface JobDescriptionPanelProps {
-  /** Null before the first successful save — nothing to generate/show yet. */
-  aiJobDescriptionId: number | null;
+  /** UUID of the job — JD hangs off the job, not a separate entity. */
+  aiJobDescriptionId: string | number | null;
 }
 
 /**
@@ -36,12 +43,14 @@ interface JobDescriptionPanelProps {
  * leaving the page.
  */
 const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) => {
+  const jobOpeningId = asJobId(aiJobDescriptionId);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [previewDescription, setPreviewDescription] = useState('');
   const [editorContent, setEditorContent] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const acceptedEnhanceRef = useRef(false);
 
   const { register, getValues, setValue, watch } = useForm({
     defaultValues: { description: '' },
@@ -57,10 +66,16 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
     data: response,
     isLoading,
     refetch,
-  } = useGetJobDescriptionByIdQuery(
-    { aiJobDescriptionID: Number(aiJobDescriptionId) },
-    { skip: !aiJobDescriptionId }
-  );
+  } = useGetJobDescriptionByIdQuery({ jobOpeningId }, { skip: !jobOpeningId });
+  const { data: jdStatus } = useGetJdStatusQuery(jobOpeningId, {
+    skip: !jobOpeningId,
+    pollingInterval: 2000,
+  });
+  const { data: enhanceResult } = useGetJdEnhanceResultQuery(jobOpeningId, {
+    skip: !jobOpeningId || Boolean(response?.jobDescription),
+    pollingInterval: 2000,
+  });
+  const [reviewJdEnhancement] = useReviewJdEnhancementMutation();
   const [updateJobDescription, { isLoading: isUpdating }] = useUpdateJobDescriptionMutation();
   const [regenerateJobDescription, { isLoading: isRegenerating }] =
     useRegenerateJobDescriptionMutation();
@@ -72,36 +87,60 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
     }
   }, [response]);
 
+  useEffect(() => {
+    if (jdStatus?.status === 'READY') {
+      void refetch();
+    }
+  }, [jdStatus?.status, refetch]);
+
+  useEffect(() => {
+    if (
+      !jobOpeningId ||
+      acceptedEnhanceRef.current ||
+      enhanceResult?.status !== 'READY' ||
+      response?.jobDescription
+    ) {
+      return;
+    }
+    acceptedEnhanceRef.current = true;
+    void reviewJdEnhancement({ jobOpeningId, action: 'accept_all' })
+      .unwrap()
+      .then(() => refetch())
+      .catch(() => {
+        acceptedEnhanceRef.current = false;
+      });
+  }, [enhanceResult?.status, jobOpeningId, response?.jobDescription, reviewJdEnhancement, refetch]);
+
   const handlePromptClick = (promptText: string) => {
     setValue('description', promptText);
     setIsInputFocused(false);
   };
 
   const handleRegenerate = async (generateFromScratch: boolean) => {
-    if (!aiJobDescriptionId) return;
+    if (!jobOpeningId) return;
     const desc = getValues('description');
 
     try {
       const result = await regenerateJobDescription({
-        aiJobDescriptionId: Number(aiJobDescriptionId),
+        jobOpeningId,
         text: desc,
         generateFromScratch,
       }).unwrap();
 
-      const newDescription = result?.data?.jobDescription;
-      if (newDescription) {
-        setPreviewDescription(newDescription);
-      }
-
       showToast({
-        message: result.message || 'Job description has been regenerated successfully',
+        message: result.message || 'Job description regeneration started',
         type: 'success',
       });
       setValue('description', '');
       refetchTopFivePrompt();
-    } catch (error: any) {
+      acceptedEnhanceRef.current = false;
+      void refetch();
+    } catch (error: unknown) {
       showToast({
-        message: error?.data?.message || 'Failed to regenerate job description. Please try again.',
+        message: getJobErrorMessage(
+          error,
+          'Failed to regenerate job description. Please try again.'
+        ),
         type: 'error',
       });
     }
@@ -168,7 +207,7 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
         markdown = markdown.replace(/\n\n\n+/g, '\n\n');
 
         await updateJobDescription({
-          aiJobDescriptionId: Number(aiJobDescriptionId),
+          jobOpeningId,
           jobDescription: markdown,
         }).unwrap();
         await refetch();
@@ -207,7 +246,10 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
 
   return (
     <div className="w-full">
-      {(isLoading || isRegenerating) && <Loader />}
+      {(isLoading ||
+        isRegenerating ||
+        jdStatus?.status === 'GENERATING' ||
+        jdStatus?.status === 'PROCESSING') && <Loader />}
 
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">✨</span>

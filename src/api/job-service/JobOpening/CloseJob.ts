@@ -1,27 +1,79 @@
-import api from '../..';
+import { jobApi } from '../jobApi';
+import type { CloseJobRequest, CloseJobResponse } from '../types';
 
-type CloseJobRequest = {
-  jobId: number;
-  reasonId: number;
+type CloseJobMutationRequest = {
+  jobId: string;
+  reasonId?: string | null;
   customReason?: string;
+  notifyCandidates?: boolean;
 };
 
-type CloseJobResponse = {
+type CloseJobMutationResponse = {
   success: boolean;
   message?: string;
+  data?: CloseJobResponse;
 };
 
-const extendedApi = api.injectEndpoints({
+const extendedApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
-    closeJob: build.mutation<CloseJobResponse, CloseJobRequest>({
-      query: (body) => ({
-        url: '/job-opening/close-job',
-        method: 'POST',
-        body,
+    closeJob: build.mutation<CloseJobMutationResponse, CloseJobMutationRequest>({
+      query: ({ jobId, reasonId, customReason, notifyCandidates = true }) => {
+        const body: CloseJobRequest = {
+          closure_reason_id: reasonId || null,
+          custom_reason: customReason || null,
+          notify_candidates: notifyCandidates,
+        };
+        return {
+          url: `/job-openings/${jobId}/close`,
+          method: 'POST',
+          body,
+        };
+      },
+      transformResponse: (response: CloseJobResponse): CloseJobMutationResponse => ({
+        success: true,
+        message: 'Job closed successfully.',
+        data: response,
       }),
-      invalidatesTags: ['JobOpenings'],
+      invalidatesTags: [{ type: 'JobOpenings', id: 'LIST' }, 'JobStats'],
+    }),
+
+    reopenJob: build.mutation<CloseJobResponse, string>({
+      query: (jobId) => ({
+        url: `/job-openings/${jobId}/reopen`,
+        method: 'POST',
+      }),
+      invalidatesTags: [{ type: 'JobOpenings', id: 'LIST' }, 'JobStats'],
+    }),
+
+    publishJob: build.mutation<
+      { org_job_opening_id: string; is_draft: boolean; is_published: boolean },
+      string
+    >({
+      query: (jobId) => ({
+        url: `/job-openings/${jobId}/publish`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_r, _e, jobId) => [
+        { type: 'JobOpenings', id: 'LIST' },
+        { type: 'JobOpeningById', id: jobId },
+        { type: 'WizardState', id: jobId },
+        'JobStats',
+      ],
+    }),
+
+    validateForPublish: build.query<{ is_valid: boolean; failed_checks: string[] }, string>({
+      query: (jobId) => ({
+        url: `/job-openings/${jobId}/publish/validate`,
+        method: 'GET',
+      }),
     }),
   }),
 });
 
-export const { useCloseJobMutation } = extendedApi;
+export const {
+  useCloseJobMutation,
+  useReopenJobMutation,
+  usePublishJobMutation,
+  useValidateForPublishQuery,
+  useLazyValidateForPublishQuery,
+} = extendedApi;

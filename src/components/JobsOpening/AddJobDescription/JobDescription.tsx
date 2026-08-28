@@ -11,8 +11,8 @@ import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import { useStreamManager } from '../../../hooks/useStreamManager';
 import { RootState } from '../../../redux/provider/store';
 import { useDispatch, useSelector } from 'react-redux';
-import { JobDescriptionState, SaveJobOpeningRequest } from '../../../types';
-import { Controller, useForm } from 'react-hook-form';
+import { JobDescriptionState } from '../../../types';
+import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   resetJobState,
@@ -23,11 +23,8 @@ import {
 import { jobDescriptionDraftSchema, jobDescriptionSchema } from './AddJobSchema';
 import { get } from 'lodash-es';
 import { useSaveJobOpeningMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
-import {
-  capitalizeWordsAdvanced,
-  changeNullValuesToEmptyArray,
-  validateDraft,
-} from '../../../shared/utils/methods';
+import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
+import { capitalizeWordsAdvanced, validateDraft } from '../../../shared/utils/methods';
 import { Loader } from '../../shared/ui/loader';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import {
@@ -39,9 +36,9 @@ import {
   useDeleteDropdownMutation,
   useEditDropdownMutation,
   useReuseDropdownMutation,
-  useUpdateDropdownByTypeMutation,
 } from '../../../api/job-service/AddableDropdown/UpdateDropdownByType';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
+import { useCreateOrganizationSkillMutation } from '../../../api/job-service/JobOpening/catalogs';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 
@@ -53,7 +50,6 @@ const JobDescription = () => {
   const [openModalFor, setOpenModalFor] = useState<
     null | 'educationPreference' | 'mandatorySkills' | 'optionalSkills'
   >(null);
-  const [updateDropdownByType] = useUpdateDropdownByTypeMutation();
   const [editDropdown] = useEditDropdownMutation();
   const [deleteDropdown] = useDeleteDropdownMutation();
   const [reuseDropdown] = useReuseDropdownMutation();
@@ -69,6 +65,7 @@ const JobDescription = () => {
   const { details, jobOpeningId } = useSelector((state: RootState) => state.JobSlice);
   const [saveJobOpening, { isLoading }] = useSaveJobOpeningMutation();
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
+  const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
   const {
     jobOpeningDropdown: educationPreference,
     loading: educationPreferenceLoading,
@@ -78,11 +75,13 @@ const JobDescription = () => {
     jobOpeningDropdown: mandatorySkills,
     loading: mandatorySkillsLoading,
     refetch: refetchMandatorySkills,
+    searchSkills: searchMandatorySkills,
   } = useJobOpeningDropdown('MANDATORY_SKILLS', 'create');
   const {
     jobOpeningDropdown: optionalSkills,
     loading: optionalSkillsLoading,
     refetch: refetchOptionalSkills,
+    searchSkills: searchOptionalSkills,
   } = useJobOpeningDropdown('OPTIONAL_SKILLS', 'create');
 
   const { jobDescription, aiJobDescriptionId } = useSelector((state: RootState) => ({
@@ -107,7 +106,7 @@ const JobDescription = () => {
     control,
     formState: { errors },
   } = useForm<JobDescriptionState>({
-    resolver: zodResolver(jobDescriptionSchema),
+    resolver: zodResolver(jobDescriptionSchema) as Resolver<JobDescriptionState>,
     defaultValues: defaultVals,
   });
   const formValues = watch();
@@ -159,61 +158,28 @@ const JobDescription = () => {
     const mappedType = typeMapping[addType];
     if (!mappedType) return;
 
-    // Set loading state for the specific dropdown
+    const formattedValue = capitalizeWordsAdvanced(newValue);
+    const normalizedValue = formattedValue.toLowerCase();
     setIsAddingToDropdown(addType);
 
-    // Store current values for multi-select fields
-    const currentValues = watch(type) || [];
-
-    // Clear the previous selection for single select only (educationPreference)
-    if (addType === 'educationPreference') {
-      setValue(type, [], { shouldValidate: false });
-    }
-
     try {
-      const res = await updateDropdownByType({
-        type: mappedType,
-        value: capitalizeWordsAdvanced(newValue),
-      }).unwrap();
-
-      if (res.success) {
-        showToast({
-          message: res.message || 'Dropdown has been updated successfully',
-          type: 'success',
-        });
-
-        // Wait for the refetch to complete before setting the value
-        let refetchPromise: Promise<any> | undefined;
-
-        switch (addType) {
-          case 'educationPreference':
-            refetchPromise = refetchEducationPreference?.();
-            break;
-          case 'mandatorySkills':
-            refetchPromise = refetchMandatorySkills?.();
-            break;
-          case 'optionalSkills':
-            refetchPromise = refetchOptionalSkills?.();
-            break;
-        }
-
-        // Wait for refetch to complete before setting the value
-        if (refetchPromise) {
-          await refetchPromise;
-        }
-
-        // Now set the value after the dropdown data is updated
-        if (addType === 'educationPreference') {
-          setValue(type, [res.data.id], { shouldValidate: true });
-        } else {
-          setValue(type, [...currentValues, res.data.id], { shouldValidate: true });
-        }
-      } else {
-        showToast({
-          message: res.message || 'Failed to update dropdown.',
-          type: 'error',
-        });
+      if (addType === 'educationPreference') {
+        setValue('educationPreference', [formattedValue], { shouldValidate: true });
+        showToast({ message: 'Education preference added', type: 'success' });
+        return;
       }
+
+      const currentSkillIds = (watch(addType) || []).map(String);
+      const existingSkill = [...mandatorySkills, ...optionalSkills].find(
+        (skill) => skill.name.toLowerCase() === normalizedValue
+      );
+      if (existingSkill) {
+        setValue(addType, [...currentSkillIds, existingSkill.id], { shouldValidate: true });
+        return;
+      }
+      const createdSkill = await createOrganizationSkill({ name: formattedValue }).unwrap();
+      showToast({ message: 'Skill added successfully', type: 'success' });
+      setValue(addType, [...currentSkillIds, createdSkill.skill_id], { shouldValidate: true });
     } catch (err) {
       showToast({
         message: get(err, 'data.message', 'Something went wrong while updating dropdown.'),
@@ -419,59 +385,29 @@ const JobDescription = () => {
     }
 
     try {
-      const apiPayload: SaveJobOpeningRequest = {
-        ...details,
-        ...data,
-        useCultureIntro: Boolean(details.useCultureIntro),
-        locationId: details.officeLocation?.[0],
-        shift: `${details.shiftStart || ''} - ${details.shiftEnd || ''}`,
-        openings: details.openings || 0,
-        minSalary: details.minSalary ? parseFloat(details.minSalary) : undefined,
-        maxSalary: details.maxSalary ? parseFloat(details.maxSalary) : undefined,
-        minExperience:
-          details.minExperience !== null && details.minExperience !== undefined
-            ? details.minExperience
-            : undefined,
-        maxExperience:
-          details.maxExperience !== null && details.maxExperience !== undefined
-            ? details.maxExperience
-            : undefined,
-        openDate: details.openDate,
-        hiringManagers: details.hiringManagers || [],
-        recruiters: details.recruiters || [],
-        mandatorySkills: data.mandatorySkills || [],
-        educationPreference: data.educationPreference || [],
-        //communicationSkills: data.communicationSkills || '',
-        responsibilities: data.responsibilities || undefined,
-        otherRequirements: data.otherRequirements || undefined,
-        exemptionStatus: details.exemptionStatus || undefined,
-        referralBonus:
-          details.referralBonus === null ||
-          details.referralBonus === undefined ||
-          details.referralBonus === ''
-            ? ''
-            : details.referralBonus,
-        isDraft: true,
-      };
+      const detailsPayload = buildSaveJobDetailsPayload({
+        data: {
+          ...details,
+          ...data,
+          useCultureIntro: Boolean(details.useCultureIntro),
+        },
+      });
 
-      const response = await saveJobOpening(apiPayload).unwrap();
-
-      if (response?.success) {
-        showToast({
-          message: get(response, 'message', 'Job saved as draft successfully'),
-          type: 'success',
-        });
-        dispatch(resetJobState());
-        setAllowNavigation(true);
-        setTimeout(() => {
-          navigate('/jobs');
-        }, 0);
+      if (jobOpeningId) {
+        await updateJobOpening({ jobOpeningId, body: detailsPayload }).unwrap();
       } else {
-        showToast({
-          message: get(response, 'message', 'Failed to save draft'),
-          type: 'error',
-        });
+        await saveJobOpening({ details: detailsPayload }).unwrap();
       }
+
+      showToast({
+        message: 'Job saved as draft successfully',
+        type: 'success',
+      });
+      dispatch(resetJobState());
+      setAllowNavigation(true);
+      setTimeout(() => {
+        navigate('/jobs');
+      }, 0);
     } catch (error) {
       showToast({
         message: get(error, 'data.message', 'Failed to save draft'),
@@ -484,79 +420,41 @@ const JobDescription = () => {
     dispatch(updateJobDescription(data));
     setAllowNavigation(true);
 
-    const payload = {
-      ...details,
-      ...data,
-      locationId: details.officeLocation?.[0],
-      generateAiJd: true,
-      useCultureIntro: Boolean(details.useCultureIntro),
-      shift:
-        details.shiftStart && details.shiftEnd ? `${details.shiftStart} - ${details.shiftEnd}` : '',
-      referralBonus: details.referralBonus,
-      maxExperience: details.maxExperience,
-      hiringManagers: details.hiringManagers || [],
-      recruiters: details.recruiters || [],
-      openings: details.openings || 0,
-      minSalary: details.minSalary ? parseFloat(details.minSalary) : undefined,
-      maxSalary: details.maxSalary ? parseFloat(details.maxSalary) : undefined,
-      minExperience: details.minExperience ?? undefined,
-      openDate: details.openDate,
-      exemptionStatus: details.exemptionStatus || undefined,
-      responsibilities: data.responsibilities || undefined,
-    };
-
-    const processedPayload = {
-      ...changeNullValuesToEmptyArray<any>({
-        ...payload,
-        referralBonus: null,
-        maxExperience: null,
-      }),
-      referralBonus:
-        payload.referralBonus === null ||
-        payload.referralBonus === undefined ||
-        payload.referralBonus === ''
-          ? ''
-          : payload.referralBonus,
-      maxExperience: payload.maxExperience,
-      hiringManagers: payload.hiringManagers,
-      recruiters: payload.recruiters,
-      isDraft: false,
-    };
+    const detailsPayload = buildSaveJobDetailsPayload({
+      data: {
+        ...details,
+        ...data,
+        useCultureIntro: Boolean(details.useCultureIntro),
+      },
+    });
 
     try {
-      const apiCall = jobOpeningId
-        ? updateJobOpening({ jobOpeningId, body: { ...processedPayload, generateAiJd: true } })
-        : saveJobOpening(processedPayload);
-
-      const res = await apiCall.unwrap();
-
-      if (!res?.success) {
-        showToast({
-          message: get(res, 'message', 'Failed to save job opening. Please try again.'),
-          type: 'error',
-        });
-        return;
+      let savedId = jobOpeningId;
+      if (jobOpeningId) {
+        const res = await updateJobOpening({
+          jobOpeningId,
+          body: detailsPayload,
+        }).unwrap();
+        savedId = res.org_job_opening_id || jobOpeningId;
+      } else {
+        const res = await saveJobOpening({ details: detailsPayload }).unwrap();
+        savedId = res.org_job_opening_id;
       }
 
       showToast({
-        message: get(
-          res,
-          'message',
-          jobOpeningId
-            ? 'Job opening has been updated successfully'
-            : 'Job opening has been saved successfully'
-        ),
+        message: jobOpeningId
+          ? 'Job opening has been updated successfully'
+          : 'Job opening has been saved successfully',
         type: 'success',
       });
-      dispatch(setJobOpeningId(res.data.jobOpeningId));
-      dispatch(setAiJobDescriptionId(res.data.aiJobDescriptionId));
+      dispatch(setJobOpeningId(savedId));
+      dispatch(setAiJobDescriptionId(savedId));
 
-      // Start the stream once the job opening is created
-      if (res.data.jobOpeningId) {
-        startStream(res.data.jobOpeningId);
+      if (savedId) {
+        startStream(savedId);
       }
 
-      navigate(`/ai-job-description?aiJobDescriptionId=${res.data.aiJobDescriptionId}`, {
+      navigate(`/ai-job-description?aiJobDescriptionId=${savedId}`, {
         state: {
           jobData: atsJobData,
           refresh: isFromAts,
@@ -604,13 +502,7 @@ const JobDescription = () => {
             <p className="text-red-500 text-sm mt-1">{errors.communicationSkills.message}</p>
           )}
         </Form.Item> */}
-        <Form.Item
-          label={
-            <span>
-              Required Skills <span className="required-asterisk">*</span>
-            </span>
-          }
-        >
+        <Form.Item label={<span>Required Skills</span>}>
           <div className="space-y-3">
             <div
               className="relative"
@@ -631,6 +523,7 @@ const JobDescription = () => {
                 placeholder="Select Required Skills"
                 label="Required Skills"
                 onAddOption={(value) => handleAddOption(value, 'mandatorySkills')}
+                onSearchChange={searchMandatorySkills}
                 type="mandatorySkills"
                 error={errors.mandatorySkills?.message}
                 enableEditDelete
@@ -653,7 +546,9 @@ const JobDescription = () => {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {mandatorySkills
-                    ?.filter((skill: any) => watch('mandatorySkills')?.includes(skill.id))
+                    ?.filter((skill: any) =>
+                      (watch('mandatorySkills') || []).map(String).includes(String(skill.id))
+                    )
                     ?.map((skill: any) => (
                       <span
                         key={skill.id}
@@ -664,7 +559,7 @@ const JobDescription = () => {
                           size="small"
                           onClick={() => {
                             const newValue = (watch('mandatorySkills') || []).filter(
-                              (id: any) => id !== skill.id
+                              (id: any) => String(id) !== String(skill.id)
                             );
                             setValue('mandatorySkills', newValue, { shouldValidate: true });
                           }}
@@ -701,6 +596,7 @@ const JobDescription = () => {
                 placeholder="Select Optional Skills"
                 label="Optional Skills"
                 onAddOption={(value) => handleAddOption(value, 'optionalSkills')}
+                onSearchChange={searchOptionalSkills}
                 type="optionalSkills"
                 error={errors.optionalSkills?.message}
                 enableEditDelete
@@ -723,7 +619,9 @@ const JobDescription = () => {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {optionalSkills
-                    ?.filter((skill: any) => (watch('optionalSkills') || [])?.includes(skill.id))
+                    ?.filter((skill: any) =>
+                      (watch('optionalSkills') || []).map(String).includes(String(skill.id))
+                    )
                     ?.map((skill: any) => (
                       <span
                         key={skill.id}
@@ -734,7 +632,7 @@ const JobDescription = () => {
                           size="small"
                           onClick={() => {
                             const newValue = (watch('optionalSkills') || []).filter(
-                              (id: any) => id !== skill.id
+                              (id: any) => String(id) !== String(skill.id)
                             );
                             setValue('optionalSkills', newValue, { shouldValidate: true });
                           }}
@@ -773,13 +671,7 @@ const JobDescription = () => {
                   <p className="text-red-500 text-sm mt-1">{errors.responsibilities.message}</p>
                 )} */}
         </Form.Item>
-        <Form.Item
-          label={
-            <span>
-              Education Preference <span className="required-asterisk">*</span>
-            </span>
-          }
-        >
+        <Form.Item label={<span>Education Preference</span>}>
           <DropdownWithAddOption
             className="w-full custom-select-jobs placeholder-style"
             value={watch('educationPreference')[0]}

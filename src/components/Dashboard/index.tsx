@@ -22,8 +22,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const filters = useSelector((state: RootState) => state.cfpDashboardFiltersSlice);
-  const { role } = useSelector((state: RootState) => state.LoginSlice);
+  const { role, callerKind } = useSelector((state: RootState) => state.LoginSlice);
   const { roles } = useFetchRoles();
+  const isPlatformCaller = callerKind === 'platform';
 
   const matchedRole = (roles as any)?.data?.find(
     (r: any) => r.roleName.toLowerCase() === role?.name?.toLowerCase()
@@ -42,7 +43,7 @@ const Dashboard = () => {
         endDateTime: filters.endDateTime,
       },
     },
-    { skip: !matchedRole?.id, refetchOnMountOrArgChange: true }
+    { skip: isPlatformCaller || !matchedRole?.id, refetchOnMountOrArgChange: true }
   );
   const cfpuserCount = dashboardData?.totalElements || 0;
 
@@ -75,12 +76,13 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
+    if (isPlatformCaller) return;
     fetchInterviewData({
       year: interviewFilters.year,
       month: interviewFilters.month,
       isOwner: role?.type === 'owner' ? true : false,
     });
-  }, [interviewFilters.year, interviewFilters.month]);
+  }, [interviewFilters.year, interviewFilters.month, isPlatformCaller, role?.type]);
 
   const greeting = (() => {
     const hour = new Date().getHours();

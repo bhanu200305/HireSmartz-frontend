@@ -5,6 +5,7 @@ import {
   GROUPED_INTERNAL_STATUS_OPTIONS,
 } from '../../../constants/candidateFilterStatus';
 import { FilterState } from '../../../shared/utils/filters/filterService';
+import { FilterSelectIcon } from '../../shared/ui/FilterSelectIcon';
 
 type FilterMenuProps = {
   filters: FilterState;
@@ -77,7 +78,8 @@ const FilterMenu: React.FC<FilterMenuProps> = ({ filters, onFilterChange }) => {
       <div className="flex gap-3 items-center">
         {/* External Status */}
         <div className="flex items-center justify-around gap-3">
-          <div className="border-wrapper border border-[var(--border)] p-1 min-w-[200px] rounded-3xl">
+          <div className="cfp-dropdown-trigger min-w-[200px]">
+            <FilterSelectIcon />
             <Select
               placeholder="Candidate Status"
               value={filters.isNew ? 'NEW_FILTER_VALUE' : filters.externalStatus}
@@ -127,7 +129,8 @@ const FilterMenu: React.FC<FilterMenuProps> = ({ filters, onFilterChange }) => {
         </div>
         {/* Internal Status */}
         <div className="flex items-center justify-around gap-3">
-          <div className="border-wrapper border border-[var(--border)] p-1 min-w-[270px] rounded-3xl">
+          <div className="cfp-dropdown-trigger min-w-[270px]">
+            <FilterSelectIcon />
             <TreeSelect
               placeholder="Round Status"
               value={filters.internalStatus || filters.roundType}

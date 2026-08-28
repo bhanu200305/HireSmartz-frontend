@@ -25,6 +25,10 @@ export type TenantOffice = {
   zip_code: string | null;
 };
 
+/** Label for job/role location dropdowns — offices have no separate name field. */
+export const officeDisplayName = (office: TenantOffice): string =>
+  [office.city, office.state].filter(Boolean).join(', ') || office.address_line_1;
+
 export type UpdateTenantOfficeRequest = {
   tenantId: string;
   officeId: string;

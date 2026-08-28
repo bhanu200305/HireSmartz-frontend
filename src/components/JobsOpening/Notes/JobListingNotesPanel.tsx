@@ -135,7 +135,7 @@ type JobListingNotesPanelProps = {
   onClose: () => void;
   jobTitle?: string;
   /** When set, loads and persists notes via API. */
-  jobOpeningId?: number;
+  jobOpeningId?: string;
   /**
    * Legacy: static notes when `jobOpeningId` is omitted (e.g. storybook).
    * Ignored when `jobOpeningId` is set.
@@ -180,7 +180,7 @@ const JobListingNotesPanel = ({
       onUpdate: async (noteId: string, noteText: string) => {
         try {
           await updateNote({
-            noteId: Number(noteId),
+            noteId: String(noteId),
             noteText,
             ...inv,
           }).unwrap();
@@ -191,7 +191,7 @@ const JobListingNotesPanel = ({
       },
       onDelete: async (noteId: string) => {
         try {
-          await deleteNote({ noteId: Number(noteId), ...inv }).unwrap();
+          await deleteNote({ noteId: String(noteId), ...inv }).unwrap();
         } catch (e) {
           showToast({ message: get(e, 'data.message', 'Could not delete note'), type: 'error' });
           throw e;

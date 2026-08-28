@@ -1,5 +1,5 @@
 import { Form, Select } from 'antd';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { showToast } from '../../shared';
 import { MdClose } from 'react-icons/md';
 import TextArea from 'antd/es/input/TextArea';
@@ -7,21 +7,29 @@ import { EditInterviewRoundRequest } from '../../../types';
 import { Controller, useForm } from 'react-hook-form';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
-import { get } from 'lodash-es';
 import { useEditInterviewRoundMutation } from '../../../api/job-service/JobOpening/EditInterviewRound';
+import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import { Loader } from '../../shared/ui/loader';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import { asJobId } from '../../../api/job-service/jobId';
+import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
+import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 
 const { Option } = Select;
 const EditInterviewRound = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id: jobIdFromParams } = useParams();
   const roundData = location.state;
   const [form] = Form.useForm();
   const [editInterviewRound, { isLoading: isEditing }] = useEditInterviewRoundMutation();
-  const jobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
+  const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
+  const jobOpeningId = asJobId(reduxJobOpeningId);
   const { jobOpeningDropdown: interviewRounds, loading: interviewRoundsLoading } =
     useJobOpeningDropdown('ROUNDS', 'create');
+  const { data: currentRounds = [] } = useGetInterviewRoundsByJobIdQuery(jobOpeningId, {
+    skip: !jobOpeningId,
+  });
 
   const {
     control,
@@ -38,12 +46,12 @@ const EditInterviewRound = () => {
       roundType: roundData?.roundType || 'MANUAL',
     },
   });
-  const handleRoundChange = (value: number | null) => {
+  const handleRoundChange = (value: string | number | null) => {
     if (value === null || value === undefined) {
       setValue('description', '');
       setValue('roundType', '');
     } else {
-      const selectedRound = interviewRounds.find((round) => round.id === value);
+      const selectedRound = interviewRounds.find((round) => String(round.id) === String(value));
       if (selectedRound) {
         setValue('description', selectedRound.description || '');
         setValue('roundType', selectedRound.roundType || '');
@@ -51,30 +59,33 @@ const EditInterviewRound = () => {
     }
   };
   const onSubmit = async (editedRound: EditInterviewRoundRequest) => {
-    if (isEditing) return;
+    if (isEditing || !jobOpeningId) return;
 
-    const payload: EditInterviewRoundRequest = {
-      ...editedRound,
-      jobId: jobOpeningId,
-      roundType: editedRound.roundType || 'MANUAL',
-      sequence: roundData?.sequence || 1,
-    };
-    editInterviewRound([payload])
+    const rounds = toInterviewSequencePayload(
+      currentRounds.map((round) =>
+        String(round.id) === String(editedRound.id)
+          ? {
+              ...round,
+              roundId: String(editedRound.round),
+              description: editedRound.description,
+              sequence: editedRound.sequence,
+            }
+          : round
+      )
+    );
+
+    editInterviewRound({ jobOpeningId, rounds })
       .unwrap()
       .then((res) => {
-        if (res.status === 'OK') {
-          showToast({
-            message: res.message || 'Interview round has been updated',
-            type: 'success',
-          });
-          navigate('/interview-setup', { state: { refresh: true } });
-        } else {
-          showToast({ message: res.message || 'Failed to update round.', type: 'error' });
-        }
+        showToast({
+          message: res.message || 'Interview round has been updated',
+          type: 'success',
+        });
+        navigate('/interview-setup', { state: { refresh: true } });
       })
       .catch((err) => {
         showToast({
-          message: get(err, 'data.message', 'Something went wrong while updating.'),
+          message: getJobErrorMessage(err, 'Something went wrong while updating.'),
           type: 'error',
         });
       });
