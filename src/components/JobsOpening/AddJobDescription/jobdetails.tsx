@@ -6,7 +6,6 @@ import { Checkbox, DatePicker, Form, Select, Switch, TimePicker, Tooltip } from 
 import { Button, CollapsibleSection, Input, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import JobDetailsLayout from '../../../layouts/JobDetailsLayout';
-import JobDescriptionPanel from './JobDescriptionPanel';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import dayjs from 'dayjs';
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
@@ -140,12 +139,13 @@ const JobDetails = () => {
   // content (job title + department, both required there) — false for a
   // bare draft shell (`useStartManualJobOpening` calls `POST
   // /job-openings/draft` up front, before anything's filled in). Drives the
-  // Save-vs-Next footer button below and what gets passed to
-  // JobDescriptionPanel; deliberately NOT `aiJobDescriptionId` (Redux) or
-  // "is there a job id in the URL" — both are true for that empty draft too
-  // (its own URL gets the id attached immediately), so neither can tell a
-  // freshly-started, still-empty job apart from a fully-saved one, which is
-  // exactly the distinction this needs.
+  // Save-vs-Next footer button below (once saved, this step's job is done
+  // and the wizard moves on to the AI Job Description step, JobDescriptionStep.tsx);
+  // deliberately NOT `aiJobDescriptionId` (Redux) or "is there a job id in
+  // the URL" — both are true for that empty draft too (its own URL gets the
+  // id attached immediately), so neither can tell a freshly-started,
+  // still-empty job apart from a fully-saved one, which is exactly the
+  // distinction this needs.
   const { data: jdDetailsForGate } = useGetJobDescriptionByIdQuery(
     { jobOpeningId: resolvedJobId },
     { skip: !resolvedJobId }
@@ -251,6 +251,7 @@ const JobDetails = () => {
 
   const handleLocationChange = (locationId: string | number) => {
     const id = locationId != null && locationId !== '' ? String(locationId) : '';
+    const previousId = watch('officeLocation')?.[0];
     const selectedLocation = offices.find((office) => idsMatch(office.office_id, locationId));
 
     setSelectedLocationIdForUsers(id || undefined);
@@ -259,8 +260,16 @@ const JobDetails = () => {
     });
     setValue('country', selectedLocation?.country ?? '', { shouldValidate: true });
     setValue('state', selectedLocation?.state ?? '', { shouldValidate: true });
-    setValue('hiringManagers', [], { shouldValidate: true });
-    setValue('recruiters', [], { shouldValidate: true });
+    // Hiring managers/recruiters are scoped to the office location, so a real
+    // location change invalidates the prior picks. But this handler can fire
+    // with the same id re-selected (e.g. a stray re-render), and that must
+    // not silently wipe a selection the user already made — see the job
+    // publish bug where hiring_manager_ids reached the backend empty despite
+    // being filled in the form.
+    if (String(previousId ?? '') !== id) {
+      setValue('hiringManagers', [], { shouldValidate: true });
+      setValue('recruiters', [], { shouldValidate: true });
+    }
   };
 
   const {
@@ -1363,12 +1372,11 @@ const JobDetails = () => {
       setPendingSubmitData(null);
       setIsSubmittingWithModal(false);
 
-      // Stay on this step after saving — don't auto-advance to Scoring
-      // Criteria. `aiJobDescriptionId` is now set (dispatched above), so the
-      // form re-renders with the AI panel actively generating and the
-      // "NEXT: SCORING CRITERIA →" button (handleContinueToScoring) in place
-      // of this Save button; moving on is the user's own next click, once
-      // they've reviewed/refined the generated description.
+      // Stay on this step after saving — don't auto-advance to the AI Job
+      // Description step. `aiJobDescriptionId` is now set (dispatched
+      // above), so the form re-renders with the "NEXT: AI JOB DESCRIPTION →"
+      // button (handleContinueToDescription) in place of this Save button;
+      // moving on is the user's own next click.
     } catch (err) {
       showToast({
         message: getJobErrorMessage(err, 'Something went wrong while saving job opening.'),
@@ -1393,16 +1401,14 @@ const JobDetails = () => {
     executeSubmit(pendingSubmitData, false);
   };
 
-  // Advances to Scoring Criteria — the merged step's equivalent of the old
-  // `/ai-job-description` page's "SAVE & NEXT", including the same
-  // sync-with-ATS behavior. Only reachable once aiJobDescriptionId exists
-  // (button below is disabled until then).
-  const handleContinueToScoring = async () => {
+  // Advances to the AI Job Description step (JobDescriptionStep.tsx) — only
+  // reachable once this step's Job Details have been saved (button below
+  // only renders once `hasSavedDetails` is true).
+  const handleContinueToDescription = async () => {
     setAllowNavigation(true);
-    dispatch(setIsFormCompleted(true));
-    const fullUrl = getFullURL('/scoring-criteria', true);
+    const fullUrl = getFullURL('/job-description', true);
     const safeUrl =
-      typeof fullUrl === 'string' && fullUrl.startsWith('/') ? fullUrl : '/scoring-criteria';
+      typeof fullUrl === 'string' && fullUrl.startsWith('/') ? fullUrl : '/job-description';
     navigate(safeUrl, { viewTransition: true });
   };
 
@@ -1412,8 +1418,6 @@ const JobDetails = () => {
       <MainLayout>
         <JobDetailsLayout>
           <Form layout="vertical" autoComplete="off" onFinish={handleSubmit(onSubmit)}>
-            <div className="flex gap-6 items-start">
-              <div className="flex-1 min-w-0">
                 <CollapsibleSection title="Job Info" defaultOpen>
                   <div className="grid grid-cols-3 gap-x-4 mt-2">
                     <Form.Item
@@ -2433,11 +2437,6 @@ const JobDetails = () => {
                     </Form.Item>
                   </div>
                 </CollapsibleSection>
-              </div>
-              <div className="w-[420px] shrink-0">
-                <JobDescriptionPanel aiJobDescriptionId={resolvedJobId} />
-              </div>
-            </div>
 
             {false && aiJobDescriptionId && (
               <div className="flex w-full justify-center py-2">
@@ -2478,10 +2477,10 @@ const JobDetails = () => {
                 <Button
                   type="button"
                   className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-                  onClick={handleContinueToScoring}
+                  onClick={handleContinueToDescription}
                   disabled={false}
                 >
-                  NEXT: SCORING CRITERIA →
+                  NEXT: AI JOB DESCRIPTION →
                 </Button>
               )}
             </div>

@@ -46,25 +46,25 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   const fromDashboard = location.state?.fromDashboard || false;
 
-  // Create wizard: Job Details and AI Job Description are one merged,
-  // split-screen step (see jobdetails.tsx + JobDescriptionPanel.tsx) — no
-  // longer two separate steps. Scoring Criteria moved up to right after it;
-  // Video Questions is retired as its own step (JD Questions — the renamed
-  // AI Questions pool — is the one shared question bank now; see
-  // AiQuestionsSetup.tsx). VideoQuestionsSetup.tsx/its route are left
-  // in place, just unlinked from this nav.
+  // Create wizard: Job Details and AI Job Description are two separate
+  // steps (jobdetails.tsx + JobDescriptionStep.tsx/JobDescriptionPanel.tsx),
+  // same shape as View/Edit below — previously merged into one split-screen
+  // step, un-merged back to match. Scoring Criteria sits right after AI
+  // Job Description; Video Questions is retired as its own step (JD
+  // Questions — the renamed AI Questions pool — is the one shared question
+  // bank now; see AiQuestionsSetup.tsx). VideoQuestionsSetup.tsx/its route
+  // are left in place, just unlinked from this nav.
   const baseSteps = [
-    'Job Details & AI Description',
+    'Job Details',
+    'AI Job Description',
     'Scoring Criteria',
     'Interview Setup',
     'Questions',
   ];
 
   // View/Edit keep Job Details and AI Job Description as two separate
-  // read-only tabs (the split-screen merge is a create-wizard-only concept —
-  // there's no interactive prompt/co-editing benefit to it once the job
-  // exists). Same Scoring-Criteria-earlier, Video-Questions-retired changes
-  // as the create wizard, for consistency.
+  // read-only tabs — same Scoring-Criteria-earlier, Video-Questions-retired
+  // changes as the create wizard, for consistency.
   const viewSteps = [
     'Job Details',
     'AI Job Description',
@@ -99,7 +99,13 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
         `${basePaths.edit}/interview`,
         `${basePaths.edit}/editAiQuestions`,
       ],
-      create: ['/job-details', '/scoring-criteria', '/interview-setup', '/ai-questions'],
+      create: [
+        '/job-details',
+        '/job-description',
+        '/scoring-criteria',
+        '/interview-setup',
+        '/ai-questions',
+      ],
     };
     return isViewMode ? stepPaths.view : isEditMode ? stepPaths.edit : stepPaths.create;
   }, [isViewMode, isEditMode, id, aiJobDescriptionId]);
@@ -132,15 +138,16 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     if (currentTabIndex === -1) return; // Not on a valid tab path
 
     // Check if current tab is disabled
-    // 4-step create order: 0 Job Details & AI Description (merged, always
-    // open) -> 1 Scoring Criteria (needs the merged step saved) -> 2 Interview
-    // Setup / 3 Questions (both need isFormCompleted — set true by
-    // handleContinueToScoring's "Next", same as isTab3Completed originally
-    // meant "past the AI Job Description step").
+    // 5-step create order: 0 Job Details (always open) -> 1 AI Job
+    // Description (needs Job Details saved) -> 2 Scoring Criteria (needs
+    // isScoringUnlocked) -> 3 Interview Setup / 4 Questions (both need
+    // isFormCompleted — set true by JobDescriptionStep's "Next", same as
+    // isTab3Completed originally meant "past the AI Job Description step").
     const isCurrentTabDisabled =
-      (currentTabIndex === 1 && !isScoringUnlocked) ||
-      (currentTabIndex === 2 && !isTab3Completed) ||
-      (currentTabIndex === 3 && !isTab3Completed);
+      (currentTabIndex === 1 && !isTab1Completed) ||
+      (currentTabIndex === 2 && !isScoringUnlocked) ||
+      (currentTabIndex === 3 && !isTab3Completed) ||
+      (currentTabIndex === 4 && !isTab3Completed);
 
     if (!isCurrentTabDisabled) return; // Current tab is enabled, no redirect needed
 
@@ -149,9 +156,10 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
     // Find first available tab
     const firstAvailableIndex = currentPaths.findIndex((_: string, index: number) => {
-      if (index === 1 && !isScoringUnlocked) return false;
-      if (index === 2 && !isTab3Completed) return false;
+      if (index === 1 && !isTab1Completed) return false;
+      if (index === 2 && !isScoringUnlocked) return false;
       if (index === 3 && !isTab3Completed) return false;
+      if (index === 4 && !isTab3Completed) return false;
       return true;
     });
 
@@ -161,6 +169,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       navigate(safePath, { replace: true });
     }
   }, [
+    isTab1Completed,
     isTab3Completed,
     isScoringUnlocked,
     isCreateMode,
@@ -185,52 +194,52 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       </div>
       <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">
         {!isCandidatePage && (
-          <div className="flex items-center justify-between gap-4 mb-4 pb-4 border-b border-neutral-100">
-            <div className="stepsContainer flex gap-1.5 flex-1 min-w-0 flex-wrap">
-              {allSteps.map((step, index) => {
-                const stepPath = currentPaths[index];
+          <div className="mb-4 border-b border-neutral-200">
+            <div className="flex items-center justify-between gap-4">
+              <div className="stepsContainer flex items-center gap-6 sm:gap-8 flex-1 min-w-0 overflow-x-auto">
+                {allSteps.map((step, index) => {
+                  const stepPath = currentPaths[index];
 
-                // Determine if tab is disabled based on previous tabs completion
-                let isDisabled = false;
-                if (isCreateMode) {
-                  if (index === 1 && !isScoringUnlocked) isDisabled = true;
-                  if (index === 2 && !isTab3Completed) isDisabled = true;
-                  if (index === 3 && !isTab3Completed) isDisabled = true;
-                }
+                  // Determine if tab is disabled based on previous tabs completion
+                  let isDisabled = false;
+                  if (isCreateMode) {
+                    if (index === 1 && !isTab1Completed) isDisabled = true;
+                    if (index === 2 && !isScoringUnlocked) isDisabled = true;
+                    if (index === 3 && !isTab3Completed) isDisabled = true;
+                    if (index === 4 && !isTab3Completed) isDisabled = true;
+                  }
 
-                const isMergedJobDetailsTab = index === 0;
-                const isStepActive = isMergedJobDetailsTab
-                  ? isActiveTab(stepPath) ||
-                    location.pathname.includes('/job-description') ||
-                    location.pathname.includes('/description')
-                  : isActiveTab(stepPath);
+                  const isStepActive = isActiveTab(stepPath);
 
-                return (
-                  <div
-                    key={`${step}-${index}`}
-                    onClick={() => {
-                      if (isDisabled) return;
-                      const safePath = sanitizedPath(stepPath + search) || '/';
-                      navigate(safePath);
-                    }}
-                    className={`stepBox whitespace-nowrap shrink text-sm font-medium rounded-lg px-3 py-1.5 transition-colors ${
-                      isDisabled
-                        ? 'cursor-not-allowed text-neutral-300'
-                        : 'cursor-pointer'
-                    } ${
-                      isStepActive
-                        ? 'bg-primary-50 text-primary-600 font-semibold'
-                        : isDisabled
-                          ? ''
-                          : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800'
-                    }`}
-                  >
-                    {isCreateMode ? `${index + 1}. ${step}` : step}
-                  </div>
-                );
-              })}
+                  return (
+                    <button
+                      type="button"
+                      key={`${step}-${index}`}
+                      onClick={() => {
+                        if (isDisabled) return;
+                        const safePath = sanitizedPath(stepPath + search) || '/';
+                        navigate(safePath);
+                      }}
+                      disabled={isDisabled}
+                      className={`stepBox whitespace-nowrap shrink-0 pb-3 text-sm border-b-2 transition-colors ${
+                        isDisabled
+                          ? 'cursor-not-allowed text-neutral-300 border-transparent'
+                          : 'cursor-pointer'
+                      } ${
+                        isStepActive
+                          ? 'text-primary-600 font-semibold border-primary-600'
+                          : isDisabled
+                            ? ''
+                            : 'text-neutral-500 font-medium border-transparent hover:text-neutral-800'
+                      }`}
+                    >
+                      {step}
+                    </button>
+                  );
+                })}
+              </div>
+              {button && <div className="shrink-0 pb-2.5">{button}</div>}
             </div>
-            {button && <div className="shrink-0">{button}</div>}
           </div>
         )}
         {children}
