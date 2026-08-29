@@ -33,7 +33,10 @@ import { get } from 'lodash-es';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
 import { useCreateEducationPreferenceMutation } from '../../../api/job-service/JobOpening/educationPreferences';
-import { useLazyGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
+import {
+  useGetJobDescriptionByIdQuery,
+  useLazyGetJobDescriptionByIdQuery,
+} from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import { useGetCompanyDetailsQuery } from '../../../api/tenant-service/Company/viewCompany';
 import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
@@ -131,7 +134,23 @@ const JobDetails = () => {
 
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
   const jobIdFromUrl = asJobId(searchParams.get('jobOpeningId'));
-  const jobIdRef = useRef(asJobId(jobOpeningId) || jobIdFromUrl);
+  const resolvedJobId = asJobId(jobOpeningId) || jobIdFromUrl;
+  const jobIdRef = useRef(resolvedJobId);
+  // Whether this job's Job Details form has actually been saved with real
+  // content (job title + department, both required there) — false for a
+  // bare draft shell (`useStartManualJobOpening` calls `POST
+  // /job-openings/draft` up front, before anything's filled in). Drives the
+  // Save-vs-Next footer button below and what gets passed to
+  // JobDescriptionPanel; deliberately NOT `aiJobDescriptionId` (Redux) or
+  // "is there a job id in the URL" — both are true for that empty draft too
+  // (its own URL gets the id attached immediately), so neither can tell a
+  // freshly-started, still-empty job apart from a fully-saved one, which is
+  // exactly the distinction this needs.
+  const { data: jdDetailsForGate } = useGetJobDescriptionByIdQuery(
+    { jobOpeningId: resolvedJobId },
+    { skip: !resolvedJobId }
+  );
+  const hasSavedDetails = jdDetailsForGate?.hasSavedDetails ?? false;
   const [enhanceJd] = useEnhanceJdMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
   const [createJobType] = useCreateJobTypeMutation();
@@ -172,6 +191,10 @@ const JobDetails = () => {
     loading: jobTypesLoading,
     refetch: refetchJobTypes,
   } = useJobOpeningDropdown('JOB_TYPE', 'create');
+  const { jobOpeningDropdown: jobModes, loading: jobModesLoading } = useJobOpeningDropdown(
+    'JOB_MODE',
+    'create'
+  );
   const { jobOpeningDropdown: exemptionStatus, loading: exemptionLoading } = useJobOpeningDropdown(
     'EXEMPTION_STATUS',
     'create'
@@ -253,6 +276,7 @@ const JobDetails = () => {
     mode: 'onChange',
     defaultValues: {
       ...jobDetails,
+      jobMode: jobDetails?.jobMode || [],
       jobProfileCode: jobDetails?.jobProfileCode || generateJobProfileCode(),
       openDate: jobDetails?.openDate || dayjs().format('DD-MM-YYYY'),
       country: jobDetails?.country || '',
@@ -268,13 +292,20 @@ const JobDetails = () => {
       if (asJobId(jobOpeningId) !== jobId) {
         dispatch(setJobOpeningId(jobId));
       }
+      // Restore `aiJobDescriptionId` (Redux doesn't survive a reload) once
+      // this job's details are confirmed actually saved — see
+      // `hasSavedDetails` above for why that's the right signal here, not
+      // just "does a job id exist".
+      if (hasSavedDetails && asJobId(aiJobDescriptionId) !== jobId) {
+        dispatch(setAiJobDescriptionId(jobId));
+      }
       if (jobIdFromUrl !== jobId) {
         const next = new URLSearchParams(searchParams);
         next.set('jobOpeningId', jobId);
         setSearchParams(next, { replace: true });
       }
     },
-    [dispatch, jobIdFromUrl, jobOpeningId, searchParams, setSearchParams]
+    [dispatch, aiJobDescriptionId, hasSavedDetails, jobIdFromUrl, jobOpeningId, searchParams, setSearchParams]
   );
 
   useEffect(() => {
@@ -1256,11 +1287,11 @@ const JobDetails = () => {
     let isSourceUploaded = false;
     if (atsJobOpeningId) {
       isSourceUploaded = true;
-    } else if (jobOpeningId && aiJobDescriptionId) {
+    } else if (jobOpeningId && hasSavedDetails) {
       setIsSubmittingWithModal(true);
       try {
         const jdData = await triggerGetJobDescriptionById({
-          jobOpeningId: asJobId(aiJobDescriptionId || jobOpeningId),
+          jobOpeningId: asJobId(jobOpeningId),
         }).unwrap();
         if (jdData?.source === 'UPLOADED') {
           isSourceUploaded = true;
@@ -1332,10 +1363,12 @@ const JobDetails = () => {
       setPendingSubmitData(null);
       setIsSubmittingWithModal(false);
 
-      const fullUrl = getFullURL('/scoring-criteria', true);
-      const safeUrl =
-        typeof fullUrl === 'string' && fullUrl.startsWith('/') ? fullUrl : '/scoring-criteria';
-      navigate(safeUrl, { viewTransition: true });
+      // Stay on this step after saving — don't auto-advance to Scoring
+      // Criteria. `aiJobDescriptionId` is now set (dispatched above), so the
+      // form re-renders with the AI panel actively generating and the
+      // "NEXT: SCORING CRITERIA →" button (handleContinueToScoring) in place
+      // of this Save button; moving on is the user's own next click, once
+      // they've reviewed/refined the generated description.
     } catch (err) {
       showToast({
         message: getJobErrorMessage(err, 'Something went wrong while saving job opening.'),
@@ -1486,6 +1519,25 @@ const JobDetails = () => {
                         onEditOption={handleEditOption}
                         onDeleteOption={handleDeleteOption}
                         onReuseOption={handleReuseOption}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label={
+                        <span>
+                          Job Mode <span className="required-asterisk">*</span>
+                        </span>
+                      }
+                    >
+                      <DropdownWithAddOption
+                        className="w-full custom-select-jobs placeholder-style"
+                        value={(watch('jobMode') || [])[0]}
+                        onChange={(value) => setValue('jobMode', [value], { shouldValidate: true })}
+                        options={jobModes}
+                        loading={jobModesLoading}
+                        label="Job Mode"
+                        placeholder="Select Job Mode"
+                        type="jobMode"
+                        enableEditDelete={false}
                       />
                     </Form.Item>
                     <Form.Item label={<span>Shift</span>}>
@@ -2383,7 +2435,7 @@ const JobDetails = () => {
                 </CollapsibleSection>
               </div>
               <div className="w-[420px] shrink-0">
-                <JobDescriptionPanel aiJobDescriptionId={aiJobDescriptionId} />
+                <JobDescriptionPanel aiJobDescriptionId={resolvedJobId} />
               </div>
             </div>
 
@@ -2400,7 +2452,7 @@ const JobDetails = () => {
             )}
 
             <div className="flex items-center justify-center mt-6 gap-6">
-              {!aiJobDescriptionId && (
+              {!hasSavedDetails && (
                 <Button
                   type="button"
                   className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
@@ -2409,7 +2461,7 @@ const JobDetails = () => {
                   SAVE AS DRAFT
                 </Button>
               )}
-              {!aiJobDescriptionId ? (
+              {!hasSavedDetails ? (
                 <Button
                   type="button"
                   className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"

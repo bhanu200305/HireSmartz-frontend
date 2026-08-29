@@ -202,6 +202,10 @@ export type JobDetailsState = {
   jobTitle: Array<string | number>;
   department: Array<string | number>;
   jobType: Array<string | number>;
+  // Single catalogue id, held as an array-of-one — same convention as
+  // jobTitle/department/jobType above. Maps to `mode_id`, a
+  // publish-mandatory field (_publish_validation.py).
+  jobMode?: Array<string | number>;
   shiftStart?: string;
   shiftEnd?: string;
   openings: number | null;
@@ -521,6 +525,10 @@ export type JobOpeningByIdResponse = {
     jobType: {
       id: number;
       jobTypeName: string;
+    }[];
+    jobMode: {
+      id: number;
+      name: string;
     }[];
     educationPreference: {
       id: number;

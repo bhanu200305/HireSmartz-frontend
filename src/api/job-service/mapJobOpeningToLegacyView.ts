@@ -108,6 +108,7 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
     jobType: details?.job_type_id
       ? [{ id: details.job_type_id as unknown as number, jobTypeName: '' }]
       : [],
+    jobMode: details?.mode_id ? [{ id: details.mode_id as unknown as number, name: '' }] : [],
     // Id only, name resolved separately (same pattern as jobTitle/department/
     // jobType above) — education_preference_id is a single catalogue
     // reference now (migration 0014), not free text.
@@ -145,6 +146,7 @@ export const mapDetailsToJobDetailsState = (
     jobTitle: details.job_title_id ? [details.job_title_id as unknown as number] : [],
     department: details.department_id ? [details.department_id as unknown as number] : [],
     jobType: details.job_type_id ? [details.job_type_id as unknown as number] : [],
+    jobMode: details.mode_id ? [details.mode_id as unknown as number] : [],
     officeLocation: locationId ? [locationId as unknown as number] : [],
     country: details.locations?.[0]?.country ?? '',
     state: details.locations?.[0]?.state ?? '',

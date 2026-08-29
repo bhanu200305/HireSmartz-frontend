@@ -1,6 +1,7 @@
 import {
   useListClosureReasonsQuery,
   useListInterviewRoundTypesQuery,
+  useListJobModesQuery,
   useListJobTypesQuery,
   useListLanguagesQuery,
   useLazySearchSkillsQuery,
@@ -71,6 +72,14 @@ const useJobOpeningDropdown = (
   const closureReasons = useListClosureReasonsQuery(undefined, {
     skip: skip || endpoint !== 'CLOSURE_REASON',
   });
+  // Platform-wide catalog, same as closure reasons — no tenant variant.
+  // What a job's `mode_id` (a publish-mandatory field per
+  // _publish_validation.py) picks from; this was previously the only
+  // mandatory Job Details field with no dropdown anywhere in the app,
+  // making every job unpublishable.
+  const jobModes = useListJobModesQuery(undefined, {
+    skip: skip || endpoint !== 'JOB_MODE',
+  });
   const roundTypes = useListInterviewRoundTypesQuery(undefined, {
     skip: skip || endpoint !== 'ROUNDS',
   });
@@ -108,6 +117,12 @@ const useJobOpeningDropdown = (
         return (closureReasons.data ?? []).map((item) => ({
           id: item.reason_id,
           name: item.reason,
+          description: item.description ?? undefined,
+        }));
+      case 'JOB_MODE':
+        return (jobModes.data ?? []).map((item) => ({
+          id: item.job_mode_id,
+          name: item.name,
           description: item.description ?? undefined,
         }));
       case 'ROUNDS':
@@ -161,6 +176,7 @@ const useJobOpeningDropdown = (
     endpoint,
     jobTypes.data,
     closureReasons.data,
+    jobModes.data,
     roundTypes.data,
     educationPreferences.data,
     languages.data,
@@ -174,6 +190,7 @@ const useJobOpeningDropdown = (
   const loading =
     jobTypes.isLoading ||
     closureReasons.isLoading ||
+    jobModes.isLoading ||
     roundTypes.isLoading ||
     educationPreferences.isLoading ||
     languages.isLoading ||
@@ -184,6 +201,7 @@ const useJobOpeningDropdown = (
   const refetch = () => {
     if (endpoint === 'JOB_TYPE') jobTypes.refetch();
     if (endpoint === 'CLOSURE_REASON') closureReasons.refetch();
+    if (endpoint === 'JOB_MODE') jobModes.refetch();
     if (endpoint === 'ROUNDS') roundTypes.refetch();
     if (endpoint === 'EDUCATION_PREFERENCE') educationPreferences.refetch();
     if (endpoint === 'LANGUAGE') languages.refetch();

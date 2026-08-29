@@ -8,11 +8,11 @@ import {
 } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import ReactMarkdown from 'react-markdown';
 import { Loader } from '../../shared/ui/loader';
-import { useRegenerateJobDescriptionMutation } from '../../../api/job-service/JobOpening/RegenerateJd';
 import {
   useGetJdStatusQuery,
   useGetJdEnhanceResultQuery,
   useReviewJdEnhancementMutation,
+  useEnhanceJdMutation,
 } from '../../../api/job-service/JobOpening/JdUpload';
 import { useForm } from 'react-hook-form';
 import { useEffect, useRef, useState } from 'react';
@@ -50,7 +50,13 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
   const [previewDescription, setPreviewDescription] = useState('');
   const [editorContent, setEditorContent] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
-  const acceptedEnhanceRef = useRef(false);
+  // Tracks which job's enhancement this component instance has already
+  // auto-accepted (or has in flight) — a plain boolean here would wrongly
+  // stay `true` across a job switch, since this component isn't remounted
+  // when only the `jobOpeningId` query param changes (route is `/job-details`,
+  // not `/job-details/:id`), permanently blocking auto-accept for every job
+  // opened afterward in the same tab.
+  const acceptedEnhanceForJobRef = useRef<string | null>(null);
 
   const { register, getValues, setValue, watch } = useForm({
     defaultValues: { description: '' },
@@ -67,18 +73,24 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
     isLoading,
     refetch,
   } = useGetJobDescriptionByIdQuery({ jobOpeningId }, { skip: !jobOpeningId });
+  // Whether the Job Details form has actually been saved with real content
+  // (job title + department, both required there) — false for a bare
+  // draft shell (`useStartManualJobOpening` creates one up front, before
+  // anything's filled in) and while `response` hasn't loaded yet, so this
+  // panel never shows Generate/Refine/Regenerate for a job with nothing yet
+  // to generate from.
+  const hasSavedDetails = response?.hasSavedDetails ?? false;
   const { data: jdStatus } = useGetJdStatusQuery(jobOpeningId, {
     skip: !jobOpeningId,
     pollingInterval: 2000,
   });
   const { data: enhanceResult } = useGetJdEnhanceResultQuery(jobOpeningId, {
-    skip: !jobOpeningId || Boolean(response?.jobDescription),
+    skip: !jobOpeningId || !hasSavedDetails || Boolean(response?.jobDescription),
     pollingInterval: 2000,
   });
-  const [reviewJdEnhancement] = useReviewJdEnhancementMutation();
+  const [reviewJdEnhancement, { isLoading: isApplying }] = useReviewJdEnhancementMutation();
   const [updateJobDescription, { isLoading: isUpdating }] = useUpdateJobDescriptionMutation();
-  const [regenerateJobDescription, { isLoading: isRegenerating }] =
-    useRegenerateJobDescriptionMutation();
+  const [enhanceJd, { isLoading: isGenerating }] = useEnhanceJdMutation();
 
   useEffect(() => {
     if (response?.jobDescription) {
@@ -96,18 +108,20 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
   useEffect(() => {
     if (
       !jobOpeningId ||
-      acceptedEnhanceRef.current ||
+      acceptedEnhanceForJobRef.current === jobOpeningId ||
       enhanceResult?.status !== 'READY' ||
       response?.jobDescription
     ) {
       return;
     }
-    acceptedEnhanceRef.current = true;
+    acceptedEnhanceForJobRef.current = jobOpeningId;
     void reviewJdEnhancement({ jobOpeningId, action: 'accept_all' })
       .unwrap()
       .then(() => refetch())
       .catch(() => {
-        acceptedEnhanceRef.current = false;
+        if (acceptedEnhanceForJobRef.current === jobOpeningId) {
+          acceptedEnhanceForJobRef.current = null;
+        }
       });
   }, [enhanceResult?.status, jobOpeningId, response?.jobDescription, reviewJdEnhancement, refetch]);
 
@@ -116,38 +130,55 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
     setIsInputFocused(false);
   };
 
-  const handleRegenerate = async (generateFromScratch: boolean) => {
+  // The (re)generate action, with or without the recruiter's own typed
+  // instructions — every job created from this app's own UI today is
+  // Manual-entry-path (nothing here creates an AI-Prompt-path job), and
+  // only Manual/Upload-JD jobs can call `/jd/enhance`; `/jd/regenerate`
+  // (the AI-Prompt-only endpoint) 400s for them, which is why both REFINE
+  // and REGENERATE go through this one action rather than two different
+  // endpoints.
+  const handleGenerate = async (refineInstructions?: string) => {
     if (!jobOpeningId) return;
-    const desc = getValues('description');
-
     try {
-      const result = await regenerateJobDescription({
-        jobOpeningId,
-        text: desc,
-        generateFromScratch,
-      }).unwrap();
-
-      showToast({
-        message: result.message || 'Job description regeneration started',
-        type: 'success',
-      });
+      await enhanceJd(
+        refineInstructions ? { jobOpeningId, refine_instructions: refineInstructions } : jobOpeningId
+      ).unwrap();
+      showToast({ message: 'Generating your AI job description…', type: 'success' });
+      acceptedEnhanceForJobRef.current = null;
       setValue('description', '');
       refetchTopFivePrompt();
-      acceptedEnhanceRef.current = false;
-      void refetch();
     } catch (error: unknown) {
       showToast({
-        message: getJobErrorMessage(
-          error,
-          'Failed to regenerate job description. Please try again.'
-        ),
+        message: getJobErrorMessage(error, 'Failed to start AI generation. Please try again.'),
         type: 'error',
       });
     }
   };
 
-  const handleRefine = () => handleRegenerate(false);
-  const handleRegenerateFromScratch = () => handleRegenerate(true);
+  const handleRefine = () => {
+    const desc = getValues('description').trim();
+    if (!desc) return;
+    void handleGenerate(desc);
+  };
+
+  // Explicit, user-triggered version of what the effect above tries to do
+  // automatically once `enhanceResult.status` flips to READY. Kept as a
+  // real button rather than relying solely on that background effect —
+  // it's the same one-line call, but visible and retryable if the
+  // automatic path is ever slow to pick up a poll tick.
+  const handleApplyGenerated = async () => {
+    if (!jobOpeningId) return;
+    try {
+      await reviewJdEnhancement({ jobOpeningId, action: 'accept_all' }).unwrap();
+      acceptedEnhanceForJobRef.current = jobOpeningId;
+      await refetch();
+    } catch (error: unknown) {
+      showToast({
+        message: getJobErrorMessage(error, 'Failed to apply the generated description.'),
+        type: 'error',
+      });
+    }
+  };
 
   const handleCancelEdit = () => {
     setEditorContent(previewDescription);
@@ -247,23 +278,52 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
   return (
     <div className="w-full">
       {(isLoading ||
-        isRegenerating ||
+        isGenerating ||
         jdStatus?.status === 'GENERATING' ||
         jdStatus?.status === 'PROCESSING') && <Loader />}
 
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">✨</span>
         <span className="font-semibold text-gray-900">
-          {aiJobDescriptionId
+          {aiJobDescriptionId && hasSavedDetails
             ? 'AI Job Description'
             : 'Describe the role — AI fills the description'}
         </span>
       </div>
 
-      {!aiJobDescriptionId ? (
+      {!aiJobDescriptionId || !hasSavedDetails ? (
         <div className="w-full p-6 bg-[#FAFAFA] border border-dashed border-[#E2E2E2] rounded-lg text-center text-gray-400 text-sm">
           Save the job details on the left first — the AI description generates automatically and
           appears here.
+        </div>
+      ) : !previewDescription && enhanceResult?.status === 'READY' ? (
+        <div className="w-full p-6 bg-[#FAFAFA] border border-dashed border-[#E2E2E2] rounded-lg text-center">
+          <p className="text-gray-600 text-sm mb-4">
+            Your AI description is ready — apply it to see it here.
+          </p>
+          <Button
+            className="text-white bg-button rounded-3xl px-6 py-2 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleApplyGenerated}
+            disabled={isApplying}
+          >
+            {isApplying ? 'APPLYING…' : 'USE THIS DESCRIPTION'}
+          </Button>
+        </div>
+      ) : !previewDescription ? (
+        <div className="w-full p-6 bg-[#FAFAFA] border border-dashed border-[#E2E2E2] rounded-lg text-center">
+          <p className="text-gray-400 text-sm mb-4">
+            {jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING'
+              ? 'Generating your AI job description from the fields you filled in…'
+              : "No description yet — generate one from the Job Info, Skills, and Education Preference you've filled in on the left."}
+          </p>
+          <Button
+            className="text-white bg-button rounded-3xl px-6 py-2 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleGenerate}
+            disabled={isGenerating || jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING'}
+          >
+            <TbReload size={16} />
+            GENERATE DESCRIPTION
+          </Button>
         </div>
       ) : (
         <>
@@ -418,7 +478,7 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
           onClose={() => setShowRegenerateModal(false)}
           onConfirm={() => {
             setShowRegenerateModal(false);
-            handleRegenerateFromScratch();
+            void handleGenerate();
           }}
           title="This will generate a new Job Description using Job Details and Job Skills and will ignore previously generated AI content."
           confirmText="YES"

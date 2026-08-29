@@ -20,6 +20,13 @@ type ViewJobDescriptionResponse = {
   atsJobOpeningId?: string;
   source?: string;
   jd_status?: string;
+  /** True once the Job Details form has actually been saved with real
+   * content (job title + department are both required fields on that
+   * form) — false for a bare draft shell that only exists because
+   * `useStartManualJobOpening` calls `POST /job-openings/draft` up front,
+   * before the recruiter has filled in or saved anything. There's nothing
+   * for AI generation to compose from until this is true. */
+  hasSavedDetails: boolean;
 };
 
 type UpdateJobDescriptionRequest = {
@@ -51,6 +58,7 @@ const extendedApi = jobApi.injectEndpoints({
       transformResponse: (response: JobDetailsResponse): ViewJobDescriptionResponse => ({
         id: response.org_job_opening_id,
         jobDescription: response.jd ?? '',
+        hasSavedDetails: Boolean(response.job_title_id && response.department_id),
       }),
       providesTags: (_r, _e, args) => [
         { type: 'JobDescription', id: resolveJobId(args) },
@@ -74,6 +82,9 @@ const extendedApi = jobApi.injectEndpoints({
       ): ViewJobDescriptionResponse => ({
         id: resolveJobId(args),
         jobDescription: response.jd ?? '',
+        // This mutation only ever runs from the EDIT panel once a
+        // description already exists — the job necessarily has details.
+        hasSavedDetails: true,
       }),
       invalidatesTags: (_r, _e, args) => [
         { type: 'JobDescription', id: resolveJobId(args) },

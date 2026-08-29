@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from 'recharts';
 import { ChartCard, DonutStat, FunnelBars } from '../shared';
-import { useGetJobStatsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
+import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import {
   useGetHiringFunnelQuery,
   useGetApplicationsOverTimeQuery,

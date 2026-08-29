@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { MdOutlineWorkOutline } from 'react-icons/md';
 import { Badge } from '../shared';
 import { Loader } from '../shared/ui/loader';
-import { useGetJobOpeningsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
+import { useGetJobOpeningsListLegacyQuery as useGetJobOpeningsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
 import type { JobSummary } from '../../api/job-service/JobOpenings/types';
 import { jobStatus, daysOpen } from './jobOpeningListHelpers';
 import JobDetailModal from './JobDetailModal';
