@@ -36,6 +36,26 @@ import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 
 const DEFAULT_QUESTION_COUNT = 10;
 
+// Human-readable text for each `failed_checks` code check_publish_readiness
+// (job-service's _publish_validation.py) can return — the API only reports
+// which named gate failed, not which specific field, so
+// 'mandatory_fields_incomplete' lists every field that gate covers rather
+// than guessing which one this job is actually missing.
+const PUBLISH_CHECK_LABELS: Record<string, string> = {
+  jd_missing: 'Job description is missing',
+  mandatory_fields_incomplete:
+    'Some required Job Details fields are missing — check Job Title, Department, Job Mode, Job Type, Open Date, Vacancies, Minimum Experience, Salary Range, and Hiring Manager',
+  no_education_preference: 'Education preference is not set',
+  no_location: 'At least one job location is required',
+  no_skill: 'At least one skill is required',
+  no_mandatory_skill: 'At least one skill must be marked Mandatory, not just Optional',
+  no_round: 'At least one interview round is required',
+  no_question: 'At least one question is required',
+};
+
+const describeFailedChecks = (checks: string[]): string =>
+  checks.map((check) => PUBLISH_CHECK_LABELS[check] ?? check).join('; ');
+
 const AiQuestionsSetup = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -301,7 +321,7 @@ const AiQuestionsSetup = () => {
       const validation = await validateForPublish(activeJobOpeningId).unwrap();
       if (!validation.is_valid) {
         showToast({
-          message: `Cannot publish yet: ${(validation.failed_checks ?? []).join(', ')}`,
+          message: `Cannot publish yet: ${describeFailedChecks(validation.failed_checks ?? [])}`,
           type: 'error',
         });
         return;

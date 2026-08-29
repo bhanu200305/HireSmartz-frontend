@@ -41,7 +41,7 @@ import { Col, Dropdown, Modal, Row, Select, MenuProps, Tooltip } from 'antd';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { DateTimePayload, Jobs, SortDirection } from '../../types';
 import DateTimeRangePicker from '../shared/ui/datePicker';
-import { handleDateValue, safeDecodeToken } from '../../shared/utils/methods';
+import { handleDateValue } from '../../shared/utils/methods';
 import { COL } from '../shared/ui/Columns';
 import { useDuplicateJobOpeningMutation } from '../../api/job-service/JobOpening/GetJobOpeningById';
 import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
@@ -53,11 +53,7 @@ import CloseJobModal from './Candidates/Modal/CloseJobModal';
 import { buildInternalGlobalSearchRequestDto } from '../../shared/utils/filters/internalSearchPayload';
 import JobListingNotesPanel from './Notes/JobListingNotesPanel';
 import { QrCodeCard } from '../shared/ui/QrCodeCard';
-import {
-  useGetQrListQuery,
-  useGenerateQrMutation,
-  useToggleQrActiveMutation,
-} from '../../api/tenant-service/MyCompany/qrCode';
+import { useGetTenantQrCodeQuery } from '../../api/organization-service/Tenants/qrCode';
 import { resetJobState } from '../../redux/slices/jobOpeningSlice';
 import { useStartManualJobOpening } from '../../hooks/useStartManualJobOpening';
 import { getJobErrorMessage } from '../../shared/utils/auth/jobError.helpers';
@@ -146,8 +142,6 @@ const JobsOpening = () => {
   });
   const [jobNotesFor, setJobNotesFor] = useState<{ id: string; title: string } | null>(null);
 
-  const decodedToken = safeDecodeToken<{ companyName: string; companyId?: number }>(loginToken);
-  const companyId = decodedToken?.companyId ?? 0;
   const [qrModalOpen, setQrModalOpen] = useState<boolean>(false);
   const [showCreateJobModal, setShowCreateJobModal] = useState<boolean>(false);
   const [showJdUploadModal, setShowJdUploadModal] = useState<boolean>(false);
@@ -162,12 +156,17 @@ const JobsOpening = () => {
   const [, setIsJdPartialFailure] = useState<boolean>(false);
   const [, setIsJdFailed] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { data: qrListData, isLoading: isQrLoading } = useGetQrListQuery(
-    { companyId, status: 'all' },
-    { skip: !companyId || !qrModalOpen }
-  );
-  const [generateQr, { isLoading: isGenerating }] = useGenerateQrMutation();
-  const [toggleQrActive, { isLoading: isTogglingActive }] = useToggleQrActiveMutation();
+  // GET, not a mutation: organization-service generates this tenant's ONE QR
+  // on the first call and just re-resolves it after — see qrCode.ts's
+  // comment. Fetched only once the modal is open, on a real UUID tenantId
+  // (never the old numeric companyId decoded from the JWT, which the new
+  // auth tokens don't carry).
+  const {
+    data: qrCodeData,
+    isLoading: isQrLoading,
+    isError: isQrError,
+  } = useGetTenantQrCodeQuery(tenantId ?? '', { skip: !tenantId || !qrModalOpen });
+  const careersPublicUrl = tenantId ? `${window.location.origin}/careers/${tenantId}` : '';
   const [uploadSingleJd] = useUploadSingleJdMutation();
   const [uploadBulkJd] = useUploadBulkJdMutation();
   const streamToken = loginToken || getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS) || undefined;
@@ -212,30 +211,6 @@ const JobsOpening = () => {
       payload?.data?.batch?.id;
 
     return toBatchId(candidate);
-  };
-
-  const masterQr = qrListData?.data?.find((qr) => qr.masterQr) ?? null;
-
-  const handleQrGenerate = async (): Promise<void> => {
-    try {
-      const result = await generateQr({ companyId }).unwrap();
-      showToast({ type: 'success', message: result.message || 'QR code generated successfully.' });
-    } catch {
-      showToast({ type: 'error', message: 'Failed to generate QR code. Please try again.' });
-    }
-  };
-
-  const handleQrToggleActive = async (active: boolean): Promise<void> => {
-    if (!masterQr) return;
-    try {
-      const result = await toggleQrActive({ qrId: masterQr.id, active }).unwrap();
-      showToast({
-        type: 'success',
-        message: result.message || `QR code ${active ? 'activated' : 'deactivated'} successfully.`,
-      });
-    } catch {
-      showToast({ type: 'error', message: 'Failed to update QR code status. Please try again.' });
-    }
   };
 
   const filters = useSelector((state: RootState) => state.JobOpeningFiltersSlice);
@@ -1468,13 +1443,10 @@ const JobsOpening = () => {
           destroyOnClose={false}
         >
           <QrCodeCard
-            qrItem={masterQr}
-            isLoading={isQrLoading || isGenerating}
-            isTogglingActive={isTogglingActive}
-            onGenerate={() => void handleQrGenerate()}
-            onToggleActive={(active) => void handleQrToggleActive(active)}
-            showGenerateButton={!masterQr}
-            showToggle={false}
+            imageUrl={qrCodeData?.url ?? null}
+            publicUrl={careersPublicUrl}
+            isLoading={isQrLoading}
+            errorMessage={isQrError ? 'Failed to load QR code. Please try again.' : undefined}
           />
         </Modal>
       </MainLayout>

@@ -63,7 +63,18 @@ const AddNewRound = () => {
   };
 
   const onSubmit = async (data: SaveInterviewRoundRequest) => {
-    if (isLoading || !resolvedJobId) return;
+    if (isLoading) return;
+    if (!resolvedJobId) {
+      // Previously a silent no-op — clicking Save did nothing and gave no
+      // indication why. This only happens when the job's own details were
+      // never saved (no draft job id in JobSlice/EditJobSlice/the URL yet),
+      // so there is nothing for a round to attach to on the backend.
+      showToast({
+        message: 'Please save the job details first before adding an interview round.',
+        type: 'error',
+      });
+      return;
+    }
 
     const existing = toInterviewSequencePayload(rounds);
     const nextSequence = existing.length + 1;

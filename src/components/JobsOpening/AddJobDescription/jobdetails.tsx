@@ -24,15 +24,14 @@ import {
   updateJobDetails,
 } from '../../../redux/slices/jobOpeningSlice';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  useDeleteDropdownMutation,
-  useEditDropdownMutation,
-  useReuseDropdownMutation,
-} from '../../../api/job-service/AddableDropdown/UpdateDropdownByType';
 import { get } from 'lodash-es';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
-import { useCreateEducationPreferenceMutation } from '../../../api/job-service/JobOpening/educationPreferences';
+import {
+  useCreateEducationPreferenceMutation,
+  useDeleteEducationPreferenceMutation,
+  useUpdateEducationPreferenceMutation,
+} from '../../../api/job-service/JobOpening/educationPreferences';
 import {
   useGetJobDescriptionByIdQuery,
   useLazyGetJobDescriptionByIdQuery,
@@ -70,6 +69,8 @@ import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUplo
 import {
   useCreateOrganizationSkillMutation,
   useCreateJobTypeMutation,
+  useDeleteJobTypeMutation,
+  useUpdateJobTypeMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import {
   capitalizeWordsAdvanced,
@@ -155,14 +156,15 @@ const JobDetails = () => {
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
   const [createJobType] = useCreateJobTypeMutation();
   const [createEducationPreference] = useCreateEducationPreferenceMutation();
+  const [updateEducationPreference] = useUpdateEducationPreferenceMutation();
+  const [deleteEducationPreference] = useDeleteEducationPreferenceMutation();
+  const [updateJobType] = useUpdateJobTypeMutation();
+  const [deleteJobType] = useDeleteJobTypeMutation();
   const [isSyncingWithATS, setIsSyncingWithATS] = useState(false);
   const [showRegenerateConfirmModal, setShowRegenerateConfirmModal] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
   const [isSubmittingWithModal, setIsSubmittingWithModal] = useState(false);
   const [triggerGetJobDescriptionById] = useLazyGetJobDescriptionByIdQuery();
-  const [editDropdown] = useEditDropdownMutation();
-  const [deleteDropdown] = useDeleteDropdownMutation();
-  const [reuseDropdown] = useReuseDropdownMutation();
   const { data: offices = [], isFetching: loadingJobLocations } = useListTenantOfficesQuery(
     { tenantId: tenantId ?? '', isMaster },
     { skip: !tenantId }
@@ -259,8 +261,13 @@ const JobDetails = () => {
     });
     setValue('country', selectedLocation?.country ?? '', { shouldValidate: true });
     setValue('state', selectedLocation?.state ?? '', { shouldValidate: true });
-    setValue('hiringManagers', [], { shouldValidate: true });
-    setValue('recruiters', [], { shouldValidate: true });
+    // Hiring Manager/Recruiter are NOT location-scoped on this backend —
+    // useJobOpeningDropdown('HIRING_MANAGER'/'RECRUITER', ...) always pulls
+    // the tenant's whole user list, no locationId involved (that's what
+    // selectedLocationIdForUsers above was for, but nothing ever reads its
+    // value). Clearing these here just silently threw away a selection the
+    // user had already made every time they touched Location — see the
+    // "hiring manager/recruiter keeps getting deselected" report.
   };
 
   const {
@@ -855,64 +862,16 @@ const JobDetails = () => {
       return;
     }
 
-    const typeMapping: Record<string, string> = {
-      jobTitle: 'JOB_TITLE',
-      department: 'DEPARTMENT',
-      jobType: 'JOB_TYPE',
-      educationPreference: 'EDUCATION_PREFERENCE',
-      mandatorySkills: 'MANDATORY_SKILLS',
-      optionalSkills: 'OPTIONAL_SKILLS',
-    };
-
-    const mappedType = typeMapping[type];
-    if (!mappedType) return;
-
-    try {
-      const res = await reuseDropdown({
-        type: mappedType,
-        id: [Number(id)],
-      }).unwrap();
-
-      // Check if the operation was successful
-      if (res.successCount > 0 && res.results?.[0]?.status === 'SUCCESS') {
-        const successMessage =
-          res.results[0].message || res.message || 'Option reactivated successfully';
-
-        showToast({
-          message: successMessage,
-          type: 'success',
-        });
-
-        // Refetch the dropdown data
-        switch (type) {
-          case 'jobType':
-            refetchJobTypes?.();
-            break;
-          case 'educationPreference':
-            refetchEducationPreference?.();
-            break;
-          case 'mandatorySkills':
-            refetchMandatorySkills?.();
-            break;
-          case 'optionalSkills':
-            refetchOptionalSkills?.();
-            break;
-        }
-      } else {
-        const errorMessage =
-          res.results?.[0]?.message || res.message || 'Failed to reactivate option.';
-
-        showToast({
-          message: errorMessage,
-          type: 'error',
-        });
-      }
-    } catch (err) {
-      showToast({
-        message: get(err, 'data.message', 'Something went wrong while reactivating option.'),
-        type: 'error',
-      });
-    }
+    // Job types, education preferences and skill-catalog entries are all
+    // soft-deleted on the current backend, but none of them expose a
+    // restore/reactivate endpoint (only create/list/update/delete) — the
+    // old generic /job-opening/{type}/reuse/{id} this used to call doesn't
+    // exist on this backend at all. Same honest "not from this screen"
+    // treatment as department/jobTitle above, rather than pretending it works.
+    showToast({
+      message: 'Removed options cannot be restored from this screen.',
+      type: 'error',
+    });
   };
   const handleEditOption = async (id: string | number, newName: string, type: string) => {
     if (type === 'department') {
@@ -978,74 +937,56 @@ const JobDetails = () => {
       return;
     }
 
-    const typeMapping: Record<string, string> = {
-      jobTitle: 'JOB_TITLE',
-      department: 'DEPARTMENT',
-      jobType: 'JOB_TYPE',
-      educationPreference: 'EDUCATION_PREFERENCE',
-      mandatorySkills: 'MANDATORY_SKILLS',
-      optionalSkills: 'OPTIONAL_SKILLS',
-    };
+    if (type === 'jobType') {
+      try {
+        await updateJobType({
+          jobTypeId: String(id),
+          name: capitalizeWordsAdvanced(newName),
+          isMaster,
+        }).unwrap();
 
-    const mappedType = typeMapping[type];
-    if (!mappedType) return;
-
-    try {
-      const res = await editDropdown({
-        type: mappedType,
-        ids: [Number(id)],
-        operation: 'update',
-        updateFieldsList: [
-          {
-            name: capitalizeWordsAdvanced(newName),
-          },
-        ],
-      }).unwrap();
-
-      // Check if the operation was successful based on the response structure
-      if (res.successCount > 0 && res.results?.[0]?.status === 'SUCCESS') {
-        const successMessage =
-          type === 'jobType'
-            ? 'Job type deactivated successfully'
-            : res.results[0].message || res.message || 'Option updated successfully';
-
+        showToast({ message: 'Job type updated successfully', type: 'success' });
+        refetchJobTypes?.();
+      } catch (err) {
         showToast({
-          message: successMessage,
-          type: 'success',
-        });
-
-        // Refetch the dropdown data
-        switch (type) {
-          case 'jobType':
-            refetchJobTypes?.();
-            break;
-          case 'educationPreference':
-            refetchEducationPreference?.();
-            break;
-          case 'mandatorySkills':
-            refetchMandatorySkills?.();
-            break;
-          case 'optionalSkills':
-            refetchOptionalSkills?.();
-            break;
-        }
-      } else {
-        const errorMessage =
-          type === 'jobType'
-            ? 'Failed to deactivate job type.'
-            : res.results?.[0]?.message || res.message || 'Failed to update option.';
-
-        showToast({
-          message: errorMessage,
+          message: getJobErrorMessage(err, 'Something went wrong while updating job type.'),
           type: 'error',
         });
       }
-    } catch (err) {
-      showToast({
-        message: get(err, 'data.message', 'Something went wrong while updating option.'),
-        type: 'error',
-      });
+
+      return;
     }
+
+    if (type === 'educationPreference') {
+      try {
+        await updateEducationPreference({
+          preferenceId: String(id),
+          name: capitalizeWordsAdvanced(newName),
+        }).unwrap();
+
+        showToast({ message: 'Education preference updated successfully', type: 'success' });
+        refetchEducationPreference?.();
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(
+            err,
+            'Something went wrong while updating education preference.'
+          ),
+          type: 'error',
+        });
+      }
+
+      return;
+    }
+
+    // No update endpoint exists for a tenant's own skill-catalog entries —
+    // /skills only supports POST (create) and /skills/search (read). The old
+    // generic /job-opening/{type}/update this used to call for
+    // mandatorySkills/optionalSkills has no equivalent on this backend.
+    showToast({
+      message: 'Skills cannot be renamed from this screen.',
+      type: 'error',
+    });
   };
 
   const handleDeleteOption = async (id: string | number, type: string) => {
@@ -1124,74 +1065,56 @@ const JobDetails = () => {
       return;
     }
 
-    const typeMapping: Record<string, string> = {
-      jobTitle: 'JOB_TITLE',
-      department: 'DEPARTMENT',
-      jobType: 'JOB_TYPE',
-      educationPreference: 'EDUCATION_PREFERENCE',
-      mandatorySkills: 'MANDATORY_SKILLS',
-      optionalSkills: 'OPTIONAL_SKILLS',
+    const clearIfSelected = () => {
+      const currentValue = watch(type as keyof JobDetailsState);
+      if (Array.isArray(currentValue) && currentValue.some((item) => idsMatch(item, id))) {
+        setValue(type as keyof JobDetailsState, [], { shouldValidate: true });
+      } else if (idsMatch(currentValue, id)) {
+        setValue(type as keyof JobDetailsState, null, { shouldValidate: true });
+      }
     };
 
-    const mappedType = typeMapping[type];
-    if (!mappedType) return;
-
-    try {
-      const res = await deleteDropdown({
-        type: mappedType,
-        ids: [Number(id)], // Send as array of IDs
-      }).unwrap();
-
-      // Check if the operation was successful
-      if (res.successCount > 0 && res.results?.[0]?.status === 'SUCCESS') {
-        const successMessage =
-          res.results[0].message || res.message || 'Option updated successfully';
-
+    if (type === 'jobType') {
+      try {
+        await deleteJobType({ jobTypeId: String(id), isMaster }).unwrap();
+        showToast({ message: 'Job type removed successfully', type: 'success' });
+        clearIfSelected();
+        refetchJobTypes?.();
+      } catch (err) {
         showToast({
-          message: successMessage,
-          type: 'success',
-        });
-
-        // Clear the selected value if the deleted option was selected
-        const currentValue = watch(type as keyof JobDetailsState);
-        if (Array.isArray(currentValue) && currentValue.includes(Number(id))) {
-          setValue(type as keyof JobDetailsState, [], { shouldValidate: true });
-        } else if (currentValue === id) {
-          setValue(type as keyof JobDetailsState, null, { shouldValidate: true });
-        }
-
-        // Refetch the dropdown data
-        switch (type) {
-          case 'jobType':
-            refetchJobTypes?.();
-            break;
-          case 'educationPreference':
-            refetchEducationPreference?.();
-            break;
-          case 'mandatorySkills':
-            refetchMandatorySkills?.();
-            break;
-          case 'optionalSkills':
-            refetchOptionalSkills?.();
-            break;
-        }
-      } else {
-        const errorMessage = res.results?.[0]?.message || res.message || 'Failed to update option.';
-
-        showToast({
-          message: errorMessage,
+          message: getJobErrorMessage(err, 'Something went wrong while removing job type.'),
           type: 'error',
         });
       }
-    } catch (err) {
-      showToast({
-        message:
-          type === 'jobType'
-            ? get(err, 'data.message', 'Something went wrong while deactivating job type.')
-            : get(err, 'data.message', 'Something went wrong while deleting option.'),
-        type: 'error',
-      });
+
+      return;
     }
+
+    if (type === 'educationPreference') {
+      try {
+        await deleteEducationPreference(String(id)).unwrap();
+        showToast({ message: 'Education preference removed successfully', type: 'success' });
+        clearIfSelected();
+        refetchEducationPreference?.();
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(
+            err,
+            'Something went wrong while removing education preference.'
+          ),
+          type: 'error',
+        });
+      }
+
+      return;
+    }
+
+    // No delete endpoint exists for a tenant's own skill-catalog entries —
+    // same gap as handleEditOption above.
+    showToast({
+      message: 'Skills cannot be removed from this screen.',
+      type: 'error',
+    });
   };
 
   const resolveSavedJobId = (): string => resolveExistingJobId();
@@ -1408,6 +1331,51 @@ const JobDetails = () => {
   // sync-with-ATS behavior. Only reachable once aiJobDescriptionId exists
   // (button below is disabled until then).
   const handleContinueToScoring = async () => {
+    // The Save button (executeSubmit) only ever runs once, before
+    // aiJobDescriptionId exists — after that this button takes its place
+    // (see the comment above executeSubmit), so this is the ONLY remaining
+    // chance to persist any Job Details field the recruiter changes
+    // afterwards. This used to just navigate away with no save at all,
+    // silently discarding anything edited at this point — Hiring Manager
+    // and Recruiter included, which is exactly why they kept coming back
+    // deselected: they were never actually being sent to the backend.
+    const data = watch();
+    const { errors } = validateDraft<JobDetailsState>(data, jobDetailsDraftSchema);
+    if (errors) {
+      Object.entries(errors).forEach(([name, error]) => {
+        setError(name as keyof JobDetailsState, { type: 'manual', message: error.message });
+      });
+      showToast({
+        message: 'Please fix the highlighted fields before continuing.',
+        type: 'error',
+      });
+      return;
+    }
+
+    const savedId = resolveSavedJobId();
+    if (savedId) {
+      try {
+        const details = buildSaveJobDetailsPayload({
+          data: {
+            ...data,
+            jobTitle: (() => {
+              const selected = data.jobTitle?.[0];
+              const orgId = selected != null ? resolveOrgJobTitleId(selected) : undefined;
+              return orgId ? [orgId] : data.jobTitle;
+            })(),
+          },
+          offices,
+        });
+        await updateJobOpening({ jobOpeningId: savedId, body: details }).unwrap();
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Failed to save job details'),
+          type: 'error',
+        });
+        return;
+      }
+    }
+
     setAllowNavigation(true);
     dispatch(setIsFormCompleted(true));
     const fullUrl = getFullURL('/scoring-criteria', true);

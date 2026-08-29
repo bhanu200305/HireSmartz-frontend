@@ -3,6 +3,7 @@ import api from '../../api';
 import { videoIntegrationApi } from '../../api/interview-service/VideoIntegration/index';
 import { interviewFeedbackApi } from '../../api/interview-service/InterviewFeedback/index';
 import { publicQrApi } from '../../api/candidate-service/PublicQr/index';
+import { publicApplyApi } from '../../api/candidate-service/PublicApply/index';
 import { authApi } from '../../api/authentication-service/authApi';
 import { orgApi } from '../../api/organization-service/orgApi';
 import { notifApi } from '../../api/notification-service/notifApi';
@@ -42,6 +43,7 @@ const rootReducer = combineReducers({
   [videoIntegrationApi.reducerPath]: videoIntegrationApi.reducer,
   [interviewFeedbackApi.reducerPath]: interviewFeedbackApi.reducer,
   [publicQrApi.reducerPath]: publicQrApi.reducer,
+  [publicApplyApi.reducerPath]: publicApplyApi.reducer,
   [authApi.reducerPath]: authApi.reducer,
   [orgApi.reducerPath]: orgApi.reducer,
   [notifApi.reducerPath]: notifApi.reducer,

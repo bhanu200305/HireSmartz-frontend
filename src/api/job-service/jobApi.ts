@@ -163,6 +163,7 @@ export const jobApi = createApi({
     'MasterSkillTypes',
     'OrgShifts',
     'OrgJobTypes',
+    'PublicJobs',
   ],
   endpoints: () => ({}),
 });
