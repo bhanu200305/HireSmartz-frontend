@@ -47,10 +47,9 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
     maxSalary: details?.upper_salary_range ?? 0,
     minExperience: Number(details?.min_experience_req ?? 0),
     maxExperience: Number(details?.max_experience_req ?? 0),
-    isMultilingual: details?.is_multilingual,
+    languages: (details?.language_ids ?? []) as unknown as number[],
     useCultureIntro: details?.use_culture_intro,
     isDraft: job.is_draft,
-    isRemote: details?.is_remote ?? false,
     isClosed: job.is_closed,
     interviewedCandidateCount: 0,
     responsibilities: details?.responsibilities ?? '',
@@ -109,10 +108,12 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
     jobType: details?.job_type_id
       ? [{ id: details.job_type_id as unknown as number, jobTypeName: '' }]
       : [],
-    educationPreference: (details?.education_preference ?? []).map((item) => ({
-      id: item as unknown as number,
-      educationLevel: item,
-    })),
+    // Id only, name resolved separately (same pattern as jobTitle/department/
+    // jobType above) — education_preference_id is a single catalogue
+    // reference now (migration 0014), not free text.
+    educationPreference: details?.education_preference_id
+      ? [{ id: details.education_preference_id as unknown as number, educationLevel: '' }]
+      : [],
     interviewRounds: mapInterviewRounds(job.interview_rounds ?? [], job.org_job_opening_id),
     categorizedQuestions: {
       openDate: details?.job_open_date ?? '',
@@ -155,7 +156,10 @@ export const mapDetailsToJobDetailsState = (
     openDate: details.job_open_date ?? '',
     hiringManagers: (details.hiring_manager_ids ?? []) as unknown as number[],
     recruiters: (details.recruiter_ids ?? []) as unknown as number[],
-    educationPreference: (details.education_preference ?? []) as unknown as number[],
+    educationPreference: details.education_preference_id
+      ? [details.education_preference_id as unknown as number]
+      : [],
+    languages: (details.language_ids ?? []) as unknown as number[],
     mandatorySkills: (details.skills ?? [])
       .filter((s) => String(s.skill_type).toUpperCase() === 'MANDATORY')
       .map((s) => s.skill_id as unknown as number),
@@ -166,9 +170,7 @@ export const mapDetailsToJobDetailsState = (
     otherRequirements: details.other_requirements ?? '',
     exemptionStatus: (details.is_exempted ? 'true' : 'false') as unknown as number,
     referralBonus: details.referral_bonus,
-    isMultilingual: details.is_multilingual,
     useCultureIntro: details.use_culture_intro,
-    isRemote: details.is_remote ?? false,
   };
 };
 

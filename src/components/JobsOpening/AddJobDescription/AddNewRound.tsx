@@ -112,128 +112,148 @@ const AddNewRound = () => {
       {/* Modal Overlay */}
       {isLoading && <Loader />}
       <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
-        <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[500px] relative">
-          <h2 className="text-lg font-semibold text-center mb-6">Add New Interview Round</h2>
-          <Form form={form} layout="vertical" onFinish={handleSubmit(onSubmit)}>
-            <Form.Item
-              label={
-                <span>
-                  Round Name <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <Controller
-                name="round"
-                control={control}
-                rules={{ required: 'Round name is required' }}
-                render={({ field }) => (
-                  <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl ">
-                    <Select
-                      {...field}
-                      value={field.value}
-                      onChange={(value) => {
-                        field.onChange(value);
-                        handleRoundChange(value);
-                      }}
-                      className="w-full custom-select placeholder-style"
-                      showSearch
-                      allowClear
-                      placeholder="Select Interview Round"
-                      popupClassName="rounded-3xl"
-                      loading={interviewRoundsLoading}
-                      filterOption={(input, option) =>
-                        typeof option?.children === 'string' &&
-                        (option.children as string).toLowerCase().includes(input.toLowerCase())
-                      }
-                      optionFilterProp="children"
-                    >
-                      {interviewRounds.length > 0 ? (
-                        interviewRounds.map((round) => (
-                          <Option key={round.id} value={round.id}>
-                            {round.name}
-                          </Option>
-                        ))
-                      ) : (
-                        <Option value="No Rounds Found" disabled>
-                          No Interview Rounds Found
-                        </Option>
-                      )}
-                    </Select>
-                  </div>
-                )}
-              />
-              {errors.round && <p className="text-red-500 text-sm mt-1">{errors.round.message}</p>}
-            </Form.Item>
-
-            <Form.Item
-              label={
-                <span>
-                  Description <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <Controller
-                name="description"
-                control={control}
-                rules={{
-                  required: 'Description is required',
-                  maxLength: {
-                    value: 1000,
-                    message: 'Question cannot exceed 1000 characters',
-                  },
-                }}
-                render={({ field }) => (
-                  <TextArea
-                    {...field}
-                    placeholder="Description"
-                    rows={4}
-                    className="w-full px-4 py-2 border rounded-lg"
-                    maxLength={1000}
-                    showCount={{
-                      formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
-                    }}
-                  />
-                )}
-              />
-              {errors.description && (
-                <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
-              )}
-            </Form.Item>
-            <Controller
-              name="jobId"
-              control={control}
-              render={({ field }) => <input type="hidden" {...field} />}
-            />
-            <Controller
-              name="sequence"
-              control={control}
-              render={({ field }) => <input type="hidden" {...field} />}
-            />
-            <Controller
-              name="roundType"
-              control={control}
-              render={({ field }) => <input type="hidden" {...field} />}
-            />
+        <div className="bg-white p-0 rounded-2xl shadow-xl w-[500px] relative overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+            <h2 className="text-base font-bold text-neutral-900 font-display">
+              Add New Interview Round
+            </h2>
             <Button
-              type="submit"
-              disabled={isLoading}
-              className="bg-primary text-white py-2 w-full rounded-3xl cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="text-neutral-400 hover:text-neutral-700 cursor-pointer p-0 min-w-0 h-auto shadow-none border-none bg-transparent"
+              onClick={() =>
+                jobFromPath
+                  ? navigate(`/jobs/edit/${jobFromPath}/interview`)
+                  : navigate('/interview-setup')
+              }
             >
-              {isLoading && <Loader />}
-              SUBMIT
+              <MdClose size={20} />
             </Button>
-          </Form>
-          {/* Close Button */}
-          <Button
-            className="absolute top-4 right-4 text-primary cursor-pointer"
-            onClick={() =>
-              jobFromPath
-                ? navigate(`/jobs/edit/${jobFromPath}/interview`)
-                : navigate('/interview-setup')
-            }
-          >
-            <MdClose size={20} />
-          </Button>
+          </div>
+          <div className="px-6 pt-5 pb-6">
+            <Form form={form} layout="vertical" onFinish={handleSubmit(onSubmit)}>
+              <Form.Item
+                label={
+                  <span className="text-sm font-semibold text-neutral-700">
+                    Round Name <span className="required-asterisk">*</span>
+                  </span>
+                }
+              >
+                <Controller
+                  name="round"
+                  control={control}
+                  rules={{ required: 'Round name is required' }}
+                  render={({ field }) => (
+                    <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl ">
+                      <Select
+                        {...field}
+                        value={field.value}
+                        onChange={(value) => {
+                          field.onChange(value);
+                          handleRoundChange(value);
+                        }}
+                        className="w-full custom-select placeholder-style"
+                        showSearch
+                        allowClear
+                        placeholder="Select Interview Round"
+                        popupClassName="rounded-3xl"
+                        loading={interviewRoundsLoading}
+                        filterOption={(input, option) =>
+                          typeof option?.children === 'string' &&
+                          (option.children as string).toLowerCase().includes(input.toLowerCase())
+                        }
+                        optionFilterProp="children"
+                      >
+                        {interviewRounds.length > 0 ? (
+                          interviewRounds.map((round) => (
+                            <Option key={round.id} value={round.id}>
+                              {round.name}
+                            </Option>
+                          ))
+                        ) : (
+                          <Option value="No Rounds Found" disabled>
+                            No Interview Rounds Found
+                          </Option>
+                        )}
+                      </Select>
+                    </div>
+                  )}
+                />
+                {errors.round && (
+                  <p className="text-red-500 text-sm mt-1">{errors.round.message}</p>
+                )}
+              </Form.Item>
+
+              <Form.Item
+                label={
+                  <span className="text-sm font-semibold text-neutral-700">
+                    Description <span className="required-asterisk">*</span>
+                  </span>
+                }
+              >
+                <Controller
+                  name="description"
+                  control={control}
+                  rules={{
+                    required: 'Description is required',
+                    maxLength: {
+                      value: 1000,
+                      message: 'Question cannot exceed 1000 characters',
+                    },
+                  }}
+                  render={({ field }) => (
+                    <TextArea
+                      {...field}
+                      placeholder="Description"
+                      rows={4}
+                      className="w-full px-4 py-2 border border-neutral-200 rounded-2xl"
+                      maxLength={1000}
+                      showCount={{
+                        formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
+                      }}
+                    />
+                  )}
+                />
+                {errors.description && (
+                  <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
+                )}
+              </Form.Item>
+              <Controller
+                name="jobId"
+                control={control}
+                render={({ field }) => <input type="hidden" {...field} />}
+              />
+              <Controller
+                name="sequence"
+                control={control}
+                render={({ field }) => <input type="hidden" {...field} />}
+              />
+              <Controller
+                name="roundType"
+                control={control}
+                render={({ field }) => <input type="hidden" {...field} />}
+              />
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  className="flex-1 border border-neutral-200 bg-white text-neutral-700 py-2 rounded-3xl cursor-pointer transition hover:bg-neutral-50"
+                  onClick={() =>
+                    jobFromPath
+                      ? navigate(`/jobs/edit/${jobFromPath}/interview`)
+                      : navigate('/interview-setup')
+                  }
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 bg-primary text-white py-2 rounded-3xl cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isLoading && <Loader />}
+                  Save Round
+                </Button>
+              </div>
+            </Form>
+          </div>
         </div>
       </div>
     </>

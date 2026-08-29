@@ -1,6 +1,13 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Form, Switch, Tooltip } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
+import { TbBriefcase2 } from 'react-icons/tb';
+import {
+  MdOutlineLocationOn,
+  MdOutlineGroups,
+  MdOutlineAttachMoney,
+  MdOutlineStars,
+} from 'react-icons/md';
 import { Input } from '../../shared';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
@@ -163,6 +170,15 @@ const ViewJobDetails = () => {
     isRemoteJob ? undefined : selectedLocationIdForUsers,
     isRemoteJob
   );
+  const { jobOpeningDropdown: languageOptions } = useJobOpeningDropdown('LANGUAGE', 'edit', jobId);
+  const { jobOpeningDropdown: educationPreferenceOptions } = useJobOpeningDropdown(
+    'EDUCATION_PREFERENCE',
+    'edit',
+    jobId
+  );
+  const selectedLanguageNames = (jobData?.data?.languages ?? [])
+    .map((id) => languageOptions.find((option) => idsMatch(option.id, id))?.name)
+    .filter((name): name is string => Boolean(name));
 
   const normalizeIdArray = (values: unknown[]): number[] =>
     values
@@ -223,9 +239,12 @@ const ViewJobDetails = () => {
     <>
       {isLoading && <Loader />}
       <Form layout="vertical" autoComplete="off">
-        <div className="mt-2">
-          <div className="w-full">
-            <span className="text-lg font-semibold">Job Info</span>
+        <div className="mt-2 pb-4 border-b border-neutral-100">
+          <div className="w-full flex items-center gap-2">
+            <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
+              <TbBriefcase2 size={16} />
+            </span>
+            <span className="text-base font-bold text-neutral-900 font-display">Job Info</span>
           </div>
           <div className="grid grid-cols-3 gap-x-4 mt-2">
             <Form.Item
@@ -237,7 +256,16 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={jobData?.data.jobProfileCode || ''}
                 disabled
               />
@@ -294,7 +322,16 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={jobTypeName}
                 disabled
               />
@@ -302,24 +339,36 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Shift</span>}>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={jobData?.data.shift || ''}
                 disabled
               />
             </Form.Item>
             <Form.Item label={<span>Communication Language</span>}>
-              <div className="flex items-center min-h-[44px]">
-                <Switch
-                  checked={jobData?.data?.isMultilingual || false}
-                  disabled
-                  style={{
-                    backgroundColor: jobData?.data?.isMultilingual
-                      ? 'var(--color-primary)'
-                      : undefined,
-                  }}
-                />
-                <label className="ml-2 text-sm cursor-pointer">Bilingual</label>
-              </div>
+              <Input
+                type="text"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
+                value={selectedLanguageNames.length ? selectedLanguageNames.join(', ') : '—'}
+                disabled
+              />
             </Form.Item>
           </div>
 
@@ -355,17 +404,12 @@ const ViewJobDetails = () => {
             </div>
           </div>
         </div>
-        <div className="mt-2">
-          <div className="w-full">
-            <span className="text-lg font-semibold">Location</span>
-          </div>
-          <div className="flex items-center gap-2 mt-2">
-            <Switch
-              checked={isRemoteJob}
-              disabled
-              style={{ backgroundColor: isRemoteJob ? 'var(--color-primary)' : undefined }}
-            />
-            <span className="text-sm text-gray-700">Remote Job</span>
+        <div className="mt-2 pb-4 border-b border-neutral-100">
+          <div className="w-full flex items-center gap-2">
+            <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
+              <MdOutlineLocationOn size={16} />
+            </span>
+            <span className="text-base font-bold text-neutral-900 font-display">Location</span>
           </div>
           <div className="grid grid-cols-3 gap-x-4 mt-2">
             <Form.Item
@@ -376,7 +420,16 @@ const ViewJobDetails = () => {
               }
             >
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationDisplayName}
                 disabled
               />
@@ -384,7 +437,16 @@ const ViewJobDetails = () => {
 
             <Form.Item label={<span>Location Code</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationCode}
                 disabled
               />
@@ -394,14 +456,32 @@ const ViewJobDetails = () => {
           <div className="grid grid-cols-3 gap-x-4 mt-2">
             <Form.Item label={<span>Address Line 1</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationAddressLine1}
                 disabled
               />
             </Form.Item>
             <Form.Item label={<span>Address Line 2</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationAddressLine2}
                 disabled
               />
@@ -411,37 +491,76 @@ const ViewJobDetails = () => {
           <div className="grid grid-cols-3 gap-x-4 mt-2">
             <Form.Item label={<span>City</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationCity}
                 disabled
               />
             </Form.Item>
             <Form.Item label={<span>State</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationState}
                 disabled
               />
             </Form.Item>
             <Form.Item label={<span>Zip Code</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationZipCode}
                 disabled
               />
             </Form.Item>
             <Form.Item label={<span>Country</span>}>
               <Input
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationCountry}
                 disabled
               />
             </Form.Item>
           </div>
         </div>
-        <div className="mt-2">
-          <div className="w-full">
-            <span className="text-lg font-semibold">Hiring Panel</span>
+        <div className="mt-2 pb-4 border-b border-neutral-100">
+          <div className="w-full flex items-center gap-2">
+            <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
+              <MdOutlineGroups size={16} />
+            </span>
+            <span className="text-base font-bold text-neutral-900 font-display">Hiring Panel</span>
           </div>
           <div className="grid grid-cols-3 gap-x-4 mt-2">
             <Form.Item label={<span>Hiring Manager</span>}>
@@ -541,7 +660,16 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={
                   jobData?.data.openDate
                     ? dayjs(jobData.data.openDate, 'DD-MM-YYYY').format('MMM DD, YYYY')
@@ -559,16 +687,28 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={jobData?.data.openings || ''}
                 disabled
               />
             </Form.Item>
           </div>
         </div>
-        <div className="mt-2">
-          <div className="w-full">
-            <span className="text-lg font-semibold">Salary Status</span>
+        <div className="mt-2 pb-4 border-b border-neutral-100">
+          <div className="w-full flex items-center gap-2">
+            <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
+              <MdOutlineAttachMoney size={16} />
+            </span>
+            <span className="text-base font-bold text-neutral-900 font-display">Salary Status</span>
           </div>
           <div className="grid grid-cols-3 gap-x-4 mt-2">
             <Form.Item
@@ -580,7 +720,16 @@ const ViewJobDetails = () => {
             >
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={jobData?.data.exemptionStatus?.statusName || ''}
                 disabled
               />
@@ -601,12 +750,22 @@ const ViewJobDetails = () => {
                 prefix="$"
                 suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
                 placeholder="Minimum Salary"
-                className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] text-gray-500"
+                className="w-full !lowercase"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 intlConfig={{ locale: 'en-US', currency: 'USD' }}
               />
               {/* <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
                 value={jobData?.data.minSalary || ''}
                 disabled
               /> */}
@@ -627,12 +786,22 @@ const ViewJobDetails = () => {
                 prefix="$"
                 suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
                 placeholder="Maximum Salary"
-                className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] text-gray-500"
+                className="w-full !lowercase"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 intlConfig={{ locale: 'en-US', currency: 'USD' }}
               />
               {/* <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
                 value={jobData?.data.maxSalary || ''}
                 disabled
               /> */}
@@ -650,7 +819,16 @@ const ViewJobDetails = () => {
               prefix="$"
               suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
               // placeholder="Referral Bonus"
-              className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] text-gray-500"
+              className="w-full !lowercase"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                boxShadow: 'none',
+                color: '#111827',
+                fontWeight: 600,
+                fontSize: '13px',
+              }}
               intlConfig={{ locale: 'en-US', currency: 'USD' }}
             />
           </Form.Item>
@@ -663,7 +841,16 @@ const ViewJobDetails = () => {
           >
             <Input
               type="text"
-              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+              className="w-full mt-1"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                boxShadow: 'none',
+                color: '#111827',
+                fontWeight: 600,
+                fontSize: '13px',
+              }}
               value={jobData?.data.minExperience ?? ''}
               disabled
             />
@@ -671,21 +858,42 @@ const ViewJobDetails = () => {
           <Form.Item label={<span>Maximum Experience (In years)</span>}>
             <Input
               type="text"
-              className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+              className="w-full mt-1"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                boxShadow: 'none',
+                color: '#111827',
+                fontWeight: 600,
+                fontSize: '13px',
+              }}
               value={jobData?.data.maxExperience ?? ''}
               disabled
             />
           </Form.Item>
         </div>
-        <div className="mt-2">
-          <div className="w-full">
-            <span className="text-lg font-semibold">Job Skills</span>
+        <div className="mt-2 pb-4 border-b border-neutral-100">
+          <div className="w-full flex items-center gap-2">
+            <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
+              <MdOutlineStars size={16} />
+            </span>
+            <span className="text-base font-bold text-neutral-900 font-display">Job Skills</span>
           </div>
           <div className="grid grid-cols-2 gap-x-4 mt-2">
             <Form.Item label={<span>Required Skills</span>}>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1 mb-2"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={
                   jobData?.data.mandatorySkills?.length
                     ? `${jobData.data.mandatorySkills.length} skills selected`
@@ -717,7 +925,16 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Optional Skills</span>}>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 mb-4 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1 mb-2"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={
                   jobData?.data.optionalSkills?.length
                     ? `${jobData.data.optionalSkills.length} skills selected`
@@ -751,10 +968,24 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Education Preference</span>}>
               <Input
                 type="text"
-                className="w-full p-2 mt-1 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                className="w-full mt-1"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={
                   jobData?.data.educationPreference
-                    ?.map((item) => item.educationLevel)
+                    ?.map(
+                      (item) =>
+                        educationPreferenceOptions.find((option) => idsMatch(option.id, item.id))
+                          ?.name || ''
+                    )
+                    .filter(Boolean)
                     .join(', ') || ''
                 }
                 disabled
@@ -764,8 +995,15 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Responsibilities</span>}>
               <TextArea
                 rows={4}
-                className="w-full px-4 py-2 border text-gray-500 rounded-lg border-[var(--border)]"
-                style={{ backgroundColor: '#ffffff', color: '#6b7280' }}
+                className="w-full"
+                style={{
+                  background: 'var(--color-neutral-25)',
+                  border: '1px solid var(--color-neutral-100)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  color: '#374151',
+                  resize: 'none',
+                }}
                 value={jobData?.data.responsibilities || ''}
                 disabled
               />
@@ -776,8 +1014,15 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Other Requirements</span>}>
               <TextArea
                 rows={4}
-                className="w-full px-4 py-2 border text-gray-500 rounded-lg border-[var(--border)]"
-                style={{ backgroundColor: '#ffffff', color: '#6b7280' }}
+                className="w-full"
+                style={{
+                  background: 'var(--color-neutral-25)',
+                  border: '1px solid var(--color-neutral-100)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  color: '#374151',
+                  resize: 'none',
+                }}
                 value={jobData?.data.otherRequirements || ''}
                 disabled
               />

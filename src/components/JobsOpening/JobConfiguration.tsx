@@ -166,18 +166,20 @@ const JobConfiguration = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="flex items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+            className="flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg px-2 py-1 -ml-2 cursor-pointer transition-colors"
           >
-            <MdOutlineArrowBack className="mr-2" />
+            <MdOutlineArrowBack size={16} />
             <span>Back</span>
           </button>
         </div>
 
-        <div className="bg-[#FAFAFA] p-6 md:p-10 rounded-2xl shadow-lg w-full max-w-6xl flex flex-col">
-          <h2 className="text-center text-2xl font-semibold mb-6">Job Fields Configuration</h2>
+        <div className="bg-white p-6 md:p-10 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">
+          <h2 className="text-center text-xl font-bold text-neutral-900 font-display mb-6">
+            Job Fields Configuration
+          </h2>
 
           {/* Configuration Section */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm">
             <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
               <div className="flex-1 w-full">
                 <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">
@@ -258,8 +260,8 @@ const JobConfiguration = () => {
 
             {/* Selected Field Info */}
             {selectedField && (
-              <div className="mt-4 p-4 bg-brand-50 rounded-lg">
-                <p className="text-sm text-brand-800">
+              <div className="mt-4 p-4 bg-primary-50 rounded-xl">
+                <p className="text-sm text-primary-700">
                   Selected: <strong>{jobFields.find((f) => f.id === selectedField)?.name}</strong>
                 </p>
               </div>
@@ -268,7 +270,7 @@ const JobConfiguration = () => {
 
           {/* Upload Results Section */}
           {uploadResult && (
-            <div className="mt-6 bg-white p-6 rounded-lg shadow-md">
+            <div className="mt-6 bg-white p-6 rounded-2xl border border-neutral-100 shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">Upload Results</h3>
                 <button
@@ -351,9 +353,9 @@ const JobConfiguration = () => {
           )}
 
           {/* Instructions */}
-          <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
-            <h3 className="font-semibold text-yellow-800 mb-2">Instructions:</h3>
-            <ul className="text-sm text-yellow-700 list-disc list-inside space-y-1">
+          <div className="mt-6 p-4 bg-warning-bg rounded-xl">
+            <h3 className="font-semibold text-warning-text mb-2">Instructions:</h3>
+            <ul className="text-sm text-warning-text list-disc list-inside space-y-1">
               <li>Select a job field from the dropdown.</li>
               <li>Use the icons to upload, view (sample), or download (template) XLS files.</li>
               <li>File supported formats: .xls, .xlsx</li>

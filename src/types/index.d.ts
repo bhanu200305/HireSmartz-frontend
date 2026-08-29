@@ -218,13 +218,21 @@ export type JobDetailsState = {
   state: string;
   officeLocation: Array<string | number>;
   responsibilities?: string;
+  // Single catalogue id, held as an array-of-one for consistency with every
+  // other DropdownWithAddOption-backed field here (jobTitle, department, …).
   educationPreference: Array<string | number>;
+  // organization_language ids a job's communication requires (migration
+  // 0014) — replaces the old isMultilingual boolean below, which the
+  // backend no longer accepts.
+  languages?: Array<string | number>;
   mandatorySkills: Array<string | number>;
   optionalSkills?: Array<string | number>;
   otherRequirements?: string;
+  /** @deprecated backend no longer accepts this (job-service migration 0016) */
   isMultilingual?: boolean;
   useCultureIntro?: boolean;
   isDraft?: boolean;
+  /** @deprecated backend no longer accepts this (job-service migration 0016) */
   isRemote?: boolean;
 };
 export type ATS = {
@@ -430,9 +438,12 @@ export type JobOpeningByIdResponse = {
     maxSalary: number;
     minExperience: number;
     maxExperience: number;
+    /** @deprecated backend no longer accepts this (job-service migration 0016) — see `languages` */
     isMultilingual?: boolean;
+    languages?: number[];
     useCultureIntro?: boolean;
     isDraft: boolean;
+    /** @deprecated backend no longer accepts this (job-service migration 0016) */
     isRemote?: boolean;
     isClosed: boolean;
     candidatesInvitedCount?: number;

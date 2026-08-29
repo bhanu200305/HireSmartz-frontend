@@ -196,6 +196,7 @@ export const jobDetailsSchema = z
     state: z.string().nonempty('State is required.'),
     country: z.string().nonempty('Country is required.'),
     educationPreference: z.array(catalogId).optional(),
+    languages: z.array(catalogId).optional(),
     mandatorySkills: z
       .array(catalogId)
       .max(15, 'You can select up to 15 required skills.')
@@ -310,6 +311,7 @@ export const jobDetailsSchema = z
 export const jobDescriptionSchema = z.object({
   jobTitle: z.array(catalogId).min(1, 'Job Title is required.').default([]).optional(),
   educationPreference: z.array(catalogId).optional(),
+  languages: z.array(catalogId).optional(),
   mandatorySkills: z
     .array(catalogId)
     .max(15, 'You can select up to 15 required skills.')
@@ -365,6 +367,7 @@ export const jobDetailsDraftSchema = z.object({
   state: z.string().optional(),
   country: z.string().optional(),
   educationPreference: z.array(catalogId).optional(),
+  languages: z.array(catalogId).optional(),
   mandatorySkills: z.array(catalogId).optional(),
   optionalSkills: z.array(catalogId).optional(),
   responsibilities: z.string().optional(),
@@ -374,6 +377,7 @@ export const jobDetailsDraftSchema = z.object({
 export const jobDescriptionDraftSchema = z.object({
   jobTitle: z.array(catalogId).min(1, 'Job Title is required.').default([]).optional(),
   educationPreference: z.array(catalogId).optional(),
+  languages: z.array(catalogId).optional(),
   communicationSkills: z.string().optional(),
   mandatorySkills: z.array(catalogId).optional(),
   optionalSkills: z.array(catalogId).optional(),

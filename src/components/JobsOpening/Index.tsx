@@ -13,13 +13,24 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Loader } from '../shared/ui/loader';
 import MainLayout from '../../layouts/MainLayout';
 import { TbBriefcase2 } from 'react-icons/tb';
+import {
+  MdOutlineWorkOutline,
+  MdOutlineCheckCircle,
+  MdOutlineEditNote,
+  MdOutlineCancel,
+} from 'react-icons/md';
+import { StatCardRow, type StatCardData } from '../shared/ui/StatCardRow';
 import { hasFeatureAccess } from '../../shared/utils/auth/getAccess';
 import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import { useSessionTenantId } from '../../hooks/useSessionTenantId';
 import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useGetJobOpeningsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
+import {
+  useGetJobOpeningsQuery,
+  useGetJobStatsQuery,
+} from '../../api/job-service/JobOpening/GetJobOpening';
+import { Badge } from '../shared/ui/badge';
 import {
   officeDisplayName,
   useListTenantOfficesQuery,
@@ -237,6 +248,7 @@ const JobsOpening = () => {
     skip: !hasTenantContext,
     refetchOnMountOrArgChange: true,
   });
+  const { data: jobStats } = useGetJobStatsQuery(undefined, { skip: !hasTenantContext });
   const { data: orgDepartments = [] } = useListTenantDepartmentsQuery(tenantId ?? '', {
     skip: !hasTenantContext,
   });
@@ -269,6 +281,33 @@ const JobsOpening = () => {
           .join(', ') || job.recruiter,
     }));
   }, [data?.data, orgDepartments, jobTypes, orgUsers]);
+
+  const jobStatCards: StatCardData[] = [
+    {
+      icon: <MdOutlineWorkOutline />,
+      label: 'Open Roles',
+      value: jobStats?.published_count,
+      variant: 'blue',
+    },
+    {
+      icon: <MdOutlineEditNote />,
+      label: 'Drafts',
+      value: jobStats?.draft_count,
+      variant: 'orange',
+    },
+    {
+      icon: <MdOutlineCancel />,
+      label: 'Closed',
+      value: jobStats?.closed_count,
+      variant: 'neutral',
+    },
+    {
+      icon: <MdOutlineCheckCircle />,
+      label: 'Total Job Openings',
+      value: jobStats?.total_count,
+      variant: 'green',
+    },
+  ];
 
   const {
     data: offices = [],
@@ -889,13 +928,19 @@ const JobsOpening = () => {
                 <span className="text-gray-500 text-sm">for &quot;{filters.text}&quot;</span>
               </div>
             ) : (
-              <div className="flex flex-col space-y-2">
+              <div className="flex flex-col space-y-1">
                 <div className="flex items-center space-x-2">
                   <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
                     <TbBriefcase2 size={18} />
                   </span>
                   <h2 className="text-xl font-semibold">Job Openings</h2>
                 </div>
+                {jobStats && (
+                  <span className="text-gray-500 text-sm">
+                    {jobStats.published_count} open{' '}
+                    {jobStats.published_count === 1 ? 'role' : 'roles'} across your company
+                  </span>
+                )}
               </div>
             )}
             <div className="flex space-x-4 items-center">
@@ -988,7 +1033,12 @@ const JobsOpening = () => {
               )}
             </div>
           </div>
-          <div className="w-full p-2 justify-start">
+          {jobStats && (
+            <div className="px-2 mb-2">
+              <StatCardRow cards={jobStatCards} columns={4} />
+            </div>
+          )}
+          <div className="w-full p-2 justify-start rounded-xl overflow-hidden border border-neutral-200 bg-white shadow-sm">
             <Row
               gutter={[16, 16]}
               className="font-bold py-2 px-2 bg-neutral-50 border border-[var(--border)] heading-font"
@@ -1029,8 +1079,11 @@ const JobsOpening = () => {
               <Col span={3} className="px-4 py-2">
                 SELECTED
               </Col>
-              <Col span={4} className="px-4 py-2">
+              <Col span={2} className="px-4 py-2">
                 NOT SELECTED
+              </Col>
+              <Col span={2} className="px-4 py-2">
+                STATUS
               </Col>
               <Col span={2} className="px-4 py-2  border-[var(--border)]">
                 ACTIONS
@@ -1134,10 +1187,19 @@ const JobsOpening = () => {
                         {renderHighlightedField(jobs?.selectedCount?.toString(), 'selectedCount')}
                       </p>
                     </Col>
-                    <Col span={4}>
+                    <Col span={2}>
                       <p className="roboto-font">
                         {renderHighlightedField(jobs?.rejectedCount?.toString(), 'rejectedCount')}
                       </p>
+                    </Col>
+                    <Col span={2}>
+                      {jobs.isDraft ? (
+                        <Badge status="neutral">Draft</Badge>
+                      ) : jobs.isClosed ? (
+                        <Badge status="danger">Closed</Badge>
+                      ) : (
+                        <Badge status="success">Active</Badge>
+                      )}
                     </Col>
                     <Col span={2} className="flex items-center justify-center">
                       {renderActions(jobs)}

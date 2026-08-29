@@ -623,6 +623,16 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
           Authorities.MY_COMPANY_VIEW,
           Authorities.SUBSCRIPTIONS_VIEW,
           Authorities.FINANCES_VIEW,
+          // Job Openings is Company Admin's own tenant-scoped work queue —
+          // job-service's real permission model has no platform-level
+          // equivalent (Super Admin's job-service surface is the
+          // /platform/master-* catalogues, a different permission namespace
+          // entirely — see Company Settings → Job Catalogs). This "every
+          // authority" fallback previously left JOB_OPENING_VIEW in by
+          // omission, contradicting menuItem.tsx's own doc comment (which
+          // already assumed Super Admin doesn't hold it) and showing a "Job
+          // Openings" nav item that led nowhere useful for a platform caller.
+          Authorities.JOB_OPENING_VIEW,
         ].includes(code)
     ),
     // Real backend name: cfp_admin. Verbatim from the live database.

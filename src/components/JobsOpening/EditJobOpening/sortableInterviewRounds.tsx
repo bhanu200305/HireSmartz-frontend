@@ -13,6 +13,18 @@ type InterviewRound = {
   };
   sequence: number;
   description: string;
+  duration?: number | null;
+  variant?: string | null;
+};
+
+/** "sound-wave" / "SOUND_WAVE" → "Sound Wave" — purely a display label, no
+ * change to the underlying value stored/sent anywhere. */
+const formatVariantLabel = (variant?: string | null): string | null => {
+  if (!variant) return null;
+  return variant
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 };
 
 type SortableInterviewRoundsProps = {
@@ -67,13 +79,25 @@ export const SortableInterviewRounds = ({
   if (isEditMode) {
     return (
       <div className="space-y-6 pb-4">
-        {items.map((round) => (
+        {items.map((round, index) => (
           <div
             key={round.id}
             className="border border-[var(--border)] shadow-lg rounded-lg p-6 bg-white"
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-lg">{round.round?.name}</h3>
+              <div>
+                <h3 className="text-lg font-semibold">
+                  {index + 1}. {round.round?.name}
+                </h3>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  {[
+                    formatVariantLabel(round.variant),
+                    round.duration ? `${round.duration} min` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              </div>
               <div className="flex items-center space-x-4">
                 <button onClick={() => toggleRound(round.id.toString())}>
                   {collapsedRounds.includes(round.id.toString()) ? (
@@ -139,12 +163,22 @@ export const SortableInterviewRounds = ({
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <h3
-                        className="text-lg cursor-pointer"
+                      <div
+                        className="cursor-pointer"
                         onClick={() => toggleRound(round.id.toString())}
                       >
-                        {round.round?.name}
-                      </h3>
+                        <h3 className="text-lg font-semibold">
+                          {index + 1}. {round.round?.name}
+                        </h3>
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                          {[
+                            formatVariantLabel(round.variant),
+                            round.duration ? `${round.duration} min` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
+                      </div>
                       <div className="flex items-center space-x-4">
                         <button onClick={() => toggleRound(round.id.toString())}>
                           {collapsedRounds.includes(round.id.toString()) ? (

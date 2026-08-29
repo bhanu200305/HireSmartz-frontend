@@ -11,6 +11,7 @@ import JobTitlesTab from './JobTitlesTab';
 import DepartmentSettingsTab from './DepartmentSettingsTab';
 import PlatformScoringDefaultsTab from './PlatformScoringDefaultsTab';
 import NotificationSettingsTab from './NotificationSettingsTab';
+import JobCatalogsTab from './JobCatalogsTab';
 
 /**
  * Super Admin's platform master-data hub. Industries/Departments/Job Titles/
@@ -68,6 +69,11 @@ const CompanySettings: React.FC = () => {
         key: '5',
         label: 'Default Scoring Weights',
         children: <PlatformScoringDefaultsTab />,
+      },
+      {
+        key: '6',
+        label: 'Job Catalogs',
+        children: <JobCatalogsTab />,
       },
       {
         key: '7',

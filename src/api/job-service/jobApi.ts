@@ -126,6 +126,21 @@ export const jobApi = createApi({
     'AtsJobs',
     'JdUploadBatch',
     'WizardState',
+    'EducationPreferences',
+    'Languages',
+    // Tags used by the Super Admin's platform master-catalogue CRUD tabs
+    // (Company Settings → Job Catalogs) — one per /platform/master-* group.
+    // Job Types reuses the tenant-facing 'JobTypes' tag above (catalogs.ts's
+    // create/update/delete already branch platform-vs-tenant by URL) rather
+    // than a separate tag, since both write the one list either screen reads.
+    'PlatformJobModes',
+    'PlatformShiftTypes',
+    'PlatformClosureReasons',
+    'PlatformInterviewRoundTypes',
+    'PlatformLanguages',
+    'PlatformSkillCategories',
+    'PlatformSkillTypes',
+    'PlatformSkills',
     // Older tags still referenced by pre-existing job-service endpoint files
     // (api/job-service/JobOpenings, JobTypes, Master, Shifts, Batches, etc.).
     'Jobs',

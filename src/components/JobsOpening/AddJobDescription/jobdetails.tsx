@@ -28,11 +28,11 @@ import {
   useDeleteDropdownMutation,
   useEditDropdownMutation,
   useReuseDropdownMutation,
-  useUpdateDropdownByTypeMutation,
 } from '../../../api/job-service/AddableDropdown/UpdateDropdownByType';
 import { get } from 'lodash-es';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
+import { useCreateEducationPreferenceMutation } from '../../../api/job-service/JobOpening/educationPreferences';
 import { useLazyGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import { useGetCompanyDetailsQuery } from '../../../api/tenant-service/Company/viewCompany';
 import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
@@ -64,7 +64,10 @@ import {
 } from '../../../api/organization-service/Tenants/jobTitles';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
-import { useCreateOrganizationSkillMutation } from '../../../api/job-service/JobOpening/catalogs';
+import {
+  useCreateOrganizationSkillMutation,
+  useCreateJobTypeMutation,
+} from '../../../api/job-service/JobOpening/catalogs';
 import {
   capitalizeWordsAdvanced,
   changeNullValuesToEmptyArray,
@@ -118,7 +121,6 @@ const JobDetails = () => {
   );
   const parsedCompanyId = Number(decodedToken?.companyId || 0);
   const [, setSelectedLocationIdForUsers] = useState<string | undefined>(undefined);
-  const [isRemoteJob, setIsRemoteJob] = useState(false);
 
   const [allowNavigation, setAllowNavigation] = useState(false);
   const [isAddingToDropdown, setIsAddingToDropdown] = useState<string | null>(null);
@@ -132,12 +134,13 @@ const JobDetails = () => {
   const jobIdRef = useRef(asJobId(jobOpeningId) || jobIdFromUrl);
   const [enhanceJd] = useEnhanceJdMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
+  const [createJobType] = useCreateJobTypeMutation();
+  const [createEducationPreference] = useCreateEducationPreferenceMutation();
   const [isSyncingWithATS, setIsSyncingWithATS] = useState(false);
   const [showRegenerateConfirmModal, setShowRegenerateConfirmModal] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
   const [isSubmittingWithModal, setIsSubmittingWithModal] = useState(false);
   const [triggerGetJobDescriptionById] = useLazyGetJobDescriptionByIdQuery();
-  const [updateDropdownByType] = useUpdateDropdownByTypeMutation();
   const [editDropdown] = useEditDropdownMutation();
   const [deleteDropdown] = useDeleteDropdownMutation();
   const [reuseDropdown] = useReuseDropdownMutation();
@@ -178,6 +181,10 @@ const JobDetails = () => {
     loading: educationPreferenceLoading,
     refetch: refetchEducationPreference,
   } = useJobOpeningDropdown('EDUCATION_PREFERENCE', 'create');
+  const { jobOpeningDropdown: languageOptions, loading: languagesLoading } = useJobOpeningDropdown(
+    'LANGUAGE',
+    'create'
+  );
   const {
     jobOpeningDropdown: mandatorySkills,
     loading: mandatorySkillsLoading,
@@ -231,24 +238,6 @@ const JobDetails = () => {
     setValue('state', selectedLocation?.state ?? '', { shouldValidate: true });
     setValue('hiringManagers', [], { shouldValidate: true });
     setValue('recruiters', [], { shouldValidate: true });
-  };
-
-  const handleRemoteToggle = (checked: boolean) => {
-    setIsRemoteJob(checked);
-    setValue('isRemote', checked, { shouldValidate: true });
-    if (checked) {
-      // Clear location selection but keep HM/recruiter reset
-      setSelectedLocationIdForUsers(undefined);
-      setValue('officeLocation', [], { shouldValidate: true });
-      setValue('country', '', { shouldValidate: true });
-      setValue('state', '', { shouldValidate: true });
-      setValue('hiringManagers', [], { shouldValidate: true });
-      setValue('recruiters', [], { shouldValidate: true });
-    } else {
-      // When turning remote off, also clear HM/recruiter since location is unset
-      setValue('hiringManagers', [], { shouldValidate: true });
-      setValue('recruiters', [], { shouldValidate: true });
-    }
   };
 
   const {
@@ -703,8 +692,17 @@ const JobDetails = () => {
       }
 
       if (addType === 'educationPreference') {
-        setValue('educationPreference', [formattedValue], { shouldValidate: true });
+        const existingPreference = educationPreference.find(
+          (item) => item.name.toLowerCase() === normalizedValue
+        );
+        if (existingPreference) {
+          setValue('educationPreference', [existingPreference.id], { shouldValidate: true });
+          return;
+        }
+        const created = await createEducationPreference({ name: formattedValue }).unwrap();
         showToast({ message: 'Education preference added', type: 'success' });
+        setValue('educationPreference', [created.id], { shouldValidate: true });
+        refetchEducationPreference?.();
         return;
       }
 
@@ -723,31 +721,25 @@ const JobDetails = () => {
         return;
       }
 
-      const res = await updateDropdownByType({
-        type: mappedType,
-        value: formattedValue,
-      }).unwrap();
-
-      if (res.success) {
-        showToast({
-          message: res.message || 'Dropdown has been updated successfully',
-          type: 'success',
-        });
-
-        // Wait for the refetch to complete before setting the value
-        if (addType === 'jobType') {
-          refetchJobTypes?.();
+      if (addType === 'jobType') {
+        const existingJobType = jobTypes.find(
+          (item) => item.name.toLowerCase() === normalizedValue
+        );
+        if (existingJobType) {
+          setValue('jobType', [existingJobType.id], { shouldValidate: true });
+          return;
         }
-
-        // Now set the value after the dropdown data is updated
-        if (addType === 'jobType') {
-          setValue('jobType', [res.data.id], { shouldValidate: true });
-        }
-      } else {
-        showToast({
-          message: res.message || 'Failed to update dropdown.',
-          type: 'error',
-        });
+        // Super Admin's own catalogue (/platform/master-job-types) vs a
+        // tenant's own (/job-types) — same isMaster branch catalogs.ts's
+        // read side already uses for this dropdown.
+        const createdJobType = await createJobType({
+          name: formattedValue,
+          isMaster,
+        }).unwrap();
+        showToast({ message: 'Job type added successfully', type: 'success' });
+        setValue('jobType', [createdJobType.id], { shouldValidate: true });
+        refetchJobTypes?.();
+        return;
       }
     } catch (err) {
       showToast({
@@ -1193,7 +1185,6 @@ const JobDetails = () => {
             const orgId = selected != null ? resolveOrgJobTitleId(selected) : undefined;
             return orgId ? [orgId] : data.jobTitle;
           })(),
-          isRemote: data.isRemote ?? isRemoteJob,
         },
         offices,
       });
@@ -1300,7 +1291,6 @@ const JobDetails = () => {
       data: {
         ...processedPayload,
         jobTitle: orgTitleId ? [orgTitleId] : processedPayload.jobTitle,
-        isRemote: processedPayload.isRemote ?? isRemoteJob,
       },
       offices,
     });
@@ -1546,21 +1536,22 @@ const JobDetails = () => {
                     </Form.Item>
                     <Form.Item label={<span>Communication Language</span>}>
                       <Controller
-                        name="isMultilingual"
+                        name="languages"
                         control={control}
                         render={({ field: { value, onChange } }) => (
-                          <div className="flex items-center min-h-[42px]">
-                            <Switch
-                              checked={Boolean(value)}
-                              onChange={(checked) => {
-                                onChange(checked);
-                              }}
-                              style={{
-                                backgroundColor: value ? 'var(--color-primary)' : undefined,
-                              }}
-                            />
-                            <label className="ml-2 text-sm cursor-pointer">Bilingual</label>
-                          </div>
+                          <Select
+                            mode="multiple"
+                            allowClear
+                            placeholder="Select languages"
+                            className="w-full custom-select-jobs"
+                            loading={languagesLoading}
+                            value={(value ?? []).map(String)}
+                            onChange={(next) => onChange(next)}
+                            options={languageOptions.map((item) => ({
+                              label: item.name,
+                              value: item.id,
+                            }))}
+                          />
                         )}
                       />
                     </Form.Item>
@@ -1612,14 +1603,6 @@ const JobDetails = () => {
                   </div>
                 </CollapsibleSection>
                 <CollapsibleSection title="Location">
-                  <div className="flex items-center gap-2 mt-2">
-                    <Switch
-                      checked={isRemoteJob}
-                      onChange={handleRemoteToggle}
-                      style={{ backgroundColor: isRemoteJob ? 'var(--color-primary)' : undefined }}
-                    />
-                    <span className="text-sm text-gray-700">Remote Job</span>
-                  </div>
                   <div className="grid grid-cols-3 gap-x-4 mt-2">
                     <Form.Item
                       label={

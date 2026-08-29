@@ -3,6 +3,7 @@ import type {
   ClosureReason,
   InterviewRoundType,
   JobMode,
+  Language,
   MasterJobType,
   OrganizationJobType,
   OrganizationShift,
@@ -47,31 +48,41 @@ const catalogsApi = jobApi.injectEndpoints({
       providesTags: ['JobTypes'],
     }),
 
+    // Same isMaster split as listJobTypes above: a Super Admin token has no
+    // tenant_id (GET/POST /job-types 403s "requires a tenant user"), so
+    // Super Admin's Company Settings catalogue tab must write through
+    // /platform/master-job-types while a tenant's own Job Settings tab (and
+    // this screen's "add job type" affordance for a tenant caller) writes
+    // through /job-types.
     createJobType: build.mutation<
       OrganizationJobType,
-      { name: string; description?: string | null }
+      { name: string; description?: string | null; isMaster?: boolean }
     >({
-      query: (body) => ({ url: '/platform/master-job-types', method: 'POST', body }),
+      query: ({ isMaster, ...body }) => ({
+        url: isMaster ? '/platform/master-job-types' : '/job-types',
+        method: 'POST',
+        body,
+      }),
       transformResponse: (response: MasterJobType) => toJobTypeOption(response),
       invalidatesTags: ['JobTypes'],
     }),
 
     updateJobType: build.mutation<
       OrganizationJobType,
-      { jobTypeId: string; name: string; description?: string | null }
+      { jobTypeId: string; name: string; description?: string | null; isMaster?: boolean }
     >({
-      query: ({ jobTypeId, name, description }) => ({
-        url: `/platform/master-job-types/${jobTypeId}`,
+      query: ({ jobTypeId, isMaster, ...body }) => ({
+        url: isMaster ? `/platform/master-job-types/${jobTypeId}` : `/job-types/${jobTypeId}`,
         method: 'PUT',
-        body: { name, description },
+        body,
       }),
       transformResponse: (response: MasterJobType) => toJobTypeOption(response),
       invalidatesTags: ['JobTypes'],
     }),
 
-    deleteJobType: build.mutation<void, string>({
-      query: (jobTypeId) => ({
-        url: `/platform/master-job-types/${jobTypeId}`,
+    deleteJobType: build.mutation<void, { jobTypeId: string; isMaster?: boolean }>({
+      query: ({ jobTypeId, isMaster }) => ({
+        url: isMaster ? `/platform/master-job-types/${jobTypeId}` : `/job-types/${jobTypeId}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['JobTypes'],
@@ -96,10 +107,35 @@ const catalogsApi = jobApi.injectEndpoints({
       invalidatesTags: ['Shifts'],
     }),
 
+    updateShift: build.mutation<
+      OrganizationShift,
+      {
+        shiftId: string;
+        name: string;
+        start_time: string;
+        end_time: string;
+        duration_minutes?: number | null;
+      }
+    >({
+      query: ({ shiftId, ...body }) => ({ url: `/shifts/${shiftId}`, method: 'PUT', body }),
+      invalidatesTags: ['Shifts'],
+    }),
+
+    deleteShift: build.mutation<void, string>({
+      query: (shiftId) => ({ url: `/shifts/${shiftId}`, method: 'DELETE' }),
+      invalidatesTags: ['Shifts'],
+    }),
+
     listJobModes: build.query<JobMode[], void>({
       query: () => ({ url: '/master/job-modes', method: 'GET' }),
       transformResponse: (response: { job_modes: JobMode[] }) => response.job_modes ?? [],
       providesTags: ['JobModes'],
+    }),
+
+    listLanguages: build.query<Language[], void>({
+      query: () => ({ url: '/master/languages', method: 'GET' }),
+      transformResponse: (response: { languages: Language[] }) => response.languages ?? [],
+      providesTags: ['Languages'],
     }),
 
     listClosureReasons: build.query<ClosureReason[], void>({
@@ -154,7 +190,10 @@ export const {
   useDeleteJobTypeMutation,
   useListShiftsQuery,
   useCreateShiftMutation,
+  useUpdateShiftMutation,
+  useDeleteShiftMutation,
   useListJobModesQuery,
+  useListLanguagesQuery,
   useListClosureReasonsQuery,
   useListInterviewRoundTypesQuery,
   useSearchSkillsQuery,

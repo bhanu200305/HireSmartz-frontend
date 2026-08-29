@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { MdOutlineArrowBack } from 'react-icons/md';
+import { MdOutlineArrowBack, MdOutlineCloudSync } from 'react-icons/md';
 import MainLayout from '../../../layouts/MainLayout';
 import { useState } from 'react';
 import { Form, Select } from 'antd';
@@ -60,20 +60,27 @@ const AtsJobId = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="flex items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+            className="flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg px-2 py-1 -ml-2 cursor-pointer transition-colors"
           >
-            <MdOutlineArrowBack className="mr-2" />
+            <MdOutlineArrowBack size={16} />
             <span>Back</span>
           </button>
         </div>
 
         <div
-          className="bg-[#FAFAFA] p-6 md:p-10 rounded-2xl shadow-lg w-full max-w-4xl flex flex-col items-center justify-center"
+          className="bg-white p-6 md:p-10 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-4xl flex flex-col items-center justify-center"
           style={{ height: 'calc(100vh - 200px)' }}
         >
-          <div className="bg-white p-6 md:p-10 rounded-2xl shadow-md w-full max-w-md flex flex-col items-center">
-            <h3 className="text-lg font-semibold mb-4">Upload from ATS</h3>
-            <label className="self-start mb-2 text-sm text-gray-600">Please Select Job ID</label>
+          <div className="bg-white p-6 md:p-10 rounded-2xl border border-neutral-100 w-full max-w-md flex flex-col items-center">
+            <span className="bg-primary-50 text-primary-600 p-3 rounded-xl flex items-center justify-center mb-3">
+              <MdOutlineCloudSync size={22} />
+            </span>
+            <h3 className="text-base font-bold text-neutral-900 font-display mb-1">
+              Upload from ATS
+            </h3>
+            <label className="self-start mt-3 mb-2 text-sm font-semibold text-neutral-700">
+              Please Select Job ID
+            </label>
 
             <Form.Item className="w-full">
               <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">

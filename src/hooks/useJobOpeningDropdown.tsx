@@ -2,9 +2,11 @@ import {
   useListClosureReasonsQuery,
   useListInterviewRoundTypesQuery,
   useListJobTypesQuery,
+  useListLanguagesQuery,
   useLazySearchSkillsQuery,
   useSearchSkillsQuery,
 } from '../api/job-service/JobOpening/catalogs';
+import { useListEducationPreferencesQuery } from '../api/job-service/JobOpening/educationPreferences';
 import { useListUsersQuery } from '../api/organization-service/Users/users';
 import { useListPlatformTenantUsersQuery } from '../api/organization-service/Platform/users';
 import { useListPlatformTenantsQuery } from '../api/organization-service/Platform/tenants';
@@ -24,17 +26,6 @@ export type JobOpeningDropdownOption = {
   available_variants?: string[] | null;
   max_occurrences?: number | null;
 };
-
-/** SaveJobDetails takes free-text strings — there is no education catalogue. */
-const EDUCATION_PREFERENCE_OPTIONS: JobOpeningDropdownOption[] = [
-  { id: 'High School', name: 'High School' },
-  { id: 'Diploma', name: 'Diploma' },
-  { id: "Associate's Degree", name: "Associate's Degree" },
-  { id: "Bachelor's Degree", name: "Bachelor's Degree" },
-  { id: "Master's Degree", name: "Master's Degree" },
-  { id: 'Doctorate / PhD', name: 'Doctorate / PhD' },
-  { id: 'Any', name: 'Any' },
-];
 
 const DUMMY_SKILL_OPTIONS: JobOpeningDropdownOption[] = [
   { id: 'Python', name: 'Python' },
@@ -82,6 +73,15 @@ const useJobOpeningDropdown = (
   });
   const roundTypes = useListInterviewRoundTypesQuery(undefined, {
     skip: skip || endpoint !== 'ROUNDS',
+  });
+  // Tenant-only endpoints — no /platform/master-* equivalent exists for
+  // either (unlike job types/shifts), so a platform caller previewing this
+  // form gets an empty list, same as the skills fallback below.
+  const educationPreferences = useListEducationPreferencesQuery(undefined, {
+    skip: skip || endpoint !== 'EDUCATION_PREFERENCE' || callerKind === 'platform',
+  });
+  const languages = useListLanguagesQuery(undefined, {
+    skip: skip || endpoint !== 'LANGUAGE' || callerKind === 'platform',
   });
   const tenantUsers = useListUsersQuery({ limit: 200 }, { skip: skip || !needsPeople || isMaster });
   const platformUsers = useListPlatformTenantUsersQuery(
@@ -131,7 +131,15 @@ const useJobOpeningDropdown = (
           { id: 'false', name: 'Non-Exempt' },
         ];
       case 'EDUCATION_PREFERENCE':
-        return EDUCATION_PREFERENCE_OPTIONS;
+        return (educationPreferences.data ?? []).map((item) => ({
+          id: item.id,
+          name: item.name,
+        }));
+      case 'LANGUAGE':
+        return (languages.data ?? []).map((item) => ({
+          id: item.language_id,
+          name: item.name,
+        }));
       case 'MANDATORY_SKILLS':
       case 'OPTIONAL_SKILLS': {
         const searched = skillsResult.data;
@@ -154,6 +162,8 @@ const useJobOpeningDropdown = (
     jobTypes.data,
     closureReasons.data,
     roundTypes.data,
+    educationPreferences.data,
+    languages.data,
     users.data,
     skillsResult.data,
     skillsResult.isUninitialized,
@@ -165,6 +175,8 @@ const useJobOpeningDropdown = (
     jobTypes.isLoading ||
     closureReasons.isLoading ||
     roundTypes.isLoading ||
+    educationPreferences.isLoading ||
+    languages.isLoading ||
     users.isLoading ||
     preloadedSkills.isLoading ||
     skillsResult.isFetching;
@@ -173,6 +185,8 @@ const useJobOpeningDropdown = (
     if (endpoint === 'JOB_TYPE') jobTypes.refetch();
     if (endpoint === 'CLOSURE_REASON') closureReasons.refetch();
     if (endpoint === 'ROUNDS') roundTypes.refetch();
+    if (endpoint === 'EDUCATION_PREFERENCE') educationPreferences.refetch();
+    if (endpoint === 'LANGUAGE') languages.refetch();
     if (needsPeople) users.refetch();
     if (isSkillsEndpoint(endpoint)) preloadedSkills.refetch();
   };

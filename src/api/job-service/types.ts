@@ -118,14 +118,20 @@ export type JobDetailsResponse = {
   responsibilities: string | null;
   requirements: string | null;
   other_requirements: string | null;
-  education_preference: string[] | null;
+  // Both organization-scoped catalogue references now (migration 0014) —
+  // not free text. `education_preference_id` is a single value (an
+  // org_job_opening row has exactly one); `language_ids` is the set of
+  // organization_language rows this job's communication requires.
+  // is_multilingual/is_remote/resume_submission_enabled/audio_call_enabled
+  // no longer exist on the backend (migrations 0016/0017 — Resume upload
+  // and the Intake Call are unconditionally mandatory now, never a
+  // recruiter toggle; is_multilingual was unused; is_remote was never
+  // backed by anything real).
+  education_preference_id: string | null;
   communication_skills: string | null;
   use_culture_intro: boolean;
-  is_multilingual: boolean;
+  language_ids: string[];
   is_exempted: boolean;
-  is_remote: boolean | null;
-  resume_submission_enabled: boolean;
-  audio_call_enabled: boolean;
   jd: string | null;
   locations: JobLocationResponse[];
   skills: JobSkillResponse[];
@@ -150,14 +156,11 @@ export type SaveJobDetailsRequest = {
   responsibilities?: string | null;
   requirements?: string | null;
   other_requirements?: string | null;
-  education_preference?: string[] | null;
+  education_preference_id?: string | null;
   communication_skills?: string | null;
   use_culture_intro?: boolean;
-  is_multilingual?: boolean;
+  language_ids?: string[];
   is_exempted?: boolean;
-  is_remote?: boolean | null;
-  resume_submission_enabled?: boolean;
-  audio_call_enabled?: boolean;
   locations?: JobLocationPayload[];
   skills?: JobSkillPayload[];
 };
@@ -383,6 +386,13 @@ export type JobMode = {
   job_mode_id: string;
   name: string;
   description: string | null;
+};
+
+/** GET /api/v1/master/languages row — what a job's `language_ids` pick from. */
+export type Language = {
+  language_id: string;
+  name: string;
+  language_code: string;
 };
 
 export type SkillCatalogEntry = {

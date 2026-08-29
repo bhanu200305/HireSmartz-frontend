@@ -32,7 +32,7 @@ const getButtonConfig = (
   if (/\/edit\/.*\/interview/.test(pathname)) {
     return {
       onClick: handleAddNewRound,
-      label: 'ADD NEW ROUND',
+      label: 'Add New Round',
     };
   }
   return null;
@@ -90,7 +90,9 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
       dispatch(updateEditJobDetails(mapDetailsToJobDetailsState(details)));
       dispatch(
         updateEditJobDescription({
-          educationPreference: (details.education_preference ?? []) as unknown as number[],
+          educationPreference: details.education_preference_id
+            ? ([details.education_preference_id] as unknown as number[])
+            : [],
           mandatorySkills: (details.skills ?? [])
             .filter((s) => String(s.skill_type).toUpperCase() === 'MANDATORY')
             .map((s) => s.skill_id as unknown as number),
