@@ -177,16 +177,16 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
         <button
           type="button"
           onClick={handleBackNavigation}
-          className="flex items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+          className="flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg px-2 py-1 -ml-2 cursor-pointer transition-colors"
         >
-          <MdOutlineArrowBack className="mr-2" />
+          <MdOutlineArrowBack size={16} />
           <span>Back</span>
         </button>
       </div>
-      <div className="bg-[#FAFAFA] p-6 md:p-6 rounded-2xl shadow-lg w-full max-w-6xl flex flex-col">
+      <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">
         {!isCandidatePage && (
-          <div className="flex items-center justify-between gap-4 mb-2">
-            <div className="stepsContainer flex gap-3 flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-4 mb-4 pb-4 border-b border-neutral-100">
+            <div className="stepsContainer flex gap-1.5 flex-1 min-w-0 flex-wrap">
               {allSteps.map((step, index) => {
                 const stepPath = currentPaths[index];
 
@@ -213,17 +213,19 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
                       const safePath = sanitizedPath(stepPath + search) || '/';
                       navigate(safePath);
                     }}
-                    className={`stepBox pb-2 whitespace-nowrap shrink text-sm ${
-                      isDisabled ? 'cursor-not-allowed text-gray-800 opacity-40' : 'cursor-pointer'
+                    className={`stepBox whitespace-nowrap shrink text-sm font-medium rounded-lg px-3 py-1.5 transition-colors ${
+                      isDisabled
+                        ? 'cursor-not-allowed text-neutral-300'
+                        : 'cursor-pointer'
                     } ${
                       isStepActive
-                        ? 'border-b-1 border-primary text-primary '
+                        ? 'bg-primary-50 text-primary-600 font-semibold'
                         : isDisabled
-                          ? 'text-gray-600'
-                          : 'text-gray-500'
+                          ? ''
+                          : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800'
                     }`}
                   >
-                    {step}
+                    {isCreateMode ? `${index + 1}. ${step}` : step}
                   </div>
                 );
               })}

@@ -32,7 +32,6 @@ import {
   useDeleteDropdownMutation,
   useEditDropdownMutation,
   useReuseDropdownMutation,
-  useUpdateDropdownByTypeMutation,
 } from '../../../api/job-service/AddableDropdown/UpdateDropdownByType';
 import {
   capitalizeWordsAdvanced,
@@ -40,7 +39,11 @@ import {
   validateDraft,
 } from '../../../shared/utils/methods';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
-import { useCreateOrganizationSkillMutation } from '../../../api/job-service/JobOpening/catalogs';
+import {
+  useCreateOrganizationSkillMutation,
+  useCreateJobTypeMutation,
+} from '../../../api/job-service/JobOpening/catalogs';
+import { useCreateEducationPreferenceMutation } from '../../../api/job-service/JobOpening/educationPreferences';
 import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
@@ -105,7 +108,6 @@ const EditJobDetail = () => {
   const decodedToken = safeDecodeToken<{ companyId?: number | string }>(loginToken);
   const parsedCompanyId = Number(decodedToken?.companyId || 0);
   const [, setSelectedLocationIdForUsers] = useState<string | undefined>(undefined);
-  const [isRemoteJob, setIsRemoteJob] = useState(false);
 
   const { data: offices = [], isFetching: loadingJobLocations } = useListTenantOfficesQuery(
     { tenantId: tenantId ?? '' },
@@ -145,6 +147,11 @@ const EditJobDetail = () => {
     loading: educationPreferenceLoading,
     refetch: refetchEducationPreference,
   } = useJobOpeningDropdown('EDUCATION_PREFERENCE', 'edit', parsedJobId);
+  const { jobOpeningDropdown: languageOptions, loading: languagesLoading } = useJobOpeningDropdown(
+    'LANGUAGE',
+    'edit',
+    parsedJobId
+  );
   const {
     jobOpeningDropdown: mandatorySkills,
     loading: mandatorySkillsLoading,
@@ -165,7 +172,6 @@ const EditJobDetail = () => {
     parsedJobId
   );
 
-  const [updateDropdownByType] = useUpdateDropdownByTypeMutation();
   const [editDropdown] = useEditDropdownMutation();
   const [deleteDropdown] = useDeleteDropdownMutation();
   const [reuseDropdown] = useReuseDropdownMutation();
@@ -191,6 +197,8 @@ const EditJobDetail = () => {
 
   const [updateJobOpening, { isLoading: isUpdatingDraft }] = useUpdateJobOpeningMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
+  const [createJobType] = useCreateJobTypeMutation();
+  const [createEducationPreference] = useCreateEducationPreferenceMutation();
   const [triggerGetJobDescriptionById] = useLazyGetJobDescriptionByIdQuery();
   const [regenerateJobDescription, { isLoading: isRegenerating }] =
     useRegenerateJobDescriptionMutation();
@@ -477,7 +485,7 @@ const EditJobDetail = () => {
           : null,
       shiftStart: shiftStart || '',
       shiftEnd: shiftEnd || '',
-      isMultilingual: jobData.data.isMultilingual || false,
+      languages: jobData.data.languages || [],
       openings: jobData.data.openings ? Number(jobData.data.openings) : null,
       minSalary: jobData.data.minSalary ? String(jobData.data.minSalary) : null,
       maxSalary: jobData.data.maxSalary ? String(jobData.data.maxSalary) : null,
@@ -533,7 +541,6 @@ const EditJobDetail = () => {
         ? String(processedData.officeLocation[0])
         : undefined
     );
-    setIsRemoteJob(jobData.data?.isRemote ?? false);
   };
 
   // Load job data when component mounts or ID changes
@@ -544,11 +551,12 @@ const EditJobDetail = () => {
       // Preserve in-progress edits when navigating between steps in the same edit session.
       // This keeps latest selections (like configured Job Title) visible on return.
       if (jobOpeningId === parsedJobId && jobDetails?.jobProfileCode) {
-        // Ensure bilingual value is always synced to backend value if interviews have started
+        // Ensure the language selection is always synced to the backend value
+        // once interviews have started (matches the disabled Select above).
         const hasInterviewsStarted = jobData?.data?.interviewedCandidateCount !== 0;
         const formData = { ...jobDetails };
-        if (hasInterviewsStarted && jobData?.data?.isMultilingual !== undefined) {
-          formData.isMultilingual = jobData.data.isMultilingual;
+        if (hasInterviewsStarted && jobData?.data?.languages !== undefined) {
+          formData.languages = jobData.data.languages;
         }
         reset(formData);
         if (!formData.department || formData.department.length === 0) {
@@ -786,8 +794,17 @@ const EditJobDetail = () => {
       }
 
       if (addType === 'educationPreference') {
-        setValue('educationPreference', [formattedValue], { shouldValidate: true });
+        const existingPreference = educationPreference.find(
+          (item) => item.name.toLowerCase() === normalizedValue
+        );
+        if (existingPreference) {
+          setValue('educationPreference', [existingPreference.id], { shouldValidate: true });
+          return;
+        }
+        const created = await createEducationPreference({ name: formattedValue }).unwrap();
         showToast({ message: 'Education preference added', type: 'success' });
+        setValue('educationPreference', [created.id], { shouldValidate: true });
+        refetchEducationPreference?.();
         return;
       }
 
@@ -806,30 +823,17 @@ const EditJobDetail = () => {
         return;
       }
 
-      const res = await updateDropdownByType({
-        type: mappedType,
-        value: formattedValue,
-      }).unwrap();
-
-      if (res.success) {
-        showToast({
-          message: res.message || 'Dropdown has been updated successfully!',
-          type: 'success',
-        });
-
-        const refetchFn = addType === 'jobType' ? refetchJobTypes : undefined;
-
-        refetchFn?.();
-
-        // Now set the value after the dropdown data is updated
-        if (addType === 'jobType') {
-          setValue('jobType', [res.data.id], { shouldValidate: true });
+      if (addType === 'jobType') {
+        const existingJobType = jobTypes.find((item) => item.name.toLowerCase() === normalizedValue);
+        if (existingJobType) {
+          setValue('jobType', [existingJobType.id], { shouldValidate: true });
+          return;
         }
-      } else {
-        showToast({
-          message: res.message || 'Failed to update dropdown.',
-          type: 'error',
-        });
+        const createdJobType = await createJobType({ name: formattedValue }).unwrap();
+        showToast({ message: 'Job type added successfully', type: 'success' });
+        setValue('jobType', [createdJobType.id], { shouldValidate: true });
+        refetchJobTypes?.();
+        return;
       }
     } catch (err) {
       showToast({
@@ -1333,11 +1337,11 @@ const EditJobDetail = () => {
     const combinedShift =
       data.shiftStart && data.shiftEnd ? `${data.shiftStart} - ${data.shiftEnd}` : '';
 
-    // Ensure bilingual value cannot be changed if interviews have started
+    // Ensure the language selection cannot be changed if interviews have started
     const hasInterviewsStarted = jobData?.data?.interviewedCandidateCount !== 0;
-    const bilingualValue = hasInterviewsStarted
-      ? Boolean(data.isMultilingual)
-      : Boolean(jobData?.data?.isMultilingual);
+    const languagesValue = hasInterviewsStarted
+      ? (data.languages ?? [])
+      : (jobData?.data?.languages ?? []);
 
     const processedData = {
       ...data,
@@ -1349,7 +1353,7 @@ const EditJobDetail = () => {
           ? ''
           : data.referralBonus,
       shift: combinedShift,
-      isMultilingual: bilingualValue,
+      languages: languagesValue,
       useCultureIntro: Boolean(data.useCultureIntro),
       isDraft: false,
     };
@@ -1591,7 +1595,7 @@ const EditJobDetail = () => {
             </Form.Item>
             <Form.Item label={<span>Communication Language</span>}>
               <Controller
-                name="isMultilingual"
+                name="languages"
                 control={control}
                 render={({ field: { value, onChange } }) => {
                   // Use interviewedCandidateCount from route state if present, else backend
@@ -1599,32 +1603,30 @@ const EditJobDetail = () => {
                     typeof routeInterviewedCandidateCount === 'number'
                       ? routeInterviewedCandidateCount
                       : (jobData?.data?.interviewedCandidateCount ?? 0);
-                  const isToggleDisabled = effectiveInterviewedCandidateCount > 0;
-                  const handleChange = (checked: boolean) => {
-                    if (!isToggleDisabled) {
-                      onChange(checked);
-                    }
-                  };
+                  const isDisabled = effectiveInterviewedCandidateCount > 0;
                   return (
-                    <div className="flex items-center min-h-[46px]">
-                      <Tooltip
-                        title={
-                          isToggleDisabled
-                            ? 'Cannot change communication language - interview(s) in progress'
-                            : ''
-                        }
-                      >
-                        <Switch
-                          checked={Boolean(value)}
-                          onChange={handleChange}
-                          disabled={isToggleDisabled}
-                          style={{
-                            backgroundColor: value ? 'var(--color-primary)' : undefined,
-                          }}
-                        />
-                      </Tooltip>
-                      <label className="ml-2 text-sm cursor-pointer">Bilingual</label>
-                    </div>
+                    <Tooltip
+                      title={
+                        isDisabled
+                          ? 'Cannot change communication language - interview(s) in progress'
+                          : ''
+                      }
+                    >
+                      <Select
+                        mode="multiple"
+                        allowClear
+                        disabled={isDisabled}
+                        placeholder="Select languages"
+                        className="w-full custom-select-jobs"
+                        loading={languagesLoading}
+                        value={(value ?? []).map(String)}
+                        onChange={(next) => onChange(next)}
+                        options={languageOptions.map((item) => ({
+                          label: item.name,
+                          value: item.id,
+                        }))}
+                      />
+                    </Tooltip>
                   );
                 }}
               />
@@ -1671,27 +1673,6 @@ const EditJobDetail = () => {
         <div className="mt-2">
           <div className="w-full">
             <span className="text-lg font-semibold">Location</span>
-          </div>
-          <div className="flex items-center gap-2 mt-2">
-            <Switch
-              checked={isRemoteJob}
-              onChange={(checked) => {
-                setIsRemoteJob(checked);
-                if (checked) {
-                  setSelectedLocationIdForUsers(undefined);
-                  setValue('officeLocation', [], { shouldValidate: true });
-                  setValue('country', '', { shouldValidate: true });
-                  setValue('state', '', { shouldValidate: true });
-                  setValue('hiringManagers', [], { shouldValidate: true });
-                  setValue('recruiters', [], { shouldValidate: true });
-                } else {
-                  setValue('hiringManagers', [], { shouldValidate: true });
-                  setValue('recruiters', [], { shouldValidate: true });
-                }
-              }}
-              style={{ backgroundColor: isRemoteJob ? 'var(--color-primary)' : undefined }}
-            />
-            <span className="text-sm text-gray-700">Remote Job</span>
           </div>
           <div className="grid grid-cols-3 gap-x-4 mt-2">
             <Form.Item

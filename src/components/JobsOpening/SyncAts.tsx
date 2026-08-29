@@ -40,10 +40,23 @@ const SyncAts = () => {
   // `jobBoards` was only used by the commented-out "Select Job Boards" UI below.
   return (
     <div className="fixed ats inset-0 flex items-center justify-center bg-black/60 z-50">
-      <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[500px] relative">
-        <h2 className="text-lg font-semibold text-center mb-6">Job Posting Configuration</h2>
+      <div className="bg-white p-0 rounded-2xl shadow-xl w-[500px] relative overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+          <h2 className="text-base font-bold text-neutral-900 font-display">
+            Job Posting Configuration
+          </h2>
+          <button
+            className="text-neutral-400 hover:text-neutral-700 cursor-pointer"
+            onClick={() => navigate(-1)}
+          >
+            <MdClose size={20} />
+          </button>
+        </div>
+        <div className="px-6 pt-5 pb-6">
         <Form layout="vertical" onFinish={handleSubmit(onSubmit)}>
-          <Form.Item label="Select ATS">
+          <Form.Item
+            label={<span className="text-sm font-semibold text-neutral-700">Select ATS</span>}
+          >
             <Controller
               name="ats"
               control={control}
@@ -115,15 +128,10 @@ const SyncAts = () => {
             type="submit"
             className="bg-primary text-white py-2 w-full rounded-3xl cursor-pointer transition"
           >
-            SAVE NOW
+            Save Now
           </button>
         </Form>
-        <button
-          className="absolute top-4 right-4 text-primary cursor-pointer"
-          onClick={() => navigate(-1)}
-        >
-          <MdClose size={20} />
-        </button>
+        </div>
       </div>
     </div>
   );

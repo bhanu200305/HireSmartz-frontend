@@ -9,8 +9,6 @@ type BuildSaveDetailsArgs = {
     modeId?: string;
     isExempted?: boolean;
     communicationSkills?: string;
-    resumeSubmissionEnabled?: boolean;
-    audioCallEnabled?: boolean;
     requirements?: string;
   };
   offices?: TenantOffice[];
@@ -64,8 +62,9 @@ const toIntOrNull = (value: unknown): number | null => {
 
 /**
  * Map the wizard form state onto PUT /job-openings/{id}/details.
- * education_preference is free-text strings on the real contract;
- * skills/locations are structured rows.
+ * education_preference_id/language_ids are catalogue references (migration
+ * 0014 — organization_education_preference/master_language), not free
+ * text — skills/locations are structured rows.
  */
 export const buildSaveJobDetailsPayload = ({
   data,
@@ -104,10 +103,6 @@ export const buildSaveJobDetailsPayload = ({
       skill_type: 'optional',
     }));
 
-  const education = Array.isArray(data.educationPreference)
-    ? data.educationPreference.map((item) => String(item)).filter(Boolean)
-    : null;
-
   const isExempted =
     typeof data.isExempted === 'boolean'
       ? data.isExempted
@@ -134,14 +129,11 @@ export const buildSaveJobDetailsPayload = ({
     responsibilities: data.responsibilities || null,
     requirements: data.requirements || null,
     other_requirements: data.otherRequirements || null,
-    education_preference: education,
+    education_preference_id: uuidOrNull(data.educationPreference),
     communication_skills: data.communicationSkills || null,
     use_culture_intro: Boolean(data.useCultureIntro),
-    is_multilingual: Boolean(data.isMultilingual),
+    language_ids: toIdList(data.languages).filter(isUuid),
     is_exempted: Boolean(isExempted),
-    is_remote: data.isRemote ?? null,
-    resume_submission_enabled: data.resumeSubmissionEnabled ?? true,
-    audio_call_enabled: data.audioCallEnabled ?? false,
     locations,
     skills: [...mandatory, ...optional],
   };

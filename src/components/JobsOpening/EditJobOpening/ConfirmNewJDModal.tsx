@@ -75,31 +75,38 @@ const ConfirmNewJDModal = () => {
     <>
       <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
         {isLoading && <Loader />}
-        <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[500px] relative">
-          <h2 className="text-lg font-semibold text-center mb-6">Create New Job Description</h2>
-          <p className="text-center text-base mb-6">Do you want to create a new Job Description?</p>
-
-          <div className="flex justify-between gap-4">
+        <div className="bg-white p-0 rounded-2xl shadow-xl w-[420px] relative overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+            <h2 className="text-base font-bold text-neutral-900 font-display">
+              Create New Job Description
+            </h2>
             <button
-              onClick={() => handleSubmit(false)}
-              className="bg-white border border-[var(--border)] text-primary w-full py-2 rounded-3xl transition cursor-pointer"
+              className="text-neutral-400 hover:text-neutral-700 cursor-pointer"
+              onClick={handleClose}
             >
-              NO
-            </button>
-            <button
-              onClick={() => handleSubmit(true)}
-              className="bg-primary text-white w-full py-2 rounded-3xl transition cursor-pointer"
-            >
-              YES
+              <MdClose size={20} />
             </button>
           </div>
+          <div className="px-6 pt-5 pb-6">
+            <p className="text-center text-sm text-neutral-600 mb-6">
+              Do you want to create a new Job Description?
+            </p>
 
-          <button
-            className="absolute top-4 right-4 text-primary cursor-pointer"
-            onClick={handleClose}
-          >
-            <MdClose size={20} />
-          </button>
+            <div className="flex justify-between gap-3">
+              <button
+                onClick={() => handleSubmit(false)}
+                className="bg-white border border-neutral-200 text-neutral-700 w-full py-2 rounded-3xl transition hover:bg-neutral-50 cursor-pointer"
+              >
+                No
+              </button>
+              <button
+                onClick={() => handleSubmit(true)}
+                className="bg-primary text-white w-full py-2 rounded-3xl transition cursor-pointer"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </>

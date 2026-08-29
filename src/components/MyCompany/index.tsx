@@ -17,6 +17,7 @@ import TenantActivityFeedTab from './TenantActivityFeedTab';
 import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
 import QrManagementTab from './QrManagementTab';
 import NotificationSettingsTab from './NotificationSettingsTab';
+import JobSettingsTab from './JobSettingsTab';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
@@ -70,8 +71,11 @@ const MyCompany: React.FC = () => {
   const canViewInterviewQuestions = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
   const canViewEmailTemplates = useHasAccess(Authorities.EMAIL_TEMPLATE_VIEW);
   // QR Management has no dedicated catalog permission — job-workflow-adjacent
-  // per the comingSoon note below, so it shares JOB_OPENING_VIEW.
+  // per the comingSoon note below, so it shares JOB_OPENING_VIEW. Job
+  // Settings (job types/shifts/education preferences feeding the Job
+  // Details form) is the same kind of job-workflow-adjacent catalogue.
   const canViewQrManagement = useHasAccess(Authorities.JOB_OPENING_VIEW);
+  const canViewJobSettings = useHasAccess(Authorities.JOB_OPENING_VIEW);
 
   const handleTabChange = (key: string) => {
     setSearchParams({ tab: key });
@@ -148,6 +152,11 @@ const MyCompany: React.FC = () => {
       key: '9',
       label: 'QR Management',
       children: <QrManagementTab tenantId={tenantId} />,
+    },
+    canViewJobSettings && {
+      key: '11',
+      label: 'Job Settings',
+      children: <JobSettingsTab />,
     },
     // Not gated on canViewEmailTemplates itself — "SMS Templates" (one of
     // this tab's 3 sub-tabs) never had a permission gate of its own before

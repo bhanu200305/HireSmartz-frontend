@@ -346,9 +346,9 @@ const EditAiJobDescription = () => {
           </Tooltip>
         </div>
       </div>
-      <div className="w-full mt-4 mx-auto p-6 bg-[#FAFAFA] border border-[#E2E2E2] shadow-xl rounded-lg flex flex-col justify-between h-full">
-        <div className="sticky top-0 z-20 -mx-6 -mt-6 rounded-t-lg bg-[#FAFAFA] pb-2">
-          <h1 className="text-2xl font-bold p-2 rounded-t-lg text-center text-white bg-primary">
+      <div className="w-full mt-4 mx-auto p-6 bg-white border border-neutral-200 shadow-sm rounded-2xl flex flex-col justify-between h-full">
+        <div className="sticky top-0 z-20 -mx-6 -mt-6 rounded-t-2xl bg-white pb-2">
+          <h1 className="text-2xl font-bold p-2 rounded-t-2xl text-center text-white bg-primary">
             <img
               src="/white-logo.svg"
               alt="CareerForce Pro"
@@ -451,7 +451,7 @@ const EditAiJobDescription = () => {
           )}
         </div>
         <div className="-mx-6 mt-4 -mb-6">
-          <Footer className="bg-primary text-white w-full rounded-b-lg" />
+          <Footer className="bg-primary text-white w-full rounded-b-2xl" />
         </div>
       </div>
       <div className="flex w-full justify-start py-4 px-1">

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { MdOutlineQuestionAnswer } from 'react-icons/md';
+import { HiOutlineTrash } from 'react-icons/hi';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
@@ -333,8 +335,11 @@ const AiQuestionsSetup = () => {
           isInlineSubmitting ||
           isPublishing) && <Loader />}
 
-        <div className="flex justify-between items-center bg-[#E7E4E4] border border-[var(--border)] px-6 py-4 rounded-full">
-          <Typography variant="h5" className="text-gray-800 m-0">
+        <div className="flex items-center gap-2 px-1">
+          <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
+            <MdOutlineQuestionAnswer size={16} />
+          </span>
+          <Typography variant="h5" className="text-neutral-900 font-bold m-0">
             Questions
           </Typography>
         </div>
@@ -344,7 +349,7 @@ const AiQuestionsSetup = () => {
             <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
               Sound Wave Round
             </Typography>
-            <span className="text-xs font-semibold text-gray-400 bg-gray-100 rounded-full px-3 py-1">
+            <span className="text-xs font-semibold text-neutral-500 bg-neutral-100 rounded-full px-3 py-1">
               View only
             </span>
           </div>
@@ -409,12 +414,13 @@ const AiQuestionsSetup = () => {
             </div>
             {(selectedIds.length > 0 || questions.length > 0) && (
               <button
-                className="text-red-500 hover:text-red-700 text-sm font-semibold hover:underline"
+                className="flex items-center gap-1.5 text-red-500 hover:text-red-700 text-sm font-semibold cursor-pointer"
                 onClick={() => {
                   if (selectedIds.length === 0) setSelectedIds(questions.map((q) => q.id));
                   setShowDeleteModal(true);
                 }}
               >
+                <HiOutlineTrash size={15} />
                 {selectedIds.length > 0 ? `Delete selected (${selectedIds.length})` : 'Delete all'}
               </button>
             )}

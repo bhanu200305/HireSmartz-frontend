@@ -16,9 +16,13 @@ const extendedApi = jobApi.injectEndpoints({
       providesTags: (_r, _e, jobOpeningId) => [{ type: 'JobQuestions', id: jobOpeningId }],
     }),
 
+    // Backend route (job-service migration 0015 "Split the mandatory round
+    // into Intake Call + optional Audio Screening") renamed this from
+    // /audio-questions to /intake-call-questions — response shape
+    // (`{ questions: [{ question_id, question_text }] }`) is unchanged.
     getAudioQuestions: build.query<{ questions: AudioQuestionResponse[] }, string>({
       query: (jobOpeningId) => ({
-        url: `/job-openings/${jobOpeningId}/audio-questions`,
+        url: `/job-openings/${jobOpeningId}/intake-call-questions`,
         method: 'GET',
       }),
     }),
