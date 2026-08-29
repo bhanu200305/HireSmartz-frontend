@@ -114,12 +114,28 @@ const extendedApi = jobApi.injectEndpoints({
       invalidatesTags: (_r, _e, { jobOpeningId }) => [{ type: 'JobDescription', id: jobOpeningId }],
     }),
 
-    enhanceJd: build.mutation<{ enhance_status?: 'PROCESSING' }, string>({
-      query: (jobOpeningId) => ({
-        url: `/job-openings/${jobOpeningId}/jd/enhance`,
-        method: 'POST',
-      }),
-      invalidatesTags: (_r, _e, jobOpeningId) => [{ type: 'JobDescription', id: jobOpeningId }],
+    // Arg is either a bare job id (the auto-trigger right after saving Job
+    // Details — no recruiter instructions yet) or `{jobOpeningId,
+    // refine_instructions}` (the recruiter typed guidance before clicking
+    // Generate/Refine). Manual/Upload-path jobs only — see enhance_jd.py's
+    // EntryPath gate on the backend.
+    enhanceJd: build.mutation<
+      { enhance_status?: 'PROCESSING' },
+      string | { jobOpeningId: string; refine_instructions?: string }
+    >({
+      query: (args) => {
+        const jobOpeningId = typeof args === 'string' ? args : args.jobOpeningId;
+        const refineInstructions =
+          typeof args === 'string' ? undefined : args.refine_instructions?.trim();
+        return {
+          url: `/job-openings/${jobOpeningId}/jd/enhance`,
+          method: 'POST',
+          body: refineInstructions ? { refine_instructions: refineInstructions } : undefined,
+        };
+      },
+      invalidatesTags: (_r, _e, args) => [
+        { type: 'JobDescription', id: typeof args === 'string' ? args : args.jobOpeningId },
+      ],
     }),
 
     getJdEnhanceResult: build.query<

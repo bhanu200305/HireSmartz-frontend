@@ -7,7 +7,7 @@ import MasterPagination from '../shared/ui/MasterPagination';
 import { Badge } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
-import { useGetJobOpeningsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
+import { useGetJobOpeningsListLegacyQuery as useGetJobOpeningsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
 import type { JobSummary } from '../../api/job-service/JobOpenings/types';
 import { jobStatus, daysOpen } from './jobOpeningListHelpers';
 import JobDetailModal from './JobDetailModal';

@@ -114,7 +114,10 @@ export const buildSaveJobDetailsPayload = ({
     job_title_id: uuidOrNull(data.jobTitle),
     department_id: uuidOrNull(data.department),
     shift_id: data.shiftId && isUuid(data.shiftId) ? data.shiftId : null,
-    mode_id: data.modeId && isUuid(data.modeId) ? data.modeId : null,
+    // jobMode (array-of-one, same convention as jobTitle/department above)
+    // is the real form field; modeId (a bare string) is kept as a fallback
+    // for any older caller still setting that directly.
+    mode_id: uuidOrNull(data.jobMode) ?? (data.modeId && isUuid(data.modeId) ? data.modeId : null),
     job_type_id: uuidOrNull(data.jobType),
     hiring_manager_ids: toIdList(data.hiringManagers).filter(isUuid),
     recruiter_ids: toIdList(data.recruiters).filter(isUuid),

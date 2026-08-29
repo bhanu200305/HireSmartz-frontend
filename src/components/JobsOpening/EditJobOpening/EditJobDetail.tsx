@@ -137,6 +137,11 @@ const EditJobDetail = () => {
     loading: jobTypesLoading,
     refetch: refetchJobTypes,
   } = useJobOpeningDropdown('JOB_TYPE', 'edit', parsedJobId);
+  const { jobOpeningDropdown: jobModes, loading: jobModesLoading } = useJobOpeningDropdown(
+    'JOB_MODE',
+    'edit',
+    parsedJobId
+  );
   const { jobOpeningDropdown: exemptionStatus, loading: exemptionLoading } = useJobOpeningDropdown(
     'EXEMPTION_STATUS',
     'edit',
@@ -459,6 +464,7 @@ const EditJobDetail = () => {
       ...jobData.data,
       jobTitle: catalogIdArray(jobData.data.jobTitle || []),
       jobType: catalogIdArray(jobData.data.jobType || []),
+      jobMode: catalogIdArray(jobData.data.jobMode || []),
       department: catalogIdArray(jobData.data.department || []),
       jobProfileCode: jobData.data.jobProfileCode || '',
       country: countryName,
@@ -1535,6 +1541,27 @@ const EditJobDetail = () => {
                 onEditOption={handleEditOption}
                 onDeleteOption={handleDeleteOption}
                 onReuseOption={handleReuseOption}
+              />
+            </Form.Item>
+            <Form.Item
+              label={
+                <span>
+                  Job Mode <span className="required-asterisk">*</span>
+                </span>
+              }
+            >
+              <DropdownWithAddOption
+                className="w-full custom-select-jobs placeholder-style"
+                value={watch('jobMode')?.[0]}
+                onChange={(value) => {
+                  setValue('jobMode', value ? [value] : [], { shouldValidate: true });
+                }}
+                options={jobModes}
+                loading={jobModesLoading}
+                placeholder="Select Job Mode"
+                label="Job Mode"
+                type="jobMode"
+                enableEditDelete={false}
               />
             </Form.Item>
             <Form.Item label={<span>Shift</span>}>

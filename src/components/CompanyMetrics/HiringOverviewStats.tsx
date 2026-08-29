@@ -10,7 +10,7 @@ import { StatCardRow } from '../shared';
 import type { StatCardData } from '../shared';
 import { RootState } from '../../redux/provider/store';
 import { useGetTenantDashboardQuery } from '../../api/organization-service/Tenants/profile';
-import { useGetJobStatsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
+import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import {
   useGetTotalApplicationsQuery,
   useGetCompletedInterviewsQuery,
