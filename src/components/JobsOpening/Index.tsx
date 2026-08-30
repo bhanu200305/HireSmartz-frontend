@@ -1265,20 +1265,15 @@ const JobsOpening = () => {
             <h2 className="text-3xl font-semibold text-center mb-6">Create Job Opening</h2>
             <div className="space-y-3">
               <Button
-                className="w-full border border-[var(--border)] rounded-md h-12 flex items-center justify-start px-4 bg-white"
+                className="w-full border border-[var(--border)] rounded-md h-12 flex items-center justify-center"
                 onClick={() => {
                   resetJdUploadState();
                   fileInputRef.current?.click();
                 }}
               >
-                <span className="h-8 w-8 rounded bg-primary text-white flex items-center justify-center mr-3">
-                  <UploadOutlined />
-                </span>
-                <span className="text-left">
-                  <span className="block text-sm font-semibold">UPLOAD JOB DESCRIPTION</span>
-                  <span className="block text-xs text-gray-500">Supported format: docx, pdf</span>
-                </span>
+                UPLOAD JOB DESCRIPTION
               </Button>
+              <p className="text-center text-xs text-gray-400 !-mt-1">Supported format: docx, pdf</p>
 
               <Button
                 className="w-full border border-[var(--border)] rounded-md h-12 flex items-center justify-center"

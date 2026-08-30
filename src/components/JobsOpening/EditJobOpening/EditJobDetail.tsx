@@ -2,7 +2,10 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import { DatePicker, Form, Select, Switch, TimePicker, Tooltip } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import { Button, Input, showToast } from '../../shared';
-import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import useJobOpeningDropdown, {
+  type JobOpeningDropdownOption,
+} from '../../../hooks/useJobOpeningDropdown';
+import { useGetSuggestedSkillsQuery } from '../../../api/job-service/JobOpenings/jobOpenings';
 import dayjs from 'dayjs';
 import { useForm, Controller, useWatch, type Resolver } from 'react-hook-form';
 import { RootState } from '../../../redux/provider/store';
@@ -195,6 +198,15 @@ const EditJobDetail = () => {
   const [pendingNavigationData, setPendingNavigationData] = useState<any>(null);
   const [isCheckingJdSource, setIsCheckingJdSource] = useState(false);
   const [isAddingToDropdown, setIsAddingToDropdown] = useState<string | null>(null);
+  const [suggestedSkillsDismissed, setSuggestedSkillsDismissed] = useState(false);
+  // Backs the "Selected Skills" chips for a suggested skill the recruiter
+  // accepted via the AI-suggestions banner before the live catalogue search
+  // dropdown (`mandatorySkills`/`optionalSkills` below) had cached a label
+  // for it — that dropdown only knows skills someone has actually searched
+  // for, so a freshly-accepted suggestion needs its own label source.
+  const [extraSuggestedSkillOptions, setExtraSuggestedSkillOptions] = useState<
+    JobOpeningDropdownOption[]
+  >([]);
   const [isHiringManagerDropdownOpen, setIsHiringManagerDropdownOpen] = useState(false);
   const [isRecruiterDropdownOpen, setIsRecruiterDropdownOpen] = useState(false);
   const [isMandatorySkillsDropdownOpen, setIsMandatorySkillsDropdownOpen] = useState(false);
@@ -249,12 +261,12 @@ const EditJobDetail = () => {
   const selectedRecruiters = recruiters.filter((option) =>
     selectedRecruiterIds.includes(String(option.id))
   );
-  const selectedMandatorySkills = mandatorySkills.filter((option) =>
-    selectedMandatorySkillIds.includes(String(option.id))
-  );
-  const selectedOptionalSkills = optionalSkills.filter((option) =>
-    selectedOptionalSkillIds.includes(String(option.id))
-  );
+  const selectedMandatorySkills = [...mandatorySkills, ...extraSuggestedSkillOptions]
+    .filter((option, index, self) => index === self.findIndex((o) => idsMatch(o.id, option.id)))
+    .filter((option) => selectedMandatorySkillIds.includes(String(option.id)));
+  const selectedOptionalSkills = [...optionalSkills, ...extraSuggestedSkillOptions]
+    .filter((option, index, self) => index === self.findIndex((o) => idsMatch(o.id, option.id)))
+    .filter((option) => selectedOptionalSkillIds.includes(String(option.id)));
   const [jobTitleSearchText, setJobTitleSearchText] = useState('');
   const [debouncedJobTitleSearch, setDebouncedJobTitleSearch] = useState('');
 
@@ -350,6 +362,57 @@ const EditJobDetail = () => {
   const selectedJobTitle = jobTitleOptions.find((jt) => idsMatch(jt.id, selectedJobTitleId));
   const isSelectedJobTitleDeactivated = Boolean(selectedJobTitle?.isDeleted);
   const selectedJobTypeId = watch('jobType')?.[0];
+
+  // AI-suggested skills (from the job's own parsed/generated JD, merged with
+  // any title→skill mapping) — needs a job title picked first since the
+  // backend merges in title-based suggestions too, not just JD-extracted
+  // ones.
+  const { data: suggestedSkillsData } = useGetSuggestedSkillsQuery(
+    {
+      jobId: id ?? '',
+      job_title_id: selectedJobTitleId ? String(selectedJobTitleId) : undefined,
+      job_title_text: selectedJobTitle?.name,
+    },
+    { skip: !id || !selectedJobTitleId || !selectedJobTitle?.name }
+  );
+  const suggestedSkills = suggestedSkillsData?.skills ?? [];
+  const unaddedSuggestedSkills = suggestedSkills.filter(
+    (skill) =>
+      !selectedMandatorySkillIds.includes(skill.skill_id) &&
+      !selectedOptionalSkillIds.includes(skill.skill_id)
+  );
+
+  const handleAddAllSuggestedSkills = () => {
+    if (unaddedSuggestedSkills.length === 0) return;
+    const newMandatoryIds = unaddedSuggestedSkills
+      .filter((skill) => skill.suggested_skill_type === 'mandatory')
+      .map((skill) => skill.skill_id);
+    const newOptionalIds = unaddedSuggestedSkills
+      .filter((skill) => skill.suggested_skill_type === 'optional')
+      .map((skill) => skill.skill_id);
+
+    if (newMandatoryIds.length > 0) {
+      setValue('mandatorySkills', [...selectedMandatorySkillIds, ...newMandatoryIds], {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+    if (newOptionalIds.length > 0) {
+      setValue('optionalSkills', [...selectedOptionalSkillIds, ...newOptionalIds], {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+    setExtraSuggestedSkillOptions((prev) => [
+      ...prev,
+      ...unaddedSuggestedSkills.map((skill) => ({ id: skill.skill_id, name: skill.skill_label })),
+    ]);
+    setSuggestedSkillsDismissed(true);
+    showToast({
+      message: `Added ${unaddedSuggestedSkills.length} AI-suggested skill${unaddedSuggestedSkills.length === 1 ? '' : 's'}`,
+      type: 'success',
+    });
+  };
 
   const getOptionName = (option: Record<string, unknown> | null | undefined): string => {
     if (!option) return '';
@@ -2159,6 +2222,33 @@ const EditJobDetail = () => {
           <div className="w-full">
             <span className="text-lg font-semibold">Job Skills</span>
           </div>
+          {!suggestedSkillsDismissed && unaddedSuggestedSkills.length > 0 && (
+            <div className="mt-2 flex items-center justify-between gap-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+              <span className="text-sm text-brand-800">
+                <span className="mr-1.5">✨</span>
+                AI suggested {unaddedSuggestedSkills.length} skill
+                {unaddedSuggestedSkills.length === 1 ? '' : 's'} for this role, based on the job
+                description.
+              </span>
+              <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  type="button"
+                  className="text-white bg-button rounded-3xl px-4 py-1.5 text-xs font-semibold cursor-pointer"
+                  onClick={handleAddAllSuggestedSkills}
+                >
+                  ADD ALL
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setSuggestedSkillsDismissed(true)}
+                  className="text-brand-500 hover:text-brand-700 cursor-pointer"
+                  aria-label="Dismiss suggestion"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-x-4 mt-2">
             <Form.Item label={<span>Required Skills</span>}>
               <div className="space-y-3">

@@ -6,7 +6,9 @@ import { Checkbox, DatePicker, Form, Select, Switch, TimePicker, Tooltip } from 
 import { Button, CollapsibleSection, Input, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import JobDetailsLayout from '../../../layouts/JobDetailsLayout';
-import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import useJobOpeningDropdown, {
+  type JobOpeningDropdownOption,
+} from '../../../hooks/useJobOpeningDropdown';
 import dayjs from 'dayjs';
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { RootState } from '../../../redux/provider/store';
@@ -25,6 +27,7 @@ import {
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { get } from 'lodash-es';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
+import FillWithAiWidget from './FillWithAiWidget';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
 import {
   useCreateEducationPreferenceMutation,
@@ -64,7 +67,11 @@ import {
   type TenantJobTitle,
 } from '../../../api/organization-service/Tenants/jobTitles';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
-import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
+import {
+  useEnhanceJdMutation,
+  useGetJdStatusQuery,
+} from '../../../api/job-service/JobOpening/JdUpload';
+import { useGetSuggestedSkillsQuery } from '../../../api/job-service/JobOpenings/jobOpenings';
 import {
   useCreateOrganizationSkillMutation,
   useCreateJobTypeMutation,
@@ -131,6 +138,23 @@ const JobDetails = () => {
   const [isRecruiterDropdownOpen, setIsRecruiterDropdownOpen] = useState(false);
   const [isMandatorySkillsDropdownOpen, setIsMandatorySkillsDropdownOpen] = useState(false);
   const [isOptionalSkillsDropdownOpen, setIsOptionalSkillsDropdownOpen] = useState(false);
+  const [suggestedSkillsDismissed, setSuggestedSkillsDismissed] = useState(false);
+  // Backs the "Selected Skills" chips for a suggested skill the recruiter
+  // accepted via the AI-suggestions banner before the live catalogue search
+  // dropdown (`mandatorySkills`/`optionalSkills` below) had cached a label
+  // for it — that dropdown only knows skills someone has actually searched
+  // for, so a freshly-accepted suggestion needs its own label source. Same
+  // pattern as EditJobDetail.tsx's own AI-suggestions banner. Seeded from
+  // Redux's persisted `aiSuggestedSkillLabels` (not just started empty) so
+  // a skill JobDescriptionPanel added while THIS component wasn't even
+  // mounted — the recruiter had already moved to the AI Job Description
+  // step before generation finished — still resolves a name here on a
+  // fresh visit, instead of showing as a nameless chip forever.
+  const [extraSuggestedSkillOptions, setExtraSuggestedSkillOptions] = useState<
+    JobOpeningDropdownOption[]
+  >(() =>
+    Object.entries(jobDetails.aiSuggestedSkillLabels ?? {}).map(([id, name]) => ({ id, name }))
+  );
 
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
   const jobIdFromUrl = asJobId(searchParams.get('jobOpeningId'));
@@ -147,11 +171,22 @@ const JobDetails = () => {
   // id attached immediately), so neither can tell a freshly-started,
   // still-empty job apart from a fully-saved one, which is exactly the
   // distinction this needs.
-  const { data: jdDetailsForGate } = useGetJobDescriptionByIdQuery(
-    { jobOpeningId: resolvedJobId },
-    { skip: !resolvedJobId }
-  );
+  const { data: jdDetailsForGate, refetch: refetchJdDetailsForGate } =
+    useGetJobDescriptionByIdQuery({ jobOpeningId: resolvedJobId }, { skip: !resolvedJobId });
   const hasSavedDetails = jdDetailsForGate?.hasSavedDetails ?? false;
+  // Whatever AI writes (via the floating "Fill with AI" widget, or the
+  // Refine/Generate box on the AI Job Description step) lands on the job
+  // asynchronously — this step's form only ever reads its initial values
+  // once, at mount, from Redux (`jobDetails` below). A light, page-lifetime
+  // poll of jd/status (cheap — one status field) catches the actual
+  // GENERATING/PROCESSING → READY transition (not just "status happens to
+  // be READY", which is also every untouched job's default/idle state) and
+  // then applies whatever's new — see the effect near the ATS one below.
+  const { data: jdStatusForHydration } = useGetJdStatusQuery(resolvedJobId, {
+    skip: !resolvedJobId,
+    pollingInterval: 3000,
+  });
+  const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
   const [enhanceJd] = useEnhanceJdMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
   const [createJobType] = useCreateJobTypeMutation();
@@ -274,6 +309,7 @@ const JobDetails = () => {
     control,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     setError,
     trigger,
@@ -360,12 +396,12 @@ const JobDetails = () => {
   const selectedRecruiters = recruiters.filter((option) =>
     selectedRecruiterIds.includes(String(option.id))
   );
-  const selectedMandatorySkills = mandatorySkills.filter((option) =>
-    selectedMandatorySkillIds.includes(String(option.id))
-  );
-  const selectedOptionalSkills = optionalSkills.filter((option) =>
-    selectedOptionalSkillIds.includes(String(option.id))
-  );
+  const selectedMandatorySkills = [...mandatorySkills, ...extraSuggestedSkillOptions]
+    .filter((option, index, self) => index === self.findIndex((o) => idsMatch(o.id, option.id)))
+    .filter((option) => selectedMandatorySkillIds.includes(String(option.id)));
+  const selectedOptionalSkills = [...optionalSkills, ...extraSuggestedSkillOptions]
+    .filter((option, index, self) => index === self.findIndex((o) => idsMatch(o.id, option.id)))
+    .filter((option) => selectedOptionalSkillIds.includes(String(option.id)));
   const [jobTitleSearchText, setJobTitleSearchText] = useState('');
   const [debouncedJobTitleSearch, setDebouncedJobTitleSearch] = useState('');
 
@@ -440,6 +476,89 @@ const JobDetails = () => {
     mappedDepartmentJobTitles,
     selectedDepartmentId,
   ]);
+
+  // AI-suggested skills for the currently selected job title —
+  // get_suggested_skills.py on the backend, previously wired to no UI at
+  // all. Needs the title's real org_job_title_id (not the composite form
+  // id DropdownWithAddOption uses) and its display text; skipped until
+  // both are known, same gate the backend itself requires (job_title_id
+  // and job_title_text are both required query params).
+  const selectedJobTitleFormId = formValues.jobTitle?.[0];
+  const selectedJobTitleOrgId = selectedJobTitleFormId
+    ? resolveOrgJobTitleId(selectedJobTitleFormId)
+    : undefined;
+  const selectedJobTitleText =
+    (selectedJobTitleFormId &&
+      [...mappedDepartmentJobTitles, ...mappedCatalogueJobTitles].find((title) =>
+        idsMatch(title.id, selectedJobTitleFormId)
+      )?.name) ||
+    undefined;
+  const { data: suggestedSkillsData } = useGetSuggestedSkillsQuery(
+    {
+      jobId: resolvedJobId,
+      job_title_id: selectedJobTitleOrgId ?? '',
+      job_title_text: selectedJobTitleText ?? '',
+    },
+    { skip: !resolvedJobId || !selectedJobTitleOrgId || !selectedJobTitleText }
+  );
+  const suggestedSkills = suggestedSkillsData?.skills ?? [];
+  const unaddedSuggestedSkills = suggestedSkills.filter(
+    (skill) =>
+      !selectedMandatorySkillIds.includes(String(skill.skill_id)) &&
+      !selectedOptionalSkillIds.includes(String(skill.skill_id))
+  );
+
+  // Persists skill labels into Redux (merged, never replaced wholesale) so
+  // they survive this component unmounting or the page reloading —
+  // `extraSuggestedSkillOptions` alone is local state, gone the moment
+  // this component isn't the one mounted. See `aiSuggestedSkillLabels` on
+  // JobDetailsState for the full reasoning.
+  const persistSkillLabels = (entries: { id: string; name: string }[]) => {
+    if (entries.length === 0) return;
+    const additions: Record<string, string> = {};
+    for (const entry of entries) additions[entry.id] = entry.name;
+    dispatch(
+      updateJobDetails({
+        aiSuggestedSkillLabels: { ...(jobDetails.aiSuggestedSkillLabels || {}), ...additions },
+      })
+    );
+  };
+
+  // Matches EditJobDetail.tsx's own "Add All" banner exactly, for the same
+  // AI-suggested-skills capability on the create-flow side.
+  const handleAddAllSuggestedSkills = () => {
+    if (unaddedSuggestedSkills.length === 0) return;
+    const newMandatoryIds = unaddedSuggestedSkills
+      .filter((skill) => skill.suggested_skill_type === 'mandatory')
+      .map((skill) => skill.skill_id);
+    const newOptionalIds = unaddedSuggestedSkills
+      .filter((skill) => skill.suggested_skill_type === 'optional')
+      .map((skill) => skill.skill_id);
+
+    if (newMandatoryIds.length > 0) {
+      setValue('mandatorySkills', [...selectedMandatorySkillIds, ...newMandatoryIds], {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+    if (newOptionalIds.length > 0) {
+      setValue('optionalSkills', [...selectedOptionalSkillIds, ...newOptionalIds], {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+    const acceptedOptions = unaddedSuggestedSkills.map((skill) => ({
+      id: skill.skill_id,
+      name: skill.skill_label,
+    }));
+    setExtraSuggestedSkillOptions((prev) => [...prev, ...acceptedOptions]);
+    persistSkillLabels(acceptedOptions);
+    setSuggestedSkillsDismissed(true);
+    showToast({
+      message: `Added ${unaddedSuggestedSkills.length} AI-suggested skill${unaddedSuggestedSkills.length === 1 ? '' : 's'}`,
+      type: 'success',
+    });
+  };
 
   const departments = (orgDepartments ?? []).map((department) => ({
     id: department.org_department_id,
@@ -530,6 +649,118 @@ const JobDetails = () => {
       );
     }
   }, [atsJobData, isFromAts, jobDetails, setValue]);
+
+  // AI-fill counterpart to the ATS hydration above — applies whatever
+  // responsibilities/other requirements/experience/salary AI wrote onto
+  // this still-open form once a generation run actually finishes. Keyed
+  // off an observed GENERATING/PROCESSING -> READY transition, not just
+  // "status is currently READY" — that's also every untouched job's
+  // resting state (Manual jobs default to READY before anything's ever
+  // been generated), so treating it as a completion signal would apply
+  // (all-null) fields once on mount and never look again. Explicitly
+  // refetches rather than trusting `jdDetailsForGate` in this same render —
+  // that value is still the pre-completion snapshot until the refetch
+  // below resolves. Only ever fills a field the recruiter hasn't already
+  // typed something into; can fire more than once per job (e.g. the
+  // recruiter fills with AI here, then Refines again from the AI Job
+  // Description step, then comes back).
+  useEffect(() => {
+    const previousStatus = prevJdStatusForHydrationRef.current;
+    const currentStatus = jdStatusForHydration?.status;
+    prevJdStatusForHydrationRef.current = currentStatus;
+
+    const justFinishedGenerating =
+      (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') &&
+      currentStatus === 'READY';
+    if (!justFinishedGenerating) return;
+
+    void refetchJdDetailsForGate().then((result) => {
+      const fresh = result.data;
+      if (!fresh) return;
+
+      const current = getValues();
+      let appliedAnything = false;
+      if (fresh.responsibilities && !current.responsibilities) {
+        setValue('responsibilities', fresh.responsibilities, { shouldValidate: true });
+        appliedAnything = true;
+      }
+      if (fresh.otherRequirements && !current.otherRequirements) {
+        setValue('otherRequirements', fresh.otherRequirements, { shouldValidate: true });
+        appliedAnything = true;
+      }
+      if (fresh.minExperience != null && current.minExperience == null) {
+        setValue('minExperience', fresh.minExperience, { shouldValidate: true });
+        appliedAnything = true;
+      }
+      if (fresh.maxExperience != null && current.maxExperience == null) {
+        setValue('maxExperience', fresh.maxExperience, { shouldValidate: true });
+        appliedAnything = true;
+      }
+      if (fresh.minSalary != null && !current.minSalary) {
+        setValue('minSalary', String(fresh.minSalary), { shouldValidate: true });
+        appliedAnything = true;
+      }
+      if (fresh.maxSalary != null && !current.maxSalary) {
+        setValue('maxSalary', String(fresh.maxSalary), { shouldValidate: true });
+        appliedAnything = true;
+      }
+      // Skills AI suggested via job.jd.enhance are auto-committed straight
+      // onto the job (job.add_skill — unlike generate/parse's
+      // suggestions-only cache), so they exist in `fresh.skills` the
+      // moment this refetch lands. Merge in only the ones not already
+      // selected, split by the catalogue's own type name.
+      if (fresh.skills && fresh.skills.length > 0) {
+        const currentMandatory = (current.mandatorySkills || []).map(String);
+        const currentOptional = (current.optionalSkills || []).map(String);
+        const newMandatory: string[] = [];
+        const newOptional: string[] = [];
+        const newOptions: JobOpeningDropdownOption[] = [];
+        for (const skill of fresh.skills) {
+          const id = String(skill.skill_id);
+          if (currentMandatory.includes(id) || currentOptional.includes(id)) continue;
+          if (newMandatory.includes(id) || newOptional.includes(id)) continue;
+          if (skill.skill_type.toLowerCase() === 'mandatory') {
+            newMandatory.push(id);
+          } else {
+            newOptional.push(id);
+          }
+          newOptions.push({ id: skill.skill_id, name: skill.skill_label });
+        }
+        if (newMandatory.length > 0) {
+          setValue('mandatorySkills', [...currentMandatory, ...newMandatory], {
+            shouldValidate: true,
+          });
+          appliedAnything = true;
+        }
+        if (newOptional.length > 0) {
+          setValue('optionalSkills', [...currentOptional, ...newOptional], {
+            shouldValidate: true,
+          });
+          appliedAnything = true;
+        }
+        if (newOptions.length > 0) {
+          // The "Selected Skills" chip boxes resolve a display name by
+          // looking up each id in the catalogue dropdown's own option
+          // list — a skill that only ever arrived through this AI-fill
+          // path (never opened in either dropdown before) isn't in there,
+          // so it renders as a nameless chip without this. Same fix
+          // `handleAddAllSuggestedSkills` already applies for the "ADD
+          // ALL" banner's own skills.
+          setExtraSuggestedSkillOptions((prev) => [...prev, ...newOptions]);
+          persistSkillLabels(newOptions);
+          refetchMandatorySkills?.();
+          refetchOptionalSkills?.();
+        }
+      }
+      if (appliedAnything) {
+        showToast({
+          message:
+            'AI filled in some job details from your prompt — review and edit before saving.',
+          type: 'success',
+        });
+      }
+    });
+  }, [jdStatusForHydration?.status, refetchJdDetailsForGate, getValues, setValue]);
 
   useEffect(() => {
     if (!selectedLocationDetails) return;
@@ -2160,6 +2391,34 @@ const JobDetails = () => {
                     </Form.Item>
                   </div>
 
+                  {!suggestedSkillsDismissed && unaddedSuggestedSkills.length > 0 && (
+                    <div className="mt-2 flex items-center justify-between gap-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+                      <span className="text-sm text-brand-800">
+                        <span className="mr-1.5">✨</span>
+                        AI suggested {unaddedSuggestedSkills.length} skill
+                        {unaddedSuggestedSkills.length === 1 ? '' : 's'} for this role, based on the
+                        job description.
+                      </span>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <Button
+                          type="button"
+                          className="text-white bg-button rounded-3xl px-4 py-1.5 text-xs font-semibold cursor-pointer"
+                          onClick={handleAddAllSuggestedSkills}
+                        >
+                          ADD ALL
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => setSuggestedSkillsDismissed(true)}
+                          className="text-brand-500 hover:text-brand-700 cursor-pointer"
+                          aria-label="Dismiss suggestion"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-x-4 mt-2">
                     <Form.Item label={<span>Required Skills</span>}>
                       <div className="space-y-3">
@@ -2474,6 +2733,7 @@ const JobDetails = () => {
           )}
         </JobDetailsLayout>
       </MainLayout>
+      {resolvedJobId && <FillWithAiWidget jobOpeningId={resolvedJobId} />}
     </>
   );
 };

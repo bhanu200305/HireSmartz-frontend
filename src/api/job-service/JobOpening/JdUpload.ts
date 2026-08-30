@@ -116,21 +116,27 @@ const extendedApi = jobApi.injectEndpoints({
 
     // Arg is either a bare job id (the auto-trigger right after saving Job
     // Details — no recruiter instructions yet) or `{jobOpeningId,
-    // refine_instructions}` (the recruiter typed guidance before clicking
-    // Generate/Refine). Manual/Upload-path jobs only — see enhance_jd.py's
-    // EntryPath gate on the backend.
+    // instruction, regenerate}` (the recruiter typed guidance, or hit
+    // Regenerate, before clicking Generate/Refine). Manual/Upload-path jobs
+    // only — see enhance_jd.py's EntryPath gate on the backend.
+    //
+    // The backend's `EnhanceJdRequest` (`instruction`/`regenerate`, both
+    // with defaults) still requires *some* JSON body — `extra="forbid"`
+    // rejects an unrecognised field, and FastAPI 422s a body-less POST
+    // outright even though every field on the model is optional. So this
+    // always sends a real object, never `undefined`.
     enhanceJd: build.mutation<
-      { enhance_status?: 'PROCESSING' },
-      string | { jobOpeningId: string; refine_instructions?: string }
+      Record<string, never>,
+      string | { jobOpeningId: string; instruction?: string; regenerate?: boolean }
     >({
       query: (args) => {
         const jobOpeningId = typeof args === 'string' ? args : args.jobOpeningId;
-        const refineInstructions =
-          typeof args === 'string' ? undefined : args.refine_instructions?.trim();
+        const instruction = typeof args === 'string' ? undefined : args.instruction?.trim();
+        const regenerate = typeof args === 'string' ? false : Boolean(args.regenerate);
         return {
           url: `/job-openings/${jobOpeningId}/jd/enhance`,
           method: 'POST',
-          body: refineInstructions ? { refine_instructions: refineInstructions } : undefined,
+          body: { instruction: instruction || null, regenerate },
         };
       },
       invalidatesTags: (_r, _e, args) => [
