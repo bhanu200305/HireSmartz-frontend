@@ -121,8 +121,8 @@ const CareersApplyPage = lazy(() => import('./pages/CareersApplyPage'));
 
 // Lazy load components
 const JobDetails = lazy(() => import('./components/JobsOpening/AddJobDescription/jobdetails'));
-const JobDescription = lazy(
-  () => import('./components/JobsOpening/AddJobDescription/JobDescription')
+const JobDescriptionStep = lazy(
+  () => import('./components/JobsOpening/AddJobDescription/JobDescriptionStep')
 );
 const AiQuestionsSetup = lazy(
   () => import('./components/JobsOpening/AddJobDescription/AiQuestionsSetup')
@@ -428,8 +428,8 @@ export const Routes: RouteType[] = [
     children: [
       {
         path: '',
-        component: JobDescription,
-        name: 'JobDescription',
+        component: JobDescriptionStep,
+        name: 'JobDescriptionStep',
       },
     ],
   },

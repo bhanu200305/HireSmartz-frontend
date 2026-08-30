@@ -1,4 +1,5 @@
-import { Button, Search, CommonCard, Typography } from '..';
+import { Button, Search, Typography } from '..';
+import './jobsList.css';
 import {
   DownOutlined,
   CloseOutlined,
@@ -889,7 +890,7 @@ const JobsOpening = () => {
   return (
     <div>
       <MainLayout>
-        <div className="w-full p-8 justify-start pt-16">
+        <div className="jobs-list-page w-full p-8 justify-start pt-16">
           {(isLoading || isDuplicating) && <Loader />}
           <div className="flex space-x-4 justify-between p-2">
             {isFromGlobalSearch && filters.text ? (
@@ -898,9 +899,9 @@ const JobsOpening = () => {
                   <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
                     <TbBriefcase2 size={18} />
                   </span>
-                  <h2 className="text-xl font-semibold">Showing Results</h2>
+                  <h2 className="text-xl font-bold text-neutral-900">Showing Results</h2>
                 </div>
-                <span className="text-gray-500 text-sm">for &quot;{filters.text}&quot;</span>
+                <span className="text-neutral-500 text-sm">for &quot;{filters.text}&quot;</span>
               </div>
             ) : (
               <div className="flex flex-col space-y-1">
@@ -908,10 +909,10 @@ const JobsOpening = () => {
                   <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
                     <TbBriefcase2 size={18} />
                   </span>
-                  <h2 className="text-xl font-semibold">Job Openings</h2>
+                  <h2 className="text-xl font-bold text-neutral-900">Job Openings</h2>
                 </div>
                 {jobStats && (
-                  <span className="text-gray-500 text-sm">
+                  <span className="text-neutral-500 text-sm">
                     {jobStats.published_count} open{' '}
                     {jobStats.published_count === 1 ? 'role' : 'roles'} across your company
                   </span>
@@ -999,7 +1000,7 @@ const JobsOpening = () => {
               {hasFeatureAccess('job_opening', 'create', role, authorities) && (
                 <Button
                   appname="add Job Description"
-                  className="w-100% text-white bg-button rounded-3xl px-3 py-2 flex items-center"
+                  className="text-white bg-button rounded-3xl px-4 py-2 flex items-center shadow-xs hover:shadow-sm transition-shadow"
                   onClick={handleCreateNewJob}
                 >
                   <PlusOutlined className="text-sm pr-2" />{' '}
@@ -1013,18 +1014,15 @@ const JobsOpening = () => {
               <StatCardRow cards={jobStatCards} columns={4} />
             </div>
           )}
-          <div className="w-full p-2 justify-start rounded-xl overflow-hidden border border-neutral-200 bg-white shadow-sm">
-            <Row
-              gutter={[16, 16]}
-              className="font-bold py-2 px-2 bg-neutral-50 border border-[var(--border)] heading-font"
-            >
+          <div className="w-full rounded-xl overflow-hidden border border-neutral-200 bg-white shadow-xs">
+            <Row gutter={[16, 16]} className="bg-neutral-50 px-2 py-3">
               <COL
                 sortable
                 sortKey="jobTitleName"
                 currentSortKey={currentSortKey}
                 onSort={handleSort}
                 span={5}
-                className="px-4 py-2 border-[var(--border)] "
+                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
               >
                 JOB TITLE
               </COL>
@@ -1034,7 +1032,7 @@ const JobsOpening = () => {
                 currentSortKey={currentSortKey}
                 onSort={handleSort}
                 span={4}
-                className="px-4 py-2 border-[var(--border)]"
+                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
               >
                 LOCATION
               </COL>
@@ -1044,31 +1042,47 @@ const JobsOpening = () => {
                 currentSortKey={currentSortKey}
                 onSort={handleSort}
                 span={3}
-                className="px-4 py-2 border-[var(--border)]"
+                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
               >
                 CANDIDATES
               </COL>
-              <Col span={3} className="px-4 py-2">
+              <Col
+                span={3}
+                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+              >
                 INTERVIEWED
               </Col>
-              <Col span={3} className="px-4 py-2">
+              <Col
+                span={3}
+                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+              >
                 SELECTED
               </Col>
-              <Col span={2} className="px-4 py-2">
+              <Col
+                span={2}
+                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+              >
                 NOT SELECTED
               </Col>
-              <Col span={2} className="px-4 py-2">
+              <Col
+                span={2}
+                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+              >
                 STATUS
               </Col>
-              <Col span={2} className="px-4 py-2  border-[var(--border)]">
+              <Col
+                span={2}
+                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+              >
                 ACTIONS
               </Col>
             </Row>
-          </div>
-          <div className="w-full">
-            {listedJobs.map((jobs) => (
-              <div key={jobs.jobOpeningId} className="mb-2">
-                <CommonCard>
+            <div className="divide-y divide-neutral-100">
+              {listedJobs.map((jobs) => (
+                <div
+                  key={jobs.jobOpeningId}
+                  className="px-2 py-3 hover:bg-neutral-50 transition-colors"
+                >
                   <Row gutter={[16, 16]} align="middle">
                     <Col span={5}>
                       <div className="flex items-center">
@@ -1180,9 +1194,9 @@ const JobsOpening = () => {
                       {renderActions(jobs)}
                     </Col>
                   </Row>
-                </CommonCard>
-              </div>
-            ))}
+                </div>
+              ))}
+            </div>
           </div>
           <MasterPagination
             current={filters.page + 1}
@@ -1251,20 +1265,17 @@ const JobsOpening = () => {
             <h2 className="text-3xl font-semibold text-center mb-6">Create Job Opening</h2>
             <div className="space-y-3">
               <Button
-                className="w-full border border-[var(--border)] rounded-md h-12 flex items-center justify-start px-4 bg-white"
+                className="w-full border border-[var(--border)] rounded-md h-12 flex items-center justify-center"
                 onClick={() => {
                   resetJdUploadState();
                   fileInputRef.current?.click();
                 }}
               >
-                <span className="h-8 w-8 rounded bg-primary text-white flex items-center justify-center mr-3">
-                  <UploadOutlined />
-                </span>
-                <span className="text-left">
-                  <span className="block text-sm font-semibold">UPLOAD JOB DESCRIPTION</span>
-                  <span className="block text-xs text-gray-500">Supported format: docx, pdf</span>
-                </span>
+                UPLOAD JOB DESCRIPTION
               </Button>
+              <p className="text-center text-xs text-gray-400 !-mt-1">
+                Supported format: docx, pdf
+              </p>
 
               <Button
                 className="w-full border border-[var(--border)] rounded-md h-12 flex items-center justify-center"

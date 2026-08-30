@@ -232,6 +232,18 @@ export type JobDetailsState = {
   mandatorySkills: Array<string | number>;
   optionalSkills?: Array<string | number>;
   otherRequirements?: string;
+  /** skill_id -> skill_label, for skills that landed in mandatorySkills/
+   * optionalSkills without ever going through a dropdown search (AI added
+   * them directly via job.jd.enhance's auto-committed suggestions). The
+   * catalogue search dropdowns only know a label for a skill someone has
+   * actually searched for, so the "Selected Skills" chips need their own
+   * label source for anything that arrived another way — this is that
+   * source, persisted (redux-persist) so it survives a remount even if the
+   * Job Details step wasn't open when the skill was added (see
+   * JobDescriptionPanel.tsx's Redux-dispatch effect, which is the one
+   * guaranteed to run in that case). Merged in, never replaced wholesale —
+   * see jobOpeningSlice.ts's `updateJobDetails` reducer. */
+  aiSuggestedSkillLabels?: Record<string, string>;
   /** @deprecated backend no longer accepts this (job-service migration 0016) */
   isMultilingual?: boolean;
   useCultureIntro?: boolean;

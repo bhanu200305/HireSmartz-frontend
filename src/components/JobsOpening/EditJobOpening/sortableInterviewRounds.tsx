@@ -1,8 +1,16 @@
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useState, useEffect } from 'react';
-import { HiOutlineMinus, HiOutlinePlus, HiOutlineTrash, HiDotsVertical } from 'react-icons/hi';
+import {
+  HiOutlineTrash,
+  HiDotsVertical,
+  HiOutlineMicrophone,
+  HiOutlineUserCircle,
+  HiOutlineVideoCamera,
+  HiOutlineOfficeBuilding,
+} from 'react-icons/hi';
 import { MdEdit } from 'react-icons/md';
+import type { IconType } from 'react-icons';
 import { DraggableItem } from '../../shared/ui/DragAndDrop';
 
 type InterviewRound = {
@@ -17,14 +25,33 @@ type InterviewRound = {
   variant?: string | null;
 };
 
-/** "sound-wave" / "SOUND_WAVE" → "Sound Wave" — purely a display label, no
- * change to the underlying value stored/sent anywhere. */
-const formatVariantLabel = (variant?: string | null): string | null => {
+/** Recruiter-facing label + icon for each real catalog variant
+ * (`master_interview_round.available_variants`: AI Video round ->
+ * soundwave/avatar, Hiring Panel round -> online/offline). Anything outside
+ * that fixed set falls back to a plain capitalised label with no icon,
+ * rather than guessing — same "don't invent it" posture as the backend's
+ * own catalog-driven enforcement. */
+const VARIANT_BADGES: Record<string, { label: string; icon: IconType }> = {
+  soundwave: { label: 'Sound Wave Round', icon: HiOutlineMicrophone },
+  avatar: { label: 'Avatar Round', icon: HiOutlineUserCircle },
+  online: { label: 'Video Call Round', icon: HiOutlineVideoCamera },
+  offline: { label: 'In Person Round', icon: HiOutlineOfficeBuilding },
+};
+
+/** `icon` is omitted for a variant outside the known set above — the badge
+ * still renders with a label, just without a fabricated icon for a shape
+ * we don't actually know the meaning of. */
+const getVariantBadge = (
+  variant?: string | null
+): { label: string; icon: IconType | null } | null => {
   if (!variant) return null;
-  return variant
+  const known = VARIANT_BADGES[variant.toLowerCase()];
+  if (known) return known;
+  const label = variant
     .replace(/[_-]+/g, ' ')
     .trim()
     .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+  return { label: `${label} Round`, icon: null };
 };
 
 type SortableInterviewRoundsProps = {
@@ -43,7 +70,6 @@ export const SortableInterviewRounds = ({
   isEditMode = false,
 }: SortableInterviewRoundsProps) => {
   const [items, setItems] = useState<InterviewRound[]>(rounds);
-  const [collapsedRounds, setCollapsedRounds] = useState<string[]>([]);
 
   useEffect(() => {
     setItems(rounds);
@@ -70,59 +96,62 @@ export const SortableInterviewRounds = ({
     }
   };
 
-  const toggleRound = (roundId: string) => {
-    setCollapsedRounds((prev) =>
-      prev.includes(roundId) ? prev.filter((id) => id !== roundId) : [...prev, roundId]
+  const renderCardBody = (round: InterviewRound, index: number, isOver = false) => {
+    const badge = getVariantBadge(round.variant);
+    const BadgeIcon = badge?.icon;
+    const summary = [
+      `Type: ${round.round?.name}`,
+      badge ? `Format: ${badge.label}` : null,
+      round.duration ? `${round.duration} min` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+    return (
+      <div
+        className={`border shadow-sm rounded-2xl px-6 py-4 bg-white transition-all duration-200 flex items-center justify-between gap-4 ${
+          isOver ? 'border-primary' : 'border-[var(--border)]'
+        }`}
+      >
+        <div className="min-w-0">
+          <div className="flex items-center flex-wrap gap-2">
+            <h3 className="text-base font-semibold text-neutral-900">
+              {index + 1}. {round.round?.name}
+            </h3>
+            {badge && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 bg-sky-50 px-2.5 py-1 rounded-full whitespace-nowrap">
+                {BadgeIcon && <BadgeIcon className="text-sm shrink-0" />}
+                {badge.label}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-neutral-500 mt-1 truncate">{summary}</p>
+        </div>
+        <div className="flex items-center gap-4 shrink-0">
+          <button
+            onClick={() => onEdit(round)}
+            className="text-neutral-500 hover:text-neutral-700 cursor-pointer"
+            aria-label="Edit round"
+          >
+            <MdEdit size={18} />
+          </button>
+          <button
+            className="text-red-500 hover:text-red-700 cursor-pointer"
+            onClick={() => onDelete(round.id)}
+            aria-label="Delete round"
+          >
+            <HiOutlineTrash size={18} />
+          </button>
+        </div>
+      </div>
     );
   };
 
   if (isEditMode) {
     return (
-      <div className="space-y-6 pb-4">
+      <div className="space-y-4 pb-4">
         {items.map((round, index) => (
-          <div
-            key={round.id}
-            className="border border-[var(--border)] shadow-lg rounded-lg p-6 bg-white"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">
-                  {index + 1}. {round.round?.name}
-                </h3>
-                <p className="text-xs text-neutral-500 mt-0.5">
-                  {[
-                    formatVariantLabel(round.variant),
-                    round.duration ? `${round.duration} min` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-              </div>
-              <div className="flex items-center space-x-4">
-                <button onClick={() => toggleRound(round.id.toString())}>
-                  {collapsedRounds.includes(round.id.toString()) ? (
-                    <HiOutlinePlus className="cursor-pointer" />
-                  ) : (
-                    <HiOutlineMinus className="cursor-pointer" />
-                  )}
-                </button>
-                <button onClick={() => onEdit(round)}>
-                  <MdEdit size={18} />
-                </button>
-                <button
-                  className="text-red-500 hover:text-red-700 cursor-pointer"
-                  onClick={() => onDelete(round.id)}
-                >
-                  <HiOutlineTrash size={18} />
-                </button>
-              </div>
-            </div>
-            {!collapsedRounds.includes(round.id.toString()) && (
-              <div className="border border-[var(--border)] p-6 mt-2 rounded-lg shadow-md">
-                <p className="break-words">{round.description}</p>
-              </div>
-            )}
-          </div>
+          <div key={round.id}>{renderCardBody(round, index)}</div>
         ))}
       </div>
     );
@@ -130,7 +159,7 @@ export const SortableInterviewRounds = ({
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="space-y-6 pb-4">
+      <div className="space-y-4 pb-4">
         {items.map((round, index) => (
           <div key={round.id} className="flex items-start gap-3">
             <DraggableItem
@@ -156,55 +185,7 @@ export const SortableInterviewRounds = ({
                 moveItem={handleDrop}
                 renderDragHandle={false}
               >
-                {({ isOver }) => (
-                  <div
-                    className={`border shadow-lg rounded-lg p-6 bg-white transition-all duration-200 ${
-                      isOver ? 'border-primary' : 'border-[var(--border)]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div
-                        className="cursor-pointer"
-                        onClick={() => toggleRound(round.id.toString())}
-                      >
-                        <h3 className="text-lg font-semibold">
-                          {index + 1}. {round.round?.name}
-                        </h3>
-                        <p className="text-xs text-neutral-500 mt-0.5">
-                          {[
-                            formatVariantLabel(round.variant),
-                            round.duration ? `${round.duration} min` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <button onClick={() => toggleRound(round.id.toString())}>
-                          {collapsedRounds.includes(round.id.toString()) ? (
-                            <HiOutlinePlus className="cursor-pointer" />
-                          ) : (
-                            <HiOutlineMinus className="cursor-pointer" />
-                          )}
-                        </button>
-                        <button onClick={() => onEdit(round)}>
-                          <MdEdit size={18} />
-                        </button>
-                        <button
-                          className="text-red-500 hover:text-red-700 cursor-pointer"
-                          onClick={() => onDelete(round.id)}
-                        >
-                          <HiOutlineTrash size={18} />
-                        </button>
-                      </div>
-                    </div>
-                    {!collapsedRounds.includes(round.id.toString()) && (
-                      <div className="border border-[var(--border)] p-6 mt-2 rounded-lg shadow-md">
-                        <p className="break-words">{round.description}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {({ isOver }) => renderCardBody(round, index, isOver)}
               </DraggableItem>
             </div>
           </div>
