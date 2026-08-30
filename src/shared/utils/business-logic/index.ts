@@ -158,53 +158,92 @@ const matchMarkdownHeader = (_: any, hashes: string, char: string) => {
   return hashes + (char === ' ' ? '' : ' ') + char;
 };
 
+// Leading glyph pypdf/docx text extraction commonly emits for a list item —
+// sometimes stranded on its own line, separate from the item's actual text
+// (reportlab-style PDFs especially split the bullet glyph and the paragraph
+// into different content-stream operations, which pypdf then reads back as
+// two lines instead of one).
+const AI_JD_BULLET_RE = /^[•●◦‣▪∙*-]\s*/;
+const AI_JD_NUMBERED_RE = /^\d+[.)]\s+/;
+const AI_JD_MARKDOWN_HEADING_RE = /^#{1,6}\s+/;
+
+// Keyword stem list for heading detection — deliberately stems ("responsibilit"
+// not "responsibilities") so it matches whatever wording the source actually
+// used ("Responsibilities", "Key Responsibilities", "Required Skills
+// (Must-Have)", "Other Requirements", ...) instead of requiring an exact
+// string match against one fixed phrase per section.
+const AI_JD_HEADING_KEYWORD_RE =
+  /(about\s+the\s+role|role\s+summary|responsibilit|requirement|qualification|skill|experience|salary|compensation|education|department|job\s*type|location|benefit|perk|what\s+we\s+offer|nice.to.have|preferred|other|communication|referral|exemption|vacanc|headcount|shift|mode)/i;
+
+/** A bare (no markdown syntax) line that reads like a section label rather
+ * than prose — short, doesn't trail off mid-sentence, and either matches a
+ * common JD-section keyword or is mostly Title Case. */
+const isLikelyAiJdHeading = (line: string): boolean => {
+  if (!line || AI_JD_BULLET_RE.test(line) || AI_JD_NUMBERED_RE.test(line)) return false;
+  if (/[.,;]$/.test(line)) return false; // ends mid-sentence — prose, not a label
+  if (line.length > 60) return false; // headings read short
+
+  const withoutColon = line.replace(/:\s*$/, '');
+  if (AI_JD_HEADING_KEYWORD_RE.test(withoutColon)) return true;
+
+  const words = withoutColon.split(/\s+/).filter(Boolean);
+  if (words.length === 0 || words.length > 8) return false;
+  const capitalizedWords = words.filter((w) => /^[A-Z(]/.test(w));
+  return capitalizedWords.length / words.length >= 0.7;
+};
+
 /**
- * Formats plain text AI-generated job descriptions into markdown format.
- * Converts section headers, manages list items, and ensures proper spacing.
+ * Formats a job description's raw text into markdown, for both AI-authored
+ * text (job.jd.generate/enhance — usually already fairly clean, sometimes
+ * genuine markdown) and a plain-text upload extraction (job.jd.parse —
+ * pypdf/python-docx's verbatim, un-reformatted read of the source file,
+ * complete with mid-sentence line wraps and bullet glyphs that landed on
+ * their own line). Lines already written as markdown (`# `, `- `, `1. `)
+ * pass through untouched; bare lines are heuristically promoted to headings
+ * or bullets, and a bare line that doesn't look like a heading is merged
+ * into the previous bullet instead of becoming a bullet of its own whenever
+ * that previous line was cut off mid-sentence (no trailing `.`/`!`/`?`/`:`)
+ * — the actual signature of a hard line-wrap versus a genuine next item.
  *
- * @param text - Plain text job description from AI
+ * @param text - Raw job description text (AI-authored or extracted from an
+ * uploaded file)
  * @returns Formatted markdown string
- *
- * @example
- * formatAiJobDescription("Department: HR\nResponsibilities\nManage team\nCoordinate meetings")
- * // Returns: "## Department\nHR\n\n## Responsibilities\n- Manage team\n- Coordinate meetings"
  */
 export const formatAiJobDescription = (text: string): string => {
   if (!text || typeof text !== 'string') return '';
 
-  // Section headers that should be converted to markdown headings
-  const sectionHeaders = [
-    'About the Role',
-    'Responsibilities',
-    'Required Skills',
-    'Optional Skills',
-    'Education Preference',
-    'Education',
-    'Experience',
-    'Salary Information',
-    'Communication Language',
-    'Department',
-    'Job Type',
-    'Location',
-    'Exemption Status',
-    'Minimum Salary',
-    'Maximum Salary',
-    'Referral Bonus',
-    'Minimum Experience',
-    'Maximum Experience',
-  ];
+  const rawLines = text.split('\n').map((line) => line.trim());
 
-  const formatted = text;
+  // Pass 1: a bullet glyph stranded alone on its own line (see
+  // AI_JD_BULLET_RE above) isn't a list item by itself — fold it into
+  // whichever following line actually carries the item's text, dropping it
+  // entirely if nothing usable follows.
+  const lines: string[] = [];
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    if (AI_JD_BULLET_RE.test(line) && line.replace(AI_JD_BULLET_RE, '').trim() === '') {
+      let j = i + 1;
+      while (j < rawLines.length && rawLines[j] === '') j++;
+      const next = j < rawLines.length ? rawLines[j] : '';
+      if (
+        next &&
+        !AI_JD_BULLET_RE.test(next) &&
+        !AI_JD_NUMBERED_RE.test(next) &&
+        !isLikelyAiJdHeading(next)
+      ) {
+        lines.push(`- ${next}`);
+        i = j;
+      }
+      continue;
+    }
+    lines.push(line);
+  }
 
-  // Split by lines and process
-  const lines = formatted.split('\n');
   const processedLines: string[] = [];
   let inListSection = false;
-  let lastWasEmptyLine = false;
+  let lastWasEmptyLine = true;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
+  for (const line of lines) {
     if (!line) {
       if (!lastWasEmptyLine) {
         processedLines.push('');
@@ -212,67 +251,73 @@ export const formatAiJobDescription = (text: string): string => {
       }
       continue;
     }
-
     lastWasEmptyLine = false;
 
-    // Check if line is a section header
-    const isSectionHeader = sectionHeaders.some(
-      (header) => line === header || line.startsWith(header + ':')
-    );
-
-    if (isSectionHeader) {
-      // Add empty line before section if not first item
+    // Already valid markdown (from AI-authored text, or a previous pass) —
+    // pass through as-is rather than re-heuristic-ing it.
+    if (AI_JD_MARKDOWN_HEADING_RE.test(line)) {
       if (processedLines.length > 0 && processedLines[processedLines.length - 1] !== '') {
         processedLines.push('');
       }
-
-      // Convert to markdown heading
-      const headerText = line.replace(/:\s*$/, ''); // Remove trailing colon if present
-      processedLines.push(`## ${headerText}`);
+      processedLines.push(line);
+      // Unlike the heuristic-heading branch below, don't force what follows
+      // into a bullet list — source text that already writes real markdown
+      // headings just as often follows with a plain prose paragraph (e.g.
+      // "## Role Summary") as with a real list; an actual list under it
+      // still gets caught on its own by the bullet/numbered branch above,
+      // since it'll carry its own "-"/"1." marker.
+      inListSection = false;
+      continue;
+    }
+    if (AI_JD_BULLET_RE.test(line) || AI_JD_NUMBERED_RE.test(line)) {
+      const normalized = AI_JD_NUMBERED_RE.test(line) ? line : `- ${line.replace(AI_JD_BULLET_RE, '')}`;
+      processedLines.push(normalized);
       inListSection = true;
       continue;
     }
 
-    // Check if it looks like a key-value pair (e.g., "Department: HR")
-    if (
-      line.includes(':') &&
-      !line.startsWith('-') &&
-      !line.startsWith('*') &&
-      !line.startsWith('#')
-    ) {
+    if (isLikelyAiJdHeading(line)) {
+      if (processedLines.length > 0 && processedLines[processedLines.length - 1] !== '') {
+        processedLines.push('');
+      }
+      processedLines.push(`## ${line.replace(/:\s*$/, '')}`);
+      inListSection = true;
+      continue;
+    }
+
+    // A plain key: value line outside any list (e.g. "Location: Bengaluru").
+    if (!inListSection && line.includes(':')) {
       const [key, ...valueParts] = line.split(':');
       const value = valueParts.join(':').trim();
-
-      // If value is on same line, format as key-value
       if (value) {
         processedLines.push(`**${key.trim()}:** ${value}`);
-        inListSection = false;
-      } else {
-        processedLines.push(line);
+        continue;
       }
-    } else if (inListSection && line && !line.startsWith('-') && !line.startsWith('*')) {
-      // Convert lines in list sections to bullet points if not already
-      if (!line.match(/^[\d.]+\s/)) {
-        processedLines.push(`- ${line}`);
-      } else {
-        processedLines.push(line);
-      }
-    } else {
-      processedLines.push(line);
     }
+
+    if (inListSection) {
+      const prev = processedLines[processedLines.length - 1];
+      const prevEndsMidSentence = prev && prev.startsWith('- ') && !/[.!?:]$/.test(prev);
+      if (prevEndsMidSentence) {
+        // A hard line-wrap, not a new item — pypdf/docx split one sentence
+        // across two lines; the previous one didn't end in terminal
+        // punctuation, so this is its continuation, not the next bullet.
+        processedLines[processedLines.length - 1] = `${prev} ${line}`;
+      } else {
+        processedLines.push(`- ${line}`);
+      }
+      continue;
+    }
+
+    processedLines.push(line);
   }
 
-  // Join and clean up
   let result = processedLines.join('\n');
-
-  // Ensure proper spacing between sections
-  result = result.replace(/\n\n+/g, '\n\n');
-
-  // Format the markdown headers properly
+  result = result.replace(/\n{3,}/g, '\n\n');
   result = result
     .replace(/^( )+/gm, '')
-    .replace(/(###)([^\s#])/g, matchMarkdownHeader)
     .replace(/(####)([^\s#])/g, matchMarkdownHeader)
+    .replace(/(###)([^\s#])/g, matchMarkdownHeader)
     .replace(/(##)([^\s#])/g, matchMarkdownHeader)
     .replace(/(#)([^\s#])/g, matchMarkdownHeader);
 

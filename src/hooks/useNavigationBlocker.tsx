@@ -185,15 +185,11 @@
 // }
 
 import { useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { useDispatch } from 'react-redux';
 import { UNSAFE_NavigationContext as NavigationContext, To, useLocation } from 'react-router-dom';
-import { resetJobState } from '../redux/slices/jobOpeningSlice';
-import { resetEditJobState } from '../redux/slices/editJobOpeningSlice';
 
 export const useNavigationBlocker = (shouldBlock: boolean, isFormDirty: boolean) => {
   const { navigator } = useContext(NavigationContext);
   const location = useLocation();
-  const dispatch = useDispatch();
   const [isBlocked, setIsBlocked] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<{
     to: To;
@@ -260,21 +256,6 @@ export const useNavigationBlocker = (shouldBlock: boolean, isFormDirty: boolean)
     };
   }, [navigator, shouldBlock, isFormDirty, location]);
 
-  const getPathnameFromTo = (to: To): string => {
-    try {
-      if (typeof to === 'string') return to;
-      if (to && typeof to === 'object') {
-        const maybePath = (to as any).pathname ?? '';
-        const maybeSearch = (to as any).search ?? '';
-        if (maybePath || maybeSearch) return `${maybePath}${maybeSearch}`;
-        if (typeof (to as any).toString === 'function') return (to as any).toString();
-      }
-      return String(to);
-    } catch {
-      return String(to);
-    }
-  };
-
   const confirmNavigation = useCallback(() => {
     if (pendingNavigation && originalMethodsRef.current) {
       const original = originalMethodsRef.current;
@@ -282,45 +263,32 @@ export const useNavigationBlocker = (shouldBlock: boolean, isFormDirty: boolean)
       navigator.replace = original.replace;
 
       const { to, method, options } = pendingNavigation;
-      // const nextPath = getPathnameFromTo(to)
       original[method].call(navigator, to, options?.state, options);
-      // if (
-      //   isFormDirty &&
-      //   ![
-      //     '/details',
-      //     '/description',
-      //     '/AiJobDescription',
-      //     '/interview',
-      //     '/editAiQuestions',
-      //     '/job-details',
-      //     '/job-description',
-      //     '/ai-job-description',
-      //     '/interview-setup'
-      //   ].includes(nextPath.split('?')[0])
-      // ) {
-      //   dispatch(resetJobState())
-      //   dispatch(resetEditJobState())
-      // }
-      if (isFormDirty) {
-        const nextPath = getPathnameFromTo(pendingNavigation.to);
 
-        const isInternalJobEditRoute =
-          nextPath.startsWith('/jobs/edit/') ||
-          nextPath.startsWith('/job-details') ||
-          nextPath.startsWith('/job-description') ||
-          nextPath.startsWith('/ai-job-description') ||
-          nextPath.startsWith('/interview-setup');
-
-        // Only reset if navigating outside edit/create job flow
-        if (!isInternalJobEditRoute) {
-          dispatch(resetJobState());
-          dispatch(resetEditJobState());
-        }
-      }
+      // Deliberately NOT resetting JobSlice/EditJobSlice here. This used to
+      // wipe both on any confirmed "leave with unsaved changes" navigation
+      // whose destination wasn't on a hardcoded whitelist of in-flow paths
+      // (see git history) — but by the point this blocker can fire, the
+      // job draft this wizard is building has typically already been saved
+      // to the backend (jobOpeningId is set), so clearing the local Redux
+      // pointer to it doesn't undo anything server-side. It just meant
+      // leaving via any unlisted route (e.g. the wizard's own global "Back"
+      // button, which always goes to /jobs) silently dropped jobOpeningId,
+      // stranding the user on whatever tab they returned to afterward — the
+      // Interview Setup tab in particular has no redirect guard, so it
+      // rendered normally with the draft gone until the user tried to save
+      // a round and only then hit "please save the job details first".
+      //
+      // Explicit "start a brand new job" entry points (CreateJobDescription,
+      // the create-job modal in JobsOpening/Index.tsx, and
+      // useStartManualJobOpening) already dispatch resetJobState()
+      // themselves before beginning a fresh draft — that's the correct,
+      // deliberate place for this reset, not "the user navigated somewhere
+      // this hook didn't recognize."
     }
     setIsBlocked(false);
     setPendingNavigation(null);
-  }, [pendingNavigation, navigator, isFormDirty, dispatch]);
+  }, [pendingNavigation, navigator]);
 
   const cancelNavigation = useCallback(() => {
     setIsBlocked(false);
