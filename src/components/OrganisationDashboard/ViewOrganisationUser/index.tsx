@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { Select } from 'antd';
 import { MdOutlineArrowBack, MdEdit, MdClose } from 'react-icons/md';
 import MainLayout from '../../../layouts/MainLayout';
-import { Button, Typography, showToast } from '../../shared';
+import { Button, CommonCard, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { RootState } from '../../../redux/provider/store';
@@ -111,6 +111,9 @@ const ViewOrgUser = () => {
   if (isLoading) return <Loader />;
   if (!user) return <div className="p-8 text-gray-500">User not found.</div>;
 
+  const initials =
+    `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase() || '?';
+
   return (
     <MainLayout>
       <div className="w-full max-w-2xl mx-auto p-8 pt-16">
@@ -121,40 +124,60 @@ const ViewOrgUser = () => {
           <MdOutlineArrowBack className="mr-2" /> Back
         </button>
 
-        <div className="flex items-center justify-between mb-6">
-          <Typography variant="h4">{user.full_name}</Typography>
-          {user.is_active && (
-            <Button
-              className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1"
-              onClick={() => navigate(`/edit-organisation-user?orgUserId=${user.user_id}`)}
-            >
-              <MdEdit /> Edit
-            </Button>
-          )}
-        </div>
+        <CommonCard className="mb-6">
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-700">
+                {initials}
+              </div>
+              <div>
+                <Typography variant="h4">{user.full_name}</Typography>
+                <span
+                  className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    user.is_active
+                      ? 'bg-green-50 text-green-700'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  {user.is_active ? 'Active' : 'Deactivated'}
+                </span>
+              </div>
+            </div>
+            {user.is_active && (
+              <Button
+                className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1 shrink-0"
+                onClick={() => navigate(`/edit-organisation-user?orgUserId=${user.user_id}`)}
+              >
+                <MdEdit /> Edit
+              </Button>
+            )}
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div>
-            <Typography variant="subtitle2">Email</Typography>
-            <Typography variant="body1">{user.email}</Typography>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-100 pt-6">
+            <div>
+              <Typography variant="subtitle2" color="text-muted">
+                Email
+              </Typography>
+              <Typography variant="body1">{user.email}</Typography>
+            </div>
+            <div>
+              <Typography variant="subtitle2" color="text-muted">
+                Phone
+              </Typography>
+              <Typography variant="body1">
+                {user.phone_no ? `${user.country_code || ''}${user.phone_no}` : '-'}
+              </Typography>
+            </div>
+            <div>
+              <Typography variant="subtitle2" color="text-muted">
+                Title
+              </Typography>
+              <Typography variant="body1">{user.title || '-'}</Typography>
+            </div>
           </div>
-          <div>
-            <Typography variant="subtitle2">Phone</Typography>
-            <Typography variant="body1">
-              {user.phone_no ? `${user.country_code || ''}${user.phone_no}` : '-'}
-            </Typography>
-          </div>
-          <div>
-            <Typography variant="subtitle2">Title</Typography>
-            <Typography variant="body1">{user.title || '-'}</Typography>
-          </div>
-          <div>
-            <Typography variant="subtitle2">Status</Typography>
-            <Typography variant="body1">{user.is_active ? 'Active' : 'Deactivated'}</Typography>
-          </div>
-        </div>
+        </CommonCard>
 
-        <div className="mb-8">
+        <CommonCard className="mb-6">
           <Typography variant="subtitle1" className="mb-2">
             Locations
           </Typography>
@@ -217,55 +240,57 @@ const ViewOrgUser = () => {
               </Button>
             </div>
           )}
-        </div>
+        </CommonCard>
 
-        <div className="flex items-center justify-between mb-2">
-          <Typography variant="subtitle1">Permissions</Typography>
-          {user.is_active && (
-            <Button
-              className="text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5"
-              onClick={() => setShowAssignRole(true)}
-            >
-              + Assign role
-            </Button>
+        <CommonCard className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <Typography variant="subtitle1">Permissions</Typography>
+            {user.is_active && (
+              <Button
+                className="text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5"
+                onClick={() => setShowAssignRole(true)}
+              >
+                + Assign role
+              </Button>
+            )}
+          </div>
+
+          {!!dashboard?.available_locations.length && (
+            <div className="mb-3">
+              <label htmlFor="viewUserLocation" className="text-xs text-gray-500">
+                Viewing permissions at
+              </label>
+              <Select
+                id="viewUserLocation"
+                className="w-full max-w-xs mt-1"
+                value={locationId}
+                onChange={(value) => setLocationId(value)}
+                options={dashboard.available_locations.map((location) => ({
+                  label: location.label,
+                  value: location.location_id,
+                }))}
+              />
+            </div>
           )}
-        </div>
 
-        {!!dashboard?.available_locations.length && (
-          <div className="mb-3">
-            <label htmlFor="viewUserLocation" className="text-xs text-gray-500">
-              Viewing permissions at
-            </label>
-            <Select
-              id="viewUserLocation"
-              className="w-full max-w-xs mt-1"
-              value={locationId}
-              onChange={(value) => setLocationId(value)}
-              options={dashboard.available_locations.map((location) => ({
-                label: location.label,
-                value: location.location_id,
-              }))}
-            />
-          </div>
-        )}
-
-        {isPermissionsLoading ? (
-          <Loader />
-        ) : dashboard?.permissions.length ? (
-          <div className="flex flex-wrap gap-2 mb-8">
-            {dashboard.permissions.map((permission) => (
-              <span key={permission} className="text-xs bg-gray-100 rounded-full px-3 py-1">
-                {permission}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-400 mb-8">
-            {locationId
-              ? 'No permissions granted at this location.'
-              : 'No permissions granted yet.'}
-          </p>
-        )}
+          {isPermissionsLoading ? (
+            <Loader />
+          ) : dashboard?.permissions.length ? (
+            <div className="flex flex-wrap gap-2">
+              {dashboard.permissions.map((permission) => (
+                <span key={permission} className="text-xs bg-gray-100 rounded-full px-3 py-1">
+                  {permission}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">
+              {locationId
+                ? 'No permissions granted at this location.'
+                : 'No permissions granted yet.'}
+            </p>
+          )}
+        </CommonCard>
 
         {user.is_active && (
           <Button

@@ -10,6 +10,7 @@ import { Jobs } from '../../../../types';
 import { formattedDate } from '../../../../shared/utils/methods';
 import { PAGINATION_DEBOUNCE_DELAY } from '../../../../constants/app.constants';
 import { useDebouncedEffect } from '../../../../hooks/useDebouncedEffect';
+import { useJobTitleNameMap } from '../../../../hooks/useJobTitleNameMap';
 
 const ASSIGN_JOB_SEARCH_PAGE_SIZE = 25;
 
@@ -96,9 +97,17 @@ const AssignJobModal: React.FC<AssignJobModalProps> = ({
     setIsLoadingMore(false);
   }, [open, jobListData, currentPage]);
 
+  // The list endpoint only returns job_title_id — mapJobSummaryToListRow
+  // fills jobTitleName with the job's profile code as a placeholder until
+  // this resolves the real name (job-service never resolves it itself; the
+  // title catalogue lives in organization-service).
+  const { titleMap } = useJobTitleNameMap();
   const jobList: Jobs[] = useMemo(() => {
-    return accumulatedJobs;
-  }, [accumulatedJobs]);
+    return accumulatedJobs.map((job) => ({
+      ...job,
+      jobTitleName: job.jobTitleId ? titleMap[job.jobTitleId] || job.jobTitleName : job.jobTitleName,
+    }));
+  }, [accumulatedJobs, titleMap]);
 
   const selectedJob = useMemo<Jobs | null>(() => {
     if (!selectedJobId) return null;

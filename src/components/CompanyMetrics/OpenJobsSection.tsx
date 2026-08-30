@@ -6,6 +6,7 @@ import { useGetJobOpeningsListLegacyQuery as useGetJobOpeningsQuery } from '../.
 import type { JobSummary } from '../../api/job-service/JobOpenings/types';
 import { jobStatus, daysOpen } from './jobOpeningListHelpers';
 import JobDetailModal from './JobDetailModal';
+import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 
 /**
  * 2.4 "Open jobs" — a real jobs list (job-service's own UUID-based
@@ -26,6 +27,12 @@ const OpenJobsSection: React.FC = () => {
   const { data, isLoading } = useGetJobOpeningsQuery({ page: 1, page_size: 10 });
   const [selectedJob, setSelectedJob] = useState<JobSummary | null>(null);
   const jobs = data?.items ?? [];
+  // `job.title` doesn't exist on the current backend contract (job-service
+  // only ever returns job_title_id — see JobSummaryView's docstring) — the
+  // real name comes from this org-service catalogue lookup instead.
+  const { titleMap } = useJobTitleNameMap();
+  const jobTitle = (job: JobSummary): string =>
+    (job.job_title_id && titleMap[job.job_title_id]) || 'Untitled job';
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4">
@@ -60,11 +67,12 @@ const OpenJobsSection: React.FC = () => {
                   <td className="py-2">
                     <button
                       type="button"
-                      className="font-semibold text-primary transition-colors hover:text-primary-700"
+                      className="block font-semibold text-primary transition-colors hover:text-primary-700"
                       onClick={() => setSelectedJob(job)}
                     >
-                      {job.title || 'Untitled job'}
+                      {jobTitle(job)}
                     </button>
+                    <span className="text-xs text-neutral-400">{job.job_profile_code}</span>
                   </td>
                   <td className="py-2">
                     <Badge status={status.badge}>{status.label}</Badge>

@@ -8,6 +8,7 @@ import {
   useGetHiringFunnelQuery,
 } from '../../api/candidate-service/Stats/stats';
 import { useGetInterviewSummaryQuery } from '../../api/interview-service/Dashboard/summary';
+import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 
 const capitalize = (value: string): string =>
   value
@@ -33,6 +34,11 @@ const COMING_SOON_SCORE = 'Coming soon — no AI-score endpoint yet.';
  */
 const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ job, onClose }) => {
   const jobId = job.org_job_opening_id;
+  // `job.title` doesn't exist on the current backend contract (job-service
+  // only ever returns job_title_id — see JobSummaryView's docstring) — the
+  // real name comes from this org-service catalogue lookup instead.
+  const { titleMap } = useJobTitleNameMap();
+  const jobTitle = (job.job_title_id && titleMap[job.job_title_id]) || 'Untitled job';
   const { data: totalApplications, isLoading: isTotalLoading } = useGetTotalApplicationsQuery({
     jobOpeningId: jobId,
   });
@@ -71,7 +77,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
   ];
 
   return (
-    <AntdCommonModal open onClose={onClose} title={job.title || 'Untitled job'}>
+    <AntdCommonModal open onClose={onClose} title={jobTitle} subtitle={job.job_profile_code}>
       <div className="flex flex-col gap-4">
         <StatCardRow cards={statusCards} columns={4} />
 

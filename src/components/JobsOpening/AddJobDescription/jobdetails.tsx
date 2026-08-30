@@ -604,6 +604,29 @@ const JobDetails = () => {
     }
   }, [aiJobDescriptionId, dispatch, jobOpeningId]);
 
+  // Guards the non-ATS branch below — hydrating country/state/officeLocation
+  // from Redux is meant to happen once, when this step first mounts with
+  // data already sitting in Redux (a revisit). It must NOT re-run on every
+  // later Redux update: `jobDetails` (the whole `state.JobSlice.details`
+  // object) changes reference on any dispatch that touches it, including
+  // ones with nothing to do with location at all — e.g. `persistSkillLabels`
+  // below, fired every time an AI-suggested skill gets accepted or the
+  // AI-fill hydration effect merges in new skills. Without this guard,
+  // accepting a skill (or salary/other fields arriving via that same AI-fill
+  // effect) re-ran this block, and its `setValue('officeLocation',
+  // jobDetails.officeLocation || [])` clobbered whatever the recruiter had
+  // just picked in the live form with Redux's still-stale copy (form edits
+  // only reach Redux on submit) — the reported "location gets deselected"
+  // bug. Locked the first time this effect lands in the non-ATS branch at
+  // all, even if `jobDetails` was still empty then (a brand-new draft) —
+  // otherwise the guard would never engage until `jobDetails` first became
+  // non-empty for some unrelated reason, which is exactly the case that
+  // needs guarding against. The ATS branch is untouched by this: it keys off
+  // `atsJobData`/`isFromAts` (router state, from a deliberate navigation),
+  // never off Redux churn, so it doesn't have this problem and should still
+  // re-run if a real ATS (re)sync hands this page fresh `atsJobData`.
+  const hasCheckedInitialLocationHydrationRef = useRef(false);
+
   useEffect(() => {
     if (atsJobData && isFromAts) {
       const officeLocation = atsJobData?.officeLocation?.[0] || {};
@@ -645,13 +668,16 @@ const JobDetails = () => {
       refetchEducationPreference?.();
       refetchMandatorySkills?.();
       refetchOptionalSkills?.();
-    } else if (jobDetails && Object.keys(jobDetails).length > 0) {
-      setValue('country', jobDetails.country || '');
-      setValue('state', jobDetails.state || '');
-      setValue('officeLocation', jobDetails.officeLocation || []);
-      setSelectedLocationIdForUsers(
-        jobDetails.officeLocation?.[0] != null ? String(jobDetails.officeLocation[0]) : undefined
-      );
+    } else if (!hasCheckedInitialLocationHydrationRef.current) {
+      hasCheckedInitialLocationHydrationRef.current = true;
+      if (jobDetails && Object.keys(jobDetails).length > 0) {
+        setValue('country', jobDetails.country || '');
+        setValue('state', jobDetails.state || '');
+        setValue('officeLocation', jobDetails.officeLocation || []);
+        setSelectedLocationIdForUsers(
+          jobDetails.officeLocation?.[0] != null ? String(jobDetails.officeLocation[0]) : undefined
+        );
+      }
     }
   }, [atsJobData, isFromAts, jobDetails, setValue]);
 
@@ -2290,13 +2316,14 @@ const JobDetails = () => {
                         decimalsLimit={2}
                         decimalScale={2}
                         prefix="$"
-                        suffix={
-                          exemptionStatus?.find(
-                            (status) => String(status.id) === String(watch('exemptionStatus'))
-                          )?.name === 'Exempt'
-                            ? ''
-                            : '/hr'
-                        }
+                        // Always a plain annual figure — no "/hr" suffix.
+                        // Exemption Status (`false`/Non-Exempt is the
+                        // backend's own default for every job — see
+                        // `Job.is_exempted`, job.py — for any job the
+                        // recruiter hasn't touched that dropdown on yet, AI-
+                        // filled ones very much included) isn't a reliable
+                        // signal for what unit a salary figure is in, and a
+                        // JD's stated salary is virtually always annual.
                         placeholder="Minimum Salary"
                         className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                         intlConfig={{ locale: 'en-US', currency: 'USD' }}
@@ -2323,13 +2350,14 @@ const JobDetails = () => {
                         decimalsLimit={2}
                         decimalScale={2}
                         prefix="$"
-                        suffix={
-                          exemptionStatus?.find(
-                            (status) => String(status.id) === String(watch('exemptionStatus'))
-                          )?.name === 'Exempt'
-                            ? ''
-                            : '/hr'
-                        }
+                        // Always a plain annual figure — no "/hr" suffix.
+                        // Exemption Status (`false`/Non-Exempt is the
+                        // backend's own default for every job — see
+                        // `Job.is_exempted`, job.py — for any job the
+                        // recruiter hasn't touched that dropdown on yet, AI-
+                        // filled ones very much included) isn't a reliable
+                        // signal for what unit a salary figure is in, and a
+                        // JD's stated salary is virtually always annual.
                         placeholder="Maximum Salary"
                         className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                         intlConfig={{ locale: 'en-US', currency: 'USD' }}

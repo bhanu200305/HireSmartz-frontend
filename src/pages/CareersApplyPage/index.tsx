@@ -153,9 +153,10 @@ export const CareersApplyPage = () => {
 
         {job && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-6">
-            <h2 className="text-base font-bold text-gray-900 mb-3">
+            <h2 className="text-base font-bold text-gray-900">
               {job.job_title ?? job.job_profile_code}
             </h2>
+            <p className="text-xs text-gray-400 mb-3">{job.job_profile_code}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {job.locations?.[0] && (
                 <div className="flex items-center gap-2 text-sm text-gray-500">

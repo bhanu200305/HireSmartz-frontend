@@ -102,9 +102,10 @@ export const CareersJobDetailPage = () => {
           </div>
         ) : (
           <>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               {job.job_title ?? job.job_profile_code}
             </h1>
+            <p className="text-sm text-gray-400 mb-3">{job.job_profile_code}</p>
 
             <div className="flex flex-col gap-1.5 mb-4">
               {primaryLocation && (

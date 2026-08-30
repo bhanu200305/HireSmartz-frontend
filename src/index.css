@@ -577,6 +577,45 @@ select:focus {
   font-weight: 600 !important;
 }
 
+/* Same fix, applied app-wide instead of scoped to one dropdown. Every
+   AntD Select renders its option list in a portal appended to
+   `document.body` under `.ant-select-dropdown` regardless of any
+   className on the trigger, so this one rule reaches every dropdown in
+   the app rather than needing a `popupClassName` added per instance.
+   Light grey (not the brand tint above, which is a deliberate, already-
+   fine exception for that one picker) so hovered/selected option text
+   stays readable no matter what color scheme surrounds it. */
+.ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: var(--gray-100) !important;
+  color: var(--gray-900) !important;
+}
+
+.ant-select-dropdown
+  .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: var(--gray-100) !important;
+  color: var(--gray-900) !important;
+  font-weight: 600 !important;
+}
+
+/* Same near-black fill, same fix, for AntD's TimePicker — shift start/end
+   time on Job Details ("shift timing") reported it, but this is the same
+   shared selected/hover token as the Select dropdowns above, so it hits
+   every TimePicker app-wide, not just that one. Also portaled to
+   `document.body` under `.ant-picker-dropdown`, same reasoning as
+   `.ant-select-dropdown` above. */
+.ant-picker-dropdown .ant-picker-time-panel-cell:hover .ant-picker-time-panel-cell-inner {
+  background-color: var(--gray-100) !important;
+  color: var(--gray-900) !important;
+}
+
+.ant-picker-dropdown
+  .ant-picker-time-panel-cell-selected
+  .ant-picker-time-panel-cell-inner {
+  background-color: var(--gray-100) !important;
+  color: var(--gray-900) !important;
+  font-weight: 600 !important;
+}
+
 /* LiveKit floating participant labels */
 .lk-participant-name,
 .lk-participant-metadata,

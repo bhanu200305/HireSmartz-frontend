@@ -51,6 +51,7 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
         <p className="text-left text-base md:text-lg font-semibold text-gray-900 leading-tight">
           {job.job_title ?? job.job_profile_code}
         </p>
+        <p className="text-left text-xs text-gray-400 mt-0.5">{job.job_profile_code}</p>
 
         <div className="flex flex-col gap-1 mt-1.5">
           {job.location_city && (

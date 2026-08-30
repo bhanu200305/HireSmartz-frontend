@@ -11,6 +11,7 @@ import { useGetJobOpeningsListLegacyQuery as useGetJobOpeningsQuery } from '../.
 import type { JobSummary } from '../../api/job-service/JobOpenings/types';
 import { jobStatus, daysOpen } from './jobOpeningListHelpers';
 import JobDetailModal from './JobDetailModal';
+import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
@@ -42,6 +43,12 @@ const JobOpeningsListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
 
   const jobs = data?.items ?? [];
   const dataSource: JobRow[] = jobs.map((job) => ({ ...job, key: job.org_job_opening_id }));
+  // `job.title` doesn't exist on the current backend contract (job-service
+  // only ever returns job_title_id — see JobSummaryView's docstring) — the
+  // real name comes from this org-service catalogue lookup instead.
+  const { titleMap } = useJobTitleNameMap();
+  const jobTitle = (job: JobRow): string =>
+    (job.job_title_id && titleMap[job.job_title_id]) || 'Untitled job';
 
   const columns: TableProps<JobRow>['columns'] = [
     {
@@ -49,7 +56,10 @@ const JobOpeningsListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
       dataIndex: 'title',
       key: 'title',
       render: (_: unknown, job: JobRow) => (
-        <span className="font-semibold text-primary-600">{job.title || 'Untitled job'}</span>
+        <div>
+          <span className="block font-semibold text-primary-600">{jobTitle(job)}</span>
+          <span className="text-xs text-neutral-400">{job.job_profile_code}</span>
+        </div>
       ),
     },
     {

@@ -748,7 +748,13 @@ const ViewJobDetails = () => {
                 decimalScale={2}
                 disabled
                 prefix="$"
-                suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
+                // Always a plain annual figure — no "/hr" suffix. Exemption
+                // Status (`false`/Non-Exempt is the backend's own default for
+                // every job — see `Job.is_exempted`, job.py — for any job the
+                // recruiter hasn't touched that dropdown on yet, AI-filled
+                // ones very much included) isn't a reliable signal for what
+                // unit a salary figure is in, and a JD's stated salary is
+                // virtually always annual.
                 placeholder="Minimum Salary"
                 className="w-full !lowercase"
                 style={{
@@ -784,7 +790,13 @@ const ViewJobDetails = () => {
                 decimalScale={2}
                 disabled
                 prefix="$"
-                suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
+                // Always a plain annual figure — no "/hr" suffix. Exemption
+                // Status (`false`/Non-Exempt is the backend's own default for
+                // every job — see `Job.is_exempted`, job.py — for any job the
+                // recruiter hasn't touched that dropdown on yet, AI-filled
+                // ones very much included) isn't a reliable signal for what
+                // unit a salary figure is in, and a JD's stated salary is
+                // virtually always annual.
                 placeholder="Maximum Salary"
                 className="w-full !lowercase"
                 style={{
@@ -817,7 +829,10 @@ const ViewJobDetails = () => {
               decimalScale={2}
               disabled
               prefix="$"
-              suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
+              // A referral bonus is always a flat one-time payment, never an
+              // hourly rate — the Exemption-Status-driven "/hr" suffix above
+              // (for min/max salary) never belonged here; it was copied
+              // alongside them by mistake.
               // placeholder="Referral Bonus"
               className="w-full !lowercase"
               style={{

@@ -169,61 +169,126 @@ const EditOrgUser = () => {
           Edit user
         </Typography>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input defaultValue={user.email} placeholder="Email" onBlur={handleEmailBlur} />
-          <Input placeholder="First name *" {...field('first_name')} />
-          <Input placeholder="Last name" {...field('last_name')} />
-          <Input placeholder="Title" {...field('title')} />
-          <PhoneNumberField
-            countryCode={form.country_code}
-            onCountryCodeChange={(value) => setForm((prev) => ({ ...prev, country_code: value }))}
-            phoneNumber={form.phone_no}
-            onPhoneNumberChange={(value) => setForm((prev) => ({ ...prev, phone_no: value }))}
-          />
-          <Select
-            placeholder="Department (optional)"
-            value={form.department_id}
-            onChange={(value) => setForm((prev) => ({ ...prev, department_id: value }))}
-            allowClear
-            options={(departments || []).map((d) => ({
-              label: d.name,
-              value: d.org_department_id,
-            }))}
-          />
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <Typography variant="h6" className="block mb-4">
+            Profile details
+          </Typography>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+            <div>
+              <label htmlFor="edit-user-email" className="text-sm text-gray-600">
+                Email
+              </label>
+              <Input
+                id="edit-user-email"
+                defaultValue={user.email}
+                placeholder="Email"
+                onBlur={handleEmailBlur}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-user-first-name" className="text-sm text-gray-600">
+                First name <span className="required-asterisk">*</span>
+              </label>
+              <Input
+                id="edit-user-first-name"
+                placeholder="First name"
+                className="mt-1"
+                {...field('first_name')}
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-user-last-name" className="text-sm text-gray-600">
+                Last name
+              </label>
+              <Input
+                id="edit-user-last-name"
+                placeholder="Last name"
+                className="mt-1"
+                {...field('last_name')}
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-user-title" className="text-sm text-gray-600">
+                Title
+              </label>
+              <Input
+                id="edit-user-title"
+                placeholder="Title"
+                className="mt-1"
+                {...field('title')}
+              />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Phone number</p>
+              <PhoneNumberField
+                className="mt-1"
+                countryCode={form.country_code}
+                onCountryCodeChange={(value) =>
+                  setForm((prev) => ({ ...prev, country_code: value }))
+                }
+                phoneNumber={form.phone_no}
+                onPhoneNumberChange={(value) => setForm((prev) => ({ ...prev, phone_no: value }))}
+              />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Department</p>
+              <Select
+                className="w-full mt-1"
+                placeholder="Department (optional)"
+                value={form.department_id}
+                onChange={(value) => setForm((prev) => ({ ...prev, department_id: value }))}
+                allowClear
+                options={(departments || []).map((d) => ({
+                  label: d.name,
+                  value: d.org_department_id,
+                }))}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-gray-100">
+        <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <Typography variant="h6" className="block">
             Assign a role
           </Typography>
-          <p className="text-xs text-gray-500 mt-1 mb-3">
+          <p className="text-xs text-gray-500 mt-1 mb-4">
             This grants a real RBAC role via a separate action from the fields above —
             &quot;Title&quot; is just a label, not a permission. Adds a role in addition to whatever
             this person already holds; there&apos;s no way yet to view or remove an existing
             assignment from here.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              placeholder="Select a role"
-              value={assignRoleId}
-              onChange={(value) => setAssignRoleId(value)}
-              options={(roles ?? []).map((role) => ({ label: role.name, value: role.role_id }))}
-            />
-            <Select
-              placeholder="Location (optional — applies everywhere if blank)"
-              allowClear
-              value={assignLocationId}
-              onChange={(value) => setAssignLocationId(value ?? undefined)}
-              options={(offices ?? []).map((office) => ({
-                // City alone isn't unique — two offices in the same city
-                // read identically otherwise.
-                label: `${office.city} — ${office.address_line_1}`,
-                value: office.office_id,
-              }))}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+            <div>
+              <p className="text-sm text-gray-600">Role</p>
+              <Select
+                className="w-full mt-1"
+                placeholder="Select a role"
+                value={assignRoleId}
+                onChange={(value) => setAssignRoleId(value)}
+                options={(roles ?? []).map((role) => ({ label: role.name, value: role.role_id }))}
+              />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Location</p>
+              <Select
+                className="w-full mt-1"
+                placeholder="Location (optional — applies everywhere if blank)"
+                allowClear
+                value={assignLocationId}
+                onChange={(value) => setAssignLocationId(value ?? undefined)}
+                options={(offices ?? []).map((office) => ({
+                  // City alone isn't unique — two offices in the same city
+                  // read identically otherwise.
+                  label: `${office.city} — ${office.address_line_1}`,
+                  value: office.office_id,
+                }))}
+              />
+            </div>
           </div>
           <Button
-            className="mt-3 rounded-full bg-button text-white px-6 py-2 disabled:opacity-60"
+            className="mt-4 rounded-full bg-button text-white px-6 py-2 disabled:opacity-60"
             onClick={handleAssignRole}
             disabled={!assignRoleId || isAssigningRole}
           >

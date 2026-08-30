@@ -46,6 +46,7 @@ import { handleDateValue } from '../../shared/utils/methods';
 import { COL } from '../shared/ui/Columns';
 import { useDuplicateJobOpeningMutation } from '../../api/job-service/JobOpening/GetJobOpeningById';
 import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
+import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 import { useListUsersQuery } from '../../api/organization-service/Users/users';
 import { useListJobTypesQuery } from '../../api/job-service/JobOpening/catalogs';
 import { showToast } from '../shared';
@@ -229,6 +230,11 @@ const JobsOpening = () => {
     skip: !hasTenantContext,
   });
   const { data: jobTypes = [] } = useListJobTypesQuery({ isMaster: callerKind === 'platform' });
+  // job-service's list endpoint only returns job_title_id (see mappers.ts's
+  // doc comment) — mapJobSummaryToListRow fills jobTitleName with the job's
+  // profile code as a placeholder until this resolves the real name, same
+  // as departmentName/jobTypeName below.
+  const { titleMap } = useJobTitleNameMap();
   const { data: orgUsers } = useListUsersQuery({ limit: 200 }, { skip: !hasTenantContext });
 
   const listedJobs = useMemo((): Jobs[] => {
@@ -241,6 +247,9 @@ const JobsOpening = () => {
     );
     return (data?.data ?? []).map((job: Jobs) => ({
       ...job,
+      jobTitleName: job.jobTitleId
+        ? titleMap[job.jobTitleId] || job.jobTitleName
+        : job.jobTitleName,
       departmentName: job.departmentId
         ? deptMap[job.departmentId] || job.departmentName
         : job.departmentName,
@@ -256,32 +265,39 @@ const JobsOpening = () => {
           .filter(Boolean)
           .join(', ') || job.recruiter,
     }));
-  }, [data?.data, orgDepartments, jobTypes, orgUsers]);
+  }, [data?.data, orgDepartments, jobTypes, titleMap, orgUsers]);
 
+  // Same four filter states `handleStatusChange` already applies for the
+  // status filter dropdown below — clicking a card is just a shortcut into
+  // that same filtering, not a separate mechanism.
   const jobStatCards: StatCardData[] = [
     {
       icon: <MdOutlineWorkOutline />,
       label: 'Open Roles',
       value: jobStats?.published_count,
       variant: 'blue',
+      onClick: () => handleStatusChange('ACTIVE'),
     },
     {
       icon: <MdOutlineEditNote />,
       label: 'Drafts',
       value: jobStats?.draft_count,
       variant: 'orange',
+      onClick: () => handleStatusChange('Draft'),
     },
     {
       icon: <MdOutlineCancel />,
       label: 'Closed',
       value: jobStats?.closed_count,
       variant: 'neutral',
+      onClick: () => handleStatusChange('Closed'),
     },
     {
       icon: <MdOutlineCheckCircle />,
       label: 'Total Job Openings',
       value: jobStats?.total_count,
       variant: 'green',
+      onClick: () => handleStatusChange('All'),
     },
   ];
 

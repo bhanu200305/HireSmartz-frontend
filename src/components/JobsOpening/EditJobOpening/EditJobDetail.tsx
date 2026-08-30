@@ -96,6 +96,18 @@ const EditJobDetail = () => {
 
   const justSavedRef = useRef(false);
   const initialLoadRef = useRef(true);
+  // Guards `loadJobData` below (the effect that syncs the form from Redux/
+  // the backend) so it only reconciles the form once per job id, not on
+  // every later Redux update. `jobDetails` (the whole Redux object) is one
+  // of that effect's dependencies, and changes reference on any dispatch
+  // that touches it — including ones with nothing to do with this form's
+  // fields, e.g. an AI-suggested skill getting accepted. Without this guard,
+  // every such unrelated dispatch re-ran `reset(formData)`/
+  // `updateFormWithJobData`, replacing the whole live form (Location
+  // included) with Redux's/the server's still-stale copy — live edits only
+  // reach either one on save — which is exactly the reported "the page
+  // refreshes and location gets deselected" bug.
+  const hasSyncedFormForJobIdRef = useRef<string | null>(null);
 
   const { jobDetails, jobOpeningId, interViewRound, aiJobDescription, isDraft } = useSelector(
     (state: RootState) => ({
@@ -616,6 +628,11 @@ const EditJobDetail = () => {
   useEffect(() => {
     const loadJobData = async () => {
       if (!parsedJobId) return;
+      // Reconcile the form from Redux/the backend once per job id — see the
+      // ref's own doc comment above for why re-running this on every later
+      // Redux update would clobber in-progress edits.
+      if (hasSyncedFormForJobIdRef.current === parsedJobId) return;
+      hasSyncedFormForJobIdRef.current = parsedJobId;
 
       // Preserve in-progress edits when navigating between steps in the same edit session.
       // This keeps latest selections (like configured Job Title) visible on return.
@@ -2082,13 +2099,14 @@ const EditJobDetail = () => {
                     decimalsLimit={2}
                     decimalScale={2}
                     prefix="$"
-                    suffix={
-                      exemptionStatus?.find(
-                        (status) => String(status.id) === String(watch('exemptionStatus'))
-                      )?.name === 'Exempt'
-                        ? ''
-                        : '/hr'
-                    }
+                    // Always a plain annual figure — no "/hr" suffix.
+                    // Exemption Status (`false`/Non-Exempt is the backend's
+                    // own default for every job — see `Job.is_exempted`,
+                    // job.py — for any job the recruiter hasn't touched that
+                    // dropdown on yet, AI-filled ones very much included)
+                    // isn't a reliable signal for what unit a salary figure
+                    // is in, and a JD's stated salary is virtually always
+                    // annual.
                     placeholder="Minimum Salary"
                     className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                     intlConfig={{ locale: 'en-US', currency: 'USD' }}
@@ -2121,13 +2139,14 @@ const EditJobDetail = () => {
                     decimalsLimit={2}
                     decimalScale={2}
                     prefix="$"
-                    suffix={
-                      exemptionStatus?.find(
-                        (status) => String(status.id) === String(watch('exemptionStatus'))
-                      )?.name === 'Exempt'
-                        ? ''
-                        : '/hr'
-                    }
+                    // Always a plain annual figure — no "/hr" suffix.
+                    // Exemption Status (`false`/Non-Exempt is the backend's
+                    // own default for every job — see `Job.is_exempted`,
+                    // job.py — for any job the recruiter hasn't touched that
+                    // dropdown on yet, AI-filled ones very much included)
+                    // isn't a reliable signal for what unit a salary figure
+                    // is in, and a JD's stated salary is virtually always
+                    // annual.
                     placeholder="Maximum Salary"
                     className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                     intlConfig={{ locale: 'en-US', currency: 'USD' }}
