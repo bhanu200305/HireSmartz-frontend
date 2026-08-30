@@ -12,10 +12,18 @@ import { MdOutlineInsights } from 'react-icons/md';
 import PlatformOverviewSlide from './PlatformOverviewSlide';
 import HiringOverviewSlide from './HiringOverviewSlide';
 import TenantsPreviewCard from './TenantsPreviewCard';
+import WidgetErrorBoundary from '../shared/ui/WidgetErrorBoundary';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 const Dashboard = () => {
   const { role, tenantId, callerKind } = useSelector((state: RootState) => state.LoginSlice);
   const isPlatformCaller = callerKind === 'platform';
+  // Resolved against whichever location is currently active (see
+  // useEffectivePermissions) — a role's location override can drop
+  // interview:read at one office while keeping it everywhere else, so this
+  // is re-checked on every location switch, not just once at login.
+  const canViewInterviews = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
 
   // Interview Dashboard
   const [fetchInterviewData, { data: interviewData, isLoading }] =
@@ -36,13 +44,13 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    if (isPlatformCaller) return;
+    if (isPlatformCaller || !canViewInterviews) return;
     fetchInterviewData({
       year: interviewFilters.year,
       month: interviewFilters.month,
       isOwner: role?.type === 'owner' ? true : false,
     });
-  }, [interviewFilters.year, interviewFilters.month, isPlatformCaller, role?.type]);
+  }, [interviewFilters.year, interviewFilters.month, isPlatformCaller, canViewInterviews, role?.type]);
 
   const greeting = (() => {
     const hour = new Date().getHours();
@@ -62,51 +70,92 @@ const Dashboard = () => {
         key: 'hiring-overview',
         label: 'Hiring Overview',
         icon: <MdOutlineInsights />,
-        content: <HiringOverviewSlide fillHeight />,
+        content: (
+          <WidgetErrorBoundary label="Hiring Overview">
+            <HiringOverviewSlide fillHeight />
+          </WidgetErrorBoundary>
+        ),
       }
     : {
         key: 'platform-overview',
         label: 'Platform Overview',
         icon: <MdOutlineInsights />,
-        content: <PlatformOverviewSlide fillHeight />,
+        content: (
+          <WidgetErrorBoundary label="Platform Overview">
+            <PlatformOverviewSlide fillHeight />
+          </WidgetErrorBoundary>
+        ),
       };
 
+  // Each slide gets its OWN WidgetErrorBoundary — the whole point of the
+  // isolation is per-widget, not one boundary around the carousel as a
+  // whole. A single shared boundary would still let one broken slide take
+  // out every OTHER slide along with it, since React unmounts everything
+  // under the nearest boundary above the crash, not just the offending node.
   const slides: DashboardSlide[] = [
     overviewSlide,
-    {
-      key: 'cfp-company',
-      label: 'CFP Company',
-      icon: <BankOutlined />,
-      content: <TenantsPreviewCard fillHeight />,
-    },
-    {
-      key: 'interviews',
-      label: 'Interviews',
-      icon: <AuditOutlined />,
-      content: (
-        <InterviewDashboard
-          interviewData={interviewData}
-          filters={interviewFilters}
-          isLoading={isLoading}
-          handleFilterChange={handleFilterChange}
-          isOwner={role?.type === 'owner' ? true : false}
-          fillHeight
-        />
-      ),
-    },
+    // "CFP Company" lists every tenant on the platform (GET
+    // /v1/platform/tenants) — Super Admin's own view, per
+    // TenantsPreviewCard's own docstring. It was previously shown to every
+    // caller regardless of `isPlatformCaller`, so an ordinary tenant user
+    // (Recruiter, Hiring Manager, ...) got a slide calling a platform-only
+    // endpoint they have no permission for.
+    ...(isPlatformCaller
+      ? [
+          {
+            key: 'cfp-company',
+            label: 'CFP Company',
+            icon: <BankOutlined />,
+            content: (
+              <WidgetErrorBoundary label="CFP Company">
+                <TenantsPreviewCard fillHeight />
+              </WidgetErrorBoundary>
+            ),
+          },
+        ]
+      : []),
+    ...(canViewInterviews
+      ? [
+          {
+            key: 'interviews',
+            label: 'Interviews',
+            icon: <AuditOutlined />,
+            content: (
+              <WidgetErrorBoundary label="Interviews">
+                <InterviewDashboard
+                  interviewData={interviewData}
+                  filters={interviewFilters}
+                  isLoading={isLoading}
+                  handleFilterChange={handleFilterChange}
+                  isOwner={role?.type === 'owner' ? true : false}
+                  fillHeight
+                />
+              </WidgetErrorBoundary>
+            ),
+          },
+        ]
+      : []),
     ...(canViewRevenue
       ? [
           {
             key: 'revenue-generated',
             label: 'Revenue Generated',
             icon: <DollarOutlined />,
-            content: <RevenueGenerated />,
+            content: (
+              <WidgetErrorBoundary label="Revenue Generated">
+                <RevenueGenerated />
+              </WidgetErrorBoundary>
+            ),
           },
           {
             key: 'upcoming-revenue',
             label: 'Predicted Upcoming Revenue',
             icon: <RiseOutlined />,
-            content: <UpcomingRevenue />,
+            content: (
+              <WidgetErrorBoundary label="Predicted Upcoming Revenue">
+                <UpcomingRevenue />
+              </WidgetErrorBoundary>
+            ),
           },
         ]
       : []),

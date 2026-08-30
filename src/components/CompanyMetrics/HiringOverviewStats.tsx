@@ -16,6 +16,8 @@ import {
   useGetCompletedInterviewsQuery,
 } from '../../api/candidate-service/Stats/stats';
 import JobOpeningsListModal from './JobOpeningsListModal';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 /**
  * 2.1 "Hiring overview" — Active job openings / Total applications /
@@ -37,47 +39,78 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
   const [showJobOpenings, setShowJobOpenings] = useState(false);
 
+  // Each card needs its OWN permission check, resolved against whichever
+  // location is currently active (see useEffectivePermissions) — the four
+  // cards here span four different resources (job/candidate/interview/user),
+  // and a role's location override can grant some of those at one office and
+  // not another (see the Dashboard investigation this matches). Gating the
+  // whole slide by one permission would either hide cards the user DOES have
+  // rights to, or show cards they don't — this keeps each card's visibility
+  // exactly as narrow as what's actually granted at the active location.
+  const canViewJobs = useHasAccess(Authorities.JOB_OPENING_VIEW);
+  const canViewCandidates = useHasAccess(Authorities.CANDIDATE_VIEW);
+  const canViewInterviews = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
+  const canViewUsers = useHasAccess(Authorities.USER_VIEW);
+
   const { data: tenantDashboard, isLoading: isTeamLoading } = useGetTenantDashboardQuery(
     tenantId ?? '',
-    { skip: !tenantId }
+    { skip: !tenantId || !canViewUsers }
   );
-  const { data: jobStats, isLoading: isJobStatsLoading } = useGetJobStatsQuery();
+  const { data: jobStats, isLoading: isJobStatsLoading } = useGetJobStatsQuery(undefined, {
+    skip: !canViewJobs,
+  });
   const { data: totalApplications, isLoading: isApplicationsLoading } =
-    useGetTotalApplicationsQuery();
+    useGetTotalApplicationsQuery(undefined, { skip: !canViewCandidates });
   const { data: completedInterviews, isLoading: isInterviewsLoading } =
-    useGetCompletedInterviewsQuery();
+    useGetCompletedInterviewsQuery(undefined, { skip: !canViewInterviews });
 
   const cards: StatCardData[] = [
-    {
-      icon: <MdOutlineWorkOutline />,
-      variant: 'blue',
-      label: 'Active job openings',
-      value: isJobStatsLoading ? undefined : jobStats?.published_count?.toLocaleString(),
-      onClick: () => setShowJobOpenings(true),
-    },
-    {
-      icon: <MdOutlineDescription />,
-      variant: 'green',
-      label: 'Total applications',
-      value: isApplicationsLoading ? undefined : totalApplications?.total?.toLocaleString(),
-    },
-    {
-      icon: <MdOutlineEventAvailable />,
-      variant: 'orange',
-      label: 'Completed interviews',
-      value: isInterviewsLoading ? undefined : completedInterviews?.total?.toLocaleString(),
-      footer: (
-        <p className="text-[11px] text-neutral-400">
-          Breakdown by Audio / AI / Panel — coming soon
-        </p>
-      ),
-    },
-    {
-      icon: <MdOutlineGroups />,
-      variant: 'neutral',
-      label: 'Active team members',
-      value: isTeamLoading ? undefined : tenantDashboard?.team_size?.toLocaleString(),
-    },
+    ...(canViewJobs
+      ? [
+          {
+            icon: <MdOutlineWorkOutline />,
+            variant: 'blue' as const,
+            label: 'Active job openings',
+            value: isJobStatsLoading ? undefined : jobStats?.published_count?.toLocaleString(),
+            onClick: () => setShowJobOpenings(true),
+          },
+        ]
+      : []),
+    ...(canViewCandidates
+      ? [
+          {
+            icon: <MdOutlineDescription />,
+            variant: 'green' as const,
+            label: 'Total applications',
+            value: isApplicationsLoading ? undefined : totalApplications?.total?.toLocaleString(),
+          },
+        ]
+      : []),
+    ...(canViewInterviews
+      ? [
+          {
+            icon: <MdOutlineEventAvailable />,
+            variant: 'orange' as const,
+            label: 'Completed interviews',
+            value: isInterviewsLoading ? undefined : completedInterviews?.total?.toLocaleString(),
+            footer: (
+              <p className="text-[11px] text-neutral-400">
+                Breakdown by Audio / AI / Panel — coming soon
+              </p>
+            ),
+          },
+        ]
+      : []),
+    ...(canViewUsers
+      ? [
+          {
+            icon: <MdOutlineGroups />,
+            variant: 'neutral' as const,
+            label: 'Active team members',
+            value: isTeamLoading ? undefined : tenantDashboard?.team_size?.toLocaleString(),
+          },
+        ]
+      : []),
   ];
 
   return (
