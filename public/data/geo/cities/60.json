@@ -1,1 +1,24 @@
-{"2928":[{"id":30562,"name":"Alaïli Ḏaḏḏa‘"},{"id":30571,"name":"Obock"}],"2929":[{"id":30565,"name":"Djibouti"},{"id":30570,"name":"Loyada"}],"2930":[{"id":30564,"name":"Dikhil"},{"id":30568,"name":"Gâlâfi"}],"2931":[{"id":30566,"name":"Dorra"},{"id":30572,"name":"Tadjourah"}],"2932":[{"id":30563,"name":"Arta"}],"2933":[{"id":30561,"name":"'Ali Sabieh"},{"id":30567,"name":"Goubétto"},{"id":30569,"name":"Holhol"}]}
+{
+  "2928": [
+    { "id": 30562, "name": "Alaïli Ḏaḏḏa‘" },
+    { "id": 30571, "name": "Obock" }
+  ],
+  "2929": [
+    { "id": 30565, "name": "Djibouti" },
+    { "id": 30570, "name": "Loyada" }
+  ],
+  "2930": [
+    { "id": 30564, "name": "Dikhil" },
+    { "id": 30568, "name": "Gâlâfi" }
+  ],
+  "2931": [
+    { "id": 30566, "name": "Dorra" },
+    { "id": 30572, "name": "Tadjourah" }
+  ],
+  "2932": [{ "id": 30563, "name": "Arta" }],
+  "2933": [
+    { "id": 30561, "name": "'Ali Sabieh" },
+    { "id": 30567, "name": "Goubétto" },
+    { "id": 30569, "name": "Holhol" }
+  ]
+}

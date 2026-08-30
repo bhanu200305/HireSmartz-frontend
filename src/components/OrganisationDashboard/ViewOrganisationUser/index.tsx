@@ -111,8 +111,7 @@ const ViewOrgUser = () => {
   if (isLoading) return <Loader />;
   if (!user) return <div className="p-8 text-gray-500">User not found.</div>;
 
-  const initials =
-    `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase() || '?';
+  const initials = `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase() || '?';
 
   return (
     <MainLayout>
@@ -134,9 +133,7 @@ const ViewOrgUser = () => {
                 <Typography variant="h4">{user.full_name}</Typography>
                 <span
                   className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    user.is_active
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-gray-100 text-gray-500'
+                    user.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
                   }`}
                 >
                   {user.is_active ? 'Active' : 'Deactivated'}

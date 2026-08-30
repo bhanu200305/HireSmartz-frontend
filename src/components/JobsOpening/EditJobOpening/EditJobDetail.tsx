@@ -17,6 +17,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { useLazyGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import { useRegenerateJobDescriptionMutation } from '../../../api/job-service/JobOpening/RegenerateJd';
+import { useGetJdStatusQuery } from '../../../api/job-service/JobOpening/JdUpload';
 import { lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   setEditJobOpeningId,
@@ -245,6 +246,7 @@ const EditJobDetail = () => {
     handleSubmit,
     control,
     setValue,
+    getValues,
     reset,
     watch,
     setError,
@@ -253,6 +255,21 @@ const EditJobDetail = () => {
   } = useForm<JobDetailsState>({
     resolver: zodResolver(editJobDetailsSchema) as Resolver<JobDetailsState>,
     defaultValues: {},
+  });
+
+  // Whatever ai-service parses out of an uploaded JD file (or, for an
+  // AI-Prompt job, generates) lands on the job asynchronously — the initial
+  // `loadJobData` effect below only ever reads `jobData` once, at mount /
+  // job-id change, so a recruiter who lands here right after an Upload JD
+  // (still `jd_status: PROCESSING` at that point — see upload_jd.py) would
+  // otherwise see an empty form that never fills in on its own, only a
+  // manual page reload. Same light poll + GENERATING/PROCESSING -> READY
+  // transition check jobdetails.tsx's own create-wizard equivalent already
+  // uses for the same problem on the AI-Prompt path.
+  const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
+  const { data: jdStatusForHydration } = useGetJdStatusQuery(parsedJobId ?? '', {
+    skip: !parsedJobId,
+    pollingInterval: 3000,
   });
 
   const [initialFormValues, setInitialFormValues] = useState<any>(null);
@@ -684,6 +701,110 @@ const EditJobDetail = () => {
       initialLoadRef.current = true;
     };
   }, [parsedJobId, jobOpeningId, jobDetails, reset]);
+
+  // AI-fill: applies whatever responsibilities/other requirements/
+  // experience/salary/skills ai-service just parsed (Upload JD) or
+  // generated (AI Prompt) onto this still-open form. Keyed off an observed
+  // GENERATING/PROCESSING -> READY transition, not just "status is
+  // currently READY" — that's also every already-parsed job's resting
+  // state, so treating it as a completion signal would re-apply (and
+  // potentially re-toast) on every mount. Explicitly refetches `/details`
+  // rather than trusting `jobData` in this same render — that's still the
+  // pre-completion snapshot until the refetch below resolves. Only ever
+  // fills a field the recruiter hasn't already got something in, so it's
+  // safe even if they started editing while parsing was still in flight.
+  useEffect(() => {
+    const previousStatus = prevJdStatusForHydrationRef.current;
+    const currentStatus = jdStatusForHydration?.status;
+    prevJdStatusForHydrationRef.current = currentStatus;
+
+    const justFinishedProcessing =
+      (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') &&
+      currentStatus === 'READY';
+    if (!justFinishedProcessing || !parsedJobId) return;
+
+    void triggerGetJobDescriptionById({ jobOpeningId: parsedJobId }).then((result) => {
+      const fresh = result.data;
+      if (!fresh) return;
+
+      const current = getValues();
+      let appliedAnything = false;
+      if (fresh.responsibilities && !current.responsibilities) {
+        setValue('responsibilities', fresh.responsibilities, { shouldValidate: true });
+        appliedAnything = true;
+      }
+      if (fresh.otherRequirements && !current.otherRequirements) {
+        setValue('otherRequirements', fresh.otherRequirements, { shouldValidate: true });
+        appliedAnything = true;
+      }
+      if (fresh.minExperience != null && current.minExperience == null) {
+        setValue('minExperience', fresh.minExperience, { shouldValidate: true });
+        appliedAnything = true;
+      }
+      if (fresh.maxExperience != null && current.maxExperience == null) {
+        setValue('maxExperience', fresh.maxExperience, { shouldValidate: true });
+        appliedAnything = true;
+      }
+      if (fresh.minSalary != null && !current.minSalary) {
+        setValue('minSalary', String(fresh.minSalary), { shouldValidate: true });
+        appliedAnything = true;
+      }
+      if (fresh.maxSalary != null && !current.maxSalary) {
+        setValue('maxSalary', String(fresh.maxSalary), { shouldValidate: true });
+        appliedAnything = true;
+      }
+      // Skills AI suggested via job.jd.enhance/parse are auto-committed
+      // straight onto the job (job.add_skill), so they're already in
+      // `fresh.skills` the moment this refetch lands. Merge in only the
+      // ones not already selected, split by the catalogue's own type name —
+      // same pattern as handleAddAllSuggestedSkills above.
+      if (fresh.skills && fresh.skills.length > 0) {
+        const currentMandatory = (current.mandatorySkills || []).map(String);
+        const currentOptional = (current.optionalSkills || []).map(String);
+        const newMandatory: string[] = [];
+        const newOptional: string[] = [];
+        const newOptions: JobOpeningDropdownOption[] = [];
+        for (const skill of fresh.skills) {
+          const id = String(skill.skill_id);
+          if (currentMandatory.includes(id) || currentOptional.includes(id)) continue;
+          if (newMandatory.includes(id) || newOptional.includes(id)) continue;
+          if (skill.skill_type.toLowerCase() === 'mandatory') {
+            newMandatory.push(id);
+          } else {
+            newOptional.push(id);
+          }
+          newOptions.push({ id: skill.skill_id, name: skill.skill_label });
+        }
+        if (newMandatory.length > 0) {
+          setValue('mandatorySkills', [...currentMandatory, ...newMandatory], {
+            shouldValidate: true,
+          });
+          appliedAnything = true;
+        }
+        if (newOptional.length > 0) {
+          setValue('optionalSkills', [...currentOptional, ...newOptional], {
+            shouldValidate: true,
+          });
+          appliedAnything = true;
+        }
+        if (newOptions.length > 0) {
+          setExtraSuggestedSkillOptions((prev) => [...prev, ...newOptions]);
+        }
+      }
+      if (appliedAnything) {
+        showToast({
+          message: 'AI filled in some job details from your uploaded JD — review before saving.',
+          type: 'success',
+        });
+      }
+    });
+  }, [
+    jdStatusForHydration?.status,
+    parsedJobId,
+    triggerGetJobDescriptionById,
+    getValues,
+    setValue,
+  ]);
 
   useEffect(() => {
     dispatch(setIsChanged(isFormDirty));

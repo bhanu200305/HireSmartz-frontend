@@ -105,7 +105,9 @@ const AssignJobModal: React.FC<AssignJobModalProps> = ({
   const jobList: Jobs[] = useMemo(() => {
     return accumulatedJobs.map((job) => ({
       ...job,
-      jobTitleName: job.jobTitleId ? titleMap[job.jobTitleId] || job.jobTitleName : job.jobTitleName,
+      jobTitleName: job.jobTitleId
+        ? titleMap[job.jobTitleId] || job.jobTitleName
+        : job.jobTitleName,
     }));
   }, [accumulatedJobs, titleMap]);
 

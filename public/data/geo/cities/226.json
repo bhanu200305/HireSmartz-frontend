@@ -1,1 +1,42 @@
-{"3369":[{"id":106888,"name":"Bayramaly"},{"id":106899,"name":"Mary"},{"id":106902,"name":"Serhetabat"},{"id":106903,"name":"Seydi"},{"id":106908,"name":"Yolöten"}],"3370":[{"id":106885,"name":"Atamyrat"},{"id":106892,"name":"Farap"},{"id":106893,"name":"Gazojak"},{"id":106894,"name":"Gowurdak"},{"id":106900,"name":"Saýat"},{"id":106906,"name":"Türkmenabat"}],"3371":[{"id":106884,"name":"Ashgabat"}],"3372":[{"id":106887,"name":"Balkanabat"},{"id":106889,"name":"Bereket"},{"id":106895,"name":"Gumdag"},{"id":106898,"name":"Magtymguly"},{"id":106901,"name":"Serdar"},{"id":106907,"name":"Türkmenbaşy"}],"3373":[{"id":106881,"name":"Akdepe"},{"id":106890,"name":"Boldumsaz"},{"id":106891,"name":"Daşoguz"},{"id":106897,"name":"Köneürgench"},{"id":106904,"name":"Tagta"},{"id":106909,"name":"Yylanly"}],"3374":[{"id":106880,"name":"Abadan"},{"id":106882,"name":"Annau"},{"id":106883,"name":"Arçabil"},{"id":106886,"name":"Baharly"},{"id":106896,"name":"Kaka"},{"id":106905,"name":"Tejen"}]}
+{
+  "3369": [
+    { "id": 106888, "name": "Bayramaly" },
+    { "id": 106899, "name": "Mary" },
+    { "id": 106902, "name": "Serhetabat" },
+    { "id": 106903, "name": "Seydi" },
+    { "id": 106908, "name": "Yolöten" }
+  ],
+  "3370": [
+    { "id": 106885, "name": "Atamyrat" },
+    { "id": 106892, "name": "Farap" },
+    { "id": 106893, "name": "Gazojak" },
+    { "id": 106894, "name": "Gowurdak" },
+    { "id": 106900, "name": "Saýat" },
+    { "id": 106906, "name": "Türkmenabat" }
+  ],
+  "3371": [{ "id": 106884, "name": "Ashgabat" }],
+  "3372": [
+    { "id": 106887, "name": "Balkanabat" },
+    { "id": 106889, "name": "Bereket" },
+    { "id": 106895, "name": "Gumdag" },
+    { "id": 106898, "name": "Magtymguly" },
+    { "id": 106901, "name": "Serdar" },
+    { "id": 106907, "name": "Türkmenbaşy" }
+  ],
+  "3373": [
+    { "id": 106881, "name": "Akdepe" },
+    { "id": 106890, "name": "Boldumsaz" },
+    { "id": 106891, "name": "Daşoguz" },
+    { "id": 106897, "name": "Köneürgench" },
+    { "id": 106904, "name": "Tagta" },
+    { "id": 106909, "name": "Yylanly" }
+  ],
+  "3374": [
+    { "id": 106880, "name": "Abadan" },
+    { "id": 106882, "name": "Annau" },
+    { "id": 106883, "name": "Arçabil" },
+    { "id": 106886, "name": "Baharly" },
+    { "id": 106896, "name": "Kaka" },
+    { "id": 106905, "name": "Tejen" }
+  ]
+}

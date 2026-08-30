@@ -29,11 +29,13 @@ const normalizeWeights = (weights: unknown): JobScoringWeight[] =>
 interface JobScoringCriteriaTabProps {
   jobId: string;
   isViewMode?: boolean;
+  isEditMode?: boolean;
 }
 
 const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
   jobId: rawJobId,
   isViewMode = false,
+  isEditMode = false,
 }) => {
   const jobId = asJobId(rawJobId);
   const navigate = useNavigate();
@@ -196,7 +198,18 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
         <div className="mt-8 flex justify-center">
           <Button
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-            onClick={() => navigate('/interview-setup')}
+            onClick={() =>
+              // The Edit wizard's own interview step lives at
+              // /jobs/edit/:id/interview, not the create wizard's bare
+              // /interview-setup (which has no job-id context at all — it
+              // reads JobSlice, which an edit session never populates).
+              // Hardcoding the create-mode path here sent every edit
+              // session to a route with no way to know which job it was
+              // for, surfacing as "please save the job details first" on
+              // arrival and an apparently-empty Job Details on the way
+              // back.
+              navigate(isEditMode ? `/jobs/edit/${jobId}/interview` : '/interview-setup')
+            }
           >
             SAVE &amp; NEXT
           </Button>

@@ -270,7 +270,9 @@ export const formatAiJobDescription = (text: string): string => {
       continue;
     }
     if (AI_JD_BULLET_RE.test(line) || AI_JD_NUMBERED_RE.test(line)) {
-      const normalized = AI_JD_NUMBERED_RE.test(line) ? line : `- ${line.replace(AI_JD_BULLET_RE, '')}`;
+      const normalized = AI_JD_NUMBERED_RE.test(line)
+        ? line
+        : `- ${line.replace(AI_JD_BULLET_RE, '')}`;
       processedLines.push(normalized);
       inListSection = true;
       continue;

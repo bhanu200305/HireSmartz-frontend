@@ -1,1 +1,103 @@
-{"978":[{"id":65865,"name":"Luang Prabang"}],"979":[{"id":65927,"name":"Vientiane"}],"980":[{"id":65892,"name":"Muang Phôn-Hông"},{"id":65926,"name":"Vangviang"}],"981":[{"id":65875,"name":"Muang Khôngxédôn"},{"id":65876,"name":"Muang Lakhonphéng"},{"id":65878,"name":"Muang Laongam"},{"id":65896,"name":"Muang Samouay"},{"id":65899,"name":"Muang Saravan"},{"id":65902,"name":"Muang Ta-Ôy"},{"id":65907,"name":"Muang Toumlan"},{"id":65909,"name":"Muang Vapi"},{"id":65922,"name":"Salavan"}],"982":[{"id":65855,"name":"Attapeu"},{"id":65891,"name":"Muang Phouvong"},{"id":65895,"name":"Muang Samakhixai"},{"id":65897,"name":"Muang Sanamxai"},{"id":65898,"name":"Muang Sanxai"},{"id":65912,"name":"Muang Xaiséttha"}],"983":[{"id":65854,"name":"Anouvong district"},{"id":65863,"name":"Longchaeng"},{"id":65879,"name":"Muang Longxan"},{"id":65905,"name":"Muang Thathôm"}],"984":[{"id":65859,"name":"Ban Thatèng"},{"id":65862,"name":"Lamam"},{"id":65871,"name":"Muang Dakchung"},{"id":65873,"name":"Muang Khaleum"},{"id":65877,"name":"Muang Laman"},{"id":65906,"name":"Muang Thatèng"}],"985":[{"id":65858,"name":"Ban Nahin"},{"id":65918,"name":"Pakxan"}],"986":[{"id":65903,"name":"Muang Thakhèk"},{"id":65924,"name":"Thakhèk"}],"987":[{"id":65920,"name":"Phôngsali"}],"988":[{"id":65914,"name":"Muang Xay"}],"989":[{"id":65928,"name":"Xam Neua"},{"id":65929,"name":"Xam Nua"}],"990":[{"id":65861,"name":"Kaysone Phomvihane"},{"id":65866,"name":"Muang Alsaphangthong"},{"id":65867,"name":"Muang Atsaphan"},{"id":65870,"name":"Muang Champhon"},{"id":65883,"name":"Muang Nong"},{"id":65884,"name":"Muang Outhoumphon"},{"id":65890,"name":"Muang Phin"},{"id":65900,"name":"Muang Songkhon"},{"id":65904,"name":"Muang Thapangthong"},{"id":65910,"name":"Muang Vilabouli"},{"id":65911,"name":"Muang Xaibouli"},{"id":65915,"name":"Muang Xayphoothong"},{"id":65916,"name":"Muang Xônbouli"},{"id":65923,"name":"Savannakhet"},{"id":65925,"name":"Thaphalanxay"}],"991":[{"id":65856,"name":"Ban Houakhoua"},{"id":65857,"name":"Ban Houayxay"},{"id":65872,"name":"Muang Houayxay"},{"id":65881,"name":"Muang Meung"},{"id":65885,"name":"Muang Paktha"},{"id":65889,"name":"Muang Pha Oudôm"},{"id":65908,"name":"Muang Tônpheung"}],"992":[{"id":65864,"name":"Luang Namtha"},{"id":65880,"name":"Muang Louang Namtha"}],"993":[{"id":65921,"name":"Sainyabuli"}],"994":[],"995":[{"id":65893,"name":"Muang Phônsavan"}],"996":[{"id":65860,"name":"Champasak"},{"id":65868,"name":"Muang Bachiangchaleunsook"},{"id":65869,"name":"Muang Champasak"},{"id":65874,"name":"Muang Không"},{"id":65882,"name":"Muang Mounlapamôk"},{"id":65887,"name":"Muang Pakxé"},{"id":65886,"name":"Muang Pakxong"},{"id":65888,"name":"Muang Pathoumphon"},{"id":65894,"name":"Muang Phônthong"},{"id":65901,"name":"Muang Soukhouma"},{"id":65913,"name":"Muang Xanasômboun"},{"id":65917,"name":"Pakse"},{"id":65919,"name":"Pakxong"}]}
+{
+  "978": [{ "id": 65865, "name": "Luang Prabang" }],
+  "979": [{ "id": 65927, "name": "Vientiane" }],
+  "980": [
+    { "id": 65892, "name": "Muang Phôn-Hông" },
+    { "id": 65926, "name": "Vangviang" }
+  ],
+  "981": [
+    { "id": 65875, "name": "Muang Khôngxédôn" },
+    { "id": 65876, "name": "Muang Lakhonphéng" },
+    { "id": 65878, "name": "Muang Laongam" },
+    { "id": 65896, "name": "Muang Samouay" },
+    { "id": 65899, "name": "Muang Saravan" },
+    { "id": 65902, "name": "Muang Ta-Ôy" },
+    { "id": 65907, "name": "Muang Toumlan" },
+    { "id": 65909, "name": "Muang Vapi" },
+    { "id": 65922, "name": "Salavan" }
+  ],
+  "982": [
+    { "id": 65855, "name": "Attapeu" },
+    { "id": 65891, "name": "Muang Phouvong" },
+    { "id": 65895, "name": "Muang Samakhixai" },
+    { "id": 65897, "name": "Muang Sanamxai" },
+    { "id": 65898, "name": "Muang Sanxai" },
+    { "id": 65912, "name": "Muang Xaiséttha" }
+  ],
+  "983": [
+    { "id": 65854, "name": "Anouvong district" },
+    { "id": 65863, "name": "Longchaeng" },
+    { "id": 65879, "name": "Muang Longxan" },
+    { "id": 65905, "name": "Muang Thathôm" }
+  ],
+  "984": [
+    { "id": 65859, "name": "Ban Thatèng" },
+    { "id": 65862, "name": "Lamam" },
+    { "id": 65871, "name": "Muang Dakchung" },
+    { "id": 65873, "name": "Muang Khaleum" },
+    { "id": 65877, "name": "Muang Laman" },
+    { "id": 65906, "name": "Muang Thatèng" }
+  ],
+  "985": [
+    { "id": 65858, "name": "Ban Nahin" },
+    { "id": 65918, "name": "Pakxan" }
+  ],
+  "986": [
+    { "id": 65903, "name": "Muang Thakhèk" },
+    { "id": 65924, "name": "Thakhèk" }
+  ],
+  "987": [{ "id": 65920, "name": "Phôngsali" }],
+  "988": [{ "id": 65914, "name": "Muang Xay" }],
+  "989": [
+    { "id": 65928, "name": "Xam Neua" },
+    { "id": 65929, "name": "Xam Nua" }
+  ],
+  "990": [
+    { "id": 65861, "name": "Kaysone Phomvihane" },
+    { "id": 65866, "name": "Muang Alsaphangthong" },
+    { "id": 65867, "name": "Muang Atsaphan" },
+    { "id": 65870, "name": "Muang Champhon" },
+    { "id": 65883, "name": "Muang Nong" },
+    { "id": 65884, "name": "Muang Outhoumphon" },
+    { "id": 65890, "name": "Muang Phin" },
+    { "id": 65900, "name": "Muang Songkhon" },
+    { "id": 65904, "name": "Muang Thapangthong" },
+    { "id": 65910, "name": "Muang Vilabouli" },
+    { "id": 65911, "name": "Muang Xaibouli" },
+    { "id": 65915, "name": "Muang Xayphoothong" },
+    { "id": 65916, "name": "Muang Xônbouli" },
+    { "id": 65923, "name": "Savannakhet" },
+    { "id": 65925, "name": "Thaphalanxay" }
+  ],
+  "991": [
+    { "id": 65856, "name": "Ban Houakhoua" },
+    { "id": 65857, "name": "Ban Houayxay" },
+    { "id": 65872, "name": "Muang Houayxay" },
+    { "id": 65881, "name": "Muang Meung" },
+    { "id": 65885, "name": "Muang Paktha" },
+    { "id": 65889, "name": "Muang Pha Oudôm" },
+    { "id": 65908, "name": "Muang Tônpheung" }
+  ],
+  "992": [
+    { "id": 65864, "name": "Luang Namtha" },
+    { "id": 65880, "name": "Muang Louang Namtha" }
+  ],
+  "993": [{ "id": 65921, "name": "Sainyabuli" }],
+  "994": [],
+  "995": [{ "id": 65893, "name": "Muang Phônsavan" }],
+  "996": [
+    { "id": 65860, "name": "Champasak" },
+    { "id": 65868, "name": "Muang Bachiangchaleunsook" },
+    { "id": 65869, "name": "Muang Champasak" },
+    { "id": 65874, "name": "Muang Không" },
+    { "id": 65882, "name": "Muang Mounlapamôk" },
+    { "id": 65887, "name": "Muang Pakxé" },
+    { "id": 65886, "name": "Muang Pakxong" },
+    { "id": 65888, "name": "Muang Pathoumphon" },
+    { "id": 65894, "name": "Muang Phônthong" },
+    { "id": 65901, "name": "Muang Soukhouma" },
+    { "id": 65913, "name": "Muang Xanasômboun" },
+    { "id": 65917, "name": "Pakse" },
+    { "id": 65919, "name": "Pakxong" }
+  ]
+}

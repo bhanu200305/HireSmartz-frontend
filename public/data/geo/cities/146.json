@@ -1,1 +1,57 @@
-{"1961":[{"id":67710,"name":"Bulgan"}],"1962":[{"id":67714,"name":"Darhan"}],"1963":[{"id":67711,"name":"Choibalsan"},{"id":67718,"name":"Ereencav"}],"1964":[{"id":67724,"name":"Khovd"},{"id":67728,"name":"Möst"},{"id":67741,"name":"Üyönch"}],"1965":[{"id":67707,"name":"Arvayheer"},{"id":67721,"name":"Harhorin"},{"id":67722,"name":"Hovd"},{"id":67723,"name":"Kharkhorin"},{"id":67729,"name":"Nariynteel"}],"1966":[{"id":67717,"name":"Erdenet"}],"1967":[{"id":67713,"name":"Dalandzadgad"},{"id":67720,"name":"Hanhongor"},{"id":67730,"name":"Nomgon Sum"}],"1968":[{"id":67715,"name":"Dzuunmod"},{"id":67727,"name":"Möngönmorĭt"},{"id":67737,"name":"Ulaanhudag"},{"id":67742,"name":"Зуунмод"}],"1969":[{"id":67706,"name":"Altay"},{"id":67740,"name":"Ölgii"},{"id":67733,"name":"Tsengel"}],"1970":[{"id":67725,"name":"Mandalgovi"}],"1971":[{"id":67736,"name":"Ulaangom"}],"1972":[{"id":67705,"name":"Altai"}],"1973":[{"id":67734,"name":"Tsetserleg"}],"1974":[{"id":67739,"name":"Undurkhaan"}],"1975":[{"id":67719,"name":"Hanh"},{"id":67726,"name":"Murun-kuren"},{"id":67732,"name":"Tsengel"},{"id":67735,"name":"Turt"}],"1976":[{"id":67709,"name":"Bayanhongor"}],"1977":[{"id":67708,"name":"Baruun-Urt"}],"1978":[{"id":67712,"name":"Choyr"}],"1979":[{"id":67738,"name":"Uliastay"}],"1980":[{"id":67716,"name":"Dzüünharaa"},{"id":67731,"name":"Sühbaatar"}],"1981":[]}
+{
+  "1961": [{ "id": 67710, "name": "Bulgan" }],
+  "1962": [{ "id": 67714, "name": "Darhan" }],
+  "1963": [
+    { "id": 67711, "name": "Choibalsan" },
+    { "id": 67718, "name": "Ereencav" }
+  ],
+  "1964": [
+    { "id": 67724, "name": "Khovd" },
+    { "id": 67728, "name": "Möst" },
+    { "id": 67741, "name": "Üyönch" }
+  ],
+  "1965": [
+    { "id": 67707, "name": "Arvayheer" },
+    { "id": 67721, "name": "Harhorin" },
+    { "id": 67722, "name": "Hovd" },
+    { "id": 67723, "name": "Kharkhorin" },
+    { "id": 67729, "name": "Nariynteel" }
+  ],
+  "1966": [{ "id": 67717, "name": "Erdenet" }],
+  "1967": [
+    { "id": 67713, "name": "Dalandzadgad" },
+    { "id": 67720, "name": "Hanhongor" },
+    { "id": 67730, "name": "Nomgon Sum" }
+  ],
+  "1968": [
+    { "id": 67715, "name": "Dzuunmod" },
+    { "id": 67727, "name": "Möngönmorĭt" },
+    { "id": 67737, "name": "Ulaanhudag" },
+    { "id": 67742, "name": "Зуунмод" }
+  ],
+  "1969": [
+    { "id": 67706, "name": "Altay" },
+    { "id": 67740, "name": "Ölgii" },
+    { "id": 67733, "name": "Tsengel" }
+  ],
+  "1970": [{ "id": 67725, "name": "Mandalgovi" }],
+  "1971": [{ "id": 67736, "name": "Ulaangom" }],
+  "1972": [{ "id": 67705, "name": "Altai" }],
+  "1973": [{ "id": 67734, "name": "Tsetserleg" }],
+  "1974": [{ "id": 67739, "name": "Undurkhaan" }],
+  "1975": [
+    { "id": 67719, "name": "Hanh" },
+    { "id": 67726, "name": "Murun-kuren" },
+    { "id": 67732, "name": "Tsengel" },
+    { "id": 67735, "name": "Turt" }
+  ],
+  "1976": [{ "id": 67709, "name": "Bayanhongor" }],
+  "1977": [{ "id": 67708, "name": "Baruun-Urt" }],
+  "1978": [{ "id": 67712, "name": "Choyr" }],
+  "1979": [{ "id": 67738, "name": "Uliastay" }],
+  "1980": [
+    { "id": 67716, "name": "Dzüünharaa" },
+    { "id": 67731, "name": "Sühbaatar" }
+  ],
+  "1981": []
+}

@@ -1289,7 +1289,9 @@ const JobsOpening = () => {
               >
                 UPLOAD JOB DESCRIPTION
               </Button>
-              <p className="text-center text-xs text-gray-400 !-mt-1">Supported format: docx, pdf</p>
+              <p className="text-center text-xs text-gray-400 !-mt-1">
+                Supported format: docx, pdf
+              </p>
 
               <Button
                 className="w-full border border-[var(--border)] rounded-md h-12 flex items-center justify-center"

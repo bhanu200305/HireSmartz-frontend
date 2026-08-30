@@ -1,1 +1,29 @@
-{"2712":[{"id":53814,"name":"Catió"},{"id":53819,"name":"Quebo"}],"2713":[{"id":53812,"name":"Cacheu"},{"id":53813,"name":"Canchungo"}],"2714":[{"id":53820,"name":"Quinhámel"}],"2715":[{"id":53810,"name":"Buba"}],"2716":[],"2717":[],"2718":[{"id":53808,"name":"Bissorã"},{"id":53816,"name":"Farim"},{"id":53818,"name":"Mansôa"}],"2719":[{"id":53817,"name":"Gabú"}],"2720":[{"id":53807,"name":"Bafatá"},{"id":53815,"name":"Contuboel Sector"}],"2721":[],"2722":[{"id":53809,"name":"Bolama"},{"id":53811,"name":"Bubaque"}]}
+{
+  "2712": [
+    { "id": 53814, "name": "Catió" },
+    { "id": 53819, "name": "Quebo" }
+  ],
+  "2713": [
+    { "id": 53812, "name": "Cacheu" },
+    { "id": 53813, "name": "Canchungo" }
+  ],
+  "2714": [{ "id": 53820, "name": "Quinhámel" }],
+  "2715": [{ "id": 53810, "name": "Buba" }],
+  "2716": [],
+  "2717": [],
+  "2718": [
+    { "id": 53808, "name": "Bissorã" },
+    { "id": 53816, "name": "Farim" },
+    { "id": 53818, "name": "Mansôa" }
+  ],
+  "2719": [{ "id": 53817, "name": "Gabú" }],
+  "2720": [
+    { "id": 53807, "name": "Bafatá" },
+    { "id": 53815, "name": "Contuboel Sector" }
+  ],
+  "2721": [],
+  "2722": [
+    { "id": 53809, "name": "Bolama" },
+    { "id": 53811, "name": "Bubaque" }
+  ]
+}

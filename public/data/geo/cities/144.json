@@ -1,1 +1,108 @@
-{"4360":[{"id":67287,"name":"Cimişlia"}],"4361":[{"id":67316,"name":"Orhei"}],"4362":[{"id":67273,"name":"Bender"}],"4363":[{"id":67314,"name":"Nisporeni"}],"4364":[{"id":67274,"name":"Bilicenii Vechi"},{"id":67275,"name":"Biruinţa"},{"id":67328,"name":"Sîngerei"}],"4365":[{"id":67295,"name":"Căuşeni"},{"id":67286,"name":"Chiţcani"}],"4366":[{"id":67294,"name":"Călăraşi"}],"4367":[{"id":67306,"name":"Glodeni"}],"4368":[{"id":67271,"name":"Anenii Noi"},{"id":67337,"name":"Varniţa"}],"4369":[{"id":67309,"name":"Ialoveni"}],"4370":[{"id":67302,"name":"Floreşti"},{"id":67304,"name":"Ghindești"},{"id":67313,"name":"Mărculeşti"}],"4371":[{"id":67312,"name":"Mîndreşti"},{"id":67330,"name":"Teleneşti"}],"4372":[{"id":67329,"name":"Taraclia"},{"id":67333,"name":"Tvardița"}],"4373":[{"id":67285,"name":"Chisinau"},{"id":67288,"name":"Ciorescu"},{"id":67292,"name":"Cricova"},{"id":67327,"name":"Sîngera"},{"id":67326,"name":"Stăuceni"},{"id":67336,"name":"Vadul lui Vodă"},{"id":67338,"name":"Vatra"}],"4374":[{"id":67324,"name":"Soroca"}],"4375":[{"id":67276,"name":"Briceni"}],"4376":[{"id":67321,"name":"Rîşcani"}],"4377":[{"id":67278,"name":"Bucovăţ"},{"id":67325,"name":"Strășeni"}],"4378":[{"id":67342,"name":"Ştefan Vodă"}],"4379":[{"id":67272,"name":"Basarabeasca"}],"4380":[{"id":67283,"name":"Cantemir"},{"id":67310,"name":"Iargara"},{"id":67339,"name":"Vişniovca"}],"4381":[{"id":67303,"name":"Fălești"}],"4382":[{"id":67296,"name":"Dancu"},{"id":67308,"name":"Hînceşti"}],"4383":[{"id":67289,"name":"Cocieri"},{"id":67335,"name":"Ustia"}],"4384":[{"id":67277,"name":"Briceni"},{"id":67298,"name":"Donduşeni"}],"4385":[{"id":67279,"name":"Bugeac"},{"id":67284,"name":"Ceadîr-Lunga"},{"id":67290,"name":"Comrat"},{"id":67340,"name":"Vulcăneşti"}],"4386":[{"id":67334,"name":"Ungheni"}],"4387":[{"id":67301,"name":"Edineţ"}],"4388":[{"id":67341,"name":"Şoldăneşti"}],"4389":[{"id":67315,"name":"Ocniţa"},{"id":67317,"name":"Otaci"}],"4390":[{"id":67293,"name":"Criuleni"}],"4391":[{"id":67281,"name":"Cahul"},{"id":67305,"name":"Giurgiuleşti"}],"4392":[{"id":67299,"name":"Drochia"}],"4393":[{"id":67280,"name":"Bălţi"}],"4394":[{"id":67319,"name":"Rezina"},{"id":67322,"name":"Saharna"}],"4395":[{"id":67282,"name":"Camenca"},{"id":67291,"name":"Crasnoe"},{"id":67297,"name":"Dnestrovsc"},{"id":67300,"name":"Dubăsari"},{"id":67307,"name":"Hryhoriopol"},{"id":67311,"name":"Maiac"},{"id":67318,"name":"Pervomaisc"},{"id":67320,"name":"Rîbniţa"},{"id":67323,"name":"Slobozia"},{"id":67331,"name":"Tiraspol"},{"id":67332,"name":"Tiraspolul Nou"}]}
+{
+  "4360": [{ "id": 67287, "name": "Cimişlia" }],
+  "4361": [{ "id": 67316, "name": "Orhei" }],
+  "4362": [{ "id": 67273, "name": "Bender" }],
+  "4363": [{ "id": 67314, "name": "Nisporeni" }],
+  "4364": [
+    { "id": 67274, "name": "Bilicenii Vechi" },
+    { "id": 67275, "name": "Biruinţa" },
+    { "id": 67328, "name": "Sîngerei" }
+  ],
+  "4365": [
+    { "id": 67295, "name": "Căuşeni" },
+    { "id": 67286, "name": "Chiţcani" }
+  ],
+  "4366": [{ "id": 67294, "name": "Călăraşi" }],
+  "4367": [{ "id": 67306, "name": "Glodeni" }],
+  "4368": [
+    { "id": 67271, "name": "Anenii Noi" },
+    { "id": 67337, "name": "Varniţa" }
+  ],
+  "4369": [{ "id": 67309, "name": "Ialoveni" }],
+  "4370": [
+    { "id": 67302, "name": "Floreşti" },
+    { "id": 67304, "name": "Ghindești" },
+    { "id": 67313, "name": "Mărculeşti" }
+  ],
+  "4371": [
+    { "id": 67312, "name": "Mîndreşti" },
+    { "id": 67330, "name": "Teleneşti" }
+  ],
+  "4372": [
+    { "id": 67329, "name": "Taraclia" },
+    { "id": 67333, "name": "Tvardița" }
+  ],
+  "4373": [
+    { "id": 67285, "name": "Chisinau" },
+    { "id": 67288, "name": "Ciorescu" },
+    { "id": 67292, "name": "Cricova" },
+    { "id": 67327, "name": "Sîngera" },
+    { "id": 67326, "name": "Stăuceni" },
+    { "id": 67336, "name": "Vadul lui Vodă" },
+    { "id": 67338, "name": "Vatra" }
+  ],
+  "4374": [{ "id": 67324, "name": "Soroca" }],
+  "4375": [{ "id": 67276, "name": "Briceni" }],
+  "4376": [{ "id": 67321, "name": "Rîşcani" }],
+  "4377": [
+    { "id": 67278, "name": "Bucovăţ" },
+    { "id": 67325, "name": "Strășeni" }
+  ],
+  "4378": [{ "id": 67342, "name": "Ştefan Vodă" }],
+  "4379": [{ "id": 67272, "name": "Basarabeasca" }],
+  "4380": [
+    { "id": 67283, "name": "Cantemir" },
+    { "id": 67310, "name": "Iargara" },
+    { "id": 67339, "name": "Vişniovca" }
+  ],
+  "4381": [{ "id": 67303, "name": "Fălești" }],
+  "4382": [
+    { "id": 67296, "name": "Dancu" },
+    { "id": 67308, "name": "Hînceşti" }
+  ],
+  "4383": [
+    { "id": 67289, "name": "Cocieri" },
+    { "id": 67335, "name": "Ustia" }
+  ],
+  "4384": [
+    { "id": 67277, "name": "Briceni" },
+    { "id": 67298, "name": "Donduşeni" }
+  ],
+  "4385": [
+    { "id": 67279, "name": "Bugeac" },
+    { "id": 67284, "name": "Ceadîr-Lunga" },
+    { "id": 67290, "name": "Comrat" },
+    { "id": 67340, "name": "Vulcăneşti" }
+  ],
+  "4386": [{ "id": 67334, "name": "Ungheni" }],
+  "4387": [{ "id": 67301, "name": "Edineţ" }],
+  "4388": [{ "id": 67341, "name": "Şoldăneşti" }],
+  "4389": [
+    { "id": 67315, "name": "Ocniţa" },
+    { "id": 67317, "name": "Otaci" }
+  ],
+  "4390": [{ "id": 67293, "name": "Criuleni" }],
+  "4391": [
+    { "id": 67281, "name": "Cahul" },
+    { "id": 67305, "name": "Giurgiuleşti" }
+  ],
+  "4392": [{ "id": 67299, "name": "Drochia" }],
+  "4393": [{ "id": 67280, "name": "Bălţi" }],
+  "4394": [
+    { "id": 67319, "name": "Rezina" },
+    { "id": 67322, "name": "Saharna" }
+  ],
+  "4395": [
+    { "id": 67282, "name": "Camenca" },
+    { "id": 67291, "name": "Crasnoe" },
+    { "id": 67297, "name": "Dnestrovsc" },
+    { "id": 67300, "name": "Dubăsari" },
+    { "id": 67307, "name": "Hryhoriopol" },
+    { "id": 67311, "name": "Maiac" },
+    { "id": 67318, "name": "Pervomaisc" },
+    { "id": 67320, "name": "Rîbniţa" },
+    { "id": 67323, "name": "Slobozia" },
+    { "id": 67331, "name": "Tiraspol" },
+    { "id": 67332, "name": "Tiraspolul Nou" }
+  ]
+}

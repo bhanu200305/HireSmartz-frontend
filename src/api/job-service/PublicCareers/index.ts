@@ -19,9 +19,17 @@ export type PublicJobLocation = {
   country: string | null;
 };
 
+// Matches job-service's actual PublicJobSkillResponse — there is no
+// `name`/`is_mandatory` on this contract (that shape belongs to internal
+// skill-catalogue dropdown options elsewhere in this codebase, a different
+// type entirely). "Mandatory" here is a string category
+// (`skill_type`), not a boolean, matched case-insensitively same as every
+// other skill_type check in this codebase (catalogue values aren't
+// guaranteed consistently cased).
 export type PublicJobSkill = {
-  name: string;
-  is_mandatory: boolean;
+  skill_label: string;
+  category: string;
+  skill_type: string;
 };
 
 export type PublicJobListing = {

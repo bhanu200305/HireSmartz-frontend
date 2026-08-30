@@ -590,8 +590,7 @@ select:focus {
   color: var(--gray-900) !important;
 }
 
-.ant-select-dropdown
-  .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+.ant-select-dropdown .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
   background-color: var(--gray-100) !important;
   color: var(--gray-900) !important;
   font-weight: 600 !important;
@@ -608,9 +607,7 @@ select:focus {
   color: var(--gray-900) !important;
 }
 
-.ant-picker-dropdown
-  .ant-picker-time-panel-cell-selected
-  .ant-picker-time-panel-cell-inner {
+.ant-picker-dropdown .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner {
   background-color: var(--gray-100) !important;
   color: var(--gray-900) !important;
   font-weight: 600 !important;
