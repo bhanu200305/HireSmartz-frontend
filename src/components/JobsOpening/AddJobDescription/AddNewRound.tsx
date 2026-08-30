@@ -28,9 +28,18 @@ const AddNewRound = () => {
     useJobOpeningDropdown('ROUNDS', 'create');
   const [saveInterviewRound, { isLoading }] = useSaveInterviewRoundMutation();
   const jobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
-  const editJobOpeningId = useSelector((state: RootState) => state.EditJobSlice.jobOpeningId);
   const jobFromPath = location.pathname.match(/\/jobs\/edit\/([^/]+)/)?.[1];
-  const resolvedJobId = asJobId(jobFromPath) || asJobId(editJobOpeningId) || asJobId(jobOpeningId);
+  // This page is also mounted create-mode at /interview-setup/add-new-round
+  // (no /jobs/edit/ prefix, so `jobFromPath` is undefined there) — where
+  // `jobOpeningId` (JobSlice, set when the wizard started) is the only
+  // correct source. `EditJobSlice`'s own jobOpeningId used to be consulted
+  // here too, ahead of it — a stale value left over from a previous
+  // Edit-mode visit silently overrode a freshly-created job's real id on
+  // this page, since Edit-mode never needs that fallback in the first
+  // place (`jobFromPath` already covers it). Same fix as
+  // AiQuestionsSetup.tsx's `activeJobOpeningId` — see that comment for the
+  // full "already published" report this addresses.
+  const resolvedJobId = asJobId(jobFromPath) || asJobId(jobOpeningId);
   const { data: rounds = [] } = useGetInterviewRoundsByJobIdQuery(resolvedJobId, {
     skip: !resolvedJobId,
   });
@@ -67,8 +76,8 @@ const AddNewRound = () => {
     if (!resolvedJobId) {
       // Previously a silent no-op — clicking Save did nothing and gave no
       // indication why. This only happens when the job's own details were
-      // never saved (no draft job id in JobSlice/EditJobSlice/the URL yet),
-      // so there is nothing for a round to attach to on the backend.
+      // never saved (no draft job id in JobSlice or the URL yet), so there
+      // is nothing for a round to attach to on the backend.
       showToast({
         message: 'Please save the job details first before adding an interview round.',
         type: 'error',

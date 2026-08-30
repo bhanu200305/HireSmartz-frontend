@@ -187,6 +187,11 @@ const JobDetails = () => {
     pollingInterval: 3000,
   });
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
+  // Guards the race-condition fallback below (see the AI-fill effect) —
+  // tracks which job id we've already applied the "status was already
+  // READY on first observation" fallback for, so it fires at most once per
+  // job rather than on every subsequent poll once status settles at READY.
+  const appliedAiFillJobIdRef = useRef<string | null>(null);
   const [enhanceJd] = useEnhanceJdMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
   const [createJobType] = useCreateJobTypeMutation();
@@ -672,7 +677,29 @@ const JobDetails = () => {
     const justFinishedGenerating =
       (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') &&
       currentStatus === 'READY';
-    if (!justFinishedGenerating) return;
+
+    // Race-condition fallback: on the Upload JD / AI Prompt entry paths,
+    // ai-service can finish parsing/generating before this page ever polls
+    // status even once — the job is created with jd_status PROCESSING/
+    // GENERATING (see UploadJdUseCase/create_from_prompt on the backend),
+    // but if that flips to READY before our first poll lands, the first
+    // status we ever observe here IS READY, with no PROCESSING/GENERATING
+    // seen in between — `justFinishedGenerating` above never fires and the
+    // AI-extracted fields are silently never applied. Catch that by also
+    // firing once per job the first time status is seen as READY, but only
+    // for entry paths that write JD content asynchronously — Manual/ATS
+    // jobs have no such race (their JD, if any, is present from creation,
+    // or written only in response to a click made after this page already
+    // mounted, so the transition above is always observable for those).
+    const entryPath = jdDetailsForGate?.entryPath;
+    const isAsyncJdEntryPath = entryPath === 'UPLOAD_JD' || entryPath === 'AI_PROMPT';
+    const racedStraightToReady =
+      currentStatus === 'READY' &&
+      isAsyncJdEntryPath &&
+      appliedAiFillJobIdRef.current !== resolvedJobId;
+
+    if (!justFinishedGenerating && !racedStraightToReady) return;
+    appliedAiFillJobIdRef.current = resolvedJobId;
 
     void refetchJdDetailsForGate().then((result) => {
       const fresh = result.data;
@@ -760,7 +787,14 @@ const JobDetails = () => {
         });
       }
     });
-  }, [jdStatusForHydration?.status, refetchJdDetailsForGate, getValues, setValue]);
+  }, [
+    jdStatusForHydration?.status,
+    jdDetailsForGate?.entryPath,
+    resolvedJobId,
+    refetchJdDetailsForGate,
+    getValues,
+    setValue,
+  ]);
 
   useEffect(() => {
     if (!selectedLocationDetails) return;

@@ -62,7 +62,6 @@ const AiQuestionsSetup = () => {
   const { pathname } = useLocation();
   const { id } = useParams<{ id?: string }>();
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
-  const editJobOpeningId = useSelector((state: RootState) => state.EditJobSlice.jobOpeningId);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
@@ -84,9 +83,19 @@ const AiQuestionsSetup = () => {
 
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
 
+  // `id` only exists on the Edit-mode route (/jobs/edit/:id/...); this
+  // page is also mounted create-mode at the id-less /ai-questions, where
+  // `reduxJobOpeningId` (JobSlice, set by useStartManualJobOpening when
+  // the wizard started) is the only correct source. `EditJobSlice`'s own
+  // jobOpeningId used to be consulted here too, ahead of this — a stale
+  // value left over from a previous Edit-mode visit silently overrode a
+  // freshly-created job's real id on this page, since Edit-mode never
+  // needs that fallback in the first place (its routes already carry
+  // `:id`, resolved above). See the "already published" report this
+  // fixes — a fresh Manual job kept landing back on an old published one.
   const activeJobOpeningId = useMemo(
-    () => asJobId(id) || asJobId(editJobOpeningId) || asJobId(reduxJobOpeningId),
-    [id, reduxJobOpeningId, editJobOpeningId]
+    () => asJobId(id) || asJobId(reduxJobOpeningId),
+    [id, reduxJobOpeningId]
   );
 
   const { data: roundTypes = [] } = useListInterviewRoundTypesQuery();
