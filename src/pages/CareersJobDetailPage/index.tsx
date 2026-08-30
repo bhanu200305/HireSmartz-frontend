@@ -134,11 +134,11 @@ export const CareersJobDetailPage = () => {
               )}
               {job.skills.map((skill) => (
                 <span
-                  key={skill.name}
+                  key={skill.skill_label}
                   className="px-3 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-600 bg-white"
                 >
-                  {skill.name}
-                  {skill.is_mandatory ? '' : ' (preferred)'}
+                  {skill.skill_label}
+                  {skill.skill_type.toLowerCase() === 'mandatory' ? '' : ' (preferred)'}
                 </span>
               ))}
             </div>

@@ -30,7 +30,7 @@ const JobScoringCriteriaPage = () => {
     );
   }
 
-  return <JobScoringCriteriaTab jobId={jobId} isViewMode={isViewMode} />;
+  return <JobScoringCriteriaTab jobId={jobId} isViewMode={isViewMode} isEditMode={isEditMode} />;
 };
 
 export default JobScoringCriteriaPage;

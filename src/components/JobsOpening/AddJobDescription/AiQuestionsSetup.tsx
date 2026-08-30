@@ -98,6 +98,22 @@ const AiQuestionsSetup = () => {
     [id, reduxJobOpeningId]
   );
 
+  // `/jobs/edit/:id/...` is used for TWO different situations: finishing a
+  // draft that was never published (Job Openings list's "Edit" action on a
+  // draft), and touching up a job that's already live. Only the second one
+  // should skip publishing — the job is already public, so this step's job
+  // is just to save the questions and return to the (now up to date) view
+  // page. The first case still needs the exact same validate-then-publish
+  // call the create wizard uses below, or a draft opened via Edit could
+  // never actually be published at all. `EditJobSlice.isDraft` is set by
+  // JobsOpening.tsx (the stable parent for this whole edit route) from the
+  // job's own `is_draft` the moment it loads, so it's reliably in place by
+  // the time this, the last step, is reached.
+  const isEditRoute = pathname.includes('/edit/') && Boolean(id);
+  const isEditingAlreadyPublishedJob = useSelector(
+    (state: RootState) => isEditRoute && !state.EditJobSlice.isDraft
+  );
+
   const { data: roundTypes = [] } = useListInterviewRoundTypesQuery();
   const audioRoundTypeIds = useMemo(
     () => new Set(roundTypes.filter((item) => item.is_audio_round).map((item) => item.round_id)),
@@ -320,8 +336,7 @@ const AiQuestionsSetup = () => {
 
   const handlePublishOrFinish = async () => {
     dispatch(stopStream());
-    const isEdit = pathname.includes('/edit/') && id;
-    if (isEdit) {
+    if (isEditingAlreadyPublishedJob) {
       navigate(`/jobs/view/${id}/details`);
       return;
     }
@@ -337,7 +352,7 @@ const AiQuestionsSetup = () => {
       }
       await publishJob(activeJobOpeningId).unwrap();
       showToast({ message: 'Job opening published', type: 'success' });
-      navigate('/jobs');
+      navigate(isEditRoute ? `/jobs/view/${id}/details` : '/jobs');
     } catch (err) {
       showToast({
         message: getJobErrorMessage(err, 'Failed to publish job opening'),
@@ -529,7 +544,7 @@ const AiQuestionsSetup = () => {
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
             onClick={() => void handlePublishOrFinish()}
           >
-            {pathname.includes('/edit/') ? 'SAVE & FINISH' : '✓ PUBLISH JOB OPENING'}
+            {isEditingAlreadyPublishedJob ? 'SAVE & FINISH' : '✓ PUBLISH JOB OPENING'}
           </Button>
         </div>
         <Outlet />
