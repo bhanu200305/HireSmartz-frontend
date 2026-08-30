@@ -252,7 +252,9 @@ export const CareersApplyPage = () => {
                   borderColor: firstNameError ? '#ef4444' : undefined,
                 }}
               />
-              {firstNameError && <p className="text-sm text-red-500 mt-1">First name is required</p>}
+              {firstNameError && (
+                <p className="text-sm text-red-500 mt-1">First name is required</p>
+              )}
             </div>
             <div>
               <label htmlFor="lastName" className="block text-sm font-medium text-gray-800 mb-2">

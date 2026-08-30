@@ -50,7 +50,13 @@ const Dashboard = () => {
       month: interviewFilters.month,
       isOwner: role?.type === 'owner' ? true : false,
     });
-  }, [interviewFilters.year, interviewFilters.month, isPlatformCaller, canViewInterviews, role?.type]);
+  }, [
+    interviewFilters.year,
+    interviewFilters.month,
+    isPlatformCaller,
+    canViewInterviews,
+    role?.type,
+  ]);
 
   const greeting = (() => {
     const hour = new Date().getHours();

@@ -36,8 +36,11 @@ export class WidgetErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    // eslint-disable-next-line no-console
-    console.error(`[WidgetErrorBoundary${this.props.label ? `: ${this.props.label}` : ''}]`, error, info);
+    console.error(
+      `[WidgetErrorBoundary${this.props.label ? `: ${this.props.label}` : ''}]`,
+      error,
+      info
+    );
   }
 
   render(): ReactNode {
