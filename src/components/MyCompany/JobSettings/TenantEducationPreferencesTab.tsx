@@ -11,7 +11,9 @@ import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogForm
 
 type FormValues = { name: string };
 const emptyForm: FormValues = { name: '' };
-const fields: CatalogField<FormValues>[] = [{ name: 'name', label: 'Name', type: 'text', required: true }];
+const fields: CatalogField<FormValues>[] = [
+  { name: 'name', label: 'Name', type: 'text', required: true },
+];
 
 /** GET/POST/PUT/DELETE /education-preferences — this organization's own
  * configured education-preference catalogue. What a job's Education

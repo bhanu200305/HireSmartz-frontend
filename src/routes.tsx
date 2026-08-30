@@ -115,6 +115,9 @@ const PublicJobDetailPage = lazy(() => import('./pages/PublicJobDetailPage'));
 const PublicJobApplyPage = lazy(() => import('./pages/PublicJobApplyPage'));
 const PublicJobSuccessPage = lazy(() => import('./pages/PublicJobSuccessPage'));
 const PublicInterviewConsentPage = lazy(() => import('./pages/PublicInterviewConsentPage'));
+const CareersListingPage = lazy(() => import('./pages/CareersListingPage'));
+const CareersJobDetailPage = lazy(() => import('./pages/CareersJobDetailPage'));
+const CareersApplyPage = lazy(() => import('./pages/CareersApplyPage'));
 
 // Lazy load components
 const JobDetails = lazy(() => import('./components/JobsOpening/AddJobDescription/jobdetails'));
@@ -313,6 +316,29 @@ export const Routes: RouteType[] = [
     name: 'PublicInterviewConsent',
     path: '/public/interview/consent',
     component: PublicInterviewConsentPage,
+    isOpen: true,
+  },
+  {
+    // Where organization-service's tenant QR code (GenerateTenantQrCodeUseCase)
+    // sends a candidate — :organizationId is the same UUID as the tenant_id
+    // the QR was generated for. Backed by job-service's new public router
+    // (GET /public/organizations/{organization_id}/jobs), not the old
+    // PublicQr/candidate-service flow above.
+    name: 'CareersListing',
+    path: '/careers/:organizationId',
+    component: CareersListingPage,
+    isOpen: true,
+  },
+  {
+    name: 'CareersJobDetail',
+    path: '/careers/:organizationId/jobs/:jobId',
+    component: CareersJobDetailPage,
+    isOpen: true,
+  },
+  {
+    name: 'CareersApply',
+    path: '/careers/:organizationId/jobs/:jobId/apply',
+    component: CareersApplyPage,
     isOpen: true,
   },
   {

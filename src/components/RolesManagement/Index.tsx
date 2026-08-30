@@ -70,7 +70,12 @@ const RolesManagement: React.FC = () => {
         // Real office_id (UUID) — PUT .../permissions needs this exact id
         // as location_id for an override to resolve to anything server-side.
         id: office.office_id,
-        name: office.state ? `${office.city}, ${office.state}` : office.city,
+        // City/state alone isn't unique — a tenant with two offices in the
+        // same city needs the street address to tell them apart when setting
+        // DIFFERENT per-location permissions here (recall: two Mohali
+        // offices both showing "Mohali" made it impossible to tell which one
+        // was being edited). Matches the convention RoleLocationPicker uses.
+        name: `${office.city} — ${office.address_line_1}`,
       })),
     [offices]
   );

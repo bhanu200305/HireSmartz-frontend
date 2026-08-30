@@ -64,7 +64,11 @@ const SkillsTab: React.FC = () => {
             </div>
           ),
         },
-        { title: 'Category', key: 'category', render: (_, item) => categoryName(item.skill_category_id) },
+        {
+          title: 'Category',
+          key: 'category',
+          render: (_, item) => categoryName(item.skill_category_id),
+        },
         { title: 'Description', key: 'description', render: (_, item) => item.description || '—' },
       ]}
       fields={fields}

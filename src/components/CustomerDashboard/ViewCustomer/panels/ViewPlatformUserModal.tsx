@@ -7,7 +7,12 @@ import ConfirmationModal from '../../../shared/ui/ConfirmationModal';
 import type { OrgUser } from '../../../../api/organization-service/Users/users';
 import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-service/Platform/offices';
 import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organization-service/Platform/departments';
-import { useUpdatePlatformTenantUserMutation } from '../../../../api/organization-service/Platform/users';
+import {
+  useUpdatePlatformTenantUserMutation,
+  useListPlatformTenantUserLocationsQuery,
+  useAttachPlatformTenantUserLocationMutation,
+  useDetachPlatformTenantUserLocationMutation,
+} from '../../../../api/organization-service/Platform/users';
 import {
   useAssignRoleAsPlatformMutation,
   useRevokeRoleAsPlatformMutation,
@@ -105,11 +110,17 @@ const ALL_LOCATIONS = '__ALL__';
  * own multi-select) — the backend has no bulk shape, only one location_id
  * per assignment, so this fires one call per selected location.
  *
- * Does NOT attempt an "Attached locations" section the way
- * ViewOrganisationUser has one — `GET/POST/DELETE /v1/users/{id}/locations`
- * only exists on the tenant-ambient router, with no platform-mounted mirror
- * anywhere in this service. That's a real backend gap, not something to
- * fake here.
+ * ATTACHED LOCATIONS (new): granting a role scoped to an office ONLY writes
+ * `organization_role` — it does not attach the holder there. That gap is
+ * exactly what left a location-scoped grant invisible in the HOLDER's OWN
+ * portal: `useActiveLocation`'s switcher reads `user_location_mapping` (via
+ * `dashboard.available_locations`), a separate HR fact nothing else writes.
+ * So `handleAssign` below now attaches the user to every location a grant
+ * just succeeded at, and the "Attached locations" section (the platform
+ * mirror of `ViewOrganisationUser`'s own — `GET/POST/DELETE
+ * /v1/platform/tenants/{tenant_id}/users/{user_id}/locations`, previously a
+ * real backend gap, now closed the same "bind explicitly" way as every
+ * other route in this file) lets an admin fix or extend that by hand too.
  */
 const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
   open,
@@ -129,6 +140,11 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
       { tenantId, userId: user?.user_id ?? '' },
       { skip: !open || !tenantId || !user }
     );
+  const { data: userLocations, isFetching: isUserLocationsLoading } =
+    useListPlatformTenantUserLocationsQuery(
+      { tenantId, userId: user?.user_id ?? '' },
+      { skip: !open || !tenantId || !user }
+    );
 
   const [viewLocationId, setViewLocationId] = useState<string>(ALL_LOCATIONS);
   const { data: dashboard, isFetching: isPermissionsLoading } = useGetPlatformUserDashboardQuery(
@@ -143,6 +159,13 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
   const [assignRole, { isLoading: isAssigning }] = useAssignRoleAsPlatformMutation();
   const [revokeRole, { isLoading: isRevoking }] = useRevokeRoleAsPlatformMutation();
   const [updateUser, { isLoading: isSaving }] = useUpdatePlatformTenantUserMutation();
+  const [attachLocation, { isLoading: isAttachingLocation }] =
+    useAttachPlatformTenantUserLocationMutation();
+  const [detachLocation, { isLoading: isDetachingLocation }] =
+    useDetachPlatformTenantUserLocationMutation();
+  const [pendingAttachLocationId, setPendingAttachLocationId] = useState<string | undefined>(
+    undefined
+  );
 
   const [roleId, setRoleId] = useState<string | undefined>(undefined);
   const [locationIds, setLocationIds] = useState<string[]>([]);
@@ -190,6 +213,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
     setShowAssign(false);
     setIsEditing(false);
     setEditForm(null);
+    setPendingAttachLocationId(undefined);
     onClose();
   };
 
@@ -202,6 +226,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
     // own per-location overrides), so naming every office is the point.
     const targets: (string | null)[] = locationIds.length > 0 ? locationIds : [null];
     const failures: string[] = [];
+    const attachFailures: string[] = [];
     let successCount = 0;
     for (const target of targets) {
       try {
@@ -213,6 +238,28 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
         }).unwrap();
         successCount += 1;
         void result;
+
+        // Granting a role scoped to an office only writes organization_role
+        // — it doesn't attach the holder there, so their OWN location
+        // switcher (useActiveLocation, reading dashboard.available_locations)
+        // would stay empty for a spot they just gained a role at. Best-effort
+        // and silent when they're already attached (DUPLICATE_USER_LOCATION_MAPPING
+        // — not a problem, just means someone attached them earlier); a
+        // genuine failure here is surfaced separately below rather than
+        // silently leaving the switcher broken again.
+        if (target) {
+          try {
+            await attachLocation({
+              tenantId,
+              userId: user.user_id,
+              orgAddressLocationId: target,
+            }).unwrap();
+          } catch (attachErr) {
+            if (getOrgErrorCode(attachErr) !== 'DUPLICATE_USER_LOCATION_MAPPING') {
+              attachFailures.push(officeLabel(target));
+            }
+          }
+        }
       } catch (err) {
         const label = target ? officeLabel(target) : 'Applies everywhere';
         // DUPLICATE_ROLE_ASSIGNMENT's raw message is a bare user_id +
@@ -238,10 +285,39 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
         type: 'error',
       });
     }
+    if (attachFailures.length > 0) {
+      showToast({
+        message: `Role granted, but ${user.full_name} couldn't be attached to: ${attachFailures.join(', ')}. Their own location switcher won't show ${attachFailures.length === 1 ? 'it' : 'these'} until attached from "Attached locations" below.`,
+        type: 'error',
+      });
+    }
     if (failures.length === 0) {
       setRoleId(undefined);
       setLocationIds([]);
       setShowAssign(false);
+    }
+  };
+
+  const handleAttachLocation = async () => {
+    if (!user || !pendingAttachLocationId) return;
+    try {
+      await attachLocation({
+        tenantId,
+        userId: user.user_id,
+        orgAddressLocationId: pendingAttachLocationId,
+      }).unwrap();
+      setPendingAttachLocationId(undefined);
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to attach location.'), type: 'error' });
+    }
+  };
+
+  const handleDetachLocation = async (orgAddressLocationId: string) => {
+    if (!user) return;
+    try {
+      await detachLocation({ tenantId, userId: user.user_id, orgAddressLocationId }).unwrap();
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to detach location.'), type: 'error' });
     }
   };
 
@@ -485,6 +561,75 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                   Cancel
                 </Button>
               </div>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-4 border-t border-gray-100">
+          <Typography variant="subtitle1" className="mb-1 block">
+            Attached locations
+          </Typography>
+          <p className="text-xs text-gray-500 mb-3">
+            Offices this person is attached to — this is what powers the location switcher on their
+            OWN dashboard. Granting a role at an office (above) attaches them here automatically;
+            use this to fix or extend that by hand.
+          </p>
+
+          {isUserLocationsLoading ? (
+            <p className="text-sm text-gray-400 mb-3">Loading…</p>
+          ) : (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {(userLocations?.org_address_location_ids ?? []).length === 0 ? (
+                <p className="text-sm text-gray-400">Not attached to any office yet.</p>
+              ) : (
+                userLocations?.org_address_location_ids.map((id) => (
+                  <span
+                    key={id}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 pl-3 pr-1.5 py-1 text-sm text-gray-700"
+                  >
+                    {officeLabel(id)}
+                    {displayUser.is_active && (
+                      <button
+                        type="button"
+                        aria-label={`Detach ${officeLabel(id)}`}
+                        disabled={isDetachingLocation}
+                        onClick={() => handleDetachLocation(id)}
+                        className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50"
+                      >
+                        <MdClose size={14} />
+                      </button>
+                    )}
+                  </span>
+                ))
+              )}
+            </div>
+          )}
+
+          {displayUser.is_active && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select
+                allowClear
+                className="w-full max-w-xs"
+                placeholder="Select an office…"
+                value={pendingAttachLocationId}
+                onChange={(value) => setPendingAttachLocationId(value ?? undefined)}
+                options={(offices ?? [])
+                  .filter(
+                    (office) =>
+                      !(userLocations?.org_address_location_ids ?? []).includes(office.office_id)
+                  )
+                  .map((office) => ({
+                    label: officeLabel(office.office_id),
+                    value: office.office_id,
+                  }))}
+              />
+              <Button
+                className="text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-2 disabled:opacity-40"
+                onClick={handleAttachLocation}
+                disabled={!pendingAttachLocationId || isAttachingLocation}
+              >
+                {isAttachingLocation ? 'Attaching…' : '+ Attach location'}
+              </Button>
             </div>
           )}
         </div>

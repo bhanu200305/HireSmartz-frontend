@@ -257,7 +257,15 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={jobData?.data.jobProfileCode || ''}
                 disabled
               />
@@ -315,7 +323,15 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={jobTypeName}
                 disabled
               />
@@ -324,7 +340,15 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={jobData?.data.shift || ''}
                 disabled
               />
@@ -333,7 +357,15 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={selectedLanguageNames.length ? selectedLanguageNames.join(', ') : '—'}
                 disabled
               />
@@ -389,7 +421,15 @@ const ViewJobDetails = () => {
             >
               <Input
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationDisplayName}
                 disabled
               />
@@ -398,7 +438,15 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Location Code</span>}>
               <Input
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationCode}
                 disabled
               />
@@ -409,7 +457,15 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Address Line 1</span>}>
               <Input
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationAddressLine1}
                 disabled
               />
@@ -417,7 +473,15 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Address Line 2</span>}>
               <Input
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationAddressLine2}
                 disabled
               />
@@ -428,7 +492,15 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>City</span>}>
               <Input
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationCity}
                 disabled
               />
@@ -436,7 +508,15 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>State</span>}>
               <Input
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationState}
                 disabled
               />
@@ -444,7 +524,15 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Zip Code</span>}>
               <Input
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationZipCode}
                 disabled
               />
@@ -452,7 +540,15 @@ const ViewJobDetails = () => {
             <Form.Item label={<span>Country</span>}>
               <Input
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={locationCountry}
                 disabled
               />
@@ -565,7 +661,15 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={
                   jobData?.data.openDate
                     ? dayjs(jobData.data.openDate, 'DD-MM-YYYY').format('MMM DD, YYYY')
@@ -584,7 +688,15 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={jobData?.data.openings || ''}
                 disabled
               />
@@ -596,9 +708,7 @@ const ViewJobDetails = () => {
             <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
               <MdOutlineAttachMoney size={16} />
             </span>
-            <span className="text-base font-bold text-neutral-900 font-display">
-              Salary Status
-            </span>
+            <span className="text-base font-bold text-neutral-900 font-display">Salary Status</span>
           </div>
           <div className="grid grid-cols-3 gap-x-4 mt-2">
             <Form.Item
@@ -611,7 +721,15 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={jobData?.data.exemptionStatus?.statusName || ''}
                 disabled
               />
@@ -633,7 +751,15 @@ const ViewJobDetails = () => {
                 suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
                 placeholder="Minimum Salary"
                 className="w-full !lowercase"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 intlConfig={{ locale: 'en-US', currency: 'USD' }}
               />
               {/* <Input
@@ -661,7 +787,15 @@ const ViewJobDetails = () => {
                 suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
                 placeholder="Maximum Salary"
                 className="w-full !lowercase"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 intlConfig={{ locale: 'en-US', currency: 'USD' }}
               />
               {/* <Input
@@ -686,7 +820,15 @@ const ViewJobDetails = () => {
               suffix={jobData?.data.exemptionStatus?.statusName === 'Exempt' ? '' : '/hr'}
               // placeholder="Referral Bonus"
               className="w-full !lowercase"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                boxShadow: 'none',
+                color: '#111827',
+                fontWeight: 600,
+                fontSize: '13px',
+              }}
               intlConfig={{ locale: 'en-US', currency: 'USD' }}
             />
           </Form.Item>
@@ -700,7 +842,15 @@ const ViewJobDetails = () => {
             <Input
               type="text"
               className="w-full mt-1"
-              style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                boxShadow: 'none',
+                color: '#111827',
+                fontWeight: 600,
+                fontSize: '13px',
+              }}
               value={jobData?.data.minExperience ?? ''}
               disabled
             />
@@ -709,7 +859,15 @@ const ViewJobDetails = () => {
             <Input
               type="text"
               className="w-full mt-1"
-              style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                boxShadow: 'none',
+                color: '#111827',
+                fontWeight: 600,
+                fontSize: '13px',
+              }}
               value={jobData?.data.maxExperience ?? ''}
               disabled
             />
@@ -727,7 +885,15 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full mt-1 mb-2"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={
                   jobData?.data.mandatorySkills?.length
                     ? `${jobData.data.mandatorySkills.length} skills selected`
@@ -760,7 +926,15 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full mt-1 mb-2"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={
                   jobData?.data.optionalSkills?.length
                     ? `${jobData.data.optionalSkills.length} skills selected`
@@ -795,7 +969,15 @@ const ViewJobDetails = () => {
               <Input
                 type="text"
                 className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  boxShadow: 'none',
+                  color: '#111827',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                }}
                 value={
                   jobData?.data.educationPreference
                     ?.map(

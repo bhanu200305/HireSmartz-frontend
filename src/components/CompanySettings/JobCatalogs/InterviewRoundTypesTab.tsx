@@ -44,7 +44,11 @@ const fields: CatalogField<FormValues>[] = [
     label: 'Auto-seeds on job creation and locks against removal',
     type: 'boolean',
   },
-  { name: 'max_occurrences', label: 'Max occurrences per job (optional, blank = unlimited)', type: 'number' },
+  {
+    name: 'max_occurrences',
+    label: 'Max occurrences per job (optional, blank = unlimited)',
+    type: 'number',
+  },
   { name: 'requires_duration', label: 'Recruiter must set a duration', type: 'boolean' },
   {
     name: 'available_variants',

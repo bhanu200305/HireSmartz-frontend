@@ -50,7 +50,13 @@ const InterviewSetup = () => {
   };
 
   const handleRoundsReorder = async (reorderedRounds: any[]) => {
-    if (!jobOpeningId) return;
+    if (!jobOpeningId) {
+      showToast({
+        message: 'Please save the job details first before reordering interview rounds.',
+        type: 'error',
+      });
+      return;
+    }
     try {
       const result = await reorderInterviewRounds({
         jobOpeningId,
@@ -73,7 +79,14 @@ const InterviewSetup = () => {
     }
   };
   const confirmDelete = () => {
-    if (selectedRoundId === null || isDeleting || !jobOpeningId) return;
+    if (selectedRoundId === null || isDeleting) return;
+    if (!jobOpeningId) {
+      showToast({
+        message: 'Please save the job details first before deleting an interview round.',
+        type: 'error',
+      });
+      return;
+    }
 
     const remaining = (data ?? []).filter((round) => String(round.id) !== String(selectedRoundId));
     deleteInterviewRound({
@@ -112,7 +125,17 @@ const InterviewSetup = () => {
             button={
               <Button
                 className="text-white bg-button rounded-3xl px-4 py-2 flex items-center space-x-2 cursor-pointer"
-                onClick={() => navigate('add-new-round')}
+                onClick={() => {
+                  if (!jobOpeningId) {
+                    showToast({
+                      message:
+                        'Please save the job details first before adding an interview round.',
+                      type: 'error',
+                    });
+                    return;
+                  }
+                  navigate('add-new-round');
+                }}
               >
                 <HiOutlinePlus className="text-lg" /> <span>ADD NEW ROUND</span>
               </Button>

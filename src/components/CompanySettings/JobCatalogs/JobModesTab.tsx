@@ -41,7 +41,10 @@ const JobModesTab: React.FC = () => {
       emptyForm={emptyForm}
       toFormValues={(item) => ({ name: item.name, description: item.description || '' })}
       onCreate={(values) =>
-        create({ name: values.name.trim(), description: values.description.trim() || undefined }).unwrap()
+        create({
+          name: values.name.trim(),
+          description: values.description.trim() || undefined,
+        }).unwrap()
       }
       onUpdate={(id, values) =>
         update({

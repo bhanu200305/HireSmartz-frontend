@@ -28,6 +28,17 @@ const useActiveLocation = () => {
   // call useEffectivePermissions makes for the active location, so RTK
   // Query serves this from one shared cache entry rather than firing a
   // second request.
+  //
+  // `dashboard.available_locations[].label` is trusted as-is, not rebuilt
+  // client-side against a separate office fetch: an earlier version of this
+  // hook did that to disambiguate two same-city offices, but the office
+  // list needs `location:read` — a permission plenty of ordinary tenant
+  // users (this hook runs for EVERY tenant session) don't hold, so that
+  // fetch silently failed and the switcher fell back to the ambiguous label
+  // anyway. The real fix lives server-side now: resolve_user_dashboard.py
+  // itself builds `city — address_line_1` whenever no location_code is set,
+  // so every caller gets a disambiguated label with no extra permission
+  // needed.
   const roleLocations = resolvedRole?.locationPermissions ?? [];
   const isLiveTenantSession = !resolvedRole && !!userId && callerKind === 'tenant';
   const { data: dashboard, isFetching } = useGetUserDashboardQuery(

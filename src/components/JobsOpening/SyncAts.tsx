@@ -53,50 +53,50 @@ const SyncAts = () => {
           </button>
         </div>
         <div className="px-6 pt-5 pb-6">
-        <Form layout="vertical" onFinish={handleSubmit(onSubmit)}>
-          <Form.Item
-            label={<span className="text-sm font-semibold text-neutral-700">Select ATS</span>}
-          >
-            <Controller
-              name="ats"
-              control={control}
-              render={({ field }) => (
-                <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl ">
-                  <Select
-                    {...field}
-                    value={field.value || undefined}
-                    onChange={(value) => setValue('ats', value, { shouldValidate: true })}
-                    className="w-full custom-select placeholder-style"
-                    showSearch
-                    allowClear
-                    placeholder="Select ATS"
-                    popupClassName="rounded-3xl"
-                    loading={atsLoading}
-                    filterOption={(input, option) =>
-                      (option?.children ?? '')
-                        .toString()
-                        .toLowerCase()
-                        .includes(input.toLowerCase())
-                    }
-                  >
-                    {atsData?.success ? (
-                      atsData.data.map((ats) => (
-                        <Option key={ats.id} value={ats.name}>
-                          {ats.name}
+          <Form layout="vertical" onFinish={handleSubmit(onSubmit)}>
+            <Form.Item
+              label={<span className="text-sm font-semibold text-neutral-700">Select ATS</span>}
+            >
+              <Controller
+                name="ats"
+                control={control}
+                render={({ field }) => (
+                  <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl ">
+                    <Select
+                      {...field}
+                      value={field.value || undefined}
+                      onChange={(value) => setValue('ats', value, { shouldValidate: true })}
+                      className="w-full custom-select placeholder-style"
+                      showSearch
+                      allowClear
+                      placeholder="Select ATS"
+                      popupClassName="rounded-3xl"
+                      loading={atsLoading}
+                      filterOption={(input, option) =>
+                        (option?.children ?? '')
+                          .toString()
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
+                      }
+                    >
+                      {atsData?.success ? (
+                        atsData.data.map((ats) => (
+                          <Option key={ats.id} value={ats.name}>
+                            {ats.name}
+                          </Option>
+                        ))
+                      ) : (
+                        <Option value="no-data" disabled>
+                          No ATS available
                         </Option>
-                      ))
-                    ) : (
-                      <Option value="no-data" disabled>
-                        No ATS available
-                      </Option>
-                    )}
-                  </Select>
-                </div>
-              )}
-            />
-            {errors.ats && <p className="text-red-500 text-sm mt-1">{errors.ats.message}</p>}
-          </Form.Item>
-          {/* <div className="mb-4">
+                      )}
+                    </Select>
+                  </div>
+                )}
+              />
+              {errors.ats && <p className="text-red-500 text-sm mt-1">{errors.ats.message}</p>}
+            </Form.Item>
+            {/* <div className="mb-4">
             <span className="block bold-lg text-lg mb-2">Select Job Boards</span>
             <p className="text-sm mb-3">Select when you want to post this job:</p>
 
@@ -124,13 +124,13 @@ const SyncAts = () => {
             />
           </div> */}
 
-          <button
-            type="submit"
-            className="bg-primary text-white py-2 w-full rounded-3xl cursor-pointer transition"
-          >
-            Save Now
-          </button>
-        </Form>
+            <button
+              type="submit"
+              className="bg-primary text-white py-2 w-full rounded-3xl cursor-pointer transition"
+            >
+              Save Now
+            </button>
+          </Form>
         </div>
       </div>
     </div>

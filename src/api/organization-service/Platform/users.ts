@@ -4,6 +4,7 @@ import type {
   ListUsersResponse,
   OrgUser,
   UpdateUserRequest,
+  UserLocationsResponse,
 } from '../Users/users';
 
 // Super Admin's platform-mounted mirror of Users/users.ts — same
@@ -29,6 +30,18 @@ export type UpdatePlatformTenantUserRequest = UpdateUserRequest & {
 };
 
 const usersBasePath = (tenantId: string): string => `/v1/platform/tenants/${tenantId}/users`;
+
+// Attached offices — the platform mirror of Users/users.ts's own
+// GET/POST/DELETE .../locations. An HR fact ("which offices is this person
+// attached to"), not an authorization one — organization_role never reads
+// user_location_mapping. THIS IS WHAT A LOCATION-SCOPED ROLE GRANT DOES NOT
+// DO ON ITS OWN: granting "head_recruiter" at Office A only writes
+// organization_role; it never attaches the holder to Office A, so their own
+// location switcher (useActiveLocation, reading GET .../dashboard's
+// available_locations) stays empty until someone attaches them separately.
+// See RoleLocationPicker's callers — they call attachPlatformTenantUserLocation
+// alongside every location-scoped assignRole for exactly this reason.
+export type PlatformTenantUserLocationArgs = { tenantId: string; userId: string };
 
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
@@ -96,6 +109,40 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'OrgUsers', id: `platform-${tenantId}` },
       ],
     }),
+    listPlatformTenantUserLocations: build.query<
+      UserLocationsResponse,
+      PlatformTenantUserLocationArgs
+    >({
+      query: ({ tenantId, userId }) => `${usersBasePath(tenantId)}/${userId}/locations`,
+      providesTags: (_result, _error, { userId }) => [{ type: 'UserLocations', id: userId }],
+    }),
+    attachPlatformTenantUserLocation: build.mutation<
+      UserLocationsResponse,
+      PlatformTenantUserLocationArgs & { orgAddressLocationId: string }
+    >({
+      query: ({ tenantId, userId, orgAddressLocationId }) => ({
+        url: `${usersBasePath(tenantId)}/${userId}/locations`,
+        method: 'POST',
+        body: { org_address_location_id: orgAddressLocationId },
+      }),
+      invalidatesTags: (_result, _error, { userId }) => [
+        { type: 'UserLocations', id: userId },
+        { type: 'UserPermissions', id: userId },
+      ],
+    }),
+    detachPlatformTenantUserLocation: build.mutation<
+      void,
+      PlatformTenantUserLocationArgs & { orgAddressLocationId: string }
+    >({
+      query: ({ tenantId, userId, orgAddressLocationId }) => ({
+        url: `${usersBasePath(tenantId)}/${userId}/locations/${orgAddressLocationId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, { userId }) => [
+        { type: 'UserLocations', id: userId },
+        { type: 'UserPermissions', id: userId },
+      ],
+    }),
   }),
 });
 
@@ -105,4 +152,7 @@ export const {
   useUpdatePlatformTenantUserMutation,
   useDeactivatePlatformTenantUserMutation,
   useReactivatePlatformTenantUserMutation,
+  useListPlatformTenantUserLocationsQuery,
+  useAttachPlatformTenantUserLocationMutation,
+  useDetachPlatformTenantUserLocationMutation,
 } = extendedApi;

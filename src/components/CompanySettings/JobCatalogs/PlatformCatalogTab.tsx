@@ -55,9 +55,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
   onDelete,
   deleteConfirmTitle,
 }: PlatformCatalogTabProps<TItem, TFormValues>) {
-  const [modalState, setModalState] = useState<{ mode: 'add' | 'edit'; item?: TItem } | null>(
-    null
-  );
+  const [modalState, setModalState] = useState<{ mode: 'add' | 'edit'; item?: TItem } | null>(null);
   const [form, setForm] = useState<TFormValues>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<TItem | null>(null);
@@ -203,7 +201,11 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
       <AntdCommonModal
         open={modalState !== null}
         onClose={() => setModalState(null)}
-        title={modalState?.mode === 'edit' ? `Edit ${itemNounSingular.toLowerCase()}` : `Add ${itemNounSingular.toLowerCase()}`}
+        title={
+          modalState?.mode === 'edit'
+            ? `Edit ${itemNounSingular.toLowerCase()}`
+            : `Add ${itemNounSingular.toLowerCase()}`
+        }
       >
         <div className="flex flex-col gap-4">
           <CatalogFormFields fields={fields} values={form} onChange={setForm} />

@@ -39,7 +39,10 @@ function CatalogFormFields<TFormValues extends Record<string, unknown>>({
           case 'boolean':
             return (
               <div key={field.name} className="flex items-center gap-2.5">
-                <Switch checked={Boolean(raw)} onChange={(checked) => setField(field.name, checked)} />
+                <Switch
+                  checked={Boolean(raw)}
+                  onChange={(checked) => setField(field.name, checked)}
+                />
                 <span className="text-sm text-gray-700">{field.label}</span>
               </div>
             );

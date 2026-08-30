@@ -9,7 +9,12 @@ import type { OrganizationShift } from '../../../api/job-service/types';
 import PlatformCatalogTab from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
 
-type FormValues = { name: string; start_time: string; end_time: string; duration_minutes: number | null };
+type FormValues = {
+  name: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number | null;
+};
 const emptyForm: FormValues = { name: '', start_time: '', end_time: '', duration_minutes: null };
 const fields: CatalogField<FormValues>[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },

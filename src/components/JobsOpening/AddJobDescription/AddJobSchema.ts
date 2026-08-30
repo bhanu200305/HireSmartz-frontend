@@ -197,7 +197,7 @@ export const jobDetailsSchema = z
     state: z.string().nonempty('State is required.'),
     country: z.string().nonempty('Country is required.'),
     educationPreference: z.array(catalogId).optional(),
-  languages: z.array(catalogId).optional(),
+    languages: z.array(catalogId).optional(),
     mandatorySkills: z
       .array(catalogId)
       .max(15, 'You can select up to 15 required skills.')

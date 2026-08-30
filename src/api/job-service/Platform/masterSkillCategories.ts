@@ -12,8 +12,7 @@ const extendedApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
     listPlatformSkillCategories: build.query<PlatformSkillCategory[], void>({
       query: () => '/platform/master-skill-categories',
-      transformResponse: (response: { categories: PlatformSkillCategory[] }) =>
-        response.categories,
+      transformResponse: (response: { categories: PlatformSkillCategory[] }) => response.categories,
       providesTags: ['PlatformSkillCategories'],
     }),
     createPlatformSkillCategory: build.mutation<

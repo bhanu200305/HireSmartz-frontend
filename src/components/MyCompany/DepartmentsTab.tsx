@@ -52,7 +52,12 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [departmentToDelete, setDepartmentToDelete] = useState<TenantDepartment | null>(null);
   const [searchText, setSearchText] = useState('');
 
-  const officeName = (id: string | null) => offices?.find((o) => o.office_id === id)?.city || '-';
+  // City alone isn't unique — two offices in the same city would otherwise
+  // show identically in this table's "Office" column.
+  const officeName = (id: string | null) => {
+    const office = offices?.find((o) => o.office_id === id);
+    return office ? `${office.city} — ${office.address_line_1}` : '-';
+  };
 
   const filteredDepartments = useMemo(() => {
     const q = searchText.trim().toLowerCase();

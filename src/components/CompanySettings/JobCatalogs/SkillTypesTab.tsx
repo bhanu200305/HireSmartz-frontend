@@ -11,7 +11,9 @@ import type { CatalogField } from './CatalogFormFields';
 
 type FormValues = { name: string };
 const emptyForm: FormValues = { name: '' };
-const fields: CatalogField<FormValues>[] = [{ name: 'name', label: 'Name', type: 'text', required: true }];
+const fields: CatalogField<FormValues>[] = [
+  { name: 'name', label: 'Name', type: 'text', required: true },
+];
 
 /** GET/POST/PUT/DELETE /platform/master-skill-types — e.g. "Technical",
  * "Soft Skill". Blocked from deletion while a job's skill selection or the

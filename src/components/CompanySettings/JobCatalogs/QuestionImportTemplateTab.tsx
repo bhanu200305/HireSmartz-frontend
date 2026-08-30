@@ -33,8 +33,7 @@ const QuestionImportTemplateTab: React.FC = () => {
     <div className="max-w-xl">
       <Typography variant="body2">
         The bulk question-import template every tenant downloads when adding questions to a job's
-        bank in bulk. Uploading a new file replaces it for everyone — there's no per-tenant
-        version.
+        bank in bulk. Uploading a new file replaces it for everyone — there's no per-tenant version.
       </Typography>
 
       <div className="mt-4 border border-dashed border-neutral-300 rounded-xl p-6 flex flex-col items-center gap-3 bg-neutral-50">
