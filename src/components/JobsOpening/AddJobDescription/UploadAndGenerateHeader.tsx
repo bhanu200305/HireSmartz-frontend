@@ -1,7 +1,17 @@
 import React from 'react';
 import { Button, Typography } from '../../shared';
-import { HiOutlineRefresh, HiOutlineUpload } from 'react-icons/hi';
+import {
+  HiOutlineRefresh,
+  HiOutlineUpload,
+  HiOutlineExclamationCircle,
+  HiOutlineDocumentDuplicate,
+} from 'react-icons/hi';
 import { MdDownload } from 'react-icons/md';
+
+export interface ImportWarningItem {
+  type: 'error' | 'duplicate';
+  message: string;
+}
 
 interface UploadAndGenerateHeaderProps {
   description: string;
@@ -10,8 +20,9 @@ interface UploadAndGenerateHeaderProps {
   onDownloadTemplate: () => void;
   uploadedFileName?: string;
   importedCount?: number;
-  skippedCount?: number;
-  warnings?: string[];
+  failedCount?: number;
+  duplicateCount?: number;
+  warnings?: ImportWarningItem[];
   onClearDetails?: () => void;
   isGenerating?: boolean;
   isUploading?: boolean;
@@ -25,13 +36,15 @@ export const UploadAndGenerateHeader = ({
   onDownloadTemplate,
   uploadedFileName = '',
   importedCount = 0,
-  skippedCount = 0,
+  failedCount = 0,
+  duplicateCount = 0,
   warnings = [],
   onClearDetails,
   isGenerating = false,
   isUploading = false,
   isDownloading = false,
 }: UploadAndGenerateHeaderProps) => {
+  const skippedCount = failedCount + duplicateCount;
   return (
     <div className="flex flex-col gap-4">
       <div className="bg-[#F8F9FA] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center border border-gray-200 gap-4">
@@ -104,18 +117,41 @@ export const UploadAndGenerateHeader = ({
             )}
           </div>
           <Typography variant="body2" className="text-brand-800 m-0">
-            Successfully imported <strong>{importedCount}</strong> question(s). Skipped{' '}
-            <strong>{skippedCount}</strong> row(s).
+            Successfully imported <strong>{importedCount}</strong> question(s).
+            {skippedCount > 0 && (
+              <>
+                {' '}
+                Skipped <strong>{skippedCount}</strong> row(s)
+                {failedCount > 0 && duplicateCount > 0 && (
+                  <>
+                    {' '}
+                    (<strong>{failedCount}</strong> invalid, <strong>{duplicateCount}</strong>{' '}
+                    duplicate)
+                  </>
+                )}
+                .
+              </>
+            )}
           </Typography>
           {warnings.length > 0 && (
             <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 max-h-36 overflow-y-auto">
               <Typography variant="overline" color="warning" className="font-semibold block mb-1">
                 Warnings / Errors:
               </Typography>
-              <ul className="list-disc pl-4 space-y-1">
+              <ul className="space-y-1.5">
                 {warnings.map((warn, index) => (
-                  <li key={index} className="text-xs text-amber-800 font-medium">
-                    {warn}
+                  <li
+                    key={index}
+                    className={`flex items-start gap-1.5 text-xs font-medium ${
+                      warn.type === 'error' ? 'text-red-700' : 'text-amber-800'
+                    }`}
+                  >
+                    {warn.type === 'error' ? (
+                      <HiOutlineExclamationCircle className="shrink-0 mt-0.5 text-sm" />
+                    ) : (
+                      <HiOutlineDocumentDuplicate className="shrink-0 mt-0.5 text-sm" />
+                    )}
+                    <span>{warn.message}</span>
                   </li>
                 ))}
               </ul>

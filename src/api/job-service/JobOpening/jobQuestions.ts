@@ -1,9 +1,12 @@
 import { jobApi } from '../jobApi';
 import type {
   AudioQuestionResponse,
+  FailedQuestionRowResponse,
   JobQuestionsResponse,
   QuestionRequest,
+  QuestionResponse,
   RoundQuestionsResponse,
+  SkippedDuplicateRowResponse,
 } from '../types';
 
 const extendedApi = jobApi.injectEndpoints({
@@ -69,9 +72,9 @@ const extendedApi = jobApi.injectEndpoints({
     bulkImportJobQuestions: build.mutation<
       {
         imported_count: number;
-        questions: unknown[];
-        failed_rows: unknown[];
-        skipped_duplicate_rows: unknown[];
+        questions: QuestionResponse[];
+        failed_rows: FailedQuestionRowResponse[];
+        skipped_duplicate_rows: SkippedDuplicateRowResponse[];
       },
       { jobOpeningId: string; file: File }
     >({
