@@ -89,6 +89,7 @@ import {
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
+import { haveDescriptionInputsChanged } from '../../../shared/utils/jdSync';
 
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
@@ -1643,6 +1644,18 @@ const JobDetails = () => {
 
     const savedId = resolveSavedJobId();
     if (savedId) {
+      // Snapshot what the AI description currently reflects BEFORE saving
+      // the new values — used below to decide whether this save actually
+      // changed anything the description is generated from. Best-effort:
+      // if this fails, `jdBeforeSave` stays undefined and the regenerate
+      // check below simply skips (same as "no description yet").
+      let jdBeforeSave: Awaited<ReturnType<typeof triggerGetJobDescriptionById>>['data'];
+      try {
+        jdBeforeSave = await triggerGetJobDescriptionById({ jobOpeningId: savedId }).unwrap();
+      } catch {
+        jdBeforeSave = undefined;
+      }
+
       try {
         const details = buildSaveJobDetailsPayload({
           data: {
@@ -1656,12 +1669,48 @@ const JobDetails = () => {
           offices,
         });
         await updateJobOpening({ jobOpeningId: savedId, body: details }).unwrap();
+        // Unlike onSubmit (the first save), this path never synced Redux's
+        // `jobDetails` with what was just saved — `isFormDirty` compares
+        // the live form against that Redux snapshot, so without this the
+        // form still read as dirty the instant after a successful save,
+        // and clicking straight through to Next hit the "unsaved changes"
+        // navigation-blocker dialog even though nothing was actually
+        // unsaved.
+        dispatch(updateJobDetails(data));
       } catch (err) {
         showToast({
           message: getJobErrorMessage(err, 'Failed to save job details'),
           type: 'error',
         });
         return;
+      }
+
+      // A description already exists and this save actually changed a
+      // field it was generated from (experience/salary/responsibilities/
+      // other requirements) — regenerate it now rather than leaving the
+      // stale text in place until the recruiter happens to notice and
+      // clicks Regenerate manually on the next step. Skipped for anything
+      // that doesn't touch those fields (e.g. swapping the Recruiter), so
+      // a manually-edited description isn't discarded for no reason.
+      if (
+        jdBeforeSave?.jobDescription &&
+        haveDescriptionInputsChanged(data, jdBeforeSave)
+      ) {
+        try {
+          await enhanceJd({ jobOpeningId: savedId, regenerate: true }).unwrap();
+          showToast({
+            message: 'Job details changed — regenerating the AI description to match…',
+            type: 'success',
+          });
+        } catch (enhanceError) {
+          showToast({
+            message: getJobErrorMessage(
+              enhanceError,
+              'Job details saved, but the AI description could not be refreshed automatically — use Regenerate on the next step.'
+            ),
+            type: 'warning',
+          });
+        }
       }
     }
 

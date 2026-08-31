@@ -17,7 +17,8 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { useLazyGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import { useRegenerateJobDescriptionMutation } from '../../../api/job-service/JobOpening/RegenerateJd';
-import { useGetJdStatusQuery } from '../../../api/job-service/JobOpening/JdUpload';
+import { useEnhanceJdMutation, useGetJdStatusQuery } from '../../../api/job-service/JobOpening/JdUpload';
+import { haveDescriptionInputsChanged } from '../../../shared/utils/jdSync';
 import { lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   setEditJobOpeningId,
@@ -232,6 +233,7 @@ const EditJobDetail = () => {
   const [triggerGetJobDescriptionById] = useLazyGetJobDescriptionByIdQuery();
   const [regenerateJobDescription, { isLoading: isRegenerating }] =
     useRegenerateJobDescriptionMutation();
+  const [enhanceJd] = useEnhanceJdMutation();
   const {
     data: jobData,
     refetch,
@@ -1498,6 +1500,20 @@ const EditJobDetail = () => {
 
     try {
       const jobId = parsedJobId || asJobId(jobOpeningId);
+
+      // Snapshot what the AI description currently reflects BEFORE saving
+      // — used below to decide whether this save actually changed a field
+      // the description was generated from, so an unrelated change (e.g.
+      // swapping the Recruiter) doesn't blow away a manually-edited
+      // description for no reason. Best-effort: if this fails, the
+      // regenerate check below just skips, same as "no description yet".
+      let jdBeforeSave: Awaited<ReturnType<typeof triggerGetJobDescriptionById>>['data'];
+      try {
+        jdBeforeSave = await triggerGetJobDescriptionById({ jobOpeningId: jobId }).unwrap();
+      } catch {
+        jdBeforeSave = undefined;
+      }
+
       const details = buildSaveJobDetailsPayload({ data: payload, offices });
       await updateJobOpening({
         jobOpeningId: jobId,
@@ -1513,6 +1529,29 @@ const EditJobDetail = () => {
       dispatch(updateEditJobDetails(payload));
       dispatch(updateEditJobDescription(jobDescriptionPayload));
       dispatch(updateEditInterviewRounds(interViewRound));
+
+      // A description already exists and this save actually changed a
+      // field it was generated from (experience/salary/responsibilities/
+      // other requirements) — regenerate it now instead of leaving the
+      // stale text in place until the recruiter happens to notice and
+      // clicks Regenerate manually on the AI Job Description step.
+      if (jdBeforeSave?.jobDescription && haveDescriptionInputsChanged(data, jdBeforeSave)) {
+        try {
+          await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
+          showToast({
+            message: 'Job details changed — regenerating the AI description to match…',
+            type: 'success',
+          });
+        } catch (enhanceError) {
+          showToast({
+            message: getJobErrorMessage(
+              enhanceError,
+              'Job details saved, but the AI description could not be refreshed automatically — use Regenerate on the next step.'
+            ),
+            type: 'warning',
+          });
+        }
+      }
 
       const aiJdId = jobId;
       const finalAiJobDescription = {

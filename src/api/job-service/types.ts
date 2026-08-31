@@ -219,6 +219,10 @@ export type InterviewRoundType = {
   requires_duration: boolean;
   available_variants: string[] | null;
   is_audio_round?: boolean;
+  // 'intake_call' | 'resume' | 'verification' | null — marks the fixed
+  // anchor round types the Interview Rounds page keeps pinned to the top
+  // of the sequence (Resume + Intake Call must stay the top 2).
+  special_kind?: 'intake_call' | 'resume' | 'verification' | null;
 };
 
 export type QuestionResponse = {

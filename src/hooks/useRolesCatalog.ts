@@ -6,7 +6,6 @@ import type {
   RoleScope,
   UpdateRolePayload,
 } from '../types';
-import type { BulkImportRoleRow } from '../components/RolesManagement/types';
 import { getRoleTemplate } from '../components/RolesManagement/data/roleTemplates';
 import {
   useListRolesQuery,
@@ -35,7 +34,6 @@ export type UseRolesCatalogResult = {
   createRole: (payload: CreateRolePayload) => Promise<Role>;
   updateRole: (payload: UpdateRolePayload) => Promise<Role>;
   deleteRole: (roleId: string) => Promise<void>;
-  bulkImportRoles: (rows: BulkImportRoleRow[]) => Promise<Role[]>;
 };
 
 /**
@@ -105,9 +103,9 @@ const buildPermissionEntries = (
 
 /**
  * The single data-access point for the Roles & Permissions screen — every
- * call site (RoleTable, CreateRoleModal, EditRoleModal, BulkImportRolesModal)
- * only ever sees this hook's return shape, never the real endpoints behind
- * it (api/organization-service/Roles/roles.ts) — same shape RTK Query's own
+ * call site (RoleTable, CreateRoleModal, EditRoleModal) only ever sees this
+ * hook's return shape, never the real endpoints behind it
+ * (api/organization-service/Roles/roles.ts) — same shape RTK Query's own
  * hooks give, so no call site needed to change when this stopped being
  * local mock state.
  */
@@ -248,32 +246,6 @@ export const useRolesCatalog = (args: UseRolesCatalogArgs): UseRolesCatalogResul
     [deleteRoleMutation, ctx]
   );
 
-  // No bulk-role-import endpoint exists on the backend — only bulk STAFF
-  // roster import does, a different feature entirely (importing users, not
-  // roles). Reuses the same real createRole call above, once per row,
-  // rather than leaving Bulk Import as the one action on this screen that
-  // still does nothing. Sequential on purpose, not Promise.all: two rows
-  // sharing a name would otherwise race the backend's uniqueness check
-  // non-deterministically.
-  const bulkImportRoles = useCallback(
-    async (rows: BulkImportRoleRow[]): Promise<Role[]> => {
-      const created: Role[] = [];
-      for (const row of rows) {
-        const role = await createRole({
-          roleName: row.roleName,
-          scope: row.scope,
-          tenantId,
-          permissions: row.permissions,
-          locationPermissions: row.locationPermissions,
-          templateKey: row.templateKey,
-        });
-        created.push(role);
-      }
-      return created;
-    },
-    [createRole, tenantId]
-  );
-
   return {
     roles,
     isLoading: isLoading || isFetching,
@@ -281,7 +253,6 @@ export const useRolesCatalog = (args: UseRolesCatalogArgs): UseRolesCatalogResul
     createRole,
     updateRole,
     deleteRole,
-    bulkImportRoles,
   };
 };
 

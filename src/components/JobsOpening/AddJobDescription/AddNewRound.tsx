@@ -1,8 +1,9 @@
-import { Form, Select } from 'antd';
+import { Form, Radio, Select } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, showToast } from '../../shared';
 import { MdClose } from 'react-icons/md';
 import TextArea from 'antd/es/input/TextArea';
+import { useState } from 'react';
 import { useSaveInterviewRoundMutation } from '../../../api/job-service/JobOpening/AddInterviewRound';
 import { SaveInterviewRoundRequest } from '../../../types';
 import { Controller, useForm } from 'react-hook-form';
@@ -10,15 +11,37 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import { Loader } from '../../shared/ui/loader';
-import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import useJobOpeningDropdown, {
+  JobOpeningDropdownOption,
+} from '../../../hooks/useJobOpeningDropdown';
 import { asJobId } from '../../../api/job-service/jobId';
 import {
   toInterviewRoundRequest,
   toInterviewSequencePayload,
 } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { slotOptions } from '../../../shared/utils/business-logic';
 
 const { Option } = Select;
+
+/** Recruiter-facing label for a round-type variant — same "known set,
+ * capitalised fallback" approach as the badges on the rounds list
+ * (sortableInterviewRounds.tsx), kept local since the wording here
+ * ("Online Round"/"Offline Round") is form-control copy, not the summary
+ * badge shown afterward. */
+const VARIANT_LABELS: Record<string, string> = {
+  online: 'Online Round',
+  offline: 'Offline Round',
+  soundwave: 'Sound Wave Round',
+  avatar: 'Avatar Round',
+};
+
+const formatVariantLabel = (variant: string) =>
+  VARIANT_LABELS[variant.toLowerCase()] ??
+  `${variant
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())} Round`;
 
 const AddNewRound = () => {
   const navigate = useNavigate();
@@ -44,6 +67,10 @@ const AddNewRound = () => {
     skip: !resolvedJobId,
   });
 
+  const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(
+    null
+  );
+
   const {
     control,
     handleSubmit,
@@ -55,18 +82,34 @@ const AddNewRound = () => {
       jobId: resolvedJobId,
       roundType: '',
       description: '',
+      duration: null,
+      variant: null,
     },
   });
 
   const handleRoundChange = (value: string | number | null) => {
     if (value === null || value === undefined) {
+      setSelectedRoundType(null);
       setValue('description', '', { shouldValidate: true });
       setValue('roundType', '', { shouldValidate: true });
+      setValue('duration', null, { shouldValidate: true });
+      setValue('variant', null, { shouldValidate: true });
     } else {
       const selectedRound = interviewRounds.find((round) => String(round.id) === String(value));
+      setSelectedRoundType(selectedRound ?? null);
       if (selectedRound) {
         setValue('description', selectedRound.description || '', { shouldValidate: true });
         setValue('roundType', selectedRound.roundType || '', { shouldValidate: true });
+        // Pre-fill with a sensible default the recruiter can still change,
+        // same way the round name/description get pre-filled above —
+        // rather than silently defaulting to 30 min / the first variant
+        // on submit with no way for the recruiter to see or change it.
+        setValue('duration', selectedRound.requires_duration ? 30 : null, {
+          shouldValidate: true,
+        });
+        setValue('variant', selectedRound.available_variants?.[0] ?? null, {
+          shouldValidate: true,
+        });
       }
     }
   };
@@ -87,7 +130,6 @@ const AddNewRound = () => {
 
     const existing = toInterviewSequencePayload(rounds);
     const nextSequence = existing.length + 1;
-    const selectedType = interviewRounds.find((round) => String(round.id) === String(data.round));
 
     saveInterviewRound({
       jobOpeningId: resolvedJobId,
@@ -98,8 +140,8 @@ const AddNewRound = () => {
             roundId: String(data.round),
             sequence: nextSequence,
             description: data.description,
-            duration: selectedType?.requires_duration ? 30 : null,
-            variant: selectedType?.available_variants?.[0] ?? null,
+            duration: selectedRoundType?.requires_duration ? Number(data.duration) : null,
+            variant: selectedRoundType?.available_variants?.length ? data.variant : null,
           },
           { isNew: true }
         ),
@@ -236,6 +278,89 @@ const AddNewRound = () => {
                   <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
                 )}
               </Form.Item>
+
+              {/* Catalog-driven, not hardcoded to any one round type — shows
+                  up for whichever round type has `available_variants` set
+                  (currently just Hiring Panel: Online/Offline), the same
+                  way this drives duration below. */}
+              {!!selectedRoundType?.available_variants?.length && (
+                <Form.Item
+                  label={
+                    <span className="text-sm font-semibold text-neutral-700">
+                      Round Format <span className="required-asterisk">*</span>
+                    </span>
+                  }
+                >
+                  <Controller
+                    name="variant"
+                    control={control}
+                    rules={{ required: 'Please select a round format' }}
+                    render={({ field }) => (
+                      <Radio.Group
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        optionType="button"
+                        buttonStyle="solid"
+                        className="w-full"
+                      >
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedRoundType.available_variants!.map((variant) => (
+                            <Radio.Button
+                              key={variant}
+                              value={variant}
+                              className={`text-center ${
+                                field.value === variant
+                                  ? '!bg-primary !text-white !border-primary'
+                                  : 'bg-gray-100'
+                              }`}
+                            >
+                              {formatVariantLabel(variant)}
+                            </Radio.Button>
+                          ))}
+                        </div>
+                      </Radio.Group>
+                    )}
+                  />
+                  {errors.variant && (
+                    <p className="text-red-500 text-sm mt-1">{errors.variant.message}</p>
+                  )}
+                </Form.Item>
+              )}
+
+              {/* Catalog-driven (`requires_duration`) — applies to Video,
+                  Hiring Panel and Audio rounds today, but shows for any
+                  round type the catalogue marks as needing one. */}
+              {selectedRoundType?.requires_duration && (
+                <Form.Item
+                  label={
+                    <span className="text-sm font-semibold text-neutral-700">
+                      Duration <span className="required-asterisk">*</span>
+                    </span>
+                  }
+                >
+                  <Controller
+                    name="duration"
+                    control={control}
+                    rules={{ required: 'Duration is required for this round type' }}
+                    render={({ field }) => (
+                      <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">
+                        <Select
+                          value={field.value ? String(field.value) : undefined}
+                          onChange={(value) => field.onChange(Number(value))}
+                          className="w-full custom-select placeholder-style"
+                          placeholder="Select Duration"
+                          popupClassName="rounded-3xl"
+                          options={slotOptions}
+                        />
+                      </div>
+                    )}
+                  />
+                  {errors.duration && (
+                    <p className="text-red-500 text-sm mt-1">{errors.duration.message}</p>
+                  )}
+                </Form.Item>
+              )}
+
               <Controller
                 name="jobId"
                 control={control}

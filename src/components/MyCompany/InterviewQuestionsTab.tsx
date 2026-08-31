@@ -14,12 +14,18 @@ import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 
 /**
- * This tenant's own HR/interpersonal question set, asked in a candidate's
- * first-round audio interview. Seeded from the platform's default set at
- * tenant creation — organization-service's `/v1/tenants/{tenant_id}/audio-
- * questions` only supports editing or removing an existing question, one at
- * a time (PATCH/DELETE); there is no endpoint to add a brand new one from
- * here, and no AI-suggestion endpoint either, so neither control is offered.
+ * This tenant's own "Intake Questions" — its HR/interpersonal question set,
+ * asked in a candidate's first-round intake call. Live-inherits the Super
+ * Admin's current platform default until this tenant has none of its own —
+ * the first edit or delete here forks an independent copy that then stops
+ * tracking further platform-side changes (see organization-service's
+ * `ListJobQuestionsUseCase`/`_job_question_fork.py`). Backed by
+ * `/v1/tenants/{tenant_id}/audio-questions`, which only supports editing or
+ * removing an existing question, one at a time (PATCH/DELETE); there is no
+ * endpoint to add a brand new one from here — per the confirmed design, the
+ * SET of questions is decided by the Super Admin (CompanySettings/
+ * IntakeQuestionsTab.tsx) — and no AI-suggestion endpoint either, so
+ * neither control is offered.
  */
 const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useListInterviewQuestionsQuery(tenantId);
@@ -78,11 +84,13 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
   return (
     <div className="p-4">
       <Typography variant="h5" className="mb-1 block">
-        Interview questions
+        Intake Questions
       </Typography>
       <Typography variant="body2" className="mb-6 block">
-        Your HR/interpersonal question set, asked in every candidate&apos;s first-round audio
-        interview. Edit the wording below — changes to one question save independently.
+        Your HR/interpersonal question set, asked in every candidate&apos;s first-round intake
+        call. Edit the wording below — changes to one question save independently. Set by
+        CareerForcePro by default; once you edit or remove a question here, this becomes your
+        company&apos;s own independent set.
       </Typography>
 
       {questions.length === 0 ? (

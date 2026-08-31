@@ -33,7 +33,7 @@ const AiQuestions = () => {
 
       <div className="flex items-center justify-between px-4">
         <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-          Sound Wave Round
+          Intake Questions
         </Typography>
         <span className="text-xs font-semibold text-gray-400 bg-gray-100 rounded-full px-3 py-1">
           View only
@@ -41,7 +41,7 @@ const AiQuestions = () => {
       </div>
       <div className="flex flex-col gap-3">
         {audioQuestions.length === 0 ? (
-          <p className="text-gray-400 italic text-sm px-4">No audio-round questions configured.</p>
+          <p className="text-gray-400 italic text-sm px-4">No intake questions configured.</p>
         ) : (
           audioQuestions.map((question) => (
             <div

@@ -1,11 +1,11 @@
 import {
+  useListActiveSkillsQuery,
   useListClosureReasonsQuery,
   useListInterviewRoundTypesQuery,
   useListJobModesQuery,
   useListJobTypesQuery,
   useListLanguagesQuery,
   useLazySearchSkillsQuery,
-  useSearchSkillsQuery,
 } from '../api/job-service/JobOpening/catalogs';
 import { useListEducationPreferencesQuery } from '../api/job-service/JobOpening/educationPreferences';
 import { useListUsersQuery } from '../api/organization-service/Users/users';
@@ -26,6 +26,7 @@ export type JobOpeningDropdownOption = {
   requires_duration?: boolean;
   available_variants?: string[] | null;
   max_occurrences?: number | null;
+  special_kind?: 'intake_call' | 'resume' | 'verification' | null;
 };
 
 const DUMMY_SKILL_OPTIONS: JobOpeningDropdownOption[] = [
@@ -100,10 +101,12 @@ const useJobOpeningDropdown = (
   const users = isMaster ? platformUsers : tenantUsers;
 
   const [searchSkills, skillsResult] = useLazySearchSkillsQuery();
-  const preloadedSkills = useSearchSkillsQuery(
-    { q: 'ja' },
-    { skip: skip || !isSkillsEndpoint(endpoint) || callerKind === 'platform' }
-  );
+  // Full active catalogue, shown until the recruiter types 2+ characters
+  // into the box — at which point `skillsResult` (searchSkills, above)
+  // takes over with the narrower, name-matched results.
+  const preloadedSkills = useListActiveSkillsQuery(undefined, {
+    skip: skip || !isSkillsEndpoint(endpoint) || callerKind === 'platform',
+  });
 
   const jobOpeningDropdown: JobOpeningDropdownOption[] = useMemo(() => {
     switch (endpoint) {
@@ -133,6 +136,7 @@ const useJobOpeningDropdown = (
           requires_duration: item.requires_duration,
           available_variants: item.available_variants,
           max_occurrences: item.max_occurrences,
+          special_kind: item.special_kind,
         }));
       case 'HIRING_MANAGER':
       case 'RECRUITER':

@@ -7,13 +7,13 @@ import { useSelector } from 'react-redux';
 import MainLayout from '../../layouts/MainLayout';
 import { RootState } from '../../redux/provider/store';
 import { Loader } from '../shared/ui/loader';
-import { ComingSoonTab } from '../shared';
 import CompanyProfileTab from './CompanyProfileTab';
 import CompanyLocationsTab from './CompanyLocationsTab';
 import DepartmentsTab from './DepartmentsTab';
 import EntitlementsTab from './EntitlementsTab';
 import TeamTab from './Team';
 import TenantActivityFeedTab from './TenantActivityFeedTab';
+import InterviewQuestionsTab from './InterviewQuestionsTab';
 import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
 import QrManagementTab from './QrManagementTab';
 import NotificationSettingsTab from './NotificationSettingsTab';
@@ -70,10 +70,10 @@ const MyCompany: React.FC = () => {
   const canViewActivity = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
   const canViewInterviewQuestions = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
   const canViewEmailTemplates = useHasAccess(Authorities.EMAIL_TEMPLATE_VIEW);
-  // QR Management has no dedicated catalog permission — job-workflow-adjacent
-  // per the comingSoon note below, so it shares JOB_OPENING_VIEW. Job
-  // Settings (job types/shifts/education preferences feeding the Job
-  // Details form) is the same kind of job-workflow-adjacent catalogue.
+  // QR Management has no dedicated catalog permission — job-workflow-adjacent,
+  // so it shares JOB_OPENING_VIEW. Job Settings (job types/shifts/education
+  // preferences feeding the Job Details form) is the same kind of
+  // job-workflow-adjacent catalogue.
   const canViewQrManagement = useHasAccess(Authorities.JOB_OPENING_VIEW);
   const canViewJobSettings = useHasAccess(Authorities.JOB_OPENING_VIEW);
 
@@ -91,11 +91,15 @@ const MyCompany: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  // Interview Questions is still a job-workflow-adjacent screen — per-job
-  // question sets — parked behind an honest "coming soon" placeholder until
-  // the job posting workflow it hangs off of is built, rather than surfaced
-  // ahead of it. Its real tab (InterviewQuestionsTab) is already wired to
-  // its backend and ready to swap back in once that workflow lands.
+  // Intake Questions (InterviewQuestionsTab) was parked behind a
+  // "coming soon" placeholder pending two things: the job posting workflow
+  // it hangs off of, and a way for a company that never customized its own
+  // set to still see something sensible. Both are done — Add Job Opening's
+  // Questions step already shows this company's current questions
+  // read-only (AiQuestionsSetup.tsx), and organization-service now
+  // live-inherits the Super Admin's platform default for any company that
+  // hasn't diverged (ListJobQuestionsUseCase) rather than requiring one
+  // seeded copy per tenant up front. Swapped back in below.
   //
   // Scoring Criteria, QR Management and Notification Settings aren't
   // job-workflow-adjacent in that sense — each configures something that
@@ -113,7 +117,6 @@ const MyCompany: React.FC = () => {
   //    about. See NotificationSettingsTab's own doc comment for what each
   //    sub-tab is and why they're distinct systems, not one feature split
   //    three ways.
-  const comingSoon = <ComingSoonTab label="To be added soon, alongside the job posting workflow" />;
 
   const items: TabsProps['items'] = [
     canViewCompanyDetails && {
@@ -142,7 +145,11 @@ const MyCompany: React.FC = () => {
       label: 'Activity',
       children: <TenantActivityFeedTab tenantId={tenantId} />,
     },
-    canViewInterviewQuestions && { key: '7', label: 'Interview Questions', children: comingSoon },
+    canViewInterviewQuestions && {
+      key: '7',
+      label: 'Intake Questions',
+      children: <InterviewQuestionsTab tenantId={tenantId} />,
+    },
     {
       key: '8',
       label: 'Scoring Criteria',

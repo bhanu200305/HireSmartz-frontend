@@ -10,6 +10,7 @@ import DepartmentsTab from './DepartmentsTab';
 import JobTitlesTab from './JobTitlesTab';
 import DepartmentSettingsTab from './DepartmentSettingsTab';
 import PlatformScoringDefaultsTab from './PlatformScoringDefaultsTab';
+import IntakeQuestionsTab from './IntakeQuestionsTab';
 import NotificationSettingsTab from './NotificationSettingsTab';
 import JobCatalogsTab from './JobCatalogsTab';
 
@@ -79,6 +80,11 @@ const CompanySettings: React.FC = () => {
         key: '7',
         label: 'Notification Settings',
         children: <NotificationSettingsTab />,
+      },
+      {
+        key: '8',
+        label: 'Intake Questions',
+        children: <IntakeQuestionsTab />,
       },
     ],
     []

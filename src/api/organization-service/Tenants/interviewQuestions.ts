@@ -21,15 +21,19 @@ export type DeleteInterviewQuestionArgs = {
 };
 
 /**
- * This tenant's own HR/interpersonal question set, asked in a candidate's
- * first-round audio interview — seeded from the platform's default set at
- * tenant creation, editable from there on. Backed by organization-service's
+ * This tenant's own "Intake Questions" — its HR/interpersonal question set,
+ * asked in a candidate's first-round intake call. A tenant with no
+ * customization of its own live-inherits the Super Admin's current
+ * platform default (see `Platform/interviewQuestions.ts`); editing or
+ * removing one here forks an independent copy that then stops tracking
+ * further platform-side changes. Backed by organization-service's
  * `/v1/tenants/{tenant_id}/audio-questions` (renamed 2026-08-17 from
  * `interview-questions`, see internal_router.py) — there is no bulk
  * replace-the-set endpoint and no AI "suggest" endpoint on this contract:
  * each question is edited or removed one at a time, matching the routes
  * organization-service actually exposes (GET list, PATCH one, DELETE one —
- * no tenant-level POST to add a brand new question either).
+ * no tenant-level POST to add a brand new question either, per the
+ * confirmed design: the SET of questions is decided by the Super Admin).
  */
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({

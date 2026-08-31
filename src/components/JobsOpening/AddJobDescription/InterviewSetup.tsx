@@ -3,7 +3,7 @@ import { Button, showToast } from '../../shared';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MainLayout from '../../../layouts/MainLayout';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
@@ -16,6 +16,7 @@ import { SortableInterviewRounds } from '../EditJobOpening/sortableInterviewRoun
 import { asJobId } from '../../../api/job-service/jobId';
 import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 
 const InterviewSetup = () => {
   const navigate = useNavigate();
@@ -29,6 +30,18 @@ const InterviewSetup = () => {
     skip: !jobOpeningId,
   });
   const [reorderInterviewRounds, { isLoading: isReordering }] = useReorderInterviewRoundsMutation();
+  // Round-type ids for the fixed Resume / Intake Call anchor rounds —
+  // SortableInterviewRounds uses this to keep them pinned to the top 2.
+  const { jobOpeningDropdown: roundTypes } = useJobOpeningDropdown('ROUNDS', 'view');
+  const anchorRoundTypeIds = useMemo(
+    () =>
+      new Set(
+        roundTypes
+          .filter((round) => round.special_kind === 'resume' || round.special_kind === 'intake_call')
+          .map((round) => String(round.id))
+      ),
+    [roundTypes]
+  );
   useEffect(() => {
     if (location.state?.refresh && jobOpeningId) {
       refetch();
@@ -150,6 +163,7 @@ const InterviewSetup = () => {
                   setSelectedRoundId(roundId);
                   setShowDeleteModal(true);
                 }}
+                anchorRoundTypeIds={anchorRoundTypeIds}
               />
             )}
             <div className="mt-6 flex justify-center">

@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MdOutlineQuestionAnswer } from 'react-icons/md';
 import { HiOutlineTrash } from 'react-icons/hi';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 import { stopStream } from '../../../redux/slices/streamSlice';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Loader } from '../../shared/ui/loader';
 import { Button, showToast, Typography } from '../../shared';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
@@ -35,6 +33,16 @@ import QuestionRowItem from './QuestionRowItem';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 
 const DEFAULT_QUESTION_COUNT = 10;
+// AI question generation is fire-and-forget on the backend — POST
+// .../questions/generate|regenerate only ever returns `{generation_status:
+// "GENERATING"}`, and nothing on GET .../questions ever reports when a
+// generation actually finished (no analogue of the AI Description panel's
+// jd_status). The only observable signal is the question list itself
+// changing, so this polls it for a bounded window after triggering
+// generation rather than leaving the recruiter to notice nothing arrived
+// and refresh the whole page.
+const GENERATION_POLL_INTERVAL_MS = 3000;
+const GENERATION_POLL_TIMEOUT_MS = 90_000;
 
 // Human-readable text for each `failed_checks` code check_publish_readiness
 // (job-service's _publish_validation.py) can return — the API only reports
@@ -120,18 +128,28 @@ const AiQuestionsSetup = () => {
     [roundTypes]
   );
 
+  // True from the moment generation is triggered until the question list
+  // is observed to actually change (or the poll times out) — see the
+  // GENERATION_POLL_* comment above.
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const questionSnapshotBeforeGenerateRef = useRef<string | null>(null);
+
   const {
     data: questionsData,
     isLoading: isLoadingQuestions,
     refetch: refetchQuestions,
-  } = useGetJobQuestionsQuery(activeJobOpeningId, { skip: !activeJobOpeningId });
+  } = useGetJobQuestionsQuery(activeJobOpeningId, {
+    skip: !activeJobOpeningId,
+    pollingInterval: isGeneratingQuestions ? GENERATION_POLL_INTERVAL_MS : 0,
+  });
 
   const { data: audioData } = useGetAudioQuestionsQuery(activeJobOpeningId, {
     skip: !activeJobOpeningId,
   });
 
   const [saveJobQuestions] = useSaveJobQuestionsMutation();
-  const [generateJobQuestions, { isLoading: isGenerating }] = useGenerateJobQuestionsMutation();
+  const [generateJobQuestions, { isLoading: isGenerateRequestPending }] =
+    useGenerateJobQuestionsMutation();
   const [regenerateJobQuestions] = useRegenerateJobQuestionsMutation();
   const [bulkImportJobQuestions, { isLoading: isUploadingExcel }] =
     useBulkImportJobQuestionsMutation();
@@ -139,6 +157,10 @@ const AiQuestionsSetup = () => {
     useLazyGetQuestionImportTemplateQuery();
   const [validateForPublish] = useLazyValidateForPublishQuery();
   const [publishJob, { isLoading: isPublishing }] = usePublishJobMutation();
+  // Covers the whole async wait (the POST itself, plus the polling window
+  // above) — used everywhere the UI needs to show "still working" through
+  // generation actually finishing, not just the initial request.
+  const isGenerating = isGenerateRequestPending || isGeneratingQuestions;
 
   const jdRounds = useMemo(
     () => (questionsData?.rounds ?? []).filter((round) => !audioRoundTypeIds.has(round.round_id)),
@@ -148,6 +170,33 @@ const AiQuestionsSetup = () => {
   const questions = useMemo(() => jdRounds.flatMap((round) => round.questions ?? []), [jdRounds]);
   const defaultRoundInstanceId = jdRounds[0]?.round_instance_id ?? null;
   const audioQuestions = audioData?.questions ?? [];
+  // Cheap content fingerprint, not just a count — REPLACE can land with
+  // fewer questions than before, so "count increased" would miss it.
+  const questionsSnapshotKey = useMemo(() => questions.map((q) => q.id).join(','), [questions]);
+
+  // Stop polling as soon as the list actually differs from what it looked
+  // like right before this generation was triggered.
+  useEffect(() => {
+    if (!isGeneratingQuestions) return;
+    if (questionSnapshotBeforeGenerateRef.current === null) return;
+    if (questionsSnapshotKey === questionSnapshotBeforeGenerateRef.current) return;
+    setIsGeneratingQuestions(false);
+    showToast({ message: 'Questions generated', type: 'success' });
+  }, [isGeneratingQuestions, questionsSnapshotKey]);
+
+  // Safety net — stop polling even if generation never visibly finishes
+  // (e.g. it failed silently server-side), rather than polling forever.
+  useEffect(() => {
+    if (!isGeneratingQuestions) return;
+    const timeoutId = setTimeout(() => {
+      setIsGeneratingQuestions(false);
+      showToast({
+        message: "Still generating — refresh in a moment if the questions don't appear shortly.",
+        type: 'warning',
+      });
+    }, GENERATION_POLL_TIMEOUT_MS);
+    return () => clearTimeout(timeoutId);
+  }, [isGeneratingQuestions]);
 
   const isAllSelected = questions.length > 0 && selectedIds.length === questions.length;
 
@@ -178,6 +227,9 @@ const AiQuestionsSetup = () => {
       return;
     }
     try {
+      // Snapshot the list as it looks right now — the polling effect above
+      // waits for it to differ from this before declaring generation done.
+      questionSnapshotBeforeGenerateRef.current = questionsSnapshotKey;
       if (mode === 'REPLACE') {
         await regenerateJobQuestions({
           jobOpeningId: activeJobOpeningId,
@@ -190,6 +242,7 @@ const AiQuestionsSetup = () => {
         }).unwrap();
       }
       showToast({ message: 'Question generation started', type: 'success' });
+      setIsGeneratingQuestions(true);
       refetchQuestions();
       setShowGenerateConsentModal(false);
     } catch (err) {
@@ -291,14 +344,6 @@ const AiQuestionsSetup = () => {
       });
   };
 
-  const handleDrop = (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return;
-    const newItems = [...questions];
-    const [movedItem] = newItems.splice(fromIndex, 1);
-    newItems.splice(toIndex, 0, movedItem);
-    void persistQuestions(newItems.map(toQuestionRequest));
-  };
-
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setEditingQuestion(null);
@@ -368,7 +413,7 @@ const AiQuestionsSetup = () => {
   }, [activeJobOpeningId, refetchQuestions]);
 
   return (
-    <DndProvider backend={HTML5Backend}>
+    <>
       <div className="flex flex-col gap-6 py-4">
         {(isLoadingQuestions ||
           isGenerating ||
@@ -391,7 +436,7 @@ const AiQuestionsSetup = () => {
         <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
           <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
             <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-              Sound Wave Round
+              Intake Questions
             </Typography>
             <span className="text-xs font-semibold text-neutral-500 bg-neutral-100 rounded-full px-3 py-1">
               View only
@@ -399,7 +444,7 @@ const AiQuestionsSetup = () => {
           </div>
           <div className="space-y-3">
             {audioQuestions.length === 0 ? (
-              <p className="text-gray-400 italic text-sm">No audio-round questions configured.</p>
+              <p className="text-gray-400 italic text-sm">No intake questions configured.</p>
             ) : (
               audioQuestions.map((question) => (
                 <div
@@ -483,7 +528,6 @@ const AiQuestionsSetup = () => {
                   key={q.id}
                   question={{ id: q.id, question: q.question_text }}
                   index={idx}
-                  onDrop={handleDrop}
                   checked={selectedIds.includes(q.id)}
                   onCheckChange={(checked) => handleSelectOne(q.id, checked)}
                   onEdit={() => {
@@ -537,7 +581,7 @@ const AiQuestionsSetup = () => {
           open={showGenerateConsentModal}
           onClose={() => setShowGenerateConsentModal(false)}
           onConfirm={handleGenerateDefaultQuestions}
-          isLoading={isGenerating}
+          isLoading={isGenerateRequestPending}
         />
         <div className="mt-6 flex justify-center">
           <Button
@@ -549,7 +593,7 @@ const AiQuestionsSetup = () => {
         </div>
         <Outlet />
       </div>
-    </DndProvider>
+    </>
   );
 };
 

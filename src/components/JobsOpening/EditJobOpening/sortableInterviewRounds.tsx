@@ -12,6 +12,7 @@ import {
 import { MdEdit } from 'react-icons/md';
 import type { IconType } from 'react-icons';
 import { DraggableItem } from '../../shared/ui/DragAndDrop';
+import { showToast } from '../../shared';
 
 type InterviewRound = {
   id: string | number;
@@ -60,6 +61,10 @@ type SortableInterviewRoundsProps = {
   onEdit: (round: InterviewRound) => void;
   onDelete: (roundId: string | number) => void;
   isEditMode?: boolean;
+  // Round-type ids (`round.round.id`) for the fixed Resume / Intake Call
+  // anchor rounds. When supplied, a drag that would push either one out
+  // of the top 2 slots is rejected instead of applied.
+  anchorRoundTypeIds?: Set<string>;
 };
 
 export const SortableInterviewRounds = ({
@@ -68,6 +73,7 @@ export const SortableInterviewRounds = ({
   onEdit,
   onDelete,
   isEditMode = false,
+  anchorRoundTypeIds,
 }: SortableInterviewRoundsProps) => {
   const [items, setItems] = useState<InterviewRound[]>(rounds);
 
@@ -75,25 +81,42 @@ export const SortableInterviewRounds = ({
     setItems(rounds);
   }, [rounds]);
 
-  const moveRound = (fromIndex: number, toIndex: number) => {
+  const reorder = (fromIndex: number, toIndex: number) => {
     const newItems = [...items];
     const [movedItem] = newItems.splice(fromIndex, 1);
     newItems.splice(toIndex, 0, movedItem);
 
-    const updatedItems = newItems.map((item, index) => ({
+    return newItems.map((item, index) => ({
       ...item,
       sequence: index + 1,
     }));
+  };
 
-    setItems(updatedItems);
-    return updatedItems;
+  /** Resume and Intake Call must always occupy the top 2 slots — either
+   * one may lead, but nothing else may be dragged ahead of both of them. */
+  const violatesAnchorPositions = (candidate: InterviewRound[]) => {
+    if (!anchorRoundTypeIds || anchorRoundTypeIds.size === 0) return false;
+    const isAnchor = (round: InterviewRound) => anchorRoundTypeIds.has(String(round.round?.id));
+    const anchorCount = candidate.filter(isAnchor).length;
+    if (anchorCount === 0) return false;
+    const topSlots = candidate.slice(0, Math.min(2, candidate.length));
+    const anchorsInTopSlots = topSlots.filter(isAnchor).length;
+    return anchorsInTopSlots < Math.min(anchorCount, 2);
   };
 
   const handleDrop = (fromIndex: number, toIndex: number) => {
-    if (fromIndex !== toIndex) {
-      const updatedItems = moveRound(fromIndex, toIndex);
-      onRoundsReorder(updatedItems);
+    if (fromIndex === toIndex) return;
+    const reordered = reorder(fromIndex, toIndex);
+    if (violatesAnchorPositions(reordered)) {
+      showToast({
+        message:
+          'Resume and Intake Call rounds must stay the top 2 rounds. They can swap places, but no other round can be moved ahead of them.',
+        type: 'error',
+      });
+      return;
     }
+    setItems(reordered);
+    onRoundsReorder(reordered);
   };
 
   const renderCardBody = (round: InterviewRound, index: number, isOver = false) => {

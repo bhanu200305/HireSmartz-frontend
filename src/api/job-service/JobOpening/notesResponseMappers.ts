@@ -28,8 +28,13 @@ export function mapApiNoteToCandidateNoteItem(
   note: Record<string, unknown>,
   index: number
 ): CandidateNoteItem | null {
+  // `note_text` is the real job-service field (JobNoteResponse — no
+  // camelCase alias, job-service returns plain snake_case JSON). Without
+  // it here, every job note's content resolved to '' and got silently
+  // dropped by the `if (!content) return null` below — notes saved fine
+  // on the backend, they just never made it back onto screen.
   const content = String(
-    note.noteText ?? note.content ?? note.note ?? note.description ?? note.body ?? ''
+    note.note_text ?? note.noteText ?? note.content ?? note.note ?? note.description ?? note.body ?? ''
   ).trim();
   if (!content) return null;
 

@@ -164,6 +164,16 @@ const catalogsApi = jobApi.injectEndpoints({
       providesTags: ['Skills'],
     }),
 
+    // GET /skills — every active skill visible to this caller (platform
+    // catalogue plus this org's own additions), no query, no cap. Backs a
+    // skill dropdown's initial options before the recruiter has typed
+    // anything into searchSkills above.
+    listActiveSkills: build.query<SkillCatalogEntry[], void>({
+      query: () => ({ url: '/skills', method: 'GET' }),
+      transformResponse: (response: { skills: SkillCatalogEntry[] }) => response.skills ?? [],
+      providesTags: ['Skills'],
+    }),
+
     createOrganizationSkill: build.mutation<
       {
         skill_id: string;
@@ -198,5 +208,6 @@ export const {
   useListInterviewRoundTypesQuery,
   useSearchSkillsQuery,
   useLazySearchSkillsQuery,
+  useListActiveSkillsQuery,
   useCreateOrganizationSkillMutation,
 } = catalogsApi;

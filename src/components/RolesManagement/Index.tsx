@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { MdOutlineAdminPanelSettings, MdOutlineFileUpload } from 'react-icons/md';
+import { MdOutlineAdminPanelSettings } from 'react-icons/md';
 import { FaPlus } from 'react-icons/fa';
 import MainLayout from '../../layouts/MainLayout';
 import { RootState } from '../../redux/provider/store';
@@ -15,7 +15,6 @@ import RoleContextSwitcher from './RoleContextSwitcher';
 import RoleTable from './RoleTable';
 import CreateRoleModal from './CreateRoleModal';
 import EditRoleModal from './EditRoleModal';
-import BulkImportRolesModal from './BulkImportRolesModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import type { RoleManagementContext } from './types';
 import type { Role } from '../../types';
@@ -53,7 +52,6 @@ const RolesManagement: React.FC = () => {
     createRole,
     updateRole,
     deleteRole,
-    bulkImportRoles,
   } = useRolesCatalog({
     scope: context.scope,
     tenantId: context.tenantId,
@@ -88,7 +86,6 @@ const RolesManagement: React.FC = () => {
   const canDelete = effectivePermissions.includes(Authorities.ROLE_DELETE);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [roleBeingEdited, setRoleBeingEdited] = useState<Role | null>(null);
   const [roleBeingDeleted, setRoleBeingDeleted] = useState<Role | null>(null);
 
@@ -119,14 +116,6 @@ const RolesManagement: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setBulkImportOpen(true)}
-              disabled={!canCreate || awaitingCompanySelection}
-              className="flex items-center gap-1.5 text-sm font-semibold text-primary-600 bg-white border border-gray-200 rounded-full px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <MdOutlineFileUpload /> Bulk Import
-            </button>
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
@@ -228,13 +217,6 @@ const RolesManagement: React.FC = () => {
         onClose={() => setRoleBeingEdited(null)}
         availableLocations={availableLocations}
         onSave={updateRole}
-      />
-
-      <BulkImportRolesModal
-        open={bulkImportOpen}
-        onClose={() => setBulkImportOpen(false)}
-        scope={context.scope}
-        onImport={bulkImportRoles}
       />
 
       {roleBeingDeleted && (
