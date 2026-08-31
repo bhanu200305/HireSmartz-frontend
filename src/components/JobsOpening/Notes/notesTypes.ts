@@ -5,7 +5,13 @@ export type CandidateNoteItem = {
   createdAt?: string;
   authorName: string;
   authorRole?: string;
-  authorId?: number;
+  // A user id, whatever shape the source service actually uses — a UUID
+  // for job-service/organization-service, a legacy numeric id for
+  // candidate-service. Kept as a string and compared by string equality
+  // (NotesSidePanel.tsx) rather than run through `Number()`, which quietly
+  // turned every UUID into `NaN` and made "is this my note" never match
+  // for job notes.
+  authorId?: string;
   roundId?: number;
   /** Interview booking id when returned by API (for round-scoped counts/filters). */
   bookingId?: number;

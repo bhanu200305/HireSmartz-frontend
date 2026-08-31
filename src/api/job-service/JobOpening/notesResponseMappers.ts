@@ -41,23 +41,37 @@ export function mapApiNoteToCandidateNoteItem(
   const idRaw = note.id ?? note.noteId;
   const id = idRaw != null && idRaw !== '' ? String(idRaw) : `note-${index}`;
 
+  // job-service's JobNoteResponse only ever returns `created_by` — a raw
+  // user UUID, never a display name (see its own docstring: "the frontend
+  // resolves the author's display name ... itself"). Not a name source, so
+  // it's deliberately NOT in this chain — a UUID rendered as `authorName`
+  // would just be a differently-wrong display than "Unknown User". The old
+  // `note.createdBy` (camelCase) entry here never matched anything anyway
+  // (the real field is snake_case) and, even if it had, would have shown a
+  // raw id as a name. Real name resolution for job notes happens in
+  // JobListingNotesPanel.tsx, which looks `authorId` up against this
+  // tenant's user list after this mapper runs.
   const authorName = String(
-    note.authorName ??
-      note.createdByName ??
-      note.userName ??
-      note.createdByUserName ??
-      note.createdBy ??
-      'Unknown User'
-  );
+    note.authorName ?? note.createdByName ?? note.userName ?? note.createdByUserName ?? ''
+  ).trim();
 
   const authorRole =
     (note.authorRole ?? note.createdByRole ?? note.role ?? note.userRole) != null
       ? String(note.authorRole ?? note.createdByRole ?? note.role ?? note.userRole)
       : undefined;
 
+  // `created_by` (snake_case) is job-service's real field — a UUID, not a
+  // number, so this is kept as a string rather than run through `Number()`
+  // (which silently turned every job-note author id into `NaN` ->
+  // `undefined`, the same class of bug `note_text` above had for content).
   const authorIdRaw =
-    note.authorId ?? note.createdById ?? note.createdBy ?? note.userId ?? note.createdByUserId;
-  const authorId = authorIdRaw != null && authorIdRaw !== '' ? Number(authorIdRaw) : undefined;
+    note.authorId ??
+    note.createdById ??
+    note.createdBy ??
+    note.created_by ??
+    note.userId ??
+    note.createdByUserId;
+  const authorId = authorIdRaw != null && authorIdRaw !== '' ? String(authorIdRaw) : undefined;
 
   const createdAt =
     (note.createdAt ?? note.updatedAt ?? note.timestamp ?? note.created_at) != null
@@ -112,9 +126,14 @@ export function mapApiNoteToCandidateNoteItem(
     content,
     parentType,
     createdAt,
+    // Empty when nothing on the wire names the author (job notes, always,
+    // per the comment above `authorName` — enriched from `authorId`
+    // against this tenant's user list by JobListingNotesPanel.tsx after
+    // this mapper runs; only falls back to 'Unknown User' if THAT lookup
+    // also comes up empty).
     authorName,
     authorRole: authorRole || undefined,
-    authorId: Number.isFinite(authorId) && !Number.isNaN(authorId!) ? authorId : undefined,
+    authorId,
     roundId: roundId != null && Number.isFinite(roundId) ? roundId : undefined,
     roundName,
     bookingId: bookingId != null && Number.isFinite(bookingId) ? bookingId : undefined,

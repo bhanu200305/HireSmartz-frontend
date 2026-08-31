@@ -116,13 +116,14 @@ function normalizeIdentityText(value?: string): string {
 function applyPlaceholderAuthorship(
   placeholders: CandidateNoteItem[],
   indexes: number[],
-  currentUserId: number
+  currentUserId: string
 ): CandidateNoteItem[] {
-  const finite = Number.isFinite(currentUserId) && !Number.isNaN(currentUserId);
-  const fallbackUserId = finite ? currentUserId : 0;
   return placeholders.map((n, idx) => ({
     ...n,
-    authorId: indexes.includes(idx) ? fallbackUserId : fallbackUserId + 999,
+    // Local demo data only (used when there's no real backend behind this
+    // panel) — just needs an id that does/doesn't match the signed-in
+    // user, not a real one.
+    authorId: indexes.includes(idx) ? currentUserId || 'placeholder-you' : 'placeholder-other',
   }));
 }
 
@@ -167,7 +168,11 @@ const NotesSidePanel = ({
     lastName?: string;
     userName?: string;
   }>(loginToken);
-  const currentUserId = Number(currentUser?.userId);
+  // Compared by string equality against `note.authorId` below — the
+  // JWT's `userId` is a UUID for every real session in this app, so
+  // running it through `Number()` (as this used to) was always `NaN` and
+  // "is this my note" never matched.
+  const currentUserId = currentUser?.userId != null ? String(currentUser.userId) : '';
   const currentUserName =
     `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim() || 'You';
   const currentUserNameNorm = normalizeIdentityText(currentUserName);
@@ -262,8 +267,7 @@ const NotesSidePanel = ({
     }
 
     const nowIso = new Date().toISOString();
-    const authorId =
-      Number.isFinite(currentUserId) && currentUserId > 0 ? currentUserId : undefined;
+    const authorId = currentUserId || undefined;
 
     const newNote: CandidateNoteItem = isJob
       ? {
@@ -294,8 +298,11 @@ const NotesSidePanel = ({
 
   const handleDelete = async (note: CandidateNoteItem) => {
     if (remoteActions) {
-      const nid = Number(note.id);
-      if (!Number.isFinite(nid) || nid <= 0) return;
+      // `remoteActions` set means `note` came from a real API response,
+      // never a local placeholder — no need to also demand its id look
+      // numeric (job-service's are UUIDs; this used to reject every real
+      // job note here).
+      if (!note.id) return;
       setDeletingId(note.id);
       try {
         await remoteActions.onDelete(note.id);
@@ -326,8 +333,8 @@ const NotesSidePanel = ({
     if (!content || isSavingEdit) return;
 
     if (remoteActions) {
-      const nid = Number(note.id);
-      if (!Number.isFinite(nid) || nid <= 0) return;
+      // Same reasoning as handleDelete above.
+      if (!note.id) return;
       setIsSavingEdit(true);
       try {
         await remoteActions.onUpdate(note.id, content);
@@ -425,13 +432,8 @@ const NotesSidePanel = ({
               const initials = getAuthorInitials(note.authorName);
               const { bg: avBg, fg: avFg } = avatarColorsForInitials(initials);
 
-              const currentUserIdFinite =
-                Number.isFinite(currentUserId) && !Number.isNaN(currentUserId);
-              const noteAuthorId = Number(note.authorId);
               const byId =
-                currentUserIdFinite &&
-                Number.isFinite(noteAuthorId) &&
-                noteAuthorId === currentUserId;
+                currentUserId.length > 0 && !!note.authorId && note.authorId === currentUserId;
               const noteAuthorNameNorm = normalizeIdentityText(note.authorName);
               const byName =
                 noteAuthorNameNorm.length > 0 &&

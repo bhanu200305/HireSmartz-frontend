@@ -10,6 +10,7 @@ import {
   useUpdateJobOpeningNoteMutation,
   useDeleteJobOpeningNoteMutation,
 } from '../../../api/job-service/JobOpening/JobOpeningNotes';
+import { useListUsersQuery } from '../../../api/organization-service/Users/users';
 
 export type { CandidateNoteItem } from './notesTypes';
 
@@ -152,9 +153,40 @@ const JobListingNotesPanel = ({
 }: JobListingNotesPanelProps) => {
   const titleText = jobTitle?.trim() ? `Job Notes - ${jobTitle.trim()}` : 'Job Notes';
 
-  const { data: apiNotes = [], isFetching } = useGetJobOpeningNotesQuery(jobOpeningId!, {
+  const { data: apiNotesRaw = [], isFetching } = useGetJobOpeningNotesQuery(jobOpeningId!, {
     skip: !open || !jobOpeningId,
   });
+
+  // job-service's notes only ever carry `created_by` — a raw user id, no
+  // display name (see notesResponseMappers.ts's own comment) — so it's
+  // resolved here, against this tenant's user list, the same list Hiring
+  // Manager/Recruiter pickers already use. Skipped along with the notes
+  // query itself while the panel is closed.
+  const { data: usersData } = useListUsersQuery(
+    { limit: 200 },
+    { skip: !open || !jobOpeningId }
+  );
+  const userNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const user of usersData?.items ?? []) {
+      map.set(user.user_id, user.full_name || user.email);
+    }
+    return map;
+  }, [usersData]);
+
+  const apiNotes = useMemo(
+    () =>
+      apiNotesRaw.map((note) =>
+        note.authorName
+          ? note
+          : {
+              ...note,
+              authorName:
+                (note.authorId && userNameById.get(note.authorId)) || 'Unknown User',
+            }
+      ),
+    [apiNotesRaw, userNameById]
+  );
 
   const [createNote] = useCreateJobOpeningNoteMutation();
   const [updateNote] = useUpdateJobOpeningNoteMutation();
