@@ -22,6 +22,10 @@ import { useGetJobOpeningNotesQuery } from '../../../api/job-service/JobOpening/
 import { Search } from '../../shared/ui/search';
 import { Loader } from '../../shared/ui/loader';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
+import { useListJobTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
+import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
+import { useListTenantJobTitlesQuery } from '../../../api/organization-service/Tenants/jobTitles';
+import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import { asJobId } from '../../../api/job-service/jobId';
 import { Button } from '../../shared/ui/button';
 import FilterMenu from './FilterMenu';
@@ -81,7 +85,8 @@ type SelectedCandidates = {
 
 const CandidatesListing = () => {
   const navigate = useNavigate();
-  const { role } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const { role, callerKind } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const tenantId = useSessionTenantId();
   const effectivePermissions = useEffectivePermissions();
   const { id } = useParams<{ id: string }>();
   // const pathname = useLocation().pathname;
@@ -270,9 +275,37 @@ const CandidatesListing = () => {
     hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) ||
     hasFeatureAccess('job_opening', 'create', role, effectivePermissions);
 
-  const jobTitleName = jobTitle[0]?.jobTypeName;
-  const departmentName = department[0]?.departmentName;
-  const jobTypeName = jobType[0]?.jobTypeName;
+  // mapJobOpeningToLegacyView only carries job_title_id/department_id/
+  // job_type_id through — the real /job-openings/{id}/details response
+  // never includes a resolved display name for any of the three, only the
+  // id (see that mapper's own "name resolved separately" comment). Every
+  // other screen that shows these (Index.tsx's job list, jobdetails.tsx,
+  // EditJobDetail.tsx) does this same catalogue lookup; this page just
+  // wasn't doing it, so Department/Job Type/Job Title always rendered
+  // blank here regardless of what was actually saved.
+  const isMasterCaller = callerKind === 'platform';
+  const { data: candidateListDepartments = [] } = useListTenantDepartmentsQuery(tenantId ?? '', {
+    skip: !tenantId,
+  });
+  const { data: candidateListJobTypes = [] } = useListJobTypesQuery({ isMaster: isMasterCaller });
+  const { data: candidateListJobTitles = [] } = useListTenantJobTitlesQuery(
+    { tenantId: tenantId ?? '', isMaster: isMasterCaller },
+    { skip: !tenantId }
+  );
+
+  const departmentId = department[0]?.id;
+  const jobTypeId = jobType[0]?.id;
+  const jobTitleId = jobTitle[0]?.id;
+
+  const jobTitleName = candidateListJobTitles.find(
+    (t) => String(t.org_job_title_id) === String(jobTitleId)
+  )?.name;
+  const departmentName = candidateListDepartments.find(
+    (d) => String(d.org_department_id) === String(departmentId)
+  )?.name;
+  const jobTypeName = candidateListJobTypes.find(
+    (t) => String(t.id) === String(jobTypeId)
+  )?.name;
 
   const isCandidateDisabled = (candidate: any): boolean => {
     if (!candidate.isResumeExtracted) return true;
