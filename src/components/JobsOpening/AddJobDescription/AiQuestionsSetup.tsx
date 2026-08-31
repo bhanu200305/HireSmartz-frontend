@@ -29,7 +29,7 @@ import type { QuestionRequest, QuestionResponse } from '../../../api/job-service
 import { asJobId } from '../../../api/job-service/jobId';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 
-import UploadAndGenerateHeader from './UploadAndGenerateHeader';
+import UploadAndGenerateHeader, { type ImportWarningItem } from './UploadAndGenerateHeader';
 import InlineQuestionInput from './InlineQuestionInput';
 import QuestionRowItem from './QuestionRowItem';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
@@ -76,8 +76,9 @@ const AiQuestionsSetup = () => {
   const [inlineInputText, setInlineInputText] = useState('');
   const [isInlineSubmitting, setIsInlineSubmitting] = useState(false);
 
-  const [warnings, setWarnings] = useState<string[]>([]);
-  const [skippedCount, setSkippedCount] = useState<number>(0);
+  const [importWarnings, setImportWarnings] = useState<ImportWarningItem[]>([]);
+  const [failedRowCount, setFailedRowCount] = useState<number>(0);
+  const [duplicateRowCount, setDuplicateRowCount] = useState<number>(0);
   const [importedCount, setImportedCount] = useState<number>(0);
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
 
@@ -222,10 +223,22 @@ const AiQuestionsSetup = () => {
       }).unwrap();
       setUploadedFileName(file.name);
       setImportedCount(res.imported_count || 0);
-      setSkippedCount(res.skipped_duplicate_rows?.length || 0);
-      setWarnings(
-        (res.failed_rows ?? []).map((row) => (typeof row === 'string' ? row : JSON.stringify(row)))
-      );
+      setFailedRowCount(res.failed_rows?.length || 0);
+      setDuplicateRowCount(res.skipped_duplicate_rows?.length || 0);
+      setImportWarnings([
+        ...(res.failed_rows ?? []).map(
+          (row): ImportWarningItem => ({
+            type: 'error',
+            message: `Row ${row.row_number}: ${row.error}`,
+          })
+        ),
+        ...(res.skipped_duplicate_rows ?? []).map(
+          (row): ImportWarningItem => ({
+            type: 'duplicate',
+            message: `Row ${row.row_number}: duplicate of an existing question — "${row.question_text}"`,
+          })
+        ),
+      ]);
       showToast({ message: 'Questions uploaded successfully', type: 'success' });
       refetchQuestions();
     } catch (err) {
@@ -432,11 +445,14 @@ const AiQuestionsSetup = () => {
           onDownloadTemplate={handleDownloadTemplate}
           uploadedFileName={uploadedFileName}
           importedCount={importedCount}
-          skippedCount={skippedCount}
-          warnings={warnings}
+          failedCount={failedRowCount}
+          duplicateCount={duplicateRowCount}
+          warnings={importWarnings}
           onClearDetails={() => {
             setUploadedFileName('');
-            setWarnings([]);
+            setImportWarnings([]);
+            setFailedRowCount(0);
+            setDuplicateRowCount(0);
           }}
           isGenerating={isGenerating}
           isUploading={isUploadingExcel}

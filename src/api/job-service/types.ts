@@ -256,6 +256,17 @@ export type AudioQuestionResponse = {
   question_text: string;
 };
 
+export type FailedQuestionRowResponse = {
+  row_number: number;
+  question_text: string | null;
+  error: string;
+};
+
+export type SkippedDuplicateRowResponse = {
+  row_number: number;
+  question_text: string;
+};
+
 export type PublishValidationResponse = {
   is_valid: boolean;
   failed_checks: string[];
