@@ -7,9 +7,8 @@ import { Badge, BadgeStatus } from '../../../shared/ui/badge';
 import {
   useGetPlatformTenantProfileQuery,
   useUpdatePlatformTenantProfileMutation,
-  useRequestPlatformTenantLogoUploadMutation,
+  useUploadPlatformTenantLogoMutation,
 } from '../../../../api/organization-service/Platform/tenantProfile';
-import { uploadTenantLogoFile } from '../../../../api/organization-service/Tenants/profile';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
 import {
   ALLOWED_LOGO_TYPES,
@@ -29,7 +28,6 @@ type ProfileFormState = {
   name: string;
   description: string;
   website_url: string;
-  culture_intro: string;
   company_size: string;
 };
 
@@ -39,7 +37,6 @@ const toFormState = (
   name: profile?.company_name || '',
   description: profile?.description || '',
   website_url: profile?.website_url || '',
-  culture_intro: profile?.culture_intro || '',
   company_size: profile?.company_size ? String(profile.company_size) : '',
 });
 
@@ -74,15 +71,16 @@ const ReadOnlyPill: React.FC<{ children: React.ReactNode }> = ({ children }) => 
  * Super Admin's mirror of MyCompany/CompanyProfileTab.tsx — same fields, same
  * PATCH-only-what-changed contract, GET/PATCH
  * /v1/platform/tenants/{tenant_id}/profile instead of the tenant's own
- * ambient-context route. Logo upload is the same real presigned-S3 flow that
- * tab uses too (POST /v1/platform/tenants/{tenant_id}/logo/upload-url), not
- * a free-text "Logo URL" field — the plain text input this used to have
- * couldn't produce a value organization-service could actually serve back.
+ * ambient-context route. Logo upload is the same real server-mediated
+ * multipart flow that tab uses too (POST
+ * /v1/platform/tenants/{tenant_id}/logo/upload), not a free-text "Logo URL"
+ * field — the plain text input this used to have couldn't produce a value
+ * organization-service could actually serve back.
  */
 const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: profile, isLoading, refetch } = useGetPlatformTenantProfileQuery(tenantId);
   const [updateProfile, { isLoading: isSaving }] = useUpdatePlatformTenantProfileMutation();
-  const [requestLogoUpload] = useRequestPlatformTenantLogoUploadMutation();
+  const [uploadLogo] = useUploadPlatformTenantLogoMutation();
   const [isEditMode, setIsEditMode] = useState(false);
   const [form, setForm] = useState<ProfileFormState>(toFormState(undefined));
   const [logoPreview, setLogoPreview] = useState('');
@@ -126,13 +124,8 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const target = await requestLogoUpload({
-        tenantId,
-        filename: file.name,
-        content_type: file.type,
-      }).unwrap();
-      await uploadTenantLogoFile(target, file);
-      await updateProfile({ tenantId, logo: target.storage_key }).unwrap();
+      const uploaded = await uploadLogo({ tenantId, file }).unwrap();
+      await updateProfile({ tenantId, logo: uploaded.storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
       refetch();
     } catch (err) {
@@ -156,7 +149,6 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         name: form.name,
         description: form.description,
         website_url: form.website_url,
-        culture_intro: form.culture_intro,
         company_size: parsedSize,
       }).unwrap();
       showToast({ message: 'Company profile updated.', type: 'success' });
@@ -295,16 +287,6 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             value={form.description}
             onChange={handleField('description')}
             placeholder="Description"
-            rows={3}
-            disabled={!isEditMode}
-            className="rounded-2xl text-sm"
-          />
-        </Field>
-        <Field label="About our culture">
-          <Textarea
-            value={form.culture_intro}
-            onChange={handleField('culture_intro')}
-            placeholder="About our culture"
             rows={3}
             disabled={!isEditMode}
             className="rounded-2xl text-sm"

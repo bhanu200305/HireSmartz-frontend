@@ -6,12 +6,14 @@ export type { InterviewQuestion, InterviewQuestionsResponse };
 export type CreatePlatformTenantJobQuestionArgs = {
   tenantId: string;
   question_text: string;
+  field_id: string;
 };
 
 export type UpdatePlatformTenantJobQuestionArgs = {
   tenantId: string;
   questionId: string;
   question_text: string;
+  field_id: string;
 };
 
 export type DeletePlatformTenantJobQuestionArgs = {
@@ -44,10 +46,10 @@ const extendedApi = orgApi.injectEndpoints({
       InterviewQuestion,
       CreatePlatformTenantJobQuestionArgs
     >({
-      query: ({ tenantId, question_text }) => ({
+      query: ({ tenantId, question_text, field_id }) => ({
         url: `/v1/platform/tenants/${tenantId}/audio-questions`,
         method: 'POST',
-        body: { question_text },
+        body: { question_text, field_id },
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [
         { type: 'InterviewQuestions', id: `platform-${tenantId}` },
@@ -58,10 +60,10 @@ const extendedApi = orgApi.injectEndpoints({
       InterviewQuestion,
       UpdatePlatformTenantJobQuestionArgs
     >({
-      query: ({ tenantId, questionId, question_text }) => ({
+      query: ({ tenantId, questionId, question_text, field_id }) => ({
         url: `/v1/platform/tenants/${tenantId}/audio-questions/${questionId}`,
         method: 'PATCH',
-        body: { question_text },
+        body: { question_text, field_id },
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [
         { type: 'InterviewQuestions', id: `platform-${tenantId}` },

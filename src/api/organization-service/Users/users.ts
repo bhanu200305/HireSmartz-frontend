@@ -18,6 +18,9 @@ export type OrgUser = {
   department_id: string | null;
   is_email_verified: boolean;
   is_active: boolean;
+  /** Resolved download URL for the storage key set via `avatar` on
+   * PATCH /users/me — `null` until one has ever been uploaded. */
+  avatar_url: string | null;
 };
 
 export type ListUsersArgs = {
@@ -71,6 +74,11 @@ export type UpdateUserRequest = {
   phone_no?: string;
   designation_id?: string;
   department_id?: string;
+  /** Storage key from POST /users/me/avatar/upload — PATCH semantics apply
+   * (users_requests.py's UpdateUserRequest docstring): omitted leaves the
+   * current avatar alone, there is no way to CLEAR one via this field, an
+   * explicit `null` would be indistinguishable from omission on the wire. */
+  avatar?: string;
 };
 
 // GET/PATCH /v1/users/me — self-service, no USER_UPDATE permission required:
@@ -78,6 +86,10 @@ export type UpdateUserRequest = {
 // token server-side, never accepted from the client). Same field set as
 // UpdateUserRequest above, minus userId — always implicitly "me".
 export type UpdateOwnUserProfileRequest = Omit<UpdateUserRequest, 'userId'>;
+
+export type UploadOwnAvatarResult = {
+  storage_key: string;
+};
 
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
@@ -148,13 +160,55 @@ const extendedApi = orgApi.injectEndpoints({
     }),
     getOwnUserProfile: build.query<OrgUser, void>({
       query: () => '/v1/users/me',
+      providesTags: ['OwnProfile'],
     }),
+    // Every other screen that reads this user's own profile (Header's
+    // avatar/name, this profile page itself) shares the SAME cached
+    // getOwnUserProfile entry — RTK Query dedupes by endpoint+args, and this
+    // has none. Without invalidating it, Header — a persistent layout
+    // component that never remounts on route navigation, so its
+    // `refetchOnMountOrArgChange` never re-fires — kept showing whatever it
+    // fetched once at app load, no matter how many successful saves
+    // happened here afterward.
     updateOwnUserProfile: build.mutation<OrgUser, UpdateOwnUserProfileRequest>({
       query: (body) => ({
         url: '/v1/users/me',
         method: 'PATCH',
         body,
       }),
+      invalidatesTags: ['OwnProfile'],
+    }),
+    // POST /v1/users/me/avatar/upload — server-mediated, same reasoning as
+    // every other upload in this app (see Tenants/imports.ts's
+    // uploadRosterFile): the file goes straight to organization-service as
+    // multipart/form-data, which writes it to S3 itself. Returns only the
+    // storage_key; the caller persists it via updateOwnUserProfile's
+    // `avatar` field right after. Platform callers 404 here — no `users` row
+    // exists for them to attach an avatar to (see the route's own docstring
+    // in users_router.py) — this endpoint is tenant-user-only.
+    uploadOwnAvatar: build.mutation<UploadOwnAvatarResult, File>({
+      query: (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: '/v1/users/me/avatar/upload',
+          method: 'POST',
+          body: formData,
+        };
+      },
+    }),
+    // DELETE /v1/users/me/avatar — the only way to actually remove a saved
+    // avatar. updateOwnUserProfile's `avatar` field can only ever SET one:
+    // PATCH-omission semantics mean an explicit null is indistinguishable
+    // from leaving it alone (see UpdateUserRequest's own docstring on the
+    // backend). Invalidates the same cache tag for the same reason
+    // updateOwnUserProfile does.
+    clearOwnAvatar: build.mutation<OrgUser, void>({
+      query: () => ({
+        url: '/v1/users/me/avatar',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['OwnProfile'],
     }),
   }),
 });
@@ -169,4 +223,6 @@ export const {
   useDetachUserLocationMutation,
   useGetOwnUserProfileQuery,
   useUpdateOwnUserProfileMutation,
+  useUploadOwnAvatarMutation,
+  useClearOwnAvatarMutation,
 } = extendedApi;

@@ -2,7 +2,9 @@ import { orgApi } from '../orgApi';
 
 // GET /v1/tenants/{tenant_id}/profile — TenantProfileView. The widest tenant
 // view in the service: every field the Company Admin can see/edit on their
-// own company.
+// own company. No `culture_intro` here — that's a genuinely separate
+// resource (GET/PUT /tenants/{tenant_id}/culture-intro, see
+// Tenants/cultureIntro.ts), never part of this one.
 export type TenantProfile = {
   tenant_id: string;
   company_name: string;
@@ -14,14 +16,16 @@ export type TenantProfile = {
   email_banner_url: string | null;
   colors: string[];
   description: string | null;
-  culture_intro: string | null;
   company_size: number | null;
 };
 
 // PATCH /v1/tenants/{tenant_id}/profile — UpdateTenantProfileRequest. Wire
 // names match the contract literally ("name"/"logo", not this service's
 // internal "company_name"/"logo_url") — every field omitted, not `null`,
-// means "leave unchanged".
+// means "leave unchanged". `extra="forbid"` on the backend — sending a
+// field this type doesn't declare 422s the WHOLE request, not just that
+// field (culture_intro used to be listed here despite never being a real
+// field on the backend request model, which broke every save on this form).
 export type UpdateTenantProfileRequest = {
   tenantId: string;
   name?: string;
@@ -31,7 +35,6 @@ export type UpdateTenantProfileRequest = {
   website_url?: string;
   industry_id?: string;
   admin_contact?: string;
-  culture_intro?: string;
   company_size?: number;
 };
 
@@ -39,62 +42,33 @@ export type TenantStatusResponse = {
   status: string;
 };
 
-// POST /v1/tenants/{tenant_id}/logo/upload-url — same presigned-S3-POST
-// shape as RequestRosterUploadArgs/RosterUploadTarget in Tenants/imports.ts.
-// No confirm endpoint: after the direct-to-S3 upload succeeds, the caller
-// persists `storage_key` via updateTenantProfile's `logo` field directly.
-export type RequestTenantLogoUploadArgs = {
+// POST /v1/tenants/{tenant_id}/logo/upload — server-mediated: the file is
+// POSTed to organization-service directly as multipart/form-data
+// (RequestTenantLogoUploadUseCase writes it to S3 from there), never a
+// browser-direct-to-S3 presigned upload — the shared bucket has no CORS
+// config, so that shape silently fails in the browser. Same reasoning as
+// Tenants/imports.ts's uploadRosterFile. No confirm endpoint: the caller
+// persists the returned `storage_key` via updateTenantProfile's `logo`
+// field directly.
+export type UploadTenantLogoArgs = {
   tenantId: string;
-  filename: string;
-  content_type: string;
+  file: File;
 };
 
-// POST /v1/tenants/{tenant_id}/email-banner/upload-url — identical shape to
-// the logo upload above (`TenantEmailBannerUploadView` mirrors
+// POST /v1/tenants/{tenant_id}/email-banner/upload — identical server-mediated
+// shape to the logo upload above (`TenantEmailBannerUploadView` mirrors
 // `TenantLogoUploadView` on the backend); the caller persists `storage_key`
 // via updateTenantProfile's `email_banner` field. Tenant self-service only —
 // this route is `require_own_tenant`-guarded the same way the logo one is,
 // so there is no platform-on-behalf-of-a-tenant equivalent.
-export type RequestTenantEmailBannerUploadArgs = {
+export type UploadTenantEmailBannerArgs = {
   tenantId: string;
-  filename: string;
-  content_type: string;
+  file: File;
 };
 
-export type TenantFileUploadTarget = {
-  upload_url: string;
-  upload_fields: Record<string, string>;
+export type TenantFileUploadResult = {
   storage_key: string;
-  expires_in: number;
 };
-
-/** @deprecated use `TenantFileUploadTarget` — kept as an alias so existing
- * call sites naming the logo-specific type don't need to change. */
-export type TenantLogoUploadTarget = TenantFileUploadTarget;
-
-/**
- * Uploads a file directly to storage using a presigned POST from either
- * `requestTenantLogoUpload` or `requestTenantEmailBannerUpload` — the bytes
- * never pass through organization-service. Same shape as `uploadRosterFile`
- * in `Tenants/imports.ts`.
- */
-export const uploadTenantAssetFile = async (
-  target: TenantFileUploadTarget,
-  file: File
-): Promise<void> => {
-  const formData = new FormData();
-  Object.entries(target.upload_fields).forEach(([key, value]) => formData.append(key, value));
-  formData.append('file', file);
-
-  const response = await fetch(target.upload_url, { method: 'POST', body: formData });
-  if (!response.ok) {
-    throw new Error(`Upload failed with status ${response.status}`);
-  }
-};
-
-/** @deprecated use `uploadTenantAssetFile` — kept so existing logo-upload
- * call sites don't need to change. */
-export const uploadTenantLogoFile = uploadTenantAssetFile;
 
 export type ActivityLogEntry = {
   id: string;
@@ -154,22 +128,27 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [{ type: 'Tenant', id: tenantId }],
     }),
-    requestTenantLogoUpload: build.mutation<TenantFileUploadTarget, RequestTenantLogoUploadArgs>({
-      query: ({ tenantId, ...body }) => ({
-        url: `/v1/tenants/${tenantId}/logo/upload-url`,
-        method: 'POST',
-        body,
-      }),
+    uploadTenantLogo: build.mutation<TenantFileUploadResult, UploadTenantLogoArgs>({
+      query: ({ tenantId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/v1/tenants/${tenantId}/logo/upload`,
+          method: 'POST',
+          body: formData,
+        };
+      },
     }),
-    requestTenantEmailBannerUpload: build.mutation<
-      TenantFileUploadTarget,
-      RequestTenantEmailBannerUploadArgs
-    >({
-      query: ({ tenantId, ...body }) => ({
-        url: `/v1/tenants/${tenantId}/email-banner/upload-url`,
-        method: 'POST',
-        body,
-      }),
+    uploadTenantEmailBanner: build.mutation<TenantFileUploadResult, UploadTenantEmailBannerArgs>({
+      query: ({ tenantId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/v1/tenants/${tenantId}/email-banner/upload`,
+          method: 'POST',
+          body: formData,
+        };
+      },
     }),
     getTenantDashboard: build.query<TenantDashboardSummary, string>({
       query: (tenantId) => `/v1/tenants/${tenantId}/dashboard`,
@@ -188,8 +167,8 @@ const extendedApi = orgApi.injectEndpoints({
 export const {
   useGetTenantProfileQuery,
   useUpdateTenantProfileMutation,
-  useRequestTenantLogoUploadMutation,
-  useRequestTenantEmailBannerUploadMutation,
+  useUploadTenantLogoMutation,
+  useUploadTenantEmailBannerMutation,
   useGetTenantDashboardQuery,
   useListTenantActivityQuery,
 } = extendedApi;

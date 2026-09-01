@@ -7,7 +7,6 @@ import {
   MdLanguage,
   MdGroups,
   MdDescription,
-  MdInfo,
   MdPhone,
 } from 'react-icons/md';
 import { Button, Input, Typography, showToast } from '../shared';
@@ -15,9 +14,8 @@ import { Loader } from '../shared/ui/loader';
 import { Badge, BadgeStatus } from '../shared/ui/badge';
 import {
   useGetTenantProfileQuery,
-  useRequestTenantLogoUploadMutation,
+  useUploadTenantLogoMutation,
   useUpdateTenantProfileMutation,
-  uploadTenantLogoFile,
 } from '../../api/organization-service/Tenants/profile';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import useHasAccess from '../../hooks/useHasAccess';
@@ -42,7 +40,6 @@ type ProfileFormState = {
   name: string;
   description: string;
   website_url: string;
-  culture_intro: string;
   company_size: string;
 };
 
@@ -52,7 +49,6 @@ const toFormState = (
   name: profile?.company_name || '',
   description: profile?.description || '',
   website_url: profile?.website_url || '',
-  culture_intro: profile?.culture_intro || '',
   company_size: profile?.company_size ? String(profile.company_size) : '',
 });
 
@@ -66,7 +62,7 @@ const toFormState = (
 const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: profile, isLoading, refetch } = useGetTenantProfileQuery(tenantId);
   const [updateProfile, { isLoading: isSaving }] = useUpdateTenantProfileMutation();
-  const [requestLogoUpload] = useRequestTenantLogoUploadMutation();
+  const [uploadLogo] = useUploadTenantLogoMutation();
   const [isEditMode, setIsEditMode] = useState(false);
   const [form, setForm] = useState<ProfileFormState>(toFormState(undefined));
   const canEdit = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
@@ -96,13 +92,8 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const target = await requestLogoUpload({
-        tenantId,
-        filename: file.name,
-        content_type: file.type,
-      }).unwrap();
-      await uploadTenantLogoFile(target, file);
-      await updateProfile({ tenantId, logo: target.storage_key }).unwrap();
+      const uploaded = await uploadLogo({ tenantId, file }).unwrap();
+      await updateProfile({ tenantId, logo: uploaded.storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
       refetch();
     } catch (err) {
@@ -139,7 +130,6 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         name: form.name,
         description: form.description,
         website_url: form.website_url,
-        culture_intro: form.culture_intro,
         company_size: parsedSize,
       }).unwrap();
       showToast({ message: 'Company profile updated.', type: 'success' });
@@ -166,12 +156,6 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       key: 'description',
       label: 'Description',
       icon: <MdDescription size={16} />,
-      fullWidth: true,
-    },
-    {
-      key: 'culture_intro',
-      label: 'About our culture',
-      icon: <MdInfo size={16} />,
       fullWidth: true,
     },
   ];

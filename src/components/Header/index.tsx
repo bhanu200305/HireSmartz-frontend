@@ -157,8 +157,10 @@ const Header = () => {
 
   // Both OrgUser (snake_case, tenant `users` table) and OwnPlatformProfile
   // (`memberships`) mapped to the one shape this component's JSX already
-  // expects below. profilePicture stays permanently null either way —
-  // neither table has one today.
+  // expects below. Both now carry a real `avatar_url` once UserProfile's
+  // Save has run — a platform membership's `avatar_key` column and upload
+  // route are as real as a tenant user's (see Platform/staff.ts's
+  // uploadOwnPlatformAvatar comment).
   const userData = profileError
     ? { firstName: 'User', lastName: null as string | null, profilePicture: null, roleName: null }
     : isPlatformCaller
@@ -166,7 +168,7 @@ const Header = () => {
         ? {
             firstName: platformProfileData.first_name || 'User',
             lastName: platformProfileData.last_name,
-            profilePicture: null,
+            profilePicture: platformProfileData.avatar_url,
             roleName: platformProfileData.role,
           }
         : undefined
@@ -174,7 +176,7 @@ const Header = () => {
         ? {
             firstName: tenantProfileData.first_name,
             lastName: tenantProfileData.last_name,
-            profilePicture: null,
+            profilePicture: tenantProfileData.avatar_url,
             roleName: null,
           }
         : undefined;

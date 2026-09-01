@@ -2,24 +2,21 @@ import { orgApi } from '../orgApi';
 import { LOCALSTORAGE_KEYS } from '../../../constants/webAPI';
 import { getLocalStorageItem } from '../../../shared/utils/auth/localstorage.helpers';
 
-// Real 3-step roster import flow — bulk_import_dto.py. The previous version
-// of this file POSTed a FormData file straight to organization-service at an
-// endpoint that doesn't exist; the actual contract is upload-url -> (direct
-// browser upload to S3) -> parse -> confirm, matching docs/frontend_guide.txt's
-// "Three steps" description exactly.
+// Real 3-step roster import flow — bulk_import_dto.py. Upload is
+// server-mediated: the file is POSTed to organization-service directly as
+// multipart/form-data (RequestRosterUploadUseCase writes it to S3 from
+// there), never a browser-direct-to-S3 presigned upload — the shared bucket
+// has no CORS config, so that shape silently fails in the browser. See
+// tenants/api/routers.py's `upload_roster` and
+// request_roster_upload.py's own docstring.
 
-export type RequestRosterUploadArgs = {
+export type UploadRosterFileArgs = {
   tenantId: string;
-  filename: string;
-  content_type: string;
+  file: File;
 };
 
-export type RosterUploadTarget = {
-  upload_url: string;
-  /** Extra multipart fields the presigned POST requires, alongside `file`. */
-  upload_fields: Record<string, string>;
+export type RosterUploadResult = {
   storage_key: string;
-  expires_in: number;
 };
 
 export type ParseRosterArgs = {
@@ -84,32 +81,18 @@ export type ConfirmRosterImportResponse = {
   failures?: RosterRowFailure[];
 };
 
-/**
- * Uploads the file directly to storage using the presigned POST from
- * `requestRosterUpload` — the bytes never pass through organization-service,
- * so this is a plain `fetch` against `upload_url` (an arbitrary S3 origin),
- * not an orgApi endpoint. `upload_fields` must be appended before `file`,
- * the order S3's presigned-POST contract requires.
- */
-export const uploadRosterFile = async (target: RosterUploadTarget, file: File): Promise<void> => {
-  const formData = new FormData();
-  Object.entries(target.upload_fields).forEach(([key, value]) => formData.append(key, value));
-  formData.append('file', file);
-
-  const response = await fetch(target.upload_url, { method: 'POST', body: formData });
-  if (!response.ok) {
-    throw new Error(`Upload failed with status ${response.status}`);
-  }
-};
-
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
-    requestRosterUpload: build.mutation<RosterUploadTarget, RequestRosterUploadArgs>({
-      query: ({ tenantId, ...body }) => ({
-        url: `/v1/tenants/${tenantId}/users/bulk-import/upload-url`,
-        method: 'POST',
-        body,
-      }),
+    uploadRosterFile: build.mutation<RosterUploadResult, UploadRosterFileArgs>({
+      query: ({ tenantId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/v1/tenants/${tenantId}/users/bulk-import/upload`,
+          method: 'POST',
+          body: formData,
+        };
+      },
     }),
     parseRoster: build.mutation<ParseRosterResponse, ParseRosterArgs>({
       query: ({ tenantId, storage_key }) => ({
@@ -130,7 +113,7 @@ const extendedApi = orgApi.injectEndpoints({
 });
 
 export const {
-  useRequestRosterUploadMutation,
+  useUploadRosterFileMutation,
   useParseRosterMutation,
   useConfirmRosterImportMutation,
 } = extendedApi;

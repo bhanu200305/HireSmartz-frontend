@@ -11,6 +11,7 @@ import JobTitlesTab from './JobTitlesTab';
 import DepartmentSettingsTab from './DepartmentSettingsTab';
 import PlatformScoringDefaultsTab from './PlatformScoringDefaultsTab';
 import IntakeQuestionsTab from './IntakeQuestionsTab';
+import CultureIntroTab from './CultureIntroTab';
 import NotificationSettingsTab from './NotificationSettingsTab';
 import JobCatalogsTab from './JobCatalogsTab';
 
@@ -86,6 +87,11 @@ const CompanySettings: React.FC = () => {
         label: 'Intake Questions',
         children: <IntakeQuestionsTab />,
       },
+      {
+        key: '9',
+        label: 'Culture Intro',
+        children: <CultureIntroTab />,
+      },
     ],
     []
   );
@@ -110,7 +116,12 @@ const CompanySettings: React.FC = () => {
               <h1 className="font-display text-2xl font-bold text-gray-900">Company Settings</h1>
             </div>
 
-            <Tabs activeKey={currentTab} onChange={handleTabChange} items={items} />
+            <Tabs
+              activeKey={currentTab}
+              onChange={handleTabChange}
+              items={items}
+              className="many-tabs"
+            />
           </div>
         </div>
       </div>

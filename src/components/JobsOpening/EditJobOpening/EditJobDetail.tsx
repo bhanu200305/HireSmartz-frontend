@@ -17,7 +17,10 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { useLazyGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import { useRegenerateJobDescriptionMutation } from '../../../api/job-service/JobOpening/RegenerateJd';
-import { useEnhanceJdMutation, useGetJdStatusQuery } from '../../../api/job-service/JobOpening/JdUpload';
+import {
+  useEnhanceJdMutation,
+  useGetJdStatusQuery,
+} from '../../../api/job-service/JobOpening/JdUpload';
 import { haveDescriptionInputsChanged } from '../../../shared/utils/jdSync';
 import { lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
 import {

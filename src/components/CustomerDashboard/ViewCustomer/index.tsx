@@ -24,9 +24,8 @@ import {
 import {
   useGetPlatformTenantProfileQuery,
   useUpdatePlatformTenantProfileMutation,
-  useRequestPlatformTenantLogoUploadMutation,
+  useUploadPlatformTenantLogoMutation,
 } from '../../../api/organization-service/Platform/tenantProfile';
-import { uploadTenantLogoFile } from '../../../api/organization-service/Tenants/profile';
 import { useSuspendTenantMutation } from '../../../api/organization-service/Tenants/tenants';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import {
@@ -123,7 +122,7 @@ const ViewCustomer = () => {
   // deliberately narrower than the profile view and has no logo field.
   const { data: profile } = useGetPlatformTenantProfileQuery(tenantId, { skip: !tenantId });
   const [updateProfile] = useUpdatePlatformTenantProfileMutation();
-  const [requestLogoUpload] = useRequestPlatformTenantLogoUploadMutation();
+  const [uploadLogo] = useUploadPlatformTenantLogoMutation();
   const [logoPreview, setLogoPreview] = useState('');
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -147,13 +146,8 @@ const ViewCustomer = () => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const target = await requestLogoUpload({
-        tenantId,
-        filename: file.name,
-        content_type: file.type,
-      }).unwrap();
-      await uploadTenantLogoFile(target, file);
-      await updateProfile({ tenantId, logo: target.storage_key }).unwrap();
+      const uploaded = await uploadLogo({ tenantId, file }).unwrap();
+      await updateProfile({ tenantId, logo: uploaded.storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
     } catch (err) {
       setLogoPreview(profile?.logo_url || '');

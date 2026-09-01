@@ -6,24 +6,29 @@ import type {
   ConfirmRosterImportResponse,
   ParseRosterArgs,
   ParseRosterResponse,
-  RequestRosterUploadArgs,
-  RosterUploadTarget,
+  UploadRosterFileArgs,
+  RosterUploadResult,
 } from '../Tenants/imports';
 
 // Platform mirror of Tenants/imports.ts's real 3-step roster import flow —
-// same upload-url -> (direct browser upload to S3) -> parse -> confirm
+// same server-mediated upload (multipart POST straight to
+// organization-service, no browser-direct-to-S3 step) -> parse -> confirm
 // contract and DTOs, just mounted under /v1/platform/tenants/{tenant_id}/...
 // (platform_router.py) so a Super Admin can run it on behalf of any tenant,
 // same pattern as Platform/tenantProfile.ts mirroring Tenants/profile.ts.
 
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
-    requestPlatformRosterUpload: build.mutation<RosterUploadTarget, RequestRosterUploadArgs>({
-      query: ({ tenantId, ...body }) => ({
-        url: `/v1/platform/tenants/${tenantId}/users/bulk-import/upload-url`,
-        method: 'POST',
-        body,
-      }),
+    uploadPlatformRosterFile: build.mutation<RosterUploadResult, UploadRosterFileArgs>({
+      query: ({ tenantId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/v1/platform/tenants/${tenantId}/users/bulk-import/upload`,
+          method: 'POST',
+          body: formData,
+        };
+      },
     }),
     parsePlatformRoster: build.mutation<ParseRosterResponse, ParseRosterArgs>({
       query: ({ tenantId, storage_key }) => ({
@@ -47,7 +52,7 @@ const extendedApi = orgApi.injectEndpoints({
 });
 
 export const {
-  useRequestPlatformRosterUploadMutation,
+  useUploadPlatformRosterFileMutation,
   useParsePlatformRosterMutation,
   useConfirmPlatformRosterImportMutation,
 } = extendedApi;

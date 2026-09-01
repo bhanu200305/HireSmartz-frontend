@@ -61,44 +61,70 @@ const BulkImportRows: React.FC<BulkImportRowsProps> = ({
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
 
+  // Fixed column template shared by the header and every data row, so the
+  // two stay pixel-aligned regardless of content length. Email gets the
+  // most room (it's the one field that identifies the row); role/department/
+  // designation share what's left evenly.
+  const GRID_COLUMNS = '28px minmax(0,2fr) minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)';
+
   return (
-    <div className="max-h-72 overflow-y-auto border rounded-xl divide-y">
-      {rows.map((row, index) => (
-        <div key={row.email + index} className="flex items-center gap-2 p-2">
-          <input
-            type="checkbox"
-            checked={row.include}
-            onChange={(e) => updateRow(index, { include: e.target.checked })}
-            aria-label={`Include ${row.email}`}
-          />
-          <span className="flex-1 text-sm truncate" title={row.email}>
-            {row.email}
-          </span>
-          <Select
-            size="small"
-            className="w-36"
-            placeholder="Role *"
-            value={row.role || undefined}
-            onChange={(value) => updateRow(index, { role: value })}
-            loading={isLoadingRoles}
-            showSearch
-            optionFilterProp="label"
-            options={roleOptions}
-          />
-          <Input
-            className="w-28 h-8 text-sm"
-            placeholder="Department"
-            value={row.department}
-            onChange={(e) => updateRow(index, { department: e.target.value })}
-          />
-          <Input
-            className="w-28 h-8 text-sm"
-            placeholder="Designation"
-            value={row.designation}
-            onChange={(e) => updateRow(index, { designation: e.target.value })}
-          />
+    <div className="overflow-x-auto rounded-xl border">
+      <div className="min-w-[640px]">
+        <div
+          className="grid items-center gap-3 border-b bg-gray-50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500"
+          style={{ gridTemplateColumns: GRID_COLUMNS }}
+        >
+          <span />
+          <span>Email</span>
+          <span>Role *</span>
+          <span>Department</span>
+          <span>Designation</span>
         </div>
-      ))}
+        <div className="max-h-72 overflow-y-auto divide-y">
+          {rows.map((row, index) => (
+            <div
+              key={row.email + index}
+              className="grid items-center gap-3 px-3 py-2"
+              style={{ gridTemplateColumns: GRID_COLUMNS }}
+            >
+              <input
+                type="checkbox"
+                checked={row.include}
+                onChange={(e) => updateRow(index, { include: e.target.checked })}
+                aria-label={`Include ${row.email}`}
+              />
+              <span className="truncate text-sm" title={row.email}>
+                {row.email}
+              </span>
+              <Select
+                size="small"
+                className="w-full"
+                placeholder="Role *"
+                value={row.role || undefined}
+                onChange={(value) => updateRow(index, { role: value })}
+                loading={isLoadingRoles}
+                showSearch
+                optionFilterProp="label"
+                options={roleOptions}
+              />
+              <Input
+                className="!rounded-lg h-8 text-sm"
+                placeholder="Department"
+                title={row.department}
+                value={row.department}
+                onChange={(e) => updateRow(index, { department: e.target.value })}
+              />
+              <Input
+                className="!rounded-lg h-8 text-sm"
+                placeholder="Designation"
+                title={row.designation}
+                value={row.designation}
+                onChange={(e) => updateRow(index, { designation: e.target.value })}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

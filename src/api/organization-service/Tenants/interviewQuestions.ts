@@ -3,6 +3,11 @@ import { orgApi } from '../orgApi';
 export type InterviewQuestion = {
   question_id: string;
   question_text: string;
+  // Which ResumeTemplateField (see ../resumeTemplateFields.ts) this
+  // question's spoken answer is meant to fill in — required on every
+  // question now, platform or tenant-owned (organization-service migration
+  // 0056: NOT NULL at the database level, no untagged state exists).
+  field_id: string;
 };
 
 export type InterviewQuestionsResponse = {
@@ -12,12 +17,14 @@ export type InterviewQuestionsResponse = {
 export type CreateInterviewQuestionArgs = {
   tenantId: string;
   question_text: string;
+  field_id: string;
 };
 
 export type UpdateInterviewQuestionArgs = {
   tenantId: string;
   questionId: string;
   question_text: string;
+  field_id: string;
 };
 
 export type DeleteInterviewQuestionArgs = {
@@ -45,20 +52,20 @@ const extendedApi = orgApi.injectEndpoints({
       providesTags: (_result, _error, tenantId) => [{ type: 'InterviewQuestions', id: tenantId }],
     }),
     createInterviewQuestion: build.mutation<InterviewQuestion, CreateInterviewQuestionArgs>({
-      query: ({ tenantId, question_text }) => ({
+      query: ({ tenantId, question_text, field_id }) => ({
         url: `/v1/tenants/${tenantId}/audio-questions`,
         method: 'POST',
-        body: { question_text },
+        body: { question_text, field_id },
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [
         { type: 'InterviewQuestions', id: tenantId },
       ],
     }),
     updateInterviewQuestion: build.mutation<InterviewQuestion, UpdateInterviewQuestionArgs>({
-      query: ({ tenantId, questionId, question_text }) => ({
+      query: ({ tenantId, questionId, question_text, field_id }) => ({
         url: `/v1/tenants/${tenantId}/audio-questions/${questionId}`,
         method: 'PATCH',
-        body: { question_text },
+        body: { question_text, field_id },
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [
         { type: 'InterviewQuestions', id: tenantId },

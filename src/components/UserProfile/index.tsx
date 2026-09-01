@@ -21,14 +21,18 @@ import { RootState } from '../../redux/provider/store';
 import {
   useGetOwnUserProfileQuery,
   useUpdateOwnUserProfileMutation,
+  useUploadOwnAvatarMutation,
+  useClearOwnAvatarMutation,
 } from '../../api/organization-service/Users/users';
 import {
   useGetOwnPlatformProfileQuery,
   useUpdateOwnPlatformProfileMutation,
+  useUploadOwnPlatformAvatarMutation,
+  useClearOwnPlatformAvatarMutation,
 } from '../../api/organization-service/Platform/staff';
 import { sanitizeInput } from '../../shared/utils/validation/input.helpers';
 import { restrictPhoneDigits } from '../../shared/utils/validation/phoneValidation';
-import { cleanPhoneNumber, convertFileToBase64 } from '../../shared/utils/methods';
+import { cleanPhoneNumber } from '../../shared/utils/methods';
 import {
   ALLOWED_LOGO_TYPES,
   MAX_LOGO_FILE_SIZE_BYTES,
@@ -64,7 +68,20 @@ const UserProfile = () => {
   const [updateTenantProfile, { isLoading: isUpdatingTenant }] = useUpdateOwnUserProfileMutation();
   const [updatePlatformProfile, { isLoading: isUpdatingPlatform }] =
     useUpdateOwnPlatformProfileMutation();
-  const isUpdating = isPlatformCaller ? isUpdatingPlatform : isUpdatingTenant;
+  const [uploadTenantAvatar, { isLoading: isUploadingTenantAvatar }] = useUploadOwnAvatarMutation();
+  const [uploadPlatformAvatar, { isLoading: isUploadingPlatformAvatar }] =
+    useUploadOwnPlatformAvatarMutation();
+  const [clearTenantAvatar, { isLoading: isClearingTenantAvatar }] = useClearOwnAvatarMutation();
+  const [clearPlatformAvatar, { isLoading: isClearingPlatformAvatar }] =
+    useClearOwnPlatformAvatarMutation();
+  const uploadAvatar = isPlatformCaller ? uploadPlatformAvatar : uploadTenantAvatar;
+  const clearAvatar = isPlatformCaller ? clearPlatformAvatar : clearTenantAvatar;
+  const isUploadingAvatar = isPlatformCaller ? isUploadingPlatformAvatar : isUploadingTenantAvatar;
+  const isClearingAvatar = isPlatformCaller ? isClearingPlatformAvatar : isClearingTenantAvatar;
+  const isUpdating =
+    (isPlatformCaller ? isUpdatingPlatform : isUpdatingTenant) ||
+    isUploadingAvatar ||
+    isClearingAvatar;
   const [isHovered, setIsHovered] = useState(false);
   const [imagePreview, setImagePreview] = useState('');
   const [imageChanged, setImageChanged] = useState(false);
@@ -102,9 +119,12 @@ const UserProfile = () => {
 
   useEffect(() => {
     // Neither OrgUser (organization-service's `users` table) nor
-    // OwnPlatformProfile (`memberships`) has address/profilePicture/
-    // companyName fields — those stay blank via the same `|| ''` fallback
-    // already used everywhere else in this form.
+    // OwnPlatformProfile (`memberships`) has address/companyName fields —
+    // those stay blank via the same `|| ''` fallback already used everywhere
+    // else in this form. Both DO carry a real `avatar_url` now, so
+    // imagePreview seeds from it instead of always starting blank —
+    // otherwise a previously-saved avatar would look gone every time this
+    // page loads.
     if (isPlatformCaller && platformProfileData) {
       reset({
         firstName: platformProfileData.first_name || '',
@@ -123,6 +143,7 @@ const UserProfile = () => {
         roleName: platformProfileData.role || '',
         companyName: '',
       });
+      setImagePreview(platformProfileData.avatar_url || '');
       setImageChanged(false);
       setIsProfileDeleted(false);
     } else if (!isPlatformCaller && tenantProfileData) {
@@ -143,18 +164,50 @@ const UserProfile = () => {
         roleName: '',
         companyName: '',
       });
+      setImagePreview(tenantProfileData.avatar_url || '');
       setImageChanged(false);
       setIsProfileDeleted(false);
     }
   }, [isPlatformCaller, tenantProfileData, platformProfileData, reset]);
 
-  const handleDeleteProfilePicture = () => {
+  // Whichever profile actually loaded — used instead of picking
+  // tenantProfileData/platformProfileData ad hoc at each call site below.
+  const savedAvatarUrl = isPlatformCaller
+    ? platformProfileData?.avatar_url
+    : tenantProfileData?.avatar_url;
+
+  // Two different things this button can be undoing, and they don't share a
+  // code path: a pick made THIS session (never reached the server — nothing
+  // to persist, just reset local state) vs. an already-SAVED avatar
+  // (savedAvatarUrl), which the PATCH `avatar` field can only ever SET,
+  // never clear (PATCH-omission semantics — see UpdateUserRequest's own
+  // docstring on the backend), so clearing one for real means calling
+  // DELETE .../avatar directly rather than deferring to "Save changes" like
+  // every other field here.
+  const handleDeleteProfilePicture = async () => {
+    const hadSavedAvatar = Boolean(savedAvatarUrl);
     setImagePreview('');
     setValue('profilePicture', '');
     setValue('profilePictureType', '');
     setImageChanged(true);
     setIsProfileDeleted(true);
-    showToast({ message: 'Profile picture removed. Save changes to apply.', type: 'success' });
+
+    if (!hadSavedAvatar) {
+      showToast({ message: 'Profile picture removed. Save changes to apply.', type: 'success' });
+      return;
+    }
+
+    try {
+      await clearAvatar().unwrap();
+      showToast({ message: 'Profile picture removed.', type: 'success' });
+    } catch (error) {
+      setImagePreview(savedAvatarUrl || '');
+      setIsProfileDeleted(false);
+      showToast({
+        message: get(error, 'data.message', 'Failed to remove profile picture.'),
+        type: 'error',
+      });
+    }
   };
   const handleFileUpload = async (file: File) => {
     try {
@@ -173,8 +226,17 @@ const UserProfile = () => {
       const previewURL = URL.createObjectURL(file);
       setImagePreview(previewURL);
 
-      const base64 = await convertFileToBase64(file);
-      setValue('profilePicture', base64);
+      // Uploaded immediately (not deferred to Save, unlike every other
+      // field on this form) so the storage_key exists before the PATCH
+      // below needs it — organization-service has no single
+      // "multipart profile update" endpoint, upload and persist are two
+      // separate calls, same two-step shape every other file upload in this
+      // app already uses (see Tenants/imports.ts's uploadRosterFile). Only
+      // the resulting `avatar` field actually lands on the profile once
+      // "Update user" is pressed, same "Save changes to apply" contract the
+      // rest of this form already promises.
+      const { storage_key } = await uploadAvatar(file).unwrap();
+      setValue('profilePicture', storage_key);
       setValue('profilePictureType', file.name);
       setImageChanged(true);
       setIsProfileDeleted(false);
@@ -184,7 +246,11 @@ const UserProfile = () => {
         type: 'success',
       });
     } catch (error) {
-      showToast({ message: 'Error processing image.', type: 'error' });
+      setImagePreview(savedAvatarUrl || '');
+      showToast({
+        message: get(error, 'data.message', 'Error uploading image.'),
+        type: 'error',
+      });
     }
     return false;
   };
@@ -232,25 +298,36 @@ const UserProfile = () => {
     try {
       if (isPlatformCaller) {
         // Membership has no email/role fields on this self-service surface
-        // — those inputs are disabled below, never sent here.
+        // — those inputs are disabled below, never sent here. `avatar` DOES
+        // have a column now — same "only when a new key exists this
+        // session" condition as the tenant branch below.
         await updatePlatformProfile({
           first_name: sanitizeInput(data.firstName),
           last_name: sanitizeInput(data.lastName),
           phone_no: cleanPhoneNumber(data.phoneNumber),
           country_code: data.countryCode,
+          ...(imageChanged && !isProfileDeleted && data.profilePicture
+            ? { avatar: data.profilePicture }
+            : {}),
         }).unwrap();
       } else {
         // Only the fields organization-service's UpdateUserRequest actually
         // accepts (extra="forbid" — an unrecognised field 422s, not a
-        // silent no-op). profilePicture/address fields have no backend
-        // column to persist to (see the useEffect above), so they're never
-        // sent.
+        // silent no-op). Address fields have no backend column to persist
+        // to, so they're never sent. `avatar` DOES have one — sent only
+        // when handleFileUpload actually produced a new storage_key this
+        // session (never on every save, and never as an explicit `null`:
+        // PATCH semantics can't clear it — see handleDeleteProfilePicture's
+        // own comment).
         await updateTenantProfile({
           email: sanitizeInput(data.emailId),
           first_name: sanitizeInput(data.firstName),
           last_name: sanitizeInput(data.lastName),
           phone_no: cleanPhoneNumber(data.phoneNumber),
           country_code: data.countryCode,
+          ...(imageChanged && !isProfileDeleted && data.profilePicture
+            ? { avatar: data.profilePicture }
+            : {}),
         }).unwrap();
       }
       showToast({

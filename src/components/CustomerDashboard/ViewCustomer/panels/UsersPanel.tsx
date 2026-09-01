@@ -28,6 +28,7 @@ import {
   useReactivatePlatformTenantUserMutation,
   useAttachPlatformTenantUserLocationMutation,
 } from '../../../../api/organization-service/Platform/users';
+import { useListPlatformTenantInvitationsQuery } from '../../../../api/organization-service/Platform/invitations';
 import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organization-service/Platform/departments';
 import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-service/Platform/offices';
 import { useAssignRoleAsPlatformMutation } from '../../../../api/organization-service/Roles/assignments';
@@ -45,7 +46,14 @@ import BulkImport from '../../../MyCompany/Team/BulkImport';
 import ViewPlatformUserModal from './ViewPlatformUserModal';
 import RoleLocationPicker from './RoleLocationPicker';
 
-type UserRow = OrgUser & { key: string };
+// A pending invite (including one a bulk import just created) rendered as a
+// row alongside real users — not a real `users`/`memberships` row yet
+// (organization-service only creates one once the invite is accepted, see
+// AcceptInvitationUseCase), so faking `is_active`/`user_id` here would be
+// misleading if taken literally. `isPending` is what every render below
+// actually branches on; the OrgUser fields are just enough shape to reuse
+// CustomTable's columns without a second table.
+type UserRow = OrgUser & { key: string; isPending?: boolean; invitationId?: string };
 
 type FormState = {
   email: string;
@@ -99,6 +107,17 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     tenantId,
     includeInactive: includeInactive === 'all',
   });
+  // Bulk import (and a single invite) only ever creates an `Invite` row —
+  // never a `users` row — until the invited person actually accepts, so
+  // useListPlatformTenantUsersQuery above alone would make an import look
+  // like it did nothing. Fetched here purely to surface still-pending ones
+  // as visible rows; `invalidatesTags: ['TenantInvitations']` on both the
+  // bulk-import confirm and single-invite mutations already refetches this
+  // the moment either succeeds.
+  const { data: invitationsData } = useListPlatformTenantInvitationsQuery({
+    tenantId,
+    limit: 100,
+  });
   const { data: departments } = useListPlatformTenantDepartmentsQuery(tenantId);
   const { data: offices } = useListPlatformTenantOfficesQuery(tenantId);
   const { roles, createRole } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: true });
@@ -135,6 +154,38 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
   const users = data?.items ?? [];
 
+  // Only "pending" — "accepted" is already a real row in `users` above (would
+  // double-list the same person), and "expired"/"revoked" are no longer
+  // actionable, so surfacing them here would just be noise.
+  const pendingInvitations = useMemo(
+    () => (invitationsData?.invitations ?? []).filter((invite) => invite.status === 'pending'),
+    [invitationsData]
+  );
+
+  const pendingRows: UserRow[] = useMemo(
+    () =>
+      pendingInvitations.map((invite) => ({
+        user_id: invite.invitation_id,
+        email: invite.invited_email,
+        first_name: '',
+        middle_name: null,
+        last_name: null,
+        title: null,
+        full_name: invite.invited_email,
+        country_code: null,
+        phone_no: null,
+        designation_id: null,
+        department_id: invite.department_id,
+        is_email_verified: false,
+        avatar_url: null,
+        is_active: false,
+        key: `invite-${invite.invitation_id}`,
+        isPending: true,
+        invitationId: invite.invitation_id,
+      })),
+    [pendingInvitations]
+  );
+
   const filteredUsers = useMemo(() => {
     const q = searchText.trim().toLowerCase();
     if (!q) return users;
@@ -145,6 +196,12 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         (user.title ?? '').toLowerCase().includes(q)
     );
   }, [users, searchText]);
+
+  const filteredPendingRows = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return pendingRows;
+    return pendingRows.filter((row) => row.email.toLowerCase().includes(q));
+  }, [pendingRows, searchText]);
 
   const handleAdd = async () => {
     if (!form.email.trim() || !form.first_name.trim()) {
@@ -273,18 +330,28 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'Name',
       key: 'full_name',
       sorter: (a: UserRow, b: UserRow) => a.full_name.localeCompare(b.full_name),
-      render: (_: unknown, user: UserRow) => (
-        <button
-          type="button"
-          onClick={() => setViewingUser(user)}
-          className="text-left cursor-pointer"
-        >
-          <div className="font-semibold text-gray-900 hover:text-primary-600 hover:underline">
-            {user.full_name}
+      render: (_: unknown, user: UserRow) =>
+        // Nothing to view yet — this row is an invitation, not a real user
+        // profile (no `ViewPlatformUserModal` data exists for it until it's
+        // accepted), so it renders as plain text instead of the clickable
+        // button real rows get.
+        user.isPending ? (
+          <div className="text-left">
+            <div className="font-semibold text-gray-500">{user.email}</div>
+            <div className="text-xs text-gray-400">Invited — awaiting acceptance</div>
           </div>
-          <div className="text-xs text-gray-400">{user.email}</div>
-        </button>
-      ),
+        ) : (
+          <button
+            type="button"
+            onClick={() => setViewingUser(user)}
+            className="text-left cursor-pointer"
+          >
+            <div className="font-semibold text-gray-900 hover:text-primary-600 hover:underline">
+              {user.full_name}
+            </div>
+            <div className="text-xs text-gray-400">{user.email}</div>
+          </button>
+        ),
     },
     {
       title: 'Title',
@@ -313,18 +380,24 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'Status',
       key: 'status',
       sorter: (a: UserRow, b: UserRow) => Number(a.is_active) - Number(b.is_active),
-      render: (_: unknown, user: UserRow) => (
-        <Badge status={user.is_active ? 'success' : 'neutral'}>
-          {user.is_active ? 'Active' : 'Deactivated'}
-        </Badge>
-      ),
+      render: (_: unknown, user: UserRow) =>
+        user.isPending ? (
+          <Badge status="warning">Pending</Badge>
+        ) : (
+          <Badge status={user.is_active ? 'success' : 'neutral'}>
+            {user.is_active ? 'Active' : 'Deactivated'}
+          </Badge>
+        ),
     },
     {
       title: 'Actions',
       key: 'actions',
       width: 80,
       render: (_: unknown, user: UserRow) =>
-        user.is_active ? (
+        // Deactivate/reactivate both need a real user_id — nothing to do
+        // here yet for a still-pending invite (manage it from the Team
+        // tab's invitations list instead: resend or revoke).
+        user.isPending ? null : user.is_active ? (
           <button
             type="button"
             aria-label="Deactivate user"
@@ -347,7 +420,13 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     },
   ];
 
-  const dataSource: UserRow[] = filteredUsers.map((user) => ({ ...user, key: user.user_id }));
+  // Pending invites first — that's what makes a bulk import or a single
+  // invite visibly "land" here right away instead of looking like nothing
+  // happened until each person accepts.
+  const dataSource: UserRow[] = [
+    ...filteredPendingRows,
+    ...filteredUsers.map((user) => ({ ...user, key: user.user_id })),
+  ];
 
   return (
     <div className="p-4">
@@ -355,8 +434,10 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <div>
           <Typography variant="body2">This company&apos;s team members.</Typography>
           <span className="text-xs font-medium text-gray-400">
-            {dataSource.length} {dataSource.length === 1 ? 'user' : 'users'}
-            {searchText.trim() && ` of ${users.length}`}
+            {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'}
+            {pendingRows.length > 0 &&
+              `, ${pendingRows.length} pending invite${pendingRows.length === 1 ? '' : 's'}`}
+            {searchText.trim() && ` (filtered from ${users.length})`}
           </span>
         </div>
         <div className="flex items-center gap-3">

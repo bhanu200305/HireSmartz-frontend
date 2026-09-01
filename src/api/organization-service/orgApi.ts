@@ -129,6 +129,10 @@ export const orgApi = createApi({
     'PlatformAudit',
     'GuestOrganizations',
     'Roles',
+    'OwnProfile',
+    'CultureIntro',
+    'PlatformCultureIntro',
+    'ResumeTemplateFields',
   ],
   endpoints: () => ({}),
 });

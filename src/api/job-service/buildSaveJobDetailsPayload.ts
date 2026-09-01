@@ -116,7 +116,8 @@ export const buildSaveJobDetailsPayload = ({
     // `shift` (array-of-one, same convention as jobTitle/department/jobMode
     // above) is the real form field now; shiftId is kept as a fallback for
     // any older caller still setting that directly.
-    shift_id: uuidOrNull(data.shift) ?? (data.shiftId && isUuid(data.shiftId) ? data.shiftId : null),
+    shift_id:
+      uuidOrNull(data.shift) ?? (data.shiftId && isUuid(data.shiftId) ? data.shiftId : null),
     // jobMode (array-of-one, same convention as jobTitle/department above)
     // is the real form field; modeId (a bare string) is kept as a fallback
     // for any older caller still setting that directly.

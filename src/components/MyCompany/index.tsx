@@ -14,6 +14,7 @@ import EntitlementsTab from './EntitlementsTab';
 import TeamTab from './Team';
 import TenantActivityFeedTab from './TenantActivityFeedTab';
 import InterviewQuestionsTab from './InterviewQuestionsTab';
+import CultureIntroTab from './CultureIntroTab';
 import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
 import QrManagementTab from './QrManagementTab';
 import NotificationSettingsTab from './NotificationSettingsTab';
@@ -69,6 +70,10 @@ const MyCompany: React.FC = () => {
   const canViewTeam = useHasAccess(Authorities.INVITATION_VIEW);
   const canViewActivity = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
   const canViewInterviewQuestions = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
+  // Same permission string culture-intro's backend routes gate on
+  // (`interview:read`) — organization-service reuses INTERVIEW_QUESTIONS_VIEW's
+  // pair rather than minting a dedicated one, see CultureIntroTab.tsx.
+  const canViewCultureIntro = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
   const canViewEmailTemplates = useHasAccess(Authorities.EMAIL_TEMPLATE_VIEW);
   // QR Management has no dedicated catalog permission — job-workflow-adjacent,
   // so it shares JOB_OPENING_VIEW. Job Settings (job types/shifts/education
@@ -150,6 +155,13 @@ const MyCompany: React.FC = () => {
       label: 'Intake Questions',
       children: <InterviewQuestionsTab tenantId={tenantId} />,
     },
+    // New key (12), not renumbered into the '7'/'8' gap, so existing
+    // `?tab=` links to every other tab keep working.
+    canViewCultureIntro && {
+      key: '12',
+      label: 'Culture Intro',
+      children: <CultureIntroTab tenantId={tenantId} />,
+    },
     {
       key: '8',
       label: 'Scoring Criteria',
@@ -230,7 +242,7 @@ const MyCompany: React.FC = () => {
             <OnboardingChecklist
               companyId={tenantId}
               status={{
-                profileReviewed: Boolean(profile?.logo_url || profile?.culture_intro),
+                profileReviewed: Boolean(profile?.logo_url),
                 hasOffice: (offices?.length ?? 0) > 0,
                 hasDepartment: (departments?.length ?? 0) > 0,
                 hasInvitedTeam: (invitations?.total ?? 0) > 0,
@@ -242,7 +254,7 @@ const MyCompany: React.FC = () => {
               activeKey={currentTab}
               onChange={handleTabChange}
               items={items}
-              className="my-company-tabs"
+              className="my-company-tabs many-tabs"
             />
           </div>
         </div>

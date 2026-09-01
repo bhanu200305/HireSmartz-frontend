@@ -1,7 +1,7 @@
 import { orgApi } from '../orgApi';
 import type {
-  RequestTenantLogoUploadArgs,
-  TenantLogoUploadTarget,
+  UploadTenantLogoArgs,
+  TenantFileUploadResult,
   TenantProfile,
   TenantStatusResponse,
 } from '../Tenants/profile';
@@ -18,7 +18,6 @@ export type UpdatePlatformTenantProfileRequest = {
   website_url?: string;
   industry_id?: string;
   admin_contact?: string;
-  culture_intro?: string;
   company_size?: number;
 };
 
@@ -41,19 +40,20 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'PlatformTenants', id: tenantId },
       ],
     }),
-    // POST /v1/platform/tenants/{tenant_id}/logo/upload-url — platform mirror
-    // of Tenants/profile.ts's requestTenantLogoUpload, same presigned-S3-POST
+    // POST /v1/platform/tenants/{tenant_id}/logo/upload — platform mirror of
+    // Tenants/profile.ts's uploadTenantLogo, same server-mediated multipart
     // contract; only the guard differs (TENANT_UPDATE instead of
     // require_own_tenant, which a platform caller can never satisfy).
-    requestPlatformTenantLogoUpload: build.mutation<
-      TenantLogoUploadTarget,
-      RequestTenantLogoUploadArgs
-    >({
-      query: ({ tenantId, ...body }) => ({
-        url: `/v1/platform/tenants/${tenantId}/logo/upload-url`,
-        method: 'POST',
-        body,
-      }),
+    uploadPlatformTenantLogo: build.mutation<TenantFileUploadResult, UploadTenantLogoArgs>({
+      query: ({ tenantId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/v1/platform/tenants/${tenantId}/logo/upload`,
+          method: 'POST',
+          body: formData,
+        };
+      },
     }),
   }),
 });
@@ -61,5 +61,5 @@ const extendedApi = orgApi.injectEndpoints({
 export const {
   useGetPlatformTenantProfileQuery,
   useUpdatePlatformTenantProfileMutation,
-  useRequestPlatformTenantLogoUploadMutation,
+  useUploadPlatformTenantLogoMutation,
 } = extendedApi;

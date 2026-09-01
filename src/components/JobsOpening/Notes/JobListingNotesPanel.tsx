@@ -162,10 +162,7 @@ const JobListingNotesPanel = ({
   // resolved here, against this tenant's user list, the same list Hiring
   // Manager/Recruiter pickers already use. Skipped along with the notes
   // query itself while the panel is closed.
-  const { data: usersData } = useListUsersQuery(
-    { limit: 200 },
-    { skip: !open || !jobOpeningId }
-  );
+  const { data: usersData } = useListUsersQuery({ limit: 200 }, { skip: !open || !jobOpeningId });
   const userNameById = useMemo(() => {
     const map = new Map<string, string>();
     for (const user of usersData?.items ?? []) {
@@ -181,8 +178,7 @@ const JobListingNotesPanel = ({
           ? note
           : {
               ...note,
-              authorName:
-                (note.authorId && userNameById.get(note.authorId)) || 'Unknown User',
+              authorName: (note.authorId && userNameById.get(note.authorId)) || 'Unknown User',
             }
       ),
     [apiNotesRaw, userNameById]
