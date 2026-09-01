@@ -73,7 +73,14 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
     if (data) {
       setDrafts(
         Object.fromEntries(
-          data.questions.map((q) => [q.question_id, { text: q.question_text, fieldId: q.field_id }])
+          data.questions.map((q) => [
+            q.question_id,
+            // `q.field_id` can be null (a legacy question predating this
+            // field) — the picker below already renders '' as "unassigned"
+            // via its own `|| undefined` fallback, and Save is blocked
+            // until a real one is chosen.
+            { text: q.question_text, fieldId: q.field_id ?? '' },
+          ])
         )
       );
     }
@@ -179,7 +186,11 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
             const draft = drafts[question.question_id] ?? { text: '', fieldId: '' };
             const isDirty =
               draft.text.trim() !== question.question_text.trim() ||
-              draft.fieldId !== question.field_id;
+              // Both sides normalized through '' — draft.fieldId is seeded
+              // with `q.field_id ?? ''` above, so comparing it directly
+              // against a possibly-null question.field_id would call an
+              // untouched legacy (null) row "dirty" the instant it renders.
+              draft.fieldId !== (question.field_id ?? '');
             return (
               <div key={question.question_id} className="flex items-center gap-2">
                 <Input

@@ -73,7 +73,12 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const handleSubmit = async (values: OfficeFormValues) => {
     try {
       if (modalState?.mode === 'edit' && modalState.office) {
-        await updateOffice({ tenantId, officeId: modalState.office.office_id, ...values }).unwrap();
+        await updateOffice({
+          tenantId,
+          officeId: modalState.office.office_id,
+          ...values,
+          location_code: values.location_code || undefined,
+        }).unwrap();
         showToast({ message: 'Office updated.', type: 'success' });
       } else {
         await addOffice({
@@ -84,6 +89,7 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           address_line_2: values.address_line_2 || undefined,
           state: values.state || undefined,
           zip_code: values.zip_code || undefined,
+          location_code: values.location_code || undefined,
         }).unwrap();
         showToast({ message: 'Office added.', type: 'success' });
       }

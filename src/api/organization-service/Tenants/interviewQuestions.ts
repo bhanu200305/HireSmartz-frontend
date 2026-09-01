@@ -4,10 +4,14 @@ export type InterviewQuestion = {
   question_id: string;
   question_text: string;
   // Which ResumeTemplateField (see ../resumeTemplateFields.ts) this
-  // question's spoken answer is meant to fill in — required on every
-  // question now, platform or tenant-owned (organization-service migration
-  // 0056: NOT NULL at the database level, no untagged state exists).
-  field_id: string;
+  // question's spoken answer is meant to fill in — required at the API
+  // layer on every create/update, but `null` is still a real value here: a
+  // legacy row created before this field existed can come back untagged
+  // (organization-service migration 0057 reverted an unsafe NOT NULL —
+  // there's no correct value to backfill an old row to). The Resume Field
+  // picker in both Intake Questions tabs already renders that as
+  // "unassigned" rather than assuming a value.
+  field_id: string | null;
 };
 
 export type InterviewQuestionsResponse = {

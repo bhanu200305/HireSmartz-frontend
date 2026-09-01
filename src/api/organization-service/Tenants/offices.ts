@@ -8,6 +8,10 @@ export type AddTenantOfficeRequest = {
   address_line_2?: string;
   state?: string;
   zip_code?: string;
+  // Free text, no format constraint — purely what the user types (e.g.
+  // "BLR-01"), never auto-generated. Uniqueness within the tenant is
+  // validated server-side (case-insensitive).
+  location_code?: string;
 };
 
 export type AddTenantOfficeResponse = {
@@ -42,6 +46,7 @@ export type UpdateTenantOfficeRequest = {
   country?: string;
   zip_code?: string;
   address_type_id?: string;
+  location_code?: string;
 };
 
 export type DeleteTenantOfficeResponse = {
