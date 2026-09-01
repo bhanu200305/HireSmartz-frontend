@@ -89,6 +89,7 @@ const ViewJobDetails = () => {
   const { data: masterJobTypes = [] } = useListJobTypesQuery({
     isMaster: callerKind === 'platform',
   });
+  const { jobOpeningDropdown: shiftOptions } = useJobOpeningDropdown('SHIFT', 'view');
   const { data: departmentJobTitles = [] } = useListTenantDepartmentJobTitlesQuery(
     { tenantId: tenantId ?? '', departmentId: String(jobDepartmentId) },
     { skip: !tenantId || !jobDepartmentId }
@@ -138,6 +139,9 @@ const ViewJobDetails = () => {
       })
       .filter(Boolean)
       .join(', ') || '';
+  const shiftName = jobData?.data.shiftId
+    ? shiftOptions.find((option) => idsMatch(option.id, jobData.data.shiftId))?.name || ''
+    : '';
   const locationCode = selectedOffice?.location_code || locationData?.code || '';
   const locationAddressLine1 = selectedOffice?.address_line_1 || locationData?.addressLine1 || '';
   const locationAddressLine2 = selectedOffice?.address_line_2 || locationData?.addressLine2 || '';
@@ -180,24 +184,30 @@ const ViewJobDetails = () => {
     .map((id) => languageOptions.find((option) => idsMatch(option.id, id))?.name)
     .filter((name): name is string => Boolean(name));
 
-  const normalizeIdArray = (values: unknown[]): number[] =>
+  // Hiring-manager/recruiter ids are UUIDs (organization_job_hiring_manager.user_id /
+  // organization_job_recruiter.user_id), not numbers — `Number(uuid)` is always NaN,
+  // so the old Number()-based matching here silently filtered every real
+  // selection out and the fields always rendered empty regardless of what
+  // was actually saved. Normalize to strings and compare with `idsMatch`
+  // (already used for every other dropdown in this file: office, department,
+  // job title, job type, language, education preference) instead.
+  const normalizeIdArray = (values: unknown[]): string[] =>
     values
       .map((value) => {
         if (typeof value === 'object' && value !== null) {
-          const idFromObject = Number((value as { id?: unknown }).id);
-          return Number.isFinite(idFromObject) ? idFromObject : null;
+          const idFromObject = (value as { id?: unknown }).id;
+          return idFromObject != null ? String(idFromObject) : null;
         }
-        const idFromValue = Number(value);
-        return Number.isFinite(idFromValue) ? idFromValue : null;
+        return value != null ? String(value) : null;
       })
-      .filter((value): value is number => value !== null);
+      .filter((value): value is string => value !== null);
 
   const selectedHiringManagerIds = useMemo(
     () =>
       Array.isArray(jobData?.data?.hiringManagers)
         ? normalizeIdArray(jobData.data.hiringManagers)
         : jobData?.data?.hiringManager?.id
-          ? [Number(jobData.data.hiringManager.id)]
+          ? [String(jobData.data.hiringManager.id)]
           : [],
     [jobData]
   );
@@ -207,19 +217,24 @@ const ViewJobDetails = () => {
       Array.isArray(jobData?.data?.recruiters)
         ? normalizeIdArray(jobData.data.recruiters)
         : jobData?.data?.recruiter?.id
-          ? [Number(jobData.data.recruiter.id)]
+          ? [String(jobData.data.recruiter.id)]
           : [],
     [jobData]
   );
 
   const selectedHiringManagers = useMemo(
     () =>
-      hiringManagerOptions.filter((option) => selectedHiringManagerIds.includes(Number(option.id))),
+      hiringManagerOptions.filter((option) =>
+        selectedHiringManagerIds.some((id) => idsMatch(option.id, id))
+      ),
     [hiringManagerOptions, selectedHiringManagerIds]
   );
 
   const selectedRecruiters = useMemo(
-    () => recruiterOptions.filter((option) => selectedRecruiterIds.includes(Number(option.id))),
+    () =>
+      recruiterOptions.filter((option) =>
+        selectedRecruiterIds.some((id) => idsMatch(option.id, id))
+      ),
     [recruiterOptions, selectedRecruiterIds]
   );
 
@@ -349,7 +364,7 @@ const ViewJobDetails = () => {
                   fontWeight: 600,
                   fontSize: '13px',
                 }}
-                value={jobData?.data.shift || ''}
+                value={shiftName}
                 disabled
               />
             </Form.Item>
@@ -671,8 +686,15 @@ const ViewJobDetails = () => {
                   fontSize: '13px',
                 }}
                 value={
-                  jobData?.data.openDate
-                    ? dayjs(jobData.data.openDate, 'DD-MM-YYYY').format('MMM DD, YYYY')
+                  // `openDate` here is job-service's raw `job_open_date` — an
+                  // ISO 8601 datetime string (see JobDetailsResponse), not
+                  // DD-MM-YYYY. Parsing it against that format token failed
+                  // silently (dayjs returned an Invalid Date, which .format()
+                  // renders as the literal string "Invalid Date"), so this
+                  // field looked wrong/empty for every job regardless of
+                  // what was actually saved. Let dayjs parse ISO natively.
+                  jobData?.data.openDate && dayjs(jobData.data.openDate).isValid()
+                    ? dayjs(jobData.data.openDate).format('MMM DD, YYYY')
                     : ''
                 }
                 disabled

@@ -32,7 +32,7 @@ const { Option } = Select;
 const VARIANT_LABELS: Record<string, string> = {
   online: 'Online Round',
   offline: 'Offline Round',
-  soundwave: 'Sound Wave Round',
+  soundwave: 'Voice Agent Round',
   avatar: 'Avatar Round',
 };
 

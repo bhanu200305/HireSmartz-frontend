@@ -33,7 +33,7 @@ type InterviewRound = {
  * rather than guessing — same "don't invent it" posture as the backend's
  * own catalog-driven enforcement. */
 const VARIANT_BADGES: Record<string, { label: string; icon: IconType }> = {
-  soundwave: { label: 'Sound Wave Round', icon: HiOutlineMicrophone },
+  soundwave: { label: 'Voice Agent Round', icon: HiOutlineMicrophone },
   avatar: { label: 'Avatar Round', icon: HiOutlineUserCircle },
   online: { label: 'Video Call Round', icon: HiOutlineVideoCamera },
   offline: { label: 'In Person Round', icon: HiOutlineOfficeBuilding },

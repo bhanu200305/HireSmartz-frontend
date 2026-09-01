@@ -285,7 +285,12 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               </p>
             </div>
             {isEditMode ? (
-              <Input value={form[key]} onChange={handleField(key)} placeholder={label} />
+              <Input
+                value={form[key]}
+                onChange={handleField(key)}
+                placeholder={label}
+                noAutoCapitalize={key === 'website_url'}
+              />
             ) : (
               <Typography variant="body1" className="text-gray-800 whitespace-pre-line">
                 {form[key] || '-'}

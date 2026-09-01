@@ -18,6 +18,7 @@ import {
   useBulkImportJobQuestionsMutation,
   useLazyGetQuestionImportTemplateQuery,
 } from '../../../api/job-service/JobOpening/jobQuestions';
+import { jobApi } from '../../../api/job-service/jobApi';
 import { useListInterviewRoundTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
 import {
   useLazyValidateForPublishQuery,
@@ -209,9 +210,24 @@ const AiQuestionsSetup = () => {
     topic_skill: question.topic_skill,
   });
 
+  // Shared save path behind manual add (the inline "+"), edit, and delete —
+  // all three funnel every question through here as the job's whole
+  // updated list. Same gap as the bulk-import handler below: the PUT
+  // already returns the job's full, fresh question bank
+  // (`JobQuestionsResponse`, identical shape to the GET this page reads),
+  // but it used to be discarded in favor of the `refetchQuestions()` call
+  // alone — a second, separate GET whose result didn't reliably make it
+  // into this render, leaving the list showing its pre-save state until an
+  // actual page reload. Writing the PUT's own response into the cache
+  // directly makes the update land unconditionally; the refetch stays as a
+  // consistency backstop.
   const persistQuestions = async (next: QuestionRequest[]) => {
     if (!activeJobOpeningId) return;
-    await saveJobQuestions({ jobOpeningId: activeJobOpeningId, questions: next }).unwrap();
+    const res = await saveJobQuestions({
+      jobOpeningId: activeJobOpeningId,
+      questions: next,
+    }).unwrap();
+    dispatch(jobApi.util.upsertQueryData('getJobQuestions', activeJobOpeningId, res));
     await refetchQuestions();
   };
 
@@ -293,6 +309,34 @@ const AiQuestionsSetup = () => {
         ),
       ]);
       showToast({ message: 'Questions uploaded successfully', type: 'success' });
+      // The import response already carries the job's full, fresh question
+      // bank (`BulkImportQuestionsView.questions` — "so the caller can
+      // refresh its view from one response", per its docstring). Write it
+      // into the cache directly instead of only relying on the
+      // `refetchQuestions()` below: that's a second, separate GET, and
+      // whenever it didn't land the list kept showing the pre-import state
+      // until an actual page reload. This makes the update land
+      // unconditionally, using the round metadata (name/sequence/variant)
+      // already cached from the last load; the round set itself doesn't
+      // change from an import, only which questions sit under each round.
+      dispatch(
+        jobApi.util.updateQueryData('getJobQuestions', activeJobOpeningId, (draft) => {
+          const byRound = new Map<string, QuestionResponse[]>();
+          for (const question of res.questions ?? []) {
+            const bucket = byRound.get(question.interview_round_id);
+            if (bucket) bucket.push(question);
+            else byRound.set(question.interview_round_id, [question]);
+          }
+          // `res.questions` is the job's *complete* bank post-import (not
+          // just the newly-added rows), so a round missing from `byRound`
+          // genuinely has zero questions now — not "unchanged, keep the old
+          // list".
+          draft.rounds = draft.rounds.map((round) => ({
+            ...round,
+            questions: byRound.get(round.round_instance_id) ?? [],
+          }));
+        })
+      );
       refetchQuestions();
     } catch (err) {
       showToast({
@@ -398,7 +442,19 @@ const AiQuestionsSetup = () => {
       navigate(`/jobs/view/${id}/details`);
       return;
     }
-    if (!activeJobOpeningId) return;
+    if (!activeJobOpeningId) {
+      // This used to be a bare `return` — a click that silently did nothing,
+      // no toast, no network call, indistinguishable from a dead button. It
+      // fired for real when the job id (URL param on Edit, JobSlice on
+      // Create) wasn't resolved yet at click time, and the job was left
+      // stuck in Draft with no visible reason why. Surface it instead of
+      // swallowing it.
+      showToast({
+        message: 'Could not identify this job opening — please refresh the page and try again.',
+        type: 'error',
+      });
+      return;
+    }
     try {
       const validation = await validateForPublish(activeJobOpeningId).unwrap();
       if (!validation.is_valid) {

@@ -3,6 +3,11 @@ import type { InterviewQuestion, InterviewQuestionsResponse } from '../Tenants/i
 
 export type { InterviewQuestion, InterviewQuestionsResponse };
 
+export type CreatePlatformTenantJobQuestionArgs = {
+  tenantId: string;
+  question_text: string;
+};
+
 export type UpdatePlatformTenantJobQuestionArgs = {
   tenantId: string;
   questionId: string;
@@ -15,17 +20,17 @@ export type DeletePlatformTenantJobQuestionArgs = {
 };
 
 /**
- * GET/PATCH/DELETE /v1/platform/tenants/{tenant_id}/audio-questions[/{id}]
- * — a Super Admin viewing or editing ONE SPECIFIC company's own question
- * set, regardless of who owns it. Same contract shape and same "no add"
- * rule as the tenant's own self-service view (Tenants/interviewQuestions.ts
- * — mirrors that file's own reasoning), just tenant-bound from a path
- * param picked in the Intake Questions tab's company dropdown instead of
- * the signed-in session. If this company hasn't customized its own
- * questions yet, GET here returns the live platform default (see
- * ListJobQuestionsUseCase on the backend) — editing one of those forks
- * this company its own independent copy from that point on, same as if
- * its own Company Admin had made the edit.
+ * GET/POST/PATCH/DELETE /v1/platform/tenants/{tenant_id}/audio-questions[/{id}]
+ * — a Super Admin viewing, adding to, or editing ONE SPECIFIC company's own
+ * question set, regardless of who owns it. Same contract shape as the
+ * tenant's own self-service view (Tenants/interviewQuestions.ts — mirrors
+ * that file's own reasoning), just tenant-bound from a path param picked
+ * in the Intake Questions tab's company dropdown instead of the signed-in
+ * session. If this company hasn't customized its own questions yet, GET
+ * here returns the live platform default (see ListJobQuestionsUseCase on
+ * the backend) — adding, editing, or removing one of those forks this
+ * company its own independent copy from that point on, same as if its own
+ * Company Admin had made the change.
  */
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
@@ -33,6 +38,20 @@ const extendedApi = orgApi.injectEndpoints({
       query: (tenantId) => `/v1/platform/tenants/${tenantId}/audio-questions`,
       providesTags: (_result, _error, tenantId) => [
         { type: 'InterviewQuestions', id: `platform-${tenantId}` },
+      ],
+    }),
+    createPlatformTenantJobQuestion: build.mutation<
+      InterviewQuestion,
+      CreatePlatformTenantJobQuestionArgs
+    >({
+      query: ({ tenantId, question_text }) => ({
+        url: `/v1/platform/tenants/${tenantId}/audio-questions`,
+        method: 'POST',
+        body: { question_text },
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'InterviewQuestions', id: `platform-${tenantId}` },
+        { type: 'InterviewQuestions', id: tenantId },
       ],
     }),
     updatePlatformTenantJobQuestion: build.mutation<
@@ -67,6 +86,7 @@ const extendedApi = orgApi.injectEndpoints({
 
 export const {
   useGetPlatformTenantJobQuestionsQuery,
+  useCreatePlatformTenantJobQuestionMutation,
   useUpdatePlatformTenantJobQuestionMutation,
   useDeletePlatformTenantJobQuestionMutation,
 } = extendedApi;

@@ -41,7 +41,11 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
     id: job.org_job_opening_id as unknown as number,
     atsJobOpeningId: '',
     jobProfileCode: details?.job_profile_code ?? '',
-    shift: '',
+    // Was hardcoded to '' — the Shift field on View/Edit always rendered
+    // empty regardless of what was actually saved. Id only, name resolved
+    // separately against the shift catalogue (same as jobTitle/department/
+    // jobType above) — shift_id has no name of its own in this response.
+    shiftId: details?.shift_id ?? null,
     openings: details?.vacancies ?? 0,
     minSalary: details?.lower_salary_range ?? 0,
     maxSalary: details?.upper_salary_range ?? 0,
@@ -147,6 +151,7 @@ export const mapDetailsToJobDetailsState = (
     department: details.department_id ? [details.department_id as unknown as number] : [],
     jobType: details.job_type_id ? [details.job_type_id as unknown as number] : [],
     jobMode: details.mode_id ? [details.mode_id as unknown as number] : [],
+    shift: details.shift_id ? [details.shift_id as unknown as number] : [],
     officeLocation: locationId ? [locationId as unknown as number] : [],
     country: details.locations?.[0]?.country ?? '',
     state: details.locations?.[0]?.state ?? '',

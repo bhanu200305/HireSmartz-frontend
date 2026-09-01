@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Button, showToast } from '../../shared';
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -13,6 +13,7 @@ import { SortableInterviewRounds } from './sortableInterviewRounds';
 import { asJobId } from '../../../api/job-service/jobId';
 import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 
 const EditDetailedInterviewRounds = () => {
   const navigate = useNavigate();
@@ -27,7 +28,19 @@ const EditDetailedInterviewRounds = () => {
   const { data, isLoading, refetch } = useGetInterviewRoundsByJobIdQuery(jobOpeningId, {
     skip: !jobOpeningId,
   });
-  const isEditMode = location.pathname.includes('/edit/');
+  // Round-type ids for the fixed Resume / Intake Call anchor rounds — same
+  // pinning rule InterviewSetup (create flow) applies, kept consistent here
+  // so the anchor rounds can't be dragged out of the top 2 in edit mode either.
+  const { jobOpeningDropdown: roundTypes } = useJobOpeningDropdown('ROUNDS', 'view');
+  const anchorRoundTypeIds = useMemo(
+    () =>
+      new Set(
+        roundTypes
+          .filter((round) => round.special_kind === 'resume' || round.special_kind === 'intake_call')
+          .map((round) => String(round.id))
+      ),
+    [roundTypes]
+  );
   useEffect(() => {
     if (location.state?.refresh && jobOpeningId) {
       refetch();
@@ -114,7 +127,7 @@ const EditDetailedInterviewRounds = () => {
             setSelectedRoundId(roundId);
             setShowDeleteModal(true);
           }}
-          isEditMode={isEditMode}
+          anchorRoundTypeIds={anchorRoundTypeIds}
         />
       )}
       <div className="mt-6 flex justify-center">

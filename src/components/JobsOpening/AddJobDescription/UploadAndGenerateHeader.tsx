@@ -1,4 +1,5 @@
 import React from 'react';
+import { Tooltip } from 'antd';
 import { Button, Typography } from '../../shared';
 import {
   HiOutlineRefresh,
@@ -6,7 +7,7 @@ import {
   HiOutlineExclamationCircle,
   HiOutlineDocumentDuplicate,
 } from 'react-icons/hi';
-import { MdDownload } from 'react-icons/md';
+import { MdDownload, MdInfo } from 'react-icons/md';
 
 export interface ImportWarningItem {
   type: 'error' | 'duplicate';
@@ -116,47 +117,83 @@ export const UploadAndGenerateHeader = ({
               </button>
             )}
           </div>
-          <Typography variant="body2" className="text-brand-800 m-0">
-            Successfully imported <strong>{importedCount}</strong> question(s).
-            {skippedCount > 0 && (
-              <>
-                {' '}
-                Skipped <strong>{skippedCount}</strong> row(s)
-                {failedCount > 0 && duplicateCount > 0 && (
-                  <>
-                    {' '}
-                    (<strong>{failedCount}</strong> invalid, <strong>{duplicateCount}</strong>{' '}
-                    duplicate)
-                  </>
-                )}
-                .
-              </>
+          <Typography
+            variant="body2"
+            className="text-brand-800 m-0 flex items-center flex-wrap gap-1.5"
+          >
+            <span>
+              Successfully imported <strong>{importedCount}</strong> question(s).
+              {skippedCount > 0 && (
+                <>
+                  {' '}
+                  Skipped <strong>{skippedCount}</strong> row(s)
+                  {failedCount > 0 && duplicateCount > 0 && (
+                    <>
+                      {' '}
+                      (<strong>{failedCount}</strong> invalid, <strong>{duplicateCount}</strong>{' '}
+                      duplicate)
+                    </>
+                  )}
+                  .
+                </>
+              )}
+            </span>
+            {/* Validation detail (which row failed and why) sits behind this
+                icon instead of an always-open block — a hover away rather
+                than pushing the question list down every time a file has
+                any skipped rows. */}
+            {warnings.length > 0 && (
+              <Tooltip
+                title={
+                  <div className="py-1">
+                    <div className="flex items-center justify-between gap-3 px-3 pb-2 mb-1.5 border-b border-gray-100">
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wide">
+                        Row issues
+                      </span>
+                      <span className="text-[11px] font-semibold text-gray-400">
+                        {warnings.length} {warnings.length === 1 ? 'row' : 'rows'}
+                      </span>
+                    </div>
+                    <ul className="flex flex-col gap-1 max-h-48 overflow-y-auto px-1">
+                      {warnings.map((warn, index) => (
+                        <li
+                          key={index}
+                          className={`flex items-start gap-2 text-xs leading-snug px-2 py-1.5 rounded-lg ${
+                            warn.type === 'error'
+                              ? 'text-red-700 bg-red-50/70'
+                              : 'text-amber-800 bg-amber-50/70'
+                          }`}
+                        >
+                          {warn.type === 'error' ? (
+                            <HiOutlineExclamationCircle className="shrink-0 mt-0.5 text-sm" />
+                          ) : (
+                            <HiOutlineDocumentDuplicate className="shrink-0 mt-0.5 text-sm" />
+                          )}
+                          <span className="font-medium">{warn.message}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                }
+                color="#fff"
+                overlayInnerStyle={{
+                  maxWidth: 360,
+                  padding: '10px 4px',
+                  borderRadius: 14,
+                  boxShadow: '0 12px 32px -8px rgba(0,0,0,0.18)',
+                }}
+                placement="bottom"
+              >
+                <span
+                  role="img"
+                  aria-label={`${warnings.length} validation ${warnings.length === 1 ? 'issue' : 'issues'}`}
+                  className="inline-flex items-center justify-center w-5 h-5 rounded-full text-red-600 bg-red-50 ring-1 ring-red-200 hover:bg-red-100 hover:ring-red-300 transition-colors cursor-help shrink-0"
+                >
+                  <MdInfo size={13} />
+                </span>
+              </Tooltip>
             )}
           </Typography>
-          {warnings.length > 0 && (
-            <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 max-h-36 overflow-y-auto">
-              <Typography variant="overline" color="warning" className="font-semibold block mb-1">
-                Warnings / Errors:
-              </Typography>
-              <ul className="space-y-1.5">
-                {warnings.map((warn, index) => (
-                  <li
-                    key={index}
-                    className={`flex items-start gap-1.5 text-xs font-medium ${
-                      warn.type === 'error' ? 'text-red-700' : 'text-amber-800'
-                    }`}
-                  >
-                    {warn.type === 'error' ? (
-                      <HiOutlineExclamationCircle className="shrink-0 mt-0.5 text-sm" />
-                    ) : (
-                      <HiOutlineDocumentDuplicate className="shrink-0 mt-0.5 text-sm" />
-                    )}
-                    <span>{warn.message}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
       )}
     </div>

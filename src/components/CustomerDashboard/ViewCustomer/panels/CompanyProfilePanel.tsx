@@ -262,6 +262,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             onChange={handleField('website_url')}
             placeholder="Website"
             disabled={!isEditMode}
+            noAutoCapitalize
           />
         </Field>
         <Field label="Company size">

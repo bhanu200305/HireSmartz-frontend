@@ -8,6 +8,7 @@ import {
   useLazySearchSkillsQuery,
 } from '../api/job-service/JobOpening/catalogs';
 import { useListEducationPreferencesQuery } from '../api/job-service/JobOpening/educationPreferences';
+import { useGetOrganizationShiftsQuery } from '../api/job-service/Shifts/shifts';
 import { useListUsersQuery } from '../api/organization-service/Users/users';
 import { useListPlatformTenantUsersQuery } from '../api/organization-service/Platform/users';
 import { useListPlatformTenantsQuery } from '../api/organization-service/Platform/tenants';
@@ -93,6 +94,11 @@ const useJobOpeningDropdown = (
   const languages = useListLanguagesQuery(undefined, {
     skip: skip || endpoint !== 'LANGUAGE' || callerKind === 'platform',
   });
+  // Tenant-only, same as education preferences/languages above — a platform
+  // caller has no organization to own shifts.
+  const shifts = useGetOrganizationShiftsQuery(undefined, {
+    skip: skip || endpoint !== 'SHIFT' || callerKind === 'platform',
+  });
   const tenantUsers = useListUsersQuery({ limit: 200 }, { skip: skip || !needsPeople || isMaster });
   const platformUsers = useListPlatformTenantUsersQuery(
     { tenantId: tenantId ?? '', limit: 200 },
@@ -159,6 +165,11 @@ const useJobOpeningDropdown = (
           id: item.language_id,
           name: item.name,
         }));
+      case 'SHIFT':
+        return (shifts.data?.shifts ?? []).map((item) => ({
+          id: item.id,
+          name: `${item.name} (${item.start_time.slice(0, 5)} - ${item.end_time.slice(0, 5)})`,
+        }));
       case 'MANDATORY_SKILLS':
       case 'OPTIONAL_SKILLS': {
         const searched = skillsResult.data;
@@ -184,6 +195,7 @@ const useJobOpeningDropdown = (
     roundTypes.data,
     educationPreferences.data,
     languages.data,
+    shifts.data,
     users.data,
     skillsResult.data,
     skillsResult.isUninitialized,
@@ -198,6 +210,7 @@ const useJobOpeningDropdown = (
     roundTypes.isLoading ||
     educationPreferences.isLoading ||
     languages.isLoading ||
+    shifts.isLoading ||
     users.isLoading ||
     preloadedSkills.isLoading ||
     skillsResult.isFetching;
@@ -209,6 +222,7 @@ const useJobOpeningDropdown = (
     if (endpoint === 'ROUNDS') roundTypes.refetch();
     if (endpoint === 'EDUCATION_PREFERENCE') educationPreferences.refetch();
     if (endpoint === 'LANGUAGE') languages.refetch();
+    if (endpoint === 'SHIFT') shifts.refetch();
     if (needsPeople) users.refetch();
     if (isSkillsEndpoint(endpoint)) preloadedSkills.refetch();
   };

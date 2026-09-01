@@ -2,7 +2,7 @@ import MainLayout from '../../../layouts/MainLayout';
 import './addJob.css';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import TextArea from 'antd/es/input/TextArea';
-import { Checkbox, DatePicker, Form, Select, Switch, TimePicker, Tooltip } from 'antd';
+import { Checkbox, DatePicker, Form, Select, Switch, Tooltip } from 'antd';
 import { Button, CollapsibleSection, Input, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import JobDetailsLayout from '../../../layouts/JobDetailsLayout';
@@ -238,6 +238,10 @@ const JobDetails = () => {
     'JOB_MODE',
     'create'
   );
+  const { jobOpeningDropdown: shiftOptions, loading: shiftsLoading } = useJobOpeningDropdown(
+    'SHIFT',
+    'create'
+  );
   const { jobOpeningDropdown: exemptionStatus, loading: exemptionLoading } = useJobOpeningDropdown(
     'EXEMPTION_STATUS',
     'create'
@@ -326,6 +330,7 @@ const JobDetails = () => {
     defaultValues: {
       ...jobDetails,
       jobMode: jobDetails?.jobMode || [],
+      shift: jobDetails?.shift || [],
       jobProfileCode: jobDetails?.jobProfileCode || generateJobProfileCode(),
       openDate: jobDetails?.openDate || dayjs().format('DD-MM-YYYY'),
       country: jobDetails?.country || '',
@@ -1485,7 +1490,6 @@ const JobDetails = () => {
       locationId: data.officeLocation?.[0],
       generateAiJd: true,
       useCultureIntro: Boolean(data.useCultureIntro),
-      shift: data.shiftStart && data.shiftEnd ? `${data.shiftStart} - ${data.shiftEnd}` : '',
       maxExperience: data.maxExperience,
       minSalary: data.minSalary ? parseFloat(data.minSalary) : undefined,
       maxSalary: data.maxSalary ? parseFloat(data.maxSalary) : undefined,
@@ -1854,47 +1858,19 @@ const JobDetails = () => {
                   />
                 </Form.Item>
                 <Form.Item label={<span>Shift</span>}>
-                  <div className="flex items-center gap-2">
-                    <div className="border-wrapper border border-[var(--border)] p-1 flex-1 min-w-0 flex items-center">
-                      <TimePicker
-                        value={watch('shiftStart') ? dayjs(watch('shiftStart'), 'HH:mm') : null}
-                        onChange={(time: dayjs.Dayjs | null) => {
-                          const newValue = time ? time.format('HH:mm') : '';
-                          setValue('shiftStart', newValue, {
-                            shouldValidate: true,
-                          });
-                          trigger(['shiftStart', 'shiftEnd']);
-                        }}
-                        className="w-full custom-time-picker placeholder-style"
-                        variant="borderless"
-                        format="hh:mm A"
-                        placeholder="Start Time"
-                        showNow={false}
-                      />
-                    </div>
-                    <span className="text-gray-500 shrink-0">–</span>
-                    <div className="border-wrapper border border-[var(--border)] p-1 flex-1 min-w-0 flex items-center">
-                      <TimePicker
-                        className="w-full custom-time-picker placeholder-style"
-                        variant="borderless"
-                        format="hh:mm A"
-                        placeholder="End Time"
-                        showNow={false}
-                        value={watch('shiftEnd') ? dayjs(watch('shiftEnd'), 'HH:mm') : null}
-                        onChange={(time: dayjs.Dayjs | null) => {
-                          const newValue = time ? time.format('HH:mm') : '';
-                          setValue('shiftEnd', newValue, {
-                            shouldValidate: true,
-                          });
-                          trigger(['shiftStart', 'shiftEnd']);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {(errors.shiftStart || errors.shiftEnd) && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.shiftStart?.message || errors.shiftEnd?.message}
-                    </p>
+                  <DropdownWithAddOption
+                    className="w-full custom-select-jobs placeholder-style"
+                    value={(watch('shift') || [])[0]}
+                    onChange={(value) => setValue('shift', [value], { shouldValidate: true })}
+                    options={shiftOptions}
+                    loading={shiftsLoading}
+                    label="Shift"
+                    placeholder="Select Shift"
+                    type="shift"
+                    enableEditDelete={false}
+                  />
+                  {errors.shift && (
+                    <p className="text-red-500 text-sm mt-1">{errors.shift?.message as string}</p>
                   )}
                 </Form.Item>
                 <Form.Item label={<span>Communication Language</span>}>

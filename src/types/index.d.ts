@@ -206,8 +206,14 @@ export type JobDetailsState = {
   // jobTitle/department/jobType above. Maps to `mode_id`, a
   // publish-mandatory field (_publish_validation.py).
   jobMode?: Array<string | number>;
-  shiftStart?: string;
-  shiftEnd?: string;
+  // Single catalogue id, held as an array-of-one — same convention as
+  // jobMode above. References the organization's own configured shift
+  // (name + start/end time), not a free-typed time range — see
+  // api/job-service/Shifts/shifts.ts. Replaces the old shiftStart/shiftEnd
+  // pair, which only ever built a display string and was never sent to the
+  // backend (buildSaveJobDetailsPayload has always read `shift`/`shiftId`
+  // for `shift_id`), so every job's shift was silently discarded.
+  shift?: Array<string | number>;
   openings: number | null;
   exemptionStatus: string | number | boolean | null;
   minSalary: string | null;
@@ -448,7 +454,10 @@ export type JobOpeningByIdResponse = {
     id: string | number;
     atsJobOpeningId: string;
     jobProfileCode: string;
-    shift: string;
+    // Id only, name resolved separately against the organization's shift
+    // catalogue (same pattern as jobTitle/department/jobType below) — the
+    // backend's `shift_id` has no name of its own to send.
+    shiftId?: string | null;
     openings: number;
     minSalary: number;
     maxSalary: number;

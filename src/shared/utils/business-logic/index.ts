@@ -163,7 +163,16 @@ const matchMarkdownHeader = (_: any, hashes: string, char: string) => {
 // (reportlab-style PDFs especially split the bullet glyph and the paragraph
 // into different content-stream operations, which pypdf then reads back as
 // two lines instead of one).
-const AI_JD_BULLET_RE = /^[•●◦‣▪∙*-]\s*/;
+//
+// The glyph must be followed by real whitespace or be alone on the line —
+// NOT by another non-space character. Without that guard, `\s*` (zero-or-
+// more) happily matches a bare leading `*` with nothing after it, which
+// also fires on `**bold**`/`*italic*` lines (AI-authored JDs use both
+// constantly): `**Key Responsibilities**` would get misread as a stray "*"
+// bullet glyph and have only its first asterisk stripped, leaving a
+// mismatched `- *Key Responsibilities**` that renders as literal asterisks
+// instead of bold text.
+const AI_JD_BULLET_RE = /^[•●◦‣▪∙*-](?:\s+|$)/;
 const AI_JD_NUMBERED_RE = /^\d+[.)]\s+/;
 const AI_JD_MARKDOWN_HEADING_RE = /^#{1,6}\s+/;
 
