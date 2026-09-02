@@ -303,9 +303,7 @@ const CandidatesListing = () => {
   const departmentName = candidateListDepartments.find(
     (d) => String(d.org_department_id) === String(departmentId)
   )?.name;
-  const jobTypeName = candidateListJobTypes.find(
-    (t) => String(t.id) === String(jobTypeId)
-  )?.name;
+  const jobTypeName = candidateListJobTypes.find((t) => String(t.id) === String(jobTypeId))?.name;
 
   const isCandidateDisabled = (candidate: any): boolean => {
     if (!candidate.isResumeExtracted) return true;

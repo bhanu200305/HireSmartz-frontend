@@ -167,8 +167,8 @@ const IntakeQuestionsTab: React.FC = () => {
         <h2 className="text-lg font-semibold text-gray-800 m-0">Intake Questions</h2>
       </div>
       <p className="text-xs text-gray-500 mb-4 max-w-3xl">
-        Up to {MAX_QUESTIONS} HR/interpersonal questions asked in every candidate&apos;s
-        first-round intake call. Pick a company below to view or override its own set.
+        Up to {MAX_QUESTIONS} HR/interpersonal questions asked in every candidate&apos;s first-round
+        intake call. Pick a company below to view or override its own set.
       </p>
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -204,7 +204,11 @@ const IntakeQuestionsTab: React.FC = () => {
         <div className="max-w-3xl">
           {questions.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-1 py-8 text-center border border-dashed border-neutral-200 rounded-xl bg-neutral-50/50">
-              <HiOutlineChatBubbleLeftRight className="text-neutral-300" size={26} strokeWidth={0.5} />
+              <HiOutlineChatBubbleLeftRight
+                className="text-neutral-300"
+                size={26}
+                strokeWidth={0.5}
+              />
               <p className="text-sm font-medium text-gray-600 m-0">No intake questions yet.</p>
             </div>
           ) : (

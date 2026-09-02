@@ -87,10 +87,10 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
         Intake Questions
       </Typography>
       <Typography variant="body2" className="mb-6 block">
-        Your HR/interpersonal question set, asked in every candidate&apos;s first-round intake
-        call. Edit the wording below — changes to one question save independently. Set by
-        CareerForcePro by default; once you edit or remove a question here, this becomes your
-        company&apos;s own independent set.
+        Your HR/interpersonal question set, asked in every candidate&apos;s first-round intake call.
+        Edit the wording below — changes to one question save independently. Set by CareerForcePro
+        by default; once you edit or remove a question here, this becomes your company&apos;s own
+        independent set.
       </Typography>
 
       {questions.length === 0 ? (

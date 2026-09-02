@@ -1692,10 +1692,7 @@ const JobDetails = () => {
       // clicks Regenerate manually on the next step. Skipped for anything
       // that doesn't touch those fields (e.g. swapping the Recruiter), so
       // a manually-edited description isn't discarded for no reason.
-      if (
-        jdBeforeSave?.jobDescription &&
-        haveDescriptionInputsChanged(data, jdBeforeSave)
-      ) {
+      if (jdBeforeSave?.jobDescription && haveDescriptionInputsChanged(data, jdBeforeSave)) {
         try {
           await enhanceJd({ jobOpeningId: savedId, regenerate: true }).unwrap();
           showToast({

@@ -81,7 +81,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     contextLabel: 'AS',
     authorName: 'Amit Shah',
     authorRole: 'Hiring Manager',
-    authorId: 0,
+    authorId: '0',
     createdAt: '2026-03-17T18:09:00.000Z',
     roundName: 'AI Audio Screening',
     content: 'Please schedule an in-person interview with this candidate',
@@ -91,7 +91,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     contextLabel: 'RA',
     authorName: 'Raghav Arora',
     authorRole: undefined,
-    authorId: 0,
+    authorId: '0',
     createdAt: '2026-03-10T18:09:00.000Z',
     roundName: undefined,
     content: "Please review this candidate's portfolio.",
@@ -101,7 +101,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     contextLabel: 'RA',
     authorName: 'Raghav Arora',
     authorRole: 'Recruiter',
-    authorId: 0,
+    authorId: '0',
     createdAt: '2026-03-10T19:00:00.000Z',
     roundName: undefined,
     content: "Please review this candidate's portfolio (edited)",
@@ -111,7 +111,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     contextLabel: 'SA',
     authorName: 'Sarah Andrews',
     authorRole: 'Hiring Manager',
-    authorId: 0,
+    authorId: '0',
     createdAt: '2026-03-05T20:00:00.000Z',
     roundName: 'In-Person Interview',
     content:
@@ -122,7 +122,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     contextLabel: 'DW',
     authorName: 'Dan Williams',
     authorRole: 'Super Admin',
-    authorId: 0,
+    authorId: '0',
     createdAt: '2026-03-01T17:00:00.000Z',
     roundName: 'AI Audio Screening',
     content: 'Can budget $40k. Check if this works.',
@@ -162,10 +162,7 @@ const JobListingNotesPanel = ({
   // resolved here, against this tenant's user list, the same list Hiring
   // Manager/Recruiter pickers already use. Skipped along with the notes
   // query itself while the panel is closed.
-  const { data: usersData } = useListUsersQuery(
-    { limit: 200 },
-    { skip: !open || !jobOpeningId }
-  );
+  const { data: usersData } = useListUsersQuery({ limit: 200 }, { skip: !open || !jobOpeningId });
   const userNameById = useMemo(() => {
     const map = new Map<string, string>();
     for (const user of usersData?.items ?? []) {
@@ -181,8 +178,7 @@ const JobListingNotesPanel = ({
           ? note
           : {
               ...note,
-              authorName:
-                (note.authorId && userNameById.get(note.authorId)) || 'Unknown User',
+              authorName: (note.authorId && userNameById.get(note.authorId)) || 'Unknown User',
             }
       ),
     [apiNotesRaw, userNameById]

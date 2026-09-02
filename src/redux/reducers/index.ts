@@ -1,6 +1,6 @@
 import { combineReducers } from '@reduxjs/toolkit';
 import api from '../../api';
-import { videoIntegrationApi } from '../../api/interview-service/VideoIntegration/index';
+import { interviewApi } from '../../api/interview-service/client';
 import { interviewFeedbackApi } from '../../api/interview-service/InterviewFeedback/index';
 import { publicQrApi } from '../../api/candidate-service/PublicQr/index';
 import { publicApplyApi } from '../../api/candidate-service/PublicApply/index';
@@ -40,7 +40,7 @@ const rootReducer = combineReducers({
   streamSlice,
   notificationSlice,
   [api.reducerPath]: api.reducer,
-  [videoIntegrationApi.reducerPath]: videoIntegrationApi.reducer,
+  [interviewApi.reducerPath]: interviewApi.reducer,
   [interviewFeedbackApi.reducerPath]: interviewFeedbackApi.reducer,
   [publicQrApi.reducerPath]: publicQrApi.reducer,
   [publicApplyApi.reducerPath]: publicApplyApi.reducer,

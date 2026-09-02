@@ -373,7 +373,7 @@ const Header = () => {
   const handleConnectCalendar = async () => {
     try {
       const result = await triggerGetNylasAuthUrl().unwrap();
-      window.location.href = result;
+      window.location.href = result.connect_url;
     } catch {
       showToast({ message: 'Failed to connect calendar. Please try again.', type: 'error' });
     }
@@ -388,7 +388,7 @@ const Header = () => {
     try {
       await disconnectGrant().unwrap();
       const result = await triggerGetNylasAuthUrl().unwrap();
-      window.location.href = result;
+      window.location.href = result.connect_url;
     } catch (err: unknown) {
       const msg =
         (err as { data?: { message?: string } })?.data?.message ??
