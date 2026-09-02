@@ -7,9 +7,8 @@ import { Badge, BadgeStatus } from '../../../shared/ui/badge';
 import {
   useGetPlatformTenantProfileQuery,
   useUpdatePlatformTenantProfileMutation,
-  useRequestPlatformTenantLogoUploadMutation,
+  useUploadPlatformTenantLogoMutation,
 } from '../../../../api/organization-service/Platform/tenantProfile';
-import { uploadTenantLogoFile } from '../../../../api/organization-service/Tenants/profile';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
 import {
   ALLOWED_LOGO_TYPES,
@@ -82,7 +81,7 @@ const ReadOnlyPill: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: profile, isLoading, refetch } = useGetPlatformTenantProfileQuery(tenantId);
   const [updateProfile, { isLoading: isSaving }] = useUpdatePlatformTenantProfileMutation();
-  const [requestLogoUpload] = useRequestPlatformTenantLogoUploadMutation();
+  const [uploadLogo] = useUploadPlatformTenantLogoMutation();
   const [isEditMode, setIsEditMode] = useState(false);
   const [form, setForm] = useState<ProfileFormState>(toFormState(undefined));
   const [logoPreview, setLogoPreview] = useState('');
@@ -126,13 +125,8 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const target = await requestLogoUpload({
-        tenantId,
-        filename: file.name,
-        content_type: file.type,
-      }).unwrap();
-      await uploadTenantLogoFile(target, file);
-      await updateProfile({ tenantId, logo: target.storage_key }).unwrap();
+      const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
+      await updateProfile({ tenantId, logo: storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
       refetch();
     } catch (err) {

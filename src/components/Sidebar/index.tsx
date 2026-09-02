@@ -1,13 +1,11 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 import { useDispatch, useSelector } from 'react-redux';
 import { Tooltip } from 'antd';
 import { MdExitToApp, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import MenuItems from '../Navbar/menuItem';
 import useHasAccess from '../../hooks/useHasAccess';
 import {
-  getLocalStorageItem,
   isImpersonationActive,
   setLocalStorageItem,
 } from '../../shared/utils/auth/localstorage.helpers';
@@ -16,7 +14,8 @@ import { exitImpersonation } from '../../services/AuthService';
 import { showToast } from '../shared';
 import { RootState } from '../../redux/provider/store';
 import { isMasterSuperAdminRole } from '../../shared/utils/auth/permission.helpers';
-import { useListUsersQuery } from '../../api/organization-service/Users/users';
+import { useGetOwnUserProfileQuery } from '../../api/organization-service/Users/users';
+import { useGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
 
 // Public-folder asset — referenced by URL, not imported (mirrors how Header
 // previously referenced /cfpLogo.svg).
@@ -50,29 +49,27 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const { loginToken, role, tenantId } = useSelector((state: RootState) => state.LoginSlice);
+  const { loginToken, role, tenantId, callerKind } = useSelector(
+    (state: RootState) => state.LoginSlice
+  );
+  const isPlatformCaller = callerKind === 'platform';
 
   const isImpersonating = isImpersonationActive(loginToken);
 
-  const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
-  const userId =
-    useSelector((state: RootState) => state.LoginSlice.userId) ||
-    (token && (jwtDecode(token as string) as any)?.userId);
-
-  // useGetUserProfileQuery (tenant-service/UserProfile) hit a dead,
-  // pre-microservices path (`orguserservice/user/profile/getById`) that no
-  // longer exists on organization-service — always 404'd, silently falling
-  // back to "Welcome, User" for every real login. There's no single-user or
-  // `/me` endpoint on the backend today, so this reuses the same
-  // already-proven workaround EditOrganisationUser/index.tsx uses: pull the
-  // current user out of the real tenant roster list instead. Same known
-  // limitation as that call site — a tenant with >200 users whose current
-  // user isn't on the first page still falls back to "User".
-  const { data: usersData } = useListUsersQuery(
-    { includeInactive: true, limit: 200 },
-    { skip: !tenantId }
-  );
-  const userData = usersData?.items.find((u) => u.user_id === userId);
+  // Same /v1/users/me · /v1/platform/staff/me split Header.tsx already uses
+  // for this exact "current user's own name" need — this used to pull the
+  // name out of the tenant roster list instead (a workaround from before
+  // either /me endpoint existed), which never had a platform-caller path at
+  // all (a Super Admin has no `users` row to be found in), and separately
+  // never picked up a self-service profile edit — `updateOwnUserProfile`
+  // invalidates a different tag than the roster list's `updateUser` does.
+  const { data: tenantProfileData } = useGetOwnUserProfileQuery(undefined, {
+    skip: isPlatformCaller,
+  });
+  const { data: platformProfileData } = useGetOwnPlatformProfileQuery(undefined, {
+    skip: !isPlatformCaller,
+  });
+  const userData = isPlatformCaller ? platformProfileData : tenantProfileData;
 
   const accessibleMenuItems = MenuItems.filter((item) => {
     // No requiredAuthority by design — see menuItem.tsx's comment on this
