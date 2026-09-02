@@ -13,10 +13,7 @@ import {
   useGetCandidateQuery,
   type CandidateView,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
-import {
-  useListCandidateInterviewRoundsQuery,
-  type CandidateInterviewRoundView,
-} from '../../../api/candidate-service/Candidates/interviewRounds';
+import { useListCandidateInterviewRoundsQuery } from '../../../api/candidate-service/Candidates/interviewRounds';
 import {
   useListCandidateInterviewScoresQuery,
   useDeleteResumeReviewMutation,
@@ -32,6 +29,7 @@ import BulkSendSmsModal from './Modal/BulkSendSmsModal';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import ResumeReviewModal from './Modal/ResumeReviewModal';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
+import PipelineBoard from './PipelineBoard';
 
 // Rewritten against the real candidate-service contract — replaces the
 // previous ~2050-line version, which was built entirely around a legacy
@@ -300,15 +298,11 @@ const CandidateDetails = () => {
 
         <div className="p-6">
           {activeTab === 'pipeline' && (
-            <div className="flex flex-col gap-3">
-              {rounds.length === 0 ? (
-                <p className="text-sm text-gray-500">No round plan yet.</p>
-              ) : (
-                rounds.map((round, index) => (
-                  <RoundRow key={round.id ?? `resume-${index}`} round={round} />
-                ))
-              )}
-            </div>
+            <PipelineBoard
+              rounds={rounds}
+              scores={scores}
+              resumeScore={candidate?.resume_score ?? null}
+            />
           )}
 
           {activeTab === 'assessment' && (
@@ -510,24 +504,6 @@ const CandidateDetails = () => {
         />
       )}
     </>
-  );
-};
-
-const RoundRow = ({ round }: { round: CandidateInterviewRoundView }) => {
-  const label = round.stage_type === 'resume' ? 'Resume Screening' : round.round_name || 'Round';
-  const when = formatDateTime(round.scheduled_at) ?? formatDateTime(round.due_at);
-  return (
-    <CommonCard>
-      <div className="p-4 flex items-center justify-between gap-4">
-        <div>
-          <div className="font-semibold text-sm">{label}</div>
-          {when && <p className="text-xs text-gray-500 mt-1">{when}</p>}
-        </div>
-        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">
-          {(round.status || 'not scheduled').replace(/_/g, ' ')}
-        </span>
-      </div>
-    </CommonCard>
   );
 };
 
