@@ -29,14 +29,16 @@ export type BulkChangeCandidateStatusResultView = {
   updated_count: number;
 };
 
-/** One row of the append-only funnel transition log — shape inferred from
- * `CandidateStatusHistory` in PROJECT_UNDERSTANDING.md §4; verify against a
- * real response.
+/** One row of the append-only funnel transition log. Matches
+ * `candidate_dto.CandidateStatusHistoryView` field-for-field (verified
+ * 2026-09-02) — joined server-side with `master_candidate_status`, so
+ * `status_label` is always present, never null (unlike `reason`/`changed_by`).
  */
 export type CandidateStatusHistoryItem = {
   id: string;
+  candidate_id: string;
   status_code: string;
-  status_label: string | null;
+  status_label: string;
   reason: string | null;
   changed_at: string;
   changed_by: string | null;

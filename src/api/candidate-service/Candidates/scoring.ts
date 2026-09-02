@@ -14,28 +14,50 @@ export type RecordResumeReviewRequest = {
   comment?: string;
 };
 
+/** Matches `candidate_dto.ResumeReviewResultView` field-for-field (verified
+ * 2026-09-02) — NOT `rating`/`comment`/`reviewed_by`/`reviewed_at`, which
+ * this type used to claim and which don't exist on the real response.
+ * Unused by `ResumeReviewModal.tsx` today (it re-reads the saved review off
+ * the refetched `CandidateView` instead), but kept accurate regardless.
+ */
 export type ResumeReviewResultView = {
   candidate_id: string;
-  rating: number | null;
-  comment: string | null;
-  reviewed_by: string;
-  reviewed_at: string;
+  resume_rating: number | null;
+  resume_reviewed_at: string | null;
 };
 
 /** `CandidateInterviewScoreView` — AI + recruiter score for one round, side
  * by side. `recruiter_score`/`recruiter_score_reason` are `null` until a
  * recruiter records one.
+ *
+ * Matches `candidate_dto.CandidateInterviewScoreView` field-for-field
+ * (verified 2026-09-02 against the real Pydantic model — this type used to
+ * claim `score_id`/`round_id`/`round_name`/`ai_score`/`ai_score_reason`/
+ * `scored_by`/`scored_at`, none of which exist on the real response; every
+ * consumer read `undefined` for the AI score, and "Score this round" sent
+ * `undefined` as the score id, silently failing every time). There is no
+ * `round_name` on this response at all — resolve it client-side via
+ * `candidate_interview_round_id` against `CandidateInterviewRoundView.id`
+ * (NOT `.round_id` — see interviewRounds.ts's own note on that same mix-up).
  */
 export type CandidateInterviewScoreView = {
-  score_id: string;
-  round_id: string;
-  round_name: string | null;
-  ai_score: number | null;
-  ai_score_reason: string | null;
+  id: string;
+  candidate_id: string;
+  interview_booking_id: string;
+  score: number;
+  scoring_reason: string | null;
+  interview_round_status: boolean | null;
+  live_face_match_status: string | null;
+  live_face_match_score: number | null;
   recruiter_score: number | null;
   recruiter_score_reason: string | null;
-  scored_by: string | null;
-  scored_at: string | null;
+  recruiter_scored_by: string | null;
+  /** Which `CandidateInterviewRoundView.id` this score belongs to. Nullable:
+   * interview-service can score a booking that was never planned, and
+   * scores recorded before the round-link column existed have no round to
+   * point at. */
+  candidate_interview_round_id: string | null;
+  created_at: string | null;
 };
 
 export type RecordRecruiterRoundScoreRequest = {
@@ -44,11 +66,17 @@ export type RecordRecruiterRoundScoreRequest = {
   reason: string;
 };
 
+/** Matches `candidate_dto.RecruiterRoundScoreResultView` — deliberately a
+ * DIFFERENT shape from `CandidateInterviewScoreView` above (`score_id`/
+ * `ai_score` here, `id`/`score` there) — that's the real backend's own
+ * inconsistency between the two response models, not a typo introduced
+ * here; kept as-is rather than "corrected" into a shape the server doesn't
+ * actually send. */
 export type RecruiterRoundScoreResultView = {
   score_id: string;
-  ai_score: number | null;
+  candidate_id: string;
+  ai_score: number;
   recruiter_score: number;
-  recruiter_score_reason: string;
 };
 
 /** Cache no longer than `expires_in_seconds` — this is a short-lived presigned URL, not a stable link. */

@@ -31,6 +31,7 @@ import { useListCandidateStatusesQuery } from '../../../api/candidate-service/Ma
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
 import UploadCvModal from './Modal/UploadCvModal';
+import AddCandidateModal from './Modal/AddCandidateModal';
 import BulkSendSmsModal from './Modal/BulkSendSmsModal';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
 import ChangeCandidateStatusModal, {
@@ -91,6 +92,7 @@ const CandidatesListing = () => {
   const [selected, setSelected] = useState<SelectedMap>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isAddCandidateModalOpen, setIsAddCandidateModalOpen] = useState(false);
   const [isJobNotesPanelOpen, setIsJobNotesPanelOpen] = useState(false);
   const [notesCandidate, setNotesCandidate] = useState<{ id: string; name: string } | null>(null);
   const [isBulkEmailOpen, setIsBulkEmailOpen] = useState(false);
@@ -336,6 +338,30 @@ const CandidatesListing = () => {
                           disabled={isDraft || isClosed}
                         >
                           UPLOAD RESUME
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  )}
+
+                  {canManageCandidates && (
+                    <Tooltip
+                      title={
+                        isDraft
+                          ? 'Cannot add candidates to draft job openings'
+                          : isClosed
+                            ? 'Cannot add candidates to closed job openings'
+                            : ''
+                      }
+                    >
+                      <span>
+                        <Button
+                          className="rounded-full border border-primary-200 bg-primary-50 px-4 py-2 text-primary-700 font-semibold"
+                          onClick={() =>
+                            !isDraft && !isClosed ? setIsAddCandidateModalOpen(true) : null
+                          }
+                          disabled={isDraft || isClosed}
+                        >
+                          ADD CANDIDATE
                         </Button>
                       </span>
                     </Tooltip>
@@ -655,6 +681,10 @@ const CandidatesListing = () => {
         candidateId={notesCandidate?.id}
       />
       <UploadCvModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} />
+      <AddCandidateModal
+        open={isAddCandidateModalOpen}
+        onClose={() => setIsAddCandidateModalOpen(false)}
+      />
     </div>
   );
 };
