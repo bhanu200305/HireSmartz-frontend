@@ -16,9 +16,8 @@ import {
 } from '../../api/notification-service/TemplateSettings/index';
 import {
   useGetTenantProfileQuery,
-  useRequestTenantEmailBannerUploadMutation,
+  useUploadTenantEmailBannerMutation,
   useUpdateTenantProfileMutation,
-  uploadTenantAssetFile,
 } from '../../api/organization-service/Tenants/profile';
 import { getNotifErrorMessage } from '../../shared/utils/auth/notifError.helpers';
 import { RootState } from '../../redux/provider/store';
@@ -82,8 +81,7 @@ const EmailLayoutSection: React.FC = () => {
   const { data: profile } = useGetTenantProfileQuery(tenantId ?? '', { skip: !tenantId });
   const [saveLayout, { isLoading: isSaving }] = useSaveTemplateLayoutMutation();
   const [revertLayout, { isLoading: isReverting }] = useRevertTemplateLayoutMutation();
-  const [requestBannerUpload, { isLoading: isRequestingUpload }] =
-    useRequestTenantEmailBannerUploadMutation();
+  const [uploadBanner, { isLoading: isRequestingUpload }] = useUploadTenantEmailBannerMutation();
   const [updateProfile, { isLoading: isSavingBanner }] = useUpdateTenantProfileMutation();
   const [fetchPreview, { data: preview, isLoading: isPreviewLoading }] =
     usePreviewTemplateMutation();
@@ -159,13 +157,8 @@ const EmailLayoutSection: React.FC = () => {
       await saveLayout(body).unwrap();
 
       if (bannerFile) {
-        const target = await requestBannerUpload({
-          tenantId,
-          filename: bannerFile.name,
-          content_type: bannerFile.type || 'application/octet-stream',
-        }).unwrap();
-        await uploadTenantAssetFile(target, bannerFile);
-        await updateProfile({ tenantId, email_banner: target.storage_key }).unwrap();
+        const { storage_key } = await uploadBanner({ tenantId, file: bannerFile }).unwrap();
+        await updateProfile({ tenantId, email_banner: storage_key }).unwrap();
         setBannerFile(null);
       }
 

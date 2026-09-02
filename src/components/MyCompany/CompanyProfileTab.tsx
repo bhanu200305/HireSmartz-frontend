@@ -16,9 +16,8 @@ import { Loader } from '../shared/ui/loader';
 import { Badge, BadgeStatus } from '../shared/ui/badge';
 import {
   useGetTenantProfileQuery,
-  useRequestTenantLogoUploadMutation,
+  useUploadTenantLogoMutation,
   useUpdateTenantProfileMutation,
-  uploadTenantLogoFile,
 } from '../../api/organization-service/Tenants/profile';
 import {
   useGetTenantCultureIntroQuery,
@@ -83,7 +82,7 @@ const toFormState = (
 const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: profile, isLoading, refetch } = useGetTenantProfileQuery(tenantId);
   const [updateProfile, { isLoading: isSaving }] = useUpdateTenantProfileMutation();
-  const [requestLogoUpload] = useRequestTenantLogoUploadMutation();
+  const [uploadLogo] = useUploadTenantLogoMutation();
   // A tenant with no culture intro set yet 404s here (see cultureIntro.ts) —
   // that's the normal "nothing set" state, not a load failure, so it's read
   // through `error` rather than surfaced as a toast anywhere below.
@@ -203,13 +202,8 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const target = await requestLogoUpload({
-        tenantId,
-        filename: file.name,
-        content_type: file.type,
-      }).unwrap();
-      await uploadTenantLogoFile(target, file);
-      await updateProfile({ tenantId, logo: target.storage_key }).unwrap();
+      const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
+      await updateProfile({ tenantId, logo: storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
       refetch();
     } catch (err) {

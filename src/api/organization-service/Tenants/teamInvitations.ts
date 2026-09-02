@@ -8,6 +8,7 @@ export type InvitationSummary = {
   status: string;
   expires_at: string;
   department_id: string | null;
+  designation_id: string | null;
 };
 
 export type ListTenantInvitationsArgs = {
