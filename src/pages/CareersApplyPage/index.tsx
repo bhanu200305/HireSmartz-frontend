@@ -113,12 +113,35 @@ export const CareersApplyPage = () => {
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
       toast.success(res.message || 'Application submitted successfully.');
-      navigate(`/careers/${organizationId}`, { replace: true });
+      // `intake_call_booking_token` is only present when the job has an
+      // Intake Call round configured AND interview-service was reachable at
+      // apply time (FRONTEND_INTEGRATION_DETAILS.md §5.1 step 2/§6) — route
+      // to the slot picker only then; otherwise this candidate simply has no
+      // Intake Call to schedule (or it degraded gracefully), straight to the
+      // plain success screen either way.
+      const bookingToken = res.data.intake_call_booking_token;
+      if (bookingToken) {
+        navigate(
+          `/careers/${organizationId}/jobs/${jobId}/apply/schedule?token=${encodeURIComponent(bookingToken)}`,
+          { replace: true }
+        );
+      } else {
+        navigate(`/careers/${organizationId}/jobs/${jobId}/apply/success`, { replace: true });
+      }
     } catch (err) {
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
-      const apiMessage = (err as { data?: { message?: string } })?.data?.message;
-      toast.error(apiMessage ?? 'Failed to submit application. Please try again.');
+      const fetchErr = err as { status?: number; data?: { message?: string } };
+      // 409 is specifically DuplicateApplicationError (candidate_exceptions.py)
+      // — this email already has an application on this job, most often a
+      // double-clicked Submit. Worth its own copy: the generic fallback below
+      // reads like a system failure and invites a retry that will just 409
+      // again, when nothing actually needs fixing on the candidate's end.
+      if (fetchErr?.status === 409) {
+        toast.error("You've already applied to this job with this email address.");
+        return;
+      }
+      toast.error(fetchErr?.data?.message ?? 'Failed to submit application. Please try again.');
     }
   };
 

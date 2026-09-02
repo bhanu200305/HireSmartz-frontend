@@ -110,14 +110,15 @@ const CalendarSettingsPage = lazy(() => import('./pages/CalendarSettingsPage'));
 const ScheduleCalendarPage = lazy(() => import('./pages/ScheduleCalendarPage'));
 const AiCallSchedulePage = lazy(() => import('./pages/AiCallSchedulePage'));
 const JobScoringCriteriaPage = lazy(() => import('./pages/JobScoringCriteriaPage'));
-const PublicJobListingPage = lazy(() => import('./pages/PublicJobListingPage'));
-const PublicJobDetailPage = lazy(() => import('./pages/PublicJobDetailPage'));
-const PublicJobApplyPage = lazy(() => import('./pages/PublicJobApplyPage'));
-const PublicJobSuccessPage = lazy(() => import('./pages/PublicJobSuccessPage'));
 const PublicInterviewConsentPage = lazy(() => import('./pages/PublicInterviewConsentPage'));
 const CareersListingPage = lazy(() => import('./pages/CareersListingPage'));
 const CareersJobDetailPage = lazy(() => import('./pages/CareersJobDetailPage'));
 const CareersApplyPage = lazy(() => import('./pages/CareersApplyPage'));
+const CareersApplyChoicePage = lazy(() => import('./pages/CareersApplyChoicePage'));
+const CareersInstantCallPage = lazy(() => import('./pages/CareersInstantCallPage'));
+const CareersIntakeCallSchedulePage = lazy(() => import('./pages/CareersIntakeCallSchedulePage'));
+const CareersApplySuccessPage = lazy(() => import('./pages/CareersApplySuccessPage'));
+const VerificationCallbackPage = lazy(() => import('./pages/VerificationCallbackPage'));
 
 // Lazy load components
 const JobDetails = lazy(() => import('./components/JobsOpening/AddJobDescription/jobdetails'));
@@ -289,30 +290,13 @@ export const Routes: RouteType[] = [
     isOpen: true,
   },
   {
-    name: 'PublicJobListing',
-    path: '/public/q/:qrCode',
-    component: PublicJobListingPage,
-    isOpen: true,
-  },
-  {
-    name: 'PublicJobDetail',
-    path: '/public/q/:qrCode/jobs/:jobId',
-    component: PublicJobDetailPage,
-    isOpen: true,
-  },
-  {
-    name: 'PublicJobApply',
-    path: '/public/q/:qrCode/jobs/:jobId/apply',
-    component: PublicJobApplyPage,
-    isOpen: true,
-  },
-  {
-    name: 'PublicJobSuccess',
-    path: '/public/q/:qrCode/jobs/:jobId/success',
-    component: PublicJobSuccessPage,
-    isOpen: true,
-  },
-  {
+    // The `/public/q/:qrCode/...` tree (PublicJobListingPage/
+    // PublicJobDetailPage/PublicJobApplyPage/PublicJobSuccessPage) that used
+    // to live here was removed — it rode `api/candidate-service/PublicQr`,
+    // which called `${VITE_BACKEND_ENDPOINT}/v1/public/q/...`, a route that
+    // exists on no real service. The `/careers/:organizationId/...` tree
+    // below is the genuine replacement (real job-service public board + real
+    // candidate-service apply) — see CANDIDATE_SERVICE_INTEGRATION.md.
     name: 'PublicInterviewConsent',
     path: '/public/interview/consent',
     component: PublicInterviewConsentPage,
@@ -339,6 +323,41 @@ export const Routes: RouteType[] = [
     name: 'CareersApply',
     path: '/careers/:organizationId/jobs/:jobId/apply',
     component: CareersApplyPage,
+    isOpen: true,
+  },
+  {
+    name: 'CareersApplyChoice',
+    path: '/careers/:organizationId/jobs/:jobId/apply-choice',
+    component: CareersApplyChoicePage,
+    isOpen: true,
+  },
+  {
+    name: 'CareersInstantCall',
+    path: '/careers/:organizationId/jobs/:jobId/apply/call',
+    component: CareersInstantCallPage,
+    isOpen: true,
+  },
+  {
+    // `?token=` is the signed `intake_call_booking_token` from a resume
+    // apply's response — see CareersApplyPage's post-submit routing.
+    name: 'CareersIntakeCallSchedule',
+    path: '/careers/:organizationId/jobs/:jobId/apply/schedule',
+    component: CareersIntakeCallSchedulePage,
+    isOpen: true,
+  },
+  {
+    name: 'CareersApplySuccess',
+    path: '/careers/:organizationId/jobs/:jobId/apply/success',
+    component: CareersApplySuccessPage,
+    isOpen: true,
+  },
+  {
+    // ID.me's own redirect target — see VerificationCallbackPage's module
+    // comment for why this is the one real piece of that flow this
+    // frontend can build.
+    name: 'VerificationCallback',
+    path: '/verification/callback',
+    component: VerificationCallbackPage,
     isOpen: true,
   },
   {
