@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { TableProps } from 'antd';
-import { MdOutlinePersonAdd, MdDelete, MdOutlineAdd } from 'react-icons/md';
+import { MdOutlinePersonAdd, MdDelete, MdOutlineAdd, MdOutlineFileUpload } from 'react-icons/md';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import { Button, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
@@ -17,6 +17,7 @@ import {
 } from '../../api/organization-service/Platform/staff';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import InvitePlatformMemberModal from './InvitePlatformMemberModal';
+import StaffBulkImport from './StaffBulkImport';
 
 const STATUS_BADGE: Record<string, BadgeStatus> = {
   active: 'success',
@@ -43,6 +44,7 @@ const CfpUsers: React.FC = () => {
   const [offboardStaff] = useOffboardPlatformStaffMutation();
 
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
   const [departmentName, setDepartmentName] = useState('');
   const [staffToOffboard, setStaffToOffboard] = useState<PlatformStaffMember | null>(null);
@@ -149,6 +151,12 @@ const CfpUsers: React.FC = () => {
             <MdOutlineAdd /> Add department
           </Button>
           <Button
+            className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1 text-sm font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-colors"
+            onClick={() => setIsBulkImportOpen(true)}
+          >
+            <MdOutlineFileUpload /> Import team
+          </Button>
+          <Button
             className="rounded-full bg-primary-600 text-white px-4 py-1.5 flex items-center gap-1 text-sm font-semibold cfp-hover-lift"
             onClick={() => setIsInviteOpen(true)}
           >
@@ -193,6 +201,8 @@ const CfpUsers: React.FC = () => {
         onClose={() => setIsInviteOpen(false)}
         onInvited={() => setIsInviteOpen(false)}
       />
+
+      <StaffBulkImport open={isBulkImportOpen} onClose={() => setIsBulkImportOpen(false)} />
 
       <AntdCommonModal
         open={isDeptModalOpen}
