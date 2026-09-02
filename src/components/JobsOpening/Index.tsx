@@ -44,7 +44,10 @@ import { DateTimePayload, Jobs, SortDirection } from '../../types';
 import DateTimeRangePicker from '../shared/ui/datePicker';
 import { handleDateValue } from '../../shared/utils/methods';
 import { COL } from '../shared/ui/Columns';
-import { useDuplicateJobOpeningMutation } from '../../api/job-service/JobOpening/GetJobOpeningById';
+import {
+  useDuplicateJobOpeningMutation,
+  useDeleteJobOpeningMutation,
+} from '../../api/job-service/JobOpening/GetJobOpeningById';
 import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 import { useListUsersQuery } from '../../api/organization-service/Users/users';
@@ -131,6 +134,9 @@ const JobsOpening = () => {
   const authorities = useEffectivePermissions();
   const [collapsedUsers, setCollapsedUsers] = useState<string[]>([]);
   const [duplicateJobOpening, { isLoading: isDuplicating }] = useDuplicateJobOpeningMutation();
+  const [deleteJobOpening, { isLoading: isDeleting }] = useDeleteJobOpeningMutation();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState<string | null>(null);
   const { startManualJobOpening, isStartingManualJob } = useStartManualJobOpening();
   const { loginToken } = useSelector((state: any) => state.LoginSlice);
   const [showCloseJobModal, setShowCloseJobModal] = useState(false);
@@ -658,6 +664,38 @@ const JobsOpening = () => {
       });
   };
 
+  const handleDelete = () => {
+    if (!jobToDelete) return;
+
+    deleteJobOpening(jobToDelete)
+      .unwrap()
+      .then(() => {
+        showToast({
+          message: 'Job opening deleted successfully',
+          type: 'success',
+        });
+        if (filters.page > 0) {
+          dispatch(
+            setJobOpeningFilters({
+              page: 0,
+            })
+          );
+        } else {
+          refetch();
+        }
+      })
+      .catch((err) => {
+        showToast({
+          message: err?.data?.message || 'Something went wrong while deleting the job opening',
+          type: 'error',
+        });
+      })
+      .finally(() => {
+        setShowDeleteModal(false);
+        setJobToDelete(null);
+      });
+  };
+
   const handleCreateNewJob = () => {
     // The pre-flight checkStatusForAtsAndCal gate is disabled: the current
     // job-service backend (rewritten to /api/v1/job-openings/*) never
@@ -879,6 +917,19 @@ const JobsOpening = () => {
             });
           },
         },
+      // Backend only allows deleting a job opening while it's still a draft
+      // (DELETE /job-openings/{id} 422s once it's ever been published or
+      // closed — see job-service routers.py's delete_draft), so this action
+      // is hidden for anything already published.
+      record?.isDraft && {
+        key: 'delete',
+        label: <span className="text-red-600">Delete</span>,
+        onClick: () => {
+          setJobName(record?.jobTitleName ?? '');
+          setJobToDelete(record.jobOpeningId);
+          setShowDeleteModal(true);
+        },
+      },
     ].filter((item) => {
       if (!item) return false;
       if (item.key === 'notes') {
@@ -1229,6 +1280,19 @@ const JobsOpening = () => {
             title="Are you sure you want to duplicate?"
             confirmText="DUPLICATE"
             isLoading={isDuplicating}
+          />
+        )}
+
+        {showDeleteModal && (
+          <ConfirmationModal
+            onClose={() => {
+              setShowDeleteModal(false);
+              setJobToDelete(null);
+            }}
+            onConfirm={handleDelete}
+            title={`Are you sure you want to delete "${jobName}"? This cannot be undone.`}
+            confirmText="DELETE"
+            isLoading={isDeleting}
           />
         )}
 

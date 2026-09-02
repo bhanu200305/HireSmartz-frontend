@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { MdDelete } from 'react-icons/md';
 import { Button, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import {
   useListInterviewQuestionsQuery,
+  useCreateInterviewQuestionMutation,
   useUpdateInterviewQuestionMutation,
   useDeleteInterviewQuestionMutation,
   InterviewQuestion,
@@ -13,30 +14,40 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 
+const MAX_QUESTIONS = 8;
+
 /**
  * This tenant's own "Intake Questions" — its HR/interpersonal question set,
  * asked in a candidate's first-round intake call. Live-inherits the Super
  * Admin's current platform default until this tenant has none of its own —
- * the first edit or delete here forks an independent copy that then stops
- * tracking further platform-side changes (see organization-service's
+ * the first add, edit, or delete here forks an independent copy that then
+ * stops tracking further platform-side changes (see organization-service's
  * `ListJobQuestionsUseCase`/`_job_question_fork.py`). Backed by
- * `/v1/tenants/{tenant_id}/audio-questions`, which only supports editing or
- * removing an existing question, one at a time (PATCH/DELETE); there is no
- * endpoint to add a brand new one from here — per the confirmed design, the
- * SET of questions is decided by the Super Admin (CompanySettings/
- * IntakeQuestionsTab.tsx) — and no AI-suggestion endpoint either, so
- * neither control is offered.
+ * `/v1/tenants/{tenant_id}/audio-questions` (POST/PATCH/DELETE) — a
+ * question can be added back up to `MAX_QUESTIONS`, so trimming the set
+ * below the platform default isn't a one-way trip. Still no bulk replace
+ * and no AI-suggestion endpoint, so neither control is offered — the SET's
+ * starting composition is still the Super Admin's call
+ * (CompanySettings/IntakeQuestionsTab.tsx), this just lets a Company Admin
+ * refill their own copy after trimming it.
  */
 const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useListInterviewQuestionsQuery(tenantId);
+  const [createQuestion, { isLoading: isCreating }] = useCreateInterviewQuestionMutation();
   const [updateQuestion, { isLoading: isSaving }] = useUpdateInterviewQuestionMutation();
   const [deleteQuestion] = useDeleteInterviewQuestionMutation();
+  // The backend gates create/update/delete on this same tab behind one
+  // permission string (`interview:write`, see routers.py's
+  // `create_job_question`/`update_job_question`/`delete_job_question`) —
+  // `INTERVIEW_QUESTIONS_EDIT` is the constant mapped to it.
+  const canCreate = useHasAccess(Authorities.INTERVIEW_QUESTIONS_EDIT);
   const canUpdate = useHasAccess(Authorities.INTERVIEW_QUESTIONS_UPDATE);
   const canDelete = useHasAccess(Authorities.INTERVIEW_QUESTIONS_DELETE);
 
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [questionToDelete, setQuestionToDelete] = useState<InterviewQuestion | null>(null);
+  const [newQuestionText, setNewQuestionText] = useState('');
 
   useEffect(() => {
     if (data) {
@@ -77,15 +88,41 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
     }
   };
 
-  if (isLoading) return <Loader />;
+  const questions = useMemo(() => data?.questions ?? [], [data]);
+  const atCap = questions.length >= MAX_QUESTIONS;
 
-  const questions = data?.questions ?? [];
+  const handleAdd = async () => {
+    const text = newQuestionText.trim();
+    if (!text) return;
+    if (atCap) {
+      showToast({ message: `You can only have up to ${MAX_QUESTIONS} questions.`, type: 'error' });
+      return;
+    }
+    try {
+      await createQuestion({ tenantId, question_text: text }).unwrap();
+      showToast({ message: 'Question added.', type: 'success' });
+      setNewQuestionText('');
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to add question.'), type: 'error' });
+    }
+  };
+
+  if (isLoading) return <Loader />;
 
   return (
     <div className="p-4">
-      <Typography variant="h5" className="mb-1 block">
-        Intake Questions
-      </Typography>
+      <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
+        <Typography variant="h5" className="m-0">
+          Intake Questions
+        </Typography>
+        <span
+          className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+            atCap ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-600'
+          }`}
+        >
+          {questions.length}/{MAX_QUESTIONS}
+        </span>
+      </div>
       <Typography variant="body2" className="mb-6 block">
         Your HR/interpersonal question set, asked in every candidate&apos;s first-round intake call.
         Edit the wording below — changes to one question save independently. Set by CareerForcePro
@@ -133,6 +170,25 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
               </div>
             );
           })}
+        </div>
+      )}
+
+      {canCreate && (
+        <div className="flex items-center gap-2 mt-3">
+          <Input
+            value={newQuestionText}
+            onChange={(e) => setNewQuestionText(e.target.value)}
+            placeholder={atCap ? `Maximum of ${MAX_QUESTIONS} reached` : 'Add a question…'}
+            disabled={atCap}
+            className="flex-1"
+          />
+          <Button
+            className="rounded-full border border-gray-300 px-4 py-1.5 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={() => void handleAdd()}
+            disabled={!newQuestionText.trim() || atCap || isCreating}
+          >
+            {isCreating ? 'Adding…' : 'Add'}
+          </Button>
         </div>
       )}
 

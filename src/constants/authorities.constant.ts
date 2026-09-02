@@ -133,13 +133,20 @@ export enum Authorities {
   EMAIL_TEMPLATE_APPROVE = 'email_template:approve',
   EMAIL_TEMPLATE_EXPORT = 'email_template:export',
 
-  // -- organization-service: candidates --
+  // -- candidate-service: candidates --
+  // candidate-service's real permission catalog
+  // (shared/cfp-contracts/src/cfp_contracts/permissions.py's
+  // Permission.CANDIDATE_READ/CANDIDATE_WRITE) has exactly these two values
+  // — confirmed by reading the catalog directly. There is no
+  // update/delete/approve/export split on the candidate resource server-side;
+  // every write action (edit, status change, notes, scoring, messaging,
+  // resume upload) is gated by the single CANDIDATE_WRITE permission. Every
+  // write-gated UI affordance below should check CANDIDATE_WRITE, not a
+  // fictional finer-grained permission — same class of fix as the
+  // organization-service authorities correction (see
+  // ORGANIZATION_SERVICE_INTEGRATION.md's Phase 0).
   CANDIDATE_VIEW = 'candidate:read',
   CANDIDATE_ADD = 'candidate:write',
-  CANDIDATE_EDIT = 'candidate:update',
-  CANDIDATE_DELETE = 'candidate:delete',
-  CANDIDATE_APPROVE = 'candidate:approve',
-  CANDIDATE_EXPORT = 'candidate:export',
 
   // -- organization-service: billing --
   BILLING_VIEW = 'billing:read',
@@ -530,12 +537,14 @@ export const PERMISSION_CATALOG: PermissionCatalogEntry[] = [
     module: 'Email Templates',
   },
 
+  // Only these two exist on candidate-service's real permission catalog —
+  // see the enum's own comment above CANDIDATE_VIEW/CANDIDATE_ADD.
   { code: Authorities.CANDIDATE_VIEW, label: 'View candidates', module: 'Candidates' },
-  { code: Authorities.CANDIDATE_ADD, label: 'Add candidates', module: 'Candidates' },
-  { code: Authorities.CANDIDATE_EDIT, label: 'Edit candidates', module: 'Candidates' },
-  { code: Authorities.CANDIDATE_DELETE, label: 'Delete candidates', module: 'Candidates' },
-  { code: Authorities.CANDIDATE_APPROVE, label: 'Approve candidates', module: 'Candidates' },
-  { code: Authorities.CANDIDATE_EXPORT, label: 'Export candidates', module: 'Candidates' },
+  {
+    code: Authorities.CANDIDATE_ADD,
+    label: 'Manage candidates (edit, status, notes, scoring, messaging)',
+    module: 'Candidates',
+  },
 
   { code: Authorities.BILLING_VIEW, label: 'View billing', module: 'Billing' },
   { code: Authorities.BILLING_ADD, label: 'Add billing records', module: 'Billing' },
@@ -640,11 +649,7 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.AUTH_EDIT,
       Authorities.BILLING_EXPORT,
       Authorities.BILLING_VIEW,
-      Authorities.CANDIDATE_APPROVE,
-      Authorities.CANDIDATE_DELETE,
-      Authorities.CANDIDATE_EXPORT,
       Authorities.CANDIDATE_VIEW,
-      Authorities.CANDIDATE_EDIT,
       Authorities.CANDIDATE_ADD,
       Authorities.DEPARTMENT_DELETE,
       Authorities.DEPARTMENT_EXPORT,
@@ -740,11 +745,7 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.AUTH_EDIT,
       Authorities.BILLING_EXPORT,
       Authorities.BILLING_VIEW,
-      Authorities.CANDIDATE_APPROVE,
-      Authorities.CANDIDATE_DELETE,
-      Authorities.CANDIDATE_EXPORT,
       Authorities.CANDIDATE_VIEW,
-      Authorities.CANDIDATE_EDIT,
       Authorities.CANDIDATE_ADD,
       Authorities.DEPARTMENT_APPROVE,
       Authorities.DEPARTMENT_DELETE,
@@ -796,7 +797,7 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
     ],
     hiringManager: [
       Authorities.CANDIDATE_VIEW,
-      Authorities.CANDIDATE_EDIT,
+      Authorities.CANDIDATE_ADD,
       Authorities.DEPARTMENT_VIEW,
       Authorities.INTERVIEW_QUESTIONS_APPROVE,
       Authorities.INTERVIEW_QUESTIONS_VIEW,
@@ -811,7 +812,6 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
     ],
     recruiter: [
       Authorities.CANDIDATE_VIEW,
-      Authorities.CANDIDATE_EDIT,
       Authorities.CANDIDATE_ADD,
       Authorities.DEPARTMENT_VIEW,
       Authorities.INTERVIEW_QUESTIONS_VIEW,

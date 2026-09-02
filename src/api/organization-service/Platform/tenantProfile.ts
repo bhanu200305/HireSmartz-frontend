@@ -1,15 +1,20 @@
 import { orgApi } from '../orgApi';
 import type {
-  RequestTenantLogoUploadArgs,
-  TenantLogoUploadTarget,
+  TenantAssetUploadResponse,
   TenantProfile,
   TenantStatusResponse,
+  UploadTenantLogoArgs,
 } from '../Tenants/profile';
 
 // Super Admin's platform-mounted mirror of Tenants/profile.ts's GET/PATCH
 // .../profile — same TenantProfileView/UpdateTenantProfileRequest shapes,
 // tenant bound from the path instead of the caller's own token (a platform
 // caller has no tenant_id of their own to match `require_own_tenant`).
+// `culture_intro` is deliberately NOT a field here — same reasoning as
+// Tenants/profile.ts's `UpdateTenantProfileRequest`: it is its own separate
+// resource (`GET/PUT /v1/platform/tenants/{tenant_id}/culture-intro`, see
+// Platform/cultureIntro.ts), and this request model is `extra="forbid"`
+// server-side too.
 export type UpdatePlatformTenantProfileRequest = {
   tenantId: string;
   name?: string;
@@ -18,7 +23,6 @@ export type UpdatePlatformTenantProfileRequest = {
   website_url?: string;
   industry_id?: string;
   admin_contact?: string;
-  culture_intro?: string;
   company_size?: number;
 };
 
@@ -41,19 +45,20 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'PlatformTenants', id: tenantId },
       ],
     }),
-    // POST /v1/platform/tenants/{tenant_id}/logo/upload-url — platform mirror
-    // of Tenants/profile.ts's requestTenantLogoUpload, same presigned-S3-POST
-    // contract; only the guard differs (TENANT_UPDATE instead of
-    // require_own_tenant, which a platform caller can never satisfy).
-    requestPlatformTenantLogoUpload: build.mutation<
-      TenantLogoUploadTarget,
-      RequestTenantLogoUploadArgs
-    >({
-      query: ({ tenantId, ...body }) => ({
-        url: `/v1/platform/tenants/${tenantId}/logo/upload-url`,
-        method: 'POST',
-        body,
-      }),
+    // POST /v1/platform/tenants/{tenant_id}/logo/upload — platform mirror of
+    // Tenants/profile.ts's uploadTenantLogo, same server-mediated contract;
+    // only the guard differs (TENANT_UPDATE instead of require_own_tenant,
+    // which a platform caller can never satisfy).
+    uploadPlatformTenantLogo: build.mutation<TenantAssetUploadResponse, UploadTenantLogoArgs>({
+      query: ({ tenantId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/v1/platform/tenants/${tenantId}/logo/upload`,
+          method: 'POST',
+          body: formData,
+        };
+      },
     }),
   }),
 });
@@ -61,5 +66,5 @@ const extendedApi = orgApi.injectEndpoints({
 export const {
   useGetPlatformTenantProfileQuery,
   useUpdatePlatformTenantProfileMutation,
-  useRequestPlatformTenantLogoUploadMutation,
+  useUploadPlatformTenantLogoMutation,
 } = extendedApi;

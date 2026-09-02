@@ -9,6 +9,11 @@ export type InterviewQuestionsResponse = {
   questions: InterviewQuestion[];
 };
 
+export type CreateInterviewQuestionArgs = {
+  tenantId: string;
+  question_text: string;
+};
+
 export type UpdateInterviewQuestionArgs = {
   tenantId: string;
   questionId: string;
@@ -24,22 +29,30 @@ export type DeleteInterviewQuestionArgs = {
  * This tenant's own "Intake Questions" — its HR/interpersonal question set,
  * asked in a candidate's first-round intake call. A tenant with no
  * customization of its own live-inherits the Super Admin's current
- * platform default (see `Platform/interviewQuestions.ts`); editing or
- * removing one here forks an independent copy that then stops tracking
- * further platform-side changes. Backed by organization-service's
+ * platform default (see `Platform/interviewQuestions.ts`); editing,
+ * removing, or adding one here forks an independent copy that then stops
+ * tracking further platform-side changes. Backed by organization-service's
  * `/v1/tenants/{tenant_id}/audio-questions` (renamed 2026-08-17 from
  * `interview-questions`, see internal_router.py) — there is no bulk
- * replace-the-set endpoint and no AI "suggest" endpoint on this contract:
- * each question is edited or removed one at a time, matching the routes
- * organization-service actually exposes (GET list, PATCH one, DELETE one —
- * no tenant-level POST to add a brand new question either, per the
- * confirmed design: the SET of questions is decided by the Super Admin).
+ * replace-the-set endpoint and no AI "suggest" endpoint on this contract,
+ * but POST does exist to add a question back up to the same 8-question cap
+ * the platform list is held to (e.g. refilling a slot a delete just freed).
  */
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     listInterviewQuestions: build.query<InterviewQuestionsResponse, string>({
       query: (tenantId) => `/v1/tenants/${tenantId}/audio-questions`,
       providesTags: (_result, _error, tenantId) => [{ type: 'InterviewQuestions', id: tenantId }],
+    }),
+    createInterviewQuestion: build.mutation<InterviewQuestion, CreateInterviewQuestionArgs>({
+      query: ({ tenantId, question_text }) => ({
+        url: `/v1/tenants/${tenantId}/audio-questions`,
+        method: 'POST',
+        body: { question_text },
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'InterviewQuestions', id: tenantId },
+      ],
     }),
     updateInterviewQuestion: build.mutation<InterviewQuestion, UpdateInterviewQuestionArgs>({
       query: ({ tenantId, questionId, question_text }) => ({
@@ -67,6 +80,7 @@ const extendedApi = orgApi.injectEndpoints({
 
 export const {
   useListInterviewQuestionsQuery,
+  useCreateInterviewQuestionMutation,
   useUpdateInterviewQuestionMutation,
   useDeleteInterviewQuestionMutation,
 } = extendedApi;

@@ -230,7 +230,14 @@ const MyCompany: React.FC = () => {
             <OnboardingChecklist
               companyId={tenantId}
               status={{
-                profileReviewed: Boolean(profile?.logo_url || profile?.culture_intro),
+                // `culture_intro` used to be read straight off this profile
+                // object, but it was never really there — the real GET
+                // /profile response doesn't include it at all (it's its own
+                // resource, see Tenants/cultureIntro.ts), so this check was
+                // silently always just `logo_url` alone at runtime. `description`
+                // is a real field on this response and same-spirit signal
+                // ("has the admin put in any profile content yet").
+                profileReviewed: Boolean(profile?.logo_url || profile?.description),
                 hasOffice: (offices?.length ?? 0) > 0,
                 hasDepartment: (departments?.length ?? 0) > 0,
                 hasInvitedTeam: (invitations?.total ?? 0) > 0,

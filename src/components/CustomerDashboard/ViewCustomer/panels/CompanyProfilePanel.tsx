@@ -7,9 +7,12 @@ import { Badge, BadgeStatus } from '../../../shared/ui/badge';
 import {
   useGetPlatformTenantProfileQuery,
   useUpdatePlatformTenantProfileMutation,
-  useRequestPlatformTenantLogoUploadMutation,
+  useUploadPlatformTenantLogoMutation,
 } from '../../../../api/organization-service/Platform/tenantProfile';
-import { uploadTenantLogoFile } from '../../../../api/organization-service/Tenants/profile';
+import {
+  useGetPlatformTenantCultureIntroQuery,
+  useUpdatePlatformTenantCultureIntroMutation,
+} from '../../../../api/organization-service/Platform/cultureIntro';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
 import {
   ALLOWED_LOGO_TYPES,
@@ -34,12 +37,13 @@ type ProfileFormState = {
 };
 
 const toFormState = (
-  profile: ReturnType<typeof useGetPlatformTenantProfileQuery>['data']
+  profile: ReturnType<typeof useGetPlatformTenantProfileQuery>['data'],
+  cultureIntro: string
 ): ProfileFormState => ({
   name: profile?.company_name || '',
   description: profile?.description || '',
   website_url: profile?.website_url || '',
-  culture_intro: profile?.culture_intro || '',
+  culture_intro: cultureIntro,
   company_size: profile?.company_size ? String(profile.company_size) : '',
 });
 
@@ -82,20 +86,31 @@ const ReadOnlyPill: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: profile, isLoading, refetch } = useGetPlatformTenantProfileQuery(tenantId);
   const [updateProfile, { isLoading: isSaving }] = useUpdatePlatformTenantProfileMutation();
-  const [requestLogoUpload] = useRequestPlatformTenantLogoUploadMutation();
+  const [uploadLogo] = useUploadPlatformTenantLogoMutation();
+  // Same "own separate resource" situation as CompanyProfileTab.tsx — a
+  // tenant with no culture intro set yet 404s here, which is the normal
+  // "nothing set" state, not a load failure.
+  const {
+    data: cultureIntroData,
+    error: cultureIntroError,
+    refetch: refetchCultureIntro,
+  } = useGetPlatformTenantCultureIntroQuery(tenantId);
+  const [updateCultureIntro] = useUpdatePlatformTenantCultureIntroMutation();
   const [isEditMode, setIsEditMode] = useState(false);
-  const [form, setForm] = useState<ProfileFormState>(toFormState(undefined));
+  const [form, setForm] = useState<ProfileFormState>(toFormState(undefined, ''));
   const [logoPreview, setLogoPreview] = useState('');
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const logoUploadRef = useRef<HTMLButtonElement>(null);
 
+  const cultureIntroValue = cultureIntroData?.intro_text ?? (cultureIntroError ? '' : undefined);
+
   useEffect(() => {
-    if (profile) {
-      setForm(toFormState(profile));
+    if (profile && cultureIntroValue !== undefined) {
+      setForm(toFormState(profile, cultureIntroValue));
       setLogoPreview(profile.logo_url || '');
     }
-  }, [profile]);
+  }, [profile, cultureIntroValue]);
 
   if (isLoading) return <Loader />;
   if (!profile) {
@@ -108,7 +123,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
   const handleCancel = () => {
-    setForm(toFormState(profile));
+    setForm(toFormState(profile, cultureIntroValue ?? ''));
     setIsEditMode(false);
   };
 
@@ -126,13 +141,8 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const target = await requestLogoUpload({
-        tenantId,
-        filename: file.name,
-        content_type: file.type,
-      }).unwrap();
-      await uploadTenantLogoFile(target, file);
-      await updateProfile({ tenantId, logo: target.storage_key }).unwrap();
+      const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
+      await updateProfile({ tenantId, logo: storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
       refetch();
     } catch (err) {
@@ -156,9 +166,18 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         name: form.name,
         description: form.description,
         website_url: form.website_url,
-        culture_intro: form.culture_intro,
         company_size: parsedSize,
       }).unwrap();
+      // Own separate resource/endpoint — see cultureIntro.ts. Skipped when
+      // unchanged or blank: the real endpoint has no "clear it back to
+      // empty" call (`intro_text` is `min_length=1` server-side).
+      if (form.culture_intro.trim() && form.culture_intro !== (cultureIntroValue ?? '')) {
+        await updateCultureIntro({
+          tenantId,
+          intro_text: form.culture_intro.trim(),
+        }).unwrap();
+        refetchCultureIntro();
+      }
       showToast({ message: 'Company profile updated.', type: 'success' });
       setIsEditMode(false);
       refetch();
@@ -262,6 +281,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             onChange={handleField('website_url')}
             placeholder="Website"
             disabled={!isEditMode}
+            noAutoCapitalize
           />
         </Field>
         <Field label="Company size">

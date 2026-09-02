@@ -59,9 +59,24 @@ export type UpdateTenantJobTitleRequest = {
 export const idsMatch = (a: unknown, b: unknown): boolean =>
   a != null && b != null && String(a) === String(b);
 
-/** Prefer the platform id when a tenant title was imported, so job-service can resolve the name. */
-export const tenantJobTitleFormId = (title: TenantJobTitle): string =>
-  title.source_job_title_id || title.org_job_title_id;
+/**
+ * The id every dropdown/form should use for a tenant's own job-title record.
+ *
+ * Always the row's own `org_job_title_id` — that's what actually gets saved
+ * as job-service's `job_title_id` (see `resolveOrgJobTitleId` in
+ * jobdetails.tsx / EditJobDetail.tsx, which always resolves *to*
+ * `org_job_title_id`) and what `useJobTitleNameMap` keys its id->name join
+ * on. This used to prefer `source_job_title_id` (the platform catalogue id)
+ * for a title imported from master, which desynced the dropdown's option
+ * ids from the id actually round-tripped through the backend: reusing an
+ * imported title displayed fine in the same session (antd still had the
+ * option in scope) but showed the raw id as soon as the page reloaded and
+ * rebuilt `options` from this id — antd falls back to rendering the bare
+ * value when no option matches it. A freshly *created* title has no
+ * `source_job_title_id`, so it never hit this path — only reusing a
+ * previously-imported title did.
+ */
+export const tenantJobTitleFormId = (title: TenantJobTitle): string => title.org_job_title_id;
 
 const toJobTitleArgs = (arg: ListTenantJobTitlesQueryArg): ListTenantJobTitlesArgs =>
   typeof arg === 'string' ? { tenantId: arg } : arg;

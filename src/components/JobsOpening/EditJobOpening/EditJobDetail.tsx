@@ -1,5 +1,5 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { DatePicker, Form, Select, Switch, TimePicker, Tooltip } from 'antd';
+import { DatePicker, Form, Select, Switch, Tooltip } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import { Button, Input, showToast } from '../../shared';
 import useJobOpeningDropdown, {
@@ -160,6 +160,11 @@ const EditJobDetail = () => {
   } = useJobOpeningDropdown('JOB_TYPE', 'edit', parsedJobId);
   const { jobOpeningDropdown: jobModes, loading: jobModesLoading } = useJobOpeningDropdown(
     'JOB_MODE',
+    'edit',
+    parsedJobId
+  );
+  const { jobOpeningDropdown: shiftOptions, loading: shiftsLoading } = useJobOpeningDropdown(
+    'SHIFT',
     'edit',
     parsedJobId
   );
@@ -530,18 +535,6 @@ const EditJobDetail = () => {
     dispatch(setEditJobOpeningId(asJobId(jobData.data.id)));
     dispatch(setAtsJobOpeningId(jobData.data.atsJobOpeningId || ''));
 
-    const shift = jobData.data.shift || '';
-    let [shiftStart, shiftEnd] = shift.split(' - ');
-    const timeRegex = /^\d{1,2}:\d{2}$/;
-    const timeWithAmPmRegex = /^\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)$/i;
-    const isValidTime = (t: string) => timeRegex.test(t) || timeWithAmPmRegex.test(t);
-
-    if (!shiftStart || !isValidTime(shiftStart)) {
-      shiftStart = '';
-    }
-    if (!shiftEnd || !isValidTime(shiftEnd)) {
-      shiftEnd = '';
-    }
     const locationData = jobData.data.location;
     const countryName = locationData?.country || '';
     const stateName = locationData?.state || '';
@@ -586,8 +579,7 @@ const EditJobDetail = () => {
         jobData.data.referralBonus != null && !isNaN(Number(jobData.data.referralBonus))
           ? Number(jobData.data.referralBonus)
           : null,
-      shiftStart: shiftStart || '',
-      shiftEnd: shiftEnd || '',
+      shift: jobData.data.shiftId ? [String(jobData.data.shiftId)] : [],
       languages: jobData.data.languages || [],
       openings: jobData.data.openings ? Number(jobData.data.openings) : null,
       minSalary: jobData.data.minSalary ? String(jobData.data.minSalary) : null,
@@ -1465,8 +1457,6 @@ const EditJobDetail = () => {
 
   const onSubmit = async (data: JobDetailsState) => {
     setAllowNavigation(true);
-    const combinedShift =
-      data.shiftStart && data.shiftEnd ? `${data.shiftStart} - ${data.shiftEnd}` : '';
 
     // Ensure the language selection cannot be changed if interviews have started
     const hasInterviewsStarted = jobData?.data?.interviewedCandidateCount !== 0;
@@ -1483,7 +1473,6 @@ const EditJobDetail = () => {
         data.referralBonus === ''
           ? ''
           : data.referralBonus,
-      shift: combinedShift,
       languages: languagesValue,
       useCultureIntro: Boolean(data.useCultureIntro),
       isDraft: false,
@@ -1725,61 +1714,21 @@ const EditJobDetail = () => {
               />
             </Form.Item>
             <Form.Item label={<span>Shift</span>}>
-              <div className="flex items-center gap-2">
-                <div className="border-wrapper border border-[var(--border)] p-1 flex-1 min-w-0 flex items-center">
-                  <Controller
-                    name="shiftStart"
-                    control={control}
-                    render={({ field }) => (
-                      <TimePicker
-                        {...field}
-                        value={field.value ? dayjs(field.value, 'HH:mm') : null}
-                        onChange={(time: dayjs.Dayjs | null) => {
-                          const newValue = time ? time.format('HH:mm') : '';
-                          setValue('shiftStart', newValue, {
-                            shouldValidate: true,
-                          });
-                          trigger(['shiftStart', 'shiftEnd']);
-                        }}
-                        className="w-full custom-time-picker placeholder-style"
-                        variant="borderless"
-                        format="hh:mm A"
-                        placeholder="Start Time"
-                        showNow={false}
-                      />
-                    )}
-                  />
-                </div>
-                <span className="text-gray-500 shrink-0">–</span>
-                <div className="border-wrapper border border-[var(--border)] p-1 flex-1 min-w-0 flex items-center">
-                  <Controller
-                    name="shiftEnd"
-                    control={control}
-                    render={({ field }) => (
-                      <TimePicker
-                        {...field}
-                        value={field.value ? dayjs(field.value, 'HH:mm') : null}
-                        onChange={(time: dayjs.Dayjs | null) => {
-                          const newValue = time ? time.format('HH:mm') : '';
-                          setValue('shiftEnd', newValue, {
-                            shouldValidate: true,
-                          });
-                          trigger(['shiftStart', 'shiftEnd']);
-                        }}
-                        className="w-full custom-time-picker placeholder-style"
-                        variant="borderless"
-                        format="hh:mm A"
-                        placeholder="End Time"
-                        showNow={false}
-                      />
-                    )}
-                  />
-                </div>
-              </div>
-              {(errors.shiftStart || errors.shiftEnd) && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.shiftStart?.message || errors.shiftEnd?.message}
-                </p>
+              <DropdownWithAddOption
+                className="w-full custom-select-jobs placeholder-style"
+                value={watch('shift')?.[0]}
+                onChange={(value) => {
+                  setValue('shift', value ? [value] : [], { shouldValidate: true });
+                }}
+                options={shiftOptions}
+                loading={shiftsLoading}
+                placeholder="Select Shift"
+                label="Shift"
+                type="shift"
+                enableEditDelete={false}
+              />
+              {errors.shift && (
+                <p className="text-red-500 text-sm mt-1">{errors.shift?.message as string}</p>
               )}
             </Form.Item>
             <Form.Item label={<span>Communication Language</span>}>

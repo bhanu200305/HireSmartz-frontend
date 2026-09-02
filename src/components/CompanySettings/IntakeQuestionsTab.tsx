@@ -13,6 +13,7 @@ import {
 } from '../../api/organization-service/Platform/interviewQuestions';
 import {
   useGetPlatformTenantJobQuestionsQuery,
+  useCreatePlatformTenantJobQuestionMutation,
   useUpdatePlatformTenantJobQuestionMutation,
   useDeletePlatformTenantJobQuestionMutation,
 } from '../../api/organization-service/Platform/tenantJobQuestions';
@@ -35,18 +36,18 @@ const autoGrowTextarea = (el: HTMLTextAreaElement | null) => {
 /**
  * Super Admin's "Intake Questions" tab — GET/POST/PUT/DELETE
  * /v1/platform/interview-questions (the platform default, up to 8) and
- * GET/PATCH/DELETE /v1/platform/tenants/{tenant_id}/audio-questions (one
- * company's own set, picked from the dropdown below).
+ * GET/POST/PATCH/DELETE /v1/platform/tenants/{tenant_id}/audio-questions
+ * (one company's own set, picked from the dropdown below).
  *
  * A company with no customization of its own live-inherits the platform
  * default — editing it here shows up immediately for every company that
- * hasn't diverged. The moment a question is edited or removed for one
- * specific company (from here, or from that company's own Company Admin
- * settings — MyCompany/InterviewQuestionsTab.tsx), that company forks its
- * own independent copy and stops tracking further platform edits. Adding a
- * brand new question is only offered for the platform default — per the
- * confirmed design, a company's own copy can only ever be edited or
- * trimmed, never added to (mirrors InterviewQuestionsTab.tsx's own note).
+ * hasn't diverged. The moment a question is added, edited, or removed for
+ * one specific company (from here, or from that company's own Company
+ * Admin settings — MyCompany/InterviewQuestionsTab.tsx), that company
+ * forks its own independent copy and stops tracking further platform
+ * edits. Both the platform default and a specific company's own copy can
+ * be added to (up to `MAX_QUESTIONS`), edited, or trimmed — a company that
+ * removed a question can refill the slot from either screen.
  */
 const IntakeQuestionsTab: React.FC = () => {
   // null = editing the platform-wide default; a tenant id = that one
@@ -63,11 +64,15 @@ const IntakeQuestionsTab: React.FC = () => {
     { skip: isPlatformDefault }
   );
 
-  const [createQuestion, { isLoading: isCreating }] = useCreatePlatformInterviewQuestionMutation();
+  const [createPlatformQuestion, { isLoading: isCreatingPlatform }] =
+    useCreatePlatformInterviewQuestionMutation();
   const [updatePlatformQuestion] = useUpdatePlatformInterviewQuestionMutation();
   const [deletePlatformQuestion] = useDeletePlatformInterviewQuestionMutation();
+  const [createTenantQuestion, { isLoading: isCreatingTenant }] =
+    useCreatePlatformTenantJobQuestionMutation();
   const [updateTenantQuestion] = useUpdatePlatformTenantJobQuestionMutation();
   const [deleteTenantQuestion] = useDeletePlatformTenantJobQuestionMutation();
+  const isCreating = isPlatformDefault ? isCreatingPlatform : isCreatingTenant;
 
   const data = isPlatformDefault ? platformData : tenantData;
   const isLoading = isPlatformDefault ? isPlatformLoading : isTenantLoading;
@@ -145,7 +150,14 @@ const IntakeQuestionsTab: React.FC = () => {
       return;
     }
     try {
-      await createQuestion({ question_text: text }).unwrap();
+      if (isPlatformDefault) {
+        await createPlatformQuestion({ question_text: text }).unwrap();
+      } else {
+        await createTenantQuestion({
+          tenantId: selectedTenantId as string,
+          question_text: text,
+        }).unwrap();
+      }
       showToast({ message: 'Question added.', type: 'success' });
       setNewQuestionText('');
     } catch (err) {
@@ -265,43 +277,40 @@ const IntakeQuestionsTab: React.FC = () => {
             </div>
           )}
 
-          {/* Add is platform-default only — per the confirmed design, a
-              specific company's own copy can only be edited or trimmed,
-              never added to. */}
-          {isPlatformDefault && (
-            <div
-              className={`flex items-start gap-2 px-2.5 py-1.5 rounded-xl border border-dashed transition-colors ${
-                atCap ? 'border-neutral-200' : 'border-primary-200'
+          {/* Add works for both the platform default and a specific
+              company's own copy — each capped at MAX_QUESTIONS. */}
+          <div
+            className={`flex items-start gap-2 px-2.5 py-1.5 rounded-xl border border-dashed transition-colors ${
+              atCap ? 'border-neutral-200' : 'border-primary-200'
+            }`}
+          >
+            <span
+              className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-1 ${
+                atCap ? 'text-neutral-300' : 'text-primary-500'
               }`}
             >
-              <span
-                className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-1 ${
-                  atCap ? 'text-neutral-300' : 'text-primary-500'
-                }`}
-              >
-                <MdOutlineAdd size={14} />
-              </span>
-              <textarea
-                ref={autoGrowTextarea}
-                value={newQuestionText}
-                onChange={(e) => {
-                  setNewQuestionText(e.target.value);
-                  autoGrowTextarea(e.target);
-                }}
-                placeholder={atCap ? `Maximum of ${MAX_QUESTIONS} reached` : 'Add a question…'}
-                disabled={atCap}
-                rows={1}
-                className="flex-1 min-w-0 resize-none overflow-hidden border border-transparent rounded-lg px-1.5 py-1 text-sm text-gray-800 leading-snug bg-transparent focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-100 focus:bg-white disabled:bg-transparent"
-              />
-              <Button
-                className="shrink-0 mt-0.5 rounded-full bg-primary-600 text-white px-3 py-1 text-xs whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
-                onClick={() => void handleAdd()}
-                disabled={!newQuestionText.trim() || atCap || isCreating}
-              >
-                {isCreating ? '…' : 'Add'}
-              </Button>
-            </div>
-          )}
+              <MdOutlineAdd size={14} />
+            </span>
+            <textarea
+              ref={autoGrowTextarea}
+              value={newQuestionText}
+              onChange={(e) => {
+                setNewQuestionText(e.target.value);
+                autoGrowTextarea(e.target);
+              }}
+              placeholder={atCap ? `Maximum of ${MAX_QUESTIONS} reached` : 'Add a question…'}
+              disabled={atCap}
+              rows={1}
+              className="flex-1 min-w-0 resize-none overflow-hidden border border-transparent rounded-lg px-1.5 py-1 text-sm text-gray-800 leading-snug bg-transparent focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-100 focus:bg-white disabled:bg-transparent"
+            />
+            <Button
+              className="shrink-0 mt-0.5 rounded-full bg-primary-600 text-white px-3 py-1 text-xs whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={() => void handleAdd()}
+              disabled={!newQuestionText.trim() || atCap || isCreating}
+            >
+              {isCreating ? '…' : 'Add'}
+            </Button>
+          </div>
         </div>
       )}
 

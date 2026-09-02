@@ -2,7 +2,9 @@ import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import {
   MdOutlineAdd,
+  MdOutlineBlock,
   MdOutlineFileUpload,
+  MdOutlineRefresh,
   MdPersonOff,
   MdRestore,
   MdSearch,
@@ -29,10 +31,17 @@ import {
   useAttachPlatformTenantUserLocationMutation,
 } from '../../../../api/organization-service/Platform/users';
 import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organization-service/Platform/departments';
+import { useListPlatformTenantDesignationsQuery } from '../../../../api/organization-service/Platform/designations';
 import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-service/Platform/offices';
+import {
+  useListPlatformTenantInvitationsQuery,
+  useResendPlatformTenantInvitationMutation,
+  useRevokePlatformTenantInvitationMutation,
+} from '../../../../api/organization-service/Platform/invitations';
 import { useAssignRoleAsPlatformMutation } from '../../../../api/organization-service/Roles/assignments';
 import { useRolesCatalog } from '../../../../hooks/useRolesCatalog';
 import type { OrgUser } from '../../../../api/organization-service/Users/users';
+import type { InvitationSummary } from '../../../../api/organization-service/Tenants/teamInvitations';
 import {
   getOrgErrorCode,
   getOrgErrorMessage,
@@ -45,7 +54,26 @@ import BulkImport from '../../../MyCompany/Team/BulkImport';
 import ViewPlatformUserModal from './ViewPlatformUserModal';
 import RoleLocationPicker from './RoleLocationPicker';
 
-type UserRow = OrgUser & { key: string };
+type UserRow = OrgUser & { key: string; kind: 'user' };
+
+// A bulk-imported (or "Add user"-invited) person before they accept — an
+// `Invite` row, not a `User` row (organization-service keeps these as
+// entirely separate tables; see ListTenantInvitationsUseCase). Shown in the
+// SAME table as real users, with a "Pending" status, until accepted — at
+// which point their invite's status flips to "accepted" (so it drops out of
+// this filter) and their real User row appears in `data.items` instead.
+type PendingRow = {
+  key: string;
+  kind: 'pending';
+  invitation_id: string;
+  invited_email: string;
+  role: string;
+  department_id: string | null;
+  designation_id: string | null;
+  expires_at: string;
+};
+
+type TableRow = UserRow | PendingRow;
 
 type FormState = {
   email: string;
@@ -100,12 +128,22 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     includeInactive: includeInactive === 'all',
   });
   const { data: departments } = useListPlatformTenantDepartmentsQuery(tenantId);
+  const { data: designations } = useListPlatformTenantDesignationsQuery(tenantId);
   const { data: offices } = useListPlatformTenantOfficesQuery(tenantId);
   const { roles, createRole } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: true });
+  // Every invite this tenant has ever sent, not just pending ones — filtered
+  // to `status === 'pending'` below. Accepted/revoked/expired invites are
+  // dead rows for THIS table's purpose (an accepted one's person already
+  // shows up via `data.items` instead).
+  const { data: invitationsData } = useListPlatformTenantInvitationsQuery({ tenantId });
 
   const [createUser, { isLoading: isCreating }] = useCreatePlatformTenantUserMutation();
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivatePlatformTenantUserMutation();
   const [reactivateUser, { isLoading: isReactivating }] = useReactivatePlatformTenantUserMutation();
+  const [resendInvite, { isLoading: isResendingInvite }] =
+    useResendPlatformTenantInvitationMutation();
+  const [revokeInvite, { isLoading: isRevokingInvite }] =
+    useRevokePlatformTenantInvitationMutation();
   // Only used when a location was also picked for the new hire's role — see
   // handleAdd. CreateUserCommand.role_id alone (the common case, no
   // follow-up call needed) already grants the role at creation, applying
@@ -133,18 +171,46 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const departmentName = (id: string | null) =>
     departments?.find((d) => d.org_department_id === id)?.name || '-';
 
+  const designationName = (id: string | null) =>
+    designations?.find((d) => d.designation_id === id)?.name || '-';
+
   const users = data?.items ?? [];
 
-  const filteredUsers = useMemo(() => {
+  const pendingInvitations = useMemo(
+    () => (invitationsData?.invitations ?? []).filter((inv) => inv.status === 'pending'),
+    [invitationsData]
+  );
+
+  const rows: TableRow[] = useMemo(() => {
+    const userRows: UserRow[] = users.map((user) => ({
+      ...user,
+      key: user.user_id,
+      kind: 'user',
+    }));
+    const pendingRows: PendingRow[] = pendingInvitations.map((invitation: InvitationSummary) => ({
+      key: `invite-${invitation.invitation_id}`,
+      kind: 'pending',
+      invitation_id: invitation.invitation_id,
+      invited_email: invitation.invited_email,
+      role: invitation.role,
+      department_id: invitation.department_id,
+      designation_id: invitation.designation_id,
+      expires_at: invitation.expires_at,
+    }));
+    return [...userRows, ...pendingRows];
+  }, [users, pendingInvitations]);
+
+  const filteredRows = useMemo(() => {
     const q = searchText.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (user) =>
-        user.full_name.toLowerCase().includes(q) ||
-        user.email.toLowerCase().includes(q) ||
-        (user.title ?? '').toLowerCase().includes(q)
+    if (!q) return rows;
+    return rows.filter((row) =>
+      row.kind === 'user'
+        ? row.full_name.toLowerCase().includes(q) ||
+          row.email.toLowerCase().includes(q) ||
+          (row.title ?? '').toLowerCase().includes(q)
+        : row.invited_email.toLowerCase().includes(q) || row.role.toLowerCase().includes(q)
     );
-  }, [users, searchText]);
+  }, [rows, searchText]);
 
   const handleAdd = async () => {
     if (!form.email.trim() || !form.first_name.trim()) {
@@ -266,45 +332,111 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
   };
 
+  const handleResendInvite = async (invitationId: string) => {
+    try {
+      await resendInvite({ tenantId, invitationId }).unwrap();
+      showToast({ message: 'Invitation resent — expiry pushed out 48 hours.', type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to resend invitation.'),
+        type: 'error',
+      });
+    }
+  };
+
+  const handleRevokeInvite = async (invitationId: string) => {
+    try {
+      await revokeInvite({ tenantId, invitationId }).unwrap();
+      showToast({ message: 'Invitation revoked.', type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to revoke invitation.'),
+        type: 'error',
+      });
+    }
+  };
+
   if (isLoading) return <Loader />;
 
-  const columns: TableProps<UserRow>['columns'] = [
+  const columns: TableProps<TableRow>['columns'] = [
     {
       title: 'Name',
       key: 'full_name',
-      sorter: (a: UserRow, b: UserRow) => a.full_name.localeCompare(b.full_name),
-      render: (_: unknown, user: UserRow) => (
-        <button
-          type="button"
-          onClick={() => setViewingUser(user)}
-          className="text-left cursor-pointer"
-        >
-          <div className="font-semibold text-gray-900 hover:text-primary-600 hover:underline">
-            {user.full_name}
+      sorter: (a: TableRow, b: TableRow) =>
+        (a.kind === 'user' ? a.full_name : a.invited_email).localeCompare(
+          b.kind === 'user' ? b.full_name : b.invited_email
+        ),
+      render: (_: unknown, row: TableRow) =>
+        row.kind === 'user' ? (
+          <button
+            type="button"
+            onClick={() => setViewingUser(row)}
+            className="text-left cursor-pointer"
+          >
+            <div className="font-semibold text-gray-900 hover:text-primary-600 hover:underline">
+              {row.full_name}
+            </div>
+            <div className="text-xs text-gray-400">{row.email}</div>
+          </button>
+        ) : (
+          <div>
+            <div className="font-semibold text-gray-900">{row.invited_email}</div>
+            <div className="text-xs text-gray-400">Invited — not yet accepted</div>
           </div>
-          <div className="text-xs text-gray-400">{user.email}</div>
-        </button>
-      ),
+        ),
     },
     {
       title: 'Title',
       dataIndex: 'title',
       key: 'title',
-      sorter: (a: UserRow, b: UserRow) => (a.title ?? '').localeCompare(b.title ?? ''),
-      render: (_: unknown, user: UserRow) => (
-        <span className="text-gray-600 text-sm">{user.title || '—'}</span>
+      sorter: (a: TableRow, b: TableRow) =>
+        (a.kind === 'user' ? (a.title ?? '') : '').localeCompare(
+          b.kind === 'user' ? (b.title ?? '') : ''
+        ),
+      render: (_: unknown, row: TableRow) => (
+        <span className="text-gray-600 text-sm">
+          {row.kind === 'user' ? row.title || '—' : '—'}
+        </span>
       ),
     },
     {
       title: 'Department',
       key: 'department',
-      sorter: (a: UserRow, b: UserRow) =>
+      sorter: (a: TableRow, b: TableRow) =>
         departmentName(a.department_id).localeCompare(departmentName(b.department_id)),
-      render: (_: unknown, user: UserRow) =>
-        user.department_id ? (
+      render: (_: unknown, row: TableRow) =>
+        row.department_id ? (
           <Badge status="neutral" dot={false}>
-            {departmentName(user.department_id)}
+            {departmentName(row.department_id)}
           </Badge>
+        ) : (
+          <span className="text-gray-300 text-sm">Unassigned</span>
+        ),
+    },
+    {
+      title: 'Designation',
+      key: 'designation',
+      sorter: (a: TableRow, b: TableRow) =>
+        designationName(a.designation_id).localeCompare(designationName(b.designation_id)),
+      render: (_: unknown, row: TableRow) =>
+        row.designation_id ? (
+          <Badge status="neutral" dot={false}>
+            {designationName(row.designation_id)}
+          </Badge>
+        ) : (
+          <span className="text-gray-300 text-sm">Unassigned</span>
+        ),
+    },
+    {
+      title: 'Role',
+      key: 'role',
+      sorter: (a: TableRow, b: TableRow) =>
+        (a.kind === 'user' ? (a.role ?? '') : a.role).localeCompare(
+          b.kind === 'user' ? (b.role ?? '') : b.role
+        ),
+      render: (_: unknown, row: TableRow) =>
+        row.role ? (
+          <span className="text-gray-600 text-sm">{row.role}</span>
         ) : (
           <span className="text-gray-300 text-sm">Unassigned</span>
         ),
@@ -312,24 +444,53 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     {
       title: 'Status',
       key: 'status',
-      sorter: (a: UserRow, b: UserRow) => Number(a.is_active) - Number(b.is_active),
-      render: (_: unknown, user: UserRow) => (
-        <Badge status={user.is_active ? 'success' : 'neutral'}>
-          {user.is_active ? 'Active' : 'Deactivated'}
-        </Badge>
-      ),
+      sorter: (a: TableRow, b: TableRow) =>
+        Number(a.kind === 'user' ? a.is_active : false) -
+        Number(b.kind === 'user' ? b.is_active : false),
+      render: (_: unknown, row: TableRow) =>
+        row.kind === 'pending' ? (
+          <Badge status="warning">Pending</Badge>
+        ) : (
+          <Badge status={row.is_active ? 'success' : 'neutral'}>
+            {row.is_active ? 'Active' : 'Deactivated'}
+          </Badge>
+        ),
     },
     {
       title: 'Actions',
       key: 'actions',
       width: 80,
-      render: (_: unknown, user: UserRow) =>
-        user.is_active ? (
+      render: (_: unknown, row: TableRow) => {
+        if (row.kind === 'pending') {
+          return (
+            <div className="flex gap-1">
+              <button
+                type="button"
+                aria-label="Resend invitation"
+                className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50"
+                disabled={isResendingInvite}
+                onClick={() => handleResendInvite(row.invitation_id)}
+              >
+                <MdOutlineRefresh />
+              </button>
+              <button
+                type="button"
+                aria-label="Revoke invitation"
+                className="p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                disabled={isRevokingInvite}
+                onClick={() => handleRevokeInvite(row.invitation_id)}
+              >
+                <MdOutlineBlock />
+              </button>
+            </div>
+          );
+        }
+        return row.is_active ? (
           <button
             type="button"
             aria-label="Deactivate user"
             className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-            onClick={() => setUserToDeactivate(user)}
+            onClick={() => setUserToDeactivate(row)}
           >
             <MdPersonOff className="text-red-500" />
           </button>
@@ -339,15 +500,16 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             aria-label="Reactivate user"
             className="p-2 hover:bg-green-50 rounded-full cursor-pointer transition-colors disabled:opacity-50"
             disabled={isReactivating}
-            onClick={() => handleReactivate(user)}
+            onClick={() => handleReactivate(row)}
           >
             <MdRestore className="text-green-600" />
           </button>
-        ),
+        );
+      },
     },
   ];
 
-  const dataSource: UserRow[] = filteredUsers.map((user) => ({ ...user, key: user.user_id }));
+  const dataSource: TableRow[] = filteredRows;
 
   return (
     <div className="p-4">
@@ -355,8 +517,10 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <div>
           <Typography variant="body2">This company&apos;s team members.</Typography>
           <span className="text-xs font-medium text-gray-400">
-            {dataSource.length} {dataSource.length === 1 ? 'user' : 'users'}
-            {searchText.trim() && ` of ${users.length}`}
+            {users.length} {users.length === 1 ? 'user' : 'users'}
+            {pendingInvitations.length > 0 &&
+              `, ${pendingInvitations.length} pending ${pendingInvitations.length === 1 ? 'invite' : 'invites'}`}
+            {searchText.trim() && ` (${dataSource.length} shown)`}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -396,10 +560,12 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       </div>
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
-        <CustomTable<UserRow>
+        <CustomTable<TableRow>
           columns={columns}
           dataSource={dataSource}
-          emptyText={searchText.trim() ? 'No users match your search.' : 'No users yet.'}
+          emptyText={
+            searchText.trim() ? 'No users match your search.' : 'No users or pending invites yet.'
+          }
           pagination={paginationConfig('users')}
         />
       </div>

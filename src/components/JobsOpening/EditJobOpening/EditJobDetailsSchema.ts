@@ -10,8 +10,7 @@ export const editJobDetailsSchema = z
     officeLocation: z.array(catalogId).min(1, 'Location is required.'),
     jobType: z.array(catalogId).min(1, 'Job Type is required.'),
     jobMode: z.array(catalogId).min(1, 'Job Mode is required.'),
-    shiftStart: z.string().optional(),
-    shiftEnd: z.string().optional(),
+    shift: z.array(catalogId).optional(),
     isMultilingual: z.boolean().optional(),
     useCultureIntro: z.boolean().optional(),
     openings: z.preprocess(
@@ -162,24 +161,12 @@ export const editJobDetailsSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    const isShiftStartEmpty = !data.shiftStart?.trim();
-    const isShiftEndEmpty = !data.shiftEnd?.trim();
-
     const min = data.minSalary ? Number(data.minSalary) : null;
     const max = data.maxSalary ? Number(data.maxSalary) : null;
 
     const minExp = data.minExperience;
     const maxExp = data.maxExperience;
 
-    if (!(isShiftStartEmpty && isShiftEndEmpty)) {
-      if (isShiftStartEmpty || isShiftEndEmpty) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Please select both shift start and end time.',
-          path: isShiftStartEmpty ? ['shiftStart'] : ['shiftEnd'],
-        });
-      }
-    }
     if (min === null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -286,8 +273,7 @@ export const editJobDetailsDraftSchema = z.object({
   officeLocation: z.array(catalogId).optional(),
   jobType: z.array(catalogId).optional(),
   jobMode: z.array(catalogId).optional(),
-  shiftStart: z.string().optional(),
-  shiftEnd: z.string().optional(),
+  shift: z.array(catalogId).optional(),
   isMultilingual: z.boolean().optional(),
   useCultureIntro: z.boolean().optional(),
   openings: z.number().optional().nullable(),
