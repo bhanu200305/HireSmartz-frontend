@@ -1,23 +1,7 @@
 /**
- * jdSync.ts — shared logic for keeping the AI Job Description in sync with
- * Job Details.
- *
- * The AI description is free-text prose composed FROM a fixed set of
- * structured Job Details fields (experience range, salary range,
- * responsibilities, other requirements) — but nothing on the backend ever
- * re-derives those fields back out of the text, and saving Job Details
- * alone never regenerates the text either (`PUT .../details` only writes
- * the structured columns; `PUT .../jd` only writes the raw text — see
- * SaveJobDetailsUseCase / job-service). Left alone, editing Job Details
- * after a description already exists leaves the old, now-inaccurate
- * description on screen with no indication anything changed.
- *
- * `haveDescriptionInputsChanged` is the trigger both Job Details save
- * flows (AddJobDescription/jobdetails.tsx, EditJobOpening/EditJobDetail.tsx)
- * use to decide whether to also kick off a regenerate — only when a field
- * the description is actually generated from changed, so saving an
- * unrelated field (e.g. swapping the Recruiter) doesn't blow away a
- * manually-edited description for no reason.
+ * jdSync.ts — keeps the AI Job Description and Job Details in sync, both
+ * directions. Shared by AddJobDescription/jobdetails.tsx,
+ * EditJobOpening/EditJobDetail.tsx, and JobDescriptionPanel.tsx.
  */
 
 export type JdDescriptionInputs = {
@@ -27,6 +11,13 @@ export type JdDescriptionInputs = {
   maxSalary?: number | string | null;
   responsibilities?: string | null;
   otherRequirements?: string | null;
+  shiftId?: string | null;
+  jobTypeId?: string | null;
+  educationPreferenceId?: string | null;
+  locationCity?: string | null;
+  locationState?: string | null;
+  locationCountry?: string | null;
+  skillIds?: string[];
 };
 
 const normalizeNumber = (value: number | string | null | undefined): number | null => {
@@ -37,12 +28,19 @@ const normalizeNumber = (value: number | string | null | undefined): number | nu
 
 const normalizeText = (value: string | null | undefined): string => (value ?? '').trim();
 
-/**
- * True when any field the AI description is generated from differs between
- * the Job Details form's latest values (`next`) and what the description
- * currently on file was generated from (`current`, from the same
- * `getJobDescriptionById` response the AI Description step reads).
- */
+const normalizeId = (value: string | null | undefined): string | null =>
+  value ? String(value) : null;
+
+// Order shouldn't matter for skill selection — compare as sets.
+const sameIdSet = (a: string[] | undefined, b: string[] | undefined): boolean => {
+  const setA = new Set((a ?? []).map(String));
+  const setB = new Set((b ?? []).map(String));
+  if (setA.size !== setB.size) return false;
+  for (const id of setA) if (!setB.has(id)) return false;
+  return true;
+};
+
+/** True when a field the AI description is generated from has changed. */
 export const haveDescriptionInputsChanged = (
   next: JdDescriptionInputs,
   current: JdDescriptionInputs
@@ -52,4 +50,119 @@ export const haveDescriptionInputsChanged = (
   normalizeNumber(next.minSalary) !== normalizeNumber(current.minSalary) ||
   normalizeNumber(next.maxSalary) !== normalizeNumber(current.maxSalary) ||
   normalizeText(next.responsibilities) !== normalizeText(current.responsibilities) ||
-  normalizeText(next.otherRequirements) !== normalizeText(current.otherRequirements);
+  normalizeText(next.otherRequirements) !== normalizeText(current.otherRequirements) ||
+  normalizeId(next.shiftId) !== normalizeId(current.shiftId) ||
+  normalizeId(next.jobTypeId) !== normalizeId(current.jobTypeId) ||
+  normalizeId(next.educationPreferenceId) !== normalizeId(current.educationPreferenceId) ||
+  normalizeText(next.locationCity) !== normalizeText(current.locationCity) ||
+  normalizeText(next.locationState) !== normalizeText(current.locationState) ||
+  normalizeText(next.locationCountry) !== normalizeText(current.locationCountry) ||
+  !sameIdSet(next.skillIds, current.skillIds);
+
+// Fields the AI Job Description screen may write back into Job Details.
+// Excludes job title/department/shift/job type/education preference/
+// location — those are catalogue-bound, never AI-settable.
+export type AiOwnedJdFields = {
+  responsibilities?: string | null;
+  otherRequirements?: string | null;
+  minExperience?: number | string | null;
+  maxExperience?: number | string | null;
+  minSalary?: number | string | null;
+  maxSalary?: number | string | null;
+  // Extraction-only, never AI-composed — safe here. Never add this to
+  // JdDescriptionInputs/haveDescriptionInputsChanged above, which drives
+  // AI-composed regeneration.
+  vacancies?: number | string | null;
+};
+
+export type AiOwnedJdFieldUpdates = {
+  responsibilities?: string;
+  otherRequirements?: string;
+  minExperience?: number;
+  maxExperience?: number;
+  minSalary?: string;
+  maxSalary?: string;
+  vacancies?: number;
+};
+
+/** Only the fields where the backend's value is real and differs from
+ * the form's current one — safe to apply on mount. */
+export const diffAiOwnedFields = (
+  fresh: AiOwnedJdFields,
+  current: AiOwnedJdFields
+): AiOwnedJdFieldUpdates => {
+  const updates: AiOwnedJdFieldUpdates = {};
+  if (
+    fresh.responsibilities &&
+    normalizeText(fresh.responsibilities) !== normalizeText(current.responsibilities)
+  ) {
+    updates.responsibilities = fresh.responsibilities;
+  }
+  if (
+    fresh.otherRequirements &&
+    normalizeText(fresh.otherRequirements) !== normalizeText(current.otherRequirements)
+  ) {
+    updates.otherRequirements = fresh.otherRequirements;
+  }
+  if (
+    fresh.minExperience != null &&
+    normalizeNumber(fresh.minExperience) !== normalizeNumber(current.minExperience)
+  ) {
+    updates.minExperience = Number(fresh.minExperience);
+  }
+  if (
+    fresh.maxExperience != null &&
+    normalizeNumber(fresh.maxExperience) !== normalizeNumber(current.maxExperience)
+  ) {
+    updates.maxExperience = Number(fresh.maxExperience);
+  }
+  if (
+    fresh.minSalary != null &&
+    normalizeNumber(fresh.minSalary) !== normalizeNumber(current.minSalary)
+  ) {
+    updates.minSalary = String(fresh.minSalary);
+  }
+  if (
+    fresh.maxSalary != null &&
+    normalizeNumber(fresh.maxSalary) !== normalizeNumber(current.maxSalary)
+  ) {
+    updates.maxSalary = String(fresh.maxSalary);
+  }
+  if (
+    fresh.vacancies != null &&
+    normalizeNumber(fresh.vacancies) !== normalizeNumber(current.vacancies)
+  ) {
+    updates.vacancies = Number(fresh.vacancies);
+  }
+  return updates;
+};
+
+export type AiSyncedSkill = { skill_id: string; skill_label: string; skill_type: string };
+
+/** New AI-added skills not already in the recruiter's selection, split by
+ * type. Additive only — never removes an existing selection. */
+export const mergeNewAiSkills = (
+  freshSkills: AiSyncedSkill[] | undefined,
+  currentMandatoryIds: string[],
+  currentOptionalIds: string[]
+): {
+  newMandatoryIds: string[];
+  newOptionalIds: string[];
+  newOptions: { id: string; name: string }[];
+} => {
+  const newMandatoryIds: string[] = [];
+  const newOptionalIds: string[] = [];
+  const newOptions: { id: string; name: string }[] = [];
+  for (const skill of freshSkills ?? []) {
+    const id = String(skill.skill_id);
+    if (currentMandatoryIds.includes(id) || currentOptionalIds.includes(id)) continue;
+    if (newMandatoryIds.includes(id) || newOptionalIds.includes(id)) continue;
+    if (skill.skill_type.toLowerCase() === 'mandatory') {
+      newMandatoryIds.push(id);
+    } else {
+      newOptionalIds.push(id);
+    }
+    newOptions.push({ id, name: skill.skill_label });
+  }
+  return { newMandatoryIds, newOptionalIds, newOptions };
+};

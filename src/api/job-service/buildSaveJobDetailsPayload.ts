@@ -84,6 +84,7 @@ export const buildSaveJobDetailsPayload = ({
           state: office.state,
           country: office.country,
           zip: office.zip_code,
+          location_code: office.location_code,
         },
       ]
     : officeId && isUuid(officeId)
@@ -125,7 +126,7 @@ export const buildSaveJobDetailsPayload = ({
     hiring_manager_ids: toIdList(data.hiringManagers).filter(isUuid),
     recruiter_ids: toIdList(data.recruiters).filter(isUuid),
     job_open_date: toIsoDateTime(data.openDate),
-    job_close_date: null,
+    job_close_date: toIsoDateTime(data.closeDate),
     vacancies: data.openings ?? null,
     min_experience_req: data.minExperience ?? null,
     max_experience_req: data.maxExperience ?? null,

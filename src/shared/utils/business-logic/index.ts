@@ -176,6 +176,10 @@ const AI_JD_BULLET_RE = /^[•●◦‣▪∙*-](?:\s+|$)/;
 const AI_JD_NUMBERED_RE = /^\d+[.)]\s+/;
 const AI_JD_MARKDOWN_HEADING_RE = /^#{1,6}\s+/;
 
+// A whole line already bold, e.g. "**Position Overview:**" — promoted
+// straight to a heading instead of being re-wrapped by the key:value branch.
+const AI_JD_WHOLE_LINE_BOLD_RE = /^\*\*(.+)\*\*$/;
+
 // Keyword stem list for heading detection — deliberately stems ("responsibilit"
 // not "responsibilities") so it matches whatever wording the source actually
 // used ("Responsibilities", "Key Responsibilities", "Required Skills
@@ -221,7 +225,11 @@ const isLikelyAiJdHeading = (line: string): boolean => {
 export const formatAiJobDescription = (text: string): string => {
   if (!text || typeof text !== 'string') return '';
 
-  const rawLines = text.split('\n').map((line) => line.trim());
+  // Strip whitespace right inside "**" pairs — CommonMark won't render bold
+  // otherwise (e.g. "**Position Overview: **" stays literal).
+  const normalizedText = text.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
+
+  const rawLines = normalizedText.split('\n').map((line) => line.trim());
 
   // Pass 1: a bullet glyph stranded alone on its own line (see
   // AI_JD_BULLET_RE above) isn't a list item by itself — fold it into
@@ -287,17 +295,20 @@ export const formatAiJobDescription = (text: string): string => {
       continue;
     }
 
-    if (isLikelyAiJdHeading(line)) {
+    const wholeLineBoldMatch = line.match(AI_JD_WHOLE_LINE_BOLD_RE);
+    if (wholeLineBoldMatch || isLikelyAiJdHeading(line)) {
+      const label = (wholeLineBoldMatch ? wholeLineBoldMatch[1] : line).trim();
       if (processedLines.length > 0 && processedLines[processedLines.length - 1] !== '') {
         processedLines.push('');
       }
-      processedLines.push(`## ${line.replace(/:\s*$/, '')}`);
+      processedLines.push(`## ${label.replace(/:\s*$/, '')}`);
       inListSection = true;
       continue;
     }
 
     // A plain key: value line outside any list (e.g. "Location: Bengaluru").
-    if (!inListSection && line.includes(':')) {
+    // Skip lines that already have "**" — already bold, don't re-wrap them.
+    if (!inListSection && line.includes(':') && !line.includes('**')) {
       const [key, ...valueParts] = line.split(':');
       const value = valueParts.join(':').trim();
       if (value) {

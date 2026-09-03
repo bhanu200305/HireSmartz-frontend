@@ -127,6 +127,7 @@ export const editJobDetailsSchema = z
       }, z.number().min(0, 'Enter a valid maximum experience.').max(50, 'Maximum experience cannot exceed 50.').nullable())
       .optional(),
     openDate: z.string().nonempty('Open date is required.'),
+    closeDate: z.string().optional(),
     hiringManagers: z.array(catalogId).optional(),
     recruiters: z.array(catalogId).optional(),
     state: z.string().nonempty('State is required.'),
@@ -284,6 +285,7 @@ export const editJobDetailsDraftSchema = z.object({
   minExperience: z.number().optional().nullable(),
   maxExperience: z.number().optional().nullable(),
   openDate: z.string().optional(),
+  closeDate: z.string().optional(),
   hiringManagers: z.array(catalogId).optional(),
   recruiters: z.array(catalogId).optional(),
   state: z.string().optional(),

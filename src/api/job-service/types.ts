@@ -72,6 +72,7 @@ export type JobLocationPayload = {
   state?: string | null;
   country?: string | null;
   zip?: string | null;
+  location_code?: string | null;
 };
 
 export type JobSkillPayload = {
@@ -87,6 +88,7 @@ export type JobLocationResponse = {
   state: string | null;
   country: string | null;
   zip: string | null;
+  location_code: string | null;
 };
 
 export type JobSkillResponse = {

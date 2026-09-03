@@ -61,7 +61,10 @@ const extendedApi = jobApi.injectEndpoints({
       ],
     }),
 
-    validateForPublish: build.query<{ is_valid: boolean; failed_checks: string[] }, string>({
+    validateForPublish: build.query<
+      { is_valid: boolean; failed_checks: string[]; rounds_missing_questions?: string[] },
+      string
+    >({
       query: (jobId) => ({
         url: `/job-openings/${jobId}/publish/validate`,
         method: 'GET',
