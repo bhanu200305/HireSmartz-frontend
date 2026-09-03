@@ -41,7 +41,10 @@ const formatVariantLabel = (variant: string) =>
   `${variant
     .replace(/[_-]+/g, ' ')
     .trim()
-    .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())} Round`;
+    .replace(
+      /\w\S*/g,
+      (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )} Round`;
 
 const AddNewRound = () => {
   const navigate = useNavigate();
@@ -66,10 +69,12 @@ const AddNewRound = () => {
   const { data: rounds = [] } = useGetInterviewRoundsByJobIdQuery(resolvedJobId, {
     skip: !resolvedJobId,
   });
-
-  const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(
-    null
+  // Resume and Intake Call are auto-seeded and locked — never addable here.
+  const addableInterviewRounds = interviewRounds.filter(
+    (round) => round.special_kind !== 'resume' && round.special_kind !== 'intake_call'
   );
+
+  const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(null);
 
   const {
     control,
@@ -224,8 +229,8 @@ const AddNewRound = () => {
                         }
                         optionFilterProp="children"
                       >
-                        {interviewRounds.length > 0 ? (
-                          interviewRounds.map((round) => (
+                        {addableInterviewRounds.length > 0 ? (
+                          addableInterviewRounds.map((round) => (
                             <Option key={round.id} value={round.id}>
                               {round.name}
                             </Option>

@@ -31,7 +31,7 @@ const EditAiJobDescription = () => {
 
   return (
     <>
-      <JobDescriptionPanel aiJobDescriptionId={jobOpeningId} />
+      <JobDescriptionPanel aiJobDescriptionId={jobOpeningId} isEditFlow />
       <div className="flex items-center justify-center mt-6 gap-6">
         <Button
           type="button"

@@ -193,6 +193,7 @@ export const jobDetailsSchema = z
           message: 'Open date cannot be in the past.',
         }
       ),
+    closeDate: z.string().optional(),
     hiringManagers: z.array(catalogId).optional(),
     recruiters: z.array(catalogId).optional(),
     state: z.string().nonempty('State is required.'),
@@ -352,6 +353,7 @@ export const jobDetailsDraftSchema = z.object({
   minExperience: z.number().optional().nullable(),
   maxExperience: z.number().optional().nullable(),
   openDate: z.string().optional(),
+  closeDate: z.string().optional(),
   hiringManagers: z.array(catalogId).optional(),
   recruiters: z.array(catalogId).optional(),
   state: z.string().optional(),

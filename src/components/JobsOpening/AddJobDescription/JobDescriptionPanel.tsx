@@ -16,10 +16,12 @@ import { useForm } from 'react-hook-form';
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateJobDetails } from '../../../redux/slices/jobOpeningSlice';
+import { updateEditJobDetails } from '../../../redux/slices/editJobOpeningSlice';
 import { RootState } from '../../../redux/provider/store';
 import TurndownService from 'turndown';
 import { RichTextEditor } from '../../shared/ui/RichTextEditor';
 import { formatAiJobDescription } from '../../../shared/utils/business-logic';
+import { diffAiOwnedFields, mergeNewAiSkills } from '../../../shared/utils/jdSync';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { makeFirstLetterUpperCase } from '../../../shared/utils/methods';
 import { useGetTopFivePromptQuery } from '../../../api/ai-service/AiQuestion/AiQuestion';
@@ -29,6 +31,8 @@ import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers'
 interface JobDescriptionPanelProps {
   /** UUID of the job — JD hangs off the job, not a separate entity. */
   aiJobDescriptionId: string | number | null;
+  /** True when mounted from the Edit wizard — uses EditJobSlice instead of JobSlice. */
+  isEditFlow?: boolean;
 }
 
 /**
@@ -43,7 +47,10 @@ interface JobDescriptionPanelProps {
  * job, not this panel's, since generating the description no longer means
  * leaving the page.
  */
-const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) => {
+const JobDescriptionPanel = ({
+  aiJobDescriptionId,
+  isEditFlow = false,
+}: JobDescriptionPanelProps) => {
   const dispatch = useDispatch();
   const jobOpeningId = asJobId(aiJobDescriptionId);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
@@ -71,7 +78,9 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
   });
   // Read fresh at dispatch time (not destructured once) so the merge below
   // always starts from whatever's currently in Redux, not a stale closure.
-  const jobDetailsInRedux = useSelector((state: RootState) => state.JobSlice.details);
+  const jobDetailsInRedux = useSelector((state: RootState) =>
+    isEditFlow ? state.EditJobSlice.details : state.JobSlice.details
+  );
 
   const {
     data: prompts,
@@ -137,18 +146,8 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
     }
   }, [jdStatus?.status, jdStatus?.error_message, jobOpeningId, refetch]);
 
-  // Pushes AI-generated responsibilities/other requirements/experience/
-  // salary into Redux's `jobDetails` (a plain merge, see
-  // jobOpeningSlice.ts's `updateJobDetails` reducer — this can never wipe
-  // out job title/department or anything else already saved there) once
-  // the refetch the effect above triggered actually resolves — every entry
-  // path now goes through the same Manual + `/jd/enhance` flow (floating
-  // "Fill with AI" widget or the Refine/Generate box here), so this is no
-  // longer AI-Prompt-specific. Job Details step 1 reads its form's
-  // defaultValues from this same Redux state on every mount, so whenever
-  // the recruiter next lands there — including a fresh visit after leaving
-  // mid-generation — it shows up without needing to still be on that step
-  // right now.
+  // Pushes AI-refreshed fields into Redux once the refetch above resolves.
+  // Plain merge — never wipes out other saved fields.
   useEffect(() => {
     if (!awaitingFreshAiFieldsRef.current || !response) return;
     awaitingFreshAiFieldsRef.current = false;
@@ -156,44 +155,25 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
     // Skills AI suggested via job.jd.enhance are auto-committed straight
     // onto the job (job.add_skill — unlike generate/parse's
     // suggestions-only cache), so `response.skills` already reflects them.
-    // Merge in only the ones Redux doesn't already have, split by the
-    // catalogue's own type name — mirrors jobdetails.tsx's own version of
-    // this same merge for whoever's actually mounted there right now.
     const currentMandatory = (jobDetailsInRedux.mandatorySkills || []).map(String);
     const currentOptional = (jobDetailsInRedux.optionalSkills || []).map(String);
-    const newMandatory: string[] = [];
-    const newOptional: string[] = [];
-    const newLabels: Record<string, string> = {};
-    for (const skill of response.skills ?? []) {
-      const id = String(skill.skill_id);
-      if (currentMandatory.includes(id) || currentOptional.includes(id)) continue;
-      if (newMandatory.includes(id) || newOptional.includes(id)) continue;
-      if (skill.skill_type.toLowerCase() === 'mandatory') {
-        newMandatory.push(id);
-      } else {
-        newOptional.push(id);
-      }
-      // Job Details' catalogue dropdowns only know a label for a skill
-      // someone has actually searched for — this component may not be the
-      // one open when the recruiter later revisits that step, so the label
-      // has to travel through Redux (persisted) rather than local state.
-      // See jobdetails.tsx's own `aiSuggestedSkillLabels` usage.
-      newLabels[id] = skill.skill_label;
-    }
+    const { newMandatoryIds, newOptionalIds, newOptions } = mergeNewAiSkills(
+      response.skills,
+      currentMandatory,
+      currentOptional
+    );
+    const newLabels = Object.fromEntries(newOptions.map((o) => [o.id, o.name]));
 
     dispatch(
-      updateJobDetails({
-        ...(response.responsibilities ? { responsibilities: response.responsibilities } : {}),
-        ...(response.otherRequirements ? { otherRequirements: response.otherRequirements } : {}),
-        ...(response.minExperience != null ? { minExperience: response.minExperience } : {}),
-        ...(response.maxExperience != null ? { maxExperience: response.maxExperience } : {}),
-        ...(response.minSalary != null ? { minSalary: String(response.minSalary) } : {}),
-        ...(response.maxSalary != null ? { maxSalary: String(response.maxSalary) } : {}),
-        ...(newMandatory.length > 0
-          ? { mandatorySkills: [...currentMandatory, ...newMandatory] }
+      (isEditFlow ? updateEditJobDetails : updateJobDetails)({
+        ...diffAiOwnedFields(response, jobDetailsInRedux),
+        ...(newMandatoryIds.length > 0
+          ? { mandatorySkills: [...currentMandatory, ...newMandatoryIds] }
           : {}),
-        ...(newOptional.length > 0 ? { optionalSkills: [...currentOptional, ...newOptional] } : {}),
-        ...(Object.keys(newLabels).length > 0
+        ...(newOptionalIds.length > 0
+          ? { optionalSkills: [...currentOptional, ...newOptionalIds] }
+          : {}),
+        ...(newOptions.length > 0
           ? {
               aiSuggestedSkillLabels: {
                 ...(jobDetailsInRedux.aiSuggestedSkillLabels || {}),
@@ -206,6 +186,7 @@ const JobDescriptionPanel = ({ aiJobDescriptionId }: JobDescriptionPanelProps) =
   }, [
     response,
     dispatch,
+    isEditFlow,
     jobDetailsInRedux.mandatorySkills,
     jobDetailsInRedux.optionalSkills,
     jobDetailsInRedux.aiSuggestedSkillLabels,

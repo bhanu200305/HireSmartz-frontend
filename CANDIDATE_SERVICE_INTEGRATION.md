@@ -81,7 +81,7 @@ Its "Audio / AI / Panel interviews" placeholder stays a placeholder — intervie
 
 ## Phase 6 — Cleanup
 
-Deleted ~45 fully-orphaned files, each verified via anchored grep (`from '...ExactPath'`) for zero real consumers before deletion — not just "not used by the files I was rewriting," but re-checked across the *whole* `src/` tree, since several files that looked dead from inside the Candidates folder turned out to still be reachable from elsewhere:
+Deleted ~45 fully-orphaned files, each verified via anchored grep (`from '...ExactPath'`) for zero real consumers before deletion — not just "not used by the files I was rewriting," but re-checked across the _whole_ `src/` tree, since several files that looked dead from inside the Candidates folder turned out to still be reachable from elsewhere:
 
 - The legacy `Candidates/{Candidates,FollowUpNotes,AssignJobOpening}.ts` island's dependents: `CandidateStatus.tsx`, `EditCandidate.tsx`, `ResumeScore.tsx`, `VideoInterview.tsx` + its whole `InterviewDetails/` subtree (14 files), the whole `InterviewSummary/` subtree (6 files), `SmsCommunication/SmsCommunicationTab.tsx`, `CandidateApplications.tsx`, `Modal/{AssignJobModal,AssignedJobsModal,ScheduleInterviewModal,SendEmailToCandidateModal,SendSmsToCandidateModal,NotifyCandidateModal,CommonModal}.tsx`, `Notes/CandidateNotesPanel.tsx`.
 - `api/candidate-service/Candidates/{AssignJobOpening,FollowUpNotes}.ts`.

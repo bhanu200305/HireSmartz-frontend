@@ -222,6 +222,7 @@ export type JobDetailsState = {
   minExperience: number | null;
   maxExperience?: number | null;
   openDate: string;
+  closeDate?: string;
   hiringManagers: Array<string | number>;
   recruiters?: Array<string | number>;
   country: string;
