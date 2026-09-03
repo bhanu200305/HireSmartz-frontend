@@ -92,9 +92,16 @@ type PipelineBoardProps = {
   scores: CandidateInterviewScoreView[];
   resumeScore: number | null;
   candidateId: string;
+  onRoundClick?: (round: CandidateInterviewRoundView) => void;
 };
 
-const PipelineBoard = ({ rounds, scores, resumeScore, candidateId }: PipelineBoardProps) => {
+const PipelineBoard = ({
+  rounds,
+  scores,
+  resumeScore,
+  candidateId,
+  onRoundClick,
+}: PipelineBoardProps) => {
   const [isSkipModalOpen, setIsSkipModalOpen] = useState(false);
   const [artifactsModalFor, setArtifactsModalFor] = useState<{
     roundId: string;
@@ -184,26 +191,18 @@ const PipelineBoard = ({ rounds, scores, resumeScore, candidateId }: PipelineBoa
           return (
             <div
               key={round.id ?? `resume-${index}`}
-              role={isInterviewRound ? 'button' : undefined}
-              tabIndex={isInterviewRound ? 0 : undefined}
-              onClick={
-                isInterviewRound
-                  ? () => setArtifactsModalFor({ roundId: round.id, roundName: roundLabel(round) })
-                  : undefined
-              }
-              onKeyDown={
-                isInterviewRound
-                  ? (e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setArtifactsModalFor({ roundId: round.id, roundName: roundLabel(round) });
-                      }
-                    }
-                  : undefined
-              }
+              role={onRoundClick ? 'button' : undefined}
+              tabIndex={onRoundClick ? 0 : undefined}
+              onClick={() => onRoundClick?.(round)}
+              onKeyDown={(event) => {
+                if (onRoundClick && (event.key === 'Enter' || event.key === ' ')) {
+                  event.preventDefault();
+                  onRoundClick(round);
+                }
+              }}
               className={`w-56 shrink-0 rounded-xl border border-neutral-200 border-t-4 bg-white shadow-xs ${meta.border} ${
                 isActive ? 'ring-2 ring-warning/40' : ''
-              } ${isInterviewRound ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
+              } ${onRoundClick ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30' : ''}`}
             >
               <div className="flex items-center gap-2 px-3.5 pt-3">
                 <span
@@ -238,7 +237,19 @@ const PipelineBoard = ({ rounds, scores, resumeScore, candidateId }: PipelineBoa
                   <span className="text-xs text-neutral-500">Awaiting Advance to move on</span>
                 )}
                 {isInterviewRound && (
-                  <span className="text-xs font-medium text-primary-600">View recordings ›</span>
+                  <button
+                    type="button"
+                    className="w-fit text-xs font-medium text-primary-600 hover:underline"
+                    onClick={(event) => {
+                      // Independent of the card's own click (which now opens
+                      // the round-detail drill-down) — stop it from also
+                      // firing onRoundClick.
+                      event.stopPropagation();
+                      setArtifactsModalFor({ roundId: round.id, roundName: roundLabel(round) });
+                    }}
+                  >
+                    View recordings ›
+                  </button>
                 )}
               </div>
             </div>

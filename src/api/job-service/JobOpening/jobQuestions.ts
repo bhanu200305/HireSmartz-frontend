@@ -9,7 +9,7 @@ import type {
   SkippedDuplicateRowResponse,
 } from '../types';
 
-const extendedApi = jobApi.injectEndpoints({
+export const jobQuestionsApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
     getJobQuestions: build.query<JobQuestionsResponse, string>({
       query: (jobOpeningId) => ({
@@ -119,4 +119,4 @@ export const {
   useRegenerateJobQuestionsMutation,
   useBulkImportJobQuestionsMutation,
   useLazyGetQuestionImportTemplateQuery,
-} = extendedApi;
+} = jobQuestionsApi;

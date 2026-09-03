@@ -4,7 +4,7 @@ import { MdOutlineQuestionAnswer } from 'react-icons/md';
 import { HiOutlineTrash } from 'react-icons/hi';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../../redux/provider/store';
+import { AppDispatch, RootState } from '../../../redux/provider/store';
 import { stopStream } from '../../../redux/slices/streamSlice';
 import { Loader } from '../../shared/ui/loader';
 import { Button, showToast, Typography } from '../../shared';
@@ -18,8 +18,8 @@ import {
   useRegenerateJobQuestionsMutation,
   useBulkImportJobQuestionsMutation,
   useLazyGetQuestionImportTemplateQuery,
+  jobQuestionsApi,
 } from '../../../api/job-service/JobOpening/jobQuestions';
-import { jobApi } from '../../../api/job-service/jobApi';
 import { useListInterviewRoundTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
 import {
   useLazyValidateForPublishQuery,
@@ -71,7 +71,7 @@ const describeFailedChecks = (checks: string[], roundsMissingQuestions: string[]
 
 const AiQuestionsSetup = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { pathname } = useLocation();
   const { id } = useParams<{ id?: string }>();
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
@@ -249,7 +249,7 @@ const AiQuestionsSetup = () => {
       jobOpeningId: activeJobOpeningId,
       questions: next,
     }).unwrap();
-    dispatch(jobApi.util.upsertQueryData('getJobQuestions', activeJobOpeningId, res));
+    dispatch(jobQuestionsApi.util.upsertQueryData('getJobQuestions', activeJobOpeningId, res));
     await refetchQuestions();
   };
 
@@ -345,7 +345,7 @@ const AiQuestionsSetup = () => {
       // already cached from the last load; the round set itself doesn't
       // change from an import, only which questions sit under each round.
       dispatch(
-        jobApi.util.updateQueryData('getJobQuestions', activeJobOpeningId, (draft) => {
+        jobQuestionsApi.util.updateQueryData('getJobQuestions', activeJobOpeningId, (draft) => {
           const byRound = new Map<string, QuestionResponse[]>();
           for (const question of res.questions ?? []) {
             const bucket = byRound.get(question.interview_round_id);

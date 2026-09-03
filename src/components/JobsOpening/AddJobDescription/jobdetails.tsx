@@ -1734,7 +1734,13 @@ const JobDetails = () => {
         return;
       }
 
-      // Regenerate only if a description-source field changed.
+      // A description already exists and this save actually changed a
+      // field it was generated from (experience/salary/responsibilities/
+      // other requirements) — regenerate it now rather than leaving the
+      // stale text in place until the recruiter happens to notice and
+      // clicks Regenerate manually on the next step. Skipped for anything
+      // that doesn't touch those fields (e.g. swapping the Recruiter), so
+      // a manually-edited description isn't discarded for no reason.
       const descriptionInputs = {
         ...data,
         shiftId: data.shift?.[0] != null ? String(data.shift[0]) : undefined,

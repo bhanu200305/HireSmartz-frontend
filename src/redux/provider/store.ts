@@ -3,7 +3,7 @@ import { configureStore, Middleware } from '@reduxjs/toolkit';
 import { persistStore, persistReducer, PersistConfig } from 'redux-persist';
 import rootReducer from '../reducers';
 import api from '../../api';
-import { videoIntegrationApi } from '../../api/interview-service/VideoIntegration/index';
+import { interviewApi } from '../../api/interview-service/client';
 import { interviewFeedbackApi } from '../../api/interview-service/InterviewFeedback/index';
 import { publicApplyApi } from '../../api/candidate-service/PublicApply/index';
 import { candidateApi } from '../../api/candidate-service/candidateApi';
@@ -25,7 +25,7 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 const middleware: Middleware[] = [
   api.middleware,
-  videoIntegrationApi.middleware,
+  interviewApi.middleware,
   interviewFeedbackApi.middleware,
   publicApplyApi.middleware,
   candidateApi.middleware,

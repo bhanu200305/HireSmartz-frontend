@@ -460,8 +460,8 @@ const VideoQuestionsSetup = () => {
           onDownloadTemplate={handleDownloadTemplate}
           uploadedFileName={uploadedFileName}
           importedCount={importedCount}
-          skippedCount={skippedCount}
-          warnings={warnings}
+          failedCount={skippedCount}
+          warnings={warnings.map((message) => ({ type: 'error' as const, message }))}
           onClearDetails={() => {
             setUploadedFileName('');
             setWarnings([]);
