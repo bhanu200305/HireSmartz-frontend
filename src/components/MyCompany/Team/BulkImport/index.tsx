@@ -6,18 +6,19 @@ import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Button, showToast, StepIndicator, type Step } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import {
-  useRequestRosterUploadMutation,
+  useUploadRosterMutation,
   useParseRosterMutation,
   useConfirmRosterImportMutation,
-  uploadRosterFile,
+  useLazyGetRosterImportTemplateUrlQuery,
   downloadRosterTemplate,
   type RosterRole,
   type RosterRowFailure,
 } from '../../../../api/organization-service/Tenants/imports';
 import {
-  useRequestPlatformRosterUploadMutation,
+  useUploadPlatformRosterMutation,
   useParsePlatformRosterMutation,
   useConfirmPlatformRosterImportMutation,
+  useLazyGetPlatformRosterImportTemplateUrlQuery,
   downloadPlatformRosterTemplate,
 } from '../../../../api/organization-service/Platform/imports';
 import { useListRolesQuery } from '../../../../api/organization-service/Roles/roles';
@@ -75,30 +76,34 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
   // Both tenant-self and platform-mirror mutation hooks are always called
   // (React's rules of hooks — a hook can't be called conditionally), only
   // one pair is ever actually invoked below, picked by `isMaster`.
-  const [requestTenantUpload, requestTenantUploadState] = useRequestRosterUploadMutation();
-  const [requestPlatformUpload, requestPlatformUploadState] =
-    useRequestPlatformRosterUploadMutation();
+  const [uploadTenantRoster, uploadTenantRosterState] = useUploadRosterMutation();
+  const [uploadPlatformRoster, uploadPlatformRosterState] = useUploadPlatformRosterMutation();
   const [parseTenantRoster, parseTenantRosterState] = useParseRosterMutation();
   const [parsePlatformRoster, parsePlatformRosterState] = useParsePlatformRosterMutation();
   const [confirmTenantImport, confirmTenantImportState] = useConfirmRosterImportMutation();
   const [confirmPlatformImport, confirmPlatformImportState] =
     useConfirmPlatformRosterImportMutation();
+  const [fetchTenantTemplateUrl, tenantTemplateState] = useLazyGetRosterImportTemplateUrlQuery();
+  const [fetchPlatformTemplateUrl, platformTemplateState] =
+    useLazyGetPlatformRosterImportTemplateUrlQuery();
 
-  const requestUpload = isMaster ? requestPlatformUpload : requestTenantUpload;
+  const uploadRoster = isMaster ? uploadPlatformRoster : uploadTenantRoster;
   const parseRoster = isMaster ? parsePlatformRoster : parseTenantRoster;
   const confirmImport = isMaster ? confirmPlatformImport : confirmTenantImport;
-  const isRequestingUrl = isMaster
-    ? requestPlatformUploadState.isLoading
-    : requestTenantUploadState.isLoading;
+  const isUploading = isMaster
+    ? uploadPlatformRosterState.isLoading
+    : uploadTenantRosterState.isLoading;
   const isParsing = isMaster
     ? parsePlatformRosterState.isLoading
     : parseTenantRosterState.isLoading;
   const isConfirming = isMaster
     ? confirmPlatformImportState.isLoading
     : confirmTenantImportState.isLoading;
-  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const isFetchingTemplate = isMaster
+    ? platformTemplateState.isFetching
+    : tenantTemplateState.isFetching;
 
-  const isBusy = isRequestingUrl || isParsing || isConfirming || isUploadingFile;
+  const isBusy = isUploading || isParsing || isConfirming || isFetchingTemplate;
 
   const resetAndClose = () => {
     setStep(1);
@@ -115,17 +120,8 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
     }
 
     try {
-      const target = await requestUpload({
-        tenantId,
-        filename: file.name,
-        content_type: file.type || 'application/octet-stream',
-      }).unwrap();
-
-      setIsUploadingFile(true);
-      await uploadRosterFile(target, file);
-      setIsUploadingFile(false);
-
-      const parsed = await parseRoster({ tenantId, storage_key: target.storage_key }).unwrap();
+      const { storage_key } = await uploadRoster({ tenantId, file }).unwrap();
+      const parsed = await parseRoster({ tenantId, storage_key }).unwrap();
       setRows(
         toReviewRows(
           parsed.rows,
@@ -134,7 +130,6 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
       );
       setStep(2);
     } catch (error: unknown) {
-      setIsUploadingFile(false);
       showToast({
         message: getOrgErrorMessage(error, 'Failed to parse the spreadsheet. Please try again.'),
         type: 'error',
@@ -177,7 +172,10 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
 
   const handleDownloadTemplate = async () => {
     try {
-      await (isMaster ? downloadPlatformRosterTemplate : downloadRosterTemplate)(tenantId);
+      const fetchTemplateUrl = isMaster ? fetchPlatformTemplateUrl : fetchTenantTemplateUrl;
+      const download = isMaster ? downloadPlatformRosterTemplate : downloadRosterTemplate;
+      const { download_url } = await fetchTemplateUrl(tenantId).unwrap();
+      await download(download_url);
     } catch {
       showToast({ message: 'Failed to download the template.', type: 'error' });
     }

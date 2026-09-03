@@ -28,6 +28,9 @@ export type OwnPlatformProfile = {
   last_name: string | null;
   country_code: string | null;
   phone_no: string | null;
+  /** Resolved download URL for the storage key set via `avatar` on
+   * PATCH /platform/staff/me — `null` until one has ever been uploaded. */
+  avatar_url: string | null;
 };
 
 export type UpdateOwnPlatformProfileRequest = {
@@ -35,6 +38,15 @@ export type UpdateOwnPlatformProfileRequest = {
   last_name?: string;
   country_code?: string;
   phone_no?: string;
+  /** Storage key from POST /platform/staff/me/avatar/upload — PATCH
+   * semantics apply, same as Users/users.ts's UpdateUserRequest.avatar:
+   * omitted leaves the current avatar alone, there is no way to CLEAR one
+   * via this field. */
+  avatar?: string;
+};
+
+export type UploadOwnPlatformAvatarResult = {
+  storage_key: string;
 };
 
 export type InviteSuperAdminRequest = {
@@ -109,13 +121,43 @@ const extendedApi = orgApi.injectEndpoints({
     }),
     getOwnPlatformProfile: build.query<OwnPlatformProfile, void>({
       query: () => '/v1/platform/staff/me',
+      providesTags: ['OwnProfile'],
     }),
+    // Same fix as getOwnUserProfile/updateOwnUserProfile in Users/users.ts —
+    // see that pair's comment for why this tag is what makes a save actually
+    // reflect instead of sitting stale behind Header's permanent subscription.
     updateOwnPlatformProfile: build.mutation<OwnPlatformProfile, UpdateOwnPlatformProfileRequest>({
       query: (body) => ({
         url: '/v1/platform/staff/me',
         method: 'PATCH',
         body,
       }),
+      invalidatesTags: ['OwnProfile'],
+    }),
+    // POST /v1/platform/staff/me/avatar/upload — server-mediated, same
+    // reasoning as Users/users.ts's uploadOwnAvatar (the tenant-user
+    // equivalent). Returns only the storage_key; the caller persists it via
+    // updateOwnPlatformProfile's `avatar` field right after.
+    uploadOwnPlatformAvatar: build.mutation<UploadOwnPlatformAvatarResult, File>({
+      query: (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: '/v1/platform/staff/me/avatar/upload',
+          method: 'POST',
+          body: formData,
+        };
+      },
+    }),
+    // DELETE /v1/platform/staff/me/avatar — the only way to actually remove
+    // a saved avatar, same reasoning as Users/users.ts's clearOwnAvatar:
+    // updateOwnPlatformProfile's `avatar` field can only ever SET one.
+    clearOwnPlatformAvatar: build.mutation<OwnPlatformProfile, void>({
+      query: () => ({
+        url: '/v1/platform/staff/me/avatar',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['OwnProfile'],
     }),
   }),
 });
@@ -129,4 +171,6 @@ export const {
   useOffboardPlatformStaffMutation,
   useGetOwnPlatformProfileQuery,
   useUpdateOwnPlatformProfileMutation,
+  useUploadOwnPlatformAvatarMutation,
+  useClearOwnPlatformAvatarMutation,
 } = extendedApi;

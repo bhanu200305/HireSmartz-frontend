@@ -1,24 +1,27 @@
 import { orgApi } from '../orgApi';
-import { LOCALSTORAGE_KEYS } from '../../../constants/webAPI';
-import { getLocalStorageItem } from '../../../shared/utils/auth/localstorage.helpers';
 
-// Real 3-step roster import flow — bulk_import_dto.py. The previous version
-// of this file POSTed a FormData file straight to organization-service at an
-// endpoint that doesn't exist; the actual contract is upload-url -> (direct
-// browser upload to S3) -> parse -> confirm, matching docs/frontend_guide.txt's
-// "Three steps" description exactly.
+// Real 3-step roster import flow — bulk_import_dto.py. Upload is
+// server-mediated: the browser POSTs the file straight to
+// organization-service as normal multipart form data, and this service
+// writes it to S3 itself (`RequestRosterUploadUseCase`/`StoragePort.put()`).
+// This used to be a presigned-POST the browser sent directly to S3 — that
+// depended on the bucket's own CORS configuration allowing this app's
+// origin, which it didn't locally, so every upload failed with a CORS error
+// the browser reported as an opaque "failed to parse the spreadsheet".
+// Server-mediation removes that dependency entirely — see
+// RosterUploadView's own docstring on the backend.
 
-export type RequestRosterUploadArgs = {
+export type UploadRosterArgs = {
   tenantId: string;
-  filename: string;
-  content_type: string;
+  file: File;
 };
 
-export type RosterUploadTarget = {
-  upload_url: string;
-  /** Extra multipart fields the presigned POST requires, alongside `file`. */
-  upload_fields: Record<string, string>;
+export type RosterUploadResponse = {
   storage_key: string;
+};
+
+export type RosterImportTemplateResponse = {
+  download_url: string;
   expires_in: number;
 };
 
@@ -34,9 +37,6 @@ export type ParsedRosterRow = {
   department: string | null;
   designation: string | null;
   role: string | null;
-  // bulk_import_dto.py's ParsedRosterRowView — the parse step returns
-  // `contact`, not a location. There is no location concept anywhere in the
-  // real bulk-import contract; see RosterRole/ConfirmRosterRow below.
   contact: string | null;
 };
 
@@ -84,32 +84,18 @@ export type ConfirmRosterImportResponse = {
   failures?: RosterRowFailure[];
 };
 
-/**
- * Uploads the file directly to storage using the presigned POST from
- * `requestRosterUpload` — the bytes never pass through organization-service,
- * so this is a plain `fetch` against `upload_url` (an arbitrary S3 origin),
- * not an orgApi endpoint. `upload_fields` must be appended before `file`,
- * the order S3's presigned-POST contract requires.
- */
-export const uploadRosterFile = async (target: RosterUploadTarget, file: File): Promise<void> => {
-  const formData = new FormData();
-  Object.entries(target.upload_fields).forEach(([key, value]) => formData.append(key, value));
-  formData.append('file', file);
-
-  const response = await fetch(target.upload_url, { method: 'POST', body: formData });
-  if (!response.ok) {
-    throw new Error(`Upload failed with status ${response.status}`);
-  }
-};
-
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
-    requestRosterUpload: build.mutation<RosterUploadTarget, RequestRosterUploadArgs>({
-      query: ({ tenantId, ...body }) => ({
-        url: `/v1/tenants/${tenantId}/users/bulk-import/upload-url`,
-        method: 'POST',
-        body,
-      }),
+    uploadRoster: build.mutation<RosterUploadResponse, UploadRosterArgs>({
+      query: ({ tenantId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/v1/tenants/${tenantId}/users/bulk-import/upload`,
+          method: 'POST',
+          body: formData,
+        };
+      },
     }),
     parseRoster: build.mutation<ParseRosterResponse, ParseRosterArgs>({
       query: ({ tenantId, storage_key }) => ({
@@ -126,29 +112,29 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['TenantInvitations'],
     }),
+    getRosterImportTemplateUrl: build.query<RosterImportTemplateResponse, string>({
+      query: (tenantId) => `/v1/tenants/${tenantId}/users/bulk-import/template`,
+    }),
   }),
 });
 
 export const {
-  useRequestRosterUploadMutation,
+  useUploadRosterMutation,
   useParseRosterMutation,
   useConfirmRosterImportMutation,
+  useLazyGetRosterImportTemplateUrlQuery,
 } = extendedApi;
 
 /**
- * GET .../bulk-import/template — a raw .xlsx `FileResponse`, not JSON, so it
- * can't go through RTK Query's default JSON parsing. It's also an
- * authenticated route (`require_permission(INVITATION_WRITE)`), so a plain
- * `<a href>` won't carry the bearer token — this fetches it manually and
- * triggers the browser download via a short-lived object URL.
+ * GET .../bulk-import/template now returns a presigned S3 GET URL
+ * (`download_url`), not the file itself — this service's own route is still
+ * authenticated (hence the manual bearer token on THAT fetch, via
+ * useLazyGetRosterImportTemplateUrlQuery going through orgApi's normal
+ * auth), but the second fetch here is a presigned S3 link that carries its
+ * own auth in the query string, so it needs no header at all.
  */
-export const downloadRosterTemplate = async (tenantId: string): Promise<void> => {
-  const baseUrl = import.meta.env.VITE_ORG_SERVICE_ENDPOINT as string;
-  const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS) as string | null;
-
-  const response = await fetch(`${baseUrl}/v1/tenants/${tenantId}/users/bulk-import/template`, {
-    headers: token ? { authorization: `Bearer ${token}` } : undefined,
-  });
+export const downloadRosterTemplate = async (downloadUrl: string): Promise<void> => {
+  const response = await fetch(downloadUrl);
   if (!response.ok) {
     throw new Error(`Template download failed with status ${response.status}`);
   }
