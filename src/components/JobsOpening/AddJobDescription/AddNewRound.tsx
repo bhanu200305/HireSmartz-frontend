@@ -41,7 +41,10 @@ const formatVariantLabel = (variant: string) =>
   `${variant
     .replace(/[_-]+/g, ' ')
     .trim()
-    .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())} Round`;
+    .replace(
+      /\w\S*/g,
+      (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )} Round`;
 
 const AddNewRound = () => {
   const navigate = useNavigate();
@@ -71,9 +74,7 @@ const AddNewRound = () => {
     (round) => round.special_kind !== 'resume' && round.special_kind !== 'intake_call'
   );
 
-  const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(
-    null
-  );
+  const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(null);
 
   const {
     control,

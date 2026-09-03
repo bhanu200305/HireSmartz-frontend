@@ -36,7 +36,9 @@ const EditDetailedInterviewRounds = () => {
     () =>
       new Set(
         roundTypes
-          .filter((round) => round.special_kind === 'resume' || round.special_kind === 'intake_call')
+          .filter(
+            (round) => round.special_kind === 'resume' || round.special_kind === 'intake_call'
+          )
           .map((round) => String(round.id))
       ),
     [roundTypes]

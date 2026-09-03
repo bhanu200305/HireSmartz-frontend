@@ -20,7 +20,10 @@ import {
   useGetJobDescriptionByIdQuery,
 } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import { useRegenerateJobDescriptionMutation } from '../../../api/job-service/JobOpening/RegenerateJd';
-import { useEnhanceJdMutation, useGetJdStatusQuery } from '../../../api/job-service/JobOpening/JdUpload';
+import {
+  useEnhanceJdMutation,
+  useGetJdStatusQuery,
+} from '../../../api/job-service/JobOpening/JdUpload';
 import {
   haveDescriptionInputsChanged,
   diffAiOwnedFields,
@@ -816,10 +819,10 @@ const EditJobDetail = () => {
     if (!jdDetailsForSync) return;
     const current = getValues();
     // Form field is `openings`, backend calls it `vacancies`.
-    const { vacancies: vacanciesUpdate, ...otherUpdates } = diffAiOwnedFields(
-      jdDetailsForSync,
-      { ...current, vacancies: current.openings }
-    );
+    const { vacancies: vacanciesUpdate, ...otherUpdates } = diffAiOwnedFields(jdDetailsForSync, {
+      ...current,
+      vacancies: current.openings,
+    });
     Object.entries(otherUpdates).forEach(([field, value]) => {
       setValue(field as keyof typeof otherUpdates, value, { shouldValidate: true });
     });

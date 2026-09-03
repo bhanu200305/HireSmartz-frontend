@@ -34,7 +34,13 @@ export function mapApiNoteToCandidateNoteItem(
   // dropped by the `if (!content) return null` below — notes saved fine
   // on the backend, they just never made it back onto screen.
   const content = String(
-    note.note_text ?? note.noteText ?? note.content ?? note.note ?? note.description ?? note.body ?? ''
+    note.note_text ??
+      note.noteText ??
+      note.content ??
+      note.note ??
+      note.description ??
+      note.body ??
+      ''
   ).trim();
   if (!content) return null;
 

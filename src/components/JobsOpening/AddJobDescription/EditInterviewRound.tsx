@@ -34,7 +34,10 @@ const formatVariantLabel = (variant: string) =>
   `${variant
     .replace(/[_-]+/g, ' ')
     .trim()
-    .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())} Round`;
+    .replace(
+      /\w\S*/g,
+      (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )} Round`;
 
 const EditInterviewRound = () => {
   const navigate = useNavigate();
@@ -108,12 +111,8 @@ const EditInterviewRound = () => {
               roundId: String(editedRound.round),
               description: editedRound.description,
               sequence: editedRound.sequence,
-              duration: selectedRoundType?.requires_duration
-                ? Number(editedRound.duration)
-                : null,
-              variant: selectedRoundType?.available_variants?.length
-                ? editedRound.variant
-                : null,
+              duration: selectedRoundType?.requires_duration ? Number(editedRound.duration) : null,
+              variant: selectedRoundType?.available_variants?.length ? editedRound.variant : null,
             }
           : round
       )

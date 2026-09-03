@@ -32,28 +32,26 @@ const extendedApi = orgApi.injectEndpoints({
       query: () => '/v1/platform/interview-questions',
       providesTags: ['InterviewQuestions'],
     }),
-    createPlatformInterviewQuestion: build.mutation<
-      InterviewQuestion,
-      CreateInterviewQuestionArgs
-    >({
-      query: (body) => ({
-        url: '/v1/platform/interview-questions',
-        method: 'POST',
-        body,
-      }),
-      invalidatesTags: ['InterviewQuestions'],
-    }),
-    updatePlatformInterviewQuestion: build.mutation<
-      InterviewQuestion,
-      UpdateInterviewQuestionArgs
-    >({
-      query: ({ questionId, question_text }) => ({
-        url: `/v1/platform/interview-questions/${questionId}`,
-        method: 'PUT',
-        body: { question_text },
-      }),
-      invalidatesTags: ['InterviewQuestions'],
-    }),
+    createPlatformInterviewQuestion: build.mutation<InterviewQuestion, CreateInterviewQuestionArgs>(
+      {
+        query: (body) => ({
+          url: '/v1/platform/interview-questions',
+          method: 'POST',
+          body,
+        }),
+        invalidatesTags: ['InterviewQuestions'],
+      }
+    ),
+    updatePlatformInterviewQuestion: build.mutation<InterviewQuestion, UpdateInterviewQuestionArgs>(
+      {
+        query: ({ questionId, question_text }) => ({
+          url: `/v1/platform/interview-questions/${questionId}`,
+          method: 'PUT',
+          body: { question_text },
+        }),
+        invalidatesTags: ['InterviewQuestions'],
+      }
+    ),
     deletePlatformInterviewQuestion: build.mutation<void, string>({
       query: (questionId) => ({
         url: `/v1/platform/interview-questions/${questionId}`,

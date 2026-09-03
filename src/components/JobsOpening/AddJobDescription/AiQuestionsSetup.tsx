@@ -133,7 +133,8 @@ const AiQuestionsSetup = () => {
   const { data: roundTypes = [] } = useListInterviewRoundTypesQuery();
   // Rounds without a recruiter-set duration never take Q&A questions.
   const audioRoundTypeIds = useMemo(
-    () => new Set(roundTypes.filter((item) => !item.requires_duration).map((item) => item.round_id)),
+    () =>
+      new Set(roundTypes.filter((item) => !item.requires_duration).map((item) => item.round_id)),
     [roundTypes]
   );
 

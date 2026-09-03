@@ -837,10 +837,10 @@ const JobDetails = () => {
     if (!jdDetailsForGate) return;
     const current = getValues();
     // Form field is `openings`, backend calls it `vacancies`.
-    const { vacancies: vacanciesUpdate, ...otherUpdates } = diffAiOwnedFields(
-      jdDetailsForGate,
-      { ...current, vacancies: current.openings }
-    );
+    const { vacancies: vacanciesUpdate, ...otherUpdates } = diffAiOwnedFields(jdDetailsForGate, {
+      ...current,
+      vacancies: current.openings,
+    });
     Object.entries(otherUpdates).forEach(([field, value]) => {
       setValue(field as keyof typeof otherUpdates, value, { shouldValidate: true });
     });
