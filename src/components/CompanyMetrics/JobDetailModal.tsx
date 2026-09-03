@@ -1,4 +1,5 @@
 import React from 'react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { StatCardRow, ChartCard, FunnelBars } from '../shared';
 import type { StatCardData } from '../shared';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
@@ -6,6 +7,9 @@ import type { JobSummary } from '../../api/job-service/JobOpenings/types';
 import {
   useGetTotalApplicationsQuery,
   useGetHiringFunnelQuery,
+  useGetAverageResumeScoreQuery,
+  useGetResumeScoreDistributionQuery,
+  type ResumeScoreBand,
 } from '../../api/candidate-service/Stats/stats';
 import { useGetInterviewSummaryQuery } from '../../api/interview-service/Dashboard/summary';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
@@ -16,16 +20,19 @@ const capitalize = (value: string): string =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
+// Fixed band order per API_CONTRACT.md's Candidate Stats section — the
+// response array isn't guaranteed to arrive in this order.
+const RESUME_SCORE_BAND_ORDER: ResumeScoreBand[] = ['0-2', '2-4', '4-6', '6-8', '8-10'];
+
 const COMING_SOON_ROUND_TYPE =
   'Coming soon — interview-service no longer breaks bookings down by Audio/AI/Panel, only by status.';
-const COMING_SOON_SCORE = 'Coming soon — no AI-score endpoint yet.';
 
 /**
- * One job's own KPI popup — real applicant/funnel/applications-over-time
- * numbers (job-scoped candidate-service calls), the interview-summary total
- * this service can actually give (not the Audio/AI/Panel split the doc
- * asks for — see `COMING_SOON_ROUND_TYPE`), and honest "coming soon" for
- * the two AI-score cards no endpoint backs yet.
+ * One job's own KPI popup — real applicant/funnel/applications-over-time/
+ * AI-score numbers (job-scoped candidate-service calls) and the interview-
+ * summary total this service can actually give (not the Audio/AI/Panel
+ * split the doc asks for — see `COMING_SOON_ROUND_TYPE`, still genuinely
+ * unbacked, interview-service's own gap).
  *
  * Extracted out of `OpenJobsSection` (its original home) so
  * `JobOpeningsListModal` — the "Active job openings" KPI card's own popup —
@@ -47,10 +54,21 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
   });
   const { data: interviewSummary, isLoading: isSummaryLoading } =
     useGetInterviewSummaryQuery(jobId);
+  const { data: averageResumeScore, isLoading: isAvgScoreLoading } = useGetAverageResumeScoreQuery({
+    jobOpeningId: jobId,
+  });
+  const { data: resumeScoreDistribution, isLoading: isScoreDistributionLoading } =
+    useGetResumeScoreDistributionQuery({ jobOpeningId: jobId });
 
   const funnelStages = (funnel?.stages ?? []).map((stage) => ({
     label: capitalize(stage.stage),
     value: stage.count,
+  }));
+
+  const scoreByBand = new Map((resumeScoreDistribution?.bands ?? []).map((b) => [b.band, b.count]));
+  const resumeScoreData = RESUME_SCORE_BAND_ORDER.map((band) => ({
+    name: band,
+    Candidates: scoreByBand.get(band) ?? 0,
   }));
 
   const statusCards: StatCardData[] = [
@@ -70,9 +88,10 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
           : `${(interviewSummary.completion_rate * 100).toFixed(0)}%`,
     },
     {
+      // `average` is `null` when nothing has been scored yet, not `0` —
+      // API_CONTRACT.md's own distinction, rendered as "—" not "0.0".
       label: 'Avg AI score',
-      value: null,
-      footer: <p className="text-[11px] text-neutral-400">{COMING_SOON_SCORE}</p>,
+      value: isAvgScoreLoading ? undefined : (averageResumeScore?.average?.toFixed(1) ?? '—'),
     },
   ];
 
@@ -107,10 +126,36 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
             subtitle="Candidates grouped by resume-score band"
             typeTag="Bar"
             span={2}
-            available={false}
-            unavailableLabel={COMING_SOON_SCORE}
+            isLoading={isScoreDistributionLoading}
+            available={resumeScoreData.some((band) => band.Candidates > 0)}
           >
-            <div />
+            <ResponsiveContainer width="100%" height={190}>
+              <BarChart data={resumeScoreData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: '#8593ac' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 11, fill: '#8593ac' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={36}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 10,
+                    border: '1px solid var(--gray-200, #e5e8f0)',
+                    fontSize: 12,
+                    boxShadow: '0 8px 24px -12px rgba(16,30,54,.18)',
+                  }}
+                />
+                <Bar dataKey="Candidates" fill="#0f9fc4" radius={[6, 6, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
           </ChartCard>
         </div>
       </div>

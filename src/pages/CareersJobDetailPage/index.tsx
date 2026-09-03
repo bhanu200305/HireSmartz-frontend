@@ -66,7 +66,9 @@ export const CareersJobDetailPage = () => {
   const primaryLocation = job?.locations?.[0] ? formatLocation(job.locations[0]) : null;
 
   const handleApply = () => {
-    navigate(`/careers/${organizationId}/jobs/${jobId}/apply`);
+    // Routes through the apply-method choice (resume vs. talk-now) instead
+    // of straight to the resume form — see CareersApplyChoicePage.
+    navigate(`/careers/${organizationId}/jobs/${jobId}/apply-choice`);
   };
 
   return (

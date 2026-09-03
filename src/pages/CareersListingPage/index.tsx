@@ -87,7 +87,10 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
 
   const goToApply = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/careers/${organizationId}/jobs/${job.id}/apply`);
+    // Same apply-method choice (resume vs. talk-now) that the job detail
+    // page's "APPLY FOR THIS JOB" button routes through — see
+    // CareersApplyChoicePage. Was previously skipping straight to `/apply`.
+    navigate(`/careers/${organizationId}/jobs/${job.id}/apply-choice`);
   };
 
   const experience = formatExperience(job.min_experience_req, job.max_experience_req);

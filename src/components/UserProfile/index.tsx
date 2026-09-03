@@ -41,7 +41,6 @@ import {
 } from '../../constants/file.constants';
 import { get } from 'lodash-es';
 import { Loader } from '../shared/ui/loader';
-const { Option } = Select;
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -254,11 +253,6 @@ const UserProfile = () => {
     }
     return false;
   };
-
-  const [countrySearch, setCountrySearch] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState<string>('');
-  const [selectedState, setSelectedState] = useState<string>('');
-  const [selectedCity, setSelectedCity] = useState<string>('');
 
   // const { data: countries, loading: loadingCountries } = useLocationDropdown(
   //   countrySearch === '' ? profileData?.country?.toLowerCase() || '' : countrySearch

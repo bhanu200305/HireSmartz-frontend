@@ -9,6 +9,10 @@ import {
   useUpdatePlatformTenantProfileMutation,
   useUploadPlatformTenantLogoMutation,
 } from '../../../../api/organization-service/Platform/tenantProfile';
+import {
+  useGetPlatformTenantCultureIntroQuery,
+  useUpdatePlatformTenantCultureIntroMutation,
+} from '../../../../api/organization-service/Platform/cultureIntro';
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
 import {
   ALLOWED_LOGO_TYPES,
@@ -28,15 +32,18 @@ type ProfileFormState = {
   name: string;
   description: string;
   website_url: string;
+  culture_intro: string;
   company_size: string;
 };
 
 const toFormState = (
-  profile: ReturnType<typeof useGetPlatformTenantProfileQuery>['data']
+  profile: ReturnType<typeof useGetPlatformTenantProfileQuery>['data'],
+  cultureIntro: string
 ): ProfileFormState => ({
   name: profile?.company_name || '',
   description: profile?.description || '',
   website_url: profile?.website_url || '',
+  culture_intro: cultureIntro,
   company_size: profile?.company_size ? String(profile.company_size) : '',
 });
 
@@ -81,19 +88,30 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: profile, isLoading, refetch } = useGetPlatformTenantProfileQuery(tenantId);
   const [updateProfile, { isLoading: isSaving }] = useUpdatePlatformTenantProfileMutation();
   const [uploadLogo] = useUploadPlatformTenantLogoMutation();
+  // Same "own separate resource" situation as CompanyProfileTab.tsx — a
+  // tenant with no culture intro set yet 404s here, which is the normal
+  // "nothing set" state, not a load failure.
+  const {
+    data: cultureIntroData,
+    error: cultureIntroError,
+    refetch: refetchCultureIntro,
+  } = useGetPlatformTenantCultureIntroQuery(tenantId);
+  const [updateCultureIntro] = useUpdatePlatformTenantCultureIntroMutation();
   const [isEditMode, setIsEditMode] = useState(false);
-  const [form, setForm] = useState<ProfileFormState>(toFormState(undefined));
+  const [form, setForm] = useState<ProfileFormState>(toFormState(undefined, ''));
   const [logoPreview, setLogoPreview] = useState('');
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const logoUploadRef = useRef<HTMLButtonElement>(null);
 
+  const cultureIntroValue = cultureIntroData?.intro_text ?? (cultureIntroError ? '' : undefined);
+
   useEffect(() => {
-    if (profile) {
-      setForm(toFormState(profile));
+    if (profile && cultureIntroValue !== undefined) {
+      setForm(toFormState(profile, cultureIntroValue));
       setLogoPreview(profile.logo_url || '');
     }
-  }, [profile]);
+  }, [profile, cultureIntroValue]);
 
   if (isLoading) return <Loader />;
   if (!profile) {
@@ -106,7 +124,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
   const handleCancel = () => {
-    setForm(toFormState(profile));
+    setForm(toFormState(profile, cultureIntroValue ?? ''));
     setIsEditMode(false);
   };
 
@@ -124,8 +142,8 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const uploaded = await uploadLogo({ tenantId, file }).unwrap();
-      await updateProfile({ tenantId, logo: uploaded.storage_key }).unwrap();
+      const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
+      await updateProfile({ tenantId, logo: storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
       refetch();
     } catch (err) {
@@ -151,6 +169,16 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         website_url: form.website_url,
         company_size: parsedSize,
       }).unwrap();
+      // Own separate resource/endpoint — see cultureIntro.ts. Skipped when
+      // unchanged or blank: the real endpoint has no "clear it back to
+      // empty" call (`intro_text` is `min_length=1` server-side).
+      if (form.culture_intro.trim() && form.culture_intro !== (cultureIntroValue ?? '')) {
+        await updateCultureIntro({
+          tenantId,
+          intro_text: form.culture_intro.trim(),
+        }).unwrap();
+        refetchCultureIntro();
+      }
       showToast({ message: 'Company profile updated.', type: 'success' });
       setIsEditMode(false);
       refetch();

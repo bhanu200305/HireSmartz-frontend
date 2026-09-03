@@ -635,6 +635,15 @@ describe('validatePhoneNumber', () => {
 2. Check if login credentials are correct
 3. Verify you're using correct environment (dev/staging/production)
 
+#### CORS Errors / Every auth-service Call Fails, No Useful Error
+
+authentication-service's CORS allowlist only names `http://localhost:5173`, not
+`http://127.0.0.1:5173` — the browser treats those as different origins even
+though they reach the same dev server. If you opened the app at
+`http://127.0.0.1:5173`, every request to auth-service is blocked by the
+browser before it even shows up as a normal 401/network error. Use the
+`http://localhost:5173` URL from `npm run dev`'s output instead.
+
 ### Build & Development Issues
 
 #### Build Fails with "Type Error"

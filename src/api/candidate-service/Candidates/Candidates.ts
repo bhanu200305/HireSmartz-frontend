@@ -39,8 +39,6 @@ import {
   SendCandidateSmsResponse,
   SendCandidateSmsActionRequest,
   SendCandidateSmsActionResponse,
-  GenerateSmsContentRequest,
-  GenerateSmsContentResponse,
 } from '../../../types';
 
 type CandidatesByIdRequest = {
@@ -303,13 +301,6 @@ const extendedApi = api.injectEndpoints({
         body,
       }),
     }),
-    generateSmsContent: build.mutation<GenerateSmsContentResponse, GenerateSmsContentRequest>({
-      query: (body) => ({
-        url: '/job-opening/candidate-messaging/generate-sms-content',
-        method: 'POST',
-        body,
-      }),
-    }),
     sendBulkCandidateSms: build.mutation<
       unknown,
       { candidateIds: number[]; jobOpeningId: string | number; messageText: string }
@@ -395,7 +386,6 @@ export const {
   useLazyGetCandidateMessagingDetailsQuery,
   useSendCandidateSmsMutation,
   useSendCandidateSmsActionMutation,
-  useGenerateSmsContentMutation,
   useSendBulkCandidateSmsMutation,
   useSendCandidateEmailMutation,
   useSendBulkCandidateEmailMutation,

@@ -18,6 +18,11 @@ export type OrgUser = {
   department_id: string | null;
   is_email_verified: boolean;
   is_active: boolean;
+  /** Display-only tenant role name(s) — comma-joined when a user holds more
+   * than one live assignment, `null` when they hold none. Only populated on
+   * the list endpoints (see organization-service's `UserView.role`
+   * docstring); every other OrgUser-shaped response simply carries `null`. */
+  role: string | null;
   /** Resolved download URL for the storage key set via `avatar` on
    * PATCH /users/me — `null` until one has ever been uploaded. */
   avatar_url: string | null;

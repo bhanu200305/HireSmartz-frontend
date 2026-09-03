@@ -16,7 +16,13 @@ import {
   useGetHiringFunnelQuery,
   useGetApplicationsOverTimeQuery,
   useGetInterviewsByStatusQuery,
+  useGetResumeScoreDistributionQuery,
+  type ResumeScoreBand,
 } from '../../api/candidate-service/Stats/stats';
+
+// Fixed band order per API_CONTRACT.md's Candidate Stats section — the
+// response array isn't guaranteed to arrive in this order.
+const RESUME_SCORE_BAND_ORDER: ResumeScoreBand[] = ['0-2', '2-4', '4-6', '6-8', '8-10'];
 
 // Same brand tokens as the Super Admin's GrowthAdoptionCharts (src/theme/index.css)
 // — one shared palette across every KPI chart in the app.
@@ -63,6 +69,8 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
   });
   const { data: interviewsByStatus, isLoading: isInterviewsLoading } =
     useGetInterviewsByStatusQuery();
+  const { data: resumeScoreDistribution, isLoading: isResumeScoreLoading } =
+    useGetResumeScoreDistributionQuery();
 
   const funnelStages = useMemo(
     () =>
@@ -99,6 +107,14 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       })),
     [interviewsByStatus]
   );
+
+  const resumeScoreData = useMemo(() => {
+    const byBand = new Map((resumeScoreDistribution?.bands ?? []).map((b) => [b.band, b.count]));
+    return RESUME_SCORE_BAND_ORDER.map((band) => ({
+      name: band,
+      Candidates: byBand.get(band) ?? 0,
+    }));
+  }, [resumeScoreDistribution]);
 
   const chartHeight = variant === 'compact' ? 160 : 190;
 
@@ -203,10 +219,29 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
         title="AI score distribution"
         subtitle="Candidates grouped by resume-score band"
         typeTag="Bar"
-        available={false}
-        unavailableLabel="Coming soon — no scoring-distribution endpoint yet."
+        isLoading={isResumeScoreLoading}
+        available={resumeScoreData.some((band) => band.Candidates > 0)}
       >
-        <div />
+        <ResponsiveContainer width="100%" height={chartHeight}>
+          <BarChart data={resumeScoreData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
+            <XAxis
+              dataKey="name"
+              tick={{ fontSize: 11, fill: '#8593ac' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 11, fill: '#8593ac' }}
+              axisLine={false}
+              tickLine={false}
+              width={36}
+            />
+            <Tooltip contentStyle={cardTooltipStyle} />
+            <Bar dataKey="Candidates" fill={COLOR_ACCENT} radius={[6, 6, 0, 0]} maxBarSize={40} />
+          </BarChart>
+        </ResponsiveContainer>
       </ChartCard>
     </div>
   );

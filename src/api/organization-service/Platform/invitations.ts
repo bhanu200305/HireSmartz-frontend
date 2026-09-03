@@ -1,14 +1,15 @@
 import { orgApi } from '../orgApi';
+import { noContentResponseHandler } from '../../authentication-service/authApi';
 import type { InvitationSummary } from '../Tenants/teamInvitations';
 
-// Platform mirror of Tenants/teamInvitations.ts's listTenantInvitations —
-// same InvitationSummaryView/ListInvitationsView shapes (tenants/api/
-// platform_router.py's list_tenant_invitations_as_platform reuses the exact
-// same ListTenantInvitationsUseCase, just resolving tenant_id from the path
-// instead of require_own_tenant), mounted under
-// /v1/platform/tenants/{tenant_id}/invitations so a Super Admin can see a
-// tenant's pending invites (including ones a bulk import just created)
-// regardless of who owns the tenant.
+// Super Admin's platform-mounted mirror of Tenants/teamInvitations.ts — same
+// request/response shapes as GET/POST /v1/tenants/{tenant_id}/invitations,
+// tenant bound from the path instead of the caller's own token. Same pattern
+// as usersBasePath in ./users.ts and departmentsBasePath in ./departments.ts.
+//
+// This is what lets UsersPanel show a bulk-imported roster row as "Pending"
+// the moment its invite is sent, rather than only once it's accepted and a
+// real User row exists — see UsersPanel.tsx's pendingRows.
 export type ListPlatformTenantInvitationsArgs = {
   tenantId: string;
   limit?: number;
@@ -20,6 +21,9 @@ export type ListPlatformTenantInvitationsResponse = {
   total: number;
 };
 
+const invitationsBasePath = (tenantId: string): string =>
+  `/v1/platform/tenants/${tenantId}/invitations`;
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     listPlatformTenantInvitations: build.query<
@@ -27,12 +31,46 @@ const extendedApi = orgApi.injectEndpoints({
       ListPlatformTenantInvitationsArgs
     >({
       query: ({ tenantId, limit = 50, offset = 0 }) => ({
-        url: `/v1/platform/tenants/${tenantId}/invitations`,
+        url: invitationsBasePath(tenantId),
         params: { limit, offset },
       }),
-      providesTags: ['TenantInvitations'],
+      providesTags: (_result, _error, { tenantId }) => [
+        { type: 'TenantInvitations', id: `platform-${tenantId}` },
+      ],
+    }),
+    // Both 204 No Content — pushes the expiry out another 48 hours (resend)
+    // or cancels the invite outright (revoke). Neither returns a body.
+    resendPlatformTenantInvitation: build.mutation<
+      undefined,
+      { tenantId: string; invitationId: string }
+    >({
+      query: ({ tenantId, invitationId }) => ({
+        url: `${invitationsBasePath(tenantId)}/${invitationId}/resend`,
+        method: 'POST',
+        responseHandler: noContentResponseHandler,
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'TenantInvitations', id: `platform-${tenantId}` },
+      ],
+    }),
+    revokePlatformTenantInvitation: build.mutation<
+      undefined,
+      { tenantId: string; invitationId: string }
+    >({
+      query: ({ tenantId, invitationId }) => ({
+        url: `${invitationsBasePath(tenantId)}/${invitationId}/revoke`,
+        method: 'POST',
+        responseHandler: noContentResponseHandler,
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'TenantInvitations', id: `platform-${tenantId}` },
+      ],
     }),
   }),
 });
 
-export const { useListPlatformTenantInvitationsQuery } = extendedApi;
+export const {
+  useListPlatformTenantInvitationsQuery,
+  useResendPlatformTenantInvitationMutation,
+  useRevokePlatformTenantInvitationMutation,
+} = extendedApi;

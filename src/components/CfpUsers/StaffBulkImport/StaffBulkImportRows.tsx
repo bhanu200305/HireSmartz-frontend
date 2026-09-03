@@ -1,20 +1,26 @@
 import React, { useMemo } from 'react';
 import { Select } from 'antd';
-import type { ParsedStaffRosterRow } from '../../../api/organization-service/Platform/staffImports';
+import type {
+  ParsedStaffRosterRow,
+  StaffRosterRole,
+} from '../../../api/organization-service/Platform/staffImports';
 import type { PlatformDepartment } from '../../../api/organization-service/Platform/staff';
 
 export type StaffReviewRow = {
   include: boolean;
   email: string;
-  role: string;
+  role: StaffRosterRole | '';
+  /** A real PlatformDepartment.department_id, unlike the tenant roster
+   * flow's free-text department name — confirm_staff_roster_import.py
+   * validates this as a foreign key, not a string to create-or-match. */
   departmentId: string | undefined;
 };
 
-// Preselect a row's role/department only when the parsed free-text value
-// matches a real one in the platform catalogue (case-insensitive — the
-// spreadsheet's own casing won't reliably match). Anything else is left
-// blank for the reviewer to pick, same discipline the tenant roster's own
-// toReviewRows uses for role.
+// Preselect a row's role/department only when the parsed spreadsheet value
+// matches a real one — same "leave it blank for the reviewer to pick rather
+// than guess" precedent Tenants/BulkImportRows.tsx's toReviewRows sets, for
+// the same reason: the sheet's free-text columns won't reliably match the
+// catalogue's exact spelling or casing.
 export const toStaffReviewRows = (
   rows: ParsedStaffRosterRow[],
   knownRoleNames: string[],
@@ -31,30 +37,32 @@ export const toStaffReviewRows = (
 };
 
 type StaffBulkImportRowsProps = {
-  roleOptions: { label: string; value: string }[];
+  roleNames: string[];
   isLoadingRoles?: boolean;
   departments: PlatformDepartment[];
-  isLoadingDepartments?: boolean;
   rows: StaffReviewRow[];
   onChange: (rows: StaffReviewRow[]) => void;
 };
 
-/** Per-row review before confirming a platform staff bulk import — mirrors
- * MyCompany/Team/BulkImport/BulkImportRows.tsx, with two differences forced
- * by the backend contract (confirm_staff_roster_import.py): Department is a
- * Select against the real platform catalogue (department_id, not free
- * text — there's no get-or-create-by-name for platform departments), and
- * there is no Designation column — the backend accepts but silently drops
- * that field for staff rows, so showing an editable input for it here would
- * imply it does something it doesn't. */
+/** Per-row review before confirming a platform-staff bulk import — mirrors
+ * Tenants/BulkImportRows.tsx's shape (checkbox, email, role), with
+ * department as a catalogue SELECT instead of free text, since this flow's
+ * department is a real foreign key rather than a create-or-match name. No
+ * Designation column, unlike the tenant flow's version — the backend
+ * accepts but silently drops that field for a staff row (see
+ * ConfirmStaffRosterRow's own comment), so showing an editable input for it
+ * here would imply it does something it doesn't. */
 const StaffBulkImportRows: React.FC<StaffBulkImportRowsProps> = ({
-  roleOptions,
+  roleNames,
   isLoadingRoles,
   departments,
-  isLoadingDepartments,
   rows,
   onChange,
 }) => {
+  const roleOptions = useMemo(
+    () => roleNames.map((name) => ({ label: name, value: name })),
+    [roleNames]
+  );
   const departmentOptions = useMemo(
     () => departments.map((d) => ({ label: d.name, value: d.department_id })),
     [departments]
@@ -64,63 +72,43 @@ const StaffBulkImportRows: React.FC<StaffBulkImportRowsProps> = ({
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
 
-  const GRID_COLUMNS = '28px minmax(0,2fr) minmax(0,1.3fr) minmax(0,1.3fr)';
-
   return (
-    <div className="overflow-x-auto rounded-xl border">
-      <div className="min-w-[560px]">
-        <div
-          className="grid items-center gap-3 border-b bg-gray-50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500"
-          style={{ gridTemplateColumns: GRID_COLUMNS }}
-        >
-          <span />
-          <span>Email</span>
-          <span>Role *</span>
-          <span>Department</span>
+    <div className="max-h-72 overflow-y-auto border rounded-xl divide-y">
+      {rows.map((row, index) => (
+        <div key={row.email + index} className="flex items-center gap-2 p-2">
+          <input
+            type="checkbox"
+            checked={row.include}
+            onChange={(e) => updateRow(index, { include: e.target.checked })}
+            aria-label={`Include ${row.email}`}
+          />
+          <span className="flex-1 text-sm truncate" title={row.email}>
+            {row.email}
+          </span>
+          <Select
+            size="small"
+            className="w-40"
+            placeholder="Role *"
+            value={row.role || undefined}
+            onChange={(value) => updateRow(index, { role: value })}
+            loading={isLoadingRoles}
+            showSearch
+            optionFilterProp="label"
+            options={roleOptions}
+          />
+          <Select
+            size="small"
+            className="w-40"
+            placeholder="Department (optional)"
+            value={row.departmentId}
+            onChange={(value) => updateRow(index, { departmentId: value })}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            options={departmentOptions}
+          />
         </div>
-        <div className="max-h-72 overflow-y-auto divide-y">
-          {rows.map((row, index) => (
-            <div
-              key={row.email + index}
-              className="grid items-center gap-3 px-3 py-2"
-              style={{ gridTemplateColumns: GRID_COLUMNS }}
-            >
-              <input
-                type="checkbox"
-                checked={row.include}
-                onChange={(e) => updateRow(index, { include: e.target.checked })}
-                aria-label={`Include ${row.email}`}
-              />
-              <span className="truncate text-sm" title={row.email}>
-                {row.email}
-              </span>
-              <Select
-                size="small"
-                className="w-full"
-                placeholder="Role *"
-                value={row.role || undefined}
-                onChange={(value) => updateRow(index, { role: value })}
-                loading={isLoadingRoles}
-                showSearch
-                optionFilterProp="label"
-                options={roleOptions}
-              />
-              <Select
-                size="small"
-                className="w-full"
-                placeholder="Department (optional)"
-                value={row.departmentId}
-                onChange={(value) => updateRow(index, { departmentId: value })}
-                loading={isLoadingDepartments}
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                options={departmentOptions}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
+      ))}
     </div>
   );
 };
