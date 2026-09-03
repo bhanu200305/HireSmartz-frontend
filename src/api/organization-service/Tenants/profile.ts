@@ -3,6 +3,16 @@ import { orgApi } from '../orgApi';
 // GET /v1/tenants/{tenant_id}/profile — TenantProfileView. The widest tenant
 // view in the service: every field the Company Admin can see/edit on their
 // own company.
+// `culture_intro` is deliberately NOT a field below — it looks like a plain
+// profile field but is its own separate resource on the real backend
+// (`GET/PUT /v1/tenants/{tenant_id}/culture-intro`, see Tenants/cultureIntro.ts)
+// with its own permission gate (`interview:read`/`interview:write`, not an
+// organization permission) and its own wire field name (`intro_text`). It
+// used to be listed here and sent through the PATCH below; since
+// `UpdateTenantProfileRequest` is `extra="forbid"` server-side, that
+// silently 422'd every save that included it — i.e. every save, since the
+// old code always sent it unconditionally. Fixed by moving it to its own
+// client entirely.
 export type TenantProfile = {
   tenant_id: string;
   company_name: string;
@@ -14,14 +24,17 @@ export type TenantProfile = {
   email_banner_url: string | null;
   colors: string[];
   description: string | null;
-  culture_intro: string | null;
   company_size: number | null;
 };
 
 // PATCH /v1/tenants/{tenant_id}/profile — UpdateTenantProfileRequest. Wire
 // names match the contract literally ("name"/"logo", not this service's
 // internal "company_name"/"logo_url") — every field omitted, not `null`,
-// means "leave unchanged".
+// means "leave unchanged". `logo` accepts either a storage key from the
+// upload-url flow below OR a plain externally-scraped URL (e.g. from
+// ai-service's org-scrape result) — the backend only verifies storage-key
+// values against its own storage and passes through anything else as-is
+// (`update_tenant_profile.py`'s `_verify_uploaded`).
 export type UpdateTenantProfileRequest = {
   tenantId: string;
   name?: string;
@@ -31,7 +44,6 @@ export type UpdateTenantProfileRequest = {
   website_url?: string;
   industry_id?: string;
   admin_contact?: string;
-  culture_intro?: string;
   company_size?: number;
 };
 

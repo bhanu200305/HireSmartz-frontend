@@ -448,6 +448,7 @@ const AcceptInvitation = () => {
               <Input
                 {...field}
                 type={showPassword ? 'text' : 'password'}
+                noAutoCapitalize
                 placeholder="Password*"
                 prefix={
                   <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
@@ -486,6 +487,7 @@ const AcceptInvitation = () => {
               <Input
                 {...field}
                 type={showConfirmPassword ? 'text' : 'password'}
+                noAutoCapitalize
                 placeholder="Confirm password*"
                 prefix={
                   <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">

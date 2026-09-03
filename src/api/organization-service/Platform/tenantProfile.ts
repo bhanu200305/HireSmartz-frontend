@@ -10,6 +10,11 @@ import type {
 // .../profile — same TenantProfileView/UpdateTenantProfileRequest shapes,
 // tenant bound from the path instead of the caller's own token (a platform
 // caller has no tenant_id of their own to match `require_own_tenant`).
+// `culture_intro` is deliberately NOT a field here — same reasoning as
+// Tenants/profile.ts's `UpdateTenantProfileRequest`: it is its own separate
+// resource (`GET/PUT /v1/platform/tenants/{tenant_id}/culture-intro`, see
+// Platform/cultureIntro.ts), and this request model is `extra="forbid"`
+// server-side too.
 export type UpdatePlatformTenantProfileRequest = {
   tenantId: string;
   name?: string;
@@ -18,7 +23,6 @@ export type UpdatePlatformTenantProfileRequest = {
   website_url?: string;
   industry_id?: string;
   admin_contact?: string;
-  culture_intro?: string;
   company_size?: number;
 };
 

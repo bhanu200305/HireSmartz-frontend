@@ -185,7 +185,9 @@ const ForgotPassword = () => {
           <div className="mb-4 w-full">
             <Input
               name="email"
+              type="email"
               autoFocus
+              noAutoCapitalize
               error={errors.email}
               value={email}
               onChange={onHandleChange}

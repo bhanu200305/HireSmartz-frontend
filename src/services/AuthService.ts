@@ -2,6 +2,7 @@ import { jwtDecode } from 'jwt-decode';
 import { LOCALSTORAGE_KEYS } from '../constants/webAPI';
 import {
   clearImpersonationStorage,
+  clearLocalStorage,
   getLocalStorageItem,
   setTokens,
 } from '../shared/utils/auth/localstorage.helpers';
@@ -34,6 +35,46 @@ type RefreshedTokens = { token: string; refreshToken: string };
 // call rather than replaying a stale result.
 let inFlightRefresh: Promise<RefreshedTokens | null> | null = null;
 
+// Fixes: a revoked/password-changed session used to keep rendering the full
+// authenticated app — PrivateRoute's verifyAuthToken() only decodes the JWT
+// locally and checks `exp`, so a revoked-but-unexpired access token always
+// passed it, and every one of this app's baseQueryWithReauth implementations
+// called handleRefreshToken() on the resulting 401 but did nothing when it
+// came back null. The dead end was here: performRefresh() returned null for
+// literally any non-ok response and any thrown fetch error alike, so no
+// caller had enough information to act.
+//
+// Only a server response that actually says "this refresh token is no good"
+// (401/403 — expired, revoked, or reuse-detected — see the module comment
+// above) or "you're rate-limited" (429, new as of the backend's rate-limiting
+// change) forces the session closed here. A thrown fetch (offline blip, DNS
+// hiccup, backend briefly unreachable) or any other status (5xx) is left
+// alone and simply returns null like before — the caller's existing request
+// fails once and the user's still-possibly-good session isn't torn down over
+// a transient network/server problem.
+type ForcedReauthReason = 'invalid_session' | 'rate_limited';
+
+const forceReauthentication = (reason: ForcedReauthReason): void => {
+  try {
+    // clearLocalStorage() only removes the localStorage copies of the
+    // access/refresh tokens. Login/index.tsx's setTokens() (see below) always
+    // writes them to sessionStorage too, and getLocalStorageItem() —
+    // verifyAuthToken()'s underlying read — falls back to sessionStorage
+    // whenever localStorage is empty. Skipping this would leave the same
+    // revoked-but-unexpired token readable there, so PublicRoute would still
+    // see an "authenticated" user and bounce them straight out of /login the
+    // instant we redirect to it. LogOutPage's cleanupClientSession clears
+    // sessionStorage outright for the same reason; match it here.
+    clearLocalStorage();
+    sessionStorage.clear();
+  } catch {
+    // Best-effort — still redirect below even if storage access throws.
+  }
+  if (typeof window !== 'undefined') {
+    window.location.href = `/login?reason=${reason}`;
+  }
+};
+
 /**
  * Handles token refresh when access token expires.
  *
@@ -57,8 +98,12 @@ let inFlightRefresh: Promise<RefreshedTokens | null> | null = null;
  * // Automatic retry after token refresh
  * const tokens = await handleRefreshToken()
  * if (!tokens) {
- *   // Refresh failed, redirect to login
- *   navigate('/login')
+ *   // Refresh failed. If the server actually rejected the refresh token
+ *   // (invalid/revoked/rate-limited), forceReauthentication() above has
+ *   // already cleared storage and redirected to /login by this point — a
+ *   // caller typically has nothing left to do. A null caused instead by a
+ *   // network/server hiccup leaves the session untouched, so the caller's
+ *   // own request has just failed once and can be retried normally.
  * }
  *
  * @throws Errors are caught silently and null is returned
@@ -105,6 +150,18 @@ const performRefresh = async (): Promise<RefreshedTokens | null> => {
   }
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      forceReauthentication('invalid_session');
+    } else if (response.status === 429) {
+      // New as of the backend's rate-limiting change: /auth/refresh can now
+      // 429 on too many FAILED attempts from one IP. Still forces the same
+      // clear-and-redirect — leaving it alone would strand the user on a
+      // broken authenticated UI with every subsequent call 401ing forever
+      // (the access token that triggered this refresh is already dead) —
+      // but tags the redirect so Login can show "too many attempts" instead
+      // of the generic session-expired message.
+      forceReauthentication('rate_limited');
+    }
     return null;
   }
 

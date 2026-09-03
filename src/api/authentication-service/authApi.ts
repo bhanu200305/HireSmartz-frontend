@@ -110,9 +110,13 @@ const authBaseQueryWithReauth: BaseQueryFn<
     if (refreshed) {
       result = await rawAuthBaseQuery(args, api, extraOptions);
     }
-    // Refresh failing is left to the caller / PrivateRoute: this base query
-    // doesn't force a redirect, matching src/api/index.ts's default 401
-    // handling (only its ACCOUNT_INACTIVE case redirects on its own).
+    // Refresh failing just returns this 401 to the caller — but by this
+    // point handleRefreshToken() has already redirected to /login for any
+    // refresh the server actually rejected (invalid/revoked/rate-limited;
+    // see forceReauthentication() in AuthService.ts). This base query has
+    // nothing left to do on its own in that case; matching
+    // src/api/index.ts's default 401 handling (only its ACCOUNT_INACTIVE
+    // case redirects independently of handleRefreshToken()).
   }
 
   return result;
