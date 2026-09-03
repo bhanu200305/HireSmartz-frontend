@@ -84,9 +84,10 @@ type PipelineBoardProps = {
   rounds: CandidateInterviewRoundView[];
   scores: CandidateInterviewScoreView[];
   resumeScore: number | null;
+  onRoundClick?: (round: CandidateInterviewRoundView) => void;
 };
 
-const PipelineBoard = ({ rounds, scores, resumeScore }: PipelineBoardProps) => {
+const PipelineBoard = ({ rounds, scores, resumeScore, onRoundClick }: PipelineBoardProps) => {
   if (rounds.length === 0) {
     return <p className="text-sm text-gray-500">No round plan yet.</p>;
   }
@@ -143,9 +144,18 @@ const PipelineBoard = ({ rounds, scores, resumeScore }: PipelineBoardProps) => {
           return (
             <div
               key={round.id ?? `resume-${index}`}
+              role={onRoundClick ? 'button' : undefined}
+              tabIndex={onRoundClick ? 0 : undefined}
+              onClick={() => onRoundClick?.(round)}
+              onKeyDown={(event) => {
+                if (onRoundClick && (event.key === 'Enter' || event.key === ' ')) {
+                  event.preventDefault();
+                  onRoundClick(round);
+                }
+              }}
               className={`w-56 shrink-0 rounded-xl border border-neutral-200 border-t-4 bg-white shadow-xs ${meta.border} ${
                 isActive ? 'ring-2 ring-warning/40' : ''
-              }`}
+              } ${onRoundClick ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30' : ''}`}
             >
               <div className="flex items-center gap-2 px-3.5 pt-3">
                 <span

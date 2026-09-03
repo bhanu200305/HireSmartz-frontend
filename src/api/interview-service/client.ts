@@ -7,7 +7,9 @@ import {
 import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 
-const INTERVIEW_BASE_URL = `${import.meta.env.VITE_BACKEND_ENDPOINT}/api/v1`;
+const INTERVIEW_BASE_URL =
+  import.meta.env.VITE_INTERVIEW_SERVICE_ENDPOINT ||
+  `${import.meta.env.VITE_BACKEND_ENDPOINT}/api/v1`;
 
 export type BookingStatus =
   | 'draft'
