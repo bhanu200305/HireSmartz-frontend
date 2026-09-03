@@ -1,11 +1,20 @@
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Select } from 'antd';
+import { FaPlus } from 'react-icons/fa';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import { Button, Input, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
+import CreateRoleModal from '../../RolesManagement/CreateRoleModal';
 import { useInviteTenantUserMutation } from '../../../api/organization-service/Tenants/users';
-import { useListRolesQuery } from '../../../api/organization-service/Roles/roles';
+import {
+  useListTenantOfficesQuery,
+  officeDisplayName,
+} from '../../../api/organization-service/Tenants/offices';
+import useRolesCatalog from '../../../hooks/useRolesCatalog';
+import useHasAccess from '../../../hooks/useHasAccess';
+import { Authorities } from '../../../constants/authorities.constant';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { inviteTeamMemberSchema, type InviteTeamMemberFormValues } from './InviteTeamMemberSchema';
 
@@ -19,27 +28,64 @@ type InviteTeamMemberModalProps = {
   onInvited: () => void;
 };
 
+/**
+ * Thin wrapper — AntdCommonModal renders nothing while closed, so the form
+ * below (and its roles/offices fetches) only mount once the modal is
+ * actually opened. That's the same "don't fetch before the Team tab needs
+ * it" laziness the old `skip: !open` on the roles query gave us, kept now
+ * that the role catalog comes from useRolesCatalog (which has no skip arg).
+ */
 const InviteTeamMemberModal = ({
   open,
   tenantId,
   departments,
   onClose,
   onInvited,
-}: InviteTeamMemberModalProps) => {
-  const [inviteTenantUser, { isLoading }] = useInviteTenantUserMutation();
-  // Same catalog AssignRoleModal's role picker reads from (GET /roles) — the
-  // tenant's seeded system roles plus any custom ones it's created. This
-  // used to be a hardcoded 4-option list matching only the system roles, so
-  // a custom role could never be picked at invite time — the whole reason
-  // "invite, then edit their role afterward" was the only way to get a
-  // custom role onto a new hire. Skipped while the modal is closed so it
-  // doesn't fetch before Team tab actually opens it.
-  const { data: roles, isLoading: isLoadingRoles } = useListRolesQuery(
-    { scope: 'tenant', isMaster: false },
-    { skip: !open }
-  );
+}: InviteTeamMemberModalProps) => (
+  <AntdCommonModal open={open} onClose={onClose} title="Invite Team Member">
+    <InviteTeamMemberForm
+      tenantId={tenantId}
+      departments={departments}
+      onClose={onClose}
+      onInvited={onInvited}
+    />
+  </AntdCommonModal>
+);
 
-  const { control, handleSubmit, reset, formState } = useForm<InviteTeamMemberFormValues>({
+type InviteTeamMemberFormProps = Omit<InviteTeamMemberModalProps, 'open'>;
+
+const InviteTeamMemberForm = ({
+  tenantId,
+  departments,
+  onClose,
+  onInvited,
+}: InviteTeamMemberFormProps) => {
+  const [inviteTenantUser, { isLoading }] = useInviteTenantUserMutation();
+  const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
+  const canCreateRole = useHasAccess(Authorities.ROLE_CREATE);
+
+  // Same catalog the Roles & Permissions screen and AssignRoleModal read
+  // from (GET /v1/roles) — this tenant's assignable system roles plus any
+  // custom ones it's created — and the same `createRole` those screens use.
+  // A role defined right here via "+ Custom Role" is identical to one made
+  // on the Roles & Permissions page and is selected the moment it's created,
+  // so there's no trip over to that page and back just to add a new hire on
+  // a role that doesn't exist yet.
+  const {
+    roles,
+    isLoading: isLoadingRoles,
+    createRole,
+  } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: false });
+
+  // Offices feed the Create Role wizard's optional per-location permission
+  // overrides (its Step 2) — not fetched unless the user can create a role.
+  const { data: offices } = useListTenantOfficesQuery({ tenantId }, { skip: !canCreateRole });
+  const availableLocations = (offices ?? []).map((office) => ({
+    id: office.office_id,
+    name: officeDisplayName(office),
+  }));
+
+  const { control, handleSubmit, setValue, formState } = useForm<InviteTeamMemberFormValues>({
     resolver: zodResolver(inviteTeamMemberSchema),
     defaultValues: {
       email: '',
@@ -51,11 +97,6 @@ const InviteTeamMemberModal = ({
   });
   const { errors, isValid } = formState;
 
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
-
   const onSubmit = async (data: InviteTeamMemberFormValues) => {
     try {
       await inviteTenantUser({
@@ -66,7 +107,6 @@ const InviteTeamMemberModal = ({
         role: data.role,
       }).unwrap();
       showToast({ message: `Invite sent to ${data.email}.`, type: 'success' });
-      reset();
       onInvited();
     } catch (error: unknown) {
       showToast({
@@ -77,7 +117,7 @@ const InviteTeamMemberModal = ({
   };
 
   return (
-    <AntdCommonModal open={open} onClose={handleClose} title="Invite Team Member">
+    <>
       {isLoading && <Loader />}
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -159,18 +199,29 @@ const InviteTeamMemberModal = ({
                 onChange={field.onChange}
                 loading={isLoadingRoles}
                 placeholder="Select a role"
+                showSearch
+                optionFilterProp="label"
                 className="w-full mt-1"
-                options={(roles ?? []).map((role) => ({ label: role.name, value: role.name }))}
+                options={roles.map((role) => ({ label: role.roleName, value: role.roleName }))}
               />
             )}
           />
+          {canCreateRole && (
+            <button
+              type="button"
+              onClick={() => setIsCreateRoleOpen(true)}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5 hover:bg-primary-50"
+            >
+              <FaPlus size={9} /> Custom Role
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 mt-2">
           <Button
             type="button"
             appname="cancel invite"
-            onClick={handleClose}
+            onClick={onClose}
             disabled={isLoading}
             className="w-full bg-white border text-black rounded-3xl py-2.5"
           >
@@ -186,7 +237,27 @@ const InviteTeamMemberModal = ({
           </Button>
         </div>
       </form>
-    </AntdCommonModal>
+
+      {canCreateRole && (
+        <CreateRoleModal
+          open={isCreateRoleOpen}
+          onClose={() => setIsCreateRoleOpen(false)}
+          scope="tenant"
+          tenantId={tenantId}
+          availableLocations={availableLocations}
+          roles={roles}
+          onCreate={async (payload) => {
+            const created = await createRole(payload);
+            // Same "select it the moment it's created" behaviour as the
+            // platform-side InvitePlatformMemberModal and the tenant-side
+            // RoleLocationPicker — no second trip back to this dropdown to
+            // find and pick what was just made.
+            setValue('role', created.roleName, { shouldValidate: true, shouldDirty: true });
+            return created;
+          }}
+        />
+      )}
+    </>
   );
 };
 

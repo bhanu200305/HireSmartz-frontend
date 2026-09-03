@@ -591,8 +591,10 @@ const Login = () => {
 
               <Input
                 name="email"
+                type="email"
                 autoFocus
                 autoComplete="email"
+                noAutoCapitalize
                 error={errors.email}
                 value={email}
                 onChange={onHandleChange}
@@ -603,6 +605,7 @@ const Login = () => {
 
               <Input
                 type={showPassword ? 'text' : 'password'}
+                noAutoCapitalize
                 onChange={onHandleChange}
                 onKeyDown={handleKeyDown}
                 name="password"

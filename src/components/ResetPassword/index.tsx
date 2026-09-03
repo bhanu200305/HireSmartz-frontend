@@ -114,6 +114,7 @@ const ResetPassword = () => {
               <Input
                 {...field}
                 type={showPassword ? 'text' : 'password'}
+                noAutoCapitalize
                 placeholder="New password*"
                 prefix={
                   <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
@@ -152,6 +153,7 @@ const ResetPassword = () => {
               <Input
                 {...field}
                 type={showConfirmPassword ? 'text' : 'password'}
+                noAutoCapitalize
                 placeholder="Confirm new password*"
                 prefix={
                   <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
