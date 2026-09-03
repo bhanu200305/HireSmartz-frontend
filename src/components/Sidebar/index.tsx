@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Tooltip } from 'antd';
-import { MdExitToApp, MdChevronLeft, MdChevronRight } from 'react-icons/md';
+import { Drawer, Tooltip } from 'antd';
+import { MdClose, MdExitToApp, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import MenuItems from '../Navbar/menuItem';
 import useHasAccess from '../../hooks/useHasAccess';
 import {
@@ -34,6 +34,13 @@ export const SIDEBAR_WIDTH_COLLAPSED = 80;
 type SidebarProps = {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  /** Mobile/tablet (below the `lg` breakpoint) off-canvas drawer state — the
+   * desktop fixed rail above is untouched by these; below `lg` this
+   * component instead renders an antd Drawer driven by these two props
+   * (owned by MainLayout, same "single source of truth" reasoning as
+   * `collapsed`, since Header's hamburger button also needs to open it). */
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
 };
 
 // This component reuses the exact permission-filtering and impersonation logic
@@ -45,7 +52,12 @@ type SidebarProps = {
 // value for its own `marginLeft`, so one is the single source of truth
 // rather than two components independently tracking "is the sidebar
 // collapsed" and risking drifting apart.
-const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  collapsed,
+  onToggleCollapse,
+  mobileOpen,
+  onCloseMobile,
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -55,6 +67,16 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
   const isPlatformCaller = callerKind === 'platform';
 
   const isImpersonating = isImpersonationActive(loginToken);
+
+  // Mobile drawer auto-closes on every route change (a menu click, exit
+  // impersonation's own redirect, the logo click — anything that changes
+  // the URL) so it never lingers open over the page that navigation landed
+  // on. No-op on desktop (mobileOpen is already false there) and no-op when
+  // already closed, so this is safe to run unconditionally.
+  useEffect(() => {
+    onCloseMobile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   // Same /v1/users/me · /v1/platform/staff/me split Header.tsx already uses
   // for this exact "current user's own name" need — this used to pull the
@@ -146,45 +168,30 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
     }
   };
 
-  return (
-    <aside
-      className="fixed left-0 top-0 h-full flex flex-col z-40 bg-brand-900 transition-[width] duration-200 ease-in-out"
-      style={{
-        width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
-        borderRight: '1px solid rgba(255,255,255,0.06)',
-      }}
-    >
-      {/* Collapse/expand toggle — a small circular button straddling the
-          sidebar's right edge, the same spot this pattern sits in most
-          collapsible-sidebar apps, so it stays reachable and obvious
-          regardless of collapsed/expanded width. */}
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="absolute -right-3 top-6 z-50 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border shadow-sm transition-colors hover:bg-brand-50"
-        style={{ background: '#ffffff', borderColor: 'rgba(0,0,0,0.08)', color: '#4b5563' }}
-      >
-        {collapsed ? <MdChevronRight size={16} /> : <MdChevronLeft size={16} />}
-      </button>
-
+  // Shared nav content for both the desktop rail and the mobile drawer —
+  // parameterized on `isCollapsed` rather than closing over the `collapsed`
+  // prop directly, since the mobile drawer always renders it expanded
+  // (collapsing a temporary overlay serves no purpose) while the desktop
+  // rail passes through the real user-toggled `collapsed` state unchanged.
+  const renderNav = (isCollapsed: boolean) => (
+    <>
       {/* Logo */}
       <div
-        className={`flex items-center gap-2.5 py-5 cursor-pointer ${collapsed ? 'justify-center px-2' : 'px-5'}`}
+        className={`flex items-center gap-2.5 py-5 cursor-pointer ${isCollapsed ? 'justify-center px-2' : 'px-5'}`}
         onClick={() => navigate('/')}
       >
         <img
           src={WHITE_LOGO_SRC}
           alt="careerforce pro"
-          className={collapsed ? 'h-7 w-7 object-contain' : 'h-8 w-auto object-contain'}
-          style={collapsed ? { objectPosition: 'left' } : undefined}
+          className={isCollapsed ? 'h-7 w-7 object-contain' : 'h-8 w-auto object-contain'}
+          style={isCollapsed ? { objectPosition: 'left' } : undefined}
         />
       </div>
 
       <div className="mx-4 mb-4 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
       {isImpersonating &&
-        (collapsed ? (
+        (isCollapsed ? (
           <div className="px-3 mb-3 flex justify-center">
             <Tooltip title="Exit Impersonation" placement="right">
               <button
@@ -218,7 +225,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
           </div>
         ))}
 
-      {!collapsed && (
+      {!isCollapsed && (
         <p
           className="px-5 mb-2 text-xs font-semibold uppercase tracking-widest"
           style={{ color: 'rgba(255,255,255,0.25)' }}
@@ -255,7 +262,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
               key={item.name}
               onClick={() => handleNavigate(item.path)}
               className={`w-full flex items-center rounded-lg text-left transition-all cursor-pointer ${
-                collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
+                isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
               }`}
               style={{
                 background: isActive ? 'rgba(17,183,221,0.12)' : 'transparent',
@@ -263,7 +270,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
               }}
             >
               <span className="flex-shrink-0">{item.icon}</span>
-              {!collapsed && (
+              {!isCollapsed && (
                 <span
                   className="text-sm flex-1 truncate heading-font"
                   style={{ fontWeight: isActive ? 500 : 400 }}
@@ -273,7 +280,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
               )}
             </button>
           );
-          return collapsed ? (
+          return isCollapsed ? (
             <Tooltip key={item.name} title={label} placement="right">
               {button}
             </Tooltip>
@@ -285,8 +292,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
 
       {/* Footer: current user */}
       <div className="mx-4 mb-3 mt-4 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-      <div className={collapsed ? 'px-3 pb-5' : 'px-4 pb-5'}>
-        {collapsed ? (
+      <div className={isCollapsed ? 'px-3 pb-5' : 'px-4 pb-5'}>
+        {isCollapsed ? (
           <Tooltip
             title={`Welcome${userData?.first_name ? `, ${userData.first_name}` : ''} · ${role?.name || ''}`}
             placement="right"
@@ -319,7 +326,67 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
           </div>
         )}
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop / large-tablet rail — identical to before: always rendered
+          at `lg` and up, fixed position, user-toggled collapse width. Hidden
+          below `lg` (1024px) in favor of the off-canvas drawer beneath,
+          since a permanent 80–240px rail has nowhere to go on a phone-width
+          screen. */}
+      <aside
+        className="hidden lg:flex fixed left-0 top-0 h-full flex-col z-40 bg-brand-900 transition-[width] duration-200 ease-in-out"
+        style={{
+          width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
+          borderRight: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
+        {/* Collapse/expand toggle — a small circular button straddling the
+            sidebar's right edge, the same spot this pattern sits in most
+            collapsible-sidebar apps, so it stays reachable and obvious
+            regardless of collapsed/expanded width. */}
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="absolute -right-3 top-6 z-50 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border shadow-sm transition-colors hover:bg-brand-50"
+          style={{ background: '#ffffff', borderColor: 'rgba(0,0,0,0.08)', color: '#4b5563' }}
+        >
+          {collapsed ? <MdChevronRight size={16} /> : <MdChevronLeft size={16} />}
+        </button>
+
+        {renderNav(collapsed)}
+      </aside>
+
+      {/* Mobile / portrait-tablet off-canvas drawer (below `lg`) — same nav
+          content as the rail above, always rendered expanded, opened via the
+          hamburger button Header renders below `lg`. Closes on backdrop
+          click, its own close button, or (see the effect above) any route
+          change. */}
+      <Drawer
+        open={mobileOpen}
+        onClose={onCloseMobile}
+        placement="left"
+        width={SIDEBAR_WIDTH_EXPANDED}
+        closable={false}
+        styles={{ body: { padding: 0 } }}
+      >
+        <div className="relative h-full flex flex-col bg-brand-900">
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            aria-label="Close menu"
+            className="absolute right-3 top-5 z-50 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors"
+            style={{ color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.06)' }}
+          >
+            <MdClose size={18} />
+          </button>
+          {renderNav(false)}
+        </div>
+      </Drawer>
+    </>
   );
 };
 

@@ -140,7 +140,7 @@ export const CareersIntakeCallSchedulePage = () => {
                 No times available on this day — try another date.
               </p>
             ) : (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {slotsData?.data.slots.map((slot) => (
                   <button
                     key={slot.start_time}

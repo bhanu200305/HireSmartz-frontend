@@ -1082,6 +1082,14 @@ const JobsOpening = () => {
             </div>
           )}
           <div className="w-full rounded-xl overflow-hidden border border-neutral-200 bg-white shadow-xs">
+            {/* Row/Col grid with fixed spans (not antd <Table>, which already
+                gets scroll={{x:'max-content'}} via CustomTable elsewhere in
+                the app) — overflow-x-auto + min-w keeps every column
+                readable on a narrow viewport by scrolling instead of
+                squashing them, same pattern used for MasterTable and
+                CandidatesListing. */}
+            <div className="overflow-x-auto">
+            <div className="min-w-[760px]">
             <Row gutter={[16, 16]} className="bg-neutral-50 px-2 py-3">
               <COL
                 sortable
@@ -1263,6 +1271,8 @@ const JobsOpening = () => {
                   </Row>
                 </div>
               ))}
+            </div>
+            </div>
             </div>
           </div>
           <MasterPagination

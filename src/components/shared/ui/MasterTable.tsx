@@ -139,61 +139,69 @@ export const MasterTable = React.forwardRef<HTMLDivElement, MasterTableProps<any
           </div>
         )}
 
-        {/* Table: identical Row/Col structure to Job Openings */}
-        <div className="w-full p-2 justify-start">
-          {/* Column header - bg-[#FAFAFA] + heading-font (Sora), same as Job Openings */}
-          <Row
-            gutter={[16, 16]}
-            className="font-bold py-2 px-2 bg-[#FAFAFA] border border-[var(--border)] heading-font"
-          >
-            {columns.map((col) =>
-              col.sortKey ? (
-                <COL
-                  key={col.key}
-                  span={col.span}
-                  sortable
-                  sortKey={col.sortKey}
-                  currentSortKey={currentSortKey}
-                  onSort={handleSort}
-                  className="px-4 py-2 border-[var(--border)]"
-                >
-                  {col.title}
-                </COL>
-              ) : (
-                <Col key={col.key} span={col.span} className="px-4 py-2">
-                  {col.title}
-                </Col>
-              )
-            )}
-          </Row>
+        {/* Table: identical Row/Col structure to Job Openings. This grid is
+            built from fixed antd `Col span`s (out of 24), not antd `<Table>`
+            (which has its own `scroll={{x:'max-content'}}` elsewhere in the
+            app) — so on a narrow viewport the columns have nowhere to shrink
+            to. `overflow-x-auto` + a `min-w` on the inner block gives the
+            same "swipe to see the rest" fallback CustomTable already gets
+            for free, without touching any column's span/width. */}
+        <div className="w-full p-2 justify-start overflow-x-auto">
+          <div className="min-w-[720px]">
+            {/* Column header - bg-[#FAFAFA] + heading-font (Sora), same as Job Openings */}
+            <Row
+              gutter={[16, 16]}
+              className="font-bold py-2 px-2 bg-[#FAFAFA] border border-[var(--border)] heading-font"
+            >
+              {columns.map((col) =>
+                col.sortKey ? (
+                  <COL
+                    key={col.key}
+                    span={col.span}
+                    sortable
+                    sortKey={col.sortKey}
+                    currentSortKey={currentSortKey}
+                    onSort={handleSort}
+                    className="px-4 py-2 border-[var(--border)]"
+                  >
+                    {col.title}
+                  </COL>
+                ) : (
+                  <Col key={col.key} span={col.span} className="px-4 py-2">
+                    {col.title}
+                  </Col>
+                )
+              )}
+            </Row>
 
-          {/* Data rows - CommonCard per row with mb-2 gap, identical to Job Openings */}
-          <div className="w-full mt-2">
-            {dataSource.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">No data</div>
-            ) : (
-              dataSource.map((row, rowIndex) => (
-                <div key={row.key ?? rowIndex} className="mb-2">
-                  <CommonCard>
-                    <Row gutter={[16, 16]} align="middle">
-                      {columns.map((col) => (
-                        <Col key={col.key} span={col.span} className="px-4 roboto-font">
-                          {col.render
-                            ? col.render(
-                                col.dataIndex ? row[col.dataIndex] : undefined,
-                                row,
-                                rowIndex
-                              )
-                            : col.dataIndex
-                              ? row[col.dataIndex]
-                              : null}
-                        </Col>
-                      ))}
-                    </Row>
-                  </CommonCard>
-                </div>
-              ))
-            )}
+            {/* Data rows - CommonCard per row with mb-2 gap, identical to Job Openings */}
+            <div className="w-full mt-2">
+              {dataSource.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">No data</div>
+              ) : (
+                dataSource.map((row, rowIndex) => (
+                  <div key={row.key ?? rowIndex} className="mb-2">
+                    <CommonCard>
+                      <Row gutter={[16, 16]} align="middle">
+                        {columns.map((col) => (
+                          <Col key={col.key} span={col.span} className="px-4 roboto-font">
+                            {col.render
+                              ? col.render(
+                                  col.dataIndex ? row[col.dataIndex] : undefined,
+                                  row,
+                                  rowIndex
+                                )
+                              : col.dataIndex
+                                ? row[col.dataIndex]
+                                : null}
+                          </Col>
+                        ))}
+                      </Row>
+                    </CommonCard>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 

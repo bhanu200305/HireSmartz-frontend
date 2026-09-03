@@ -187,7 +187,7 @@ const IntakeQuestionsTab: React.FC = () => {
         <Select
           id="intakeQuestionsCompany"
           size="middle"
-          className="w-[240px]"
+          className="w-full sm:w-[240px]"
           popupClassName="intakeQuestionsCompanySelectDropdown"
           loading={isCompaniesLoading}
           showSearch

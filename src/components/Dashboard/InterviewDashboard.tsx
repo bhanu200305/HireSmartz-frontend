@@ -187,7 +187,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
             fillHeight ? 'flex-1 min-h-0 overflow-y-auto' : 'max-h-[400px]'
           )}
         >
-          <div className="grid w-full shrink-0 grid-cols-2 content-start gap-3 pt-2 sm:gap-4 lg:w-auto lg:max-w-[280px]">
+          <div className="grid w-full shrink-0 grid-cols-1 sm:grid-cols-2 content-start gap-3 pt-2 sm:gap-4 lg:w-auto lg:max-w-[280px]">
             {[
               { label: 'Total Jobs Posted', value: stats?.totalJobPosted ?? 0 },
               { label: 'Completed Interviews', value: stats?.totalInterviews ?? 0 },
@@ -206,7 +206,7 @@ const InterviewDashboard: React.FC<InterviewDashboardProps> = ({
             ))}
           </div>
           {interviewData && interviewData?.interviewRounds?.length > 0 && total > 0 ? (
-            <div className="flex justify-center flex-grow relative">
+            <div className="flex justify-center flex-grow relative overflow-x-auto">
               <ResponsiveContainer minWidth={300} minHeight={300}>
                 <PieChart>
                   <Pie

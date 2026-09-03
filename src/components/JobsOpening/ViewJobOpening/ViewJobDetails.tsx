@@ -261,7 +261,7 @@ const ViewJobDetails = () => {
             </span>
             <span className="text-base font-bold text-neutral-900 font-display">Job Info</span>
           </div>
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item
               label={
                 <span>
@@ -426,7 +426,7 @@ const ViewJobDetails = () => {
             </span>
             <span className="text-base font-bold text-neutral-900 font-display">Location</span>
           </div>
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item
               label={
                 <span>
@@ -468,7 +468,7 @@ const ViewJobDetails = () => {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item label={<span>Address Line 1</span>}>
               <Input
                 className="w-full mt-1"
@@ -503,7 +503,7 @@ const ViewJobDetails = () => {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item label={<span>City</span>}>
               <Input
                 className="w-full mt-1"
@@ -577,7 +577,7 @@ const ViewJobDetails = () => {
             </span>
             <span className="text-base font-bold text-neutral-900 font-display">Hiring Panel</span>
           </div>
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item label={<span>Hiring Manager</span>}>
               <div className="space-y-3">
                 <DropdownWithAddOption
@@ -665,7 +665,7 @@ const ViewJobDetails = () => {
               </div>
             </Form.Item>
           </div>
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item
               label={
                 <span>
@@ -732,7 +732,7 @@ const ViewJobDetails = () => {
             </span>
             <span className="text-base font-bold text-neutral-900 font-display">Salary Status</span>
           </div>
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item
               label={
                 <span>
@@ -842,7 +842,7 @@ const ViewJobDetails = () => {
             </Form.Item>
           </div>
         </div>
-        <div className="form-grid-equal-labels grid grid-cols-3 gap-x-4 mt-2">
+        <div className="form-grid-equal-labels grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
           <Form.Item label={<span>Referral Bonus (in USD)</span>}>
             <CurrencyInput
               value={jobData?.data.referralBonus || ''}
@@ -917,7 +917,7 @@ const ViewJobDetails = () => {
             </span>
             <span className="text-base font-bold text-neutral-900 font-display">Job Skills</span>
           </div>
-          <div className="grid grid-cols-2 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
             <Form.Item label={<span>Required Skills</span>}>
               <Input
                 type="text"
@@ -1001,7 +1001,7 @@ const ViewJobDetails = () => {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
             <Form.Item label={<span>Education Preference</span>}>
               <Input
                 type="text"

@@ -245,7 +245,7 @@ const CandidatesListing = () => {
 
       <div className="flex justify-end items-center mb-2">
         <div className="flex-1 bg-white px-6 py-4 shadow-sm">
-          <div className="flex justify-between items-center gap-4">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div className="flex flex-col gap-1 text-sm">
               <div className="flex items-center gap-2">
                 <Link to={`/jobs/view/${parsedJobId}/details`}>
@@ -269,8 +269,8 @@ const CandidatesListing = () => {
             </div>
 
             <div className="flex justify-end">
-              <div className="flex flex-col items-end gap-4">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end gap-4 w-full lg:w-auto">
+                <div className="flex flex-wrap items-center justify-end gap-4 w-full lg:w-auto">
                   <div className="inline-flex shrink-0 gap-1 rounded-lg bg-neutral-100 p-1">
                     <button
                       type="button"
@@ -391,8 +391,15 @@ const CandidatesListing = () => {
         />
       ) : (
         <div className="w-full">
-          <div className="w-full p-2">
-            <Row gutter={[16, 16]} className="font-bold p-4 bg-[#FFFFFF] shadow heading-font">
+          {/* Row/Col grid with fixed spans (not antd <Table>, which already
+              gets scroll={{x:'max-content'}} via CustomTable elsewhere in
+              the app) — overflow-x-auto + min-w keeps every column readable
+              on a narrow viewport by scrolling instead of squashing them,
+              same pattern used for MasterTable. */}
+          <div className="overflow-x-auto">
+            <div className="min-w-[760px]">
+              <div className="w-full p-2">
+                <Row gutter={[16, 16]} className="font-bold p-4 bg-[#FFFFFF] shadow heading-font">
               <Col span={1}>
                 <Checkbox
                   className="custom-checkbox roboto-font"
@@ -574,6 +581,8 @@ const CandidatesListing = () => {
             ) : (
               <p>No candidates found for this job opening.</p>
             )}
+              </div>
+            </div>
           </div>
 
           <MasterPagination

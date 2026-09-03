@@ -50,7 +50,7 @@ export const CareersApplyChoicePage = () => {
         </h1>
         <p className="text-sm text-gray-500 text-center mb-8">Pick whichever works for you</p>
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button
             type="button"
             onClick={() => navigate(`/careers/${organizationId}/jobs/${jobId}/apply`)}
