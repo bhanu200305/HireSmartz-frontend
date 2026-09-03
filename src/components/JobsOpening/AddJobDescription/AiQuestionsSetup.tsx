@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Select } from 'antd';
 import { MdOutlineQuestionAnswer } from 'react-icons/md';
 import { HiOutlineTrash } from 'react-icons/hi';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
@@ -45,11 +46,7 @@ const DEFAULT_QUESTION_COUNT = 10;
 const GENERATION_POLL_INTERVAL_MS = 3000;
 const GENERATION_POLL_TIMEOUT_MS = 90_000;
 
-// Human-readable text for each `failed_checks` code check_publish_readiness
-// (job-service's _publish_validation.py) can return — the API only reports
-// which named gate failed, not which specific field, so
-// 'mandatory_fields_incomplete' lists every field that gate covers rather
-// than guessing which one this job is actually missing.
+// Human-readable text for each publish-readiness failure code.
 const PUBLISH_CHECK_LABELS: Record<string, string> = {
   jd_missing: 'Job description is missing',
   mandatory_fields_incomplete:
@@ -62,8 +59,15 @@ const PUBLISH_CHECK_LABELS: Record<string, string> = {
   no_question: 'At least one question is required',
 };
 
-const describeFailedChecks = (checks: string[]): string =>
-  checks.map((check) => PUBLISH_CHECK_LABELS[check] ?? check).join('; ');
+const describeFailedChecks = (checks: string[], roundsMissingQuestions: string[] = []): string =>
+  checks
+    .map((check) => {
+      if (check === 'no_question' && roundsMissingQuestions.length > 0) {
+        return `These interview round(s) need at least one question: ${roundsMissingQuestions.join(', ')}`;
+      }
+      return PUBLISH_CHECK_LABELS[check] ?? check;
+    })
+    .join('; ');
 
 const AiQuestionsSetup = () => {
   const navigate = useNavigate();
@@ -84,6 +88,8 @@ const AiQuestionsSetup = () => {
 
   const [inlineInputText, setInlineInputText] = useState('');
   const [isInlineSubmitting, setIsInlineSubmitting] = useState(false);
+  // Which round's questions are currently shown/added to.
+  const [selectedRoundInstanceId, setSelectedRoundInstanceId] = useState<string | null>(null);
 
   const [importWarnings, setImportWarnings] = useState<ImportWarningItem[]>([]);
   const [failedRowCount, setFailedRowCount] = useState<number>(0);
@@ -125,8 +131,10 @@ const AiQuestionsSetup = () => {
   );
 
   const { data: roundTypes = [] } = useListInterviewRoundTypesQuery();
+  // Rounds without a recruiter-set duration never take Q&A questions.
   const audioRoundTypeIds = useMemo(
-    () => new Set(roundTypes.filter((item) => item.is_audio_round).map((item) => item.round_id)),
+    () =>
+      new Set(roundTypes.filter((item) => !item.requires_duration).map((item) => item.round_id)),
     [roundTypes]
   );
 
@@ -164,13 +172,26 @@ const AiQuestionsSetup = () => {
   // generation actually finishing, not just the initial request.
   const isGenerating = isGenerateRequestPending || isGeneratingQuestions;
 
+  // Unfiltered rounds — the source for the full save/add/delete payload.
+  const allRounds = useMemo(() => questionsData?.rounds ?? [], [questionsData]);
   const jdRounds = useMemo(
-    () => (questionsData?.rounds ?? []).filter((round) => !audioRoundTypeIds.has(round.round_id)),
-    [questionsData, audioRoundTypeIds]
+    () => allRounds.filter((round) => !audioRoundTypeIds.has(round.round_id)),
+    [allRounds, audioRoundTypeIds]
   );
 
-  const questions = useMemo(() => jdRounds.flatMap((round) => round.questions ?? []), [jdRounds]);
+  // Every round's questions, not just the picker-eligible ones.
+  const questions = useMemo(() => allRounds.flatMap((round) => round.questions ?? []), [allRounds]);
   const defaultRoundInstanceId = jdRounds[0]?.round_instance_id ?? null;
+  // Falls back to the first round if the picked one no longer exists.
+  const activeRoundInstanceId =
+    (selectedRoundInstanceId &&
+      jdRounds.some((round) => round.round_instance_id === selectedRoundInstanceId) &&
+      selectedRoundInstanceId) ||
+    defaultRoundInstanceId;
+  const visibleQuestions = useMemo(
+    () => questions.filter((q) => q.interview_round_id === activeRoundInstanceId),
+    [questions, activeRoundInstanceId]
+  );
   const audioQuestions = audioData?.questions ?? [];
   // Cheap content fingerprint, not just a count — REPLACE can land with
   // fewer questions than before, so "count increased" would miss it.
@@ -200,7 +221,8 @@ const AiQuestionsSetup = () => {
     return () => clearTimeout(timeoutId);
   }, [isGeneratingQuestions]);
 
-  const isAllSelected = questions.length > 0 && selectedIds.length === questions.length;
+  const isAllSelected =
+    visibleQuestions.length > 0 && selectedIds.length === visibleQuestions.length;
 
   const toQuestionRequest = (question: QuestionResponse): QuestionRequest => ({
     id: question.id,
@@ -232,7 +254,7 @@ const AiQuestionsSetup = () => {
   };
 
   const handleSelectAll = (checked: boolean) =>
-    setSelectedIds(checked ? questions.map((q) => q.id) : []);
+    setSelectedIds(checked ? visibleQuestions.map((q) => q.id) : []);
   const handleSelectOne = (questionId: string, checked: boolean) =>
     setSelectedIds((prev) =>
       checked ? [...prev, questionId] : prev.filter((item) => item !== questionId)
@@ -251,11 +273,13 @@ const AiQuestionsSetup = () => {
         await regenerateJobQuestions({
           jobOpeningId: activeJobOpeningId,
           question_count: DEFAULT_QUESTION_COUNT,
+          interview_round_id: activeRoundInstanceId,
         }).unwrap();
       } else {
         await generateJobQuestions({
           jobOpeningId: activeJobOpeningId,
           question_count: DEFAULT_QUESTION_COUNT,
+          interview_round_id: activeRoundInstanceId,
         }).unwrap();
       }
       showToast({ message: 'Question generation started', type: 'success' });
@@ -289,6 +313,7 @@ const AiQuestionsSetup = () => {
       const res = await bulkImportJobQuestions({
         jobOpeningId: activeJobOpeningId,
         file,
+        interview_round_id: activeRoundInstanceId,
       }).unwrap();
       setUploadedFileName(file.name);
       setImportedCount(res.imported_count || 0);
@@ -349,7 +374,16 @@ const AiQuestionsSetup = () => {
 
   const handleInlineSubmit = async () => {
     const trimmedInput = inlineInputText.trim();
-    if (!trimmedInput || !activeJobOpeningId || !defaultRoundInstanceId) return;
+    // Avoid submitting before existing questions have loaded.
+    if (
+      !trimmedInput ||
+      !activeJobOpeningId ||
+      !activeRoundInstanceId ||
+      isLoadingQuestions ||
+      !questionsData
+    ) {
+      return;
+    }
     setIsInlineSubmitting(true);
     try {
       const lines = trimmedInput
@@ -360,7 +394,7 @@ const AiQuestionsSetup = () => {
         ...questions.map(toQuestionRequest),
         ...lines.map((question_text) => ({
           question_text,
-          interview_round_id: defaultRoundInstanceId,
+          interview_round_id: activeRoundInstanceId,
         })),
       ];
       await persistQuestions(next);
@@ -459,7 +493,10 @@ const AiQuestionsSetup = () => {
       const validation = await validateForPublish(activeJobOpeningId).unwrap();
       if (!validation.is_valid) {
         showToast({
-          message: `Cannot publish yet: ${describeFailedChecks(validation.failed_checks ?? [])}`,
+          message: `Cannot publish yet: ${describeFailedChecks(
+            validation.failed_checks ?? [],
+            validation.rounds_missing_questions ?? []
+          )}`,
           type: 'error',
         });
         return;
@@ -533,8 +570,28 @@ const AiQuestionsSetup = () => {
           </Typography>
         </div>
 
+        {jdRounds.length > 0 && (
+          <div className="mb-4">
+            <Typography variant="body2" className="text-gray-600 mb-1.5 font-semibold">
+              Interview Round
+            </Typography>
+            <Select
+              value={activeRoundInstanceId ?? undefined}
+              onChange={(value) => {
+                setSelectedRoundInstanceId(value);
+                setSelectedIds([]);
+              }}
+              className="w-full max-w-sm"
+              options={jdRounds.map((round) => ({
+                value: round.round_instance_id,
+                label: round.round_name,
+              }))}
+            />
+          </div>
+        )}
+
         <UploadAndGenerateHeader
-          description="Use the input box below to add your questions easily and quickly. You can either type the questions manually or simply copy and paste multiple questions at once."
+          description="Type a question, or paste several at once - one question per line."
           onGenerate={() => {
             if (questions.length === 0) {
               void handleGenerateDefaultQuestions('REPLACE');
@@ -570,14 +627,14 @@ const AiQuestionsSetup = () => {
                 className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
               />
               <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-                All Questions ({questions.length})
+                All Questions ({visibleQuestions.length})
               </Typography>
             </div>
-            {(selectedIds.length > 0 || questions.length > 0) && (
+            {(selectedIds.length > 0 || visibleQuestions.length > 0) && (
               <button
                 className="flex items-center gap-1.5 text-red-500 hover:text-red-700 text-sm font-semibold cursor-pointer"
                 onClick={() => {
-                  if (selectedIds.length === 0) setSelectedIds(questions.map((q) => q.id));
+                  if (selectedIds.length === 0) setSelectedIds(visibleQuestions.map((q) => q.id));
                   setShowDeleteModal(true);
                 }}
               >
@@ -589,13 +646,13 @@ const AiQuestionsSetup = () => {
 
           {isLoadingQuestions ? (
             <p className="text-gray-400 py-6 text-center italic text-sm">Loading...</p>
-          ) : questions.length === 0 ? (
+          ) : visibleQuestions.length === 0 ? (
             <p className="text-gray-400 py-6 text-center italic text-sm">
               No questions. Add questions manually or import via Excel/Defaults.
             </p>
           ) : (
             <div className="space-y-3 mb-6">
-              {questions.map((q, idx) => (
+              {visibleQuestions.map((q, idx) => (
                 <QuestionRowItem
                   key={q.id}
                   question={{ id: q.id, question: q.question_text }}
@@ -620,7 +677,7 @@ const AiQuestionsSetup = () => {
             value={inlineInputText}
             onChange={setInlineInputText}
             onSubmit={handleInlineSubmit}
-            isSubmitting={isInlineSubmitting}
+            isSubmitting={isInlineSubmitting || isLoadingQuestions}
           />
         </div>
 

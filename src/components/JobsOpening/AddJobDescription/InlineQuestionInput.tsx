@@ -15,7 +15,7 @@ export const InlineQuestionInput = ({
   onChange,
   onSubmit,
   placeholder = 'Add single or multiple questions here.',
-  footnote = '*Paste a single question or multiple questions here. You can enter them one by one or bulk copy-paste them for processing.',
+  footnote = '',
   isSubmitting = false,
 }: InlineQuestionInputProps) => {
   return (

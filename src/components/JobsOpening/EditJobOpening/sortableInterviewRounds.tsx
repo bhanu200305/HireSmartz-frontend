@@ -122,13 +122,7 @@ export const SortableInterviewRounds = ({
   const renderCardBody = (round: InterviewRound, index: number, isOver = false) => {
     const badge = getVariantBadge(round.variant);
     const BadgeIcon = badge?.icon;
-    const summary = [
-      `Type: ${round.round?.name}`,
-      badge ? `Format: ${badge.label}` : null,
-      round.duration ? `${round.duration} min` : null,
-    ]
-      .filter(Boolean)
-      .join(' · ');
+    const summary = round.duration ? `${round.duration} min` : '';
 
     return (
       <div
@@ -147,8 +141,11 @@ export const SortableInterviewRounds = ({
                 {badge.label}
               </span>
             )}
+            {summary && <span className="text-sm text-neutral-500">{summary}</span>}
           </div>
-          <p className="text-xs text-neutral-500 mt-1 truncate">{summary}</p>
+          {round.description && (
+            <p className="text-sm text-neutral-500 mt-1 truncate">{round.description}</p>
+          )}
         </div>
         <div className="flex items-center gap-4 shrink-0">
           <button
