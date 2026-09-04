@@ -1,15 +1,20 @@
 import React from 'react';
-import { Select as AntSelect, Switch } from 'antd';
+import { Select as AntSelect, Switch, TimePicker } from 'antd';
+import dayjs from 'dayjs';
 import { Input } from '../../shared';
 
 export type CatalogField<TFormValues> = {
   name: keyof TFormValues & string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'tags';
+  type: 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'tags' | 'time';
   required?: boolean;
   options?: { label: string; value: string }[];
   helperText?: string;
 };
+
+// Existing values come back as "HH:mm:ss" from the backend; parse both formats.
+const TIME_FORMAT = 'HH:mm';
+const TIME_PARSE_FORMATS = ['HH:mm:ss', 'HH:mm'];
 
 type Props<TFormValues extends Record<string, unknown>> = {
   fields: CatalogField<TFormValues>[];
@@ -45,6 +50,17 @@ function CatalogFormFields<TFormValues extends Record<string, unknown>>({
                 />
                 <span className="text-sm text-gray-700">{field.label}</span>
               </div>
+            );
+          case 'time':
+            return (
+              <TimePicker
+                key={field.name}
+                className="w-full"
+                format={TIME_FORMAT}
+                placeholder={field.label + (field.required ? ' *' : '')}
+                value={raw ? dayjs(raw as string, TIME_PARSE_FORMATS) : null}
+                onChange={(value) => setField(field.name, value ? value.format(TIME_FORMAT) : '')}
+              />
             );
           case 'select':
             return (

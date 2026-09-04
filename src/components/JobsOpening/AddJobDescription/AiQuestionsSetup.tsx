@@ -50,7 +50,7 @@ const GENERATION_POLL_TIMEOUT_MS = 90_000;
 const PUBLISH_CHECK_LABELS: Record<string, string> = {
   jd_missing: 'Job description is missing',
   mandatory_fields_incomplete:
-    'Some required Job Details fields are missing — check Job Title, Department, Job Mode, Job Type, Open Date, Vacancies, Minimum Experience, Salary Range, and Hiring Manager',
+    'Some required Job Details fields are missing - check Job Title, Department, Job Mode, Job Type, Open Date, Vacancies, Minimum Experience, Salary Range, and Hiring Manager',
   no_education_preference: 'Education preference is not set',
   no_location: 'At least one job location is required',
   no_skill: 'At least one skill is required',
@@ -75,6 +75,8 @@ const AiQuestionsSetup = () => {
   const { pathname } = useLocation();
   const { id } = useParams<{ id?: string }>();
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
+  // Fallback source for the job id in edit mode, tried after reduxJobOpeningId below.
+  const editJobOpeningId = useSelector((state: RootState) => state.EditJobSlice.jobOpeningId);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
@@ -99,19 +101,11 @@ const AiQuestionsSetup = () => {
 
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
 
-  // `id` only exists on the Edit-mode route (/jobs/edit/:id/...); this
-  // page is also mounted create-mode at the id-less /ai-questions, where
-  // `reduxJobOpeningId` (JobSlice, set by useStartManualJobOpening when
-  // the wizard started) is the only correct source. `EditJobSlice`'s own
-  // jobOpeningId used to be consulted here too, ahead of this — a stale
-  // value left over from a previous Edit-mode visit silently overrode a
-  // freshly-created job's real id on this page, since Edit-mode never
-  // needs that fallback in the first place (its routes already carry
-  // `:id`, resolved above). See the "already published" report this
-  // fixes — a fresh Manual job kept landing back on an old published one.
+  // `id` (edit-mode route) takes priority, then JobSlice (create-mode), then
+  // EditJobSlice as a last resort, so a stale EditJobSlice value never wins.
   const activeJobOpeningId = useMemo(
-    () => asJobId(id) || asJobId(reduxJobOpeningId),
-    [id, reduxJobOpeningId]
+    () => asJobId(id) || asJobId(reduxJobOpeningId) || asJobId(editJobOpeningId),
+    [id, reduxJobOpeningId, editJobOpeningId]
   );
 
   // `/jobs/edit/:id/...` is used for TWO different situations: finishing a
@@ -214,7 +208,7 @@ const AiQuestionsSetup = () => {
     const timeoutId = setTimeout(() => {
       setIsGeneratingQuestions(false);
       showToast({
-        message: "Still generating — refresh in a moment if the questions don't appear shortly.",
+        message: "Still generating - refresh in a moment if the questions don't appear shortly.",
         type: 'warning',
       });
     }, GENERATION_POLL_TIMEOUT_MS);
@@ -260,7 +254,10 @@ const AiQuestionsSetup = () => {
       checked ? [...prev, questionId] : prev.filter((item) => item !== questionId)
     );
 
-  const handleGenerateDefaultQuestions = async (mode: 'ADD' | 'REPLACE') => {
+  const handleGenerateDefaultQuestions = async (
+    mode: 'ADD' | 'REPLACE',
+    questionCount: number = DEFAULT_QUESTION_COUNT
+  ) => {
     if (!activeJobOpeningId) {
       showToast({ message: 'Missing Job ID', type: 'error' });
       return;
@@ -272,13 +269,13 @@ const AiQuestionsSetup = () => {
       if (mode === 'REPLACE') {
         await regenerateJobQuestions({
           jobOpeningId: activeJobOpeningId,
-          question_count: DEFAULT_QUESTION_COUNT,
+          question_count: questionCount,
           interview_round_id: activeRoundInstanceId,
         }).unwrap();
       } else {
         await generateJobQuestions({
           jobOpeningId: activeJobOpeningId,
-          question_count: DEFAULT_QUESTION_COUNT,
+          question_count: questionCount,
           interview_round_id: activeRoundInstanceId,
         }).unwrap();
       }
@@ -329,7 +326,7 @@ const AiQuestionsSetup = () => {
         ...(res.skipped_duplicate_rows ?? []).map(
           (row): ImportWarningItem => ({
             type: 'duplicate',
-            message: `Row ${row.row_number}: duplicate of an existing question — "${row.question_text}"`,
+            message: `Row ${row.row_number}: duplicate of an existing question - "${row.question_text}"`,
           })
         ),
       ]);
@@ -484,7 +481,7 @@ const AiQuestionsSetup = () => {
       // stuck in Draft with no visible reason why. Surface it instead of
       // swallowing it.
       showToast({
-        message: 'Could not identify this job opening — please refresh the page and try again.',
+        message: 'Could not identify this job opening - please refresh the page and try again.',
         type: 'error',
       });
       return;
@@ -580,6 +577,11 @@ const AiQuestionsSetup = () => {
               onChange={(value) => {
                 setSelectedRoundInstanceId(value);
                 setSelectedIds([]);
+                setUploadedFileName('');
+                setImportedCount(0);
+                setFailedRowCount(0);
+                setDuplicateRowCount(0);
+                setImportWarnings([]);
               }}
               className="w-full max-w-sm"
               options={jdRounds.map((round) => ({
@@ -592,13 +594,7 @@ const AiQuestionsSetup = () => {
 
         <UploadAndGenerateHeader
           description="Type a question, or paste several at once - one question per line."
-          onGenerate={() => {
-            if (questions.length === 0) {
-              void handleGenerateDefaultQuestions('REPLACE');
-            } else {
-              setShowGenerateConsentModal(true);
-            }
-          }}
+          onGenerate={() => setShowGenerateConsentModal(true)}
           onUpload={handleFileUpload}
           onDownloadTemplate={handleDownloadTemplate}
           uploadedFileName={uploadedFileName}
@@ -648,7 +644,7 @@ const AiQuestionsSetup = () => {
             <p className="text-gray-400 py-6 text-center italic text-sm">Loading...</p>
           ) : visibleQuestions.length === 0 ? (
             <p className="text-gray-400 py-6 text-center italic text-sm">
-              No questions. Add questions manually or import via Excel/Defaults.
+              No questions. Add questions manually, import via Excel, or generate with AI.
             </p>
           ) : (
             <div className="space-y-3 mb-6">
@@ -711,13 +707,19 @@ const AiQuestionsSetup = () => {
           onClose={() => setShowGenerateConsentModal(false)}
           onConfirm={handleGenerateDefaultQuestions}
           isLoading={isGenerateRequestPending}
+          hasExistingQuestions={visibleQuestions.length > 0}
         />
         <div className="mt-6 flex justify-center">
           <Button
-            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => void handlePublishOrFinish()}
+            disabled={isPublishing || !activeJobOpeningId}
           >
-            {isEditingAlreadyPublishedJob ? 'SAVE & FINISH' : '✓ PUBLISH JOB OPENING'}
+            {isPublishing
+              ? 'PUBLISHING…'
+              : isEditingAlreadyPublishedJob
+                ? 'SAVE & FINISH'
+                : '✓ PUBLISH JOB OPENING'}
           </Button>
         </div>
         <Outlet />

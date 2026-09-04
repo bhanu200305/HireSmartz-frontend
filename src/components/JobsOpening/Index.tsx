@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import { Button, Search, Typography } from '..';
 import './jobsList.css';
 import {
@@ -270,6 +271,7 @@ const JobsOpening = () => {
           .map((userId) => userMap[userId])
           .filter(Boolean)
           .join(', ') || job.recruiter,
+      createdByName: job.createdById ? userMap[job.createdById] : undefined,
     }));
   }, [data?.data, orgDepartments, jobTypes, titleMap, orgUsers]);
 
@@ -976,14 +978,10 @@ const JobsOpening = () => {
                   <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
                     <TbBriefcase2 size={18} />
                   </span>
-                  <h2 className="text-xl font-bold text-neutral-900">Job Openings</h2>
+                  <h2 className="text-xl font-bold text-neutral-900 whitespace-nowrap">
+                    Job Openings
+                  </h2>
                 </div>
-                {jobStats && (
-                  <span className="text-neutral-500 text-sm">
-                    {jobStats.published_count} open{' '}
-                    {jobStats.published_count === 1 ? 'role' : 'roles'} across your company
-                  </span>
-                )}
               </div>
             )}
             <div className="flex space-x-4 items-center">
@@ -1007,7 +1005,7 @@ const JobsOpening = () => {
               </Tooltip>
               <Search
                 appname="jobs opening"
-                placeholder="Search job..."
+                placeholder="Search job"
                 onSearch={handleSearch}
                 allowClear
                 value={filters.text || ''}
@@ -1024,7 +1022,8 @@ const JobsOpening = () => {
                   onChange={handleStatusChange}
                   allowClear
                   className="w-full custom-select"
-                  popupClassName="rounded-3xl"
+                  popupClassName="rounded-3xl status-filter-dropdown"
+                  popupMatchSelectWidth={false}
                   variant="borderless"
                   value={
                     filters.isDraft
@@ -1046,7 +1045,7 @@ const JobsOpening = () => {
                   <Option value="Closed">Closed</Option>
                 </Select>
               </div>
-              <div className="cfp-dropdown-trigger w-40">
+              <div className="cfp-dropdown-trigger w-48 shrink-0">
                 <FilterSelectIcon />
                 <Select
                   placeholder="All Locations"
@@ -1054,6 +1053,7 @@ const JobsOpening = () => {
                   allowClear
                   className="w-full custom-select"
                   popupClassName="rounded-3xl"
+                  popupMatchSelectWidth={false}
                   variant="borderless"
                   value={filters.locationId}
                 >
@@ -1199,6 +1199,23 @@ const JobsOpening = () => {
                             <span className="font-medium roboto-font">Job Openings: </span>{' '}
                             <span className="roboto-font">
                               {renderHighlightedField(jobs.openings?.toString(), 'openings')}
+                            </span>
+                          </p>
+                          <p>
+                            <span className="font-medium roboto-font">Created By: </span>{' '}
+                            <span className="roboto-font">
+                              {renderHighlightedField(jobs.createdByName, 'createdByName')}
+                            </span>
+                          </p>
+                          <p>
+                            <span className="font-medium roboto-font">Created At: </span>{' '}
+                            <span className="roboto-font">
+                              {renderHighlightedField(
+                                jobs.jobOpeningCreatedAt && dayjs(jobs.jobOpeningCreatedAt).isValid()
+                                  ? dayjs(jobs.jobOpeningCreatedAt).format('MMM DD, YYYY')
+                                  : '',
+                                'jobOpeningCreatedAt'
+                              )}
                             </span>
                           </p>
                         </div>

@@ -818,7 +818,7 @@ const JobDetails = () => {
       if (appliedAnything) {
         showToast({
           message:
-            'AI filled in some job details from your prompt — review and edit before saving.',
+            'AI filled in some job details from your prompt - review and edit before saving.',
           type: 'success',
         });
       }
@@ -1626,7 +1626,7 @@ const JobDetails = () => {
             showToast({
               message: getJobErrorMessage(
                 enhanceError,
-                'Job saved. AI description could not be started — try Refine on the next step.'
+                'Job saved. AI description could not be started - try Refine on the next step.'
               ),
               type: 'warning',
             });
@@ -1756,14 +1756,14 @@ const JobDetails = () => {
         try {
           await enhanceJd({ jobOpeningId: savedId, regenerate: true }).unwrap();
           showToast({
-            message: 'Job details changed — regenerating the AI description to match…',
+            message: 'Job details changed - regenerating the AI description to match…',
             type: 'success',
           });
         } catch (enhanceError) {
           showToast({
             message: getJobErrorMessage(
               enhanceError,
-              'Job details saved, but the AI description could not be refreshed automatically — use Regenerate on the next step.'
+              'Job details saved, but the AI description could not be refreshed automatically - use Regenerate on the next step.'
             ),
             type: 'warning',
           });
