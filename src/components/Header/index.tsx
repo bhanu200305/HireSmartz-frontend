@@ -1,5 +1,6 @@
 import { Avatar, Dropdown, Modal, Select } from 'antd';
 import { DownOutlined, CheckOutlined } from '@ant-design/icons';
+import { MdMenu } from 'react-icons/md';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RootState } from '../../redux/provider/store';
 import { useDispatch, useSelector } from 'react-redux';
@@ -75,7 +76,15 @@ const resolveSearchSelection = (
   return {};
 };
 
-const Header = () => {
+interface HeaderProps {
+  /** Opens the mobile off-canvas sidebar drawer (state owned by MainLayout).
+   * Only passed on routes that actually render a sidebar — see MainLayout's
+   * `hideSidebar` check — so this button doesn't show up with nothing for
+   * it to open. */
+  onOpenMobileMenu?: () => void;
+}
+
+const Header = ({ onOpenMobileMenu }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -375,7 +384,7 @@ const Header = () => {
   const handleConnectCalendar = async () => {
     try {
       const result = await triggerGetNylasAuthUrl().unwrap();
-      window.location.href = result;
+      window.location.href = result.connect_url;
     } catch {
       showToast({ message: 'Failed to connect calendar. Please try again.', type: 'error' });
     }
@@ -390,7 +399,7 @@ const Header = () => {
     try {
       await disconnectGrant().unwrap();
       const result = await triggerGetNylasAuthUrl().unwrap();
-      window.location.href = result;
+      window.location.href = result.connect_url;
     } catch (err: unknown) {
       const msg =
         (err as { data?: { message?: string } })?.data?.message ??
@@ -537,24 +546,39 @@ const Header = () => {
   return (
     <>
       <header
-        className="sticky top-0 z-30 bg-white px-7 py-3.5 flex justify-end items-center w-full border-b"
+        className="sticky top-0 z-30 bg-white px-4 sm:px-7 py-3.5 flex items-center gap-3 w-full border-b"
         style={{ borderColor: 'var(--border)' }}
       >
-        {/* `overflow-x-auto`: this row's widths (`w-[180px] sm:w-[250px]
+        {onOpenMobileMenu && (
+          <button
+            type="button"
+            onClick={onOpenMobileMenu}
+            aria-label="Open menu"
+            className="lg:hidden flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100"
+          >
+            <MdMenu size={22} />
+          </button>
+        )}
+        {/* Below `lg`: `flex-wrap` (no `overflow-x-auto`) so every control
+            reflows onto as many rows as it needs instead of relying on a
+            scroll a phone user has no visible cue to find — see the git
+            history for why that scroll-only fallback existed originally.
+            At `lg` and up this reverts to that exact original single-row,
+            horizontally-scrolling layout (`lg:flex-nowrap lg:overflow-x-auto
+            lg:gap-4`): this row's widths (`w-[180px] sm:w-[250px]
             lg:w-[350px]` on Search, `w-40 sm:w-50` on Categories) react to
             the raw VIEWPORT width via Tailwind's breakpoints, not to how
             much of it the sidebar has already claimed — a `sm:` breakpoint
             (640px+) is satisfied on, say, a 768px-wide iPad in portrait,
-            but the sidebar's fixed 240px still leaves only ~530px of real
-            content width there, less than these controls actually need.
-            Rather than re-deriving every width against the sidebar (fragile
-            the next time either changes), this guarantees every control —
-            notably the profile/logout menu, otherwise the one item that can
-            get pushed off the end — stays reachable by scrolling this row
-            horizontally, instead of silently overflowing or (with the
-            site-wide overflow guard in index.css) getting clipped away
-            entirely. Nothing about what's IN the row changes. */}
-        <div className="flex items-center justify-end gap-4 overflow-x-auto">
+            but the sidebar's fixed 240px (when shown as the `lg:`+ rail)
+            still leaves less real content width there than these controls
+            actually need. Rather than re-deriving every width against the
+            sidebar (fragile the next time either changes), `lg:overflow-x-
+            auto` keeps every control — notably the profile/logout menu,
+            otherwise the one item that can get pushed off the end — reachable
+            by scrolling this row horizontally at those in-between desktop-ish
+            widths. Nothing about what's IN the row changes. */}
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-3 lg:flex-nowrap lg:gap-4 lg:overflow-x-auto">
           <Dropdown
             open={showGlobal}
             placement="bottomLeft"

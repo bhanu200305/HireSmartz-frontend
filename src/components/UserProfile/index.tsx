@@ -455,7 +455,7 @@ const UserProfile = () => {
                     </Upload.Dragger>
                   )}
                 </Form.Item>
-                <div className="grid grid-cols-2 gap-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                   <Form.Item
                     label={
                       <span>
@@ -534,7 +534,7 @@ const UserProfile = () => {
                           })
                         }
                         className="border-none focus:ring-0 focus:outline-none bg-transparent"
-                        dropdownStyle={{ minWidth: '300px' }}
+                        dropdownStyle={{ minWidth: 'min(300px, 92vw)' }}
                         // dropdownMatchSelectWidth={false}
                         variant="borderless"
                         style={{ width: '80px', fontSize: '14px' }}

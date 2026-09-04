@@ -22,7 +22,7 @@ const ViewJobSkills = () => {
     <>
       {isLoading && <Loader />}
       <Form layout="vertical" autoComplete="off">
-        <div className="grid grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           {/* <Form.Item
             label={
               <span>
@@ -97,7 +97,7 @@ const ViewJobSkills = () => {
             ) : null}
           </Form.Item>
         </div>
-        <div className="grid grid-cols-2 gap-x-4 mt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
           <Form.Item label={<span>Responsibilities</span>}>
             <TextArea
               // placeholder="Other Requirements"

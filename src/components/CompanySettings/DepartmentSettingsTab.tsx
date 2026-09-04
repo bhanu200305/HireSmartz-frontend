@@ -190,12 +190,12 @@ const DepartmentSettingsTab: React.FC = () => {
           filterOption={(input, option) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
           }
-          className="w-[280px]"
+          className="w-full sm:w-[280px]"
         />
         <Input
           prefix={<MdSearch className="text-gray-400" />}
           placeholder="Search job titles..."
-          className="w-[320px]"
+          className="w-full sm:w-[320px]"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />

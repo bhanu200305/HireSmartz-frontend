@@ -161,7 +161,7 @@ const AddCandidateModal = ({ open, onClose }: AddCandidateModalProps) => {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor="add-candidate-first-name" className="mb-1 block text-sm text-gray-800">
               First name <span className="required-asterisk">*</span>
@@ -186,7 +186,7 @@ const AddCandidateModal = ({ open, onClose }: AddCandidateModalProps) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor="add-candidate-email" className="mb-1 block text-sm text-gray-800">
               Email

@@ -15,7 +15,7 @@ const StartRecordingModal: FC<StartRecordingModalProps> = ({
 }) => {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
-      <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[600px] relative">
+      <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[600px] max-w-[92vw] relative">
         <button
           className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 cursor-pointer transition"
           onClick={onClose}

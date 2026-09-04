@@ -9,7 +9,7 @@ import type {
   SkippedDuplicateRowResponse,
 } from '../types';
 
-const extendedApi = jobApi.injectEndpoints({
+export const jobQuestionsApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
     getJobQuestions: build.query<JobQuestionsResponse, string>({
       query: (jobOpeningId) => ({
@@ -111,9 +111,6 @@ const extendedApi = jobApi.injectEndpoints({
 
 export type { RoundQuestionsResponse };
 
-// Exported so callers get typed `.util` cache helpers for these endpoints.
-export { extendedApi as jobQuestionsApi };
-
 export const {
   useGetJobQuestionsQuery,
   useGetAudioQuestionsQuery,
@@ -122,4 +119,4 @@ export const {
   useRegenerateJobQuestionsMutation,
   useBulkImportJobQuestionsMutation,
   useLazyGetQuestionImportTemplateQuery,
-} = extendedApi;
+} = jobQuestionsApi;

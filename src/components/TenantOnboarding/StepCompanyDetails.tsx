@@ -209,7 +209,7 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
                 setValue('adminContactCountryCode', value, { shouldDirty: true })
               }
               className="border-none focus:ring-0 focus:outline-none bg-transparent"
-              dropdownStyle={{ minWidth: '300px' }}
+              dropdownStyle={{ minWidth: 'min(300px, 92vw)' }}
               variant="borderless"
               style={{ width: '80px', fontSize: '14px' }}
               options={countryCodes.map(({ label, value, short }) => ({

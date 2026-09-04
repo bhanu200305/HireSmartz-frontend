@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
-import axios from 'axios';
 import clsx from 'clsx';
 import {
   LuChevronLeft,
@@ -16,22 +15,22 @@ import { useSearchParams } from 'react-router-dom';
 import { Loader } from '../../components/shared/ui/loader';
 import InterviewConsentModal from '../../components/shared/ui/InterviewConsentModal';
 import { showToast } from '../../components/shared';
-import { BASE_URL } from '../../constants/webAPI';
 import { AI_SCHEDULE_WINDOW_DAYS } from '../../constants/app.constants';
+import {
+  InterviewApiError,
+  useBookAiSlotMutation,
+  useGetSchedulingLinkQuery,
+  useGetTimezonesQuery,
+  useLazyGetAiSlotsQuery,
+} from '../../api/interview-service/client';
 
 //  Types
 
 interface AiSlot {
-  startTime: string;
-  endTime: string;
+  start_time: string;
+  end_time: string;
   displayTime: string;
-  available: boolean;
-}
-
-interface AiSlotsResponse {
-  date: string;
-  timezone: string;
-  slots: AiSlot[];
+  remaining: number;
 }
 
 interface TimezoneOption {
@@ -183,7 +182,6 @@ const voiceConsentDisclaimerEs = (
 const AiCallSchedulePage = () => {
   const [searchParams] = useSearchParams();
 
-  const roundId = searchParams.get('roundId') ?? '';
   const token = searchParams.get('token') ?? '';
   const email = searchParams.get('email') ?? '';
   const langParam = (searchParams.get('lang') ?? 'en') as LangCode;
@@ -195,7 +193,6 @@ const AiCallSchedulePage = () => {
 
   const [lang, setLang] = useState<LangCode>(langParam === 'es' ? 'es' : 'en');
   const [selectedTimezone, setSelectedTimezone] = useState<string>(localTimezone);
-  const [timezones, setTimezones] = useState<TimezoneOption[]>([]);
   const [tzSearch, setTzSearch] = useState('');
   const [tzDropdownOpen, setTzDropdownOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
@@ -216,21 +213,22 @@ const AiCallSchedulePage = () => {
   const langDropdownRef = useRef<HTMLDivElement>(null);
 
   const t = T[lang];
+  const { data: timezoneData } = useGetTimezonesQuery();
+  const [loadAiSlots] = useLazyGetAiSlotsQuery();
+  const [bookAiSlot] = useBookAiSlotMutation();
+  const { data: schedulingLink, error: schedulingError } = useGetSchedulingLinkQuery(token, {
+    skip: !token,
+  });
+  const timezones: TimezoneOption[] = (timezoneData?.timezones ?? []).map((timezone) => ({
+    id: timezone.id,
+    label: timezone.id.replace(/_/g, ' '),
+    offset: timezone.utc_offset,
+  }));
 
   //  Apply dayjs locale
   useEffect(() => {
     dayjs.locale(lang);
   }, [lang]);
-
-  //  Fetch timezones once
-  useEffect(() => {
-    axios
-      .get<TimezoneOption[]>(`${BASE_URL}/interview/timezones`)
-      .then((res) => setTimezones(res.data ?? []))
-      .catch(() => {
-        // silently fail — timezone dropdown just stays empty
-      });
-  }, []);
 
   //  Close dropdowns on outside click
   useEffect(() => {
@@ -246,7 +244,7 @@ const AiCallSchedulePage = () => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const isParamsValid = Boolean(roundId && token && email);
+  const isParamsValid = Boolean(token);
 
   //  Fetch slots
   useEffect(() => {
@@ -259,16 +257,17 @@ const AiCallSchedulePage = () => {
       setSelectedSlot(null);
       setBookingError(null);
       try {
-        const response = await axios.get<AiSlotsResponse>(`${BASE_URL}/interview/ai-slots`, {
-          params: {
-            date: selectedDate.format('YYYY-MM-DD'),
-            timezone: selectedTimezone,
-            roundId,
-            token,
-            email,
-          },
-        });
-        setSlots((response.data.slots ?? []).filter((s) => s.available));
+        const response = await loadAiSlots({
+          token,
+          date: selectedDate.format('YYYY-MM-DD'),
+          timezone: selectedTimezone,
+        }).unwrap();
+        setSlots(
+          response.slots.map((slot) => ({
+            ...slot,
+            displayTime: `${dayjs(slot.start_time).tz(selectedTimezone).format('h:mm A')} - ${dayjs(slot.end_time).tz(selectedTimezone).format('h:mm A')}`,
+          }))
+        );
       } catch {
         setSlotsError(t.slotsError);
       } finally {
@@ -277,34 +276,35 @@ const AiCallSchedulePage = () => {
     };
 
     fetchSlots();
-  }, [selectedDate, selectedTimezone]);
+  }, [selectedDate, selectedTimezone, token, loadAiSlots]);
 
   const handleBookSlot = async (): Promise<void> => {
     if (!selectedSlot) return;
     setIsBooking(true);
     setBookingError(null);
     try {
-      const response = await axios.post<{ success: boolean; message: string }>(
-        `${BASE_URL}/interview/ai-book-slot`,
-        {
-          roundId: Number(roundId),
+      await bookAiSlot({
+        token,
+        start_time: selectedSlot.start_time,
+        timezone: selectedTimezone,
+      }).unwrap();
+      setBookedSlot(selectedSlot);
+      setIsBooked(true);
+    } catch (error) {
+      const apiError = error as InterviewApiError;
+      const msg =
+        apiError.status === 409
+          ? 'That slot was just filled. Refreshing available times.'
+          : t.bookingError;
+      setBookingError(msg);
+      showToast({ message: msg, type: 'error' });
+      if (apiError.status === 409 && selectedDate) {
+        void loadAiSlots({
           token,
-          email,
-          slotStart: selectedSlot.startTime,
+          date: selectedDate.format('YYYY-MM-DD'),
           timezone: selectedTimezone,
-        }
-      );
-      if (response.data?.success) {
-        setBookedSlot(selectedSlot);
-        setIsBooked(true);
-      } else {
-        const msg = response.data?.message ?? t.bookingError;
-        setBookingError(msg);
-        showToast({ message: msg, type: 'error' });
+        });
       }
-    } catch {
-      setBookingError(t.bookingError);
-      showToast({ message: t.bookingError, type: 'error' });
     } finally {
       setIsBooking(false);
     }
@@ -395,6 +395,28 @@ const AiCallSchedulePage = () => {
     );
   }
 
+  if (schedulingError) {
+    const apiError = schedulingError as InterviewApiError;
+    const expired = apiError.status === 410;
+    return (
+      <div className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center">
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+            {expired ? 'Scheduling Link Expired' : t.invalidTitle}
+          </h1>
+          <p className="text-gray-500 text-sm">
+            {expired ? 'This link has expired and cannot be used again.' : t.invalidBody}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (schedulingLink?.interview_type === 'panel' && schedulingLink.booking_url) {
+    window.location.replace(schedulingLink.booking_url);
+    return null;
+  }
+
   if (!hasConsent) {
     const description = lang === 'es' ? voiceConsentDescriptionEs : voiceConsentDescriptionEn;
     const disclaimer = lang === 'es' ? voiceConsentDisclaimerEs : voiceConsentDisclaimerEn;
@@ -433,7 +455,9 @@ const AiCallSchedulePage = () => {
         <div className="px-6 pt-5 pb-3 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2 text-gray-500 text-sm">
             <RxClock className="w-4 h-4" />
-            <span>15 {t.minutes}</span>
+            <span>
+              {schedulingLink?.duration_minutes ?? 15} {t.minutes}
+            </span>
           </div>
         </div>
 
@@ -570,11 +594,13 @@ const AiCallSchedulePage = () => {
                   ) : (
                     slots.map((slot, idx) => (
                       <button
-                        key={`${slot.startTime}-${idx}`}
+                        key={`${slot.start_time}-${idx}`}
+                        disabled={slot.remaining === 0}
                         onClick={() => setSelectedSlot(slot)}
-                        className="w-full py-3 px-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-(--primary) hover:text-(--primary) transition-all text-center"
+                        className="w-full py-3 px-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-(--primary) hover:text-(--primary) transition-all text-center disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                       >
                         {slot.displayTime.split(' - ')[0]}
+                        {slot.remaining === 0 ? ' (Full)' : ` (${slot.remaining} left)`}
                       </button>
                     ))
                   )}

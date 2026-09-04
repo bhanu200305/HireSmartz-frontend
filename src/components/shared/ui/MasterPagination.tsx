@@ -84,14 +84,14 @@ export const MasterPagination: React.FC<MasterPaginationProps> = ({
   };
 
   return (
-    <div className="flex justify-between items-center mt-4 p-4 bg-[#F0F0F0]">
+    <div className="flex flex-wrap justify-between items-center gap-y-2 mt-4 p-4 bg-[#F0F0F0]">
       {/* Left: Showing X-Y of Z label */}
       <span className="text-gray-600 font-medium text-sm">
         Showing {start}-{end} of {total} {itemLabel}
       </span>
 
       {/* Right: Go to page controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={handlePrevClick}

@@ -89,7 +89,7 @@ const LocationFormModal = ({
         <p className="text-sm text-[#5F6368] mt-1">Please enter the following details</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="text-sm text-[#2D323A]">
             Location Name <span className="required-asterisk">*</span>
@@ -125,7 +125,7 @@ const LocationFormModal = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="text-sm text-[#2D323A]">
             Address Line 1 <span className="required-asterisk">*</span>
@@ -177,7 +177,7 @@ const LocationFormModal = ({
                 }));
               }}
               className="border-none focus:ring-0 focus:outline-none bg-transparent"
-              dropdownStyle={{ minWidth: '300px' }}
+              dropdownStyle={{ minWidth: 'min(300px, 92vw)' }}
               variant="borderless"
               style={{ width: '80px', fontSize: '14px' }}
               options={countryCodes.map(({ label, value, short }) => ({
@@ -222,7 +222,7 @@ const LocationFormModal = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <div>
           <label className="text-sm text-[#2D323A]">
             Country <span className="required-asterisk">*</span>
@@ -298,7 +298,7 @@ const LocationFormModal = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <div>
           <label className="text-sm text-[#2D323A]">
             Zip Code <span className="required-asterisk">*</span>
@@ -344,7 +344,7 @@ const LocationFormModal = ({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 max-w-[520px] mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[520px] mx-auto">
         <Button
           className="w-full border border-gray-300 text-[#2D323A] py-2 rounded-3xl"
           onClick={onClose}

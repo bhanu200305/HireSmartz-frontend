@@ -20,6 +20,12 @@ import {
   useLazyGetCandidateResumeDownloadQuery,
 } from '../../../api/candidate-service/Candidates/scoring';
 import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candidates/notes';
+import {
+  useCreateBookingMutation,
+  useGetBookingQuery,
+  useLazyGetCalendarConnectUrlQuery,
+} from '../../../api/interview-service/client';
+import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
@@ -30,6 +36,7 @@ import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import ResumeReviewModal from './Modal/ResumeReviewModal';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import PipelineBoard from './PipelineBoard';
+import { roundLabel, formatRoundStatus } from './roundDisplay';
 import StatusHistoryTab from './StatusHistoryTab';
 import EditCandidateModal from './Modal/EditCandidateModal';
 
@@ -74,6 +81,9 @@ const candidateDisplayName = (c?: CandidateView) =>
 const formatDateTime = (value: string | null | undefined) =>
   value && dayjs(value).isValid() ? dayjs(value).format('MMM DD, YYYY · h:mm A') : null;
 
+const formatStatus = (status: string) =>
+  status.replace(/[_-]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+
 const CandidateDetails = () => {
   const navigate = useNavigate();
   const { candidateId, id: jobIdFromParams } = useParams<{
@@ -89,6 +99,8 @@ const CandidateDetails = () => {
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isResumeReviewOpen, setIsResumeReviewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedRound, setSelectedRound] = useState<CandidateInterviewRoundView | null>(null);
+  const [isCreatingBooking, setIsCreatingBooking] = useState(false);
   const [scoreModalFor, setScoreModalFor] = useState<{
     scoreId: string;
     roundName: string;
@@ -120,6 +132,11 @@ const CandidateDetails = () => {
   const [deleteResumeReview] = useDeleteResumeReviewMutation();
   const [getResumeDownload, { isLoading: isResumeUrlLoading }] =
     useLazyGetCandidateResumeDownloadQuery();
+  const [createBooking] = useCreateBookingMutation();
+  const { data: selectedBooking } = useGetBookingQuery(selectedRound?.interview_booking_id ?? '', {
+    skip: !selectedRound?.interview_booking_id,
+  });
+  const [getCalendarConnectUrl] = useLazyGetCalendarConnectUrlQuery();
 
   const handleBackToList = () => navigate(`/jobs/view/${parsedJobId}/candidates`);
 
@@ -147,6 +164,22 @@ const CandidateDetails = () => {
   const isTerminal = ['selected', 'rejected', 'resume_rejected', 'interview_rejected'].includes(
     statusUpper
   );
+
+  const isResumeStage = selectedRound?.stage_type === 'resume';
+  // Same "score already sitting here means reviewed and ready to move on"
+  // read as PipelineBoard.tsx's own version of this check — the resume
+  // stage's status never flips off "to_be_scheduled"/"pending" on its own,
+  // only an explicit Advance does, so a score present is what actually
+  // means "ready", not the raw status text.
+  const isResumeAwaitingAdvance =
+    isResumeStage &&
+    candidate?.resume_score != null &&
+    ['to_be_scheduled', 'pending'].includes(
+      (selectedRound?.status ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/[-\s]+/g, '_')
+    );
 
   if (candidateError) {
     return (
@@ -298,32 +331,241 @@ const CandidateDetails = () => {
 
       <div className="flex flex-col bg-[#FAFAFA] rounded-2xl overflow-hidden">
         <div className="px-6">
-          <Tabs
-            activeKey={activeTab}
-            onChange={(key) => setActiveTab(key as TabKey)}
-            className="view-candidate-tabs"
-            items={[
-              { key: 'pipeline', label: 'Pipeline' },
-              { key: 'assessment', label: 'Assessment' },
-              { key: 'resume', label: 'Resume' },
-              { key: 'summary', label: 'Interview Summary' },
-              { key: 'sms', label: 'SMS Communication' },
-              { key: 'history', label: 'Status History' },
-            ]}
-          />
+          {!selectedRound && (
+            <Tabs
+              activeKey={activeTab}
+              onChange={(key) => setActiveTab(key as TabKey)}
+              className="view-candidate-tabs"
+              items={[
+                { key: 'pipeline', label: 'Pipeline' },
+                { key: 'assessment', label: 'Assessment' },
+                { key: 'resume', label: 'Resume' },
+                { key: 'summary', label: 'Interview Summary' },
+                { key: 'sms', label: 'SMS Communication' },
+                { key: 'history', label: 'Status History' },
+              ]}
+            />
+          )}
         </div>
 
         <div className="p-6">
-          {activeTab === 'pipeline' && candidateId && (
+          {selectedRound ? (
+            <div className="flex flex-col gap-4">
+              <button
+                type="button"
+                className="self-start text-sm text-primary hover:underline"
+                onClick={() => setSelectedRound(null)}
+              >
+                ← Back to {candidateDisplayName(candidate)} Pipeline
+              </button>
+              <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{roundLabel(selectedRound)}</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {candidateDisplayName(candidate)} · {candidate?.email_id || 'No email on file'}
+                  </p>
+                </div>
+                <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
+                  {isResumeAwaitingAdvance
+                    ? 'Score ready'
+                    : formatRoundStatus(selectedBooking?.status ?? selectedRound.status)}
+                </span>
+              </div>
+
+              {isResumeStage ? (
+                // The resume stage is "upload a resume, get it scored" —
+                // there is no separate interview to schedule or book for
+                // it (send_round_invite.py/skip_interview_round.py both
+                // refuse this stage on the backend for the same reason).
+                // What actually belongs here is the resume's own AI score
+                // plus the recruiter's own review of it — previously only
+                // reachable from the Assessment tab, so adding one here
+                // never showed up on the "Resume Screening" pipeline card
+                // a recruiter actually clicks into.
+                <CommonCard>
+                  <div className="p-5 grid gap-6 sm:grid-cols-2">
+                    <div>
+                      <div className="text-xs font-semibold uppercase text-gray-400">AI Score</div>
+                      <div className="mt-2 text-2xl font-bold text-primary">
+                        {candidate?.resume_score ?? '—'}
+                      </div>
+                      {candidate?.scoring_reason && (
+                        <p className="mt-1 text-sm text-gray-600">{candidate.scoring_reason}</p>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Recruiter Review
+                        </div>
+                        <Button
+                          className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700"
+                          onClick={() => setIsResumeReviewOpen(true)}
+                        >
+                          {candidate?.resume_rating ? 'EDIT REVIEW' : 'ADD REVIEW'}
+                        </Button>
+                      </div>
+                      {candidate?.resume_rating ? (
+                        <>
+                          <Rate disabled value={candidate.resume_rating} className="mt-2" />
+                          {candidate.resume_review_comment && (
+                            <p className="mt-1 text-sm text-gray-600">
+                              {candidate.resume_review_comment}
+                            </p>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteResumeReview()}
+                            className="mt-2 block text-xs font-semibold text-red-500 hover:underline"
+                          >
+                            Remove review
+                          </button>
+                        </>
+                      ) : (
+                        <p className="mt-2 text-sm text-gray-400">No review yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </CommonCard>
+              ) : (
+                <>
+                  <CommonCard>
+                    <div className="p-5 grid gap-5 sm:grid-cols-2">
+                      <div>
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Round details
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                          Sequence {selectedRound.sequence ?? '—'} ·{' '}
+                          {selectedRound.duration_minutes ?? '—'} minutes
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                          {selectedRound.scheduled_at
+                            ? `Scheduled ${formatDateTime(selectedRound.scheduled_at)}`
+                            : 'Not scheduled yet'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Submission details
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                          Name: {candidateDisplayName(candidate)}
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                          Email: {candidate?.email_id || '—'}
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                          Phone: {candidate?.contact_no || '—'}
+                        </div>
+                      </div>
+                    </div>
+                  </CommonCard>
+
+                  <CommonCard>
+                    <div className="p-5 flex flex-col gap-3">
+                      <h4 className="font-semibold text-gray-900">Interview scheduling</h4>
+                      {selectedRound.interview_booking_id ? (
+                        <p className="text-sm text-gray-600">
+                          This round has a booking. The candidate uses the booking link to choose a
+                          time; audio and AI Video use available AI slots, while Panel uses the
+                          connected calendar.
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-600">
+                          Create a booking to start scheduling this round.
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          className={`rounded-full px-5 py-2 text-sm font-semibold ${
+                            selectedRound.interview_booking_id
+                              ? 'border border-green-200 bg-green-50 text-green-700'
+                              : 'bg-primary text-white'
+                          }`}
+                          disabled={
+                            Boolean(selectedRound.interview_booking_id) || isCreatingBooking
+                          }
+                          onClick={() => {
+                            if (!candidateId || !parsedJobId || !selectedRound.round_id) return;
+                            setIsCreatingBooking(true);
+                            const name = selectedRound.round_name?.toLowerCase() ?? '';
+                            const interviewType = name.includes('panel')
+                              ? 'panel'
+                              : name.includes('video')
+                                ? 'ai_video'
+                                : 'audio_screening';
+                            void createBooking({
+                              body: {
+                                candidate_id: candidateId,
+                                job_id: parsedJobId,
+                                round_id: selectedRound.round_id,
+                                sequence_no: selectedRound.sequence ?? 1,
+                                interview_type: interviewType,
+                                interviewer_id: null,
+                                immediate: false,
+                              },
+                            })
+                              .unwrap()
+                              .then((booking) => {
+                                setSelectedRound({
+                                  ...selectedRound,
+                                  interview_booking_id: booking.id,
+                                });
+                                showToast({
+                                  message: 'Booking created successfully.',
+                                  type: 'success',
+                                });
+                              })
+                              .catch((error) =>
+                                showToast({
+                                  message: getCandidateErrorMessage(
+                                    error,
+                                    'Could not create booking.'
+                                  ),
+                                  type: 'error',
+                                })
+                              )
+                              .finally(() => setIsCreatingBooking(false));
+                          }}
+                        >
+                          {isCreatingBooking
+                            ? 'CREATING…'
+                            : selectedRound.interview_booking_id
+                              ? 'INVITATION CREATED'
+                              : 'CREATE BOOKING'}
+                        </Button>
+                        {selectedRound.round_name?.toLowerCase().includes('panel') && (
+                          <Button
+                            className="rounded-full border border-primary-300 bg-white px-5 py-2 text-sm font-semibold text-primary-700"
+                            onClick={() => {
+                              void getCalendarConnectUrl().then(({ data }) => {
+                                if (data?.connect_url) window.location.assign(data.connect_url);
+                              });
+                            }}
+                          >
+                            CONNECT CALENDAR
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CommonCard>
+                </>
+              )}
+            </div>
+          ) : activeTab === 'pipeline' && candidateId ? (
             <PipelineBoard
               rounds={rounds}
               scores={scores}
               resumeScore={candidate?.resume_score ?? null}
               candidateId={candidateId}
+              onRoundClick={(round) => {
+                setSelectedRound(round);
+              }}
             />
-          )}
+          ) : null}
 
-          {activeTab === 'assessment' && (
+          {!selectedRound && activeTab === 'assessment' && (
             <CommonCard>
               <div className="p-5 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
@@ -376,7 +618,7 @@ const CandidateDetails = () => {
             </CommonCard>
           )}
 
-          {activeTab === 'resume' && (
+          {!selectedRound && activeTab === 'resume' && (
             <CommonCard>
               <div className="p-5 flex flex-col items-center gap-4 text-center">
                 {candidate?.resume_s3_key ? (
@@ -397,67 +639,161 @@ const CandidateDetails = () => {
             </CommonCard>
           )}
 
-          {activeTab === 'summary' && (
-            <div className="flex flex-col gap-3">
-              {scores.length === 0 ? (
-                <p className="text-sm text-gray-500">No interview scores recorded yet.</p>
+          {!selectedRound && activeTab === 'summary' && (
+            <div className="flex flex-col gap-4">
+              {rounds.length === 0 ? (
+                <p className="text-sm text-gray-500">No interview rounds recorded yet.</p>
               ) : (
-                scores.map((score) => {
-                  // `CandidateInterviewScoreView` carries no round name of its
-                  // own — resolve it via `candidate_interview_round_id`
-                  // against the LOCAL round row's `id` (not `.round_id`,
-                  // job-service's id — see interviewRounds.ts's note on that
-                  // mix-up). Can be null (score predates the round link, or
-                  // scores a booking we never planned), hence the fallback.
-                  const round = rounds.find((r) => r.id === score.candidate_interview_round_id);
-                  const roundName = round?.round_name || 'Round';
-                  return (
-                    <CommonCard key={score.id}>
-                      <div className="p-4 flex items-center justify-between gap-4">
-                        <div>
-                          <div className="font-semibold text-sm">{roundName}</div>
-                          {score.scoring_reason && (
-                            <p className="text-xs text-gray-500 mt-1">{score.scoring_reason}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-center">
-                            <div className="text-[10px] font-semibold text-gray-400 uppercase">
-                              AI
-                            </div>
-                            <div className="font-bold text-primary">{score.score ?? '—'}</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-[10px] font-semibold text-gray-400 uppercase">
-                              Recruiter
-                            </div>
-                            <div className="font-bold text-green-700">
-                              {score.recruiter_score ?? '—'}
-                            </div>
-                          </div>
-                          <Button
-                            className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700"
-                            onClick={() =>
-                              setScoreModalFor({
-                                scoreId: score.id,
-                                roundName,
-                                currentScore: score.recruiter_score,
-                                currentReason: score.recruiter_score_reason,
-                              })
-                            }
-                          >
-                            {score.recruiter_score ? 'EDIT' : 'SCORE'}
-                          </Button>
+                <>
+                  <CommonCard>
+                    <div className="p-5">
+                      <h3 className="text-sm font-semibold text-gray-900">Scores across rounds</h3>
+                      <div className="mt-4 h-28 rounded-lg bg-gradient-to-b from-primary-50 to-white px-2 pt-2">
+                        <div className="flex h-full items-start gap-2 border-b border-gray-100">
+                          {rounds.map((round, index) => {
+                            // `CandidateInterviewScoreView` carries no round
+                            // name/id of its own — resolve it via
+                            // `candidate_interview_round_id` against the
+                            // LOCAL round row's `id` (not `.round_id`,
+                            // job-service's id — see interviewRounds.ts's
+                            // note on that mix-up).
+                            const score = scores.find(
+                              (item) => item.candidate_interview_round_id === round.id
+                            );
+                            const value = score?.recruiter_score ?? score?.score;
+                            return (
+                              <div
+                                key={round.id ?? `score-${index}`}
+                                className="flex h-full flex-1 flex-col items-center justify-between"
+                              >
+                                <span
+                                  className="mt-auto mb-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-white"
+                                  title={value == null ? 'No score recorded' : `${value} / 5`}
+                                />
+                                <span className="h-0.5 w-full bg-primary/20" />
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
+                      <div className="mt-2 flex gap-2 text-[10px] text-gray-400">
+                        {rounds.map((round, index) => (
+                          <span
+                            key={round.id ?? `label-${index}`}
+                            className="min-w-0 flex-1 truncate text-center"
+                          >
+                            {round.round_name || 'Round'}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </CommonCard>
+
+                  <CommonCard>
+                    <div className="overflow-x-auto p-4">
+                      <table className="w-full min-w-[620px] text-left text-sm">
+                        <thead className="border-b border-gray-200 text-[10px] font-semibold uppercase text-gray-500">
+                          <tr>
+                            <th className="px-2 py-3">Round</th>
+                            <th className="px-2 py-3">Interviewer</th>
+                            <th className="px-2 py-3">Score</th>
+                            <th className="px-2 py-3">Recommendation</th>
+                            <th className="px-2 py-3" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rounds.map((round, index) => {
+                            const score = scores.find(
+                              (item) => item.candidate_interview_round_id === round.id
+                            );
+                            const roundName = round.round_name || 'Interview Round';
+                            const finalScore = score?.recruiter_score ?? score?.score;
+                            return (
+                              <tr
+                                key={round.id ?? `summary-${index}`}
+                                className="border-b border-gray-100 last:border-0"
+                              >
+                                <td className="px-2 py-3 font-medium text-gray-800">{roundName}</td>
+                                <td className="px-2 py-3 text-gray-500">
+                                  {score?.recruiter_scored_by ?? 'Not assigned'}
+                                </td>
+                                <td className="px-2 py-3 text-gray-700">
+                                  {finalScore == null
+                                    ? formatStatus(round.status)
+                                    : `${finalScore} / 5`}
+                                </td>
+                                <td className="px-2 py-3">
+                                  {score ? (
+                                    <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+                                      {score.recruiter_score != null ? 'Reviewed' : 'Scored'}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400">—</span>
+                                  )}
+                                </td>
+                                <td className="px-2 py-3">
+                                  {score && (
+                                    <Button
+                                      className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700"
+                                      onClick={() =>
+                                        setScoreModalFor({
+                                          scoreId: score.id,
+                                          roundName,
+                                          currentScore: score.recruiter_score,
+                                          currentReason: score.recruiter_score_reason,
+                                        })
+                                      }
+                                    >
+                                      {score.recruiter_score ? 'EDIT' : 'SCORE'}
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CommonCard>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <CommonCard>
+                      <div className="p-5">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-gray-900">Interviewer Notes</h3>
+                          <Button
+                            className="rounded-full border border-primary-200 bg-white px-3 py-1 text-xs font-semibold text-primary-700"
+                            onClick={() => setIsNotesOpen(true)}
+                          >
+                            + Add Note
+                          </Button>
+                        </div>
+                        {notesData?.items[0] ? (
+                          <p className="mt-4 border-l-2 border-primary px-3 text-sm text-gray-600">
+                            {notesData.items[0].note}
+                          </p>
+                        ) : (
+                          <p className="mt-4 text-sm text-gray-500">No notes yet at this step.</p>
+                        )}
+                      </div>
                     </CommonCard>
-                  );
-                })
+                    <CommonCard>
+                      <div className="p-5">
+                        <h3 className="text-sm font-semibold text-gray-900">AI Summary</h3>
+                        <p className="mt-4 text-sm leading-6 text-gray-600">
+                          {scores.length > 0
+                            ? `${scores.length} interview score${scores.length === 1 ? '' : 's'} recorded across ${rounds.length} round${rounds.length === 1 ? '' : 's'}. Review the round details and scores above.`
+                            : 'AI summary will appear after an interview produces a score or transcript.'}
+                        </p>
+                      </div>
+                    </CommonCard>
+                  </div>
+                </>
               )}
             </div>
           )}
 
-          {activeTab === 'sms' && (
+          {!selectedRound && activeTab === 'sms' && (
             <CommonCard>
               <div className="p-5 flex flex-col items-center gap-3 text-center">
                 <p className="text-sm text-gray-500 max-w-md">

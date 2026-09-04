@@ -72,9 +72,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
             onChange={(e) => {
               const next = Number(e.target.value);
               if (Number.isNaN(next)) return;
-              setQuestionCount(
-                Math.min(MAX_QUESTION_COUNT, Math.max(MIN_QUESTION_COUNT, next))
-              );
+              setQuestionCount(Math.min(MAX_QUESTION_COUNT, Math.max(MIN_QUESTION_COUNT, next)));
             }}
             className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-50"
           />
@@ -82,73 +80,73 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
 
         {/* Options Cards */}
         {hasExistingQuestions && (
-        <div className="flex flex-col gap-4 mb-6">
-          {/* Append Option */}
-          <div
-            onClick={() => !isLoading && setSelectedMode('ADD')}
-            className={clsx(
-              'flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200',
-              selectedMode === 'ADD'
-                ? 'border-brand-500 bg-brand-50/40 shadow-sm'
-                : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm',
-              isLoading && 'opacity-50 cursor-not-allowed'
-            )}
-          >
+          <div className="flex flex-col gap-4 mb-6">
+            {/* Append Option */}
             <div
+              onClick={() => !isLoading && setSelectedMode('ADD')}
               className={clsx(
-                'p-2.5 rounded-xl shrink-0',
-                selectedMode === 'ADD' ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-500'
+                'flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200',
+                selectedMode === 'ADD'
+                  ? 'border-brand-500 bg-brand-50/40 shadow-sm'
+                  : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm',
+                isLoading && 'opacity-50 cursor-not-allowed'
               )}
             >
-              <MdPostAdd size={22} />
-            </div>
-            <div>
-              <Typography
-                variant="subtitle2"
-                className="text-gray-800 font-semibold font-sora block mb-1"
+              <div
+                className={clsx(
+                  'p-2.5 rounded-xl shrink-0',
+                  selectedMode === 'ADD' ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-500'
+                )}
               >
-                Append to Existing
-              </Typography>
-              <Typography variant="caption" className="text-gray-500 font-roboto leading-normal">
-                Keep all current questions and append the newly generated questions to the end of
-                your list.
-              </Typography>
+                <MdPostAdd size={22} />
+              </div>
+              <div>
+                <Typography
+                  variant="subtitle2"
+                  className="text-gray-800 font-semibold font-sora block mb-1"
+                >
+                  Append to Existing
+                </Typography>
+                <Typography variant="caption" className="text-gray-500 font-roboto leading-normal">
+                  Keep all current questions and append the newly generated questions to the end of
+                  your list.
+                </Typography>
+              </div>
             </div>
-          </div>
 
-          {/* Replace Option */}
-          <div
-            onClick={() => !isLoading && setSelectedMode('REPLACE')}
-            className={clsx(
-              'flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200',
-              selectedMode === 'REPLACE'
-                ? 'border-red-500 bg-red-50/20 shadow-sm'
-                : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm',
-              isLoading && 'opacity-50 cursor-not-allowed'
-            )}
-          >
+            {/* Replace Option */}
             <div
+              onClick={() => !isLoading && setSelectedMode('REPLACE')}
               className={clsx(
-                'p-2.5 rounded-xl shrink-0',
-                selectedMode === 'REPLACE' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500'
+                'flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200',
+                selectedMode === 'REPLACE'
+                  ? 'border-red-500 bg-red-50/20 shadow-sm'
+                  : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm',
+                isLoading && 'opacity-50 cursor-not-allowed'
               )}
             >
-              <MdOutlineRotateLeft size={22} />
-            </div>
-            <div>
-              <Typography
-                variant="subtitle2"
-                className="text-gray-850 font-semibold font-sora block mb-1"
+              <div
+                className={clsx(
+                  'p-2.5 rounded-xl shrink-0',
+                  selectedMode === 'REPLACE' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500'
+                )}
               >
-                Replace Current Questions
-              </Typography>
-              <Typography variant="caption" className="text-gray-500 font-roboto leading-normal">
-                Delete all existing questions for this list and replace them completely with the
-                newly generated ones.
-              </Typography>
+                <MdOutlineRotateLeft size={22} />
+              </div>
+              <div>
+                <Typography
+                  variant="subtitle2"
+                  className="text-gray-850 font-semibold font-sora block mb-1"
+                >
+                  Replace Current Questions
+                </Typography>
+                <Typography variant="caption" className="text-gray-500 font-roboto leading-normal">
+                  Delete all existing questions for this list and replace them completely with the
+                  newly generated ones.
+                </Typography>
+              </div>
             </div>
           </div>
-        </div>
         )}
 
         {/* Actions Row */}
