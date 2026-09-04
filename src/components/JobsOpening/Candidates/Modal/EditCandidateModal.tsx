@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
 import TextArea from 'antd/es/input/TextArea';
-import { Button, Input, showToast } from '../../../shared';
+import { Button, Input, PhoneNumberField, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import {
   useUpdateCandidateMutation,
   type CandidateView,
 } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
+import {
+  isPhoneValidForCountry,
+  PHONE_VALIDATION_MESSAGE,
+  splitE164,
+  toE164,
+} from '../../../../shared/utils/validation/phoneValidation';
+
+// Same default every other phone field in this app starts from.
+const DEFAULT_COUNTRY_CODE = '+1';
 
 // New — `PATCH /candidates/{id}` (`UpdateCandidateRequest`). Every field is
 // a genuine partial update: only fields that actually changed are sent, so
@@ -26,6 +35,7 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState('');
   const [qualification, setQualification] = useState('');
   const [address, setAddress] = useState('');
@@ -36,7 +46,9 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
       setFirstName(candidate.first_name ?? '');
       setLastName(candidate.last_name ?? '');
       setEmail(candidate.email_id ?? '');
-      setPhone(candidate.contact_no ?? '');
+      const split = splitE164(candidate.contact_no);
+      setCountryCode(split.countryCode || DEFAULT_COUNTRY_CODE);
+      setPhone(split.phoneNumber);
       setQualification(candidate.qualification ?? '');
       setAddress(candidate.address ?? '');
     }
@@ -47,6 +59,10 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
       showToast({ message: 'First and last name are required.', type: 'error' });
       return;
     }
+    if (phone.trim() && !isPhoneValidForCountry(phone, countryCode)) {
+      showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
+      return;
+    }
 
     // Only send fields that actually changed against the record this modal
     // opened with — a genuine partial update, not "resend everything."
@@ -54,7 +70,7 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
     const nextFirst = firstName.trim();
     const nextLast = lastName.trim();
     const nextEmail = email.trim();
-    const nextPhone = phone.trim();
+    const nextPhone = phone.trim() ? toE164(countryCode, phone) : '';
     const nextQualification = qualification.trim();
     const nextAddress = address.trim();
     if (nextFirst !== (candidate.first_name ?? '')) body.first_name = nextFirst;
@@ -132,11 +148,12 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
             <label htmlFor="edit-candidate-phone" className="mb-1 block text-sm text-gray-800">
               Phone
             </label>
-            <Input
-              id="edit-candidate-phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="h-10 rounded-lg border border-gray-300 text-sm"
+            <PhoneNumberField
+              countryCode={countryCode}
+              onCountryCodeChange={setCountryCode}
+              phoneNumber={phone}
+              onPhoneNumberChange={setPhone}
+              className="h-10 rounded-lg"
             />
           </div>
         </div>
