@@ -194,6 +194,7 @@ export const passwordValidation = () => {
     }
 
     // Check for control/non-printable characters
+    // eslint-disable-next-line no-control-regex -- intentional: rejecting control chars in passwords
     if (/[\x00-\x1F\x7F-\x9F]/.test(value)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -224,7 +225,7 @@ export const passwordValidation = () => {
         message: 'Password must contain at least one number (0-9).',
       },
       {
-        check: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value),
+        check: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(value),
         message: 'Password must contain at least one special character (!@#$%^&*, etc.).',
       },
     ];
