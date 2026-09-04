@@ -141,17 +141,20 @@ export const CareersIntakeCallSchedulePage = () => {
               </p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {slotsData?.data.slots.map((slot) => (
-                  <button
-                    key={slot.start_time}
-                    type="button"
-                    disabled={slot.remaining <= 0 || isBooking}
-                    onClick={() => void handleBook(slot.start_time)}
-                    className="rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-800 hover:border-black disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {dayjs(slot.start_time).format('h:mm A')}
-                  </button>
-                ))}
+                {slotsData?.data.slots.map((slot) => {
+                  const isPast = dayjs(slot.start_time).isBefore(dayjs());
+                  return (
+                    <button
+                      key={slot.start_time}
+                      type="button"
+                      disabled={slot.remaining <= 0 || isBooking || isPast}
+                      onClick={() => void handleBook(slot.start_time)}
+                      className="rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-800 hover:border-black disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {dayjs(slot.start_time).format('h:mm A')}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </>

@@ -36,6 +36,7 @@ import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import ResumeReviewModal from './Modal/ResumeReviewModal';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import PipelineBoard from './PipelineBoard';
+import { roundLabel, formatRoundStatus } from './roundDisplay';
 import StatusHistoryTab from './StatusHistoryTab';
 import EditCandidateModal from './Modal/EditCandidateModal';
 
@@ -163,6 +164,22 @@ const CandidateDetails = () => {
   const isTerminal = ['selected', 'rejected', 'resume_rejected', 'interview_rejected'].includes(
     statusUpper
   );
+
+  const isResumeStage = selectedRound?.stage_type === 'resume';
+  // Same "score already sitting here means reviewed and ready to move on"
+  // read as PipelineBoard.tsx's own version of this check — the resume
+  // stage's status never flips off "to_be_scheduled"/"pending" on its own,
+  // only an explicit Advance does, so a score present is what actually
+  // means "ready", not the raw status text.
+  const isResumeAwaitingAdvance =
+    isResumeStage &&
+    candidate?.resume_score != null &&
+    ['to_be_scheduled', 'pending'].includes(
+      (selectedRound?.status ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/[-\s]+/g, '_')
+    );
 
   if (candidateError) {
     return (
@@ -343,142 +360,197 @@ const CandidateDetails = () => {
               </button>
               <div className="flex items-center justify-between border-b border-gray-200 pb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {selectedRound.round_name || 'Interview Round'}
-                  </h3>
+                  <h3 className="text-xl font-bold text-gray-900">{roundLabel(selectedRound)}</h3>
                   <p className="mt-1 text-sm text-gray-500">
                     {candidateDisplayName(candidate)} · {candidate?.email_id || 'No email on file'}
                   </p>
                 </div>
-                <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold capitalize text-primary-700">
-                  {selectedBooking?.status ?? selectedRound.status}
+                <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
+                  {isResumeAwaitingAdvance
+                    ? 'Score ready'
+                    : formatRoundStatus(selectedBooking?.status ?? selectedRound.status)}
                 </span>
               </div>
 
-              <CommonCard>
-                <div className="p-5 grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-gray-400">
-                      Round details
-                    </div>
-                    <div className="mt-2 text-sm text-gray-700">
-                      Sequence {selectedRound.sequence ?? '—'} ·{' '}
-                      {selectedRound.duration_minutes ?? '—'} minutes
-                    </div>
-                    <div className="mt-2 text-sm text-gray-700">
-                      {selectedRound.scheduled_at
-                        ? `Scheduled ${formatDateTime(selectedRound.scheduled_at)}`
-                        : 'Not scheduled yet'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-gray-400">
-                      Submission details
-                    </div>
-                    <div className="mt-2 text-sm text-gray-700">
-                      Name: {candidateDisplayName(candidate)}
-                    </div>
-                    <div className="mt-2 text-sm text-gray-700">
-                      Email: {candidate?.email_id || '—'}
-                    </div>
-                    <div className="mt-2 text-sm text-gray-700">
-                      Phone: {candidate?.contact_no || '—'}
-                    </div>
-                  </div>
-                </div>
-              </CommonCard>
-
-              <CommonCard>
-                <div className="p-5 flex flex-col gap-3">
-                  <h4 className="font-semibold text-gray-900">Interview scheduling</h4>
-                  {selectedRound.interview_booking_id ? (
-                    <p className="text-sm text-gray-600">
-                      This round has a booking. The candidate uses the booking link to choose a
-                      time; audio and AI Video use available AI slots, while Panel uses the
-                      connected calendar.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-600">
-                      Create a booking to start scheduling this round.
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-3">
-                    <Button
-                      className={`rounded-full px-5 py-2 text-sm font-semibold ${
-                        selectedRound.interview_booking_id
-                          ? 'border border-green-200 bg-green-50 text-green-700'
-                          : 'bg-primary text-white'
-                      }`}
-                      disabled={Boolean(selectedRound.interview_booking_id) || isCreatingBooking}
-                      onClick={() => {
-                        if (!candidateId || !parsedJobId || !selectedRound.round_id) return;
-                        setIsCreatingBooking(true);
-                        const name = selectedRound.round_name?.toLowerCase() ?? '';
-                        const interviewType = name.includes('panel')
-                          ? 'panel'
-                          : name.includes('video')
-                            ? 'ai_video'
-                            : 'audio_screening';
-                        void createBooking({
-                          body: {
-                            candidate_id: candidateId,
-                            job_id: parsedJobId,
-                            round_id: selectedRound.round_id,
-                            sequence_no: selectedRound.sequence ?? 1,
-                            interview_type: interviewType,
-                            interviewer_id: null,
-                            immediate: false,
-                          },
-                        })
-                          .unwrap()
-                          .then((booking) => {
-                            setSelectedRound({
-                              ...selectedRound,
-                              interview_booking_id: booking.id,
-                            });
-                            showToast({
-                              message: 'Booking created successfully.',
-                              type: 'success',
-                            });
-                          })
-                          .catch((error) =>
-                            showToast({
-                              message: getCandidateErrorMessage(error, 'Could not create booking.'),
-                              type: 'error',
-                            })
-                          )
-                          .finally(() => setIsCreatingBooking(false));
-                      }}
-                    >
-                      {isCreatingBooking
-                        ? 'CREATING…'
-                        : selectedRound.interview_booking_id
-                          ? 'INVITATION CREATED'
-                          : 'CREATE BOOKING'}
-                    </Button>
-                    {selectedRound.round_name?.toLowerCase().includes('panel') && (
-                      <Button
-                        className="rounded-full border border-primary-300 bg-white px-5 py-2 text-sm font-semibold text-primary-700"
-                        onClick={() => {
-                          void getCalendarConnectUrl().then(({ data }) => {
-                            if (data?.connect_url) window.location.assign(data.connect_url);
-                          });
-                        }}
-                      >
-                        CONNECT CALENDAR
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CommonCard>
-
-              {selectedRound.stage_type === 'resume' && (
+              {isResumeStage ? (
+                // The resume stage is "upload a resume, get it scored" —
+                // there is no separate interview to schedule or book for
+                // it (send_round_invite.py/skip_interview_round.py both
+                // refuse this stage on the backend for the same reason).
+                // What actually belongs here is the resume's own AI score
+                // plus the recruiter's own review of it — previously only
+                // reachable from the Assessment tab, so adding one here
+                // never showed up on the "Resume Screening" pipeline card
+                // a recruiter actually clicks into.
                 <CommonCard>
-                  <div className="p-5">
-                    <h4 className="font-semibold text-gray-900">Interviewer Notes</h4>
-                    <p className="mt-3 text-sm text-gray-500">No notes yet at this step.</p>
+                  <div className="p-5 grid gap-6 sm:grid-cols-2">
+                    <div>
+                      <div className="text-xs font-semibold uppercase text-gray-400">AI Score</div>
+                      <div className="mt-2 text-2xl font-bold text-primary">
+                        {candidate?.resume_score ?? '—'}
+                      </div>
+                      {candidate?.scoring_reason && (
+                        <p className="mt-1 text-sm text-gray-600">{candidate.scoring_reason}</p>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Recruiter Review
+                        </div>
+                        <Button
+                          className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700"
+                          onClick={() => setIsResumeReviewOpen(true)}
+                        >
+                          {candidate?.resume_rating ? 'EDIT REVIEW' : 'ADD REVIEW'}
+                        </Button>
+                      </div>
+                      {candidate?.resume_rating ? (
+                        <>
+                          <Rate disabled value={candidate.resume_rating} className="mt-2" />
+                          {candidate.resume_review_comment && (
+                            <p className="mt-1 text-sm text-gray-600">
+                              {candidate.resume_review_comment}
+                            </p>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteResumeReview()}
+                            className="mt-2 block text-xs font-semibold text-red-500 hover:underline"
+                          >
+                            Remove review
+                          </button>
+                        </>
+                      ) : (
+                        <p className="mt-2 text-sm text-gray-400">No review yet.</p>
+                      )}
+                    </div>
                   </div>
                 </CommonCard>
+              ) : (
+                <>
+                  <CommonCard>
+                    <div className="p-5 grid gap-5 sm:grid-cols-2">
+                      <div>
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Round details
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                          Sequence {selectedRound.sequence ?? '—'} ·{' '}
+                          {selectedRound.duration_minutes ?? '—'} minutes
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                          {selectedRound.scheduled_at
+                            ? `Scheduled ${formatDateTime(selectedRound.scheduled_at)}`
+                            : 'Not scheduled yet'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Submission details
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                          Name: {candidateDisplayName(candidate)}
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                          Email: {candidate?.email_id || '—'}
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">
+                          Phone: {candidate?.contact_no || '—'}
+                        </div>
+                      </div>
+                    </div>
+                  </CommonCard>
+
+                  <CommonCard>
+                    <div className="p-5 flex flex-col gap-3">
+                      <h4 className="font-semibold text-gray-900">Interview scheduling</h4>
+                      {selectedRound.interview_booking_id ? (
+                        <p className="text-sm text-gray-600">
+                          This round has a booking. The candidate uses the booking link to choose a
+                          time; audio and AI Video use available AI slots, while Panel uses the
+                          connected calendar.
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-600">
+                          Create a booking to start scheduling this round.
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          className={`rounded-full px-5 py-2 text-sm font-semibold ${
+                            selectedRound.interview_booking_id
+                              ? 'border border-green-200 bg-green-50 text-green-700'
+                              : 'bg-primary text-white'
+                          }`}
+                          disabled={
+                            Boolean(selectedRound.interview_booking_id) || isCreatingBooking
+                          }
+                          onClick={() => {
+                            if (!candidateId || !parsedJobId || !selectedRound.round_id) return;
+                            setIsCreatingBooking(true);
+                            const name = selectedRound.round_name?.toLowerCase() ?? '';
+                            const interviewType = name.includes('panel')
+                              ? 'panel'
+                              : name.includes('video')
+                                ? 'ai_video'
+                                : 'audio_screening';
+                            void createBooking({
+                              body: {
+                                candidate_id: candidateId,
+                                job_id: parsedJobId,
+                                round_id: selectedRound.round_id,
+                                sequence_no: selectedRound.sequence ?? 1,
+                                interview_type: interviewType,
+                                interviewer_id: null,
+                                immediate: false,
+                              },
+                            })
+                              .unwrap()
+                              .then((booking) => {
+                                setSelectedRound({
+                                  ...selectedRound,
+                                  interview_booking_id: booking.id,
+                                });
+                                showToast({
+                                  message: 'Booking created successfully.',
+                                  type: 'success',
+                                });
+                              })
+                              .catch((error) =>
+                                showToast({
+                                  message: getCandidateErrorMessage(
+                                    error,
+                                    'Could not create booking.'
+                                  ),
+                                  type: 'error',
+                                })
+                              )
+                              .finally(() => setIsCreatingBooking(false));
+                          }}
+                        >
+                          {isCreatingBooking
+                            ? 'CREATING…'
+                            : selectedRound.interview_booking_id
+                              ? 'INVITATION CREATED'
+                              : 'CREATE BOOKING'}
+                        </Button>
+                        {selectedRound.round_name?.toLowerCase().includes('panel') && (
+                          <Button
+                            className="rounded-full border border-primary-300 bg-white px-5 py-2 text-sm font-semibold text-primary-700"
+                            onClick={() => {
+                              void getCalendarConnectUrl().then(({ data }) => {
+                                if (data?.connect_url) window.location.assign(data.connect_url);
+                              });
+                            }}
+                          >
+                            CONNECT CALENDAR
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CommonCard>
+                </>
               )}
             </div>
           ) : activeTab === 'pipeline' && candidateId ? (

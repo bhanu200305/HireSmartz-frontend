@@ -9,6 +9,7 @@ import type { CandidateInterviewScoreView } from '../../../api/candidate-service
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import SkipRoundModal from './Modal/SkipRoundModal';
 import RoundArtifactsModal from './Modal/RoundArtifactsModal';
+import { roundLabel, formatRoundStatus } from './roundDisplay';
 
 // Renders `CandidateDetails`' Pipeline tab as a horizontal, Gantt-style step
 // board (one column per round, done/current/upcoming styling) instead of the
@@ -77,15 +78,6 @@ const BUCKET_META: Record<
 
 const formatWhen = (value: string | null) =>
   value && dayjs(value).isValid() ? dayjs(value).format('MMM D, h:mm A') : null;
-
-const roundLabel = (round: CandidateInterviewRoundView) =>
-  round.stage_type === 'resume' ? 'Resume Screening' : round.round_name || 'Round';
-
-const statusLabel = (status: string) =>
-  status
-    .replace(/[_-]+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Unknown';
 
 type PipelineBoardProps = {
   rounds: CandidateInterviewRoundView[];
@@ -222,7 +214,7 @@ const PipelineBoard = ({
                   status={isResumeAwaitingAdvance ? 'info' : meta.badgeStatus}
                   className="w-fit"
                 >
-                  {isResumeAwaitingAdvance ? 'Score ready' : statusLabel(round.status)}
+                  {isResumeAwaitingAdvance ? 'Score ready' : formatRoundStatus(round.status)}
                 </Badge>
                 {when && <span className="text-xs text-neutral-500">{when}</span>}
                 {round.duration_minutes != null && (
