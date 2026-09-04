@@ -459,18 +459,18 @@ const JobDescriptionPanel = ({
         <span className="font-semibold text-gray-900">
           {aiJobDescriptionId && hasSavedDetails
             ? 'AI Job Description'
-            : 'Describe the role — AI fills the description'}
+            : 'Describe the role - AI fills the description'}
         </span>
       </div>
 
       {!aiJobDescriptionId ? (
         <div className="w-full p-6 bg-[#FAFAFA] border border-dashed border-[#E2E2E2] rounded-lg text-center text-gray-400 text-sm">
-          Save the job details on the left first — the AI description generates automatically and
+          Save the job details on the left first - the AI description generates automatically and
           appears here.
         </div>
       ) : !hasSavedDetails ? (
         <div className="w-full p-6 bg-[#FAFAFA] border border-dashed border-[#E2E2E2] rounded-lg text-center text-gray-400 text-sm">
-          Save the job details on the left first — the AI description generates automatically and
+          Save the job details on the left first - the AI description generates automatically and
           appears here.
         </div>
       ) : !previewDescription ? (
@@ -478,7 +478,7 @@ const JobDescriptionPanel = ({
           <p className="text-gray-400 text-sm mb-4">
             {jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING'
               ? 'Generating your AI job description from the fields you filled in…'
-              : "No description yet — generate one from the Job Info, Skills, and Education Preference you've filled in on the left."}
+              : "No description yet - generate one from the Job Info, Skills, and Education Preference you've filled in on the left."}
           </p>
           <Button
             className="text-white bg-button rounded-3xl px-6 py-2 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"

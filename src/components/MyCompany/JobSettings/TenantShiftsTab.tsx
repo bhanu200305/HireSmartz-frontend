@@ -13,18 +13,34 @@ type FormValues = {
   name: string;
   start_time: string;
   end_time: string;
-  duration_minutes: number | null;
 };
-const emptyForm: FormValues = { name: '', start_time: '', end_time: '', duration_minutes: null };
+const emptyForm: FormValues = { name: '', start_time: '', end_time: '' };
 const fields: CatalogField<FormValues>[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
-  { name: 'start_time', label: 'Start time (HH:MM, 24h)', type: 'text', required: true },
-  { name: 'end_time', label: 'End time (HH:MM, 24h)', type: 'text', required: true },
-  { name: 'duration_minutes', label: 'Duration (minutes, optional)', type: 'number' },
+  { name: 'start_time', label: 'Start time', type: 'time', required: true },
+  { name: 'end_time', label: 'End time', type: 'time', required: true },
 ];
 
+/** Minutes between two "HH:mm" times, wrapping past midnight when end is
+ * earlier than start (e.g. 22:00-06:00 is 480, not negative). Null if either
+ * side is unfilled. */
+const computeDurationMinutes = (startTime: string, endTime: string): number | null => {
+  if (!startTime || !endTime) return null;
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  if ([startHour, startMinute, endHour, endMinute].some(Number.isNaN)) return null;
+
+  const startTotal = startHour * 60 + startMinute;
+  const endTotal = endHour * 60 + endMinute;
+  const diff = endTotal - startTotal;
+  return diff > 0 ? diff : diff + 24 * 60;
+};
+
 /** GET/POST/PUT/DELETE /shifts — this organization's own configured
- * shifts. What a job's Shift dropdown on Job Details offers. */
+ * shifts. What a job's Shift dropdown on Job Details offers.
+ *
+ * `duration_minutes` is derived from start/end time rather than entered
+ * directly, to keep it from disagreeing with the times actually saved. */
 const TenantShiftsTab: React.FC = () => {
   const { data, isLoading } = useListShiftsQuery();
   const [create] = useCreateShiftMutation();
@@ -59,14 +75,13 @@ const TenantShiftsTab: React.FC = () => {
         name: item.name,
         start_time: item.start_time,
         end_time: item.end_time,
-        duration_minutes: item.duration_minutes,
       })}
       onCreate={(values) =>
         create({
           name: values.name.trim(),
           start_time: values.start_time.trim(),
           end_time: values.end_time.trim(),
-          duration_minutes: values.duration_minutes,
+          duration_minutes: computeDurationMinutes(values.start_time, values.end_time),
         }).unwrap()
       }
       onUpdate={(id, values) =>
@@ -75,7 +90,7 @@ const TenantShiftsTab: React.FC = () => {
           name: values.name.trim(),
           start_time: values.start_time.trim(),
           end_time: values.end_time.trim(),
-          duration_minutes: values.duration_minutes,
+          duration_minutes: computeDurationMinutes(values.start_time, values.end_time),
         }).unwrap()
       }
       onDelete={(item) => remove(item.id).unwrap()}

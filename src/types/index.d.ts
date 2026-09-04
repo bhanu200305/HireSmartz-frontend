@@ -431,6 +431,8 @@ export type Jobs = {
   jobTypeId?: string | null;
   hiringManagerIds?: string[];
   recruiterIds?: string[];
+  createdById?: string | null;
+  createdByName?: string;
 };
 
 export type OrgUser = {

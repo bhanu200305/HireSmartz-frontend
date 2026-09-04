@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Textarea, showToast } from '../../shared';
 import {
   useEnhanceJdMutation,
@@ -34,6 +34,22 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
     pollingInterval: 2000,
   });
   const isGenerating = jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING';
+  // JobDescriptionPanel's FAILED handling doesn't mount here, so show our own
+  // toast; track per-job id so switching jobs doesn't suppress a new failure.
+  const failedToastShownForJobRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      jobOpeningId &&
+      jdStatus?.status === 'FAILED' &&
+      failedToastShownForJobRef.current !== jobOpeningId
+    ) {
+      failedToastShownForJobRef.current = jobOpeningId;
+      showToast({
+        message: jdStatus.error_message || 'Failed to generate the job description.',
+        type: 'error',
+      });
+    }
+  }, [jobOpeningId, jdStatus?.status, jdStatus?.error_message]);
 
   if (!jobOpeningId) return null;
 
@@ -75,7 +91,7 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
             </button>
           </div>
           <p className="text-xs text-gray-500 mb-3">
-            Describe the role — AI drafts the job description from this, and from anything
+            Describe the role - AI drafts the job description from this, and from anything
             you&apos;ve already filled in below.
           </p>
           <Textarea

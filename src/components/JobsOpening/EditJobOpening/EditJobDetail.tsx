@@ -801,7 +801,7 @@ const EditJobDetail = () => {
       }
       if (appliedAnything) {
         showToast({
-          message: 'AI filled in some job details from your uploaded JD — review before saving.',
+          message: 'AI filled in some job details from your uploaded JD - review before saving.',
           type: 'success',
         });
       }
@@ -1590,14 +1590,14 @@ const EditJobDetail = () => {
         try {
           await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
           showToast({
-            message: 'Job details changed — regenerating the AI description to match…',
+            message: 'Job details changed - regenerating the AI description to match…',
             type: 'success',
           });
         } catch (enhanceError) {
           showToast({
             message: getJobErrorMessage(
               enhanceError,
-              'Job details saved, but the AI description could not be refreshed automatically — use Regenerate on the next step.'
+              'Job details saved, but the AI description could not be refreshed automatically - use Regenerate on the next step.'
             ),
             type: 'warning',
           });

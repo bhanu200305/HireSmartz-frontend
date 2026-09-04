@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import { Button, Search, Typography } from '..';
 import './jobsList.css';
 import {
@@ -270,6 +271,7 @@ const JobsOpening = () => {
           .map((userId) => userMap[userId])
           .filter(Boolean)
           .join(', ') || job.recruiter,
+      createdByName: job.createdById ? userMap[job.createdById] : undefined,
     }));
   }, [data?.data, orgDepartments, jobTypes, titleMap, orgUsers]);
 
@@ -976,14 +978,10 @@ const JobsOpening = () => {
                   <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
                     <TbBriefcase2 size={18} />
                   </span>
-                  <h2 className="text-xl font-bold text-neutral-900">Job Openings</h2>
+                  <h2 className="text-xl font-bold text-neutral-900 whitespace-nowrap">
+                    Job Openings
+                  </h2>
                 </div>
-                {jobStats && (
-                  <span className="text-neutral-500 text-sm">
-                    {jobStats.published_count} open{' '}
-                    {jobStats.published_count === 1 ? 'role' : 'roles'} across your company
-                  </span>
-                )}
               </div>
             )}
             <div className="flex space-x-4 items-center">
@@ -1007,7 +1005,7 @@ const JobsOpening = () => {
               </Tooltip>
               <Search
                 appname="jobs opening"
-                placeholder="Search job..."
+                placeholder="Search job"
                 onSearch={handleSearch}
                 allowClear
                 value={filters.text || ''}
@@ -1024,7 +1022,8 @@ const JobsOpening = () => {
                   onChange={handleStatusChange}
                   allowClear
                   className="w-full custom-select"
-                  popupClassName="rounded-3xl"
+                  popupClassName="rounded-3xl status-filter-dropdown"
+                  popupMatchSelectWidth={false}
                   variant="borderless"
                   value={
                     filters.isDraft
@@ -1046,7 +1045,7 @@ const JobsOpening = () => {
                   <Option value="Closed">Closed</Option>
                 </Select>
               </div>
-              <div className="cfp-dropdown-trigger w-40">
+              <div className="cfp-dropdown-trigger w-48 shrink-0">
                 <FilterSelectIcon />
                 <Select
                   placeholder="All Locations"
@@ -1054,6 +1053,7 @@ const JobsOpening = () => {
                   allowClear
                   className="w-full custom-select"
                   popupClassName="rounded-3xl"
+                  popupMatchSelectWidth={false}
                   variant="borderless"
                   value={filters.locationId}
                 >
@@ -1089,190 +1089,214 @@ const JobsOpening = () => {
                 squashing them, same pattern used for MasterTable and
                 CandidatesListing. */}
             <div className="overflow-x-auto">
-            <div className="min-w-[760px]">
-            <Row gutter={[16, 16]} className="bg-neutral-50 px-2 py-3">
-              <COL
-                sortable
-                sortKey="jobTitleName"
-                currentSortKey={currentSortKey}
-                onSort={handleSort}
-                span={5}
-                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-              >
-                JOB TITLE
-              </COL>
-              <COL
-                sortable
-                sortKey="locationName"
-                currentSortKey={currentSortKey}
-                onSort={handleSort}
-                span={4}
-                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-              >
-                LOCATION
-              </COL>
-              <COL
-                sortable
-                sortKey="candidateCount"
-                currentSortKey={currentSortKey}
-                onSort={handleSort}
-                span={3}
-                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-              >
-                CANDIDATES
-              </COL>
-              <Col
-                span={3}
-                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-              >
-                INTERVIEWED
-              </Col>
-              <Col
-                span={3}
-                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-              >
-                SELECTED
-              </Col>
-              <Col
-                span={2}
-                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-              >
-                NOT SELECTED
-              </Col>
-              <Col
-                span={2}
-                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-              >
-                STATUS
-              </Col>
-              <Col
-                span={2}
-                className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-              >
-                ACTIONS
-              </Col>
-            </Row>
-            <div className="divide-y divide-neutral-100">
-              {listedJobs.map((jobs) => (
-                <div
-                  key={jobs.jobOpeningId}
-                  className="px-2 py-3 hover:bg-neutral-50 transition-colors"
-                >
-                  <Row gutter={[16, 16]} align="middle">
-                    <Col span={5}>
-                      <div className="flex items-center">
-                        <Link
-                          to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
-                          className="font-semibold text-primary underline hover:text-primary roboto-font"
-                        >
-                          <span className="text-primary capitalize">
-                            {renderHighlightedField(jobs.jobTitleName, 'jobTitleName')}
-                          </span>
-                        </Link>
-                        <span
-                          className="ml-2 cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleCollapse(jobs.jobOpeningId.toString());
-                          }}
-                        >
-                          {collapsedUsers.includes(jobs.jobOpeningId.toString()) ? (
-                            <UpOutlined />
-                          ) : (
-                            <DownOutlined />
+              <div className="min-w-[760px]">
+                <Row gutter={[16, 16]} className="bg-neutral-50 px-2 py-3">
+                  <COL
+                    sortable
+                    sortKey="jobTitleName"
+                    currentSortKey={currentSortKey}
+                    onSort={handleSort}
+                    span={5}
+                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                  >
+                    JOB TITLE
+                  </COL>
+                  <COL
+                    sortable
+                    sortKey="locationName"
+                    currentSortKey={currentSortKey}
+                    onSort={handleSort}
+                    span={4}
+                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                  >
+                    LOCATION
+                  </COL>
+                  <COL
+                    sortable
+                    sortKey="candidateCount"
+                    currentSortKey={currentSortKey}
+                    onSort={handleSort}
+                    span={3}
+                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                  >
+                    CANDIDATES
+                  </COL>
+                  <Col
+                    span={3}
+                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                  >
+                    INTERVIEWED
+                  </Col>
+                  <Col
+                    span={3}
+                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                  >
+                    SELECTED
+                  </Col>
+                  <Col
+                    span={2}
+                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                  >
+                    NOT SELECTED
+                  </Col>
+                  <Col
+                    span={2}
+                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                  >
+                    STATUS
+                  </Col>
+                  <Col
+                    span={2}
+                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                  >
+                    ACTIONS
+                  </Col>
+                </Row>
+                <div className="divide-y divide-neutral-100">
+                  {listedJobs.map((jobs) => (
+                    <div
+                      key={jobs.jobOpeningId}
+                      className="px-2 py-3 hover:bg-neutral-50 transition-colors"
+                    >
+                      <Row gutter={[16, 16]} align="middle">
+                        <Col span={5}>
+                          <div className="flex items-center">
+                            <Link
+                              to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
+                              className="font-semibold text-primary underline hover:text-primary roboto-font"
+                            >
+                              <span className="text-primary capitalize">
+                                {renderHighlightedField(jobs.jobTitleName, 'jobTitleName')}
+                              </span>
+                            </Link>
+                            <span
+                              className="ml-2 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCollapse(jobs.jobOpeningId.toString());
+                              }}
+                            >
+                              {collapsedUsers.includes(jobs.jobOpeningId.toString()) ? (
+                                <UpOutlined />
+                              ) : (
+                                <DownOutlined />
+                              )}
+                            </span>
+                          </div>
+                          {collapsedUsers.includes(jobs.jobOpeningId.toString()) && (
+                            <div className="mt-1">
+                              <p className="inline-flex items-center gap-1">
+                                <span className="font-medium roboto-font">Job ID: </span>{' '}
+                                <span className="roboto-font">
+                                  {renderHighlightedField(jobs.jobProfileCode, 'jobProfileCode')}
+                                </span>
+                              </p>
+                              <p>
+                                <span className="font-medium roboto-font">Department: </span>{' '}
+                                <span className="roboto-font">
+                                  {renderHighlightedField(jobs.departmentName, 'departmentName')}
+                                </span>
+                              </p>
+                              <p>
+                                <span className="font-medium roboto-font">Job Type: </span>{' '}
+                                <span className="roboto-font">
+                                  {renderHighlightedField(jobs.jobTypeName, 'jobTypeName')}
+                                </span>
+                              </p>
+                              <p>
+                                <span className="font-medium roboto-font">Job Openings: </span>{' '}
+                                <span className="roboto-font">
+                                  {renderHighlightedField(jobs.openings?.toString(), 'openings')}
+                                </span>
+                              </p>
+                              <p>
+                                <span className="font-medium roboto-font">Created By: </span>{' '}
+                                <span className="roboto-font">
+                                  {renderHighlightedField(jobs.createdByName, 'createdByName')}
+                                </span>
+                              </p>
+                              <p>
+                                <span className="font-medium roboto-font">Created At: </span>{' '}
+                                <span className="roboto-font">
+                                  {renderHighlightedField(
+                                    jobs.jobOpeningCreatedAt &&
+                                      dayjs(jobs.jobOpeningCreatedAt).isValid()
+                                      ? dayjs(jobs.jobOpeningCreatedAt).format('MMM DD, YYYY')
+                                      : '',
+                                    'jobOpeningCreatedAt'
+                                  )}
+                                </span>
+                              </p>
+                            </div>
                           )}
-                        </span>
-                      </div>
-                      {collapsedUsers.includes(jobs.jobOpeningId.toString()) && (
-                        <div className="mt-1">
-                          <p className="inline-flex items-center gap-1">
-                            <span className="font-medium roboto-font">Job ID: </span>{' '}
-                            <span className="roboto-font">
-                              {renderHighlightedField(jobs.jobProfileCode, 'jobProfileCode')}
-                            </span>
-                          </p>
-                          <p>
-                            <span className="font-medium roboto-font">Department: </span>{' '}
-                            <span className="roboto-font">
-                              {renderHighlightedField(jobs.departmentName, 'departmentName')}
-                            </span>
-                          </p>
-                          <p>
-                            <span className="font-medium roboto-font">Job Type: </span>{' '}
-                            <span className="roboto-font">
-                              {renderHighlightedField(jobs.jobTypeName, 'jobTypeName')}
-                            </span>
-                          </p>
-                          <p>
-                            <span className="font-medium roboto-font">Job Openings: </span>{' '}
-                            <span className="roboto-font">
-                              {renderHighlightedField(jobs.openings?.toString(), 'openings')}
-                            </span>
-                          </p>
-                        </div>
-                      )}
-                    </Col>
-                    <Col span={4}>
-                      <span className="roboto-font">
-                        {renderHighlightedField(jobs.location?.name ?? '-', 'location.name')}
-                      </span>
-                    </Col>
-
-                    <Col span={3}>
-                      <div className="flex items-center gap-4">
-                        <Link
-                          to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
-                          className="text-primary hover:underline roboto-font"
-                        >
-                          <span className="text-primary font-semibold">
-                            {renderHighlightedField(jobs.candidateCount ?? 0, 'candidateCount')}
+                        </Col>
+                        <Col span={4}>
+                          <span className="roboto-font">
+                            {renderHighlightedField(jobs.location?.name ?? '-', 'location.name')}
                           </span>
-                        </Link>
-                        {(jobs.newCandidateCount ?? 0) > 0 && (
-                          <Link
-                            to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10&isNew=true`}
-                            className="text-xs font-semibold text-brand-500 border border-brand-500 rounded-full px-2 py-0.5 hover:bg-brand-50 whitespace-nowrap"
-                          >
-                            {jobs.newCandidateCount} New
-                          </Link>
-                        )}
-                      </div>
-                    </Col>
-                    <Col span={3}>
-                      <p className="roboto-font">
-                        {renderHighlightedField(
-                          jobs.interviewedCandidateCount ?? 0,
-                          'interviewedCandidateCount'
-                        )}
-                      </p>
-                    </Col>
-                    <Col span={3}>
-                      <p className="roboto-font">
-                        {renderHighlightedField(jobs?.selectedCount?.toString(), 'selectedCount')}
-                      </p>
-                    </Col>
-                    <Col span={2}>
-                      <p className="roboto-font">
-                        {renderHighlightedField(jobs?.rejectedCount?.toString(), 'rejectedCount')}
-                      </p>
-                    </Col>
-                    <Col span={2}>
-                      {jobs.isDraft ? (
-                        <Badge status="neutral">Draft</Badge>
-                      ) : jobs.isClosed ? (
-                        <Badge status="danger">Closed</Badge>
-                      ) : (
-                        <Badge status="success">Active</Badge>
-                      )}
-                    </Col>
-                    <Col span={2} className="flex items-center justify-center">
-                      {renderActions(jobs)}
-                    </Col>
-                  </Row>
+                        </Col>
+
+                        <Col span={3}>
+                          <div className="flex items-center gap-4">
+                            <Link
+                              to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
+                              className="text-primary hover:underline roboto-font"
+                            >
+                              <span className="text-primary font-semibold">
+                                {renderHighlightedField(jobs.candidateCount ?? 0, 'candidateCount')}
+                              </span>
+                            </Link>
+                            {(jobs.newCandidateCount ?? 0) > 0 && (
+                              <Link
+                                to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10&isNew=true`}
+                                className="text-xs font-semibold text-brand-500 border border-brand-500 rounded-full px-2 py-0.5 hover:bg-brand-50 whitespace-nowrap"
+                              >
+                                {jobs.newCandidateCount} New
+                              </Link>
+                            )}
+                          </div>
+                        </Col>
+                        <Col span={3}>
+                          <p className="roboto-font">
+                            {renderHighlightedField(
+                              jobs.interviewedCandidateCount ?? 0,
+                              'interviewedCandidateCount'
+                            )}
+                          </p>
+                        </Col>
+                        <Col span={3}>
+                          <p className="roboto-font">
+                            {renderHighlightedField(
+                              jobs?.selectedCount?.toString(),
+                              'selectedCount'
+                            )}
+                          </p>
+                        </Col>
+                        <Col span={2}>
+                          <p className="roboto-font">
+                            {renderHighlightedField(
+                              jobs?.rejectedCount?.toString(),
+                              'rejectedCount'
+                            )}
+                          </p>
+                        </Col>
+                        <Col span={2}>
+                          {jobs.isDraft ? (
+                            <Badge status="neutral">Draft</Badge>
+                          ) : jobs.isClosed ? (
+                            <Badge status="danger">Closed</Badge>
+                          ) : (
+                            <Badge status="success">Active</Badge>
+                          )}
+                        </Col>
+                        <Col span={2} className="flex items-center justify-center">
+                          {renderActions(jobs)}
+                        </Col>
+                      </Row>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            </div>
+              </div>
             </div>
           </div>
           <MasterPagination

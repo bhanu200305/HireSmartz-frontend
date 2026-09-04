@@ -381,7 +381,7 @@ const ViewJobDetails = () => {
                   fontWeight: 600,
                   fontSize: '13px',
                 }}
-                value={selectedLanguageNames.length ? selectedLanguageNames.join(', ') : '—'}
+                value={selectedLanguageNames.length ? selectedLanguageNames.join(', ') : '-'}
                 disabled
               />
             </Form.Item>
