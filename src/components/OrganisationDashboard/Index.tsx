@@ -19,6 +19,7 @@ import { RootState } from '../../redux/provider/store';
 import {
   OrgUser,
   useDeactivateUserMutation,
+  useReactivateUserMutation,
   useListUsersQuery,
 } from '../../api/organization-service/Users/users';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
@@ -41,15 +42,17 @@ const SEARCH_PAGE_SIZE = 200;
  * box is a client-side name/email filter over a 200-row page fetched for
  * that purpose — see SEARCH_PAGE_SIZE above.
  *
- * The Status column's Switch is one-directional: it calls the real
- * `DELETE /v1/users/{id}` (a reversible suspension, not a hard delete — see
- * that route's own docstring) to turn an active user off, but there is no
- * tenant-scoped `POST .../reactivate` here to turn one back on — that route
- * only exists on organization-service's platform router, for a CareerForce
- * Pro operator acting on a tenant's behalf (see UsersPanel.tsx, Super
- * Admin's mirror of this screen, which has both directions). So a
- * deactivated row's switch is disabled with a tooltip explaining that,
- * rather than silently doing nothing or pretending to work.
+ * The Status column's Switch is now two-directional: `DELETE /v1/users/{id}`
+ * (behind a confirmation — losing access is the risky direction) turns an
+ * active user off, and `POST /v1/users/{id}/reactivate` (no confirmation —
+ * restoring access is the low-risk direction, same reasoning as
+ * UsersPanel.tsx's identical Super-Admin-side switch) turns one back on.
+ * The tenant-scoped reactivate route used to not exist at all — only
+ * organization-service's platform router had it, for a CareerForce Pro
+ * operator acting on a tenant's behalf — which meant a Company Admin who
+ * deactivated someone by mistake, or wanted to re-add them, had no way
+ * back: re-adding via "Add user" 409s with "already exists" (deactivating
+ * never frees the email, only suspends it).
  *
  * A section rendered inside the Users page (pages/OrganisationUserPage),
  * alongside CfpUsers — no MainLayout/page chrome of its own, the composing
@@ -72,6 +75,7 @@ const OrganisationUserTable = () => {
     { skip: !tenantId }
   );
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivateUserMutation();
+  const [reactivateUser, { isLoading: isReactivating }] = useReactivateUserMutation();
 
   useEffect(() => {
     if (error) {
@@ -88,6 +92,19 @@ const OrganisationUserTable = () => {
       showToast({ message: getOrgErrorMessage(err, 'Failed to deactivate user.'), type: 'error' });
     } finally {
       setUserToDeactivate(null);
+    }
+  };
+
+  // No confirmation modal, unlike deactivate — restoring access is the
+  // low-risk direction and the whole reason this exists: deactivating never
+  // freed the user's email, so re-adding them via "Add user" 409s with
+  // "already exists." This is the actual way back.
+  const handleReactivate = async (user: OrgUser) => {
+    try {
+      await reactivateUser(user.user_id).unwrap();
+      showToast({ message: `${user.full_name} was reactivated.`, type: 'success' });
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to reactivate user.'), type: 'error' });
     }
   };
 
@@ -148,20 +165,16 @@ const OrganisationUserTable = () => {
                 ? "You don't have permission to change a user's status."
                 : user.is_active
                   ? 'Deactivate this user'
-                  : // Deactivating is self-service (DELETE /v1/users/{id}), but
-                    // reactivating a user isn't exposed on this tenant-scoped
-                    // API yet — only a CareerForce Pro platform operator can
-                    // restore access (a separate, platform-only endpoint), so
-                    // this switch can only ever be turned off from here, never
-                    // back on.
-                    'Reactivating a user isn’t available from this screen yet — contact CareerForce Pro support.'
+                  : 'Reactivate this user'
             }
           >
             <Switch
               size="small"
               checked={user.is_active}
-              disabled={!canArchive || !user.is_active}
-              onChange={() => setUserToDeactivate(user)}
+              disabled={!canArchive || isReactivating}
+              onChange={() =>
+                user.is_active ? setUserToDeactivate(user) : void handleReactivate(user)
+              }
             />
           </Tooltip>
           <Badge status={user.is_active ? 'success' : 'neutral'}>

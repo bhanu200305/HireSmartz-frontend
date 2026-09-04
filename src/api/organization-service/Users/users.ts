@@ -126,12 +126,24 @@ const extendedApi = orgApi.injectEndpoints({
       invalidatesTags: ['OrgUsers'],
     }),
     // Reversible, not a permanent delete — the row and their role history
-    // survive; reactivation isn't exposed over the API yet, same known gap
-    // as everywhere else "not available yet" is used deliberately.
+    // survive; `reactivateUser` below is the way back.
     deactivateUser: build.mutation<void, string>({
       query: (userId) => ({
         url: `/v1/users/${userId}`,
         method: 'DELETE',
+      }),
+      invalidatesTags: ['OrgUsers'],
+    }),
+    // The undo side of deactivateUser above — POST /v1/users/{id}/reactivate.
+    // Was platform-only (only a Super Admin acting on a tenant's behalf could
+    // do this) until organization-service grew the tenant-self version;
+    // without it, re-adding the same person via "Add user" 409'd with
+    // "already exists" — deactivating never frees the email, only suspends
+    // it — and a Company Admin had no way back for their own team.
+    reactivateUser: build.mutation<OrgUser, string>({
+      query: (userId) => ({
+        url: `/v1/users/${userId}/reactivate`,
+        method: 'POST',
       }),
       invalidatesTags: ['OrgUsers'],
     }),
@@ -223,6 +235,7 @@ export const {
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeactivateUserMutation,
+  useReactivateUserMutation,
   useListUserLocationsQuery,
   useAttachUserLocationMutation,
   useDetachUserLocationMutation,
