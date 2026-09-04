@@ -3,12 +3,18 @@ import { Rate } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import { Button, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
-import { useRecordRecruiterRoundScoreMutation } from '../../../../api/candidate-service/Candidates/scoring';
+import {
+  useRecordRecruiterRoundScoreMutation,
+  useDeleteRecruiterRoundScoreMutation,
+} from '../../../../api/candidate-service/Candidates/scoring';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 
 // New — `POST /candidates/{id}/interview-scores/{score_id}/recruiter-score`.
 // Unlike the resume review, both `recruiter_score` and `reason` are
 // REQUIRED here (API_CONTRACT.md's "Resume Review & Scoring" section).
+// "Remove score" (DELETE, same route) mirrors ResumeReviewModal's own
+// remove affordance — only shown once there's actually a score on file to
+// remove, same author-only rule as the resume review's delete.
 
 type RecruiterRoundScoreModalProps = {
   open: boolean;
@@ -32,6 +38,7 @@ const RecruiterRoundScoreModal = ({
   const [score, setScore] = useState(0);
   const [reason, setReason] = useState('');
   const [recordScore, { isLoading }] = useRecordRecruiterRoundScoreMutation();
+  const [deleteScore, { isLoading: isDeleting }] = useDeleteRecruiterRoundScoreMutation();
 
   useEffect(() => {
     if (open) {
@@ -55,6 +62,16 @@ const RecruiterRoundScoreModal = ({
       onClose();
     } catch (e) {
       showToast({ message: getCandidateErrorMessage(e, 'Could not save score'), type: 'error' });
+    }
+  };
+
+  const handleRemove = async () => {
+    try {
+      await deleteScore({ candidateId, scoreId }).unwrap();
+      showToast({ message: 'Round score removed.', type: 'success' });
+      onClose();
+    } catch (e) {
+      showToast({ message: getCandidateErrorMessage(e, 'Could not remove score'), type: 'error' });
     }
   };
 
@@ -89,11 +106,21 @@ const RecruiterRoundScoreModal = ({
         <Button
           type="button"
           onClick={() => void handleSave()}
-          disabled={isLoading}
+          disabled={isLoading || isDeleting}
           className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
         >
           {isLoading ? 'SAVING…' : 'SAVE SCORE'}
         </Button>
+        {currentScore !== null && (
+          <button
+            type="button"
+            onClick={() => void handleRemove()}
+            disabled={isLoading || isDeleting}
+            className="text-xs font-semibold text-red-500 hover:underline disabled:opacity-50"
+          >
+            {isDeleting ? 'Removing…' : 'Remove score'}
+          </button>
+        )}
       </div>
     </AntdCommonModal>
   );

@@ -54,16 +54,16 @@ export const buildJobNotesTimeline = (job: any): CandidateNoteItem[] => {
           note?.role ??
           note?.user?.role ??
           note?.author?.role,
-        authorId:
-          Number(
+        authorId: (() => {
+          const id =
             note?.authorId ??
-              note?.createdById ??
-              note?.createdBy ??
-              note?.userId ??
-              note?.user?.id ??
-              note?.author?.id ??
-              0
-          ) || undefined,
+            note?.createdById ??
+            note?.createdBy ??
+            note?.userId ??
+            note?.user?.id ??
+            note?.author?.id;
+          return id != null ? String(id) : undefined;
+        })(),
         contextLabel: String(
           note?.contextLabel ?? note?.context ?? note?.code ?? note?.type ?? 'AS'
         ),

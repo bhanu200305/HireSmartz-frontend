@@ -37,7 +37,7 @@ const App = () => {
 
   return (
     <div className="w-full min-h-screen flex-col items-center justify-center">
-      <ToastContainer />
+      <ToastContainer style={{ zIndex: 99999 }} />
       {!isPublicPage && <NotificationStreamListener />}
       <Routes>{renderRoutes(AllRoutes)}</Routes>
       <DevRoleSwitcher />

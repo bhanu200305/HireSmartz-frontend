@@ -93,6 +93,33 @@ const Login = () => {
     }
   }, []);
 
+  // AuthService.ts's forceReauthentication() lands here via a hard
+  // window.location.href redirect (not a react-router navigate), so it has
+  // no way to hand this page a location.state — it tags the reason on the
+  // URL instead. Reads it once on mount and strips it the same way the
+  // successMessage effect above strips its own state, so a refresh of
+  // /login doesn't keep re-showing a stale toast.
+  const hasShownReasonToastRef = useRef(false);
+  useEffect(() => {
+    if (hasShownReasonToastRef.current) return;
+    const reason = new URLSearchParams(location.search).get('reason');
+    if (!reason) return;
+    hasShownReasonToastRef.current = true;
+
+    if (reason === 'rate_limited') {
+      showToast({
+        message: 'Too many attempts. Please wait a few minutes and try again.',
+        type: 'error',
+      });
+    } else if (reason === 'invalid_session') {
+      showToast({
+        message: 'Your session is no longer valid. Please log in again.',
+        type: 'error',
+      });
+    }
+    navigate(location.pathname, { replace: true, state: location.state ?? {} });
+  }, []);
+
   const [localState, setLocalState] = useReducer(
     (prevState, newState) => ({ ...prevState, ...newState }),
     {
@@ -564,8 +591,10 @@ const Login = () => {
 
               <Input
                 name="email"
+                type="email"
                 autoFocus
                 autoComplete="email"
+                noAutoCapitalize
                 error={errors.email}
                 value={email}
                 onChange={onHandleChange}
@@ -576,6 +605,7 @@ const Login = () => {
 
               <Input
                 type={showPassword ? 'text' : 'password'}
+                noAutoCapitalize
                 onChange={onHandleChange}
                 onKeyDown={handleKeyDown}
                 name="password"

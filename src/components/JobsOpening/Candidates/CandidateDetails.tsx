@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Rate, Tabs, Tooltip } from 'antd';
 import dayjs from 'dayjs';
-import { LuMail, LuSquarePen, LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
+import { LuMail, LuPencil, LuSquarePen, LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
 import { IoChatbubbleEllipses } from 'react-icons/io5';
 import { CommonCard, Button, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
@@ -36,6 +36,8 @@ import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import ResumeReviewModal from './Modal/ResumeReviewModal';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import PipelineBoard from './PipelineBoard';
+import StatusHistoryTab from './StatusHistoryTab';
+import EditCandidateModal from './Modal/EditCandidateModal';
 
 // Rewritten against the real candidate-service contract — replaces the
 // previous ~2050-line version, which was built entirely around a legacy
@@ -67,7 +69,7 @@ import PipelineBoard from './PipelineBoard';
 //   call detail) — that's interview-service's data, not yet surfaced
 //   through candidate-service.
 
-type TabKey = 'pipeline' | 'assessment' | 'resume' | 'summary' | 'sms';
+type TabKey = 'pipeline' | 'assessment' | 'resume' | 'summary' | 'sms' | 'history';
 
 const candidateHeaderIconCircle =
   'inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--primary)] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 disabled:opacity-40';
@@ -95,6 +97,7 @@ const CandidateDetails = () => {
   const [isSmsOpen, setIsSmsOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isResumeReviewOpen, setIsResumeReviewOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedRound, setSelectedRound] = useState<CandidateInterviewRoundView | null>(null);
   const [isCreatingBooking, setIsCreatingBooking] = useState(false);
   const [scoreModalFor, setScoreModalFor] = useState<{
@@ -188,6 +191,19 @@ const CandidateDetails = () => {
             <h2 className="text-2xl font-bold">{candidateDisplayName(candidate)}</h2>
 
             <div className="flex items-center gap-3">
+              <Tooltip title="Edit candidate details">
+                <span className="inline-flex">
+                  <button
+                    type="button"
+                    className={candidateHeaderIconCircle}
+                    disabled={!candidate}
+                    aria-label="Edit candidate"
+                    onClick={() => setIsEditOpen(true)}
+                  >
+                    <LuPencil size={18} strokeWidth={2} aria-hidden />
+                  </button>
+                </span>
+              </Tooltip>
               <Tooltip
                 title={candidate?.email_id ? `Email ${candidate.email_id}` : 'No email on file'}
               >
@@ -309,6 +325,7 @@ const CandidateDetails = () => {
                 { key: 'resume', label: 'Resume' },
                 { key: 'summary', label: 'Interview Summary' },
                 { key: 'sms', label: 'SMS Communication' },
+                { key: 'history', label: 'Status History' },
               ]}
             />
           )}
@@ -469,6 +486,7 @@ const CandidateDetails = () => {
               rounds={rounds}
               scores={scores}
               resumeScore={candidate?.resume_score ?? null}
+              candidateId={candidateId ?? ''}
               onRoundClick={(round) => {
                 setSelectedRound(round);
               }}
@@ -561,8 +579,10 @@ const CandidateDetails = () => {
                       <div className="mt-4 h-28 rounded-lg bg-gradient-to-b from-primary-50 to-white px-2 pt-2">
                         <div className="flex h-full items-start gap-2 border-b border-gray-100">
                           {rounds.map((round, index) => {
-                            const score = scores.find((item) => item.round_id === round.round_id);
-                            const value = score?.recruiter_score ?? score?.ai_score;
+                            const score = scores.find(
+                              (item) => item.candidate_interview_round_id === round.id
+                            );
+                            const value = score?.recruiter_score ?? score?.score;
                             return (
                               <div
                                 key={round.id ?? `score-${index}`}
@@ -604,9 +624,11 @@ const CandidateDetails = () => {
                         </thead>
                         <tbody>
                           {rounds.map((round, index) => {
-                            const score = scores.find((item) => item.round_id === round.round_id);
+                            const score = scores.find(
+                              (item) => item.candidate_interview_round_id === round.id
+                            );
                             const roundName = round.round_name || 'Interview Round';
-                            const finalScore = score?.recruiter_score ?? score?.ai_score;
+                            const finalScore = score?.recruiter_score ?? score?.score;
                             return (
                               <tr
                                 key={round.id ?? `summary-${index}`}
@@ -614,7 +636,7 @@ const CandidateDetails = () => {
                               >
                                 <td className="px-2 py-3 font-medium text-gray-800">{roundName}</td>
                                 <td className="px-2 py-3 text-gray-500">
-                                  {score?.scored_by ?? 'Not assigned'}
+                                  {score?.recruiter_scored_by ?? 'Not assigned'}
                                 </td>
                                 <td className="px-2 py-3 text-gray-700">
                                   {finalScore == null
@@ -693,6 +715,8 @@ const CandidateDetails = () => {
               </div>
             </CommonCard>
           )}
+
+          {activeTab === 'history' && candidateId && <StatusHistoryTab candidateId={candidateId} />}
         </div>
       </div>
 
@@ -716,6 +740,11 @@ const CandidateDetails = () => {
             open={isSmsOpen}
             onClose={() => setIsSmsOpen(false)}
             candidates={[candidate]}
+          />
+          <EditCandidateModal
+            open={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            candidate={candidate}
           />
         </>
       )}

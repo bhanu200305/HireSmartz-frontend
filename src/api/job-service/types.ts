@@ -72,6 +72,7 @@ export type JobLocationPayload = {
   state?: string | null;
   country?: string | null;
   zip?: string | null;
+  location_code?: string | null;
 };
 
 export type JobSkillPayload = {
@@ -87,6 +88,7 @@ export type JobLocationResponse = {
   state: string | null;
   country: string | null;
   zip: string | null;
+  location_code: string | null;
 };
 
 export type JobSkillResponse = {
@@ -321,6 +323,8 @@ export type JobSummaryResponse = {
   is_draft: boolean;
   is_published: boolean;
   is_closed: boolean;
+  created_by: string | null;
+  created_at: string;
   candidate_count: number;
   interviewed_count: number;
   selected_count: number;
@@ -402,6 +406,20 @@ export type JobMode = {
   job_mode_id: string;
   name: string;
   description: string | null;
+};
+
+/** POST/PUT /api/v1/job-modes row — what a job's `mode_id` references. */
+export type OrganizationJobMode = {
+  id: string;
+  name: string;
+  description?: string | null;
+};
+
+/** POST/PUT /api/v1/job-closure-reasons row — what a job closure's `closure_reason_id` references. */
+export type OrganizationClosureReason = {
+  id: string;
+  reason: string;
+  description?: string | null;
 };
 
 /** GET /api/v1/master/languages row — what a job's `language_ids` pick from. */

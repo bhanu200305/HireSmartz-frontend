@@ -47,24 +47,33 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
 
     generateJobQuestions: build.mutation<
       { generation_status?: 'GENERATING' },
-      { jobOpeningId: string; question_count: number }
+      { jobOpeningId: string; question_count: number; interview_round_id?: string | null }
     >({
-      query: ({ jobOpeningId, question_count }) => ({
+      query: ({ jobOpeningId, question_count, interview_round_id }) => ({
         url: `/job-openings/${jobOpeningId}/questions/generate`,
         method: 'POST',
-        body: { question_count },
+        body: { question_count, interview_round_id: interview_round_id ?? null },
       }),
       invalidatesTags: (_r, _e, { jobOpeningId }) => [{ type: 'JobQuestions', id: jobOpeningId }],
     }),
 
     regenerateJobQuestions: build.mutation<
       { generation_status?: 'GENERATING' },
-      { jobOpeningId: string; question_count: number; instruction?: string | null }
+      {
+        jobOpeningId: string;
+        question_count: number;
+        instruction?: string | null;
+        interview_round_id?: string | null;
+      }
     >({
-      query: ({ jobOpeningId, question_count, instruction }) => ({
+      query: ({ jobOpeningId, question_count, instruction, interview_round_id }) => ({
         url: `/job-openings/${jobOpeningId}/questions/regenerate`,
         method: 'POST',
-        body: { question_count, instruction: instruction ?? null },
+        body: {
+          question_count,
+          instruction: instruction ?? null,
+          interview_round_id: interview_round_id ?? null,
+        },
       }),
       invalidatesTags: (_r, _e, { jobOpeningId }) => [{ type: 'JobQuestions', id: jobOpeningId }],
     }),
@@ -76,15 +85,16 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
         failed_rows: FailedQuestionRowResponse[];
         skipped_duplicate_rows: SkippedDuplicateRowResponse[];
       },
-      { jobOpeningId: string; file: File }
+      { jobOpeningId: string; file: File; interview_round_id?: string | null }
     >({
-      query: ({ jobOpeningId, file }) => {
+      query: ({ jobOpeningId, file, interview_round_id }) => {
         const formData = new FormData();
         formData.append('file', file);
         return {
           url: `/job-openings/${jobOpeningId}/questions/bulk-import`,
           method: 'POST',
           body: formData,
+          params: interview_round_id ? { interview_round_id } : undefined,
         };
       },
       invalidatesTags: (_r, _e, { jobOpeningId }) => [{ type: 'JobQuestions', id: jobOpeningId }],

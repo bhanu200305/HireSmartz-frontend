@@ -161,6 +161,7 @@ export const mapDetailsToJobDetailsState = (
     minExperience: details.min_experience_req != null ? Number(details.min_experience_req) : null,
     maxExperience: details.max_experience_req != null ? Number(details.max_experience_req) : null,
     openDate: details.job_open_date ?? '',
+    closeDate: details.job_close_date ?? '',
     hiringManagers: (details.hiring_manager_ids ?? []) as unknown as number[],
     recruiters: (details.recruiter_ids ?? []) as unknown as number[],
     educationPreference: details.education_preference_id

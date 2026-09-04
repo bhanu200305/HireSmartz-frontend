@@ -473,6 +473,15 @@ const Header = () => {
   })();
 
   const showGlobal = isSearchFocused && !dropdownOpen;
+
+  // On the self-service profile / change-password screens the sidebar is
+  // already hidden (see MainLayout's hideNavbarPaths) and the page itself is
+  // the user's own profile — the avatar + "Welcome <name>" dropdown up here
+  // (with its own mini profile + company card) just repeats what the page
+  // below already shows. Hide that one cluster on those routes; the rest of
+  // the header (search, categories, location, notifications) stays.
+  const SELF_PROFILE_PATHS = ['/profile', '/change-password'];
+  const isSelfProfilePage = SELF_PROFILE_PATHS.includes(location.pathname);
   const isOrgAdmin =
     role?.name?.trim().toLowerCase() === 'super admin' &&
     (role?.type?.toLowerCase() === 'owner' || role?.type?.toLowerCase() === 'organization');
@@ -636,7 +645,7 @@ const Header = () => {
 
           <NotificationBell disabled={!canShowNotificationBell} />
 
-          {userData && (
+          {userData && !isSelfProfilePage && (
             <div className="flex items-center gap-2">
               <div onClick={handleProfileClick} className="cursor-pointer">
                 {userData?.profilePicture ? (
@@ -679,9 +688,10 @@ const Header = () => {
                     },
                   ],
                 }}
-                // The menu items/onClick handlers above are untouched — this
-                // only adds a richer header above them (user + company
-                // branding) when the dropdown opens.
+                // The trigger beside this already shows the avatar and
+                // "Welcome <first name>", so the dropdown doesn't repeat the
+                // user's name at all — it adds only the company context the
+                // trigger can't show, on one compact line above the menu.
                 dropdownRender={(menu) => (
                   <div
                     className="rounded-xl overflow-hidden"
@@ -690,34 +700,10 @@ const Header = () => {
                       boxShadow: '0 8px 24px rgba(16, 26, 58, 0.12)',
                     }}
                   >
-                    <div className="flex items-center gap-3 p-4">
-                      {userData?.profilePicture ? (
-                        <Avatar size={48} src={userData.profilePicture} alt={userData.firstName}>
-                          <span>{userData?.firstName.charAt(0).toUpperCase()}</span>
-                        </Avatar>
-                      ) : (
-                        <Avatar size={48} style={{ backgroundColor: 'var(--primary)' }}>
-                          {userData?.firstName?.charAt(0).toUpperCase()}
-                        </Avatar>
-                      )}
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-semibold text-neutral-900 truncate">
-                          {makeFirstLetterUpperCase(userData?.firstName)}
-                          {userData?.lastName ? ` ${userData.lastName}` : ''}
-                        </span>
-                        {userData?.roleName && (
-                          <span className="text-xs text-neutral-500 truncate">
-                            {userData.roleName}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
                     {tenantId && tenantProfile && (
                       <>
-                        <div className="border-t" style={{ borderColor: 'var(--border)' }} />
-                        <div className="flex items-center gap-3 px-4 py-3">
-                          <div className="relative w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="flex items-center gap-2 px-4 pt-3 pb-2 min-w-0">
+                          <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden shrink-0">
                             {tenantProfile.logo_url ? (
                               <img
                                 src={tenantProfile.logo_url}
@@ -725,19 +711,18 @@ const Header = () => {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <span className="text-xs font-semibold text-gray-500">
+                              <span className="text-[10px] font-semibold text-gray-500">
                                 {tenantProfile.company_name?.charAt(0).toUpperCase()}
                               </span>
                             )}
-                          </div>
-                          <span className="text-sm text-neutral-700 truncate">
+                          </span>
+                          <span className="text-sm font-medium text-neutral-800 truncate">
                             {tenantProfile.company_name}
                           </span>
                         </div>
+                        <div className="border-t" style={{ borderColor: 'var(--border)' }} />
                       </>
                     )}
-
-                    <div className="border-t" style={{ borderColor: 'var(--border)' }} />
                     {menu}
                   </div>
                 )}

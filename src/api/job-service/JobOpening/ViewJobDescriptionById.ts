@@ -47,6 +47,8 @@ type ViewJobDescriptionResponse = {
   maxExperience?: number | null;
   minSalary?: number | null;
   maxSalary?: number | null;
+  // Extraction-only, never AI-composed — safe to sync back.
+  vacancies?: number | null;
   /** The job's full current skill list — includes skills AI added directly
    * (job.jd.enhance's suggested_skills are auto-committed via job.add_skill,
    * unlike generate/parse's suggestions-only cache; see
@@ -55,6 +57,13 @@ type ViewJobDescriptionResponse = {
    * matched case-insensitively by callers. Undefined on
    * `updateJobDescription`'s response, same reason as `entryPath` above. */
   skills?: { skill_id: string; skill_label: string; skill_type: string }[];
+  // Also fed to AI enhance — exposed here for the Job Details sync check.
+  shiftId?: string | null;
+  jobTypeId?: string | null;
+  educationPreferenceId?: string | null;
+  locationCity?: string | null;
+  locationState?: string | null;
+  locationCountry?: string | null;
 };
 
 type UpdateJobDescriptionRequest = {
@@ -96,11 +105,18 @@ const extendedApi = jobApi.injectEndpoints({
           response.max_experience_req != null ? Number(response.max_experience_req) : null,
         minSalary: response.lower_salary_range,
         maxSalary: response.upper_salary_range,
+        vacancies: response.vacancies,
         skills: response.skills?.map((skill) => ({
           skill_id: skill.skill_id,
           skill_label: skill.skill_label,
           skill_type: skill.skill_type,
         })),
+        shiftId: response.shift_id,
+        jobTypeId: response.job_type_id,
+        educationPreferenceId: response.education_preference_id,
+        locationCity: response.locations?.[0]?.city ?? null,
+        locationState: response.locations?.[0]?.state ?? null,
+        locationCountry: response.locations?.[0]?.country ?? null,
       }),
       providesTags: (_r, _e, args) => [
         { type: 'JobDescription', id: resolveJobId(args) },

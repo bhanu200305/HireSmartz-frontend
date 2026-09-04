@@ -15,13 +15,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { editJobDetailsDraftSchema, editJobDetailsSchema } from './EditJobDetailsSchema';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
-import { useLazyGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
+import {
+  useLazyGetJobDescriptionByIdQuery,
+  useGetJobDescriptionByIdQuery,
+} from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import { useRegenerateJobDescriptionMutation } from '../../../api/job-service/JobOpening/RegenerateJd';
 import {
   useEnhanceJdMutation,
   useGetJdStatusQuery,
 } from '../../../api/job-service/JobOpening/JdUpload';
-import { haveDescriptionInputsChanged } from '../../../shared/utils/jdSync';
+import {
+  haveDescriptionInputsChanged,
+  diffAiOwnedFields,
+  mergeNewAiSkills,
+} from '../../../shared/utils/jdSync';
 import { lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   setEditJobOpeningId,
@@ -239,6 +246,10 @@ const EditJobDetail = () => {
   const [createJobType] = useCreateJobTypeMutation();
   const [createEducationPreference] = useCreateEducationPreferenceMutation();
   const [triggerGetJobDescriptionById] = useLazyGetJobDescriptionByIdQuery();
+  const { data: jdDetailsForSync } = useGetJobDescriptionByIdQuery(
+    { jobOpeningId: parsedJobId },
+    { skip: !parsedJobId }
+  );
   const [regenerateJobDescription, { isLoading: isRegenerating }] =
     useRegenerateJobDescriptionMutation();
   const [enhanceJd] = useEnhanceJdMutation();
@@ -790,7 +801,7 @@ const EditJobDetail = () => {
       }
       if (appliedAnything) {
         showToast({
-          message: 'AI filled in some job details from your uploaded JD — review before saving.',
+          message: 'AI filled in some job details from your uploaded JD - review before saving.',
           type: 'success',
         });
       }
@@ -802,6 +813,44 @@ const EditJobDetail = () => {
     getValues,
     setValue,
   ]);
+
+  // Overwrites fields with fresh backend values, unlike the effect above.
+  useEffect(() => {
+    if (!jdDetailsForSync) return;
+    const current = getValues();
+    // Form field is `openings`, backend calls it `vacancies`.
+    const { vacancies: vacanciesUpdate, ...otherUpdates } = diffAiOwnedFields(jdDetailsForSync, {
+      ...current,
+      vacancies: current.openings,
+    });
+    Object.entries(otherUpdates).forEach(([field, value]) => {
+      setValue(field as keyof typeof otherUpdates, value, { shouldValidate: true });
+    });
+    if (vacanciesUpdate != null) {
+      setValue('openings', vacanciesUpdate, { shouldValidate: true });
+    }
+
+    const currentMandatory = (current.mandatorySkills || []).map(String);
+    const currentOptional = (current.optionalSkills || []).map(String);
+    const { newMandatoryIds, newOptionalIds, newOptions } = mergeNewAiSkills(
+      jdDetailsForSync.skills,
+      currentMandatory,
+      currentOptional
+    );
+    if (newMandatoryIds.length > 0) {
+      setValue('mandatorySkills', [...currentMandatory, ...newMandatoryIds], {
+        shouldValidate: true,
+      });
+    }
+    if (newOptionalIds.length > 0) {
+      setValue('optionalSkills', [...currentOptional, ...newOptionalIds], {
+        shouldValidate: true,
+      });
+    }
+    if (newOptions.length > 0) {
+      setExtraSuggestedSkillOptions((prev) => [...prev, ...newOptions]);
+    }
+  }, [jdDetailsForSync, getValues, setValue]);
 
   useEffect(() => {
     dispatch(setIsChanged(isFormDirty));
@@ -1522,23 +1571,33 @@ const EditJobDetail = () => {
       dispatch(updateEditJobDescription(jobDescriptionPayload));
       dispatch(updateEditInterviewRounds(interViewRound));
 
-      // A description already exists and this save actually changed a
-      // field it was generated from (experience/salary/responsibilities/
-      // other requirements) — regenerate it now instead of leaving the
-      // stale text in place until the recruiter happens to notice and
-      // clicks Regenerate manually on the AI Job Description step.
-      if (jdBeforeSave?.jobDescription && haveDescriptionInputsChanged(data, jdBeforeSave)) {
+      // Regenerate only if a description-source field changed.
+      const descriptionInputs = {
+        ...data,
+        shiftId: data.shift?.[0] != null ? String(data.shift[0]) : undefined,
+        jobTypeId: data.jobType?.[0] != null ? String(data.jobType[0]) : undefined,
+        educationPreferenceId:
+          data.educationPreference?.[0] != null ? String(data.educationPreference[0]) : undefined,
+        locationCity: selectedLocationDetails?.city,
+        locationState: selectedLocationDetails?.state,
+        locationCountry: selectedLocationDetails?.country,
+        skillIds: [...(data.mandatorySkills ?? []), ...(data.optionalSkills ?? [])].map(String),
+      };
+      if (
+        jdBeforeSave?.jobDescription &&
+        haveDescriptionInputsChanged(descriptionInputs, jdBeforeSave)
+      ) {
         try {
           await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
           showToast({
-            message: 'Job details changed — regenerating the AI description to match…',
+            message: 'Job details changed - regenerating the AI description to match…',
             type: 'success',
           });
         } catch (enhanceError) {
           showToast({
             message: getJobErrorMessage(
               enhanceError,
-              'Job details saved, but the AI description could not be refreshed automatically — use Regenerate on the next step.'
+              'Job details saved, but the AI description could not be refreshed automatically - use Regenerate on the next step.'
             ),
             type: 'warning',
           });
@@ -1837,10 +1896,9 @@ const EditJobDetail = () => {
               <>
                 <Form.Item label={<span>Location Code</span>}>
                   <Input
-                    value={selectedLocationDetails?.location_code ?? ''}
+                    value={selectedLocationDetails?.location_code || 'Not set'}
                     readOnly
                     disabled
-                    placeholder="Location Code"
                     className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
                   />
                 </Form.Item>
@@ -2139,6 +2197,35 @@ const EditJobDetail = () => {
                 <p className="text-red-500 text-sm mt-1">{errors.openings.message}</p>
               )}
             </Form.Item>
+
+            <Form.Item label="Close Date">
+              <Controller
+                name="closeDate"
+                control={control}
+                render={({ field }) => (
+                  <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">
+                    <DatePicker
+                      {...field}
+                      value={field.value ? dayjs(field.value, 'DD-MM-YYYY') : null}
+                      onChange={(date) => {
+                        const formattedDate = date ? date.format('DD-MM-YYYY') : '';
+                        setValue('closeDate', formattedDate, { shouldValidate: true });
+                      }}
+                      variant="borderless"
+                      className="w-full custom-date-picker placeholder-style"
+                      format="MMM DD, YYYY"
+                      placeholder="Select Close Date"
+                      disabledDate={(current) =>
+                        current && current.isBefore(dayjs().startOf('day'))
+                      }
+                    />
+                  </div>
+                )}
+              />
+              {errors.closeDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.closeDate.message}</p>
+              )}
+            </Form.Item>
           </div>
         </div>
         <div className="mt-2">
@@ -2395,7 +2482,9 @@ const EditJobDetail = () => {
                   onOpenChange={(open) => {
                     setIsMandatorySkillsDropdownOpen(open);
                   }}
-                  options={mandatorySkills}
+                  options={mandatorySkills.filter(
+                    (option) => !selectedOptionalSkillIds.includes(String(option.id))
+                  )}
                   loading={mandatorySkillsLoading || isAddingToDropdown === 'mandatorySkills'}
                   mode="multiple"
                   placeholder="Select Required Skills"
@@ -2479,7 +2568,9 @@ const EditJobDetail = () => {
                   onOpenChange={(open) => {
                     setIsOptionalSkillsDropdownOpen(open);
                   }}
-                  options={optionalSkills}
+                  options={optionalSkills.filter(
+                    (option) => !selectedMandatorySkillIds.includes(String(option.id))
+                  )}
                   loading={optionalSkillsLoading || isAddingToDropdown === 'optionalSkills'}
                   mode="multiple"
                   placeholder="Select Optional Skills"

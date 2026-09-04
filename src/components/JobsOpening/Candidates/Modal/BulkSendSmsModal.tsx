@@ -5,9 +5,11 @@ import TextArea from 'antd/es/input/TextArea';
 import {
   useSendBulkCandidateSmsMutation,
   useGenerateSmsContentMutation,
+  usePreviewCandidateSmsMutation,
 } from '../../../../api/candidate-service/Candidates/messaging';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 import { Button, Input, showToast } from '../../../shared';
+import TemplatePreviewModal from '../../../shared/ui/TemplatePreviewModal';
 import type { CandidateView } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
 
 const SMS_MAX_LEN = 160;
@@ -46,8 +48,14 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
   );
   const [sendBulkSms, { isLoading: isSending }] = useSendBulkCandidateSmsMutation();
   const [generateSmsContent, { isLoading: isGenerating }] = useGenerateSmsContentMutation();
+  const [previewSms, { data: preview, isLoading: isPreviewing }] = usePreviewCandidateSmsMutation();
   const [showAiPrompt, setShowAiPrompt] = useState(false);
   const [aiIntent, setAiIntent] = useState('');
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  // The real preview endpoint (`POST /candidates/{id}/messages/sms/preview`)
+  // is single-candidate only, same as email's — offer it only when exactly
+  // one recipient is selected.
+  const canPreview = candidates.length === 1;
 
   useEffect(() => {
     if (open) {
@@ -55,8 +63,24 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
       setResults([]);
       setShowAiPrompt(false);
       setAiIntent('');
+      setIsPreviewOpen(false);
     }
   }, [open]);
+
+  const handlePreview = async () => {
+    const target = candidates[0];
+    const text = message.trim();
+    if (!target || !text) {
+      showToast({ message: 'Message is required', type: 'error' });
+      return;
+    }
+    try {
+      await previewSms({ candidateId: target.id, body: { smsBody: text } }).unwrap();
+      setIsPreviewOpen(true);
+    } catch (e) {
+      showToast({ message: getCandidateErrorMessage(e, 'Could not build preview'), type: 'error' });
+    }
+  };
 
   const handleGenerate = async () => {
     const intent = aiIntent.trim();
@@ -139,14 +163,26 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
       }
       footer={
         results.length === 0 ? (
-          <Button
-            type="button"
-            onClick={() => void handleSend()}
-            disabled={candidates.length === 0 || isSending}
-            className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
-          >
-            {isSending ? 'SENDING…' : 'SEND SMS'}
-          </Button>
+          <div className="flex gap-3">
+            {canPreview && (
+              <Button
+                type="button"
+                onClick={() => void handlePreview()}
+                disabled={isPreviewing || isSending}
+                className="rounded-full border border-gray-300 px-5 py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {isPreviewing ? 'LOADING…' : 'PREVIEW'}
+              </Button>
+            )}
+            <Button
+              type="button"
+              onClick={() => void handleSend()}
+              disabled={candidates.length === 0 || isSending}
+              className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+            >
+              {isSending ? 'SENDING…' : 'SEND SMS'}
+            </Button>
+          </div>
         ) : (
           <Button
             type="button"
@@ -247,6 +283,12 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
           </div>
         )}
       </div>
+      <TemplatePreviewModal
+        open={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        isLoading={isPreviewing}
+        preview={preview}
+      />
     </Drawer>
   );
 };

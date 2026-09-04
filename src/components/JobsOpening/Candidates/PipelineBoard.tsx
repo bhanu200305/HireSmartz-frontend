@@ -1,7 +1,14 @@
+import { useState } from 'react';
 import dayjs from 'dayjs';
-import { Badge, type BadgeStatus } from '../../shared';
-import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
+import { Badge, Button, showToast, type BadgeStatus } from '../../shared';
+import {
+  useSendRoundInviteMutation,
+  type CandidateInterviewRoundView,
+} from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
+import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
+import SkipRoundModal from './Modal/SkipRoundModal';
+import RoundArtifactsModal from './Modal/RoundArtifactsModal';
 
 // Renders `CandidateDetails`' Pipeline tab as a horizontal, Gantt-style step
 // board (one column per round, done/current/upcoming styling) instead of the
@@ -85,9 +92,17 @@ type PipelineBoardProps = {
   scores: CandidateInterviewScoreView[];
   resumeScore: number | null;
   onRoundClick?: (round: CandidateInterviewRoundView) => void;
+  candidateId: string;
 };
 
-const PipelineBoard = ({ rounds, scores, resumeScore, onRoundClick }: PipelineBoardProps) => {
+const PipelineBoard = ({ rounds, scores, resumeScore, candidateId }: PipelineBoardProps) => {
+  const [isSkipModalOpen, setIsSkipModalOpen] = useState(false);
+  const [artifactsModalFor, setArtifactsModalFor] = useState<{
+    roundId: string;
+    roundName: string;
+  } | null>(null);
+  const [sendRoundInvite, { isLoading: isSendingInvite }] = useSendRoundInviteMutation();
+
   if (rounds.length === 0) {
     return <p className="text-sm text-gray-500">No round plan yet.</p>;
   }
@@ -107,8 +122,28 @@ const PipelineBoard = ({ rounds, scores, resumeScore, onRoundClick }: PipelineBo
     nextRound?.stage_type === 'resume' &&
     buckets[activeIndex] === 'pending' &&
     resumeScore !== null;
+  // Send Invite / Skip Round only ever apply to a real interview round —
+  // send_round_invite.py/skip_interview_round.py both explicitly refuse the
+  // resume stage (ResumeStageHasNoInviteError / the same guard on skip), so
+  // the resume stage only ever gets the Advance hint above, never these.
+  const nextIsInterviewRound = nextRound?.stage_type === 'interview';
+  const nextRoundAlreadyBooked = !!nextRound?.interview_booking_id;
 
-  const scoreValues = [resumeScore, ...scores.map((s) => s.recruiter_score ?? s.ai_score)].filter(
+  const handleSendInvite = async () => {
+    try {
+      const result = await sendRoundInvite(candidateId).unwrap();
+      showToast({
+        message: result.invite_sent
+          ? `Invite sent for ${result.round.round_name}.`
+          : 'Invite already sent moments ago — not sent again.',
+        type: result.invite_sent ? 'success' : 'info',
+      });
+    } catch (e) {
+      showToast({ message: getCandidateErrorMessage(e, 'Could not send invite'), type: 'error' });
+    }
+  };
+
+  const scoreValues = [resumeScore, ...scores.map((s) => s.recruiter_score ?? s.score)].filter(
     (v): v is number => v !== null && v !== undefined
   );
   const avgScore =
@@ -141,21 +176,35 @@ const PipelineBoard = ({ rounds, scores, resumeScore, onRoundClick }: PipelineBo
           // status label reads as the latter, so it's swapped out below.
           const isResumeAwaitingAdvance =
             round.stage_type === 'resume' && bucket === 'pending' && resumeScore !== null;
+          // Recordings/transcripts only ever exist for a real interview
+          // round (there's nothing for the synthetic resume stage to
+          // record) — the artifacts endpoint keys off this round row's own
+          // `id`, which is only ever null-shaped conceptually for the
+          // resume stage, so gate the click on stage_type rather than id.
+          const isInterviewRound = round.stage_type === 'interview';
           return (
             <div
               key={round.id ?? `resume-${index}`}
-              role={onRoundClick ? 'button' : undefined}
-              tabIndex={onRoundClick ? 0 : undefined}
-              onClick={() => onRoundClick?.(round)}
-              onKeyDown={(event) => {
-                if (onRoundClick && (event.key === 'Enter' || event.key === ' ')) {
-                  event.preventDefault();
-                  onRoundClick(round);
-                }
-              }}
+              role={isInterviewRound ? 'button' : undefined}
+              tabIndex={isInterviewRound ? 0 : undefined}
+              onClick={
+                isInterviewRound
+                  ? () => setArtifactsModalFor({ roundId: round.id, roundName: roundLabel(round) })
+                  : undefined
+              }
+              onKeyDown={
+                isInterviewRound
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setArtifactsModalFor({ roundId: round.id, roundName: roundLabel(round) });
+                      }
+                    }
+                  : undefined
+              }
               className={`w-56 shrink-0 rounded-xl border border-neutral-200 border-t-4 bg-white shadow-xs ${meta.border} ${
                 isActive ? 'ring-2 ring-warning/40' : ''
-              } ${onRoundClick ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30' : ''}`}
+              } ${isInterviewRound ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
             >
               <div className="flex items-center gap-2 px-3.5 pt-3">
                 <span
@@ -189,6 +238,9 @@ const PipelineBoard = ({ rounds, scores, resumeScore, onRoundClick }: PipelineBo
                 {isResumeAwaitingAdvance && (
                   <span className="text-xs text-neutral-500">Awaiting Advance to move on</span>
                 )}
+                {isInterviewRound && (
+                  <span className="text-xs font-medium text-primary-600">View recordings ›</span>
+                )}
               </div>
             </div>
           );
@@ -212,7 +264,7 @@ const PipelineBoard = ({ rounds, scores, resumeScore, onRoundClick }: PipelineBo
         )}
       </div>
 
-      <div className="flex flex-wrap gap-8 border-t border-neutral-100 pt-4 text-sm">
+      <div className="flex flex-wrap items-start gap-8 border-t border-neutral-100 pt-4 text-sm">
         <div>
           <div className="text-xs text-neutral-400">Next step</div>
           <div className="font-semibold text-neutral-900">
@@ -223,6 +275,26 @@ const PipelineBoard = ({ rounds, scores, resumeScore, onRoundClick }: PipelineBo
               nextWhen && <span className="ml-1 font-normal text-neutral-500">· {nextWhen}</span>
             )}
           </div>
+          {nextIsInterviewRound && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                onClick={() => void handleSendInvite()}
+                disabled={isSendingInvite || nextRoundAlreadyBooked}
+                title={nextRoundAlreadyBooked ? 'This round already has a booking' : undefined}
+                className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSendingInvite ? 'Sending…' : 'SEND INVITE'}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setIsSkipModalOpen(true)}
+                className="rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+              >
+                SKIP ROUND
+              </Button>
+            </div>
+          )}
         </div>
         <div>
           <div className="text-xs text-neutral-400">Rounds completed</div>
@@ -239,6 +311,26 @@ const PipelineBoard = ({ rounds, scores, resumeScore, onRoundClick }: PipelineBo
           <Badge status={standing.status}>{standing.label}</Badge>
         </div>
       </div>
+
+      {nextRound && nextIsInterviewRound && (
+        <SkipRoundModal
+          open={isSkipModalOpen}
+          onClose={() => setIsSkipModalOpen(false)}
+          candidateId={candidateId}
+          roundName={roundLabel(nextRound)}
+          onSuccess={() => setIsSkipModalOpen(false)}
+        />
+      )}
+
+      {artifactsModalFor && (
+        <RoundArtifactsModal
+          open={!!artifactsModalFor}
+          onClose={() => setArtifactsModalFor(null)}
+          candidateId={candidateId}
+          roundId={artifactsModalFor.roundId}
+          roundName={artifactsModalFor.roundName}
+        />
+      )}
     </div>
   );
 };

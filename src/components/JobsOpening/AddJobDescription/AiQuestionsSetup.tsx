@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Select } from 'antd';
 import { MdOutlineQuestionAnswer } from 'react-icons/md';
 import { HiOutlineTrash } from 'react-icons/hi';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
@@ -45,15 +46,11 @@ const DEFAULT_QUESTION_COUNT = 10;
 const GENERATION_POLL_INTERVAL_MS = 3000;
 const GENERATION_POLL_TIMEOUT_MS = 90_000;
 
-// Human-readable text for each `failed_checks` code check_publish_readiness
-// (job-service's _publish_validation.py) can return — the API only reports
-// which named gate failed, not which specific field, so
-// 'mandatory_fields_incomplete' lists every field that gate covers rather
-// than guessing which one this job is actually missing.
+// Human-readable text for each publish-readiness failure code.
 const PUBLISH_CHECK_LABELS: Record<string, string> = {
   jd_missing: 'Job description is missing',
   mandatory_fields_incomplete:
-    'Some required Job Details fields are missing — check Job Title, Department, Job Mode, Job Type, Open Date, Vacancies, Minimum Experience, Salary Range, and Hiring Manager',
+    'Some required Job Details fields are missing - check Job Title, Department, Job Mode, Job Type, Open Date, Vacancies, Minimum Experience, Salary Range, and Hiring Manager',
   no_education_preference: 'Education preference is not set',
   no_location: 'At least one job location is required',
   no_skill: 'At least one skill is required',
@@ -62,8 +59,15 @@ const PUBLISH_CHECK_LABELS: Record<string, string> = {
   no_question: 'At least one question is required',
 };
 
-const describeFailedChecks = (checks: string[]): string =>
-  checks.map((check) => PUBLISH_CHECK_LABELS[check] ?? check).join('; ');
+const describeFailedChecks = (checks: string[], roundsMissingQuestions: string[] = []): string =>
+  checks
+    .map((check) => {
+      if (check === 'no_question' && roundsMissingQuestions.length > 0) {
+        return `These interview round(s) need at least one question: ${roundsMissingQuestions.join(', ')}`;
+      }
+      return PUBLISH_CHECK_LABELS[check] ?? check;
+    })
+    .join('; ');
 
 const AiQuestionsSetup = () => {
   const navigate = useNavigate();
@@ -71,6 +75,8 @@ const AiQuestionsSetup = () => {
   const { pathname } = useLocation();
   const { id } = useParams<{ id?: string }>();
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
+  // Fallback source for the job id in edit mode, tried after reduxJobOpeningId below.
+  const editJobOpeningId = useSelector((state: RootState) => state.EditJobSlice.jobOpeningId);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
@@ -84,6 +90,8 @@ const AiQuestionsSetup = () => {
 
   const [inlineInputText, setInlineInputText] = useState('');
   const [isInlineSubmitting, setIsInlineSubmitting] = useState(false);
+  // Which round's questions are currently shown/added to.
+  const [selectedRoundInstanceId, setSelectedRoundInstanceId] = useState<string | null>(null);
 
   const [importWarnings, setImportWarnings] = useState<ImportWarningItem[]>([]);
   const [failedRowCount, setFailedRowCount] = useState<number>(0);
@@ -93,19 +101,11 @@ const AiQuestionsSetup = () => {
 
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
 
-  // `id` only exists on the Edit-mode route (/jobs/edit/:id/...); this
-  // page is also mounted create-mode at the id-less /ai-questions, where
-  // `reduxJobOpeningId` (JobSlice, set by useStartManualJobOpening when
-  // the wizard started) is the only correct source. `EditJobSlice`'s own
-  // jobOpeningId used to be consulted here too, ahead of this — a stale
-  // value left over from a previous Edit-mode visit silently overrode a
-  // freshly-created job's real id on this page, since Edit-mode never
-  // needs that fallback in the first place (its routes already carry
-  // `:id`, resolved above). See the "already published" report this
-  // fixes — a fresh Manual job kept landing back on an old published one.
+  // `id` (edit-mode route) takes priority, then JobSlice (create-mode), then
+  // EditJobSlice as a last resort, so a stale EditJobSlice value never wins.
   const activeJobOpeningId = useMemo(
-    () => asJobId(id) || asJobId(reduxJobOpeningId),
-    [id, reduxJobOpeningId]
+    () => asJobId(id) || asJobId(reduxJobOpeningId) || asJobId(editJobOpeningId),
+    [id, reduxJobOpeningId, editJobOpeningId]
   );
 
   // `/jobs/edit/:id/...` is used for TWO different situations: finishing a
@@ -125,8 +125,10 @@ const AiQuestionsSetup = () => {
   );
 
   const { data: roundTypes = [] } = useListInterviewRoundTypesQuery();
+  // Rounds without a recruiter-set duration never take Q&A questions.
   const audioRoundTypeIds = useMemo(
-    () => new Set(roundTypes.filter((item) => item.is_audio_round).map((item) => item.round_id)),
+    () =>
+      new Set(roundTypes.filter((item) => !item.requires_duration).map((item) => item.round_id)),
     [roundTypes]
   );
 
@@ -164,13 +166,26 @@ const AiQuestionsSetup = () => {
   // generation actually finishing, not just the initial request.
   const isGenerating = isGenerateRequestPending || isGeneratingQuestions;
 
+  // Unfiltered rounds — the source for the full save/add/delete payload.
+  const allRounds = useMemo(() => questionsData?.rounds ?? [], [questionsData]);
   const jdRounds = useMemo(
-    () => (questionsData?.rounds ?? []).filter((round) => !audioRoundTypeIds.has(round.round_id)),
-    [questionsData, audioRoundTypeIds]
+    () => allRounds.filter((round) => !audioRoundTypeIds.has(round.round_id)),
+    [allRounds, audioRoundTypeIds]
   );
 
-  const questions = useMemo(() => jdRounds.flatMap((round) => round.questions ?? []), [jdRounds]);
+  // Every round's questions, not just the picker-eligible ones.
+  const questions = useMemo(() => allRounds.flatMap((round) => round.questions ?? []), [allRounds]);
   const defaultRoundInstanceId = jdRounds[0]?.round_instance_id ?? null;
+  // Falls back to the first round if the picked one no longer exists.
+  const activeRoundInstanceId =
+    (selectedRoundInstanceId &&
+      jdRounds.some((round) => round.round_instance_id === selectedRoundInstanceId) &&
+      selectedRoundInstanceId) ||
+    defaultRoundInstanceId;
+  const visibleQuestions = useMemo(
+    () => questions.filter((q) => q.interview_round_id === activeRoundInstanceId),
+    [questions, activeRoundInstanceId]
+  );
   const audioQuestions = audioData?.questions ?? [];
   // Cheap content fingerprint, not just a count — REPLACE can land with
   // fewer questions than before, so "count increased" would miss it.
@@ -193,14 +208,15 @@ const AiQuestionsSetup = () => {
     const timeoutId = setTimeout(() => {
       setIsGeneratingQuestions(false);
       showToast({
-        message: "Still generating — refresh in a moment if the questions don't appear shortly.",
+        message: "Still generating - refresh in a moment if the questions don't appear shortly.",
         type: 'warning',
       });
     }, GENERATION_POLL_TIMEOUT_MS);
     return () => clearTimeout(timeoutId);
   }, [isGeneratingQuestions]);
 
-  const isAllSelected = questions.length > 0 && selectedIds.length === questions.length;
+  const isAllSelected =
+    visibleQuestions.length > 0 && selectedIds.length === visibleQuestions.length;
 
   const toQuestionRequest = (question: QuestionResponse): QuestionRequest => ({
     id: question.id,
@@ -232,13 +248,16 @@ const AiQuestionsSetup = () => {
   };
 
   const handleSelectAll = (checked: boolean) =>
-    setSelectedIds(checked ? questions.map((q) => q.id) : []);
+    setSelectedIds(checked ? visibleQuestions.map((q) => q.id) : []);
   const handleSelectOne = (questionId: string, checked: boolean) =>
     setSelectedIds((prev) =>
       checked ? [...prev, questionId] : prev.filter((item) => item !== questionId)
     );
 
-  const handleGenerateDefaultQuestions = async (mode: 'ADD' | 'REPLACE') => {
+  const handleGenerateDefaultQuestions = async (
+    mode: 'ADD' | 'REPLACE',
+    questionCount: number = DEFAULT_QUESTION_COUNT
+  ) => {
     if (!activeJobOpeningId) {
       showToast({ message: 'Missing Job ID', type: 'error' });
       return;
@@ -250,12 +269,14 @@ const AiQuestionsSetup = () => {
       if (mode === 'REPLACE') {
         await regenerateJobQuestions({
           jobOpeningId: activeJobOpeningId,
-          question_count: DEFAULT_QUESTION_COUNT,
+          question_count: questionCount,
+          interview_round_id: activeRoundInstanceId,
         }).unwrap();
       } else {
         await generateJobQuestions({
           jobOpeningId: activeJobOpeningId,
-          question_count: DEFAULT_QUESTION_COUNT,
+          question_count: questionCount,
+          interview_round_id: activeRoundInstanceId,
         }).unwrap();
       }
       showToast({ message: 'Question generation started', type: 'success' });
@@ -289,6 +310,7 @@ const AiQuestionsSetup = () => {
       const res = await bulkImportJobQuestions({
         jobOpeningId: activeJobOpeningId,
         file,
+        interview_round_id: activeRoundInstanceId,
       }).unwrap();
       setUploadedFileName(file.name);
       setImportedCount(res.imported_count || 0);
@@ -304,7 +326,7 @@ const AiQuestionsSetup = () => {
         ...(res.skipped_duplicate_rows ?? []).map(
           (row): ImportWarningItem => ({
             type: 'duplicate',
-            message: `Row ${row.row_number}: duplicate of an existing question — "${row.question_text}"`,
+            message: `Row ${row.row_number}: duplicate of an existing question - "${row.question_text}"`,
           })
         ),
       ]);
@@ -349,7 +371,16 @@ const AiQuestionsSetup = () => {
 
   const handleInlineSubmit = async () => {
     const trimmedInput = inlineInputText.trim();
-    if (!trimmedInput || !activeJobOpeningId || !defaultRoundInstanceId) return;
+    // Avoid submitting before existing questions have loaded.
+    if (
+      !trimmedInput ||
+      !activeJobOpeningId ||
+      !activeRoundInstanceId ||
+      isLoadingQuestions ||
+      !questionsData
+    ) {
+      return;
+    }
     setIsInlineSubmitting(true);
     try {
       const lines = trimmedInput
@@ -360,7 +391,7 @@ const AiQuestionsSetup = () => {
         ...questions.map(toQuestionRequest),
         ...lines.map((question_text) => ({
           question_text,
-          interview_round_id: defaultRoundInstanceId,
+          interview_round_id: activeRoundInstanceId,
         })),
       ];
       await persistQuestions(next);
@@ -450,7 +481,7 @@ const AiQuestionsSetup = () => {
       // stuck in Draft with no visible reason why. Surface it instead of
       // swallowing it.
       showToast({
-        message: 'Could not identify this job opening — please refresh the page and try again.',
+        message: 'Could not identify this job opening - please refresh the page and try again.',
         type: 'error',
       });
       return;
@@ -459,7 +490,10 @@ const AiQuestionsSetup = () => {
       const validation = await validateForPublish(activeJobOpeningId).unwrap();
       if (!validation.is_valid) {
         showToast({
-          message: `Cannot publish yet: ${describeFailedChecks(validation.failed_checks ?? [])}`,
+          message: `Cannot publish yet: ${describeFailedChecks(
+            validation.failed_checks ?? [],
+            validation.rounds_missing_questions ?? []
+          )}`,
           type: 'error',
         });
         return;
@@ -533,15 +567,34 @@ const AiQuestionsSetup = () => {
           </Typography>
         </div>
 
+        {jdRounds.length > 0 && (
+          <div className="mb-4">
+            <Typography variant="body2" className="text-gray-600 mb-1.5 font-semibold">
+              Interview Round
+            </Typography>
+            <Select
+              value={activeRoundInstanceId ?? undefined}
+              onChange={(value) => {
+                setSelectedRoundInstanceId(value);
+                setSelectedIds([]);
+                setUploadedFileName('');
+                setImportedCount(0);
+                setFailedRowCount(0);
+                setDuplicateRowCount(0);
+                setImportWarnings([]);
+              }}
+              className="w-full max-w-sm"
+              options={jdRounds.map((round) => ({
+                value: round.round_instance_id,
+                label: round.round_name,
+              }))}
+            />
+          </div>
+        )}
+
         <UploadAndGenerateHeader
-          description="Use the input box below to add your questions easily and quickly. You can either type the questions manually or simply copy and paste multiple questions at once."
-          onGenerate={() => {
-            if (questions.length === 0) {
-              void handleGenerateDefaultQuestions('REPLACE');
-            } else {
-              setShowGenerateConsentModal(true);
-            }
-          }}
+          description="Type a question, or paste several at once - one question per line."
+          onGenerate={() => setShowGenerateConsentModal(true)}
           onUpload={handleFileUpload}
           onDownloadTemplate={handleDownloadTemplate}
           uploadedFileName={uploadedFileName}
@@ -570,14 +623,14 @@ const AiQuestionsSetup = () => {
                 className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
               />
               <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-                All Questions ({questions.length})
+                All Questions ({visibleQuestions.length})
               </Typography>
             </div>
-            {(selectedIds.length > 0 || questions.length > 0) && (
+            {(selectedIds.length > 0 || visibleQuestions.length > 0) && (
               <button
                 className="flex items-center gap-1.5 text-red-500 hover:text-red-700 text-sm font-semibold cursor-pointer"
                 onClick={() => {
-                  if (selectedIds.length === 0) setSelectedIds(questions.map((q) => q.id));
+                  if (selectedIds.length === 0) setSelectedIds(visibleQuestions.map((q) => q.id));
                   setShowDeleteModal(true);
                 }}
               >
@@ -589,13 +642,13 @@ const AiQuestionsSetup = () => {
 
           {isLoadingQuestions ? (
             <p className="text-gray-400 py-6 text-center italic text-sm">Loading...</p>
-          ) : questions.length === 0 ? (
+          ) : visibleQuestions.length === 0 ? (
             <p className="text-gray-400 py-6 text-center italic text-sm">
-              No questions. Add questions manually or import via Excel/Defaults.
+              No questions. Add questions manually, import via Excel, or generate with AI.
             </p>
           ) : (
             <div className="space-y-3 mb-6">
-              {questions.map((q, idx) => (
+              {visibleQuestions.map((q, idx) => (
                 <QuestionRowItem
                   key={q.id}
                   question={{ id: q.id, question: q.question_text }}
@@ -620,7 +673,7 @@ const AiQuestionsSetup = () => {
             value={inlineInputText}
             onChange={setInlineInputText}
             onSubmit={handleInlineSubmit}
-            isSubmitting={isInlineSubmitting}
+            isSubmitting={isInlineSubmitting || isLoadingQuestions}
           />
         </div>
 
@@ -654,13 +707,19 @@ const AiQuestionsSetup = () => {
           onClose={() => setShowGenerateConsentModal(false)}
           onConfirm={handleGenerateDefaultQuestions}
           isLoading={isGenerateRequestPending}
+          hasExistingQuestions={visibleQuestions.length > 0}
         />
         <div className="mt-6 flex justify-center">
           <Button
-            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => void handlePublishOrFinish()}
+            disabled={isPublishing || !activeJobOpeningId}
           >
-            {isEditingAlreadyPublishedJob ? 'SAVE & FINISH' : '✓ PUBLISH JOB OPENING'}
+            {isPublishing
+              ? 'PUBLISHING…'
+              : isEditingAlreadyPublishedJob
+                ? 'SAVE & FINISH'
+                : '✓ PUBLISH JOB OPENING'}
           </Button>
         </div>
         <Outlet />

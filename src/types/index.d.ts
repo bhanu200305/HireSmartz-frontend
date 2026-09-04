@@ -182,21 +182,6 @@ export type UpdateCompanyRequest = {
   locationCode?: string | null;
 };
 
-type UpdateOrgUserRequest = {
-  userId: number;
-  profilePicture?: string;
-  profilePictureType?: string;
-  firstname?: string;
-  lastName?: string;
-  emailId?: string;
-  phoneNumber?: string;
-  employeeId?: string;
-  countryCode?: string;
-  roleTypeMappingId: number;
-  status?: boolean;
-  isArchived?: boolean;
-};
-
 export type JobDetailsState = {
   jobProfileCode: string;
   jobTitle: Array<string | number>;
@@ -222,6 +207,7 @@ export type JobDetailsState = {
   minExperience: number | null;
   maxExperience?: number | null;
   openDate: string;
+  closeDate?: string;
   hiringManagers: Array<string | number>;
   recruiters?: Array<string | number>;
   country: string;
@@ -430,21 +416,8 @@ export type Jobs = {
   jobTypeId?: string | null;
   hiringManagerIds?: string[];
   recruiterIds?: string[];
-};
-
-export type OrgUser = {
-  key: string;
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  employeeId: string;
-  role: string;
-  archived: boolean | undefined;
-  isActiveAndVerified: boolean | undefined;
-  status: 'ACTIVE' | 'INACTIVE';
-  emailId: string;
+  createdById?: string | null;
+  createdByName?: string;
 };
 
 export type JobOpeningByIdResponse = {
@@ -1083,7 +1056,7 @@ export type GetAllAtsNamesByCompanyIdResponse = {
     },
   ];
 };
-export type GetAllAtsNamesByCompanyIdRequest = {};
+export type GetAllAtsNamesByCompanyIdRequest = Record<string, never>;
 
 export type GetAtsJobByIdRequest = {
   atsJobOpeningId: string;
@@ -1498,10 +1471,6 @@ export type InterviewStatusOptions = {
 }[];
 
 export type SortDirection = 'asc' | 'desc' | null;
-
-interface OffscreenCanvas {
-  captureStream(frameRate?: number): MediaStream;
-}
 
 export type SourceItem = {
   id: string;

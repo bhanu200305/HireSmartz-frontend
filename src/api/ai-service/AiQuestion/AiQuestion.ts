@@ -1,5 +1,5 @@
 import api from '../..';
-import { jobServiceOrigin } from '../../jobServiceOrigin';
+import { jobApi } from '../../job-service/jobApi';
 import {
   EditAiQuestionRequest,
   SaveAiQuestionRequest,
@@ -93,11 +93,23 @@ const extendedApi = api.injectEndpoints({
         method: 'GET',
       }),
     }),
+  }),
+  overrideExisting: false,
+});
+
+// getTopFivePrompt is a job-service endpoint, so it uses jobApi, not the
+// shared `api` above.
+const jobPromptsApi = jobApi.injectEndpoints({
+  endpoints: (build) => ({
     getTopFivePrompt: build.query<TopFivePromptResponse, { mode: string }>({
       query: ({ mode }) => ({
-        url: `${jobServiceOrigin()}/ai/prompts/top-five/by-user?mode=${mode}`,
+        url: `/ai/prompts/top-five/by-user?mode=${mode}`,
         method: 'GET',
       }),
+      transformResponse: (response: {
+        prompts?: { prompt_text: string }[];
+      }): TopFivePromptResponse =>
+        (response.prompts ?? []).map((prompt) => ({ promptText: prompt.prompt_text })),
     }),
   }),
   overrideExisting: false,
@@ -113,5 +125,6 @@ export const {
   useGetOrgUsersByCompanyIdQuery,
   useGetAiQuestionsByUserIdQuery,
   useLazyGetAiQuestionsByUserIdQuery,
-  useGetTopFivePromptQuery,
 } = extendedApi;
+
+export const { useGetTopFivePromptQuery } = jobPromptsApi;

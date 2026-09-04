@@ -48,31 +48,31 @@ export const UploadAndGenerateHeader = ({
   const skippedCount = failedCount + duplicateCount;
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-[#F8F9FA] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center border border-gray-200 gap-4">
+      <div className="bg-[#F8F9FA] rounded-2xl p-5 flex flex-col md:flex-row justify-between items-center border border-gray-200 gap-3">
         <div className="flex-1">
-          <Typography variant="body1" className="text-gray-600 m-0">
+          <Typography variant="body2" className="text-gray-600 m-0 text-sm">
             {description}
           </Typography>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <Button
-            className="border border-primary text-primary bg-white hover:bg-gray-50 flex items-center gap-2 px-4 py-2 font-semibold text-sm rounded-full shadow-sm"
+            className="border border-primary text-primary bg-white hover:bg-gray-50 flex items-center gap-1.5 px-3.5 py-1.5 font-semibold text-sm rounded-full shadow-sm"
             onClick={onGenerate}
             disabled={isGenerating}
           >
-            <HiOutlineRefresh className="text-lg" />
-            GENERATE DEFAULT QUESTIONS
+            <HiOutlineRefresh className="text-base" />
+            GENERATE WITH AI
           </Button>
 
           <div className="relative flex flex-col items-center">
             <label
-              className={`bg-primary hover:bg-brand-700 text-white flex items-center gap-2 px-5 py-2 font-semibold text-sm rounded-full shadow-sm cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`bg-primary hover:bg-brand-700 text-white flex items-center gap-1.5 px-4 py-1.5 font-semibold text-sm rounded-full shadow-sm cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <HiOutlineUpload className="text-lg" />
+              <HiOutlineUpload className="text-base" />
               UPLOAD FILE
               <input
                 type="file"
-                accept=".xlsx"
+                accept=".xlsx,.csv"
                 className="hidden"
                 onChange={onUpload}
                 disabled={isUploading}
@@ -82,7 +82,7 @@ export const UploadAndGenerateHeader = ({
               variant="caption"
               className="text-gray-400 font-medium absolute top-full mt-0.5 whitespace-nowrap"
             >
-              Supports .xlsx format only
+              Supports .xlsx and .csv formats
             </Typography>
           </div>
 
@@ -92,7 +92,7 @@ export const UploadAndGenerateHeader = ({
             disabled={isDownloading}
             title="Download Template"
           >
-            <MdDownload className="text-lg" />
+            <MdDownload className="text-base" />
             <span className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs py-1 px-2 rounded shadow-lg whitespace-nowrap z-50">
               Download Template
             </span>
@@ -127,11 +127,22 @@ export const UploadAndGenerateHeader = ({
                 <>
                   {' '}
                   Skipped <strong>{skippedCount}</strong> row(s)
-                  {failedCount > 0 && duplicateCount > 0 && (
+                  {(failedCount > 0 || duplicateCount > 0) && (
                     <>
                       {' '}
-                      (<strong>{failedCount}</strong> invalid, <strong>{duplicateCount}</strong>{' '}
-                      duplicate)
+                      (
+                      {failedCount > 0 && (
+                        <>
+                          <strong>{failedCount}</strong> invalid
+                        </>
+                      )}
+                      {failedCount > 0 && duplicateCount > 0 && ', '}
+                      {duplicateCount > 0 && (
+                        <>
+                          <strong>{duplicateCount}</strong> duplicate
+                        </>
+                      )}
+                      )
                     </>
                   )}
                   .
