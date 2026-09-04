@@ -145,6 +145,7 @@ const ChangePassword = () => {
                       <Input
                         {...field}
                         type={showCurrentPassword ? 'text' : 'password'}
+                        noAutoCapitalize
                         placeholder={autoLogin ? 'Temporary Password*' : 'Current Password*'}
                         prefix={
                           <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
@@ -189,6 +190,7 @@ const ChangePassword = () => {
                       <Input
                         {...field}
                         type={showNewPassword ? 'text' : 'password'}
+                        noAutoCapitalize
                         placeholder="New Password*"
                         prefix={
                           <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
@@ -234,6 +236,7 @@ const ChangePassword = () => {
                       <Input
                         {...field}
                         type={showConfirmPassword ? 'text' : 'password'}
+                        noAutoCapitalize
                         placeholder="Confirm New Password*"
                         prefix={
                           <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
