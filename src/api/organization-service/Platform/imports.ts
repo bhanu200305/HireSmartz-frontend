@@ -5,23 +5,20 @@ import type {
   ParseRosterArgs,
   ParseRosterResponse,
   RosterImportTemplateResponse,
-  RosterUploadResponse,
+  UploadRosterFileArgs,
+  RosterUploadResult,
 } from '../Tenants/imports';
 
 // Platform mirror of Tenants/imports.ts's real 3-step roster import flow —
-// same server-mediated upload -> parse -> confirm contract and DTOs, just
-// mounted under /v1/platform/tenants/{tenant_id}/... (platform_router.py)
-// so a Super Admin can run it on behalf of any tenant, same pattern as
-// Platform/tenantProfile.ts mirroring Tenants/profile.ts.
-
-export type UploadPlatformRosterArgs = {
-  tenantId: string;
-  file: File;
-};
+// same server-mediated upload (multipart POST straight to
+// organization-service, no browser-direct-to-S3 step) -> parse -> confirm
+// contract and DTOs, just mounted under /v1/platform/tenants/{tenant_id}/...
+// (platform_router.py) so a Super Admin can run it on behalf of any tenant,
+// same pattern as Platform/tenantProfile.ts mirroring Tenants/profile.ts.
 
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
-    uploadPlatformRoster: build.mutation<RosterUploadResponse, UploadPlatformRosterArgs>({
+    uploadPlatformRosterFile: build.mutation<RosterUploadResult, UploadRosterFileArgs>({
       query: ({ tenantId, file }) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -57,7 +54,7 @@ const extendedApi = orgApi.injectEndpoints({
 });
 
 export const {
-  useUploadPlatformRosterMutation,
+  useUploadPlatformRosterFileMutation,
   useParsePlatformRosterMutation,
   useConfirmPlatformRosterImportMutation,
   useLazyGetPlatformRosterImportTemplateUrlQuery,

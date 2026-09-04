@@ -1,14 +1,13 @@
 import { orgApi } from '../orgApi';
 
-// GET/PUT /v1/tenants/{tenant_id}/culture-intro — a genuinely SEPARATE
-// resource from the rest of the profile (its own `CultureIntroView`/
-// `TenantUpdateCultureIntroRequest`, wire field `intro_text`, gated on
-// `interview:read`/`interview:write` rather than organization/company
-// permissions — it's the tenant's own spoken intro played before an audio
-// interview round's Q&A, not a plain profile field). It is NOT part of
-// `GET/PATCH /v1/tenants/{tenant_id}/profile`'s `UpdateTenantProfileRequest`
-// (that request model is `extra="forbid"`, so a `culture_intro` key in that
-// PATCH body 422s the whole request) — see Tenants/profile.ts's own note.
+// CultureIntroView — GET/PUT /v1/tenants/{tenant_id}/culture-intro. The
+// spoken script the AI interviewer reads aloud before the Q&A portion of a
+// candidate's audio interview round (organization-service's
+// OrganizationCultureIntro entity) — a genuinely separate resource from the
+// general tenant profile, NOT one of PATCH /tenants/{tenant_id}/profile's
+// fields (that request model is extra="forbid" with no culture_intro field
+// at all; a previous version of the Company Details form sent one anyway,
+// which 422'd the whole save — see CultureIntroTab.tsx for the real thing).
 // `intro_text` also has `min_length=1` server-side: there is no "clear it
 // back to empty" call, only set-to-a-non-empty-value.
 export type CultureIntro = {
@@ -24,7 +23,7 @@ const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     getTenantCultureIntro: build.query<CultureIntro, string>({
       query: (tenantId) => `/v1/tenants/${tenantId}/culture-intro`,
-      providesTags: (_result, _error, tenantId) => [{ type: 'Tenant', id: tenantId }],
+      providesTags: ['CultureIntro'],
     }),
     updateTenantCultureIntro: build.mutation<CultureIntro, UpdateCultureIntroArgs>({
       query: ({ tenantId, intro_text }) => ({
@@ -32,7 +31,7 @@ const extendedApi = orgApi.injectEndpoints({
         method: 'PUT',
         body: { intro_text },
       }),
-      invalidatesTags: (_result, _error, { tenantId }) => [{ type: 'Tenant', id: tenantId }],
+      invalidatesTags: ['CultureIntro'],
     }),
   }),
 });

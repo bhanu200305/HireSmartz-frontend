@@ -123,9 +123,10 @@ const extendedApi = orgApi.injectEndpoints({
       query: () => '/v1/platform/staff/me',
       providesTags: ['OwnProfile'],
     }),
-    // Same fix as getOwnUserProfile/updateOwnUserProfile in Users/users.ts —
-    // see that pair's comment for why this tag is what makes a save actually
-    // reflect instead of sitting stale behind Header's permanent subscription.
+    // Same cache-invalidation reasoning as Users/users.ts's
+    // updateOwnUserProfile — Header is a persistent layout component that
+    // never remounts on navigation, so without this it kept showing
+    // whatever it fetched once at app load regardless of saves made here.
     updateOwnPlatformProfile: build.mutation<OwnPlatformProfile, UpdateOwnPlatformProfileRequest>({
       query: (body) => ({
         url: '/v1/platform/staff/me',

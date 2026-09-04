@@ -2,21 +2,21 @@ import { useState } from 'react';
 import { Upload } from 'antd';
 import { MdOutlineFileUpload, MdOutlineDownload } from 'react-icons/md';
 import { FaCheckCircle } from 'react-icons/fa';
-import AntdCommonModal from '../shared/ui/AntdCommonModal';
-import { Button, showToast, StepIndicator, type Step } from '../shared';
-import { Loader } from '../shared/ui/loader';
+import AntdCommonModal from '../../shared/ui/AntdCommonModal';
+import { Button, showToast, StepIndicator, type Step } from '../../shared';
+import { Loader } from '../../shared/ui/loader';
 import {
-  useUploadStaffRosterMutation,
+  useLazyGetStaffRosterImportTemplateQuery,
+  useUploadStaffRosterFileMutation,
   useParseStaffRosterMutation,
   useConfirmStaffRosterImportMutation,
-  useLazyGetStaffRosterTemplateUrlQuery,
-  downloadStaffRosterTemplate,
+  triggerFileDownload,
   type StaffRosterRowFailure,
-} from '../../api/organization-service/Platform/staffImports';
-import { useListPlatformDepartmentsQuery } from '../../api/organization-service/Platform/staff';
-import { useRolesCatalog } from '../../hooks/useRolesCatalog';
-import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
-import StaffBulkImportRows, { type StaffReviewRow, toReviewRows } from './StaffBulkImportRows';
+} from '../../../api/organization-service/Platform/staffImports';
+import { useListPlatformDepartmentsQuery } from '../../../api/organization-service/Platform/staff';
+import { useRolesCatalog } from '../../../hooks/useRolesCatalog';
+import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import StaffBulkImportRows, { StaffReviewRow, toStaffReviewRows } from './StaffBulkImportRows';
 
 const IMPORT_STEPS: Step[] = [
   { key: 'upload', label: 'Upload' },
@@ -24,10 +24,8 @@ const IMPORT_STEPS: Step[] = [
   { key: 'done', label: 'Done' },
 ];
 
-// .xlsx ONLY — same reasoning as Tenants/BulkImport/index.tsx's own
-// ALLOWED_IMPORT_TYPES: ai-service's spreadsheet_parser.py is openpyxl-based
-// and only reads real .xlsx content, regardless of what a .csv or legacy
-// .xls claims its content-type is.
+// Same .xlsx-only reasoning as MyCompany/Team/BulkImport — the parse step
+// (ai-service's spreadsheet_parser.py) is openpyxl-based, real .xlsx only.
 const ALLOWED_IMPORT_TYPES = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
 
 type StaffBulkImportProps = {
@@ -35,11 +33,13 @@ type StaffBulkImportProps = {
   onClose: () => void;
 };
 
-/** Platform staff's own 3-step bulk-import flow — upload a spreadsheet,
- * review/edit the detected rows, confirm. Same shape as
- * Tenants/BulkImport/index.tsx, over /v1/platform/staff/bulk-import/* —
- * see staffImports.ts for why step 1 is a single server-mediated POST
- * instead of a presigned-S3 upload. */
+/** CFP's own internal-team mirror of MyCompany/Team/BulkImport's 3-step
+ * roster flow — upload straight to organization-service, parse, review/edit,
+ * confirm. Platform-scoped throughout (`/v1/platform/staff/bulk-import/...`,
+ * directory/api/platform_router.py): no tenant_id anywhere, since platform
+ * staff belong to no tenant. See staffImports.ts for the two real contract
+ * differences from the tenant flow (department is a real catalogue id, no
+ * designation column). */
 const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [rows, setRows] = useState<StaffReviewRow[]>([]);
@@ -52,16 +52,16 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
     scope: 'platform',
     isMaster: true,
   });
-  const roleNames = roles.map((role) => role.roleName);
-  const { data: departments = [] } = useListPlatformDepartmentsQuery(undefined, { skip: !open });
+  const { data: departmentsData, isLoading: isLoadingDepartments } =
+    useListPlatformDepartmentsQuery(undefined, { skip: !open });
+  const departments = departmentsData ?? [];
 
-  const [uploadRoster, { isLoading: isUploading }] = useUploadStaffRosterMutation();
-  const [parseRoster, { isLoading: isParsing }] = useParseStaffRosterMutation();
-  const [confirmImport, { isLoading: isConfirming }] = useConfirmStaffRosterImportMutation();
-  const [fetchTemplateUrl, { isFetching: isFetchingTemplate }] =
-    useLazyGetStaffRosterTemplateUrlQuery();
+  const [uploadStaffRosterFile, uploadState] = useUploadStaffRosterFileMutation();
+  const [parseStaffRoster, parseState] = useParseStaffRosterMutation();
+  const [confirmStaffRosterImport, confirmState] = useConfirmStaffRosterImportMutation();
+  const [fetchTemplate] = useLazyGetStaffRosterImportTemplateQuery();
 
-  const isBusy = isUploading || isParsing || isConfirming;
+  const isBusy = uploadState.isLoading || parseState.isLoading || confirmState.isLoading;
 
   const resetAndClose = () => {
     setStep(1);
@@ -78,9 +78,15 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
     }
 
     try {
-      const { storage_key } = await uploadRoster(file).unwrap();
-      const parsed = await parseRoster(storage_key).unwrap();
-      setRows(toReviewRows(parsed.rows, roleNames, departments));
+      const uploaded = await uploadStaffRosterFile({ file }).unwrap();
+      const parsed = await parseStaffRoster({ storage_key: uploaded.storage_key }).unwrap();
+      setRows(
+        toStaffReviewRows(
+          parsed.rows,
+          roles.map((role) => role.roleName),
+          departments
+        )
+      );
       setStep(2);
     } catch (error: unknown) {
       showToast({
@@ -99,15 +105,17 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
       return;
     }
     try {
-      const response = await confirmImport({
+      const response = await confirmStaffRosterImport({
         rows: confirmedRows.map((row) => ({
           email: row.email,
-          role: row.role as string,
+          role: row.role,
           department_id: row.departmentId || undefined,
-          designation: row.designation || undefined,
         })),
       }).unwrap();
-      setResult({ created: response.created_count, failures: response.failures ?? [] });
+      setResult({
+        created: response.created_count,
+        failures: response.failures ?? [],
+      });
       setStep(3);
     } catch (error: unknown) {
       showToast({
@@ -119,21 +127,26 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
 
   const handleDownloadTemplate = async () => {
     try {
-      const { download_url } = await fetchTemplateUrl().unwrap();
-      await downloadStaffRosterTemplate(download_url);
-    } catch {
-      showToast({ message: 'Failed to download the template.', type: 'error' });
+      const { download_url: downloadUrl } = await fetchTemplate().unwrap();
+      triggerFileDownload(downloadUrl);
+    } catch (error: unknown) {
+      showToast({
+        message: getOrgErrorMessage(error, 'Failed to download the template.'),
+        type: 'error',
+      });
     }
   };
+
+  const roleOptions = roles.map((role) => ({ label: role.roleName, value: role.roleName }));
 
   return (
     <AntdCommonModal
       open={open}
       onClose={resetAndClose}
-      title="Import Staff"
-      modalProps={{ width: 560 }}
+      title="Import Team"
+      modalProps={{ width: step === 2 ? 820 : 560 }}
     >
-      {(isBusy || isFetchingTemplate) && <Loader />}
+      {isBusy && <Loader />}
       <StepIndicator steps={IMPORT_STEPS} currentStep={step} className="mb-6" />
 
       {step === 1 && (
@@ -153,7 +166,7 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
             className="border-dashed border-gray-300 rounded-lg p-6"
           >
             <MdOutlineFileUpload className="text-2xl mb-2 text-primary mx-auto" />
-            <p className="text-gray-600">Upload a spreadsheet of internal staff</p>
+            <p className="text-gray-600">Upload a spreadsheet of existing staff</p>
             <p className="text-xs text-gray-400 mt-1">.xlsx only</p>
           </Upload.Dragger>
         </div>
@@ -163,13 +176,13 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
         <div>
           <p className="text-xs text-gray-500 mb-3">
             {rows.filter((r) => r.include).length} of {rows.length} rows will be invited. Pick a
-            role for each — a row with no role can&apos;t be confirmed. Role must match a real
-            platform role; department is optional.
+            role for each — a row with no role can&apos;t be confirmed.
           </p>
           <StaffBulkImportRows
-            roleNames={roleNames}
+            roleOptions={roleOptions}
             isLoadingRoles={isLoadingRoles}
             departments={departments}
+            isLoadingDepartments={isLoadingDepartments}
             rows={rows}
             onChange={setRows}
           />
@@ -184,7 +197,7 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
             <Button
               type="button"
               onClick={handleConfirm}
-              disabled={isConfirming || rows.filter((r) => r.include).length === 0}
+              disabled={confirmState.isLoading || rows.filter((r) => r.include).length === 0}
               className="w-full text-white bg-[var(--color-primary)] rounded-3xl py-2.5 disabled:opacity-50"
             >
               Confirm & Send Invites

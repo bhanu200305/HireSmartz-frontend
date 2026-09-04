@@ -167,12 +167,14 @@ const extendedApi = orgApi.injectEndpoints({
       query: () => '/v1/users/me',
       providesTags: ['OwnProfile'],
     }),
-    // Without invalidatesTags, the PATCH genuinely saves (backend confirms
-    // it) but Header/index.tsx holds a permanent, app-wide subscription to
-    // getOwnUserProfile — the cache entry never goes "unused" long enough to
-    // naturally expire and refetch, so the old profile just sits there
-    // (here and in Header) until a hard reload flushes the store. Tagging
-    // both sides is what makes the save actually show up.
+    // Every other screen that reads this user's own profile (Header's
+    // avatar/name, this profile page itself) shares the SAME cached
+    // getOwnUserProfile entry — RTK Query dedupes by endpoint+args, and this
+    // has none. Without invalidating it, Header — a persistent layout
+    // component that never remounts on route navigation, so its
+    // `refetchOnMountOrArgChange` never re-fires — kept showing whatever it
+    // fetched once at app load, no matter how many successful saves
+    // happened here afterward.
     updateOwnUserProfile: build.mutation<OrgUser, UpdateOwnUserProfileRequest>({
       query: (body) => ({
         url: '/v1/users/me',

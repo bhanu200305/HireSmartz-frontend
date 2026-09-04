@@ -7,7 +7,6 @@ import {
   MdLanguage,
   MdGroups,
   MdDescription,
-  MdInfo,
   MdPhone,
   MdAutorenew,
 } from 'react-icons/md';
@@ -202,8 +201,8 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
-      await updateProfile({ tenantId, logo: storage_key }).unwrap();
+      const uploaded = await uploadLogo({ tenantId, file }).unwrap();
+      await updateProfile({ tenantId, logo: uploaded.storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
       refetch();
     } catch (err) {
@@ -289,12 +288,6 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       key: 'description',
       label: 'Description',
       icon: <MdDescription size={16} />,
-      fullWidth: true,
-    },
-    {
-      key: 'culture_intro',
-      label: 'About our culture',
-      icon: <MdInfo size={16} />,
       fullWidth: true,
     },
   ];

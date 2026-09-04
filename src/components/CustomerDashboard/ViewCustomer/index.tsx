@@ -146,8 +146,8 @@ const ViewCustomer = () => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
-      await updateProfile({ tenantId, logo: storage_key }).unwrap();
+      const uploaded = await uploadLogo({ tenantId, file }).unwrap();
+      await updateProfile({ tenantId, logo: uploaded.storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
     } catch (err) {
       setLogoPreview(profile?.logo_url || '');

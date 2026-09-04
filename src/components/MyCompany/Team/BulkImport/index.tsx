@@ -6,7 +6,7 @@ import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Button, showToast, StepIndicator, type Step } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import {
-  useUploadRosterMutation,
+  useUploadRosterFileMutation,
   useParseRosterMutation,
   useConfirmRosterImportMutation,
   useLazyGetRosterImportTemplateUrlQuery,
@@ -15,7 +15,7 @@ import {
   type RosterRowFailure,
 } from '../../../../api/organization-service/Tenants/imports';
 import {
-  useUploadPlatformRosterMutation,
+  useUploadPlatformRosterFileMutation,
   useParsePlatformRosterMutation,
   useConfirmPlatformRosterImportMutation,
   useLazyGetPlatformRosterImportTemplateUrlQuery,
@@ -38,7 +38,7 @@ const IMPORT_STEPS: Step[] = [
 // ROSTER_EXCEL_CONSTRAINT technically also accepts 'application/vnd.ms-excel'
 // (.xls) at the upload step, but that would only defer the same failure to
 // parse time with a more confusing error, so it's excluded here too. A .csv
-// is rejected even earlier, at upload-url time — organization-service's
+// is rejected even earlier, at upload time — organization-service's
 // constraint never accepted 'text/csv' at all.
 const ALLOWED_IMPORT_TYPES = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
 
@@ -54,8 +54,9 @@ type BulkImportProps = {
   isMaster?: boolean;
 };
 
-/** The real 3-step roster flow — request an upload URL, upload straight to
- * storage, parse; then review/edit the detected rows and confirm. */
+/** The real 3-step roster flow — upload the file directly to
+ * organization-service, parse; then review/edit the detected rows and
+ * confirm. */
 const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportProps) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [rows, setRows] = useState<ReviewRow[]>([]);
@@ -76,8 +77,9 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
   // Both tenant-self and platform-mirror mutation hooks are always called
   // (React's rules of hooks — a hook can't be called conditionally), only
   // one pair is ever actually invoked below, picked by `isMaster`.
-  const [uploadTenantRoster, uploadTenantRosterState] = useUploadRosterMutation();
-  const [uploadPlatformRoster, uploadPlatformRosterState] = useUploadPlatformRosterMutation();
+  const [uploadTenantRosterFile, uploadTenantRosterFileState] = useUploadRosterFileMutation();
+  const [uploadPlatformRosterFile, uploadPlatformRosterFileState] =
+    useUploadPlatformRosterFileMutation();
   const [parseTenantRoster, parseTenantRosterState] = useParseRosterMutation();
   const [parsePlatformRoster, parsePlatformRosterState] = useParsePlatformRosterMutation();
   const [confirmTenantImport, confirmTenantImportState] = useConfirmRosterImportMutation();
@@ -87,12 +89,12 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
   const [fetchPlatformTemplateUrl, platformTemplateState] =
     useLazyGetPlatformRosterImportTemplateUrlQuery();
 
-  const uploadRoster = isMaster ? uploadPlatformRoster : uploadTenantRoster;
+  const uploadRosterFile = isMaster ? uploadPlatformRosterFile : uploadTenantRosterFile;
   const parseRoster = isMaster ? parsePlatformRoster : parseTenantRoster;
   const confirmImport = isMaster ? confirmPlatformImport : confirmTenantImport;
-  const isUploading = isMaster
-    ? uploadPlatformRosterState.isLoading
-    : uploadTenantRosterState.isLoading;
+  const isUploadingFile = isMaster
+    ? uploadPlatformRosterFileState.isLoading
+    : uploadTenantRosterFileState.isLoading;
   const isParsing = isMaster
     ? parsePlatformRosterState.isLoading
     : parseTenantRosterState.isLoading;
@@ -103,7 +105,7 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
     ? platformTemplateState.isFetching
     : tenantTemplateState.isFetching;
 
-  const isBusy = isUploading || isParsing || isConfirming || isFetchingTemplate;
+  const isBusy = isUploadingFile || isParsing || isConfirming || isFetchingTemplate;
 
   const resetAndClose = () => {
     setStep(1);
@@ -120,8 +122,12 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
     }
 
     try {
-      const { storage_key } = await uploadRoster({ tenantId, file }).unwrap();
-      const parsed = await parseRoster({ tenantId, storage_key }).unwrap();
+      const uploaded = await uploadRosterFile({ tenantId, file }).unwrap();
+
+      const parsed = await parseRoster({
+        tenantId,
+        storage_key: uploaded.storage_key,
+      }).unwrap();
       setRows(
         toReviewRows(
           parsed.rows,
@@ -186,7 +192,11 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
       open={open}
       onClose={resetAndClose}
       title="Import Team"
-      modalProps={{ width: 560 }}
+      // Step 2's review table needs real room for five columns
+      // (checkbox/email/role/department/designation) — 560px is enough for
+      // steps 1 and 3 (a dropzone, a result summary) but squeezed everything
+      // in step 2 down to illegible, truncated pills.
+      modalProps={{ width: step === 2 ? 880 : 560 }}
     >
       {isBusy && <Loader />}
       <StepIndicator steps={IMPORT_STEPS} currentStep={step} className="mb-6" />

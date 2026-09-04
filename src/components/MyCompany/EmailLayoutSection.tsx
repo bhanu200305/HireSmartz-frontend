@@ -81,7 +81,7 @@ const EmailLayoutSection: React.FC = () => {
   const { data: profile } = useGetTenantProfileQuery(tenantId ?? '', { skip: !tenantId });
   const [saveLayout, { isLoading: isSaving }] = useSaveTemplateLayoutMutation();
   const [revertLayout, { isLoading: isReverting }] = useRevertTemplateLayoutMutation();
-  const [uploadBanner, { isLoading: isRequestingUpload }] = useUploadTenantEmailBannerMutation();
+  const [uploadBanner, { isLoading: isUploadingBanner }] = useUploadTenantEmailBannerMutation();
   const [updateProfile, { isLoading: isSavingBanner }] = useUpdateTenantProfileMutation();
   const [fetchPreview, { data: preview, isLoading: isPreviewLoading }] =
     usePreviewTemplateMutation();
@@ -123,7 +123,7 @@ const EmailLayoutSection: React.FC = () => {
     }
   }, [profile?.email_banner_url]);
 
-  const isBusy = isSaving || isReverting || isRequestingUpload || isSavingBanner;
+  const isBusy = isSaving || isReverting || isUploadingBanner || isSavingBanner;
 
   if (isLoading) {
     return <Loader />;
@@ -157,8 +157,8 @@ const EmailLayoutSection: React.FC = () => {
       await saveLayout(body).unwrap();
 
       if (bannerFile) {
-        const { storage_key } = await uploadBanner({ tenantId, file: bannerFile }).unwrap();
-        await updateProfile({ tenantId, email_banner: storage_key }).unwrap();
+        const uploaded = await uploadBanner({ tenantId, file: bannerFile }).unwrap();
+        await updateProfile({ tenantId, email_banner: uploaded.storage_key }).unwrap();
         setBannerFile(null);
       }
 
@@ -311,7 +311,7 @@ const EmailLayoutSection: React.FC = () => {
               disabled={isBusy}
               className="rounded-3xl bg-primary px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSaving || isRequestingUpload || isSavingBanner ? 'Saving…' : 'Save layout'}
+              {isSaving || isUploadingBanner || isSavingBanner ? 'Saving…' : 'Save layout'}
             </Button>
           </div>
         </div>

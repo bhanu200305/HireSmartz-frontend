@@ -3,6 +3,15 @@ import { orgApi } from '../orgApi';
 export type InterviewQuestion = {
   question_id: string;
   question_text: string;
+  // Which ResumeTemplateField (see ../resumeTemplateFields.ts) this
+  // question's spoken answer is meant to fill in — required at the API
+  // layer on every create/update, but `null` is still a real value here: a
+  // legacy row created before this field existed can come back untagged
+  // (organization-service migration 0057 reverted an unsafe NOT NULL —
+  // there's no correct value to backfill an old row to). The Resume Field
+  // picker in both Intake Questions tabs already renders that as
+  // "unassigned" rather than assuming a value.
+  field_id: string | null;
 };
 
 export type InterviewQuestionsResponse = {
@@ -12,12 +21,14 @@ export type InterviewQuestionsResponse = {
 export type CreateInterviewQuestionArgs = {
   tenantId: string;
   question_text: string;
+  field_id: string;
 };
 
 export type UpdateInterviewQuestionArgs = {
   tenantId: string;
   questionId: string;
   question_text: string;
+  field_id: string;
 };
 
 export type DeleteInterviewQuestionArgs = {
@@ -45,20 +56,20 @@ const extendedApi = orgApi.injectEndpoints({
       providesTags: (_result, _error, tenantId) => [{ type: 'InterviewQuestions', id: tenantId }],
     }),
     createInterviewQuestion: build.mutation<InterviewQuestion, CreateInterviewQuestionArgs>({
-      query: ({ tenantId, question_text }) => ({
+      query: ({ tenantId, question_text, field_id }) => ({
         url: `/v1/tenants/${tenantId}/audio-questions`,
         method: 'POST',
-        body: { question_text },
+        body: { question_text, field_id },
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [
         { type: 'InterviewQuestions', id: tenantId },
       ],
     }),
     updateInterviewQuestion: build.mutation<InterviewQuestion, UpdateInterviewQuestionArgs>({
-      query: ({ tenantId, questionId, question_text }) => ({
+      query: ({ tenantId, questionId, question_text, field_id }) => ({
         url: `/v1/tenants/${tenantId}/audio-questions/${questionId}`,
         method: 'PATCH',
-        body: { question_text },
+        body: { question_text, field_id },
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [
         { type: 'InterviewQuestions', id: tenantId },

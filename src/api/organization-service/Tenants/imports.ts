@@ -1,22 +1,19 @@
 import { orgApi } from '../orgApi';
 
 // Real 3-step roster import flow — bulk_import_dto.py. Upload is
-// server-mediated: the browser POSTs the file straight to
-// organization-service as normal multipart form data, and this service
-// writes it to S3 itself (`RequestRosterUploadUseCase`/`StoragePort.put()`).
-// This used to be a presigned-POST the browser sent directly to S3 — that
-// depended on the bucket's own CORS configuration allowing this app's
-// origin, which it didn't locally, so every upload failed with a CORS error
-// the browser reported as an opaque "failed to parse the spreadsheet".
-// Server-mediation removes that dependency entirely — see
-// RosterUploadView's own docstring on the backend.
+// server-mediated: the file is POSTed to organization-service directly as
+// multipart/form-data (RequestRosterUploadUseCase writes it to S3 from
+// there), never a browser-direct-to-S3 presigned upload — the shared bucket
+// has no CORS config, so that shape silently fails in the browser. See
+// tenants/api/routers.py's `upload_roster` and
+// request_roster_upload.py's own docstring.
 
-export type UploadRosterArgs = {
+export type UploadRosterFileArgs = {
   tenantId: string;
   file: File;
 };
 
-export type RosterUploadResponse = {
+export type RosterUploadResult = {
   storage_key: string;
 };
 
@@ -86,7 +83,7 @@ export type ConfirmRosterImportResponse = {
 
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
-    uploadRoster: build.mutation<RosterUploadResponse, UploadRosterArgs>({
+    uploadRosterFile: build.mutation<RosterUploadResult, UploadRosterFileArgs>({
       query: ({ tenantId, file }) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -119,7 +116,7 @@ const extendedApi = orgApi.injectEndpoints({
 });
 
 export const {
-  useUploadRosterMutation,
+  useUploadRosterFileMutation,
   useParseRosterMutation,
   useConfirmRosterImportMutation,
   useLazyGetRosterImportTemplateUrlQuery,

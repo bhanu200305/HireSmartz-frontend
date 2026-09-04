@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { TableProps } from 'antd';
-import { MdOutlinePersonAdd, MdDelete, MdOutlineAdd, MdOutlineUploadFile } from 'react-icons/md';
+import { MdOutlinePersonAdd, MdDelete, MdOutlineAdd, MdOutlineFileUpload } from 'react-icons/md';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import { Button, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
@@ -154,7 +154,7 @@ const CfpUsers: React.FC = () => {
             className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1 text-sm font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-colors"
             onClick={() => setIsBulkImportOpen(true)}
           >
-            <MdOutlineUploadFile /> Import staff
+            <MdOutlineFileUpload /> Import team
           </Button>
           <Button
             className="rounded-full bg-primary-600 text-white px-4 py-1.5 flex items-center gap-1 text-sm font-semibold cfp-hover-lift"

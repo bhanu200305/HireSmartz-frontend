@@ -2,17 +2,9 @@ import { orgApi } from '../orgApi';
 
 // GET /v1/tenants/{tenant_id}/profile — TenantProfileView. The widest tenant
 // view in the service: every field the Company Admin can see/edit on their
-// own company.
-// `culture_intro` is deliberately NOT a field below — it looks like a plain
-// profile field but is its own separate resource on the real backend
-// (`GET/PUT /v1/tenants/{tenant_id}/culture-intro`, see Tenants/cultureIntro.ts)
-// with its own permission gate (`interview:read`/`interview:write`, not an
-// organization permission) and its own wire field name (`intro_text`). It
-// used to be listed here and sent through the PATCH below; since
-// `UpdateTenantProfileRequest` is `extra="forbid"` server-side, that
-// silently 422'd every save that included it — i.e. every save, since the
-// old code always sent it unconditionally. Fixed by moving it to its own
-// client entirely.
+// own company. No `culture_intro` here — that's a genuinely separate
+// resource (GET/PUT /tenants/{tenant_id}/culture-intro, see
+// Tenants/cultureIntro.ts), never part of this one.
 export type TenantProfile = {
   tenant_id: string;
   company_name: string;
@@ -30,11 +22,15 @@ export type TenantProfile = {
 // PATCH /v1/tenants/{tenant_id}/profile — UpdateTenantProfileRequest. Wire
 // names match the contract literally ("name"/"logo", not this service's
 // internal "company_name"/"logo_url") — every field omitted, not `null`,
-// means "leave unchanged". `logo` accepts either a storage key from the
-// upload-url flow below OR a plain externally-scraped URL (e.g. from
-// ai-service's org-scrape result) — the backend only verifies storage-key
-// values against its own storage and passes through anything else as-is
-// (`update_tenant_profile.py`'s `_verify_uploaded`).
+// means "leave unchanged". `extra="forbid"` on the backend — sending a
+// field this type doesn't declare 422s the WHOLE request, not just that
+// field (culture_intro used to be listed here despite never being a real
+// field on the backend request model, which broke every save on this form).
+// `logo` accepts either a storage key from the upload-url flow below OR a
+// plain externally-scraped URL (e.g. from ai-service's org-scrape result) —
+// the backend only verifies storage-key values against its own storage and
+// passes through anything else as-is (`update_tenant_profile.py`'s
+// `_verify_uploaded`).
 export type UpdateTenantProfileRequest = {
   tenantId: string;
   name?: string;
@@ -51,22 +47,23 @@ export type TenantStatusResponse = {
   status: string;
 };
 
-// POST /v1/tenants/{tenant_id}/logo/upload — server-mediated: the browser
-// POSTs the file straight to organization-service as normal multipart form
-// data, and this service writes it to S3 itself. Previously a presigned-POST
-// the browser sent directly to S3 (same shape as the old roster-import
-// upload — see Tenants/imports.ts's own note on why that broke locally and
-// was changed for the same CORS reason). No confirm endpoint: after this
-// upload succeeds, the caller persists the returned `storage_key` via
-// updateTenantProfile's `logo` field directly.
+// POST /v1/tenants/{tenant_id}/logo/upload — server-mediated: the file is
+// POSTed to organization-service directly as multipart/form-data
+// (RequestTenantLogoUploadUseCase writes it to S3 from there), never a
+// browser-direct-to-S3 presigned upload — the shared bucket has no CORS
+// config, so that shape silently fails in the browser. Same reasoning as
+// Tenants/imports.ts's uploadRosterFile. No confirm endpoint: the caller
+// persists the returned `storage_key` via updateTenantProfile's `logo`
+// field directly.
 export type UploadTenantLogoArgs = {
   tenantId: string;
   file: File;
 };
 
-// POST /v1/tenants/{tenant_id}/email-banner/upload — identical shape to the
-// logo upload above; the caller persists `storage_key` via
-// updateTenantProfile's `email_banner` field. Tenant self-service only —
+// POST /v1/tenants/{tenant_id}/email-banner/upload — identical server-mediated
+// shape to the logo upload above (`TenantEmailBannerUploadView` mirrors
+// `TenantLogoUploadView` on the backend); the caller persists `storage_key`
+// via updateTenantProfile's `email_banner` field. Tenant self-service only —
 // this route is `require_own_tenant`-guarded the same way the logo one is,
 // so there is no platform-on-behalf-of-a-tenant equivalent.
 export type UploadTenantEmailBannerArgs = {
@@ -74,7 +71,7 @@ export type UploadTenantEmailBannerArgs = {
   file: File;
 };
 
-export type TenantAssetUploadResponse = {
+export type TenantFileUploadResult = {
   storage_key: string;
 };
 
@@ -136,7 +133,7 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [{ type: 'Tenant', id: tenantId }],
     }),
-    uploadTenantLogo: build.mutation<TenantAssetUploadResponse, UploadTenantLogoArgs>({
+    uploadTenantLogo: build.mutation<TenantFileUploadResult, UploadTenantLogoArgs>({
       query: ({ tenantId, file }) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -147,19 +144,17 @@ const extendedApi = orgApi.injectEndpoints({
         };
       },
     }),
-    uploadTenantEmailBanner: build.mutation<TenantAssetUploadResponse, UploadTenantEmailBannerArgs>(
-      {
-        query: ({ tenantId, file }) => {
-          const formData = new FormData();
-          formData.append('file', file);
-          return {
-            url: `/v1/tenants/${tenantId}/email-banner/upload`,
-            method: 'POST',
-            body: formData,
-          };
-        },
-      }
-    ),
+    uploadTenantEmailBanner: build.mutation<TenantFileUploadResult, UploadTenantEmailBannerArgs>({
+      query: ({ tenantId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/v1/tenants/${tenantId}/email-banner/upload`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+    }),
     getTenantDashboard: build.query<TenantDashboardSummary, string>({
       query: (tenantId) => `/v1/tenants/${tenantId}/dashboard`,
       providesTags: (_result, _error, tenantId) => [{ type: 'Tenant', id: tenantId }],

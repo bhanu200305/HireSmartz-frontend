@@ -30,14 +30,14 @@ import {
   useReactivatePlatformTenantUserMutation,
   useAttachPlatformTenantUserLocationMutation,
 } from '../../../../api/organization-service/Platform/users';
-import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organization-service/Platform/departments';
-import { useListPlatformTenantDesignationsQuery } from '../../../../api/organization-service/Platform/designations';
-import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-service/Platform/offices';
 import {
   useListPlatformTenantInvitationsQuery,
   useResendPlatformTenantInvitationMutation,
   useRevokePlatformTenantInvitationMutation,
 } from '../../../../api/organization-service/Platform/invitations';
+import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organization-service/Platform/departments';
+import { useListPlatformTenantDesignationsQuery } from '../../../../api/organization-service/Platform/designations';
+import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-service/Platform/offices';
 import { useAssignRoleAsPlatformMutation } from '../../../../api/organization-service/Roles/assignments';
 import { useRolesCatalog } from '../../../../hooks/useRolesCatalog';
 import type { OrgUser } from '../../../../api/organization-service/Users/users';
@@ -127,15 +127,26 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     tenantId,
     includeInactive: includeInactive === 'all',
   });
-  const { data: departments } = useListPlatformTenantDepartmentsQuery(tenantId);
-  const { data: designations } = useListPlatformTenantDesignationsQuery(tenantId);
-  const { data: offices } = useListPlatformTenantOfficesQuery(tenantId);
-  const { roles, createRole } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: true });
+  // Bulk import (and a single invite) only ever creates an `Invite` row —
+  // never a `users` row — until the invited person actually accepts, so
+  // useListPlatformTenantUsersQuery above alone would make an import look
+  // like it did nothing. Fetched here purely to surface still-pending ones
+  // as visible rows; `invalidatesTags: ['TenantInvitations']` on both the
+  // bulk-import confirm and single-invite mutations already refetches this
+  // the moment either succeeds.
+  //
   // Every invite this tenant has ever sent, not just pending ones — filtered
   // to `status === 'pending'` below. Accepted/revoked/expired invites are
   // dead rows for THIS table's purpose (an accepted one's person already
   // shows up via `data.items` instead).
-  const { data: invitationsData } = useListPlatformTenantInvitationsQuery({ tenantId });
+  const { data: invitationsData } = useListPlatformTenantInvitationsQuery({
+    tenantId,
+    limit: 100,
+  });
+  const { data: departments } = useListPlatformTenantDepartmentsQuery(tenantId);
+  const { data: designations } = useListPlatformTenantDesignationsQuery(tenantId);
+  const { data: offices } = useListPlatformTenantOfficesQuery(tenantId);
+  const { roles, createRole } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: true });
 
   const [createUser, { isLoading: isCreating }] = useCreatePlatformTenantUserMutation();
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivatePlatformTenantUserMutation();
