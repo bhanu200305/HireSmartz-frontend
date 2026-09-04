@@ -6,7 +6,7 @@ import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Button, showToast, StepIndicator, type Step } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import {
-  useUploadRosterFileMutation,
+  useUploadRosterMutation,
   useParseRosterMutation,
   useConfirmRosterImportMutation,
   useLazyGetRosterImportTemplateUrlQuery,
@@ -15,7 +15,7 @@ import {
   type RosterRowFailure,
 } from '../../../../api/organization-service/Tenants/imports';
 import {
-  useUploadPlatformRosterFileMutation,
+  useUploadPlatformRosterMutation,
   useParsePlatformRosterMutation,
   useConfirmPlatformRosterImportMutation,
   useLazyGetPlatformRosterImportTemplateUrlQuery,
@@ -77,9 +77,8 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
   // Both tenant-self and platform-mirror mutation hooks are always called
   // (React's rules of hooks — a hook can't be called conditionally), only
   // one pair is ever actually invoked below, picked by `isMaster`.
-  const [uploadTenantRosterFile, uploadTenantRosterFileState] = useUploadRosterFileMutation();
-  const [uploadPlatformRosterFile, uploadPlatformRosterFileState] =
-    useUploadPlatformRosterFileMutation();
+  const [uploadTenantRoster, uploadTenantRosterState] = useUploadRosterMutation();
+  const [uploadPlatformRoster, uploadPlatformRosterState] = useUploadPlatformRosterMutation();
   const [parseTenantRoster, parseTenantRosterState] = useParseRosterMutation();
   const [parsePlatformRoster, parsePlatformRosterState] = useParsePlatformRosterMutation();
   const [confirmTenantImport, confirmTenantImportState] = useConfirmRosterImportMutation();
@@ -89,12 +88,12 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
   const [fetchPlatformTemplateUrl, platformTemplateState] =
     useLazyGetPlatformRosterImportTemplateUrlQuery();
 
-  const uploadRosterFile = isMaster ? uploadPlatformRosterFile : uploadTenantRosterFile;
+  const uploadRoster = isMaster ? uploadPlatformRoster : uploadTenantRoster;
   const parseRoster = isMaster ? parsePlatformRoster : parseTenantRoster;
   const confirmImport = isMaster ? confirmPlatformImport : confirmTenantImport;
-  const isUploadingFile = isMaster
-    ? uploadPlatformRosterFileState.isLoading
-    : uploadTenantRosterFileState.isLoading;
+  const isUploading = isMaster
+    ? uploadPlatformRosterState.isLoading
+    : uploadTenantRosterState.isLoading;
   const isParsing = isMaster
     ? parsePlatformRosterState.isLoading
     : parseTenantRosterState.isLoading;
@@ -105,7 +104,7 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
     ? platformTemplateState.isFetching
     : tenantTemplateState.isFetching;
 
-  const isBusy = isUploadingFile || isParsing || isConfirming || isFetchingTemplate;
+  const isBusy = isUploading || isParsing || isConfirming || isFetchingTemplate;
 
   const resetAndClose = () => {
     setStep(1);
@@ -122,12 +121,8 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
     }
 
     try {
-      const uploaded = await uploadRosterFile({ tenantId, file }).unwrap();
-
-      const parsed = await parseRoster({
-        tenantId,
-        storage_key: uploaded.storage_key,
-      }).unwrap();
+      const { storage_key } = await uploadRoster({ tenantId, file }).unwrap();
+      const parsed = await parseRoster({ tenantId, storage_key }).unwrap();
       setRows(
         toReviewRows(
           parsed.rows,

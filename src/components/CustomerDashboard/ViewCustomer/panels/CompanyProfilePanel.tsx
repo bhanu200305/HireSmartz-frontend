@@ -142,8 +142,8 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const uploaded = await uploadLogo({ tenantId, file }).unwrap();
-      await updateProfile({ tenantId, logo: uploaded.storage_key }).unwrap();
+      const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
+      await updateProfile({ tenantId, logo: storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
       refetch();
     } catch (err) {

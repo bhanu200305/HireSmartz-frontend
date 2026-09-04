@@ -119,7 +119,10 @@ const emptyForm: FormState = {
  * this panel makes it worse, but nothing here works around it either.
  *
  * Table + search/sort/filter/pagination matches CompanySettings' master-data
- * tabs instead of the plain divided list this used to be.
+ * tabs instead of the plain divided list this used to be. Pending invites
+ * share this same table (as `PendingRow`s) rather than living only on a
+ * separate screen — resend/revoke are real actions here, not just a pointer
+ * to "go manage it elsewhere".
  */
 const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [includeInactive, setIncludeInactive] = useState<'active' | 'all'>('active');
@@ -138,7 +141,9 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   // Every invite this tenant has ever sent, not just pending ones — filtered
   // to `status === 'pending'` below. Accepted/revoked/expired invites are
   // dead rows for THIS table's purpose (an accepted one's person already
-  // shows up via `data.items` instead).
+  // shows up via `data.items` instead). `limit: 100`, not the endpoint's own
+  // default of 50 — a tenant that bulk-imported more than 50 people at once
+  // would otherwise silently lose the overflow off this list.
   const { data: invitationsData } = useListPlatformTenantInvitationsQuery({
     tenantId,
     limit: 100,
@@ -187,6 +192,9 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
   const users = data?.items ?? [];
 
+  // Only "pending" — "accepted" is already a real row in `users` above (would
+  // double-list the same person), and "expired"/"revoked" are no longer
+  // actionable, so surfacing them here would just be noise.
   const pendingInvitations = useMemo(
     () => (invitationsData?.invitations ?? []).filter((inv) => inv.status === 'pending'),
     [invitationsData]

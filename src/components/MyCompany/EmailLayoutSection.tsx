@@ -157,8 +157,8 @@ const EmailLayoutSection: React.FC = () => {
       await saveLayout(body).unwrap();
 
       if (bannerFile) {
-        const uploaded = await uploadBanner({ tenantId, file: bannerFile }).unwrap();
-        await updateProfile({ tenantId, email_banner: uploaded.storage_key }).unwrap();
+        const { storage_key } = await uploadBanner({ tenantId, file: bannerFile }).unwrap();
+        await updateProfile({ tenantId, email_banner: storage_key }).unwrap();
         setBannerFile(null);
       }
 

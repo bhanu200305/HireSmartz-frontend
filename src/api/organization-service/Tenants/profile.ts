@@ -2,9 +2,17 @@ import { orgApi } from '../orgApi';
 
 // GET /v1/tenants/{tenant_id}/profile — TenantProfileView. The widest tenant
 // view in the service: every field the Company Admin can see/edit on their
-// own company. No `culture_intro` here — that's a genuinely separate
-// resource (GET/PUT /tenants/{tenant_id}/culture-intro, see
-// Tenants/cultureIntro.ts), never part of this one.
+// own company.
+// `culture_intro` is deliberately NOT a field below — it looks like a plain
+// profile field but is its own separate resource on the real backend
+// (`GET/PUT /v1/tenants/{tenant_id}/culture-intro`, see Tenants/cultureIntro.ts)
+// with its own permission gate (`interview:read`/`interview:write`, not an
+// organization permission) and its own wire field name (`intro_text`). It
+// used to be listed here and sent through the PATCH below; since
+// `UpdateTenantProfileRequest` is `extra="forbid"` server-side, that
+// silently 422'd every save that included it — i.e. every save, since the
+// old code always sent it unconditionally. Fixed by moving it to its own
+// client entirely.
 export type TenantProfile = {
   tenant_id: string;
   company_name: string;
@@ -47,14 +55,14 @@ export type TenantStatusResponse = {
   status: string;
 };
 
-// POST /v1/tenants/{tenant_id}/logo/upload — server-mediated: the file is
-// POSTed to organization-service directly as multipart/form-data
-// (RequestTenantLogoUploadUseCase writes it to S3 from there), never a
-// browser-direct-to-S3 presigned upload — the shared bucket has no CORS
-// config, so that shape silently fails in the browser. Same reasoning as
-// Tenants/imports.ts's uploadRosterFile. No confirm endpoint: the caller
-// persists the returned `storage_key` via updateTenantProfile's `logo`
-// field directly.
+// POST /v1/tenants/{tenant_id}/logo/upload — server-mediated: the browser
+// POSTs the file straight to organization-service as normal multipart form
+// data, and this service writes it to S3 itself. Previously a presigned-POST
+// the browser sent directly to S3 (same shape as the old roster-import
+// upload — see Tenants/imports.ts's own note on why that broke locally and
+// was changed for the same CORS reason). No confirm endpoint: after this
+// upload succeeds, the caller persists the returned `storage_key` via
+// updateTenantProfile's `logo` field directly.
 export type UploadTenantLogoArgs = {
   tenantId: string;
   file: File;
@@ -71,7 +79,7 @@ export type UploadTenantEmailBannerArgs = {
   file: File;
 };
 
-export type TenantFileUploadResult = {
+export type TenantAssetUploadResponse = {
   storage_key: string;
 };
 
@@ -133,7 +141,7 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [{ type: 'Tenant', id: tenantId }],
     }),
-    uploadTenantLogo: build.mutation<TenantFileUploadResult, UploadTenantLogoArgs>({
+    uploadTenantLogo: build.mutation<TenantAssetUploadResponse, UploadTenantLogoArgs>({
       query: ({ tenantId, file }) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -144,17 +152,19 @@ const extendedApi = orgApi.injectEndpoints({
         };
       },
     }),
-    uploadTenantEmailBanner: build.mutation<TenantFileUploadResult, UploadTenantEmailBannerArgs>({
-      query: ({ tenantId, file }) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        return {
-          url: `/v1/tenants/${tenantId}/email-banner/upload`,
-          method: 'POST',
-          body: formData,
-        };
-      },
-    }),
+    uploadTenantEmailBanner: build.mutation<TenantAssetUploadResponse, UploadTenantEmailBannerArgs>(
+      {
+        query: ({ tenantId, file }) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          return {
+            url: `/v1/tenants/${tenantId}/email-banner/upload`,
+            method: 'POST',
+            body: formData,
+          };
+        },
+      }
+    ),
     getTenantDashboard: build.query<TenantDashboardSummary, string>({
       query: (tenantId) => `/v1/tenants/${tenantId}/dashboard`,
       providesTags: (_result, _error, tenantId) => [{ type: 'Tenant', id: tenantId }],
