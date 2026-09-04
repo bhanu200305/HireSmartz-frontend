@@ -54,16 +54,16 @@ export const buildJobNotesTimeline = (job: any): CandidateNoteItem[] => {
           note?.role ??
           note?.user?.role ??
           note?.author?.role,
-        authorId:
-          Number(
+        authorId: (() => {
+          const id =
             note?.authorId ??
-              note?.createdById ??
-              note?.createdBy ??
-              note?.userId ??
-              note?.user?.id ??
-              note?.author?.id ??
-              0
-          ) || undefined,
+            note?.createdById ??
+            note?.createdBy ??
+            note?.userId ??
+            note?.user?.id ??
+            note?.author?.id;
+          return id != null ? String(id) : undefined;
+        })(),
         contextLabel: String(
           note?.contextLabel ?? note?.context ?? note?.code ?? note?.type ?? 'AS'
         ),
@@ -81,7 +81,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     contextLabel: 'AS',
     authorName: 'Amit Shah',
     authorRole: 'Hiring Manager',
-    authorId: 0,
+    authorId: undefined,
     createdAt: '2026-03-17T18:09:00.000Z',
     roundName: 'AI Audio Screening',
     content: 'Please schedule an in-person interview with this candidate',
@@ -91,7 +91,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     contextLabel: 'RA',
     authorName: 'Raghav Arora',
     authorRole: undefined,
-    authorId: 0,
+    authorId: undefined,
     createdAt: '2026-03-10T18:09:00.000Z',
     roundName: undefined,
     content: "Please review this candidate's portfolio.",
@@ -101,7 +101,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     contextLabel: 'RA',
     authorName: 'Raghav Arora',
     authorRole: 'Recruiter',
-    authorId: 0,
+    authorId: undefined,
     createdAt: '2026-03-10T19:00:00.000Z',
     roundName: undefined,
     content: "Please review this candidate's portfolio (edited)",
@@ -111,7 +111,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     contextLabel: 'SA',
     authorName: 'Sarah Andrews',
     authorRole: 'Hiring Manager',
-    authorId: 0,
+    authorId: undefined,
     createdAt: '2026-03-05T20:00:00.000Z',
     roundName: 'In-Person Interview',
     content:
@@ -122,7 +122,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     contextLabel: 'DW',
     authorName: 'Dan Williams',
     authorRole: 'Super Admin',
-    authorId: 0,
+    authorId: undefined,
     createdAt: '2026-03-01T17:00:00.000Z',
     roundName: 'AI Audio Screening',
     content: 'Can budget $40k. Check if this works.',

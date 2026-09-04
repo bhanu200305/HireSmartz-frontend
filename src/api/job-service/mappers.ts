@@ -24,7 +24,7 @@ export const mapJobSummaryToListRow = (item: JobSummaryResponse): Jobs => {
     recruiter: '',
     exemptionStatusId: 0,
     communicationSkills: '',
-    jobOpeningCreatedAt: '',
+    jobOpeningCreatedAt: item.created_at,
     jobOpeningUpdatedAt: '',
     isDeleted: false,
     exemptionStatusName: '',
@@ -51,6 +51,7 @@ export const mapJobSummaryToListRow = (item: JobSummaryResponse): Jobs => {
     jobTypeId: item.job_type_id,
     hiringManagerIds: item.hiring_manager_ids,
     recruiterIds: item.recruiter_ids,
+    createdById: item.created_by,
     isPublished: item.is_published,
     isRemote: item.is_remote,
   } as Jobs;

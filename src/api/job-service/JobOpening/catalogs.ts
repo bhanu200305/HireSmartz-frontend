@@ -5,6 +5,8 @@ import type {
   JobMode,
   Language,
   MasterJobType,
+  OrganizationClosureReason,
+  OrganizationJobMode,
   OrganizationJobType,
   OrganizationShift,
   SkillCatalogEntry,
@@ -132,6 +134,32 @@ const catalogsApi = jobApi.injectEndpoints({
       providesTags: ['JobModes'],
     }),
 
+    // Write side of this organization's job-mode list (listJobModes above is read-only).
+    createJobMode: build.mutation<
+      OrganizationJobMode,
+      { name: string; description?: string | null }
+    >({
+      query: (body) => ({ url: '/job-modes', method: 'POST', body }),
+      invalidatesTags: ['JobModes'],
+    }),
+
+    updateJobMode: build.mutation<
+      OrganizationJobMode,
+      { jobModeId: string; name: string; description?: string | null }
+    >({
+      query: ({ jobModeId, ...body }) => ({
+        url: `/job-modes/${jobModeId}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['JobModes'],
+    }),
+
+    deleteJobMode: build.mutation<void, string>({
+      query: (jobModeId) => ({ url: `/job-modes/${jobModeId}`, method: 'DELETE' }),
+      invalidatesTags: ['JobModes'],
+    }),
+
     listLanguages: build.query<Language[], void>({
       query: () => ({ url: '/master/languages', method: 'GET' }),
       transformResponse: (response: { languages: Language[] }) => response.languages ?? [],
@@ -142,6 +170,35 @@ const catalogsApi = jobApi.injectEndpoints({
       query: () => ({ url: '/master/closure-reasons', method: 'GET' }),
       transformResponse: (response: { reasons: ClosureReason[] }) => response.reasons ?? [],
       providesTags: ['ClosureReasons'],
+    }),
+
+    // Write side of this organization's closure-reason list.
+    createClosureReason: build.mutation<
+      OrganizationClosureReason,
+      { reason: string; description?: string | null }
+    >({
+      query: (body) => ({ url: '/job-closure-reasons', method: 'POST', body }),
+      invalidatesTags: ['ClosureReasons'],
+    }),
+
+    updateClosureReason: build.mutation<
+      OrganizationClosureReason,
+      { closureReasonId: string; reason: string; description?: string | null }
+    >({
+      query: ({ closureReasonId, ...body }) => ({
+        url: `/job-closure-reasons/${closureReasonId}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['ClosureReasons'],
+    }),
+
+    deleteClosureReason: build.mutation<void, string>({
+      query: (closureReasonId) => ({
+        url: `/job-closure-reasons/${closureReasonId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['ClosureReasons'],
     }),
 
     listInterviewRoundTypes: build.query<InterviewRoundType[], void>({
@@ -203,8 +260,14 @@ export const {
   useUpdateShiftMutation,
   useDeleteShiftMutation,
   useListJobModesQuery,
+  useCreateJobModeMutation,
+  useUpdateJobModeMutation,
+  useDeleteJobModeMutation,
   useListLanguagesQuery,
   useListClosureReasonsQuery,
+  useCreateClosureReasonMutation,
+  useUpdateClosureReasonMutation,
+  useDeleteClosureReasonMutation,
   useListInterviewRoundTypesQuery,
   useSearchSkillsQuery,
   useLazySearchSkillsQuery,

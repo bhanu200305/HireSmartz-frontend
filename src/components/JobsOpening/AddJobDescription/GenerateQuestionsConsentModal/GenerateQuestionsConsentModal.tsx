@@ -5,19 +5,28 @@ import { Loader } from '../../../shared/ui/loader';
 import { GenerateQuestionsConsentModalProps } from './GenerateQuestionsConsentModal.types';
 import clsx from 'clsx';
 
+const DEFAULT_QUESTION_COUNT = 10;
+const MIN_QUESTION_COUNT = 1;
+const MAX_QUESTION_COUNT = 100;
+
 const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
   open,
   onClose,
   onConfirm,
   isLoading = false,
+  hasExistingQuestions = true,
 }) => {
   const [selectedMode, setSelectedMode] = useState<'ADD' | 'REPLACE' | null>(null);
+  const [questionCount, setQuestionCount] = useState(DEFAULT_QUESTION_COUNT);
 
   if (!open) return null;
 
+  // Nothing to append to or replace when the list is already empty.
+  const effectiveMode = hasExistingQuestions ? selectedMode : 'REPLACE';
+
   const handleConfirmClick = () => {
-    if (selectedMode) {
-      onConfirm(selectedMode);
+    if (effectiveMode) {
+      onConfirm(effectiveMode, questionCount);
     }
   };
 
@@ -27,7 +36,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <Typography variant="h5" className="text-gray-800 m-0 font-semibold font-sora">
-            Generate Default Questions
+            Generate Questions with AI
           </Typography>
           <button
             className="text-gray-400 hover:text-gray-600 cursor-pointer shrink-0 transition"
@@ -42,12 +51,37 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
         {/* Description */}
         <div className="mb-6">
           <Typography variant="body2" className="text-gray-500 font-roboto m-0">
-            Select how you would like to apply the generated default questions to the current list
-            of questions.
+            Choose how many questions to generate and how to apply them to the current list.
           </Typography>
         </div>
 
+        {/* Question count */}
+        <div className="mb-6">
+          <Typography
+            variant="subtitle2"
+            className="text-gray-800 font-semibold font-sora block mb-2"
+          >
+            Number of questions
+          </Typography>
+          <input
+            type="number"
+            min={MIN_QUESTION_COUNT}
+            max={MAX_QUESTION_COUNT}
+            value={questionCount}
+            disabled={isLoading}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              if (Number.isNaN(next)) return;
+              setQuestionCount(
+                Math.min(MAX_QUESTION_COUNT, Math.max(MIN_QUESTION_COUNT, next))
+              );
+            }}
+            className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-50"
+          />
+        </div>
+
         {/* Options Cards */}
+        {hasExistingQuestions && (
         <div className="flex flex-col gap-4 mb-6">
           {/* Append Option */}
           <div
@@ -76,8 +110,8 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
                 Append to Existing
               </Typography>
               <Typography variant="caption" className="text-gray-500 font-roboto leading-normal">
-                Keep all current questions and append the new generated default questions to the end
-                of your list.
+                Keep all current questions and append the newly generated questions to the end of
+                your list.
               </Typography>
             </div>
           </div>
@@ -110,11 +144,12 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
               </Typography>
               <Typography variant="caption" className="text-gray-500 font-roboto leading-normal">
                 Delete all existing questions for this list and replace them completely with the
-                fresh set of default questions.
+                newly generated ones.
               </Typography>
             </div>
           </div>
         </div>
+        )}
 
         {/* Actions Row */}
         <div className="flex gap-3 justify-end">
@@ -130,13 +165,13 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
           <Button
             type="button"
             onClick={handleConfirmClick}
-            disabled={isLoading || !selectedMode}
+            disabled={isLoading || !effectiveMode}
             className={clsx(
               'text-white py-2 px-6 rounded-3xl cursor-pointer text-sm font-semibold transition flex items-center justify-center gap-2 min-w-[120px]',
-              selectedMode === 'REPLACE'
+              effectiveMode === 'REPLACE'
                 ? 'bg-red-500 hover:bg-red-600'
                 : 'bg-button hover:opacity-90',
-              (isLoading || !selectedMode) && 'opacity-50 cursor-not-allowed'
+              (isLoading || !effectiveMode) && 'opacity-50 cursor-not-allowed'
             )}
           >
             {isLoading && <Loader />}

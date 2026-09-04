@@ -47,7 +47,7 @@ const DuplicateCandidateModal = ({ duplicates, onAcknowledge }: DuplicateCandida
             {duplicates.map((d) => (
               <div key={d.email} className="flex flex-col">
                 <span className="text-sm font-medium text-gray-700 roboto-font">
-                  {d.candidateName ?? '—'}
+                  {d.candidateName ?? '-'}
                 </span>
                 <span className="text-sm text-gray-400 roboto-font break-all">{d.email}</span>
               </div>

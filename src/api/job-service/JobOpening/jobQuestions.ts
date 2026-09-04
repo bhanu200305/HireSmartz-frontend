@@ -111,6 +111,9 @@ const extendedApi = jobApi.injectEndpoints({
 
 export type { RoundQuestionsResponse };
 
+// Exported so callers get typed `.util` cache helpers for these endpoints.
+export { extendedApi as jobQuestionsApi };
+
 export const {
   useGetJobQuestionsQuery,
   useGetAudioQuestionsQuery,

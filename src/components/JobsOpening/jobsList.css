@@ -13,7 +13,7 @@
 
 .jobs-list-page .search-input-wrapper {
   background-color: var(--gray-50, #fafafa);
-  border-color: transparent;
+  border-color: var(--gray-200);
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
@@ -28,7 +28,7 @@
 
 .jobs-list-page .cfp-dropdown-trigger {
   background-color: var(--gray-50, #fafafa);
-  border-color: transparent;
+  border-color: var(--gray-200);
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
@@ -37,4 +37,14 @@
 
 .jobs-list-page .cfp-dropdown-trigger:focus-within {
   background-color: #ffffff;
+}
+
+/* Safe minimum width so Status filter options never get clipped. */
+.status-filter-dropdown {
+  min-width: 120px !important;
+}
+
+.status-filter-dropdown .ant-select-item-option-content {
+  overflow: visible;
+  white-space: nowrap;
 }
