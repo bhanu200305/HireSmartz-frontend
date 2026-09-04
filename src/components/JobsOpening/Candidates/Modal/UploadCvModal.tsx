@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Spin, Upload } from 'antd';
 import { MdClose } from 'react-icons/md';
@@ -25,6 +25,7 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 interface UploadCvModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCompleted: () => void;
 }
 
 const MAX_FILES = 30;
@@ -36,9 +37,10 @@ const ALLOWED_TYPES = [
 const MAX_SIZE_MB = 5;
 const POLL_INTERVAL_MS = 3000;
 
-const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
+const UploadCvModal = ({ isOpen, onClose, onCompleted }: UploadCvModalProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
+  const [completedBatchId, setCompletedBatchId] = useState<string | null>(null);
 
   const { id: jobOpeningId } = useParams<{ id: string }>();
   const tenantId = useSessionTenantId();
@@ -51,6 +53,13 @@ const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
 
   const isProcessing =
     !!batchId && !!batchProgress && batchProgress.parsed_files < batchProgress.valid_files;
+
+  useEffect(() => {
+    if (batchId && batchProgress && !isProcessing && completedBatchId !== batchId) {
+      onCompleted();
+      setCompletedBatchId(batchId);
+    }
+  }, [batchId, batchProgress, completedBatchId, isProcessing, onCompleted]);
 
   const handleFileSelect = (selectedFiles: File[]) => {
     const accepted: File[] = [];
@@ -107,6 +116,7 @@ const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
         // (FRONTEND_INTEGRATION_DETAILS.md §4.2's own "poll, don't assume a
         // fixed completion time").
         setBatchId(res.batch_id);
+        setCompletedBatchId(null);
       } else {
         onClose();
       }
@@ -121,6 +131,7 @@ const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
   const handleClose = () => {
     setFiles([]);
     setBatchId(null);
+    setCompletedBatchId(null);
     onClose();
   };
 
