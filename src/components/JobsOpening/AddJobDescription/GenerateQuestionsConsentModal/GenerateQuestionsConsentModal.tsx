@@ -17,16 +17,23 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
   hasExistingQuestions = true,
 }) => {
   const [selectedMode, setSelectedMode] = useState<'ADD' | 'REPLACE' | null>(null);
-  const [questionCount, setQuestionCount] = useState(DEFAULT_QUESTION_COUNT);
+  // Raw typed text, kept separate from the clamped value so the field can go empty mid-edit.
+  const [questionCountText, setQuestionCountText] = useState(String(DEFAULT_QUESTION_COUNT));
 
   if (!open) return null;
 
   // Nothing to append to or replace when the list is already empty.
   const effectiveMode = hasExistingQuestions ? selectedMode : 'REPLACE';
 
+  const clampedQuestionCount = () => {
+    const parsed = Number(questionCountText);
+    if (!questionCountText || Number.isNaN(parsed)) return MIN_QUESTION_COUNT;
+    return Math.min(MAX_QUESTION_COUNT, Math.max(MIN_QUESTION_COUNT, Math.trunc(parsed)));
+  };
+
   const handleConfirmClick = () => {
     if (effectiveMode) {
-      onConfirm(effectiveMode, questionCount);
+      onConfirm(effectiveMode, clampedQuestionCount());
     }
   };
 
@@ -67,13 +74,16 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
             type="number"
             min={MIN_QUESTION_COUNT}
             max={MAX_QUESTION_COUNT}
-            value={questionCount}
+            value={questionCountText}
             disabled={isLoading}
             onChange={(e) => {
-              const next = Number(e.target.value);
-              if (Number.isNaN(next)) return;
-              setQuestionCount(Math.min(MAX_QUESTION_COUNT, Math.max(MIN_QUESTION_COUNT, next)));
+              // Let the field go empty or hold a mid-typing value freely —
+              // clamping happens on blur/confirm, not on every keystroke.
+              const raw = e.target.value;
+              if (raw !== '' && !/^\d+$/.test(raw)) return;
+              setQuestionCountText(raw);
             }}
+            onBlur={() => setQuestionCountText(String(clampedQuestionCount()))}
             className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-50"
           />
         </div>

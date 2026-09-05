@@ -3,7 +3,7 @@ import './addJob.css';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import TextArea from 'antd/es/input/TextArea';
 import { Checkbox, DatePicker, Form, Select, Switch, Tooltip } from 'antd';
-import { Button, CollapsibleSection, Input, showToast } from '../../shared';
+import { Button, Input, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import JobDetailsLayout from '../../../layouts/JobDetailsLayout';
 import useJobOpeningDropdown, {
@@ -144,58 +144,38 @@ const JobDetails = () => {
   const [isMandatorySkillsDropdownOpen, setIsMandatorySkillsDropdownOpen] = useState(false);
   const [isOptionalSkillsDropdownOpen, setIsOptionalSkillsDropdownOpen] = useState(false);
   const [suggestedSkillsDismissed, setSuggestedSkillsDismissed] = useState(false);
-  // Backs the "Selected Skills" chips for a suggested skill the recruiter
-  // accepted via the AI-suggestions banner before the live catalogue search
-  // dropdown (`mandatorySkills`/`optionalSkills` below) had cached a label
-  // for it — that dropdown only knows skills someone has actually searched
-  // for, so a freshly-accepted suggestion needs its own label source. Same
-  // pattern as EditJobDetail.tsx's own AI-suggestions banner. Seeded from
-  // Redux's persisted `aiSuggestedSkillLabels` (not just started empty) so
-  // a skill JobDescriptionPanel added while THIS component wasn't even
-  // mounted — the recruiter had already moved to the AI Job Description
-  // step before generation finished — still resolves a name here on a
-  // fresh visit, instead of showing as a nameless chip forever.
+  // Local labels for AI-suggested skills the catalogue dropdown hasn't
+  // cached yet. Seeded from Redux's persisted aiSuggestedSkillLabels.
   const [extraSuggestedSkillOptions, setExtraSuggestedSkillOptions] = useState<
     JobOpeningDropdownOption[]
   >(() =>
     Object.entries(jobDetails.aiSuggestedSkillLabels ?? {}).map(([id, name]) => ({ id, name }))
   );
 
+  // Local fallback label for a job title just created, until the list
+  // query refetches and picks it up.
+  const [extraJobTitleOptions, setExtraJobTitleOptions] = useState<JobOpeningDropdownOption[]>(
+    []
+  );
+
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
   const jobIdFromUrl = asJobId(searchParams.get('jobOpeningId'));
   const resolvedJobId = asJobId(jobOpeningId) || jobIdFromUrl;
   const jobIdRef = useRef(resolvedJobId);
-  // Whether this job's Job Details form has actually been saved with real
-  // content (job title + department, both required there) — false for a
-  // bare draft shell (`useStartManualJobOpening` calls `POST
-  // /job-openings/draft` up front, before anything's filled in). Drives the
-  // Save-vs-Next footer button below (once saved, this step's job is done
-  // and the wizard moves on to the AI Job Description step, JobDescriptionStep.tsx);
-  // deliberately NOT `aiJobDescriptionId` (Redux) or "is there a job id in
-  // the URL" — both are true for that empty draft too (its own URL gets the
-  // id attached immediately), so neither can tell a freshly-started,
-  // still-empty job apart from a fully-saved one, which is exactly the
-  // distinction this needs.
+  // Whether Job Details has actually been saved with real content, not just
+  // a bare draft shell. Drives the Save-vs-Next footer button below.
   const { data: jdDetailsForGate, refetch: refetchJdDetailsForGate } =
     useGetJobDescriptionByIdQuery({ jobOpeningId: resolvedJobId }, { skip: !resolvedJobId });
   const hasSavedDetails = jdDetailsForGate?.hasSavedDetails ?? false;
-  // Whatever AI writes (via the floating "Fill with AI" widget, or the
-  // Refine/Generate box on the AI Job Description step) lands on the job
-  // asynchronously — this step's form only ever reads its initial values
-  // once, at mount, from Redux (`jobDetails` below). A light, page-lifetime
-  // poll of jd/status (cheap — one status field) catches the actual
-  // GENERATING/PROCESSING → READY transition (not just "status happens to
-  // be READY", which is also every untouched job's default/idle state) and
-  // then applies whatever's new — see the effect near the ATS one below.
+  // Polls jd/status to catch a GENERATING/PROCESSING -> READY transition
+  // and apply AI-written fields once ready — see the effect below.
   const { data: jdStatusForHydration } = useGetJdStatusQuery(resolvedJobId, {
     skip: !resolvedJobId,
     pollingInterval: 3000,
   });
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
-  // Guards the race-condition fallback below (see the AI-fill effect) —
-  // tracks which job id we've already applied the "status was already
-  // READY on first observation" fallback for, so it fires at most once per
-  // job rather than on every subsequent poll once status settles at READY.
+  // Tracks which job id the "already READY on first observation" fallback
+  // has run for, so it fires at most once per job.
   const appliedAiFillJobIdRef = useRef<string | null>(null);
   const [enhanceJd] = useEnhanceJdMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
@@ -310,13 +290,7 @@ const JobDetails = () => {
     });
     setValue('country', selectedLocation?.country ?? '', { shouldValidate: true });
     setValue('state', selectedLocation?.state ?? '', { shouldValidate: true });
-    // Hiring Manager/Recruiter are NOT location-scoped on this backend —
-    // useJobOpeningDropdown('HIRING_MANAGER'/'RECRUITER', ...) always pulls
-    // the tenant's whole user list, no locationId involved (that's what
-    // selectedLocationIdForUsers above was for, but nothing ever reads its
-    // value). Clearing these here just silently threw away a selection the
-    // user had already made every time they touched Location — see the
-    // "hiring manager/recruiter keeps getting deselected" report.
+    // Hiring Manager/Recruiter are not location-scoped, so leave them as-is here.
   };
 
   const {
@@ -350,10 +324,7 @@ const JobDetails = () => {
       if (asJobId(jobOpeningId) !== jobId) {
         dispatch(setJobOpeningId(jobId));
       }
-      // Restore `aiJobDescriptionId` (Redux doesn't survive a reload) once
-      // this job's details are confirmed actually saved — see
-      // `hasSavedDetails` above for why that's the right signal here, not
-      // just "does a job id exist".
+      // Restore aiJobDescriptionId (Redux doesn't survive a reload) once details are saved.
       if (hasSavedDetails && asJobId(aiJobDescriptionId) !== jobId) {
         dispatch(setAiJobDescriptionId(jobId));
       }
@@ -482,22 +453,19 @@ const JobDetails = () => {
           ? mappedDepartmentJobTitles
           : mappedCatalogueJobTitles
         : [];
-    return merged.filter(
+    // extraJobTitleOptions goes last so a real list entry wins over the temporary local one.
+    return [...merged, ...extraJobTitleOptions].filter(
       (title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id))
     );
   }, [
     debouncedJobTitleSearch,
+    extraJobTitleOptions,
     mappedCatalogueJobTitles,
     mappedDepartmentJobTitles,
     selectedDepartmentId,
   ]);
 
-  // AI-suggested skills for the currently selected job title —
-  // get_suggested_skills.py on the backend, previously wired to no UI at
-  // all. Needs the title's real org_job_title_id (not the composite form
-  // id DropdownWithAddOption uses) and its display text; skipped until
-  // both are known, same gate the backend itself requires (job_title_id
-  // and job_title_text are both required query params).
+  // AI-suggested skills for the currently selected job title — needs the real org_job_title_id, not the form's composite id.
   const selectedJobTitleFormId = formValues.jobTitle?.[0];
   const selectedJobTitleOrgId = selectedJobTitleFormId
     ? resolveOrgJobTitleId(selectedJobTitleFormId)
@@ -523,11 +491,7 @@ const JobDetails = () => {
       !selectedOptionalSkillIds.includes(String(skill.skill_id))
   );
 
-  // Persists skill labels into Redux (merged, never replaced wholesale) so
-  // they survive this component unmounting or the page reloading —
-  // `extraSuggestedSkillOptions` alone is local state, gone the moment
-  // this component isn't the one mounted. See `aiSuggestedSkillLabels` on
-  // JobDetailsState for the full reasoning.
+  // Persists skill labels into Redux (merged) so they survive an unmount/reload.
   const persistSkillLabels = (entries: { id: string; name: string }[]) => {
     if (entries.length === 0) return;
     const additions: Record<string, string> = {};
@@ -539,8 +503,7 @@ const JobDetails = () => {
     );
   };
 
-  // Matches EditJobDetail.tsx's own "Add All" banner exactly, for the same
-  // AI-suggested-skills capability on the create-flow side.
+  // Matches EditJobDetail.tsx's "Add All" banner behavior.
   const handleAddAllSuggestedSkills = () => {
     if (unaddedSuggestedSkills.length === 0) return;
     const newMandatoryIds = unaddedSuggestedSkills
@@ -614,27 +577,8 @@ const JobDetails = () => {
     }
   }, [aiJobDescriptionId, dispatch, jobOpeningId]);
 
-  // Guards the non-ATS branch below — hydrating country/state/officeLocation
-  // from Redux is meant to happen once, when this step first mounts with
-  // data already sitting in Redux (a revisit). It must NOT re-run on every
-  // later Redux update: `jobDetails` (the whole `state.JobSlice.details`
-  // object) changes reference on any dispatch that touches it, including
-  // ones with nothing to do with location at all — e.g. `persistSkillLabels`
-  // below, fired every time an AI-suggested skill gets accepted or the
-  // AI-fill hydration effect merges in new skills. Without this guard,
-  // accepting a skill (or salary/other fields arriving via that same AI-fill
-  // effect) re-ran this block, and its `setValue('officeLocation',
-  // jobDetails.officeLocation || [])` clobbered whatever the recruiter had
-  // just picked in the live form with Redux's still-stale copy (form edits
-  // only reach Redux on submit) — the reported "location gets deselected"
-  // bug. Locked the first time this effect lands in the non-ATS branch at
-  // all, even if `jobDetails` was still empty then (a brand-new draft) —
-  // otherwise the guard would never engage until `jobDetails` first became
-  // non-empty for some unrelated reason, which is exactly the case that
-  // needs guarding against. The ATS branch is untouched by this: it keys off
-  // `atsJobData`/`isFromAts` (router state, from a deliberate navigation),
-  // never off Redux churn, so it doesn't have this problem and should still
-  // re-run if a real ATS (re)sync hands this page fresh `atsJobData`.
+  // Ensures the non-ATS location hydration below runs only once on mount,
+  // not on every later Redux update (which would clobber live edits).
   const hasCheckedInitialLocationHydrationRef = useRef(false);
 
   useEffect(() => {
@@ -691,20 +635,9 @@ const JobDetails = () => {
     }
   }, [atsJobData, isFromAts, jobDetails, setValue]);
 
-  // AI-fill counterpart to the ATS hydration above — applies whatever
-  // responsibilities/other requirements/experience/salary AI wrote onto
-  // this still-open form once a generation run actually finishes. Keyed
-  // off an observed GENERATING/PROCESSING -> READY transition, not just
-  // "status is currently READY" — that's also every untouched job's
-  // resting state (Manual jobs default to READY before anything's ever
-  // been generated), so treating it as a completion signal would apply
-  // (all-null) fields once on mount and never look again. Explicitly
-  // refetches rather than trusting `jdDetailsForGate` in this same render —
-  // that value is still the pre-completion snapshot until the refetch
-  // below resolves. Only ever fills a field the recruiter hasn't already
-  // typed something into; can fire more than once per job (e.g. the
-  // recruiter fills with AI here, then Refines again from the AI Job
-  // Description step, then comes back).
+  // AI-fill counterpart to the ATS hydration above — applies fields AI wrote
+  // once generation finishes (GENERATING/PROCESSING -> READY). Only fills
+  // fields the recruiter hasn't already typed into.
   useEffect(() => {
     const previousStatus = prevJdStatusForHydrationRef.current;
     const currentStatus = jdStatusForHydration?.status;
@@ -714,27 +647,15 @@ const JobDetails = () => {
       (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') &&
       currentStatus === 'READY';
 
-    // Race-condition fallback: on the Upload JD / AI Prompt entry paths,
-    // ai-service can finish parsing/generating before this page ever polls
-    // status even once — the job is created with jd_status PROCESSING/
-    // GENERATING (see UploadJdUseCase/create_from_prompt on the backend),
-    // but if that flips to READY before our first poll lands, the first
-    // status we ever observe here IS READY, with no PROCESSING/GENERATING
-    // seen in between — `justFinishedGenerating` above never fires and the
-    // AI-extracted fields are silently never applied. Catch that by also
-    // firing once per job the first time status is seen as READY, but only
-    // for entry paths that write JD content asynchronously — Manual/ATS
-    // jobs have no such race (their JD, if any, is present from creation,
-    // or written only in response to a click made after this page already
-    // mounted, so the transition above is always observable for those).
-    const entryPath = jdDetailsForGate?.entryPath;
-    const isAsyncJdEntryPath = entryPath === 'UPLOAD_JD' || entryPath === 'AI_PROMPT';
-    const racedStraightToReady =
-      currentStatus === 'READY' &&
-      isAsyncJdEntryPath &&
-      appliedAiFillJobIdRef.current !== resolvedJobId;
+    // Fallback: AI work (initial generate, or a later Enhance/Regenerate)
+    // can finish before this page's first status poll, or while the
+    // recruiter was on a different tab, so the READY transition is never
+    // observed here. Catch that by refreshing once per job the first time
+    // status is seen READY, regardless of entry path.
+    const notYetSyncedThisJob =
+      currentStatus === 'READY' && appliedAiFillJobIdRef.current !== resolvedJobId;
 
-    if (!justFinishedGenerating && !racedStraightToReady) return;
+    if (!justFinishedGenerating && !notYetSyncedThisJob) return;
     appliedAiFillJobIdRef.current = resolvedJobId;
 
     void refetchJdDetailsForGate().then((result) => {
@@ -767,11 +688,7 @@ const JobDetails = () => {
         setValue('maxSalary', String(fresh.maxSalary), { shouldValidate: true });
         appliedAnything = true;
       }
-      // Skills AI suggested via job.jd.enhance are auto-committed straight
-      // onto the job (job.add_skill — unlike generate/parse's
-      // suggestions-only cache), so they exist in `fresh.skills` the
-      // moment this refetch lands. Merge in only the ones not already
-      // selected, split by the catalogue's own type name.
+      // Merge in AI-suggested skills not already selected, split by type.
       if (fresh.skills && fresh.skills.length > 0) {
         const currentMandatory = (current.mandatorySkills || []).map(String);
         const currentOptional = (current.optionalSkills || []).map(String);
@@ -802,13 +719,7 @@ const JobDetails = () => {
           appliedAnything = true;
         }
         if (newOptions.length > 0) {
-          // The "Selected Skills" chip boxes resolve a display name by
-          // looking up each id in the catalogue dropdown's own option
-          // list — a skill that only ever arrived through this AI-fill
-          // path (never opened in either dropdown before) isn't in there,
-          // so it renders as a nameless chip without this. Same fix
-          // `handleAddAllSuggestedSkills` already applies for the "ADD
-          // ALL" banner's own skills.
+          // Local label source so these chips resolve a name before the catalogue dropdown catches up.
           setExtraSuggestedSkillOptions((prev) => [...prev, ...newOptions]);
           persistSkillLabels(newOptions);
           refetchMandatorySkills?.();
@@ -825,7 +736,6 @@ const JobDetails = () => {
     });
   }, [
     jdStatusForHydration?.status,
-    jdDetailsForGate?.entryPath,
     resolvedJobId,
     refetchJdDetailsForGate,
     getValues,
@@ -1073,7 +983,12 @@ const JobDetails = () => {
           type: 'success',
         });
 
-        setValue('jobTitle', [tenantJobTitleFormId(createdJobTitle)], { shouldValidate: true });
+        const createdJobTitleFormId = tenantJobTitleFormId(createdJobTitle);
+        setExtraJobTitleOptions((prev) => [
+          ...prev,
+          { id: createdJobTitleFormId, name: formattedValue },
+        ]);
+        setValue('jobTitle', [createdJobTitleFormId], { shouldValidate: true });
         setJobTitleSearchText('');
         setDebouncedJobTitleSearch('');
         return;
@@ -1117,9 +1032,7 @@ const JobDetails = () => {
           setValue('jobType', [existingJobType.id], { shouldValidate: true });
           return;
         }
-        // Super Admin's own catalogue (/platform/master-job-types) vs a
-        // tenant's own (/job-types) — same isMaster branch catalogs.ts's
-        // read side already uses for this dropdown.
+        // isMaster picks the Super Admin catalogue vs. the tenant's own.
         const createdJobType = await createJobType({
           name: formattedValue,
           isMaster,
@@ -1204,12 +1117,7 @@ const JobDetails = () => {
       return;
     }
 
-    // Job types, education preferences and skill-catalog entries are all
-    // soft-deleted on the current backend, but none of them expose a
-    // restore/reactivate endpoint (only create/list/update/delete) — the
-    // old generic /job-opening/{type}/reuse/{id} this used to call doesn't
-    // exist on this backend at all. Same honest "not from this screen"
-    // treatment as department/jobTitle above, rather than pretending it works.
+    // No restore endpoint exists for job types, education preferences, or skill-catalog entries.
     showToast({
       message: 'Removed options cannot be restored from this screen.',
       type: 'error',
@@ -1321,10 +1229,7 @@ const JobDetails = () => {
       return;
     }
 
-    // No update endpoint exists for a tenant's own skill-catalog entries —
-    // /skills only supports POST (create) and /skills/search (read). The old
-    // generic /job-opening/{type}/update this used to call for
-    // mandatorySkills/optionalSkills has no equivalent on this backend.
+    // No update endpoint exists for a tenant's own skill-catalog entries.
     showToast({
       message: 'Skills cannot be renamed from this screen.',
       type: 'error',
@@ -1451,8 +1356,7 @@ const JobDetails = () => {
       return;
     }
 
-    // No delete endpoint exists for a tenant's own skill-catalog entries —
-    // same gap as handleEditOption above.
+    // No delete endpoint exists for a tenant's own skill-catalog entries.
     showToast({
       message: 'Skills cannot be removed from this screen.',
       type: 'error',
@@ -1637,11 +1541,7 @@ const JobDetails = () => {
       setPendingSubmitData(null);
       setIsSubmittingWithModal(false);
 
-      // Stay on this step after saving — don't auto-advance to the AI Job
-      // Description step. `aiJobDescriptionId` is now set (dispatched
-      // above), so the form re-renders with the "NEXT: AI JOB DESCRIPTION →"
-      // button (handleContinueToDescription) in place of this Save button;
-      // moving on is the user's own next click.
+      // Stay on this step after saving; the recruiter clicks Next themselves.
     } catch (err) {
       showToast({
         message: getJobErrorMessage(err, 'Something went wrong while saving job opening.'),
@@ -1670,14 +1570,8 @@ const JobDetails = () => {
   // reachable once this step's Job Details have been saved (button below
   // only renders once `hasSavedDetails` is true).
   const handleContinueToDescription = async () => {
-    // The Save button (executeSubmit) only ever runs once, before
-    // aiJobDescriptionId exists — after that this button takes its place
-    // (see the comment above executeSubmit), so this is the ONLY remaining
-    // chance to persist any Job Details field the recruiter changes
-    // afterwards. This used to just navigate away with no save at all,
-    // silently discarding anything edited at this point — Hiring Manager
-    // and Recruiter included, which is exactly why they kept coming back
-    // deselected: they were never actually being sent to the backend.
+    // Persists any field changes made after the initial save, since this is
+    // the last chance before moving to the next step.
     const data = watch();
     const { errors } = validateDraft<JobDetailsState>(data, jobDetailsDraftSchema);
     if (errors) {
@@ -1693,11 +1587,7 @@ const JobDetails = () => {
 
     const savedId = resolveSavedJobId();
     if (savedId) {
-      // Snapshot what the AI description currently reflects BEFORE saving
-      // the new values — used below to decide whether this save actually
-      // changed anything the description is generated from. Best-effort:
-      // if this fails, `jdBeforeSave` stays undefined and the regenerate
-      // check below simply skips (same as "no description yet").
+      // Snapshot for the regenerate check below; best-effort.
       let jdBeforeSave: Awaited<ReturnType<typeof triggerGetJobDescriptionById>>['data'];
       try {
         jdBeforeSave = await triggerGetJobDescriptionById({ jobOpeningId: savedId }).unwrap();
@@ -1718,13 +1608,7 @@ const JobDetails = () => {
           offices,
         });
         await updateJobOpening({ jobOpeningId: savedId, body: details }).unwrap();
-        // Unlike onSubmit (the first save), this path never synced Redux's
-        // `jobDetails` with what was just saved — `isFormDirty` compares
-        // the live form against that Redux snapshot, so without this the
-        // form still read as dirty the instant after a successful save,
-        // and clicking straight through to Next hit the "unsaved changes"
-        // navigation-blocker dialog even though nothing was actually
-        // unsaved.
+        // Sync Redux so isFormDirty doesn't still read dirty right after saving.
         dispatch(updateJobDetails(data));
       } catch (err) {
         showToast({
@@ -1734,13 +1618,7 @@ const JobDetails = () => {
         return;
       }
 
-      // A description already exists and this save actually changed a
-      // field it was generated from (experience/salary/responsibilities/
-      // other requirements) — regenerate it now rather than leaving the
-      // stale text in place until the recruiter happens to notice and
-      // clicks Regenerate manually on the next step. Skipped for anything
-      // that doesn't touch those fields (e.g. swapping the Recruiter), so
-      // a manually-edited description isn't discarded for no reason.
+      // Regenerate the description if a source field actually changed.
       const descriptionInputs = {
         ...data,
         shiftId: data.shift?.[0] != null ? String(data.shift[0]) : undefined,
@@ -1787,7 +1665,10 @@ const JobDetails = () => {
       <MainLayout>
         <JobDetailsLayout>
           <Form layout="vertical" autoComplete="off" onFinish={handleSubmit(onSubmit)}>
-            <CollapsibleSection title="Job Info" defaultOpen>
+            <div className="mt-2">
+              <div className="w-full">
+                <span className="text-lg font-semibold">Job Info</span>
+              </div>
               <div className="grid grid-cols-3 gap-x-4 mt-2">
                 <Form.Item
                   label={
@@ -1994,8 +1875,11 @@ const JobDetails = () => {
                   </div>
                 </Form.Item>
               </div>
-            </CollapsibleSection>
-            <CollapsibleSection title="Location">
+            </div>
+            <div className="mt-2">
+              <div className="w-full">
+                <span className="text-lg font-semibold">Location</span>
+              </div>
               <div className="grid grid-cols-3 gap-x-4 mt-2">
                 <Form.Item
                   label={
@@ -2097,8 +1981,11 @@ const JobDetails = () => {
                   </div>
                 </>
               )}
-            </CollapsibleSection>
-            <CollapsibleSection title="Hiring Panel">
+            </div>
+            <div className="mt-2">
+              <div className="w-full">
+                <span className="text-lg font-semibold">Hiring Panel</span>
+              </div>
               <div className="grid grid-cols-3 gap-x-4 mt-2">
                 {' '}
                 <Form.Item label={<span>Hiring Manager</span>}>
@@ -2365,8 +2252,11 @@ const JobDetails = () => {
                   )}
                 </Form.Item>
               </div>
-            </CollapsibleSection>
-            <CollapsibleSection title="Salary Status">
+            </div>
+            <div className="mt-2">
+              <div className="w-full">
+                <span className="text-lg font-semibold">Salary Status</span>
+              </div>
               <div className="grid grid-cols-3 gap-x-4 mt-2">
                 <Form.Item
                   label={
@@ -2422,13 +2312,6 @@ const JobDetails = () => {
                     decimalScale={2}
                     prefix="$"
                     // Always a plain annual figure — no "/hr" suffix.
-                    // Exemption Status (`false`/Non-Exempt is the
-                    // backend's own default for every job — see
-                    // `Job.is_exempted`, job.py — for any job the
-                    // recruiter hasn't touched that dropdown on yet, AI-
-                    // filled ones very much included) isn't a reliable
-                    // signal for what unit a salary figure is in, and a
-                    // JD's stated salary is virtually always annual.
                     placeholder="Minimum Salary"
                     className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                     intlConfig={{ locale: 'en-US', currency: 'USD' }}
@@ -2456,13 +2339,6 @@ const JobDetails = () => {
                     decimalScale={2}
                     prefix="$"
                     // Always a plain annual figure — no "/hr" suffix.
-                    // Exemption Status (`false`/Non-Exempt is the
-                    // backend's own default for every job — see
-                    // `Job.is_exempted`, job.py — for any job the
-                    // recruiter hasn't touched that dropdown on yet, AI-
-                    // filled ones very much included) isn't a reliable
-                    // signal for what unit a salary figure is in, and a
-                    // JD's stated salary is virtually always annual.
                     placeholder="Maximum Salary"
                     className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                     intlConfig={{ locale: 'en-US', currency: 'USD' }}
@@ -2472,8 +2348,11 @@ const JobDetails = () => {
                   )}
                 </Form.Item>
               </div>
-            </CollapsibleSection>
-            <CollapsibleSection title="Job Skills">
+            </div>
+            <div className="mt-2">
+              <div className="w-full">
+                <span className="text-lg font-semibold">Job Skills</span>
+              </div>
               <div className="form-grid-equal-labels grid grid-cols-3 gap-x-4 mt-4">
                 <Form.Item label={<span>Referral Bonus (in USD)</span>}>
                   <Controller
@@ -2829,7 +2708,7 @@ const JobDetails = () => {
                   )}
                 </Form.Item>
               </div>
-            </CollapsibleSection>
+            </div>
 
             {false && aiJobDescriptionId && (
               <div className="flex w-full justify-center py-2">

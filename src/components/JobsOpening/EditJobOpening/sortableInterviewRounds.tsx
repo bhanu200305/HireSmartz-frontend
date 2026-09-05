@@ -32,7 +32,7 @@ type InterviewRound = {
  * that fixed set falls back to a plain capitalised label with no icon,
  * rather than guessing — same "don't invent it" posture as the backend's
  * own catalog-driven enforcement. */
-const VARIANT_BADGES: Record<string, { label: string; icon: IconType }> = {
+export const VARIANT_BADGES: Record<string, { label: string; icon: IconType }> = {
   soundwave: { label: 'Voice Agent Round', icon: HiOutlineMicrophone },
   avatar: { label: 'Avatar Round', icon: HiOutlineUserCircle },
   online: { label: 'Video Call Round', icon: HiOutlineVideoCamera },
@@ -42,7 +42,7 @@ const VARIANT_BADGES: Record<string, { label: string; icon: IconType }> = {
 /** `icon` is omitted for a variant outside the known set above — the badge
  * still renders with a label, just without a fabricated icon for a shape
  * we don't actually know the meaning of. */
-const getVariantBadge = (
+export const getVariantBadge = (
   variant?: string | null
 ): { label: string; icon: IconType | null } | null => {
   if (!variant) return null;
@@ -61,9 +61,7 @@ type SortableInterviewRoundsProps = {
   onEdit: (round: InterviewRound) => void;
   onDelete: (roundId: string | number) => void;
   isEditMode?: boolean;
-  // Round-type ids (`round.round.id`) for the fixed Resume / Intake Call
-  // anchor rounds. When supplied, a drag that would push either one out
-  // of the top 2 slots is rejected instead of applied.
+  // Round-type ids for fixed anchor rounds (Resume/Intake Call) that must stay in the top 2 slots.
   anchorRoundTypeIds?: Set<string>;
 };
 

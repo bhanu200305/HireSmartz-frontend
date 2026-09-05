@@ -41,12 +41,14 @@ const OverviewSlide: React.FC<OverviewSlideProps> = ({
     <div
       className={clsx(
         'w-full rounded-xl border bg-white p-6 shadow-xs',
-        fillHeight && 'flex h-full flex-col'
+        fillHeight && 'flex h-full flex-col [container-type:size]'
       )}
       style={{ borderColor: 'var(--border)' }}
     >
+      {/* Header/footer chrome scales with the card's own height (`cqh`), so
+          it yields room to the stat grid on short screens. */}
       <div className="flex shrink-0 items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-lg text-primary-600">
+        <div className="flex size-[clamp(32px,10cqh,44px)] shrink-0 items-center justify-center rounded-xl bg-primary-50 text-lg text-primary-600">
           {icon}
         </div>
         <div className="min-w-0">
@@ -59,40 +61,19 @@ const OverviewSlide: React.FC<OverviewSlideProps> = ({
 
       <div
         className={clsx(
-          'mt-6',
+          'mt-[clamp(0.75rem,3cqh,1.5rem)]',
           fillHeight &&
-            'flex min-h-0 flex-1 items-center justify-center overflow-y-auto [container-type:size]'
+            'flex min-h-0 flex-1 items-center justify-center overflow-y-hidden [container-type:size]'
         )}
       >
-        {/* Widened from an earlier, tighter cap that left dead margins on
-            both sides — this still keeps the 2-column stat-card grid from
-            stretching edge-to-edge (which is what made the cards short and
-            wide originally), just with less empty space either side of it.
-
-            `[container-type:size]`: turns THIS box into a CSS size query
-            container, so `StatCardRow`'s `tall` cards (padding, min-height,
-            icon size, value text) can be sized in `cqh` — a percentage of
-            THIS box's actual rendered height — instead of fixed pixels. That
-            is what makes them genuinely shrink/grow with whatever room the
-            carousel stage actually has (a shorter laptop screen, a smaller
-            browser window) rather than sitting at one fixed size and either
-            leaving dead space or not fitting.
-
-            Fixed pixel cards used to have exactly one failure mode when they
-            didn't fit: something has to give, and centering (`items-center`)
-            let that overflow bleed both up (over the header — the original
-            "overlapping" bug) and down. Fluid sizing removes the OVERFLOW
-            itself in all but the most extreme cases, which is what makes
-            `items-center` safe to use again here — the perfectly centered
-            look this component's own comment used to describe. `overflow-
-            y-auto` stays as a last-resort safety net: the cards still have a
-            floor (see `StatCardRow`), because shrinking indefinitely trades
-            one bug (overlap) for another (illegible text) — past that floor,
-            it scrolls instead of overlapping, same as before. */}
+        {/* `[container-type:size]` lets `StatCardRow`'s `tall` cards size
+            themselves in `cqh` off this box's real height. `overflow-y-
+            hidden` is a last-resort floor past which the grid clips
+            silently instead of scrolling or overlapping the header. */}
         <div className="w-full max-w-2xl">{children}</div>
       </div>
 
-      <div className="mt-6 flex shrink-0 items-center justify-end border-t border-neutral-100 pt-4">
+      <div className="mt-[clamp(0.75rem,3cqh,1.5rem)] flex shrink-0 items-center justify-end border-t border-neutral-100 pt-[clamp(0.5rem,2cqh,1rem)]">
         <button
           type="button"
           onClick={() => navigate(viewAllHref)}

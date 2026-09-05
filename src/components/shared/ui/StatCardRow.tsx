@@ -122,16 +122,14 @@ const StatCard = ({
   const isPlaceholder = displayValue === 'Not enough data yet';
 
   const core = (
-    <div className="flex items-start gap-3">
+    <div className={clsx('flex items-start', tall ? 'gap-[clamp(0.375rem,3cqh,0.75rem)]' : 'gap-3')}>
       {icon && (
         <div
           className={clsx(
             'flex shrink-0 items-center justify-center rounded-lg text-base',
-            // `size-[clamp(...)]` (cqh, see StatCardRow's tall-card comment
-            // below) instead of a fixed `h-9 w-9` — shrinks/grows with the
-            // card instead of the card having to make room for one fixed
-            // size regardless of how much room IT was given.
-            tall ? 'size-[clamp(22px,9cqh,32px)]' : 'h-9 w-9',
+            // cqh-based size for tall cards, fixed otherwise — see the
+            // tall-card comment below.
+            tall ? 'size-[clamp(20px,9cqh,32px)]' : 'h-9 w-9',
             styles.badge
           )}
           aria-hidden
@@ -140,10 +138,13 @@ const StatCard = ({
         </div>
       )}
       <div className="min-w-0">
-        <p className="text-sm text-neutral-500">{label}</p>
+        <p className={clsx(tall ? 'text-[clamp(12px,4cqh,14px)]' : 'text-sm', 'text-neutral-500')}>
+          {label}
+        </p>
         <p
           className={clsx(
-            'font-display font-bold tracking-tight mt-1',
+            'font-display font-bold tracking-tight',
+            tall ? 'mt-[clamp(2px,2cqh,4px)]' : 'mt-1',
             isPlaceholder
               ? 'text-sm font-medium text-neutral-400 italic'
               : clsx(
@@ -188,20 +189,10 @@ const StatCard = ({
         'transition-all duration-200 ease-out hover:-translate-y-0.5',
         tall
           ? clsx(
-              // Fluid, not fixed: `cqh` is a percentage of the QUERY
-              // CONTAINER's height — the stat grid's own wrapper in
-              // `OverviewSlide`, which marked itself `[container-type:size]`
-              // for exactly this. `min-h`'s preferred value is "half this
-              // row's share of the container, minus half the row gap" —
-              // i.e. exactly enough for 2 rows to fill whatever height the
-              // carousel stage actually has, so it doesn't matter which
-              // desktop or laptop this opens on: the cards themselves
-              // compact or spread to fit, continuously, with no dead space
-              // and (down to the 60px floor) no overflow either. Capped at
-              // 100px — the size these were before this became fluid — so a
-              // roomy screen looks exactly as it always did; only a
-              // genuinely tight one shrinks below that.
-              'rounded-2xl border-2 border-neutral-300 p-[clamp(0.5rem,8cqh,1rem)] min-h-[clamp(60px,calc(50cqh_-_6px),100px)] justify-center',
+              // cqh-based sizing off OverviewSlide's query container, so
+              // two rows fill whatever height the carousel gives it, down
+              // to a 38px floor and capped at the old fixed 100px.
+              'rounded-xl border border-neutral-300 p-[clamp(0.25rem,8cqh,1rem)] min-h-[clamp(38px,calc(50cqh_-_16px),100px)] justify-center',
               styles.hoverBorder,
               styles.hoverGlow
             )
@@ -236,7 +227,12 @@ const StatCard = ({
 export const StatCardRow = ({ cards, className, columns, tall }: StatCardRowProps) => {
   return (
     <div
-      className={clsx('grid grid-cols-1 gap-3', columns && COLUMN_CLASSES[columns], className)}
+      className={clsx(
+        'grid grid-cols-1',
+        tall ? 'gap-[clamp(0.375rem,3cqh,0.75rem)]' : 'gap-3',
+        columns && COLUMN_CLASSES[columns],
+        className
+      )}
       style={columns ? undefined : { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}
     >
       {cards.map((card, index) => (
