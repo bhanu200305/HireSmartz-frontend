@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Spin, Upload } from 'antd';
 import { MdClose } from 'react-icons/md';
@@ -35,6 +35,7 @@ const ALLOWED_TYPES = [
 ];
 const MAX_SIZE_MB = 5;
 const POLL_INTERVAL_MS = 3000;
+const AUTO_CLOSE_DELAY_MS = 1500;
 
 const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
   const [files, setFiles] = useState<File[]>([]);
@@ -51,6 +52,20 @@ const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
 
   const isProcessing =
     !!batchId && !!batchProgress && batchProgress.parsed_files < batchProgress.valid_files;
+
+  // Once parsing finishes, close on its own — the "Done" message above is
+  // enough of a hand-off, no need to make the user click X themselves.
+  // Brief delay so the "Done" message is actually readable before it
+  // disappears.
+  useEffect(() => {
+    if (!batchId || !batchProgress || isProcessing) return;
+    const timer = setTimeout(() => {
+      setFiles([]);
+      setBatchId(null);
+      onClose();
+    }, AUTO_CLOSE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [batchId, batchProgress, isProcessing, onClose]);
 
   const handleFileSelect = (selectedFiles: File[]) => {
     const accepted: File[] = [];
