@@ -359,7 +359,7 @@ const EditJobDescription = () => {
     <>
       {isUpdatingDraft && <Loader />}
       <Form layout="vertical" onFinish={handleSubmit(onSubmit)} autoComplete="off">
-        <div className="grid grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Form.Item label={<span>Required Skills</span>}>
             <div className="space-y-3">
               <Controller
@@ -520,7 +520,7 @@ const EditJobDescription = () => {
             )}
           </Form.Item>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Form.Item label={<span>Responsibilities</span>}>
             <Controller
               name="responsibilities"

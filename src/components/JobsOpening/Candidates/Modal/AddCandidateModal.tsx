@@ -4,7 +4,7 @@ import { Upload } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import { FiUploadCloud } from 'react-icons/fi';
 import { RiDeleteBin6Line } from 'react-icons/ri';
-import { Button, Input, showToast } from '../../../shared';
+import { Button, Input, PhoneNumberField, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { useSessionTenantId } from '../../../../hooks/useSessionTenantId';
 import {
@@ -12,6 +12,14 @@ import {
   useCreateCandidateMutation,
 } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
+import {
+  isPhoneValidForCountry,
+  PHONE_VALIDATION_MESSAGE,
+  toE164,
+} from '../../../../shared/utils/validation/phoneValidation';
+
+// Same default every other phone field in this app starts from.
+const DEFAULT_COUNTRY_CODE = '+1';
 
 // New — manual single-candidate entry, the two-step flow
 // FRONTEND_INTEGRATION_DETAILS.md §4.1 describes: `POST /candidates/resume`
@@ -42,6 +50,7 @@ const AddCandidateModal = ({ open, onClose }: AddCandidateModalProps) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState('');
   const [qualification, setQualification] = useState('');
   const [address, setAddress] = useState('');
@@ -55,6 +64,7 @@ const AddCandidateModal = ({ open, onClose }: AddCandidateModalProps) => {
     setFirstName('');
     setLastName('');
     setEmail('');
+    setCountryCode(DEFAULT_COUNTRY_CODE);
     setPhone('');
     setQualification('');
     setAddress('');
@@ -94,6 +104,10 @@ const AddCandidateModal = ({ open, onClose }: AddCandidateModalProps) => {
       showToast({ message: 'First and last name are required.', type: 'error' });
       return;
     }
+    if (phone.trim() && !isPhoneValidForCountry(phone, countryCode)) {
+      showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
+      return;
+    }
 
     try {
       const { resume_s3_key } = await uploadResume({
@@ -109,7 +123,7 @@ const AddCandidateModal = ({ open, onClose }: AddCandidateModalProps) => {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         emailId: email.trim() || undefined,
-        contactNo: phone.trim() || undefined,
+        contactNo: phone.trim() ? toE164(countryCode, phone) : undefined,
         qualification: qualification.trim() || undefined,
         address: address.trim() || undefined,
       }).unwrap();
@@ -161,7 +175,7 @@ const AddCandidateModal = ({ open, onClose }: AddCandidateModalProps) => {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor="add-candidate-first-name" className="mb-1 block text-sm text-gray-800">
               First name <span className="required-asterisk">*</span>
@@ -186,7 +200,7 @@ const AddCandidateModal = ({ open, onClose }: AddCandidateModalProps) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor="add-candidate-email" className="mb-1 block text-sm text-gray-800">
               Email
@@ -203,11 +217,12 @@ const AddCandidateModal = ({ open, onClose }: AddCandidateModalProps) => {
             <label htmlFor="add-candidate-phone" className="mb-1 block text-sm text-gray-800">
               Phone
             </label>
-            <Input
-              id="add-candidate-phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="h-10 rounded-lg border border-gray-300 text-sm"
+            <PhoneNumberField
+              countryCode={countryCode}
+              onCountryCodeChange={setCountryCode}
+              phoneNumber={phone}
+              onPhoneNumberChange={setPhone}
+              className="h-10 rounded-lg"
             />
           </div>
         </div>

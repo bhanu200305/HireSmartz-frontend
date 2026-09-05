@@ -17,7 +17,38 @@ const AiQuestions = () => {
   const { data: audioData } = useGetAudioQuestionsQuery(jobId, { skip: !jobId });
 
   const questions = useMemo(() => jobData?.data.generalQuestions ?? [], [jobData]);
+  const interviewRounds = useMemo(() => jobData?.data.interviewRounds ?? [], [jobData]);
   const audioQuestions = audioData?.questions ?? [];
+
+  // Used only to label each question group with its round's name/sequence.
+  const roundById = useMemo(
+    () =>
+      new Map(
+        interviewRounds.map((round) => [
+          String(round.id),
+          { name: round.round?.name || 'Round', sequence: round.sequence },
+        ])
+      ),
+    [interviewRounds]
+  );
+
+  const questionsByRound = useMemo(() => {
+    const groups = new Map<string, typeof questions>();
+    for (const q of questions) {
+      const key = String(q.interviewRoundId);
+      const bucket = groups.get(key);
+      if (bucket) bucket.push(q);
+      else groups.set(key, [q]);
+    }
+    return Array.from(groups.entries())
+      .map(([roundId, roundQuestions]) => ({
+        roundId,
+        roundName: roundById.get(roundId)?.name ?? 'Other',
+        sequence: roundById.get(roundId)?.sequence ?? Number.MAX_SAFE_INTEGER,
+        questions: roundQuestions,
+      }))
+      .sort((a, b) => a.sequence - b.sequence);
+  }, [questions, roundById]);
 
   if (isLoading) {
     return <Loader />;
@@ -62,20 +93,27 @@ const AiQuestions = () => {
         </Typography>
       </div>
 
-      {questions.length === 0 ? (
+      {questionsByRound.length === 0 ? (
         <p className="text-gray-400 font-medium italic text-sm pl-4">
           No JD questions configured for this job opening.
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {questions.map((q: any) => (
-            <div
-              key={q.id}
-              className="bg-white border border-[var(--border)] px-6 py-4 rounded-full shadow-sm"
-            >
-              <Typography variant="body2" className="text-gray-850 m-0">
-                {q.question}
+        <div className="flex flex-col gap-5">
+          {questionsByRound.map((group) => (
+            <div key={group.roundId} className="flex flex-col gap-3">
+              <Typography variant="subtitle2" className="font-semibold text-gray-700 m-0 px-4">
+                {group.roundName} ({group.questions.length})
               </Typography>
+              {group.questions.map((q) => (
+                <div
+                  key={q.id}
+                  className="bg-white border border-[var(--border)] px-6 py-4 rounded-full shadow-sm"
+                >
+                  <Typography variant="body2" className="text-gray-850 m-0">
+                    {q.question}
+                  </Typography>
+                </div>
+              ))}
             </div>
           ))}
         </div>

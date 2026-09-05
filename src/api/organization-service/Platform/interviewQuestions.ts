@@ -9,11 +9,13 @@ export type InterviewQuestionsResponse = {
 
 export type CreateInterviewQuestionArgs = {
   question_text: string;
+  field_id: string;
 };
 
 export type UpdateInterviewQuestionArgs = {
   questionId: string;
   question_text: string;
+  field_id: string;
 };
 
 /**
@@ -44,10 +46,10 @@ const extendedApi = orgApi.injectEndpoints({
     ),
     updatePlatformInterviewQuestion: build.mutation<InterviewQuestion, UpdateInterviewQuestionArgs>(
       {
-        query: ({ questionId, question_text }) => ({
+        query: ({ questionId, question_text, field_id }) => ({
           url: `/v1/platform/interview-questions/${questionId}`,
           method: 'PUT',
-          body: { question_text },
+          body: { question_text, field_id },
         }),
         invalidatesTags: ['InterviewQuestions'],
       }

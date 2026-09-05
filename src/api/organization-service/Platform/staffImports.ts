@@ -9,6 +9,14 @@ import { orgApi } from '../orgApi';
 // purpose — the file goes to this service as normal multipart form data,
 // which then writes it to S3 itself — so there's no separate "get an
 // upload target" call and no direct-to-S3 fetch here, just one POST.
+//
+// Every endpoint below goes through orgApi's own base query
+// (orgApi.ts's rawOrgBaseQuery), which is what strips
+// organization-service's `{status_code, status, message, data}` response
+// envelope — including the template lookup, which is a real `build.query`
+// rather than a manual `fetch`. A manual fetch bypasses that shared
+// unwrapping, so `download_url` would come back undefined (it sits one
+// level down, under `.data`).
 
 export type StaffRosterUploadResponse = {
   storage_key: string;
@@ -28,12 +36,22 @@ export type ParseStaffRosterResponse = {
   rows: ParsedStaffRosterRow[];
 };
 
+// StaffRosterRowRequest.role is free text on the backend, validated per-row
+// against the platform role catalogue (GET /v1/platform/roles) at confirm
+// time — an unmatched name comes back as a per-row `failures` entry rather
+// than 422ing the whole batch.
 export type StaffRosterRole = string;
 
 export type ConfirmStaffRosterRow = {
   email: string;
   role: StaffRosterRole;
   department_id?: string | null;
+  // Accepted by the backend row shape for symmetry with the shared parse
+  // template, but silently dropped for a staff row — no platform-scoped
+  // designation catalogue exists yet (confirm_staff_roster_import.py's own
+  // docstring). Sending them is harmless; nothing in this app's UI should
+  // present an editable field for either, since that would imply they do
+  // something they don't.
   designation?: string | null;
   contact?: string | null;
 };
@@ -93,6 +111,12 @@ const extendedApi = orgApi.injectEndpoints({
         method: 'POST',
         body: { rows },
       }),
+      // A confirmed row only ever becomes a pending `Invite` (tenant_id IS
+      // NULL) — the same "not a real Membership until accepted" gap the
+      // tenant flow has — so this won't make anyone new appear in the staff
+      // list below. Invalidated anyway so a row that already WAS a member
+      // (e.g. re-imported after being offboarded and never actually
+      // reinvited) picks up correctly if that ever changes server-side.
       invalidatesTags: ['PlatformStaff'],
     }),
     getStaffRosterTemplateUrl: build.query<StaffRosterTemplateResponse, void>({

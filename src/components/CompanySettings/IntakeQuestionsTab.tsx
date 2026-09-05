@@ -17,11 +17,14 @@ import {
   useUpdatePlatformTenantJobQuestionMutation,
   useDeletePlatformTenantJobQuestionMutation,
 } from '../../api/organization-service/Platform/tenantJobQuestions';
+import { useListResumeTemplateFieldsQuery } from '../../api/organization-service/resumeTemplateFields';
 import type { InterviewQuestion } from '../../api/organization-service/Tenants/interviewQuestions';
 import { useGetCompaniesDropdownQuery } from '../../api/tenant-service/Company/companiesDropdown';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 const MAX_QUESTIONS = 8;
+
+type Draft = { text: string; fieldId: string };
 
 // Grows a question's textarea to fit its full text, no scrollbar, instead
 // of clipping longer questions to a fixed one-line box. Called on mount
@@ -48,6 +51,11 @@ const autoGrowTextarea = (el: HTMLTextAreaElement | null) => {
  * edits. Both the platform default and a specific company's own copy can
  * be added to (up to `MAX_QUESTIONS`), edited, or trimmed — a company that
  * removed a question can refill the slot from either screen.
+ *
+ * Every question (platform or company-owned) is now required to carry a
+ * `field_id` — which ResumeTemplateField its spoken answer is meant to
+ * fill in (organization-service migration 0056: NOT NULL, no untagged
+ * state exists anywhere).
  */
 const IntakeQuestionsTab: React.FC = () => {
   // null = editing the platform-wide default; a tenant id = that one
@@ -56,6 +64,12 @@ const IntakeQuestionsTab: React.FC = () => {
   const isPlatformDefault = selectedTenantId === null;
 
   const { data: companies, isLoading: isCompaniesLoading } = useGetCompaniesDropdownQuery();
+  const { data: fieldsData, isLoading: isLoadingFields } = useListResumeTemplateFieldsQuery();
+  const fields = useMemo(() => fieldsData?.fields ?? [], [fieldsData]);
+  const fieldOptions = useMemo(
+    () => fields.map((f) => ({ value: f.field_id, label: f.field_label })),
+    [fields]
+  );
 
   const { data: platformData, isLoading: isPlatformLoading } =
     useListPlatformInterviewQuestionsQuery(undefined, { skip: !isPlatformDefault });
@@ -78,13 +92,25 @@ const IntakeQuestionsTab: React.FC = () => {
   const isLoading = isPlatformDefault ? isPlatformLoading : isTenantLoading;
   const questions = useMemo(() => data?.questions ?? [], [data]);
 
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [questionToDelete, setQuestionToDelete] = useState<InterviewQuestion | null>(null);
   const [newQuestionText, setNewQuestionText] = useState('');
+  const [newQuestionFieldId, setNewQuestionFieldId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    setDrafts(Object.fromEntries(questions.map((q) => [q.question_id, q.question_text])));
+    setDrafts(
+      Object.fromEntries(
+        questions.map((q) => [
+          q.question_id,
+          // `q.field_id` can be null (a legacy question predating this
+          // field) — the picker below already renders '' as "unassigned"
+          // via its own `|| undefined` fallback, and Save is blocked until
+          // a real one is chosen.
+          { text: q.question_text, fieldId: q.field_id ?? '' },
+        ])
+      )
+    );
   }, [questions]);
 
   const companyOptions = useMemo(
@@ -96,9 +122,14 @@ const IntakeQuestionsTab: React.FC = () => {
   );
 
   const handleSave = async (question: InterviewQuestion) => {
-    const text = (drafts[question.question_id] ?? '').trim();
+    const draft = drafts[question.question_id];
+    const text = (draft?.text ?? '').trim();
     if (!text) {
       showToast({ message: 'Question text cannot be empty.', type: 'error' });
+      return;
+    }
+    if (!draft?.fieldId) {
+      showToast({ message: 'Pick a resume field for this question.', type: 'error' });
       return;
     }
     setSavingId(question.question_id);
@@ -107,12 +138,14 @@ const IntakeQuestionsTab: React.FC = () => {
         await updatePlatformQuestion({
           questionId: question.question_id,
           question_text: text,
+          field_id: draft.fieldId,
         }).unwrap();
       } else {
         await updateTenantQuestion({
           tenantId: selectedTenantId as string,
           questionId: question.question_id,
           question_text: text,
+          field_id: draft.fieldId,
         }).unwrap();
       }
       showToast({ message: 'Question updated.', type: 'success' });
@@ -145,21 +178,30 @@ const IntakeQuestionsTab: React.FC = () => {
   const handleAdd = async () => {
     const text = newQuestionText.trim();
     if (!text) return;
+    if (!newQuestionFieldId) {
+      showToast({ message: 'Pick a resume field for this question.', type: 'error' });
+      return;
+    }
     if (questions.length >= MAX_QUESTIONS) {
       showToast({ message: `You can only have up to ${MAX_QUESTIONS} questions.`, type: 'error' });
       return;
     }
     try {
       if (isPlatformDefault) {
-        await createPlatformQuestion({ question_text: text }).unwrap();
+        await createPlatformQuestion({
+          question_text: text,
+          field_id: newQuestionFieldId,
+        }).unwrap();
       } else {
         await createTenantQuestion({
           tenantId: selectedTenantId as string,
           question_text: text,
+          field_id: newQuestionFieldId,
         }).unwrap();
       }
       showToast({ message: 'Question added.', type: 'success' });
       setNewQuestionText('');
+      setNewQuestionFieldId(undefined);
     } catch (err) {
       showToast({ message: getOrgErrorMessage(err, 'Failed to add question.'), type: 'error' });
     }
@@ -180,14 +222,15 @@ const IntakeQuestionsTab: React.FC = () => {
       </div>
       <p className="text-xs text-gray-500 mb-4 max-w-3xl">
         Up to {MAX_QUESTIONS} HR/interpersonal questions asked in every candidate&apos;s first-round
-        intake call. Pick a company below to view or override its own set.
+        intake call, each tied to one Resume Field. Pick a company below to view or override its own
+        set.
       </p>
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <Select
           id="intakeQuestionsCompany"
           size="middle"
-          className="w-[240px]"
+          className="w-full sm:w-[240px]"
           popupClassName="intakeQuestionsCompanySelectDropdown"
           loading={isCompaniesLoading}
           showSearch
@@ -226,8 +269,15 @@ const IntakeQuestionsTab: React.FC = () => {
           ) : (
             <div className="flex flex-col gap-1.5 mb-3">
               {questions.map((question, index) => {
-                const draft = drafts[question.question_id] ?? '';
-                const isDirty = draft.trim() !== question.question_text.trim();
+                const draft = drafts[question.question_id] ?? { text: '', fieldId: '' };
+                const isDirty =
+                  draft.text.trim() !== question.question_text.trim() ||
+                  // Both sides normalized through '' — draft.fieldId is
+                  // seeded with `q.field_id ?? ''` above, so comparing it
+                  // directly against a possibly-null question.field_id
+                  // would call an untouched legacy (null) row "dirty" the
+                  // instant it renders.
+                  draft.fieldId !== (question.field_id ?? '');
                 const isSaving = savingId === question.question_id;
                 return (
                   <div
@@ -241,16 +291,30 @@ const IntakeQuestionsTab: React.FC = () => {
                     </span>
                     <textarea
                       ref={autoGrowTextarea}
-                      value={draft}
+                      value={draft.text}
                       onChange={(e) => {
                         setDrafts((prev) => ({
                           ...prev,
-                          [question.question_id]: e.target.value,
+                          [question.question_id]: { ...draft, text: e.target.value },
                         }));
                         autoGrowTextarea(e.target);
                       }}
                       rows={1}
                       className="flex-1 min-w-0 resize-none overflow-hidden border border-transparent rounded-lg px-1.5 py-1 text-sm text-gray-800 leading-snug bg-transparent focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-100 focus:bg-white"
+                    />
+                    <Select
+                      size="small"
+                      className="w-40 shrink-0 mt-0.5"
+                      placeholder="Resume Field"
+                      loading={isLoadingFields}
+                      value={draft.fieldId || undefined}
+                      onChange={(value) =>
+                        setDrafts((prev) => ({
+                          ...prev,
+                          [question.question_id]: { ...draft, fieldId: value },
+                        }))
+                      }
+                      options={fieldOptions}
                     />
                     {(isDirty || isSaving) && (
                       <Button
@@ -303,10 +367,20 @@ const IntakeQuestionsTab: React.FC = () => {
               rows={1}
               className="flex-1 min-w-0 resize-none overflow-hidden border border-transparent rounded-lg px-1.5 py-1 text-sm text-gray-800 leading-snug bg-transparent focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-100 focus:bg-white disabled:bg-transparent"
             />
+            <Select
+              size="small"
+              className="w-40 shrink-0 mt-0.5"
+              placeholder="Resume Field"
+              loading={isLoadingFields}
+              value={newQuestionFieldId}
+              onChange={setNewQuestionFieldId}
+              options={fieldOptions}
+              disabled={atCap}
+            />
             <Button
               className="shrink-0 mt-0.5 rounded-full bg-primary-600 text-white px-3 py-1 text-xs whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => void handleAdd()}
-              disabled={!newQuestionText.trim() || atCap || isCreating}
+              disabled={!newQuestionText.trim() || !newQuestionFieldId || atCap || isCreating}
             >
               {isCreating ? '…' : 'Add'}
             </Button>

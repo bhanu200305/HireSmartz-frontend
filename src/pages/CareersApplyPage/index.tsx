@@ -13,7 +13,16 @@ import {
 import { useSubmitPublicApplicationMutation } from '../../api/candidate-service/PublicApply/index';
 import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
+import { PhoneNumberField } from '../../components/shared';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
+import {
+  isPhoneValidForCountry,
+  PHONE_VALIDATION_MESSAGE,
+  toE164,
+} from '../../shared/utils/validation/phoneValidation';
+
+// Same default every other phone field in this app starts from.
+const DEFAULT_COUNTRY_CODE = '+1';
 
 // PDF/DOC/DOCX, max 5MB — matches candidate-service's own resume policy
 // exactly (upload_resume.py's ALLOWED_RESUME_CONTENT_TYPES/MAX_RESUME_BYTES,
@@ -50,7 +59,9 @@ export const CareersApplyPage = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const [resumeRequired, setResumeRequired] = useState(false);
@@ -88,14 +99,16 @@ export const CareersApplyPage = () => {
     const noEmail = !email.trim();
     const noTos = !tosConsent;
     const noCaptcha = !captchaToken;
+    const badPhone = phone.trim() ? !isPhoneValidForCountry(phone, countryCode) : false;
 
     setResumeRequired(noResume);
     setFirstNameError(noFirstName);
     setEmailError(noEmail);
     setTosError(noTos);
+    setPhoneError(badPhone ? PHONE_VALIDATION_MESSAGE : null);
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
 
-    if (noResume || noFirstName || noEmail || noTos || noCaptcha || !resume) return;
+    if (noResume || noFirstName || noEmail || noTos || noCaptcha || badPhone || !resume) return;
 
     try {
       const res = await submitApplication({
@@ -105,7 +118,7 @@ export const CareersApplyPage = () => {
         firstName: firstName.trim(),
         lastName: lastName.trim() || undefined,
         emailId: email.trim(),
-        contactNo: phone.trim() || undefined,
+        contactNo: phone.trim() ? toE164(countryCode, phone) : undefined,
         termsAccepted: tosConsent,
         smsConsent,
         captchaToken: captchaToken ?? '',
@@ -324,15 +337,17 @@ export const CareersApplyPage = () => {
               <label htmlFor="phone" className="block text-sm font-medium text-gray-800 mb-2">
                 Phone Number
               </label>
-              <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Phone number"
-                maxLength={20}
-                className="rounded-full"
-                style={{ height: 44, paddingLeft: 16, paddingRight: 16 }}
+              <PhoneNumberField
+                countryCode={countryCode}
+                onCountryCodeChange={setCountryCode}
+                phoneNumber={phone}
+                onPhoneNumberChange={(value) => {
+                  setPhone(value);
+                  setPhoneError(null);
+                }}
+                className="h-11 rounded-full"
               />
+              {phoneError && <p className="text-sm text-red-500 mt-1">{phoneError}</p>}
             </div>
           </div>
 

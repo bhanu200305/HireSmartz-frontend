@@ -126,12 +126,24 @@ const extendedApi = orgApi.injectEndpoints({
       invalidatesTags: ['OrgUsers'],
     }),
     // Reversible, not a permanent delete — the row and their role history
-    // survive; reactivation isn't exposed over the API yet, same known gap
-    // as everywhere else "not available yet" is used deliberately.
+    // survive; `reactivateUser` below is the way back.
     deactivateUser: build.mutation<void, string>({
       query: (userId) => ({
         url: `/v1/users/${userId}`,
         method: 'DELETE',
+      }),
+      invalidatesTags: ['OrgUsers'],
+    }),
+    // The undo side of deactivateUser above — POST /v1/users/{id}/reactivate.
+    // Was platform-only (only a Super Admin acting on a tenant's behalf could
+    // do this) until organization-service grew the tenant-self version;
+    // without it, re-adding the same person via "Add user" 409'd with
+    // "already exists" — deactivating never frees the email, only suspends
+    // it — and a Company Admin had no way back for their own team.
+    reactivateUser: build.mutation<OrgUser, string>({
+      query: (userId) => ({
+        url: `/v1/users/${userId}/reactivate`,
+        method: 'POST',
       }),
       invalidatesTags: ['OrgUsers'],
     }),
@@ -167,12 +179,14 @@ const extendedApi = orgApi.injectEndpoints({
       query: () => '/v1/users/me',
       providesTags: ['OwnProfile'],
     }),
-    // Without invalidatesTags, the PATCH genuinely saves (backend confirms
-    // it) but Header/index.tsx holds a permanent, app-wide subscription to
-    // getOwnUserProfile — the cache entry never goes "unused" long enough to
-    // naturally expire and refetch, so the old profile just sits there
-    // (here and in Header) until a hard reload flushes the store. Tagging
-    // both sides is what makes the save actually show up.
+    // Every other screen that reads this user's own profile (Header's
+    // avatar/name, this profile page itself) shares the SAME cached
+    // getOwnUserProfile entry — RTK Query dedupes by endpoint+args, and this
+    // has none. Without invalidating it, Header — a persistent layout
+    // component that never remounts on route navigation, so its
+    // `refetchOnMountOrArgChange` never re-fires — kept showing whatever it
+    // fetched once at app load, no matter how many successful saves
+    // happened here afterward.
     updateOwnUserProfile: build.mutation<OrgUser, UpdateOwnUserProfileRequest>({
       query: (body) => ({
         url: '/v1/users/me',
@@ -221,6 +235,7 @@ export const {
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeactivateUserMutation,
+  useReactivateUserMutation,
   useListUserLocationsQuery,
   useAttachUserLocationMutation,
   useDetachUserLocationMutation,

@@ -6,6 +6,7 @@ import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../redux/provider/store';
 import { stopStream } from '../../../redux/slices/streamSlice';
+import { setIsDraft } from '../../../redux/slices/editJobOpeningSlice';
 import { Loader } from '../../shared/ui/loader';
 import { Button, showToast, Typography } from '../../shared';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
@@ -25,6 +26,7 @@ import {
   useLazyValidateForPublishQuery,
   usePublishJobMutation,
 } from '../../../api/job-service/JobOpening/CloseJob';
+import { jobOpeningByIdApi } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import type { QuestionRequest, QuestionResponse } from '../../../api/job-service/types';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
@@ -35,14 +37,8 @@ import QuestionRowItem from './QuestionRowItem';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 
 const DEFAULT_QUESTION_COUNT = 10;
-// AI question generation is fire-and-forget on the backend — POST
-// .../questions/generate|regenerate only ever returns `{generation_status:
-// "GENERATING"}`, and nothing on GET .../questions ever reports when a
-// generation actually finished (no analogue of the AI Description panel's
-// jd_status). The only observable signal is the question list itself
-// changing, so this polls it for a bounded window after triggering
-// generation rather than leaving the recruiter to notice nothing arrived
-// and refresh the whole page.
+// Generation is fire-and-forget on the backend, so poll the question list
+// for a bounded window to detect when it's done.
 const GENERATION_POLL_INTERVAL_MS = 3000;
 const GENERATION_POLL_TIMEOUT_MS = 90_000;
 
@@ -101,24 +97,14 @@ const AiQuestionsSetup = () => {
 
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
 
-  // `id` (edit-mode route) takes priority, then JobSlice (create-mode), then
-  // EditJobSlice as a last resort, so a stale EditJobSlice value never wins.
+  // Priority: URL param, then create-mode JobSlice, then EditJobSlice.
   const activeJobOpeningId = useMemo(
     () => asJobId(id) || asJobId(reduxJobOpeningId) || asJobId(editJobOpeningId),
     [id, reduxJobOpeningId, editJobOpeningId]
   );
 
-  // `/jobs/edit/:id/...` is used for TWO different situations: finishing a
-  // draft that was never published (Job Openings list's "Edit" action on a
-  // draft), and touching up a job that's already live. Only the second one
-  // should skip publishing — the job is already public, so this step's job
-  // is just to save the questions and return to the (now up to date) view
-  // page. The first case still needs the exact same validate-then-publish
-  // call the create wizard uses below, or a draft opened via Edit could
-  // never actually be published at all. `EditJobSlice.isDraft` is set by
-  // JobsOpening.tsx (the stable parent for this whole edit route) from the
-  // job's own `is_draft` the moment it loads, so it's reliably in place by
-  // the time this, the last step, is reached.
+  // Editing an already-published job skips publish and just saves; editing
+  // an unpublished draft still goes through validate-then-publish below.
   const isEditRoute = pathname.includes('/edit/') && Boolean(id);
   const isEditingAlreadyPublishedJob = useSelector(
     (state: RootState) => isEditRoute && !state.EditJobSlice.isDraft
@@ -132,9 +118,7 @@ const AiQuestionsSetup = () => {
     [roundTypes]
   );
 
-  // True from the moment generation is triggered until the question list
-  // is observed to actually change (or the poll times out) — see the
-  // GENERATION_POLL_* comment above.
+  // True while waiting for the polled question list to change after generation.
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const questionSnapshotBeforeGenerateRef = useRef<string | null>(null);
 
@@ -161,9 +145,7 @@ const AiQuestionsSetup = () => {
     useLazyGetQuestionImportTemplateQuery();
   const [validateForPublish] = useLazyValidateForPublishQuery();
   const [publishJob, { isLoading: isPublishing }] = usePublishJobMutation();
-  // Covers the whole async wait (the POST itself, plus the polling window
-  // above) — used everywhere the UI needs to show "still working" through
-  // generation actually finishing, not just the initial request.
+  // Covers both the initial request and the polling wait after it.
   const isGenerating = isGenerateRequestPending || isGeneratingQuestions;
 
   // Unfiltered rounds — the source for the full save/add/delete payload.
@@ -187,12 +169,10 @@ const AiQuestionsSetup = () => {
     [questions, activeRoundInstanceId]
   );
   const audioQuestions = audioData?.questions ?? [];
-  // Cheap content fingerprint, not just a count — REPLACE can land with
-  // fewer questions than before, so "count increased" would miss it.
+  // Content fingerprint rather than a count, since REPLACE can reduce the count.
   const questionsSnapshotKey = useMemo(() => questions.map((q) => q.id).join(','), [questions]);
 
-  // Stop polling as soon as the list actually differs from what it looked
-  // like right before this generation was triggered.
+  // Stop polling once the list differs from its pre-generation snapshot.
   useEffect(() => {
     if (!isGeneratingQuestions) return;
     if (questionSnapshotBeforeGenerateRef.current === null) return;
@@ -201,8 +181,7 @@ const AiQuestionsSetup = () => {
     showToast({ message: 'Questions generated', type: 'success' });
   }, [isGeneratingQuestions, questionsSnapshotKey]);
 
-  // Safety net — stop polling even if generation never visibly finishes
-  // (e.g. it failed silently server-side), rather than polling forever.
+  // Safety net so polling doesn't run forever if generation never visibly finishes.
   useEffect(() => {
     if (!isGeneratingQuestions) return;
     const timeoutId = setTimeout(() => {
@@ -226,17 +205,9 @@ const AiQuestionsSetup = () => {
     topic_skill: question.topic_skill,
   });
 
-  // Shared save path behind manual add (the inline "+"), edit, and delete —
-  // all three funnel every question through here as the job's whole
-  // updated list. Same gap as the bulk-import handler below: the PUT
-  // already returns the job's full, fresh question bank
-  // (`JobQuestionsResponse`, identical shape to the GET this page reads),
-  // but it used to be discarded in favor of the `refetchQuestions()` call
-  // alone — a second, separate GET whose result didn't reliably make it
-  // into this render, leaving the list showing its pre-save state until an
-  // actual page reload. Writing the PUT's own response into the cache
-  // directly makes the update land unconditionally; the refetch stays as a
-  // consistency backstop.
+  // Shared save path for add/edit/delete — sends the job's whole updated
+  // list. Writes the PUT's response into the cache directly so the update
+  // lands even if the follow-up refetch doesn't land in time.
   const persistQuestions = async (next: QuestionRequest[]) => {
     if (!activeJobOpeningId) return;
     const res = await saveJobQuestions({
@@ -263,8 +234,7 @@ const AiQuestionsSetup = () => {
       return;
     }
     try {
-      // Snapshot the list as it looks right now — the polling effect above
-      // waits for it to differ from this before declaring generation done.
+      // Snapshot the current list so the polling effect can detect a change.
       questionSnapshotBeforeGenerateRef.current = questionsSnapshotKey;
       if (mode === 'REPLACE') {
         await regenerateJobQuestions({
@@ -331,16 +301,8 @@ const AiQuestionsSetup = () => {
         ),
       ]);
       showToast({ message: 'Questions uploaded successfully', type: 'success' });
-      // The import response already carries the job's full, fresh question
-      // bank (`BulkImportQuestionsView.questions` — "so the caller can
-      // refresh its view from one response", per its docstring). Write it
-      // into the cache directly instead of only relying on the
-      // `refetchQuestions()` below: that's a second, separate GET, and
-      // whenever it didn't land the list kept showing the pre-import state
-      // until an actual page reload. This makes the update land
-      // unconditionally, using the round metadata (name/sequence/variant)
-      // already cached from the last load; the round set itself doesn't
-      // change from an import, only which questions sit under each round.
+      // Write the import response's full question bank into the cache
+      // directly so the update lands even if the refetch below is late.
       dispatch(
         jobQuestionsApi.util.updateQueryData('getJobQuestions', activeJobOpeningId, (draft) => {
           const byRound = new Map<string, QuestionResponse[]>();
@@ -349,10 +311,8 @@ const AiQuestionsSetup = () => {
             if (bucket) bucket.push(question);
             else byRound.set(question.interview_round_id, [question]);
           }
-          // `res.questions` is the job's *complete* bank post-import (not
-          // just the newly-added rows), so a round missing from `byRound`
-          // genuinely has zero questions now — not "unchanged, keep the old
-          // list".
+          // res.questions is the complete post-import bank, so a round
+          // missing from byRound now has zero questions.
           draft.rounds = draft.rounds.map((round) => ({
             ...round,
             questions: byRound.get(round.round_instance_id) ?? [],
@@ -474,12 +434,7 @@ const AiQuestionsSetup = () => {
       return;
     }
     if (!activeJobOpeningId) {
-      // This used to be a bare `return` — a click that silently did nothing,
-      // no toast, no network call, indistinguishable from a dead button. It
-      // fired for real when the job id (URL param on Edit, JobSlice on
-      // Create) wasn't resolved yet at click time, and the job was left
-      // stuck in Draft with no visible reason why. Surface it instead of
-      // swallowing it.
+      // Surface this rather than silently no-op'ing if the job id isn't resolved yet.
       showToast({
         message: 'Could not identify this job opening - please refresh the page and try again.',
         type: 'error',
@@ -498,7 +453,21 @@ const AiQuestionsSetup = () => {
         });
         return;
       }
-      await publishJob(activeJobOpeningId).unwrap();
+      const published = await publishJob(activeJobOpeningId).unwrap();
+      // Write the fresh state into cache directly — navigate() below can
+      // unmount before the invalidated query refetches.
+      dispatch(
+        jobOpeningByIdApi.util.updateQueryData(
+          'getJobOpeningById',
+          { jobOpeningId: activeJobOpeningId },
+          (draft) => {
+            draft.data.isDraft = published.is_draft;
+            draft.is_draft = published.is_draft;
+            draft.is_published = published.is_published;
+          }
+        )
+      );
+      dispatch(setIsDraft(published.is_draft));
       showToast({ message: 'Job opening published', type: 'success' });
       navigate(isEditRoute ? `/jobs/view/${id}/details` : '/jobs');
     } catch (err) {

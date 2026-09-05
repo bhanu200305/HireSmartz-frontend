@@ -108,17 +108,8 @@ const EditJobDetail = () => {
 
   const justSavedRef = useRef(false);
   const initialLoadRef = useRef(true);
-  // Guards `loadJobData` below (the effect that syncs the form from Redux/
-  // the backend) so it only reconciles the form once per job id, not on
-  // every later Redux update. `jobDetails` (the whole Redux object) is one
-  // of that effect's dependencies, and changes reference on any dispatch
-  // that touches it — including ones with nothing to do with this form's
-  // fields, e.g. an AI-suggested skill getting accepted. Without this guard,
-  // every such unrelated dispatch re-ran `reset(formData)`/
-  // `updateFormWithJobData`, replacing the whole live form (Location
-  // included) with Redux's/the server's still-stale copy — live edits only
-  // reach either one on save — which is exactly the reported "the page
-  // refreshes and location gets deselected" bug.
+  // Ensures loadJobData below reconciles the form only once per job id, not
+  // on every later Redux update (which would clobber live edits).
   const hasSyncedFormForJobIdRef = useRef<string | null>(null);
 
   const { jobDetails, jobOpeningId, interViewRound, aiJobDescription, isDraft } = useSelector(
@@ -228,14 +219,15 @@ const EditJobDetail = () => {
   const [isCheckingJdSource, setIsCheckingJdSource] = useState(false);
   const [isAddingToDropdown, setIsAddingToDropdown] = useState<string | null>(null);
   const [suggestedSkillsDismissed, setSuggestedSkillsDismissed] = useState(false);
-  // Backs the "Selected Skills" chips for a suggested skill the recruiter
-  // accepted via the AI-suggestions banner before the live catalogue search
-  // dropdown (`mandatorySkills`/`optionalSkills` below) had cached a label
-  // for it — that dropdown only knows skills someone has actually searched
-  // for, so a freshly-accepted suggestion needs its own label source.
+  // Local labels for AI-suggested skills the catalogue dropdown hasn't cached yet.
   const [extraSuggestedSkillOptions, setExtraSuggestedSkillOptions] = useState<
     JobOpeningDropdownOption[]
   >([]);
+  // Local fallback label for a job title just created, until the list
+  // query refetches and picks it up.
+  const [extraJobTitleOptions, setExtraJobTitleOptions] = useState<JobOpeningDropdownOption[]>(
+    []
+  );
   const [isHiringManagerDropdownOpen, setIsHiringManagerDropdownOpen] = useState(false);
   const [isRecruiterDropdownOpen, setIsRecruiterDropdownOpen] = useState(false);
   const [isMandatorySkillsDropdownOpen, setIsMandatorySkillsDropdownOpen] = useState(false);
@@ -278,16 +270,13 @@ const EditJobDetail = () => {
     defaultValues: {},
   });
 
-  // Whatever ai-service parses out of an uploaded JD file (or, for an
-  // AI-Prompt job, generates) lands on the job asynchronously — the initial
-  // `loadJobData` effect below only ever reads `jobData` once, at mount /
-  // job-id change, so a recruiter who lands here right after an Upload JD
-  // (still `jd_status: PROCESSING` at that point — see upload_jd.py) would
-  // otherwise see an empty form that never fills in on its own, only a
-  // manual page reload. Same light poll + GENERATING/PROCESSING -> READY
-  // transition check jobdetails.tsx's own create-wizard equivalent already
-  // uses for the same problem on the AI-Prompt path.
+  // Polls jd/status so a recruiter landing here mid-parse (or after an
+  // Enhance/Regenerate triggered from the AI Job Description tab) still
+  // sees AI fields fill in without a manual reload — see the effect below.
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
+  // Tracks which job id the "already READY on first observation" fallback
+  // has run for, so it fires at most once per job.
+  const appliedAiFillJobIdRef = useRef<string | null>(null);
   const { data: jdStatusForHydration } = useGetJdStatusQuery(parsedJobId ?? '', {
     skip: !parsedJobId,
     pollingInterval: 3000,
@@ -371,10 +360,17 @@ const EditJobDetail = () => {
           ? departmentJobTitles
           : catalogueJobTitles
         : [];
-    return merged.filter(
+    // extraJobTitleOptions goes last so a real list entry wins over the temporary local one.
+    return [...merged, ...extraJobTitleOptions].filter(
       (title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id))
     );
-  }, [catalogueJobTitles, debouncedJobTitleSearch, departmentJobTitles, selectedDepartmentId]);
+  }, [
+    catalogueJobTitles,
+    debouncedJobTitleSearch,
+    departmentJobTitles,
+    extraJobTitleOptions,
+    selectedDepartmentId,
+  ]);
 
   const departments = (() => {
     const activeDepartments = (orgDepartments ?? []).map((department) => ({
@@ -413,10 +409,7 @@ const EditJobDetail = () => {
   const isSelectedJobTitleDeactivated = Boolean(selectedJobTitle?.isDeleted);
   const selectedJobTypeId = watch('jobType')?.[0];
 
-  // AI-suggested skills (from the job's own parsed/generated JD, merged with
-  // any title→skill mapping) — needs a job title picked first since the
-  // backend merges in title-based suggestions too, not just JD-extracted
-  // ones.
+  // AI-suggested skills for the currently selected job title.
   const { data: suggestedSkillsData } = useGetSuggestedSkillsQuery(
     {
       jobId: id ?? '',
@@ -653,9 +646,7 @@ const EditJobDetail = () => {
   useEffect(() => {
     const loadJobData = async () => {
       if (!parsedJobId) return;
-      // Reconcile the form from Redux/the backend once per job id — see the
-      // ref's own doc comment above for why re-running this on every later
-      // Redux update would clobber in-progress edits.
+      // Reconcile the form from Redux/the backend once per job id.
       if (hasSyncedFormForJobIdRef.current === parsedJobId) return;
       hasSyncedFormForJobIdRef.current = parsedJobId;
 
@@ -710,17 +701,8 @@ const EditJobDetail = () => {
     };
   }, [parsedJobId, jobOpeningId, jobDetails, reset]);
 
-  // AI-fill: applies whatever responsibilities/other requirements/
-  // experience/salary/skills ai-service just parsed (Upload JD) or
-  // generated (AI Prompt) onto this still-open form. Keyed off an observed
-  // GENERATING/PROCESSING -> READY transition, not just "status is
-  // currently READY" — that's also every already-parsed job's resting
-  // state, so treating it as a completion signal would re-apply (and
-  // potentially re-toast) on every mount. Explicitly refetches `/details`
-  // rather than trusting `jobData` in this same render — that's still the
-  // pre-completion snapshot until the refetch below resolves. Only ever
-  // fills a field the recruiter hasn't already got something in, so it's
-  // safe even if they started editing while parsing was still in flight.
+  // AI-fill: applies fields AI wrote once generation finishes
+  // (GENERATING/PROCESSING -> READY). Only fills fields still empty.
   useEffect(() => {
     const previousStatus = prevJdStatusForHydrationRef.current;
     const currentStatus = jdStatusForHydration?.status;
@@ -729,7 +711,14 @@ const EditJobDetail = () => {
     const justFinishedProcessing =
       (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') &&
       currentStatus === 'READY';
-    if (!justFinishedProcessing || !parsedJobId) return;
+    // Fallback: an Enhance/Regenerate triggered from the AI Job Description
+    // tab can finish while this tab isn't mounted, so the transition above
+    // is never observed here. Refresh once per job the first time status
+    // is seen READY.
+    const notYetSyncedThisJob =
+      currentStatus === 'READY' && appliedAiFillJobIdRef.current !== parsedJobId;
+    if ((!justFinishedProcessing && !notYetSyncedThisJob) || !parsedJobId) return;
+    appliedAiFillJobIdRef.current = parsedJobId;
 
     void triggerGetJobDescriptionById({ jobOpeningId: parsedJobId }).then((result) => {
       const fresh = result.data;
@@ -761,11 +750,7 @@ const EditJobDetail = () => {
         setValue('maxSalary', String(fresh.maxSalary), { shouldValidate: true });
         appliedAnything = true;
       }
-      // Skills AI suggested via job.jd.enhance/parse are auto-committed
-      // straight onto the job (job.add_skill), so they're already in
-      // `fresh.skills` the moment this refetch lands. Merge in only the
-      // ones not already selected, split by the catalogue's own type name —
-      // same pattern as handleAddAllSuggestedSkills above.
+      // Merge in AI-suggested skills not already selected, split by type.
       if (fresh.skills && fresh.skills.length > 0) {
         const currentMandatory = (current.mandatorySkills || []).map(String);
         const currentOptional = (current.optionalSkills || []).map(String);
@@ -866,13 +851,7 @@ const EditJobDetail = () => {
     });
     setValue('country', selectedLocation?.country ?? '', { shouldValidate: true });
     setValue('state', selectedLocation?.state ?? '', { shouldValidate: true });
-    // Hiring Manager/Recruiter are NOT location-scoped on this backend —
-    // useJobOpeningDropdown('HIRING_MANAGER'/'RECRUITER', ...) always pulls
-    // the tenant's whole user list, no locationId involved (that's what
-    // selectedLocationIdForUsers above was for, but nothing ever reads its
-    // value). Clearing these here just silently threw away a selection the
-    // user had already made every time they touched Location — see the
-    // "hiring manager/recruiter keeps getting deselected" report.
+    // Hiring Manager/Recruiter are not location-scoped, so leave them as-is here.
   };
 
   useEffect(() => {
@@ -1045,7 +1024,12 @@ const EditJobDetail = () => {
           type: 'success',
         });
 
-        setValue('jobTitle', [tenantJobTitleFormId(createdJobTitle)], { shouldValidate: true });
+        const createdJobTitleFormId = tenantJobTitleFormId(createdJobTitle);
+        setExtraJobTitleOptions((prev) => [
+          ...prev,
+          { id: createdJobTitleFormId, name: formattedValue },
+        ]);
+        setValue('jobTitle', [createdJobTitleFormId], { shouldValidate: true });
         setJobTitleSearchText('');
         setDebouncedJobTitleSearch('');
         return;
@@ -1122,12 +1106,7 @@ const EditJobDetail = () => {
       return;
     }
 
-    // Job types, education preferences and skill-catalog entries are all
-    // soft-deleted on the current backend, but none of them expose a
-    // restore/reactivate endpoint (only create/list/update/delete) — the
-    // old generic /job-opening/{type}/reuse/{id} this used to call doesn't
-    // exist on this backend at all. Same honest "not from this screen"
-    // treatment as department/jobTitle above, rather than pretending it works.
+    // No restore endpoint exists for job types, education preferences, or skill-catalog entries.
     showToast({
       message: 'Removed options cannot be restored from this screen.',
       type: 'error',
@@ -1235,8 +1214,7 @@ const EditJobDetail = () => {
       return;
     }
 
-    // No update endpoint exists for a tenant's own skill-catalog entries —
-    // /skills only supports POST (create) and /skills/search (read).
+    // No update endpoint exists for a tenant's own skill-catalog entries.
     showToast({
       message: 'Skills cannot be renamed from this screen.',
       type: 'error',
@@ -1361,8 +1339,7 @@ const EditJobDetail = () => {
       return;
     }
 
-    // No delete endpoint exists for a tenant's own skill-catalog entries —
-    // same gap as handleEditOption above.
+    // No delete endpoint exists for a tenant's own skill-catalog entries.
     showToast({
       message: 'Skills cannot be removed from this screen.',
       type: 'error',
@@ -1542,12 +1519,7 @@ const EditJobDetail = () => {
     try {
       const jobId = parsedJobId || asJobId(jobOpeningId);
 
-      // Snapshot what the AI description currently reflects BEFORE saving
-      // — used below to decide whether this save actually changed a field
-      // the description was generated from, so an unrelated change (e.g.
-      // swapping the Recruiter) doesn't blow away a manually-edited
-      // description for no reason. Best-effort: if this fails, the
-      // regenerate check below just skips, same as "no description yet".
+      // Snapshot for the regenerate check below; best-effort.
       let jdBeforeSave: Awaited<ReturnType<typeof triggerGetJobDescriptionById>>['data'];
       try {
         jdBeforeSave = await triggerGetJobDescriptionById({ jobOpeningId: jobId }).unwrap();
@@ -1636,7 +1608,7 @@ const EditJobDetail = () => {
           <div className="w-full">
             <span className="text-lg font-semibold">Job Info</span>
           </div>
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item
               label={
                 <span>
@@ -1871,7 +1843,7 @@ const EditJobDetail = () => {
           <div className="w-full">
             <span className="text-lg font-semibold">Location</span>
           </div>
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item
               label={
                 <span>
@@ -1907,7 +1879,7 @@ const EditJobDetail = () => {
           </div>
           {selectedOfficeLocationId && (
             <>
-              <div className="grid grid-cols-3 gap-x-4 mt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
                 <Form.Item label={<span>Address Line 1</span>}>
                   <Input
                     value={selectedLocationDetails?.address_line_1 ?? ''}
@@ -1930,7 +1902,7 @@ const EditJobDetail = () => {
                   />
                 </Form.Item>
               </div>
-              <div className="grid grid-cols-3 gap-x-4 mt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
                 <Form.Item label={<span>City</span>}>
                   <Input
                     value={selectedLocationDetails?.city ?? ''}
@@ -1977,7 +1949,7 @@ const EditJobDetail = () => {
           <div className="w-full">
             <span className="text-lg font-semibold">Hiring Panel</span>
           </div>
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item label={<span>Hiring Manager</span>}>
               <div className="space-y-3">
                 <DropdownWithAddOption
@@ -2132,7 +2104,7 @@ const EditJobDetail = () => {
               </div>
             </Form.Item>
           </div>
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item
               label={
                 <span>
@@ -2232,7 +2204,7 @@ const EditJobDetail = () => {
           <div className="w-full">
             <span className="text-lg font-semibold">Salary Status</span>
           </div>
-          <div className="grid grid-cols-3 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
             <Form.Item
               label={
                 <span>
@@ -2299,13 +2271,6 @@ const EditJobDetail = () => {
                     decimalScale={2}
                     prefix="$"
                     // Always a plain annual figure — no "/hr" suffix.
-                    // Exemption Status (`false`/Non-Exempt is the backend's
-                    // own default for every job — see `Job.is_exempted`,
-                    // job.py — for any job the recruiter hasn't touched that
-                    // dropdown on yet, AI-filled ones very much included)
-                    // isn't a reliable signal for what unit a salary figure
-                    // is in, and a JD's stated salary is virtually always
-                    // annual.
                     placeholder="Minimum Salary"
                     className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                     intlConfig={{ locale: 'en-US', currency: 'USD' }}
@@ -2339,13 +2304,6 @@ const EditJobDetail = () => {
                     decimalScale={2}
                     prefix="$"
                     // Always a plain annual figure — no "/hr" suffix.
-                    // Exemption Status (`false`/Non-Exempt is the backend's
-                    // own default for every job — see `Job.is_exempted`,
-                    // job.py — for any job the recruiter hasn't touched that
-                    // dropdown on yet, AI-filled ones very much included)
-                    // isn't a reliable signal for what unit a salary figure
-                    // is in, and a JD's stated salary is virtually always
-                    // annual.
                     placeholder="Maximum Salary"
                     className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                     intlConfig={{ locale: 'en-US', currency: 'USD' }}
@@ -2358,7 +2316,7 @@ const EditJobDetail = () => {
             </Form.Item>
           </div>
         </div>
-        <div className="form-grid-equal-labels grid grid-cols-3 gap-x-4 mt-2">
+        <div className="form-grid-equal-labels grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
           <Form.Item label={<span>Referral Bonus (in USD)</span>}>
             <Controller
               name="referralBonus"
@@ -2467,7 +2425,7 @@ const EditJobDetail = () => {
               </div>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
             <Form.Item label={<span>Required Skills</span>}>
               <div className="space-y-3">
                 <DropdownWithAddOption
@@ -2640,7 +2598,7 @@ const EditJobDetail = () => {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-4 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
             <Form.Item label={<span>Education Preference</span>}>
               <DropdownWithAddOption
                 className="w-full custom-select-jobs placeholder-style"

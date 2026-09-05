@@ -19,6 +19,8 @@ const mapInterviewRounds = (
     roundType: 'MANUAL',
     sequence: round.sequence,
     description: round.description ?? '',
+    duration: round.duration,
+    variant: round.variant,
     uniqueRoundIdentifier: round.id,
   }));
 
@@ -41,10 +43,7 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
     id: job.org_job_opening_id as unknown as number,
     atsJobOpeningId: '',
     jobProfileCode: details?.job_profile_code ?? '',
-    // Was hardcoded to '' — the Shift field on View/Edit always rendered
-    // empty regardless of what was actually saved. Id only, name resolved
-    // separately against the shift catalogue (same as jobTitle/department/
-    // jobType above) — shift_id has no name of its own in this response.
+    // Id only, name resolved separately against the shift catalogue.
     shiftId: details?.shift_id ?? null,
     openings: details?.vacancies ?? 0,
     minSalary: details?.lower_salary_range ?? 0,
@@ -113,9 +112,7 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
       ? [{ id: details.job_type_id as unknown as number, jobTypeName: '' }]
       : [],
     jobMode: details?.mode_id ? [{ id: details.mode_id as unknown as number, name: '' }] : [],
-    // Id only, name resolved separately (same pattern as jobTitle/department/
-    // jobType above) — education_preference_id is a single catalogue
-    // reference now (migration 0014), not free text.
+    // Id only, name resolved separately against the education catalogue.
     educationPreference: details?.education_preference_id
       ? [{ id: details.education_preference_id as unknown as number, educationLevel: '' }]
       : [],

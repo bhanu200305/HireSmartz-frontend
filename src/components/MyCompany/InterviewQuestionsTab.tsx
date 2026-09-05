@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Select } from 'antd';
 import { MdDelete } from 'react-icons/md';
 import { Button, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
@@ -10,11 +11,14 @@ import {
   useDeleteInterviewQuestionMutation,
   InterviewQuestion,
 } from '../../api/organization-service/Tenants/interviewQuestions';
+import { useListResumeTemplateFieldsQuery } from '../../api/organization-service/resumeTemplateFields';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 
 const MAX_QUESTIONS = 8;
+
+type Draft = { text: string; fieldId: string };
 
 /**
  * This tenant's own "Intake Questions" — its HR/interpersonal question set,
@@ -30,9 +34,18 @@ const MAX_QUESTIONS = 8;
  * starting composition is still the Super Admin's call
  * (CompanySettings/IntakeQuestionsTab.tsx), this just lets a Company Admin
  * refill their own copy after trimming it.
+ *
+ * Every question is now required to carry a `field_id` — which
+ * ResumeTemplateField (Introduction/Education/Experience/...) its spoken
+ * answer is meant to fill in (organization-service migration 0056: NOT
+ * NULL, no untagged state exists anywhere). The "Resume Field" picker below
+ * is populated from the dual-scope GET /v1/masters/resume-template-fields
+ * (resumeTemplateFields.ts) — the platform-only version of that endpoint
+ * refuses a tenant token outright.
  */
 const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useListInterviewQuestionsQuery(tenantId);
+  const { data: fieldsData, isLoading: isLoadingFields } = useListResumeTemplateFieldsQuery();
   const [createQuestion, { isLoading: isCreating }] = useCreateInterviewQuestionMutation();
   const [updateQuestion, { isLoading: isSaving }] = useUpdateInterviewQuestionMutation();
   const [deleteQuestion] = useDeleteInterviewQuestionMutation();
@@ -44,21 +57,44 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
   const canUpdate = useHasAccess(Authorities.INTERVIEW_QUESTIONS_UPDATE);
   const canDelete = useHasAccess(Authorities.INTERVIEW_QUESTIONS_DELETE);
 
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const fields = useMemo(() => fieldsData?.fields ?? [], [fieldsData]);
+  const fieldOptions = useMemo(
+    () => fields.map((f) => ({ value: f.field_id, label: f.field_label })),
+    [fields]
+  );
+
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [questionToDelete, setQuestionToDelete] = useState<InterviewQuestion | null>(null);
   const [newQuestionText, setNewQuestionText] = useState('');
+  const [newQuestionFieldId, setNewQuestionFieldId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (data) {
-      setDrafts(Object.fromEntries(data.questions.map((q) => [q.question_id, q.question_text])));
+      setDrafts(
+        Object.fromEntries(
+          data.questions.map((q) => [
+            q.question_id,
+            // `q.field_id` can be null (a legacy question predating this
+            // field) — the picker below already renders '' as "unassigned"
+            // via its own `|| undefined` fallback, and Save is blocked
+            // until a real one is chosen.
+            { text: q.question_text, fieldId: q.field_id ?? '' },
+          ])
+        )
+      );
     }
   }, [data]);
 
   const handleSave = async (question: InterviewQuestion) => {
-    const text = (drafts[question.question_id] ?? '').trim();
+    const draft = drafts[question.question_id];
+    const text = (draft?.text ?? '').trim();
     if (!text) {
       showToast({ message: 'Question text cannot be empty.', type: 'error' });
+      return;
+    }
+    if (!draft?.fieldId) {
+      showToast({ message: 'Pick a resume field for this question.', type: 'error' });
       return;
     }
     setSavingId(question.question_id);
@@ -67,6 +103,7 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
         tenantId,
         questionId: question.question_id,
         question_text: text,
+        field_id: draft.fieldId,
       }).unwrap();
       showToast({ message: 'Question updated.', type: 'success' });
     } catch (err) {
@@ -94,14 +131,23 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
   const handleAdd = async () => {
     const text = newQuestionText.trim();
     if (!text) return;
+    if (!newQuestionFieldId) {
+      showToast({ message: 'Pick a resume field for this question.', type: 'error' });
+      return;
+    }
     if (atCap) {
       showToast({ message: `You can only have up to ${MAX_QUESTIONS} questions.`, type: 'error' });
       return;
     }
     try {
-      await createQuestion({ tenantId, question_text: text }).unwrap();
+      await createQuestion({
+        tenantId,
+        question_text: text,
+        field_id: newQuestionFieldId,
+      }).unwrap();
       showToast({ message: 'Question added.', type: 'success' });
       setNewQuestionText('');
+      setNewQuestionFieldId(undefined);
     } catch (err) {
       showToast({ message: getOrgErrorMessage(err, 'Failed to add question.'), type: 'error' });
     }
@@ -125,9 +171,9 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
       </div>
       <Typography variant="body2" className="mb-6 block">
         Your HR/interpersonal question set, asked in every candidate&apos;s first-round intake call.
-        Edit the wording below — changes to one question save independently. Set by CareerForcePro
-        by default; once you edit or remove a question here, this becomes your company&apos;s own
-        independent set.
+        Each question is tied to one Resume Field — the section of a candidate&apos;s resume its
+        spoken answer is meant to fill in. Set by CareerForcePro by default; once you add, edit, or
+        remove a question here, this becomes your company&apos;s own independent set.
       </Typography>
 
       {questions.length === 0 ? (
@@ -137,16 +183,39 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
       ) : (
         <div className="flex flex-col gap-3">
           {questions.map((question) => {
-            const draft = drafts[question.question_id] ?? '';
-            const isDirty = draft.trim() !== question.question_text.trim();
+            const draft = drafts[question.question_id] ?? { text: '', fieldId: '' };
+            const isDirty =
+              draft.text.trim() !== question.question_text.trim() ||
+              // Both sides normalized through '' — draft.fieldId is seeded
+              // with `q.field_id ?? ''` above, so comparing it directly
+              // against a possibly-null question.field_id would call an
+              // untouched legacy (null) row "dirty" the instant it renders.
+              draft.fieldId !== (question.field_id ?? '');
             return (
               <div key={question.question_id} className="flex items-center gap-2">
                 <Input
-                  value={draft}
+                  value={draft.text}
                   onChange={(e) =>
-                    setDrafts((prev) => ({ ...prev, [question.question_id]: e.target.value }))
+                    setDrafts((prev) => ({
+                      ...prev,
+                      [question.question_id]: { ...draft, text: e.target.value },
+                    }))
                   }
                   className="flex-1"
+                />
+                <Select
+                  size="middle"
+                  className="w-44 shrink-0"
+                  placeholder="Resume Field"
+                  loading={isLoadingFields}
+                  value={draft.fieldId || undefined}
+                  onChange={(value) =>
+                    setDrafts((prev) => ({
+                      ...prev,
+                      [question.question_id]: { ...draft, fieldId: value },
+                    }))
+                  }
+                  options={fieldOptions}
                 />
                 {canUpdate && (
                   <Button
@@ -182,10 +251,20 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
             disabled={atCap}
             className="flex-1"
           />
+          <Select
+            size="middle"
+            className="w-44 shrink-0"
+            placeholder="Resume Field"
+            loading={isLoadingFields}
+            value={newQuestionFieldId}
+            onChange={setNewQuestionFieldId}
+            options={fieldOptions}
+            disabled={atCap}
+          />
           <Button
             className="rounded-full border border-gray-300 px-4 py-1.5 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={() => void handleAdd()}
-            disabled={!newQuestionText.trim() || atCap || isCreating}
+            disabled={!newQuestionText.trim() || !newQuestionFieldId || atCap || isCreating}
           >
             {isCreating ? 'Adding…' : 'Add'}
           </Button>

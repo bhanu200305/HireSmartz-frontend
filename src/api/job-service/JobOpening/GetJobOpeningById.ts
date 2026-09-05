@@ -85,3 +85,6 @@ export const {
   useDeleteJobOpeningMutation,
   useGetWizardStateQuery,
 } = extendedApi;
+
+// Exported so callers get typed `.util` cache helpers for this endpoint.
+export { extendedApi as jobOpeningByIdApi };

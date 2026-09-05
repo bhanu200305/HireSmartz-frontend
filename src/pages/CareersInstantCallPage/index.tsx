@@ -7,7 +7,16 @@ import { EnvironmentOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useStartIntakeCallMutation } from '../../api/candidate-service/PublicApply/index';
 import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
+import { PhoneNumberField } from '../../components/shared';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
+import {
+  isPhoneValidForCountry,
+  PHONE_VALIDATION_MESSAGE,
+  toE164,
+} from '../../shared/utils/validation/phoneValidation';
+
+// Same default every other phone field in this app starts from.
+const DEFAULT_COUNTRY_CODE = '+1';
 
 // New — Path B of candidate-service's public apply surface
 // (`POST /public/v1/apply/instant-call`, FRONTEND_INTEGRATION_DETAILS.md
@@ -36,11 +45,12 @@ export const CareersInstantCallPage = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const [firstNameError, setFirstNameError] = useState(false);
-  const [phoneError, setPhoneError] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [smsConsent, setSmsConsent] = useState(false);
   const [tosConsent, setTosConsent] = useState(false);
   const [tosError, setTosError] = useState(false);
@@ -51,15 +61,16 @@ export const CareersInstantCallPage = () => {
   const handleSubmit = async () => {
     const noFirstName = !firstName.trim();
     const noPhone = !phone.trim();
+    const badPhone = !noPhone && !isPhoneValidForCountry(phone, countryCode);
     const noTos = !tosConsent;
     const noCaptcha = !captchaToken;
 
     setFirstNameError(noFirstName);
-    setPhoneError(noPhone);
+    setPhoneError(noPhone ? 'Phone number is required' : badPhone ? PHONE_VALIDATION_MESSAGE : null);
     setTosError(noTos);
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
 
-    if (noFirstName || noPhone || noTos || noCaptcha) return;
+    if (noFirstName || noPhone || badPhone || noTos || noCaptcha) return;
 
     try {
       const res = await startIntakeCall({
@@ -68,7 +79,7 @@ export const CareersInstantCallPage = () => {
         firstName: firstName.trim(),
         lastName: lastName.trim() || undefined,
         emailId: email.trim() || undefined,
-        contactNo: phone.trim(),
+        contactNo: toE164(countryCode, phone),
         termsAccepted: tosConsent,
         smsConsent,
         captchaToken: captchaToken ?? '',
@@ -201,24 +212,17 @@ export const CareersInstantCallPage = () => {
               <label htmlFor="phone" className="block text-sm font-medium text-gray-800 mb-2">
                 Phone Number <span className="text-red-500">*</span>
               </label>
-              <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => {
-                  setPhone(e.target.value);
-                  if (e.target.value.trim()) setPhoneError(false);
+              <PhoneNumberField
+                countryCode={countryCode}
+                onCountryCodeChange={setCountryCode}
+                phoneNumber={phone}
+                onPhoneNumberChange={(value) => {
+                  setPhone(value);
+                  setPhoneError(null);
                 }}
-                placeholder="Phone number"
-                maxLength={20}
-                className="rounded-full"
-                style={{
-                  height: 44,
-                  paddingLeft: 16,
-                  paddingRight: 16,
-                  borderColor: phoneError ? '#ef4444' : undefined,
-                }}
+                className="h-11 rounded-full"
               />
-              {phoneError && <p className="text-sm text-red-500 mt-1">Phone number is required</p>}
+              {phoneError && <p className="text-sm text-red-500 mt-1">{phoneError}</p>}
             </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-2">

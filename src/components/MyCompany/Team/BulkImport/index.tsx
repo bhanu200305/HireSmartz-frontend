@@ -38,7 +38,7 @@ const IMPORT_STEPS: Step[] = [
 // ROSTER_EXCEL_CONSTRAINT technically also accepts 'application/vnd.ms-excel'
 // (.xls) at the upload step, but that would only defer the same failure to
 // parse time with a more confusing error, so it's excluded here too. A .csv
-// is rejected even earlier, at upload-url time — organization-service's
+// is rejected even earlier, at upload time — organization-service's
 // constraint never accepted 'text/csv' at all.
 const ALLOWED_IMPORT_TYPES = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
 
@@ -54,8 +54,9 @@ type BulkImportProps = {
   isMaster?: boolean;
 };
 
-/** The real 3-step roster flow — request an upload URL, upload straight to
- * storage, parse; then review/edit the detected rows and confirm. */
+/** The real 3-step roster flow — upload the file directly to
+ * organization-service, parse; then review/edit the detected rows and
+ * confirm. */
 const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportProps) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [rows, setRows] = useState<ReviewRow[]>([]);
@@ -186,7 +187,11 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
       open={open}
       onClose={resetAndClose}
       title="Import Team"
-      modalProps={{ width: 560 }}
+      // Step 2's review table needs real room for five columns
+      // (checkbox/email/role/department/designation) — 560px is enough for
+      // steps 1 and 3 (a dropzone, a result summary) but squeezed everything
+      // in step 2 down to illegible, truncated pills.
+      modalProps={{ width: step === 2 ? 880 : 560 }}
     >
       {isBusy && <Loader />}
       <StepIndicator steps={IMPORT_STEPS} currentStep={step} className="mb-6" />

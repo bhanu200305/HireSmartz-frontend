@@ -30,14 +30,14 @@ import {
   useReactivatePlatformTenantUserMutation,
   useAttachPlatformTenantUserLocationMutation,
 } from '../../../../api/organization-service/Platform/users';
-import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organization-service/Platform/departments';
-import { useListPlatformTenantDesignationsQuery } from '../../../../api/organization-service/Platform/designations';
-import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-service/Platform/offices';
 import {
   useListPlatformTenantInvitationsQuery,
   useResendPlatformTenantInvitationMutation,
   useRevokePlatformTenantInvitationMutation,
 } from '../../../../api/organization-service/Platform/invitations';
+import { useListPlatformTenantDepartmentsQuery } from '../../../../api/organization-service/Platform/departments';
+import { useListPlatformTenantDesignationsQuery } from '../../../../api/organization-service/Platform/designations';
+import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-service/Platform/offices';
 import { useAssignRoleAsPlatformMutation } from '../../../../api/organization-service/Roles/assignments';
 import { useRolesCatalog } from '../../../../hooks/useRolesCatalog';
 import type { OrgUser } from '../../../../api/organization-service/Users/users';
@@ -119,7 +119,10 @@ const emptyForm: FormState = {
  * this panel makes it worse, but nothing here works around it either.
  *
  * Table + search/sort/filter/pagination matches CompanySettings' master-data
- * tabs instead of the plain divided list this used to be.
+ * tabs instead of the plain divided list this used to be. Pending invites
+ * share this same table (as `PendingRow`s) rather than living only on a
+ * separate screen — resend/revoke are real actions here, not just a pointer
+ * to "go manage it elsewhere".
  */
 const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [includeInactive, setIncludeInactive] = useState<'active' | 'all'>('active');
@@ -127,15 +130,28 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     tenantId,
     includeInactive: includeInactive === 'all',
   });
+  // Bulk import (and a single invite) only ever creates an `Invite` row —
+  // never a `users` row — until the invited person actually accepts, so
+  // useListPlatformTenantUsersQuery above alone would make an import look
+  // like it did nothing. Fetched here purely to surface still-pending ones
+  // as visible rows; `invalidatesTags: ['TenantInvitations']` on both the
+  // bulk-import confirm and single-invite mutations already refetches this
+  // the moment either succeeds.
+  //
+  // Every invite this tenant has ever sent, not just pending ones — filtered
+  // to `status === 'pending'` below. Accepted/revoked/expired invites are
+  // dead rows for THIS table's purpose (an accepted one's person already
+  // shows up via `data.items` instead). `limit: 100`, not the endpoint's own
+  // default of 50 — a tenant that bulk-imported more than 50 people at once
+  // would otherwise silently lose the overflow off this list.
+  const { data: invitationsData } = useListPlatformTenantInvitationsQuery({
+    tenantId,
+    limit: 100,
+  });
   const { data: departments } = useListPlatformTenantDepartmentsQuery(tenantId);
   const { data: designations } = useListPlatformTenantDesignationsQuery(tenantId);
   const { data: offices } = useListPlatformTenantOfficesQuery(tenantId);
   const { roles, createRole } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: true });
-  // Every invite this tenant has ever sent, not just pending ones — filtered
-  // to `status === 'pending'` below. Accepted/revoked/expired invites are
-  // dead rows for THIS table's purpose (an accepted one's person already
-  // shows up via `data.items` instead).
-  const { data: invitationsData } = useListPlatformTenantInvitationsQuery({ tenantId });
 
   const [createUser, { isLoading: isCreating }] = useCreatePlatformTenantUserMutation();
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivatePlatformTenantUserMutation();
@@ -176,6 +192,9 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
   const users = data?.items ?? [];
 
+  // Only "pending" — "accepted" is already a real row in `users` above (would
+  // double-list the same person), and "expired"/"revoked" are no longer
+  // actionable, so surfacing them here would just be noise.
   const pendingInvitations = useMemo(
     () => (invitationsData?.invitations ?? []).filter((inv) => inv.status === 'pending'),
     [invitationsData]

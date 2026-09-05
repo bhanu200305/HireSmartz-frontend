@@ -209,7 +209,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               value: o.office_id,
             }))}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Button
               className="w-full border border-gray-300 rounded-full py-2"
               onClick={() => setIsAddOpen(false)}

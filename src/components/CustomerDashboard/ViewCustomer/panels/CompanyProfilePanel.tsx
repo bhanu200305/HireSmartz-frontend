@@ -78,10 +78,11 @@ const ReadOnlyPill: React.FC<{ children: React.ReactNode }> = ({ children }) => 
  * Super Admin's mirror of MyCompany/CompanyProfileTab.tsx — same fields, same
  * PATCH-only-what-changed contract, GET/PATCH
  * /v1/platform/tenants/{tenant_id}/profile instead of the tenant's own
- * ambient-context route. Logo upload is the same real presigned-S3 flow that
- * tab uses too (POST /v1/platform/tenants/{tenant_id}/logo/upload-url), not
- * a free-text "Logo URL" field — the plain text input this used to have
- * couldn't produce a value organization-service could actually serve back.
+ * ambient-context route. Logo upload is the same real server-mediated
+ * multipart flow that tab uses too (POST
+ * /v1/platform/tenants/{tenant_id}/logo/upload), not a free-text "Logo URL"
+ * field — the plain text input this used to have couldn't produce a value
+ * organization-service could actually serve back.
  */
 const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data: profile, isLoading, refetch } = useGetPlatformTenantProfileQuery(tenantId);
@@ -314,16 +315,6 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             value={form.description}
             onChange={handleField('description')}
             placeholder="Description"
-            rows={3}
-            disabled={!isEditMode}
-            className="rounded-2xl text-sm"
-          />
-        </Field>
-        <Field label="About our culture">
-          <Textarea
-            value={form.culture_intro}
-            onChange={handleField('culture_intro')}
-            placeholder="About our culture"
             rows={3}
             disabled={!isEditMode}
             className="rounded-2xl text-sm"

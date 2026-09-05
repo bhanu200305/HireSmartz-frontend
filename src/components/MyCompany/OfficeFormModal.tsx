@@ -13,6 +13,7 @@ export type OfficeFormValues = {
   state: string;
   country: string;
   zip_code: string;
+  location_code: string;
 };
 
 type OfficeFormModalProps = {
@@ -31,6 +32,7 @@ const emptyForm: OfficeFormValues = {
   state: '',
   country: '',
   zip_code: '',
+  location_code: '',
 };
 
 const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
@@ -61,6 +63,7 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
             state: initial.state || '',
             country: initial.country,
             zip_code: initial.zip_code || '',
+            location_code: initial.location_code || '',
           }
         : emptyForm
     );
@@ -110,6 +113,7 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
           className="w-full"
         />
         <Input placeholder="Zip code" {...field('zip_code')} />
+        <Input placeholder="Location code" {...field('location_code')} />
       </div>
 
       <button

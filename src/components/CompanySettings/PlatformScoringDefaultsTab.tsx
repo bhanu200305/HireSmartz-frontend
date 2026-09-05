@@ -217,7 +217,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
         </label>
         <Select
           id="scoringCompany"
-          className="w-[260px]"
+          className="w-full sm:w-[260px]"
           popupClassName="scoringCompanySelectDropdown"
           loading={isCompaniesLoading}
           showSearch

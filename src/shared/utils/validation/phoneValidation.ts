@@ -1,4 +1,4 @@
-import { isValidPhoneNumber, type CountryCode } from 'libphonenumber-js';
+import { isValidPhoneNumber, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js';
 import type { RefinementCtx } from 'zod';
 import { countryCodes } from '../../../constants/countryCode';
 
@@ -39,6 +39,37 @@ export const PHONE_VALIDATION_MESSAGE =
 /** Digits only, capped at the E.164 ceiling — see that constant's own comment. */
 export const restrictPhoneDigits = (raw: string): string =>
   raw.replace(/\D/g, '').slice(0, E164_MAX_DIGITS);
+
+/**
+ * A dial code (`countryCodes[].value`, e.g. `"+91"`) and digits-only national
+ * number joined into the single E.164 string candidate-service actually
+ * stores (`contact_no` — see candidate.py's "E.164, country code included."
+ * comment; unlike organization-service's user table, candidates have no
+ * separate country_code column).
+ */
+export const toE164 = (dialCode: string, nationalNumber: string): string =>
+  `${dialCode}${nationalNumber.replace(/\D/g, '')}`;
+
+/**
+ * The reverse of `toE164` — splits a stored E.164 `contact_no` back into the
+ * dial code + national number a `PhoneNumberField` needs to render. Used
+ * only when loading an existing candidate into an edit form; a fresh form
+ * has nothing to split.
+ */
+export const splitE164 = (
+  value: string | null | undefined
+): { countryCode: string; phoneNumber: string } => {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return { countryCode: '', phoneNumber: '' };
+  const parsed = parsePhoneNumberFromString(trimmed.startsWith('+') ? trimmed : `+${trimmed}`);
+  if (parsed) {
+    return { countryCode: `+${parsed.countryCallingCode}`, phoneNumber: parsed.nationalNumber };
+  }
+  // Not a number libphonenumber-js recognizes at all (e.g. legacy data
+  // entered before this validation existed) — surface the digits as-is
+  // rather than silently dropping them, with no dial code guessed.
+  return { countryCode: '', phoneNumber: trimmed.replace(/\D/g, '') };
+};
 
 /**
  * A zod `.superRefine()` step for an object schema that has both a

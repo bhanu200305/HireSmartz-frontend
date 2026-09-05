@@ -43,7 +43,7 @@ const DuplicateCandidateModal = ({ duplicates, onAcknowledge }: DuplicateCandida
 
         {/* Scrollable candidate grid */}
         <div className="border border-gray-200 rounded-xl p-4 max-h-64 overflow-y-auto">
-          <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
             {duplicates.map((d) => (
               <div key={d.email} className="flex flex-col">
                 <span className="text-sm font-medium text-gray-700 roboto-font">

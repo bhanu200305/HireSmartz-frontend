@@ -30,11 +30,15 @@ export type TenantProfile = {
 // PATCH /v1/tenants/{tenant_id}/profile — UpdateTenantProfileRequest. Wire
 // names match the contract literally ("name"/"logo", not this service's
 // internal "company_name"/"logo_url") — every field omitted, not `null`,
-// means "leave unchanged". `logo` accepts either a storage key from the
-// upload-url flow below OR a plain externally-scraped URL (e.g. from
-// ai-service's org-scrape result) — the backend only verifies storage-key
-// values against its own storage and passes through anything else as-is
-// (`update_tenant_profile.py`'s `_verify_uploaded`).
+// means "leave unchanged". `extra="forbid"` on the backend — sending a
+// field this type doesn't declare 422s the WHOLE request, not just that
+// field (culture_intro used to be listed here despite never being a real
+// field on the backend request model, which broke every save on this form).
+// `logo` accepts either a storage key from the upload-url flow below OR a
+// plain externally-scraped URL (e.g. from ai-service's org-scrape result) —
+// the backend only verifies storage-key values against its own storage and
+// passes through anything else as-is (`update_tenant_profile.py`'s
+// `_verify_uploaded`).
 export type UpdateTenantProfileRequest = {
   tenantId: string;
   name?: string;
@@ -64,9 +68,10 @@ export type UploadTenantLogoArgs = {
   file: File;
 };
 
-// POST /v1/tenants/{tenant_id}/email-banner/upload — identical shape to the
-// logo upload above; the caller persists `storage_key` via
-// updateTenantProfile's `email_banner` field. Tenant self-service only —
+// POST /v1/tenants/{tenant_id}/email-banner/upload — identical server-mediated
+// shape to the logo upload above (`TenantEmailBannerUploadView` mirrors
+// `TenantLogoUploadView` on the backend); the caller persists `storage_key`
+// via updateTenantProfile's `email_banner` field. Tenant self-service only —
 // this route is `require_own_tenant`-guarded the same way the logo one is,
 // so there is no platform-on-behalf-of-a-tenant equivalent.
 export type UploadTenantEmailBannerArgs = {

@@ -202,17 +202,9 @@ export type JobDetailsState = {
   jobTitle: Array<string | number>;
   department: Array<string | number>;
   jobType: Array<string | number>;
-  // Single catalogue id, held as an array-of-one — same convention as
-  // jobTitle/department/jobType above. Maps to `mode_id`, a
-  // publish-mandatory field (_publish_validation.py).
+  // Single catalogue id, held as an array-of-one. Maps to `mode_id` (publish-mandatory).
   jobMode?: Array<string | number>;
-  // Single catalogue id, held as an array-of-one — same convention as
-  // jobMode above. References the organization's own configured shift
-  // (name + start/end time), not a free-typed time range — see
-  // api/job-service/Shifts/shifts.ts. Replaces the old shiftStart/shiftEnd
-  // pair, which only ever built a display string and was never sent to the
-  // backend (buildSaveJobDetailsPayload has always read `shift`/`shiftId`
-  // for `shift_id`), so every job's shift was silently discarded.
+  // Single catalogue id, held as an array-of-one — the org's configured shift, not a free-typed time range.
   shift?: Array<string | number>;
   openings: number | null;
   exemptionStatus: string | number | boolean | null;
@@ -229,27 +221,14 @@ export type JobDetailsState = {
   state: string;
   officeLocation: Array<string | number>;
   responsibilities?: string;
-  // Single catalogue id, held as an array-of-one for consistency with every
-  // other DropdownWithAddOption-backed field here (jobTitle, department, …).
+  // Single catalogue id, held as an array-of-one.
   educationPreference: Array<string | number>;
-  // organization_language ids a job's communication requires (migration
-  // 0014) — replaces the old isMultilingual boolean below, which the
-  // backend no longer accepts.
+  // organization_language ids a job's communication requires.
   languages?: Array<string | number>;
   mandatorySkills: Array<string | number>;
   optionalSkills?: Array<string | number>;
   otherRequirements?: string;
-  /** skill_id -> skill_label, for skills that landed in mandatorySkills/
-   * optionalSkills without ever going through a dropdown search (AI added
-   * them directly via job.jd.enhance's auto-committed suggestions). The
-   * catalogue search dropdowns only know a label for a skill someone has
-   * actually searched for, so the "Selected Skills" chips need their own
-   * label source for anything that arrived another way — this is that
-   * source, persisted (redux-persist) so it survives a remount even if the
-   * Job Details step wasn't open when the skill was added (see
-   * JobDescriptionPanel.tsx's Redux-dispatch effect, which is the one
-   * guaranteed to run in that case). Merged in, never replaced wholesale —
-   * see jobOpeningSlice.ts's `updateJobDetails` reducer. */
+  /** skill_id -> skill_label for AI-added skills that never went through a dropdown search. */
   aiSuggestedSkillLabels?: Record<string, string>;
   /** @deprecated backend no longer accepts this (job-service migration 0016) */
   isMultilingual?: boolean;
@@ -457,9 +436,7 @@ export type JobOpeningByIdResponse = {
     id: string | number;
     atsJobOpeningId: string;
     jobProfileCode: string;
-    // Id only, name resolved separately against the organization's shift
-    // catalogue (same pattern as jobTitle/department/jobType below) — the
-    // backend's `shift_id` has no name of its own to send.
+    // Id only, name resolved separately against the shift catalogue.
     shiftId?: string | null;
     openings: number;
     minSalary: number;
@@ -568,6 +545,8 @@ export type JobOpeningByIdResponse = {
       roundType: string;
       sequence: number;
       description: string;
+      duration: number | null;
+      variant: string | null;
       uniqueRoundIdentifier: string;
     }[];
     categorizedQuestions: {

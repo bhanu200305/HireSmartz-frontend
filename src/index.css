@@ -503,6 +503,38 @@ select:focus {
     font-weight 0.15s ease;
 }
 
+/* Guards a tab bar with many items (My Company, Company Settings — both
+   grew past 8 tabs) against a real, reproducible AntD quirk: its own
+   overflow calculation can under-count the tabs that fit, leaving the
+   boundary tab's label rendered wider than the space actually available.
+   The whole-site horizontal-overflow guard above (html/body/#root) then
+   silently clips that overrun at the PAGE level — invisibly, with no
+   scrollbar or "more" affordance reaching it — instead of AntD's own
+   dropdown ever getting the chance to hold it.
+
+   Same fix `.view-candidate-tabs` above already established for this exact
+   AntD failure mode: turn AntD's own JS-driven overflow system off
+   (nav-operations hidden, nav-list's transform neutralized — otherwise its
+   translateX fights a native scroll on the same element) and let
+   `nav-wrap` — the actual fixed-width viewport box, `nav-list` is just its
+   full-width content — scroll natively instead. Unlike that block this
+   keeps the ink-bar/active-tab underline (no `display:none` on it), since
+   these tab bars use the app-wide underline treatment right below, not
+   `.view-candidate-tabs`'s own bottom-border style. */
+.many-tabs .ant-tabs-nav-operations {
+  display: none !important;
+}
+.many-tabs .ant-tabs-nav-list {
+  transform: none !important;
+}
+.many-tabs .ant-tabs-nav-wrap {
+  overflow-x: auto !important;
+  scrollbar-width: thin;
+}
+.many-tabs .ant-tabs-tab-btn {
+  white-space: nowrap !important;
+}
+
 /* Reusable hover-lift for clickable cards/rows/KPI tiles — mirrors the
    wireframe's .wf-kpi:hover / [data-goto]:hover treatment. Opt-in via
    className, doesn't change any static/non-interactive card. */

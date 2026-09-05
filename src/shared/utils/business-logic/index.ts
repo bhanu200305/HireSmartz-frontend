@@ -188,6 +188,11 @@ const AI_JD_WHOLE_LINE_BOLD_RE = /^\*\*(.+)\*\*$/;
 const AI_JD_HEADING_KEYWORD_RE =
   /(about\s+the\s+role|role\s+summary|responsibilit|requirement|qualification|skill|experience|salary|compensation|education|department|job\s*type|location|benefit|perk|what\s+we\s+offer|nice.to.have|preferred|other|communication|referral|exemption|vacanc|headcount|shift|mode)/i;
 
+// A section-label-shaped substring (e.g. "**Compensation:**"), possibly
+// glued onto the end of the previous sentence with no line break.
+const AI_JD_GLUED_HEADING_RE =
+  /(\*\*)?\b([A-Z][A-Za-z]*(?:\s+[A-Za-z()/-]+){0,3}):(\*\*)?(-)?/g;
+
 /** A bare (no markdown syntax) line that reads like a section label rather
  * than prose — short, doesn't trail off mid-sentence, and either matches a
  * common JD-section keyword or is mostly Title Case. */
@@ -227,9 +232,32 @@ export const formatAiJobDescription = (text: string): string => {
 
   // Strip whitespace right inside "**" pairs — CommonMark won't render bold
   // otherwise (e.g. "**Position Overview: **" stays literal).
-  const normalizedText = text.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
+  let normalizedText = text.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
 
-  const rawLines = normalizedText.split('\n').map((line) => line.trim());
+  // A closing "**" glued to the next word can fail to render as bold —
+  // space out every second "**" (the closing one) when it's glued.
+  let starIndex = 0;
+  normalizedText = normalizedText.replace(/\*\*/g, (match, offset, full) => {
+    starIndex++;
+    if (starIndex % 2 !== 0) return match;
+    const next = full[offset + 2];
+    return next && !/\s/.test(next) ? '** ' : match;
+  });
+
+  // Force a line break around a glued-on section header so the per-line
+  // heuristics below can see it.
+  const withHeadingBreaks = normalizedText.replace(
+    AI_JD_GLUED_HEADING_RE,
+    (match, boldOpen, label, boldClose, dash, offset, full) => {
+      if (offset === 0 || full[offset - 1] === '\n') return match;
+      if (full.slice(Math.max(0, offset - 2), offset) === '- ') return match; // already a bullet's own text
+      if (!AI_JD_HEADING_KEYWORD_RE.test(label)) return match;
+      const header = `${boldOpen ?? ''}${label}:${boldClose ?? ''}`;
+      return `\n\n${header}\n${dash ? '- ' : ''}`;
+    }
+  );
+
+  const rawLines = withHeadingBreaks.split('\n').map((line) => line.trim());
 
   // Pass 1: a bullet glyph stranded alone on its own line (see
   // AI_JD_BULLET_RE above) isn't a list item by itself — fold it into
@@ -342,6 +370,12 @@ export const formatAiJobDescription = (text: string): string => {
     .replace(/(###)([^\s#])/g, matchMarkdownHeader)
     .replace(/(##)([^\s#])/g, matchMarkdownHeader)
     .replace(/(#)([^\s#])/g, matchMarkdownHeader);
+
+  // An odd "**" count means an unmatched pair — drop them, don't show asterisks.
+  result = result
+    .split('\n')
+    .map((line) => ((line.match(/\*\*/g) || []).length % 2 !== 0 ? line.replace(/\*\*/g, '') : line))
+    .join('\n');
 
   return result;
 };

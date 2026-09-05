@@ -33,7 +33,7 @@ const EditModal: FC<EditModalProps> = ({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
-      <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[400px] relative">
+      <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[400px] max-w-[92vw] relative">
         <h2 className="text-lg font-semibold text-center mb-4">{title}</h2>
 
         <div className="mb-4">

@@ -7,7 +7,6 @@ import {
   MdLanguage,
   MdGroups,
   MdDescription,
-  MdInfo,
   MdPhone,
   MdAutorenew,
 } from 'react-icons/md';
@@ -289,12 +288,6 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       key: 'description',
       label: 'Description',
       icon: <MdDescription size={16} />,
-      fullWidth: true,
-    },
-    {
-      key: 'culture_intro',
-      label: 'About our culture',
-      icon: <MdInfo size={16} />,
       fullWidth: true,
     },
   ];

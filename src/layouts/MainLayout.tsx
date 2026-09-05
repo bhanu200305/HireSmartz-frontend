@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import Sidebar, { SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_WIDTH_EXPANDED } from '../components/Sidebar';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import {
   clearLocalStorage,
   clearImpersonationStorage,
@@ -46,6 +47,20 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
       return next;
     });
   };
+
+  // Below `lg` (1024px) the fixed rail has nowhere to go, so Sidebar renders
+  // an off-canvas drawer instead — this is that drawer's open/close state,
+  // owned here (not in Sidebar or Header) since both Header (the hamburger
+  // button that opens it) and Sidebar (the drawer itself) need to share it.
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  // Resizing/rotating across the breakpoint into desktop width should never
+  // leave the mobile drawer's overlay+mask stuck open behind the now-visible
+  // fixed rail.
+  useEffect(() => {
+    if (isDesktop) setMobileSidebarOpen(false);
+  }, [isDesktop]);
+
   const hideNavbarPaths = ['/profile', '/change-password'];
   const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
   const lastActivityRef = useRef<number>(Date.now());
@@ -173,21 +188,32 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
         fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'
       )}
     >
-      {!hideSidebar && <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapsed} />}
+      {!hideSidebar && (
+        <Sidebar
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapsed}
+          mobileOpen={mobileSidebarOpen}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
+        />
+      )}
       <div
         className={clsx(
           'flex flex-col transition-[margin-left] duration-200 ease-in-out',
           fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'
         )}
         style={{
-          marginLeft: hideSidebar
-            ? 0
-            : collapsed
-              ? SIDEBAR_WIDTH_COLLAPSED
-              : SIDEBAR_WIDTH_EXPANDED,
+          // No reserved gutter below `lg` — Sidebar is an overlay drawer
+          // there, not a permanent rail, so content should use the full
+          // width exactly like the hideSidebar case does.
+          marginLeft:
+            hideSidebar || !isDesktop
+              ? 0
+              : collapsed
+                ? SIDEBAR_WIDTH_COLLAPSED
+                : SIDEBAR_WIDTH_EXPANDED,
         }}
       >
-        <Header />
+        <Header onOpenMobileMenu={hideSidebar ? undefined : () => setMobileSidebarOpen(true)} />
         <div
           className={clsx('w-full', fullHeight ? 'flex-1 min-h-0 overflow-hidden' : 'flex-grow')}
         >

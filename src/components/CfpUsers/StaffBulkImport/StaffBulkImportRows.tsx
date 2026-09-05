@@ -1,11 +1,10 @@
 import React, { useMemo } from 'react';
 import { Select } from 'antd';
-import { Input } from '../shared';
 import type {
   ParsedStaffRosterRow,
   StaffRosterRole,
-} from '../../api/organization-service/Platform/staffImports';
-import type { PlatformDepartment } from '../../api/organization-service/Platform/staff';
+} from '../../../api/organization-service/Platform/staffImports';
+import type { PlatformDepartment } from '../../../api/organization-service/Platform/staff';
 
 export type StaffReviewRow = {
   include: boolean;
@@ -15,7 +14,6 @@ export type StaffReviewRow = {
    * flow's free-text department name — confirm_staff_roster_import.py
    * validates this as a foreign key, not a string to create-or-match. */
   departmentId: string | undefined;
-  designation: string;
 };
 
 // Preselect a row's role/department only when the parsed spreadsheet value
@@ -23,7 +21,7 @@ export type StaffReviewRow = {
 // than guess" precedent Tenants/BulkImportRows.tsx's toReviewRows sets, for
 // the same reason: the sheet's free-text columns won't reliably match the
 // catalogue's exact spelling or casing.
-export const toReviewRows = (
+export const toStaffReviewRows = (
   rows: ParsedStaffRosterRow[],
   knownRoleNames: string[],
   departments: PlatformDepartment[]
@@ -35,7 +33,6 @@ export const toReviewRows = (
     email: row.email,
     role: roleByLowerName.get((row.role || '').toLowerCase()) ?? '',
     departmentId: deptByLowerName.get((row.department || '').toLowerCase()),
-    designation: row.designation || '',
   }));
 };
 
@@ -48,9 +45,13 @@ type StaffBulkImportRowsProps = {
 };
 
 /** Per-row review before confirming a platform-staff bulk import — mirrors
- * Tenants/BulkImportRows.tsx's shape (checkbox, role, designation), with
+ * Tenants/BulkImportRows.tsx's shape (checkbox, email, role), with
  * department as a catalogue SELECT instead of free text, since this flow's
- * department is a real foreign key rather than a create-or-match name. */
+ * department is a real foreign key rather than a create-or-match name. No
+ * Designation column, unlike the tenant flow's version — the backend
+ * accepts but silently drops that field for a staff row (see
+ * ConfirmStaffRosterRow's own comment), so showing an editable input for it
+ * here would imply it does something it doesn't. */
 const StaffBulkImportRows: React.FC<StaffBulkImportRowsProps> = ({
   roleNames,
   isLoadingRoles,
@@ -86,7 +87,7 @@ const StaffBulkImportRows: React.FC<StaffBulkImportRowsProps> = ({
           </span>
           <Select
             size="small"
-            className="w-32"
+            className="w-40"
             placeholder="Role *"
             value={row.role || undefined}
             onChange={(value) => updateRow(index, { role: value })}
@@ -97,20 +98,14 @@ const StaffBulkImportRows: React.FC<StaffBulkImportRowsProps> = ({
           />
           <Select
             size="small"
-            className="w-32"
-            placeholder="Department"
+            className="w-40"
+            placeholder="Department (optional)"
             value={row.departmentId}
             onChange={(value) => updateRow(index, { departmentId: value })}
             allowClear
             showSearch
             optionFilterProp="label"
             options={departmentOptions}
-          />
-          <Input
-            className="w-28 h-8 text-sm"
-            placeholder="Designation"
-            value={row.designation}
-            onChange={(e) => updateRow(index, { designation: e.target.value })}
           />
         </div>
       ))}
