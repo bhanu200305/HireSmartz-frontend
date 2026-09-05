@@ -34,19 +34,29 @@ export const updateActivitySearchParams = (
   newParams.set('page', String(filters.page + 1));
   newParams.set('size', String(filters.size));
 
-  filters.text ? newParams.set('text', filters.text) : newParams.delete('text');
+  if (filters.text) {
+    newParams.set('text', filters.text);
+  } else {
+    newParams.delete('text');
+  }
 
-  filters.entityType
-    ? newParams.set('entityType', filters.entityType)
-    : newParams.delete('entityType');
+  if (filters.entityType) {
+    newParams.set('entityType', filters.entityType);
+  } else {
+    newParams.delete('entityType');
+  }
 
-  filters.fromDate
-    ? newParams.set('fromDate', encodeURIComponent(filters.fromDate))
-    : newParams.delete('fromDate');
+  if (filters.fromDate) {
+    newParams.set('fromDate', encodeURIComponent(filters.fromDate));
+  } else {
+    newParams.delete('fromDate');
+  }
 
-  filters.toDate
-    ? newParams.set('toDate', encodeURIComponent(filters.toDate))
-    : newParams.delete('toDate');
+  if (filters.toDate) {
+    newParams.set('toDate', encodeURIComponent(filters.toDate));
+  } else {
+    newParams.delete('toDate');
+  }
 
   return newParams;
 };

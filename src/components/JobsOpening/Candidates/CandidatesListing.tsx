@@ -689,7 +689,11 @@ const CandidatesListing = () => {
         title={`Candidate Notes - ${notesCandidate?.name || ''}`.trim()}
         candidateId={notesCandidate?.id}
       />
-      <UploadCvModal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} />
+      <UploadCvModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onCompleted={refetch}
+      />
       <AddCandidateModal
         open={isAddCandidateModalOpen}
         onClose={() => setIsAddCandidateModalOpen(false)}
