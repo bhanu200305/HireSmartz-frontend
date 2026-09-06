@@ -82,9 +82,13 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
   const [localWeights, setLocalWeights] = useState<ScoringWeight[]>(() =>
     normalizeScoringWeights(weights)
   );
+  // Raw typed text for each score input, kept separate from the derived number
+  // so a mid-edit empty field survives unrelated re-renders.
+  const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setLocalWeights(normalizeScoringWeights(weights));
+    setRawInputs({});
   }, [weights]);
 
   const total = localWeights.reduce((sum, w) => sum + w.weightPercentage, 0);
@@ -166,11 +170,30 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
                   type="number"
                   min={0}
                   max={100}
-                  value={w.weightPercentage}
+                  value={rawInputs[String(w.id)] ?? String(w.weightPercentage)}
                   disabled={!editable}
                   onChange={(e) => {
-                    const val = Math.min(100, Math.max(0, Number(e.target.value)));
+                    // Digits only — blocks negatives/decimals/exponents outright.
+                    const digitsOnly = e.target.value.replace(/[^0-9]/g, '');
+                    if (digitsOnly === '') {
+                      setRawInputs((prev) => ({ ...prev, [String(w.id)]: '' }));
+                      return;
+                    }
+                    const val = Math.min(100, Math.max(0, Number(digitsOnly)));
+                    setRawInputs((prev) => ({ ...prev, [String(w.id)]: String(val) }));
                     handleSliderChange(w.id, val);
+                  }}
+                  onBlur={() => {
+                    const key = String(w.id);
+                    // Empty on blur commits 0 instead of a stray leftover digit.
+                    if (rawInputs[key] === '') {
+                      handleSliderChange(w.id, 0);
+                    }
+                    setRawInputs((prev) => {
+                      const next = { ...prev };
+                      delete next[key];
+                      return next;
+                    });
                   }}
                   onWheel={(e) => (e.target as HTMLInputElement).blur()}
                   className={`ml-4 w-16 text-center text-sm font-semibold border rounded-lg py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${

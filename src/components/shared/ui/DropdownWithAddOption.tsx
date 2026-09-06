@@ -251,7 +251,8 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
       <div className="border-wrapper dropdown-focus-ring border border-[var(--border)] p-1 w-full rounded-3xl relative">
         <Select
           ref={selectRef}
-          value={value}
+          // Hide the value while loading so it doesn't flash a raw id.
+          value={loading ? (mode === 'multiple' ? [] : undefined) : value}
           onChange={handleChange}
           className={`w-full capitalize ${className}`}
           placeholder={placeholder}

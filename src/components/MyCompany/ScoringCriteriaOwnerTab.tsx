@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { Tooltip } from 'antd';
 import { MdLock } from 'react-icons/md';
 import {
@@ -10,10 +11,12 @@ import {
 import type { ScoringCategoryMeta, ScoringWeight } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import {
+  tenantScoringConfigApi,
   useGetTenantScoringConfigQuery,
   useUpdateTenantScoringConfigMutation,
 } from '../../api/organization-service/Tenants/scoringConfig';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+import { AppDispatch } from '../../redux/provider/store';
 
 const RESUME_KEY_PREFIX = 'resume:';
 const INTERVIEW_KEY_PREFIX = 'interview:';
@@ -48,10 +51,13 @@ const standardWeightRows = (prefix: string, categoryMeta: ScoringCategoryMeta): 
  * signed-in session).
  */
 const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
+  const dispatch = useDispatch<AppDispatch>();
   const { data, isLoading } = useGetTenantScoringConfigQuery(tenantId);
   const [updateConfig, { isLoading: isSaving }] = useUpdateTenantScoringConfigMutation();
   const [isResettingResume, setIsResettingResume] = useState(false);
   const [isResettingInterview, setIsResettingInterview] = useState(false);
+  // Tracks which card's Save button should show as loading.
+  const [savingSection, setSavingSection] = useState<'resume' | 'interview' | null>(null);
 
   const flatWeights = useMemo(() => data?.weights ?? {}, [data?.weights]);
 
@@ -76,10 +82,19 @@ const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) =
   if (!data) return null;
   const isLocked = data.is_locked;
 
-  const persist = (nextFlatWeights: Record<string, number>) =>
-    updateConfig({ tenantId, weights: nextFlatWeights }).unwrap();
+  // Patches the cache directly from the mutation's own response.
+  const persist = async (nextFlatWeights: Record<string, number>) => {
+    const result = await updateConfig({ tenantId, weights: nextFlatWeights }).unwrap();
+    dispatch(
+      tenantScoringConfigApi.util.updateQueryData('getTenantScoringConfig', tenantId, () => result)
+    );
+  };
 
-  const savePanel = async (weights: ScoringWeight[], panelLabel: string) => {
+  const savePanel = async (
+    weights: ScoringWeight[],
+    panelLabel: string,
+    section: 'resume' | 'interview'
+  ) => {
     const total = weights.reduce((sum, w) => sum + w.weightPercentage, 0);
     if (total !== 100) {
       showToast({
@@ -92,6 +107,7 @@ const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) =
     weights.forEach((w) => {
       next[String(w.id)] = w.weightPercentage;
     });
+    setSavingSection(section);
     try {
       await persist(next);
       showToast({ message: `${panelLabel} scoring weights saved.`, type: 'success' });
@@ -103,6 +119,8 @@ const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) =
         ),
         type: 'error',
       });
+    } finally {
+      setSavingSection(null);
     }
   };
 
@@ -156,11 +174,11 @@ const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) =
           infoText="Resume categories are always evaluated. All 4 categories must total exactly 100%."
           weights={resumeWeights}
           categoryMeta={RESUME_CATEGORY_META}
-          onSave={(weights) => savePanel(weights, 'Resume')}
+          onSave={(weights) => savePanel(weights, 'Resume', 'resume')}
           onReset={() =>
             resetPanel(RESUME_KEY_PREFIX, RESUME_CATEGORY_META, 'Resume', setIsResettingResume)
           }
-          isSaving={isSaving}
+          isSaving={isSaving && savingSection === 'resume'}
           isResetting={isResettingResume}
           editable={!isLocked}
         />
@@ -171,7 +189,7 @@ const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) =
           infoText="If a category is not covered in an interview, its weight is redistributed proportionally across the remaining categories."
           weights={interviewWeights}
           categoryMeta={INTERVIEW_CATEGORY_META}
-          onSave={(weights) => savePanel(weights, 'Interview')}
+          onSave={(weights) => savePanel(weights, 'Interview', 'interview')}
           onReset={() =>
             resetPanel(
               INTERVIEW_KEY_PREFIX,
@@ -180,7 +198,7 @@ const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) =
               setIsResettingInterview
             )
           }
-          isSaving={isSaving}
+          isSaving={isSaving && savingSection === 'interview'}
           isResetting={isResettingInterview}
           editable={!isLocked}
         />

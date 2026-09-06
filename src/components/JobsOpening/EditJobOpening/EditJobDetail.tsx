@@ -1,4 +1,5 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
+import { scrollToFirstFormError } from '../../../shared/utils/scrollToFirstFormError';
 import { DatePicker, Form, Select, Switch, Tooltip } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import { Button, Input, showToast } from '../../shared';
@@ -96,6 +97,27 @@ import { useGetCompanyDetailsQuery } from '../../../api/tenant-service/Company/v
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
 const { Option } = Select;
+
+// Field order for scroll-to-first-error on failed submit.
+const JOB_DETAILS_FIELD_ORDER = [
+  'jobProfileCode',
+  'department',
+  'jobTitle',
+  'jobType',
+  'jobMode',
+  'officeLocation',
+  'hiringManagers',
+  'openDate',
+  'openings',
+  'exemptionStatus',
+  'minSalary',
+  'maxSalary',
+  'minExperience',
+  'maxExperience',
+  'mandatorySkills',
+  'educationPreference',
+  'responsibilities',
+];
 
 const EditJobDetail = () => {
   const dispatch = useDispatch();
@@ -225,9 +247,7 @@ const EditJobDetail = () => {
   >([]);
   // Local fallback label for a job title just created, until the list
   // query refetches and picks it up.
-  const [extraJobTitleOptions, setExtraJobTitleOptions] = useState<JobOpeningDropdownOption[]>(
-    []
-  );
+  const [extraJobTitleOptions, setExtraJobTitleOptions] = useState<JobOpeningDropdownOption[]>([]);
   const [isHiringManagerDropdownOpen, setIsHiringManagerDropdownOpen] = useState(false);
   const [isRecruiterDropdownOpen, setIsRecruiterDropdownOpen] = useState(false);
   const [isMandatorySkillsDropdownOpen, setIsMandatorySkillsDropdownOpen] = useState(false);
@@ -279,7 +299,7 @@ const EditJobDetail = () => {
   const appliedAiFillJobIdRef = useRef<string | null>(null);
   const { data: jdStatusForHydration } = useGetJdStatusQuery(parsedJobId ?? '', {
     skip: !parsedJobId,
-    pollingInterval: 3000,
+    pollingInterval: 1500,
   });
 
   const [initialFormValues, setInitialFormValues] = useState<any>(null);
@@ -361,9 +381,9 @@ const EditJobDetail = () => {
           : catalogueJobTitles
         : [];
     // extraJobTitleOptions goes last so a real list entry wins over the temporary local one.
-    return [...merged, ...extraJobTitleOptions].filter(
-      (title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id))
-    );
+    return [...merged, ...extraJobTitleOptions]
+      .filter((title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id)))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [
     catalogueJobTitles,
     debouncedJobTitleSearch,
@@ -397,7 +417,9 @@ const EditJobDetail = () => {
       }
     });
 
-    return Array.from(departmentOptions.values());
+    return Array.from(departmentOptions.values()).sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '')
+    );
   })();
 
   const selectedDepartment = departments.find((department) =>
@@ -410,7 +432,7 @@ const EditJobDetail = () => {
   const selectedJobTypeId = watch('jobType')?.[0];
 
   // AI-suggested skills for the currently selected job title.
-  const { data: suggestedSkillsData } = useGetSuggestedSkillsQuery(
+  const { data: suggestedSkillsData, refetch: refetchSuggestedSkills } = useGetSuggestedSkillsQuery(
     {
       jobId: id ?? '',
       job_title_id: selectedJobTitleId ? String(selectedJobTitleId) : undefined,
@@ -499,10 +521,12 @@ const EditJobDetail = () => {
     return Array.from(optionMap.values());
   }, [jobTypes, jobData, selectedJobTypeId]);
 
-  const jobLocationOptions = (offices ?? []).map((office) => ({
-    id: office.office_id,
-    name: officeDisplayName(office),
-  }));
+  const jobLocationOptions = (offices ?? [])
+    .map((office) => ({
+      id: office.office_id,
+      name: officeDisplayName(office),
+    }))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const cultureInfoText = String(companyDetails?.cultureIntroText || '').trim();
   const hasCultureInfo = Boolean(cultureInfoText);
 
@@ -720,6 +744,11 @@ const EditJobDetail = () => {
     if ((!justFinishedProcessing && !notYetSyncedThisJob) || !parsedJobId) return;
     appliedAiFillJobIdRef.current = parsedJobId;
 
+    // Refetch suggested skills now that JD parsing is done, if that query has started.
+    if (id && selectedJobTitleId && selectedJobTitle?.name) {
+      void refetchSuggestedSkills();
+    }
+
     void triggerGetJobDescriptionById({ jobOpeningId: parsedJobId }).then((result) => {
       const fresh = result.data;
       if (!fresh) return;
@@ -784,9 +813,12 @@ const EditJobDetail = () => {
           setExtraSuggestedSkillOptions((prev) => [...prev, ...newOptions]);
         }
       }
+      if (fresh.minExperience != null || fresh.maxExperience != null) {
+        void trigger(['minExperience', 'maxExperience']);
+      }
       if (appliedAnything) {
         showToast({
-          message: 'AI filled in some job details from your uploaded JD - review before saving.',
+          message: 'Some fields were pre-filled from your job description - review before saving.',
           type: 'success',
         });
       }
@@ -795,8 +827,10 @@ const EditJobDetail = () => {
     jdStatusForHydration?.status,
     parsedJobId,
     triggerGetJobDescriptionById,
+    refetchSuggestedSkills,
     getValues,
     setValue,
+    trigger,
   ]);
 
   // Overwrites fields with fresh backend values, unlike the effect above.
@@ -1538,7 +1572,6 @@ const EditJobDetail = () => {
         type: 'success',
       });
       justSavedRef.current = true;
-      dispatch(setIsDraft(false));
       dispatch(updateEditJobDetails(payload));
       dispatch(updateEditJobDescription(jobDescriptionPayload));
       dispatch(updateEditInterviewRounds(interViewRound));
@@ -1599,9 +1632,13 @@ const EditJobDetail = () => {
       {(isFetchingJobData || isUpdatingDraft || isRegenerating || isCheckingJdSource) && <Loader />}
       <Form
         layout="vertical"
-        onFinish={handleSubmit(onSubmit, (err) =>
-          console.log('Job Details Validation Errors:', err)
-        )}
+        onFinish={handleSubmit(onSubmit, (invalidFields) => {
+          showToast({
+            message: 'Please fill all required fields before saving.',
+            type: 'error',
+          });
+          scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
+        })}
         autoComplete="off"
       >
         <div className="mt-2">
@@ -1623,6 +1660,7 @@ const EditJobDetail = () => {
                 render={({ field }) => (
                   <Input
                     {...field}
+                    id="field-jobProfileCode"
                     placeholder="Job Profile Code"
                     className={`bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 ${errors.jobProfileCode ? 'border-red-500' : 'border-[var(--border)]'}`}
                   />
@@ -1636,32 +1674,34 @@ const EditJobDetail = () => {
                 </span>
               }
             >
-              <DropdownWithAddOption
-                className={`w-full custom-select-jobs placeholder-style ${
-                  isSelectedDepartmentDeactivated
-                    ? '[&_.ant-select-selection-item]:!text-gray-400'
-                    : ''
-                }`}
-                autoFocus
-                value={watch('department')?.[0]}
-                onChange={(value) => {
-                  setValue('department', value ? [value] : [], { shouldValidate: true });
-                  setValue('jobTitle', []);
-                  setJobTitleSearchText('');
-                  setDebouncedJobTitleSearch('');
-                }}
-                options={departments}
-                loading={orgDepartmentsLoading || isAddingToDropdown === 'department'}
-                placeholder="Select Department"
-                label="Department"
-                onAddOption={(value) => handleAddOption(value, 'department')}
-                type="department"
-                error={errors.department?.message}
-                enableEditDelete
-                onEditOption={handleEditOption}
-                onDeleteOption={handleDeleteOption}
-                onReuseOption={handleReuseOption}
-              />
+              <div id="field-department">
+                <DropdownWithAddOption
+                  className={`w-full custom-select-jobs placeholder-style ${
+                    isSelectedDepartmentDeactivated
+                      ? '[&_.ant-select-selection-item]:!text-gray-400'
+                      : ''
+                  }`}
+                  autoFocus
+                  value={watch('department')?.[0]}
+                  onChange={(value) => {
+                    setValue('department', value ? [value] : [], { shouldValidate: true });
+                    setValue('jobTitle', []);
+                    setJobTitleSearchText('');
+                    setDebouncedJobTitleSearch('');
+                  }}
+                  options={departments}
+                  loading={orgDepartmentsLoading || isAddingToDropdown === 'department'}
+                  placeholder="Select Department"
+                  label="Department"
+                  onAddOption={(value) => handleAddOption(value, 'department')}
+                  type="department"
+                  error={errors.department?.message}
+                  enableEditDelete
+                  onEditOption={handleEditOption}
+                  onDeleteOption={handleDeleteOption}
+                  onReuseOption={handleReuseOption}
+                />
+              </div>
             </Form.Item>
             <Form.Item
               label={
@@ -1670,31 +1710,35 @@ const EditJobDetail = () => {
                 </span>
               }
             >
-              <DropdownWithAddOption
-                className={`w-full custom-select-jobs placeholder-style ${
-                  isSelectedJobTitleDeactivated
-                    ? '[&_.ant-select-selection-item]:!text-gray-400'
-                    : ''
-                }`}
-                value={watch('jobTitle')?.[0]}
-                onChange={handleJobTitleChange}
-                onSearchChange={setJobTitleSearchText}
-                options={jobTitleOptions}
-                loading={jobTitlesLoading || loadingCatalogue || isAddingToDropdown === 'jobTitle'}
-                placeholder={
-                  !selectedDepartmentId && !debouncedJobTitleSearch
-                    ? 'Please select a department first'
-                    : 'Select Job Title'
-                }
-                label="Job Title"
-                onAddOption={(value) => handleAddOption(value, 'jobTitle')}
-                type="jobTitle"
-                error={errors.jobTitle?.message}
-                enableEditDelete
-                onEditOption={handleEditOption}
-                onDeleteOption={handleDeleteOption}
-                onReuseOption={handleReuseOption}
-              />
+              <div id="field-jobTitle">
+                <DropdownWithAddOption
+                  className={`w-full custom-select-jobs placeholder-style ${
+                    isSelectedJobTitleDeactivated
+                      ? '[&_.ant-select-selection-item]:!text-gray-400'
+                      : ''
+                  }`}
+                  value={watch('jobTitle')?.[0]}
+                  onChange={handleJobTitleChange}
+                  onSearchChange={setJobTitleSearchText}
+                  options={jobTitleOptions}
+                  loading={
+                    jobTitlesLoading || loadingCatalogue || isAddingToDropdown === 'jobTitle'
+                  }
+                  placeholder={
+                    !selectedDepartmentId && !debouncedJobTitleSearch
+                      ? 'Please select a department first'
+                      : 'Select Job Title'
+                  }
+                  label="Job Title"
+                  onAddOption={(value) => handleAddOption(value, 'jobTitle')}
+                  type="jobTitle"
+                  error={errors.jobTitle?.message}
+                  enableEditDelete
+                  onEditOption={handleEditOption}
+                  onDeleteOption={handleDeleteOption}
+                  onReuseOption={handleReuseOption}
+                />
+              </div>
             </Form.Item>
 
             <Form.Item
@@ -1704,24 +1748,26 @@ const EditJobDetail = () => {
                 </span>
               }
             >
-              <DropdownWithAddOption
-                className="w-full custom-select-jobs placeholder-style"
-                value={watch('jobType')?.[0]}
-                onChange={(value) => {
-                  setValue('jobType', value ? [value] : [], { shouldValidate: true });
-                }}
-                options={jobTypeOptions}
-                loading={jobTypesLoading || isAddingToDropdown === 'jobType'}
-                placeholder="Select Job Type"
-                label="Job Type"
-                onAddOption={(value) => handleAddOption(value, 'jobType')}
-                type="jobType"
-                error={errors.jobType?.message}
-                enableEditDelete
-                onEditOption={handleEditOption}
-                onDeleteOption={handleDeleteOption}
-                onReuseOption={handleReuseOption}
-              />
+              <div id="field-jobType">
+                <DropdownWithAddOption
+                  className="w-full custom-select-jobs placeholder-style"
+                  value={watch('jobType')?.[0]}
+                  onChange={(value) => {
+                    setValue('jobType', value ? [value] : [], { shouldValidate: true });
+                  }}
+                  options={jobTypeOptions}
+                  loading={jobTypesLoading || isAddingToDropdown === 'jobType'}
+                  placeholder="Select Job Type"
+                  label="Job Type"
+                  onAddOption={(value) => handleAddOption(value, 'jobType')}
+                  type="jobType"
+                  error={errors.jobType?.message}
+                  enableEditDelete
+                  onEditOption={handleEditOption}
+                  onDeleteOption={handleDeleteOption}
+                  onReuseOption={handleReuseOption}
+                />
+              </div>
             </Form.Item>
             <Form.Item
               label={
@@ -1730,19 +1776,21 @@ const EditJobDetail = () => {
                 </span>
               }
             >
-              <DropdownWithAddOption
-                className="w-full custom-select-jobs placeholder-style"
-                value={watch('jobMode')?.[0]}
-                onChange={(value) => {
-                  setValue('jobMode', value ? [value] : [], { shouldValidate: true });
-                }}
-                options={jobModes}
-                loading={jobModesLoading}
-                placeholder="Select Job Mode"
-                label="Job Mode"
-                type="jobMode"
-                enableEditDelete={false}
-              />
+              <div id="field-jobMode">
+                <DropdownWithAddOption
+                  className="w-full custom-select-jobs placeholder-style"
+                  value={watch('jobMode')?.[0]}
+                  onChange={(value) => {
+                    setValue('jobMode', value ? [value] : [], { shouldValidate: true });
+                  }}
+                  options={jobModes}
+                  loading={jobModesLoading}
+                  placeholder="Select Job Mode"
+                  label="Job Mode"
+                  type="jobMode"
+                  enableEditDelete={false}
+                />
+              </div>
             </Form.Item>
             <Form.Item label={<span>Shift</span>}>
               <DropdownWithAddOption
@@ -1781,20 +1829,23 @@ const EditJobDetail = () => {
                           : ''
                       }
                     >
-                      <Select
-                        mode="multiple"
-                        allowClear
-                        disabled={isDisabled}
-                        placeholder="Select languages"
-                        className="w-full custom-select-jobs"
-                        loading={languagesLoading}
-                        value={(value ?? []).map(String)}
-                        onChange={(next) => onChange(next)}
-                        options={languageOptions.map((item) => ({
-                          label: item.name,
-                          value: item.id,
-                        }))}
-                      />
+                      <div className="border-wrapper dropdown-focus-ring border border-[var(--border)] p-1 w-full rounded-3xl relative">
+                        <Select
+                          mode="multiple"
+                          allowClear
+                          variant="borderless"
+                          disabled={isDisabled}
+                          placeholder="Select languages"
+                          className="w-full custom-select-jobs"
+                          loading={languagesLoading}
+                          value={languagesLoading ? [] : (value ?? []).map(String)}
+                          onChange={(next) => onChange(next)}
+                          options={languageOptions.map((item) => ({
+                            label: item.name,
+                            value: item.id,
+                          }))}
+                        />
+                      </div>
                     </Tooltip>
                   );
                 }}
@@ -1851,18 +1902,20 @@ const EditJobDetail = () => {
                 </span>
               }
             >
-              <DropdownWithAddOption
-                className="w-full custom-select-jobs placeholder-style"
-                value={watch('officeLocation')?.[0]}
-                onChange={handleLocationChange}
-                options={jobLocationOptions}
-                loading={loadingJobLocations}
-                label="Location"
-                placeholder="Select Location"
-                type="location"
-                error={errors.officeLocation?.message}
-                enableEditDelete={false}
-              />
+              <div id="field-officeLocation">
+                <DropdownWithAddOption
+                  className="w-full custom-select-jobs placeholder-style"
+                  value={watch('officeLocation')?.[0]}
+                  onChange={handleLocationChange}
+                  options={jobLocationOptions}
+                  loading={loadingJobLocations}
+                  label="Location"
+                  placeholder="Select Location"
+                  type="location"
+                  error={errors.officeLocation?.message}
+                  enableEditDelete={false}
+                />
+              </div>
             </Form.Item>
             {selectedOfficeLocationId && (
               <>
@@ -1950,8 +2003,14 @@ const EditJobDetail = () => {
             <span className="text-lg font-semibold">Hiring Panel</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-            <Form.Item label={<span>Hiring Manager</span>}>
-              <div className="space-y-3">
+            <Form.Item
+              label={
+                <span>
+                  Hiring Manager <span className="required-asterisk">*</span>
+                </span>
+              }
+            >
+              <div id="field-hiringManagers" className="space-y-3">
                 <DropdownWithAddOption
                   className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
                   value={watch('hiringManagers') || []}
@@ -2116,7 +2175,10 @@ const EditJobDetail = () => {
                 name="openDate"
                 control={control}
                 render={({ field }) => (
-                  <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">
+                  <div
+                    id="field-openDate"
+                    className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl"
+                  >
                     <DatePicker
                       {...field}
                       value={field.value ? dayjs(field.value, 'DD-MM-YYYY') : null}
@@ -2148,6 +2210,7 @@ const EditJobDetail = () => {
               }
             >
               <Input
+                id="field-openings"
                 inputMode="numeric"
                 value={watch('openings') ?? ''}
                 onChange={(e) => {
@@ -2216,7 +2279,10 @@ const EditJobDetail = () => {
                 name="exemptionStatus"
                 control={control}
                 render={({ field }) => (
-                  <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl ">
+                  <div
+                    id="field-exemptionStatus"
+                    className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl "
+                  >
                     <Select
                       {...field}
                       value={field.value}
@@ -2260,6 +2326,7 @@ const EditJobDetail = () => {
                 control={control}
                 render={() => (
                   <CurrencyInput
+                    id="field-minSalary"
                     value={watch('minSalary') ?? ''}
                     onValueChange={(value) => {
                       setValue('minSalary', value ?? null, {
@@ -2293,6 +2360,7 @@ const EditJobDetail = () => {
                 control={control}
                 render={() => (
                   <CurrencyInput
+                    id="field-maxSalary"
                     value={watch('maxSalary') ?? ''}
                     onValueChange={(value) => {
                       setValue('maxSalary', value ?? null, {
@@ -2345,6 +2413,7 @@ const EditJobDetail = () => {
             }
           >
             <Input
+              id="field-minExperience"
               type="text"
               inputMode="numeric"
               value={watch('minExperience') ?? ''}
@@ -2370,6 +2439,7 @@ const EditJobDetail = () => {
           </Form.Item>
           <Form.Item label={<span>Maximum Experience (In years)</span>}>
             <Input
+              id="field-maxExperience"
               type="text"
               inputMode="numeric"
               value={watch('maxExperience') ?? ''}
@@ -2426,8 +2496,14 @@ const EditJobDetail = () => {
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
-            <Form.Item label={<span>Required Skills</span>}>
-              <div className="space-y-3">
+            <Form.Item
+              label={
+                <span>
+                  Required Skills <span className="required-asterisk">*</span>
+                </span>
+              }
+            >
+              <div id="field-mandatorySkills" className="space-y-3">
                 <DropdownWithAddOption
                   className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
                   value={watch('mandatorySkills') || []}
@@ -2599,36 +2675,53 @@ const EditJobDetail = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
-            <Form.Item label={<span>Education Preference</span>}>
-              <DropdownWithAddOption
-                className="w-full custom-select-jobs placeholder-style"
-                value={watch('educationPreference')?.[0]}
-                onChange={(value) =>
-                  setValue('educationPreference', value ? [value] : [], {
-                    shouldValidate: true,
-                  })
-                }
-                options={educationPreference}
-                loading={educationPreferenceLoading || isAddingToDropdown === 'educationPreference'}
-                placeholder="Select Education Preference"
-                label="Education Preference"
-                onAddOption={(value) => handleAddOption(value, 'educationPreference')}
-                type="educationPreference"
-                error={errors.educationPreference?.message}
-                enableEditDelete
-                onEditOption={handleEditOption}
-                onDeleteOption={handleDeleteOption}
-                onReuseOption={handleReuseOption}
-              />
+            <Form.Item
+              label={
+                <span>
+                  Education Preference <span className="required-asterisk">*</span>
+                </span>
+              }
+            >
+              <div id="field-educationPreference">
+                <DropdownWithAddOption
+                  className="w-full custom-select-jobs placeholder-style"
+                  value={watch('educationPreference')?.[0]}
+                  onChange={(value) =>
+                    setValue('educationPreference', value ? [value] : [], {
+                      shouldValidate: true,
+                    })
+                  }
+                  options={educationPreference}
+                  loading={
+                    educationPreferenceLoading || isAddingToDropdown === 'educationPreference'
+                  }
+                  placeholder="Select Education Preference"
+                  label="Education Preference"
+                  onAddOption={(value) => handleAddOption(value, 'educationPreference')}
+                  type="educationPreference"
+                  error={errors.educationPreference?.message}
+                  enableEditDelete
+                  onEditOption={handleEditOption}
+                  onDeleteOption={handleDeleteOption}
+                  onReuseOption={handleReuseOption}
+                />
+              </div>
             </Form.Item>
 
-            <Form.Item label={<span>Responsibilities</span>}>
+            <Form.Item
+              label={
+                <span>
+                  Responsibilities <span className="required-asterisk">*</span>
+                </span>
+              }
+            >
               <Controller
                 name="responsibilities"
                 control={control}
                 render={({ field }) => (
                   <TextArea
                     {...field}
+                    id="field-responsibilities"
                     placeholder="Enter responsibilities"
                     rows={4}
                     maxLength={1000}
@@ -2639,6 +2732,11 @@ const EditJobDetail = () => {
                   />
                 )}
               />
+              {errors.responsibilities && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.responsibilities.message as string}
+                </p>
+              )}
             </Form.Item>
           </div>
 
@@ -2680,9 +2778,13 @@ const EditJobDetail = () => {
           <Button
             type="button"
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-            onClick={handleSubmit(onSubmit, (err) =>
-              console.log('Job Details Validation Errors:', err)
-            )}
+            onClick={handleSubmit(onSubmit, (invalidFields) => {
+              showToast({
+                message: 'Please fill all required fields before saving.',
+                type: 'error',
+              });
+              scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
+            })}
             disabled={isFetchingJobData}
           >
             SAVE & NEXT

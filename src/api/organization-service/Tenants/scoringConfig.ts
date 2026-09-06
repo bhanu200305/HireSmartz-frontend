@@ -33,4 +33,6 @@ const extendedApi = orgApi.injectEndpoints({
   }),
 });
 
+export { extendedApi as tenantScoringConfigApi };
+
 export const { useGetTenantScoringConfigQuery, useUpdateTenantScoringConfigMutation } = extendedApi;

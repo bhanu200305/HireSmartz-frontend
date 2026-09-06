@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { Select, Switch, Tooltip } from 'antd';
 import { MdLock } from 'react-icons/md';
 import {
@@ -10,13 +11,16 @@ import {
 import type { ScoringCategoryMeta, ScoringWeight } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import {
+  platformScoringConfigApi,
   useGetPlatformScoringConfigQuery,
   useGetPlatformTenantScoringConfigQuery,
   useUpdatePlatformScoringConfigMutation,
   useUpdatePlatformTenantScoringConfigMutation,
 } from '../../api/organization-service/Platform/scoringConfig';
+import type { ScoringConfig } from '../../api/organization-service/Tenants/scoringConfig';
 import { useGetCompaniesDropdownQuery } from '../../api/tenant-service/Company/companiesDropdown';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+import { AppDispatch } from '../../redux/provider/store';
 
 /**
  * GET/PUT /v1/platform/scoring-config (platform default) and
@@ -66,6 +70,7 @@ const standardWeightRows = (prefix: string, categoryMeta: ScoringCategoryMeta): 
   }));
 
 const PlatformScoringDefaultsTab: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
   // null = editing the platform-wide default; a tenant id = that one
   // company's override.
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
@@ -89,6 +94,8 @@ const PlatformScoringDefaultsTab: React.FC = () => {
   const [isResettingResume, setIsResettingResume] = useState(false);
   const [isResettingInterview, setIsResettingInterview] = useState(false);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
+  // Tracks which card's Save button should show as loading.
+  const [savingSection, setSavingSection] = useState<'resume' | 'interview' | null>(null);
 
   const data = isPlatformDefault ? platformData : tenantData;
   const isLoading = isPlatformDefault ? isPlatformLoading : isTenantLoading;
@@ -105,18 +112,45 @@ const PlatformScoringDefaultsTab: React.FC = () => {
     [flatWeights]
   );
 
-  const persist = async (nextFlatWeights: Record<string, number>) => {
+  // Patches the cache directly from the mutation's own response.
+  const patchScoringCache = (result: ScoringConfig) => {
     if (isPlatformDefault) {
-      await updatePlatformConfig(nextFlatWeights).unwrap();
+      dispatch(
+        platformScoringConfigApi.util.updateQueryData(
+          'getPlatformScoringConfig',
+          undefined,
+          () => result
+        )
+      );
     } else {
-      await updateTenantConfig({
-        tenantId: selectedTenantId as string,
-        weights: nextFlatWeights,
-      }).unwrap();
+      dispatch(
+        platformScoringConfigApi.util.updateQueryData(
+          'getPlatformTenantScoringConfig',
+          selectedTenantId as string,
+          () => result
+        )
+      );
     }
   };
 
-  const savePanel = async (weights: ScoringWeight[], panelLabel: string) => {
+  const persist = async (nextFlatWeights: Record<string, number>) => {
+    if (isPlatformDefault) {
+      const result = await updatePlatformConfig(nextFlatWeights).unwrap();
+      patchScoringCache(result);
+    } else {
+      const result = await updateTenantConfig({
+        tenantId: selectedTenantId as string,
+        weights: nextFlatWeights,
+      }).unwrap();
+      patchScoringCache(result);
+    }
+  };
+
+  const savePanel = async (
+    weights: ScoringWeight[],
+    panelLabel: string,
+    section: 'resume' | 'interview'
+  ) => {
     const total = weights.reduce((sum, w) => sum + w.weightPercentage, 0);
     if (total !== 100) {
       showToast({
@@ -129,6 +163,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
     weights.forEach((w) => {
       next[String(w.id)] = w.weightPercentage;
     });
+    setSavingSection(section);
     try {
       await persist(next);
       showToast({ message: `${panelLabel} scoring weights saved.`, type: 'success' });
@@ -140,6 +175,8 @@ const PlatformScoringDefaultsTab: React.FC = () => {
         ),
         type: 'error',
       });
+    } finally {
+      setSavingSection(null);
     }
   };
 
@@ -256,11 +293,11 @@ const PlatformScoringDefaultsTab: React.FC = () => {
             infoText="Resume categories are always evaluated. All 4 categories must total exactly 100%."
             weights={resumeWeights}
             categoryMeta={RESUME_CATEGORY_META}
-            onSave={(weights) => savePanel(weights, 'Resume')}
+            onSave={(weights) => savePanel(weights, 'Resume', 'resume')}
             onReset={() =>
               resetPanel(RESUME_KEY_PREFIX, RESUME_CATEGORY_META, 'Resume', setIsResettingResume)
             }
-            isSaving={isSaving}
+            isSaving={isSaving && savingSection === 'resume'}
             isResetting={isResettingResume}
             editable={!data?.is_locked}
           />
@@ -271,7 +308,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
             infoText="If a category is not covered in an interview, its weight is redistributed proportionally across the remaining categories."
             weights={interviewWeights}
             categoryMeta={INTERVIEW_CATEGORY_META}
-            onSave={(weights) => savePanel(weights, 'Interview')}
+            onSave={(weights) => savePanel(weights, 'Interview', 'interview')}
             onReset={() =>
               resetPanel(
                 INTERVIEW_KEY_PREFIX,
@@ -280,7 +317,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
                 setIsResettingInterview
               )
             }
-            isSaving={isSaving}
+            isSaving={isSaving && savingSection === 'interview'}
             isResetting={isResettingInterview}
             editable={!data?.is_locked}
           />
