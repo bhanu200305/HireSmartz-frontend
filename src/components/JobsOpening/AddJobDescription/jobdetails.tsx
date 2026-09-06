@@ -1,4 +1,5 @@
 import MainLayout from '../../../layouts/MainLayout';
+import { scrollToFirstFormError } from '../../../shared/utils/scrollToFirstFormError';
 import './addJob.css';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import TextArea from 'antd/es/input/TextArea';
@@ -131,6 +132,27 @@ const JOB_DETAILS_FIELD_LABELS: Partial<Record<keyof JobDetailsState, string>> =
   otherRequirements: 'Other Requirements',
 };
 
+// Field order for scroll-to-first-error on failed submit.
+const JOB_DETAILS_FIELD_ORDER = [
+  'jobProfileCode',
+  'department',
+  'jobTitle',
+  'jobType',
+  'jobMode',
+  'officeLocation',
+  'hiringManagers',
+  'openDate',
+  'openings',
+  'exemptionStatus',
+  'minSalary',
+  'maxSalary',
+  'minExperience',
+  'maxExperience',
+  'mandatorySkills',
+  'educationPreference',
+  'responsibilities',
+];
+
 const JobDetails = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -186,9 +208,7 @@ const JobDetails = () => {
 
   // Local fallback label for a job title just created, until the list
   // query refetches and picks it up.
-  const [extraJobTitleOptions, setExtraJobTitleOptions] = useState<JobOpeningDropdownOption[]>(
-    []
-  );
+  const [extraJobTitleOptions, setExtraJobTitleOptions] = useState<JobOpeningDropdownOption[]>([]);
 
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
   const jobIdFromUrl = asJobId(searchParams.get('jobOpeningId'));
@@ -203,7 +223,7 @@ const JobDetails = () => {
   // and apply AI-written fields once ready — see the effect below.
   const { data: jdStatusForHydration } = useGetJdStatusQuery(resolvedJobId, {
     skip: !resolvedJobId,
-    pollingInterval: 3000,
+    pollingInterval: 1500,
   });
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
   // Tracks which job id the "already READY on first observation" fallback
@@ -376,12 +396,9 @@ const JobDetails = () => {
   const scrollToFieldError = useCallback((message: string) => {
     const container = formContainerRef.current;
     if (!container) return;
-    const errorNodes = Array.from(
-      container.querySelectorAll<HTMLElement>('.text-red-500')
-    );
+    const errorNodes = Array.from(container.querySelectorAll<HTMLElement>('.text-red-500'));
     const target =
-      errorNodes.find((node) => node.textContent?.trim() === message.trim()) ??
-      errorNodes[0];
+      errorNodes.find((node) => node.textContent?.trim() === message.trim()) ?? errorNodes[0];
     if (!target) return;
     const fieldEl = target.closest('.ant-form-item') ?? target;
     fieldEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -479,10 +496,12 @@ const JobDetails = () => {
 
   const jobLocationOptions = useMemo(
     () =>
-      (offices ?? []).map((office) => ({
-        id: office.office_id,
-        name: officeDisplayName(office),
-      })),
+      (offices ?? [])
+        .map((office) => ({
+          id: office.office_id,
+          name: officeDisplayName(office),
+        }))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '')),
     [offices]
   );
 
@@ -532,9 +551,9 @@ const JobDetails = () => {
           : mappedCatalogueJobTitles
         : [];
     // extraJobTitleOptions goes last so a real list entry wins over the temporary local one.
-    return [...merged, ...extraJobTitleOptions].filter(
-      (title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id))
-    );
+    return [...merged, ...extraJobTitleOptions]
+      .filter((title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id)))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [
     debouncedJobTitleSearch,
     extraJobTitleOptions,
@@ -554,7 +573,7 @@ const JobDetails = () => {
         idsMatch(title.id, selectedJobTitleFormId)
       )?.name) ||
     undefined;
-  const { data: suggestedSkillsData } = useGetSuggestedSkillsQuery(
+  const { data: suggestedSkillsData, refetch: refetchSuggestedSkills } = useGetSuggestedSkillsQuery(
     {
       jobId: resolvedJobId,
       job_title_id: selectedJobTitleOrgId ?? '',
@@ -616,11 +635,13 @@ const JobDetails = () => {
     });
   };
 
-  const departments = (orgDepartments ?? []).map((department) => ({
-    id: department.org_department_id,
-    name: department.name,
-    isDeleted: false,
-  }));
+  const departments = (orgDepartments ?? [])
+    .map((department) => ({
+      id: department.org_department_id,
+      name: department.name,
+      isDeleted: false,
+    }))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const cultureInfoText = String(companyDetails?.cultureIntroText || '').trim();
   const hasCultureInfo = Boolean(cultureInfoText);
   const isCultureIntroDefaultEnabled = Boolean(companyDetails?.cultureIntroDefaultEnabled);
@@ -736,6 +757,11 @@ const JobDetails = () => {
     if (!justFinishedGenerating && !notYetSyncedThisJob) return;
     appliedAiFillJobIdRef.current = resolvedJobId;
 
+    // Refetch suggested skills now that JD parsing is done, if that query has started.
+    if (resolvedJobId && selectedJobTitleOrgId && selectedJobTitleText) {
+      void refetchSuggestedSkills();
+    }
+
     void refetchJdDetailsForGate().then((result) => {
       const fresh = result.data;
       if (!fresh) return;
@@ -804,10 +830,12 @@ const JobDetails = () => {
           refetchOptionalSkills?.();
         }
       }
+      if (fresh.minExperience != null || fresh.maxExperience != null) {
+        void trigger(['minExperience', 'maxExperience']);
+      }
       if (appliedAnything) {
         showToast({
-          message:
-            'AI filled in some job details from your prompt - review and edit before saving.',
+          message: 'Some fields were pre-filled from your job description - review before saving.',
           type: 'success',
         });
       }
@@ -816,8 +844,10 @@ const JobDetails = () => {
     jdStatusForHydration?.status,
     resolvedJobId,
     refetchJdDetailsForGate,
+    refetchSuggestedSkills,
     getValues,
     setValue,
+    trigger,
   ]);
 
   // Overwrites fields with fresh backend values, unlike the effect above.
@@ -1746,1124 +1776,1187 @@ const JobDetails = () => {
       <MainLayout>
         <JobDetailsLayout>
           <div ref={formContainerRef}>
-          <Form layout="vertical" autoComplete="off" onFinish={handleSubmit(onSubmit)}>
-            <div className="mt-2">
-              <div className="w-full">
-                <span className="text-lg font-semibold">Job Info</span>
-              </div>
-              <div className="grid grid-cols-3 gap-x-4 mt-2">
-                <Form.Item
-                  label={
-                    <span>
-                      Job ID <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <Input
-                    value={watch('jobProfileCode')}
-                    readOnly
-                    placeholder="Job ID"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                  />
-                  {errors.jobProfileCode && (
-                    <p className="text-red-500 text-sm mt-1">{errors.jobProfileCode.message}</p>
-                  )}
-                </Form.Item>
-                <Form.Item
-                  label={
-                    <span>
-                      Department <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <DropdownWithAddOption
-                    className="w-full custom-select-jobs placeholder-style"
-                    autoFocus
-                    value={watch('department')[0]}
-                    onChange={(value) => {
-                      setValue('department', value ? [value] : [], { shouldValidate: true });
-                      setValue('jobTitle', []);
-                      setJobTitleSearchText('');
-                      setDebouncedJobTitleSearch('');
-                    }}
-                    options={departments}
-                    loading={departmentsLoading || isAddingToDropdown === 'department'}
-                    label="Department"
-                    placeholder="Select Department"
-                    onAddOption={(value) => handleAddOption(value, 'department')}
-                    type="department"
-                    error={errors.department?.message}
-                    enableEditDelete
-                    onEditOption={handleEditOption}
-                    onDeleteOption={handleDeleteOption}
-                    onReuseOption={handleReuseOption}
-                  />
-                </Form.Item>
-
-                <Form.Item
-                  label={
-                    <span>
-                      Job Title <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <DropdownWithAddOption
-                    value={watch('jobTitle')[0]}
-                    onChange={handleJobTitleChange}
-                    onSearchChange={setJobTitleSearchText}
-                    options={jobTitleOptions}
-                    loading={
-                      loadingDepartmentJobTitles ||
-                      loadingCatalogue ||
-                      isAddingToDropdown === 'jobTitle'
+            <Form layout="vertical" autoComplete="off" onFinish={handleSubmit(onSubmit)}>
+              <div className="mt-2">
+                <div className="w-full">
+                  <span className="text-lg font-semibold">Job Info</span>
+                </div>
+                <div className="grid grid-cols-3 gap-x-4 mt-2">
+                  <Form.Item
+                    label={
+                      <span>
+                        Job ID <span className="required-asterisk">*</span>
+                      </span>
                     }
-                    placeholder={
-                      !selectedDepartmentId && !debouncedJobTitleSearch
-                        ? 'Please select a department first'
-                        : 'Select Job Title'
-                    }
-                    label="Job Title"
-                    onAddOption={(value) => handleAddOption(value, 'jobTitle')}
-                    type="jobTitle"
-                    error={errors.jobTitle?.message}
-                    className="w-full custom-select-jobs placeholder-style"
-                    enableEditDelete
-                    onEditOption={handleEditOption}
-                    onDeleteOption={handleDeleteOption}
-                    onReuseOption={handleReuseOption}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={
-                    <span>
-                      Job Type <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <DropdownWithAddOption
-                    className="w-full custom-select-jobs placeholder-style"
-                    value={watch('jobType')[0]}
-                    onChange={(value) => setValue('jobType', [value], { shouldValidate: true })}
-                    options={jobTypes}
-                    loading={jobTypesLoading || isAddingToDropdown === 'jobType'}
-                    label="Job Type"
-                    placeholder="Select Job Type"
-                    onAddOption={(value) => handleAddOption(value, 'jobType')}
-                    type="jobType"
-                    error={errors.jobType?.message}
-                    enableEditDelete
-                    onEditOption={handleEditOption}
-                    onDeleteOption={handleDeleteOption}
-                    onReuseOption={handleReuseOption}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={
-                    <span>
-                      Job Mode <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <DropdownWithAddOption
-                    className="w-full custom-select-jobs placeholder-style"
-                    value={(watch('jobMode') || [])[0]}
-                    onChange={(value) => setValue('jobMode', [value], { shouldValidate: true })}
-                    options={jobModes}
-                    loading={jobModesLoading}
-                    label="Job Mode"
-                    placeholder="Select Job Mode"
-                    type="jobMode"
-                    enableEditDelete={false}
-                  />
-                </Form.Item>
-                <Form.Item label={<span>Shift</span>}>
-                  <DropdownWithAddOption
-                    className="w-full custom-select-jobs placeholder-style"
-                    value={(watch('shift') || [])[0]}
-                    onChange={(value) => setValue('shift', [value], { shouldValidate: true })}
-                    options={shiftOptions}
-                    loading={shiftsLoading}
-                    label="Shift"
-                    placeholder="Select Shift"
-                    type="shift"
-                    enableEditDelete={false}
-                  />
-                  {errors.shift && (
-                    <p className="text-red-500 text-sm mt-1">{errors.shift?.message as string}</p>
-                  )}
-                </Form.Item>
-                <Form.Item label={<span>Communication Language</span>}>
-                  <Controller
-                    name="languages"
-                    control={control}
-                    render={({ field: { value, onChange } }) => (
-                      <Select
-                        mode="multiple"
-                        allowClear
-                        placeholder="Select languages"
-                        className="w-full custom-select-jobs"
-                        loading={languagesLoading}
-                        value={(value ?? []).map(String)}
-                        onChange={(next) => onChange(next)}
-                        options={languageOptions.map((item) => ({
-                          label: item.name,
-                          value: item.id,
-                        }))}
-                      />
-                    )}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={
-                    <span className="inline-flex items-center gap-2">
-                      Company Culture
-                      <Tooltip
-                        trigger={['hover', 'click']}
-                        title={
-                          hasCultureInfo
-                            ? cultureInfoText
-                            : 'No company culture information provided'
-                        }
-                      >
-                        <button
-                          type="button"
-                          aria-label="View company culture information"
-                          className="inline-flex items-center justify-center text-gray-500 hover:text-[var(--color-primary)]"
-                        >
-                          <InfoCircleOutlined />
-                        </button>
-                      </Tooltip>
-                    </span>
-                  }
-                >
-                  <div className="mt-3 flex items-center gap-3">
-                    <Switch
-                      checked={useCultureIntroValue}
-                      onChange={(checked) => {
-                        setHasUserChangedCultureIntro(true);
-                        setValue('useCultureIntro', checked, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        });
-                      }}
-                      disabled={!hasCultureInfo}
-                      style={{
-                        backgroundColor: useCultureIntroValue ? 'var(--color-primary)' : undefined,
-                      }}
+                  >
+                    <Input
+                      id="field-jobProfileCode"
+                      value={watch('jobProfileCode')}
+                      readOnly
+                      placeholder="Job ID"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                     />
-                    <span className="text-sm text-gray-700 leading-5">
-                      Play Company Culture Introduction at the start of AI Audio Screening
-                    </span>
-                  </div>
-                </Form.Item>
+                    {errors.jobProfileCode && (
+                      <p className="text-red-500 text-sm mt-1">{errors.jobProfileCode.message}</p>
+                    )}
+                  </Form.Item>
+                  <Form.Item
+                    label={
+                      <span>
+                        Department <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <div id="field-department">
+                      <DropdownWithAddOption
+                        className="w-full custom-select-jobs placeholder-style"
+                        autoFocus
+                        value={watch('department')[0]}
+                        onChange={(value) => {
+                          setValue('department', value ? [value] : [], { shouldValidate: true });
+                          setValue('jobTitle', []);
+                          setJobTitleSearchText('');
+                          setDebouncedJobTitleSearch('');
+                        }}
+                        options={departments}
+                        loading={departmentsLoading || isAddingToDropdown === 'department'}
+                        label="Department"
+                        placeholder="Select Department"
+                        onAddOption={(value) => handleAddOption(value, 'department')}
+                        type="department"
+                        error={errors.department?.message}
+                        enableEditDelete
+                        onEditOption={handleEditOption}
+                        onDeleteOption={handleDeleteOption}
+                        onReuseOption={handleReuseOption}
+                      />
+                    </div>
+                  </Form.Item>
+
+                  <Form.Item
+                    label={
+                      <span>
+                        Job Title <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <div id="field-jobTitle">
+                      <DropdownWithAddOption
+                        value={watch('jobTitle')[0]}
+                        onChange={handleJobTitleChange}
+                        onSearchChange={setJobTitleSearchText}
+                        options={jobTitleOptions}
+                        loading={
+                          loadingDepartmentJobTitles ||
+                          loadingCatalogue ||
+                          isAddingToDropdown === 'jobTitle'
+                        }
+                        placeholder={
+                          !selectedDepartmentId && !debouncedJobTitleSearch
+                            ? 'Please select a department first'
+                            : 'Select Job Title'
+                        }
+                        label="Job Title"
+                        onAddOption={(value) => handleAddOption(value, 'jobTitle')}
+                        type="jobTitle"
+                        error={errors.jobTitle?.message}
+                        className="w-full custom-select-jobs placeholder-style"
+                        enableEditDelete
+                        onEditOption={handleEditOption}
+                        onDeleteOption={handleDeleteOption}
+                        onReuseOption={handleReuseOption}
+                      />
+                    </div>
+                  </Form.Item>
+                  <Form.Item
+                    label={
+                      <span>
+                        Job Type <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <div id="field-jobType">
+                      <DropdownWithAddOption
+                        className="w-full custom-select-jobs placeholder-style"
+                        value={watch('jobType')[0]}
+                        onChange={(value) => setValue('jobType', [value], { shouldValidate: true })}
+                        options={jobTypes}
+                        loading={jobTypesLoading || isAddingToDropdown === 'jobType'}
+                        label="Job Type"
+                        placeholder="Select Job Type"
+                        onAddOption={(value) => handleAddOption(value, 'jobType')}
+                        type="jobType"
+                        error={errors.jobType?.message}
+                        enableEditDelete
+                        onEditOption={handleEditOption}
+                        onDeleteOption={handleDeleteOption}
+                        onReuseOption={handleReuseOption}
+                      />
+                    </div>
+                  </Form.Item>
+                  <Form.Item
+                    label={
+                      <span>
+                        Job Mode <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <div id="field-jobMode">
+                      <DropdownWithAddOption
+                        className="w-full custom-select-jobs placeholder-style"
+                        value={(watch('jobMode') || [])[0]}
+                        onChange={(value) => setValue('jobMode', [value], { shouldValidate: true })}
+                        options={jobModes}
+                        loading={jobModesLoading}
+                        label="Job Mode"
+                        placeholder="Select Job Mode"
+                        type="jobMode"
+                        enableEditDelete={false}
+                      />
+                    </div>
+                  </Form.Item>
+                  <Form.Item label={<span>Shift</span>}>
+                    <DropdownWithAddOption
+                      className="w-full custom-select-jobs placeholder-style"
+                      value={(watch('shift') || [])[0]}
+                      onChange={(value) => setValue('shift', [value], { shouldValidate: true })}
+                      options={shiftOptions}
+                      loading={shiftsLoading}
+                      label="Shift"
+                      placeholder="Select Shift"
+                      type="shift"
+                      enableEditDelete={false}
+                    />
+                    {errors.shift && (
+                      <p className="text-red-500 text-sm mt-1">{errors.shift?.message as string}</p>
+                    )}
+                  </Form.Item>
+                  <Form.Item label={<span>Communication Language</span>}>
+                    <Controller
+                      name="languages"
+                      control={control}
+                      render={({ field: { value, onChange } }) => (
+                        <div className="border-wrapper dropdown-focus-ring border border-[var(--border)] p-1 w-full rounded-3xl relative">
+                          <Select
+                            mode="multiple"
+                            allowClear
+                            variant="borderless"
+                            placeholder="Select languages"
+                            className="w-full custom-select-jobs"
+                            loading={languagesLoading}
+                            value={languagesLoading ? [] : (value ?? []).map(String)}
+                            onChange={(next) => onChange(next)}
+                            options={languageOptions.map((item) => ({
+                              label: item.name,
+                              value: item.id,
+                            }))}
+                          />
+                        </div>
+                      )}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label={
+                      <span className="inline-flex items-center gap-2">
+                        Company Culture
+                        <Tooltip
+                          trigger={['hover', 'click']}
+                          title={
+                            hasCultureInfo
+                              ? cultureInfoText
+                              : 'No company culture information provided'
+                          }
+                        >
+                          <button
+                            type="button"
+                            aria-label="View company culture information"
+                            className="inline-flex items-center justify-center text-gray-500 hover:text-[var(--color-primary)]"
+                          >
+                            <InfoCircleOutlined />
+                          </button>
+                        </Tooltip>
+                      </span>
+                    }
+                  >
+                    <div className="mt-3 flex items-center gap-3">
+                      <Switch
+                        checked={useCultureIntroValue}
+                        onChange={(checked) => {
+                          setHasUserChangedCultureIntro(true);
+                          setValue('useCultureIntro', checked, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                        disabled={!hasCultureInfo}
+                        style={{
+                          backgroundColor: useCultureIntroValue
+                            ? 'var(--color-primary)'
+                            : undefined,
+                        }}
+                      />
+                      <span className="text-sm text-gray-700 leading-5">
+                        Play Company Culture Introduction at the start of AI Audio Screening
+                      </span>
+                    </div>
+                  </Form.Item>
+                </div>
               </div>
-            </div>
-            <div className="mt-2">
-              <div className="w-full">
-                <span className="text-lg font-semibold">Location</span>
-              </div>
-              <div className="grid grid-cols-3 gap-x-4 mt-2">
-                <Form.Item
-                  label={
-                    <span>
-                      Location Name <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <DropdownWithAddOption
-                    className="w-full custom-select-jobs placeholder-style"
-                    value={watch('officeLocation')?.[0]}
-                    onChange={handleLocationChange}
-                    options={jobLocationOptions}
-                    loading={loadingJobLocations}
-                    label="Location"
-                    placeholder="Select Location"
-                    type="location"
-                    error={errors.officeLocation?.message}
-                    enableEditDelete={false}
-                  />
-                </Form.Item>
+              <div className="mt-2">
+                <div className="w-full">
+                  <span className="text-lg font-semibold">Location</span>
+                </div>
+                <div className="grid grid-cols-3 gap-x-4 mt-2">
+                  <Form.Item
+                    label={
+                      <span>
+                        Location Name <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <div id="field-officeLocation">
+                      <DropdownWithAddOption
+                        className="w-full custom-select-jobs placeholder-style"
+                        value={watch('officeLocation')?.[0]}
+                        onChange={handleLocationChange}
+                        options={jobLocationOptions}
+                        loading={loadingJobLocations}
+                        label="Location"
+                        placeholder="Select Location"
+                        type="location"
+                        error={errors.officeLocation?.message}
+                        enableEditDelete={false}
+                      />
+                    </div>
+                  </Form.Item>
+                  {selectedOfficeLocationId && (
+                    <>
+                      <Form.Item label={<span>Location Code</span>}>
+                        <Input
+                          value={selectedLocationDetails?.location_code || 'Not set'}
+                          readOnly
+                          disabled
+                          className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
+                        />
+                      </Form.Item>
+                    </>
+                  )}
+                </div>
                 {selectedOfficeLocationId && (
                   <>
-                    <Form.Item label={<span>Location Code</span>}>
-                      <Input
-                        value={selectedLocationDetails?.location_code || 'Not set'}
-                        readOnly
-                        disabled
-                        className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                      />
-                    </Form.Item>
+                    <div className="grid grid-cols-3 gap-x-4 mt-2">
+                      <Form.Item label={<span>Address Line 1</span>}>
+                        <Input
+                          value={selectedLocationDetails?.address_line_1 ?? ''}
+                          readOnly
+                          disabled
+                          placeholder="Address Line 1"
+                          className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
+                        />
+                        {errors.officeLocation && (
+                          <p className="text-red-500">{errors.officeLocation.message}</p>
+                        )}
+                      </Form.Item>
+                      <Form.Item label={<span>Address Line 2</span>}>
+                        <Input
+                          value={selectedLocationDetails?.address_line_2 ?? ''}
+                          readOnly
+                          disabled
+                          placeholder="Address Line 2"
+                          className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
+                        />
+                      </Form.Item>
+                    </div>
+                    <div className="grid grid-cols-3 gap-x-4 mt-2">
+                      <Form.Item label={<span>City</span>}>
+                        <Input
+                          value={selectedLocationDetails?.city ?? ''}
+                          readOnly
+                          disabled
+                          placeholder="City"
+                          className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
+                        />
+                      </Form.Item>
+                      <Form.Item label={<span>State</span>}>
+                        <Input
+                          value={selectedLocationDetails?.state ?? watch('state') ?? ''}
+                          readOnly
+                          disabled
+                          placeholder="State"
+                          className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
+                        />
+                        {errors.state && <p className="text-red-500">{errors.state.message}</p>}
+                      </Form.Item>
+                      <Form.Item label={<span>Zip Code</span>}>
+                        <Input
+                          value={selectedLocationDetails?.zip_code ?? ''}
+                          readOnly
+                          disabled
+                          placeholder="Zip Code"
+                          className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
+                        />
+                      </Form.Item>
+                      <Form.Item label={<span>Country</span>}>
+                        <Input
+                          value={selectedLocationDetails?.country ?? watch('country') ?? ''}
+                          readOnly
+                          disabled
+                          placeholder="Country"
+                          className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
+                        />
+                        {errors.country && <p className="text-red-500">{errors.country.message}</p>}
+                      </Form.Item>
+                    </div>
                   </>
                 )}
               </div>
-              {selectedOfficeLocationId && (
-                <>
-                  <div className="grid grid-cols-3 gap-x-4 mt-2">
-                    <Form.Item label={<span>Address Line 1</span>}>
-                      <Input
-                        value={selectedLocationDetails?.address_line_1 ?? ''}
-                        readOnly
-                        disabled
-                        placeholder="Address Line 1"
-                        className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                      />
-                      {errors.officeLocation && (
-                        <p className="text-red-500">{errors.officeLocation.message}</p>
-                      )}
-                    </Form.Item>
-                    <Form.Item label={<span>Address Line 2</span>}>
-                      <Input
-                        value={selectedLocationDetails?.address_line_2 ?? ''}
-                        readOnly
-                        disabled
-                        placeholder="Address Line 2"
-                        className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                      />
-                    </Form.Item>
-                  </div>
-                  <div className="grid grid-cols-3 gap-x-4 mt-2">
-                    <Form.Item label={<span>City</span>}>
-                      <Input
-                        value={selectedLocationDetails?.city ?? ''}
-                        readOnly
-                        disabled
-                        placeholder="City"
-                        className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                      />
-                    </Form.Item>
-                    <Form.Item label={<span>State</span>}>
-                      <Input
-                        value={selectedLocationDetails?.state ?? watch('state') ?? ''}
-                        readOnly
-                        disabled
-                        placeholder="State"
-                        className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                      />
-                      {errors.state && <p className="text-red-500">{errors.state.message}</p>}
-                    </Form.Item>
-                    <Form.Item label={<span>Zip Code</span>}>
-                      <Input
-                        value={selectedLocationDetails?.zip_code ?? ''}
-                        readOnly
-                        disabled
-                        placeholder="Zip Code"
-                        className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                      />
-                    </Form.Item>
-                    <Form.Item label={<span>Country</span>}>
-                      <Input
-                        value={selectedLocationDetails?.country ?? watch('country') ?? ''}
-                        readOnly
-                        disabled
-                        placeholder="Country"
-                        className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                      />
-                      {errors.country && <p className="text-red-500">{errors.country.message}</p>}
-                    </Form.Item>
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="mt-2">
-              <div className="w-full">
-                <span className="text-lg font-semibold">Hiring Panel</span>
-              </div>
-              <div className="grid grid-cols-3 gap-x-4 mt-2">
-                {' '}
-                <Form.Item label={<span>Hiring Manager</span>}>
-                  <div className="space-y-3">
-                    <DropdownWithAddOption
-                      className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
-                      value={watch('hiringManagers') || []}
-                      onChange={(value) => {
-                        setValue('hiringManagers', value || [], {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        });
-                      }}
-                      onOpenChange={(open) => {
-                        setIsHiringManagerDropdownOpen(open);
-                      }}
-                      options={hiringManagers}
-                      loading={hiringManagerLoading}
-                      placeholder="Select Hiring Manager"
-                      type="hiringManagers"
-                      mode="multiple"
-                      maxTagCount={0}
-                      maxTagPlaceholder={
-                        !isHiringManagerDropdownOpen
-                          ? (omittedValues: { value: number | string }[]) => (
-                              <span>
-                                {omittedValues.length} of {hiringManagers.length} hiring managers
-                                selected
-                              </span>
-                            )
-                          : null
-                      }
-                      disabled={false}
-                      enableEditDelete={false}
-                      error={errors.hiringManagers?.message}
-                    />
-
-                    {selectedHiringManagers.length > 0 && (
-                      <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-700">
-                            Selected Hiring Managers
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedHiringManagers.map((manager) => (
-                            <span
-                              key={manager.id}
-                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
-                                manager.isDeleted
-                                  ? 'bg-gray-100 text-gray-600 border-gray-300'
-                                  : 'bg-brand-100 text-brand-800 border-brand-200'
-                              }`}
-                            >
-                              {manager.name}
-                              {manager.isDeleted && (
-                                <span className="ml-2 text-xs italic">(Deactivated)</span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = selectedHiringManagerIds.filter(
-                                    (id) => String(id) !== String(manager.id)
-                                  );
-                                  setValue('hiringManagers', updated, {
-                                    shouldDirty: true,
-                                    shouldValidate: true,
-                                  });
-                                }}
-                                className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Form.Item>
-                <Form.Item label={<span>Recruiter</span>}>
-                  <div className="space-y-3">
-                    <DropdownWithAddOption
-                      className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
-                      value={watch('recruiters') || []}
-                      onChange={(value) => {
-                        setValue('recruiters', value || [], {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        });
-                      }}
-                      onOpenChange={(open) => {
-                        setIsRecruiterDropdownOpen(open);
-                      }}
-                      options={recruiters}
-                      loading={recruitersLoading}
-                      placeholder="Select Recruiter"
-                      type="recruiters"
-                      mode="multiple"
-                      maxTagCount={0}
-                      maxTagPlaceholder={
-                        !isRecruiterDropdownOpen
-                          ? (omittedValues: { value: number | string }[]) => (
-                              <span>
-                                {omittedValues.length} of {recruiters.length} recruiters selected
-                              </span>
-                            )
-                          : null
-                      }
-                      disabled={false}
-                      enableEditDelete={false}
-                      error={errors.recruiters?.message as string | undefined}
-                    />
-
-                    {selectedRecruiters.length > 0 && (
-                      <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-700">
-                            Selected Recruiters
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedRecruiters.map((recruiter) => (
-                            <span
-                              key={recruiter.id}
-                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
-                                recruiter.isDeleted
-                                  ? 'bg-gray-100 text-gray-600 border-gray-300'
-                                  : 'bg-brand-100 text-brand-800 border-brand-200'
-                              }`}
-                            >
-                              {recruiter.name}
-                              {recruiter.isDeleted && (
-                                <span className="ml-2 text-xs italic">(Deactivated)</span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = selectedRecruiterIds.filter(
-                                    (id) => String(id) !== String(recruiter.id)
-                                  );
-                                  setValue('recruiters', updated, {
-                                    shouldDirty: true,
-                                    shouldValidate: true,
-                                  });
-                                }}
-                                className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Form.Item>
-              </div>
-              <div className="grid grid-cols-3 gap-x-4 mt-2">
-                <Form.Item
-                  label={
-                    <span>
-                      Open Date <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <div
-                    className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl"
-                    onPaste={(e) => e.preventDefault()}
-                    onContextMenu={(e) => e.preventDefault()}
+              <div className="mt-2">
+                <div className="w-full">
+                  <span className="text-lg font-semibold">Hiring Panel</span>
+                </div>
+                <div className="grid grid-cols-3 gap-x-4 mt-2">
+                  {' '}
+                  <Form.Item
+                    label={
+                      <span>
+                        Hiring Manager <span className="required-asterisk">*</span>
+                      </span>
+                    }
                   >
-                    <DatePicker
-                      value={watch('openDate') ? dayjs(watch('openDate'), 'DD-MM-YYYY') : null}
-                      onChange={(date) => {
-                        setValue('openDate', date ? date.format('DD-MM-YYYY') : '', {
-                          shouldValidate: true,
-                        });
-                      }}
-                      variant="borderless"
-                      className="w-full custom-date-picker placeholder-style"
-                      format="MMM DD, YYYY"
-                      placeholder="Select Open Date"
-                      disabledDate={(current) =>
-                        current && current.isBefore(dayjs().startOf('day'))
-                      }
-                      onKeyDown={(e) => {
-                        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-                          e.preventDefault();
-                        }
-                      }}
-                    />
-                  </div>
-                  {errors.openDate && (
-                    <p className="text-red-500 text-sm mt-1">{errors.openDate.message}</p>
-                  )}
-                </Form.Item>
-
-                <Form.Item
-                  label={
-                    <span>
-                      Opening(s) <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <Controller
-                    name="openings"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        value={field.value ?? ''}
-                        onChange={(e) => {
-                          let value = e.target.value;
-                          // Only allow digits
-                          value = value.replace(/[^0-9]/g, '');
-                          // Remove leading zeros but keep single zero
-                          value = value.replace(/^0+/, '0').replace(/^0+(\d)/, '$1');
-                          const openings =
-                            value === '' || value === null
-                              ? null
-                              : Math.max(1, Math.min(99, Number(value)));
-                          setValue('openings', openings, { shouldValidate: true });
+                    <div id="field-hiringManagers" className="space-y-3">
+                      <DropdownWithAddOption
+                        className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
+                        value={watch('hiringManagers') || []}
+                        onChange={(value) => {
+                          setValue('hiringManagers', value || [], {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
                         }}
-                        inputMode="numeric"
-                        placeholder="Opening(s)"
-                        className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                      />
-                    )}
-                  />
-                  {errors.openings && (
-                    <p className="text-red-500 text-sm mt-1">{errors.openings.message}</p>
-                  )}
-                </Form.Item>
-
-                <Form.Item label="Close Date">
-                  <div
-                    className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl"
-                    onPaste={(e) => e.preventDefault()}
-                    onContextMenu={(e) => e.preventDefault()}
-                  >
-                    <DatePicker
-                      value={watch('closeDate') ? dayjs(watch('closeDate'), 'DD-MM-YYYY') : null}
-                      onChange={(date) => {
-                        setValue('closeDate', date ? date.format('DD-MM-YYYY') : '', {
-                          shouldValidate: true,
-                        });
-                      }}
-                      variant="borderless"
-                      className="w-full custom-date-picker placeholder-style"
-                      format="MMM DD, YYYY"
-                      placeholder="Select Close Date"
-                      disabledDate={(current) =>
-                        current && current.isBefore(dayjs().startOf('day'))
-                      }
-                      onKeyDown={(e) => {
-                        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-                          e.preventDefault();
+                        onOpenChange={(open) => {
+                          setIsHiringManagerDropdownOpen(open);
+                        }}
+                        options={hiringManagers}
+                        loading={hiringManagerLoading}
+                        placeholder="Select Hiring Manager"
+                        type="hiringManagers"
+                        mode="multiple"
+                        maxTagCount={0}
+                        maxTagPlaceholder={
+                          !isHiringManagerDropdownOpen
+                            ? (omittedValues: { value: number | string }[]) => (
+                                <span>
+                                  {omittedValues.length} of {hiringManagers.length} hiring managers
+                                  selected
+                                </span>
+                              )
+                            : null
                         }
-                      }}
-                    />
-                  </div>
-                  {errors.closeDate && (
-                    <p className="text-red-500 text-sm mt-1">{errors.closeDate.message}</p>
-                  )}
-                </Form.Item>
-              </div>
-            </div>
-            <div className="mt-2">
-              <div className="w-full">
-                <span className="text-lg font-semibold">Salary Status</span>
-              </div>
-              <div className="grid grid-cols-3 gap-x-4 mt-2">
-                <Form.Item
-                  label={
-                    <span>
-                      Exemption Status <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl ">
-                    <Select
-                      value={watch('exemptionStatus')}
-                      onChange={(value) => {
-                        setValue('exemptionStatus', value, { shouldValidate: true });
-                      }}
-                      className="w-full custom-select-jobs placeholder-style"
-                      placeholder="Select Exemption Status"
-                      popupClassName="rounded-3xl"
-                      loading={exemptionLoading}
+                        disabled={false}
+                        enableEditDelete={false}
+                        error={errors.hiringManagers?.message}
+                      />
+
+                      {selectedHiringManagers.length > 0 && (
+                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700">
+                              Selected Hiring Managers
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedHiringManagers.map((manager) => (
+                              <span
+                                key={manager.id}
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+                                  manager.isDeleted
+                                    ? 'bg-gray-100 text-gray-600 border-gray-300'
+                                    : 'bg-brand-100 text-brand-800 border-brand-200'
+                                }`}
+                              >
+                                {manager.name}
+                                {manager.isDeleted && (
+                                  <span className="ml-2 text-xs italic">(Deactivated)</span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = selectedHiringManagerIds.filter(
+                                      (id) => String(id) !== String(manager.id)
+                                    );
+                                    setValue('hiringManagers', updated, {
+                                      shouldDirty: true,
+                                      shouldValidate: true,
+                                    });
+                                  }}
+                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Form.Item>
+                  <Form.Item label={<span>Recruiter</span>}>
+                    <div className="space-y-3">
+                      <DropdownWithAddOption
+                        className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
+                        value={watch('recruiters') || []}
+                        onChange={(value) => {
+                          setValue('recruiters', value || [], {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                        onOpenChange={(open) => {
+                          setIsRecruiterDropdownOpen(open);
+                        }}
+                        options={recruiters}
+                        loading={recruitersLoading}
+                        placeholder="Select Recruiter"
+                        type="recruiters"
+                        mode="multiple"
+                        maxTagCount={0}
+                        maxTagPlaceholder={
+                          !isRecruiterDropdownOpen
+                            ? (omittedValues: { value: number | string }[]) => (
+                                <span>
+                                  {omittedValues.length} of {recruiters.length} recruiters selected
+                                </span>
+                              )
+                            : null
+                        }
+                        disabled={false}
+                        enableEditDelete={false}
+                        error={errors.recruiters?.message as string | undefined}
+                      />
+
+                      {selectedRecruiters.length > 0 && (
+                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700">
+                              Selected Recruiters
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedRecruiters.map((recruiter) => (
+                              <span
+                                key={recruiter.id}
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+                                  recruiter.isDeleted
+                                    ? 'bg-gray-100 text-gray-600 border-gray-300'
+                                    : 'bg-brand-100 text-brand-800 border-brand-200'
+                                }`}
+                              >
+                                {recruiter.name}
+                                {recruiter.isDeleted && (
+                                  <span className="ml-2 text-xs italic">(Deactivated)</span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = selectedRecruiterIds.filter(
+                                      (id) => String(id) !== String(recruiter.id)
+                                    );
+                                    setValue('recruiters', updated, {
+                                      shouldDirty: true,
+                                      shouldValidate: true,
+                                    });
+                                  }}
+                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Form.Item>
+                </div>
+                <div className="grid grid-cols-3 gap-x-4 mt-2">
+                  <Form.Item
+                    label={
+                      <span>
+                        Open Date <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <div
+                      id="field-openDate"
+                      className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl"
+                      onPaste={(e) => e.preventDefault()}
+                      onContextMenu={(e) => e.preventDefault()}
                     >
-                      {exemptionStatus.length > 0 ? (
-                        exemptionStatus.map((status) => (
-                          <Option key={status.id} value={status.id}>
-                            {status.name}
+                      <DatePicker
+                        value={watch('openDate') ? dayjs(watch('openDate'), 'DD-MM-YYYY') : null}
+                        onChange={(date) => {
+                          setValue('openDate', date ? date.format('DD-MM-YYYY') : '', {
+                            shouldValidate: true,
+                          });
+                        }}
+                        variant="borderless"
+                        className="w-full custom-date-picker placeholder-style"
+                        format="MMM DD, YYYY"
+                        placeholder="Select Open Date"
+                        disabledDate={(current) =>
+                          current && current.isBefore(dayjs().startOf('day'))
+                        }
+                        onKeyDown={(e) => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                            e.preventDefault();
+                          }
+                        }}
+                      />
+                    </div>
+                    {errors.openDate && (
+                      <p className="text-red-500 text-sm mt-1">{errors.openDate.message}</p>
+                    )}
+                  </Form.Item>
+
+                  <Form.Item
+                    label={
+                      <span>
+                        Opening(s) <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <Controller
+                      name="openings"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          id="field-openings"
+                          {...field}
+                          value={field.value ?? ''}
+                          onChange={(e) => {
+                            let value = e.target.value;
+                            // Only allow digits
+                            value = value.replace(/[^0-9]/g, '');
+                            // Remove leading zeros but keep single zero
+                            value = value.replace(/^0+/, '0').replace(/^0+(\d)/, '$1');
+                            const openings =
+                              value === '' || value === null
+                                ? null
+                                : Math.max(1, Math.min(99, Number(value)));
+                            setValue('openings', openings, { shouldValidate: true });
+                          }}
+                          inputMode="numeric"
+                          placeholder="Opening(s)"
+                          className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                        />
+                      )}
+                    />
+                    {errors.openings && (
+                      <p className="text-red-500 text-sm mt-1">{errors.openings.message}</p>
+                    )}
+                  </Form.Item>
+
+                  <Form.Item label="Close Date">
+                    <div
+                      className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl"
+                      onPaste={(e) => e.preventDefault()}
+                      onContextMenu={(e) => e.preventDefault()}
+                    >
+                      <DatePicker
+                        value={watch('closeDate') ? dayjs(watch('closeDate'), 'DD-MM-YYYY') : null}
+                        onChange={(date) => {
+                          setValue('closeDate', date ? date.format('DD-MM-YYYY') : '', {
+                            shouldValidate: true,
+                          });
+                        }}
+                        variant="borderless"
+                        className="w-full custom-date-picker placeholder-style"
+                        format="MMM DD, YYYY"
+                        placeholder="Select Close Date"
+                        disabledDate={(current) =>
+                          current && current.isBefore(dayjs().startOf('day'))
+                        }
+                        onKeyDown={(e) => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                            e.preventDefault();
+                          }
+                        }}
+                      />
+                    </div>
+                    {errors.closeDate && (
+                      <p className="text-red-500 text-sm mt-1">{errors.closeDate.message}</p>
+                    )}
+                  </Form.Item>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="w-full">
+                  <span className="text-lg font-semibold">Salary Status</span>
+                </div>
+                <div className="grid grid-cols-3 gap-x-4 mt-2">
+                  <Form.Item
+                    label={
+                      <span>
+                        Exemption Status <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <div
+                      id="field-exemptionStatus"
+                      className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl "
+                    >
+                      <Select
+                        value={watch('exemptionStatus')}
+                        onChange={(value) => {
+                          setValue('exemptionStatus', value, { shouldValidate: true });
+                        }}
+                        className="w-full custom-select-jobs placeholder-style"
+                        placeholder="Select Exemption Status"
+                        popupClassName="rounded-3xl"
+                        loading={exemptionLoading}
+                      >
+                        {exemptionStatus.length > 0 ? (
+                          exemptionStatus.map((status) => (
+                            <Option key={status.id} value={status.id}>
+                              {status.name}
+                            </Option>
+                          ))
+                        ) : (
+                          <Option value="No Status Found" disabled>
+                            No Status Found
                           </Option>
-                        ))
-                      ) : (
-                        <Option value="No Status Found" disabled>
-                          No Status Found
-                        </Option>
-                      )}
-                    </Select>
-                  </div>
-                  {errors.exemptionStatus && (
-                    <p className="text-red-500 text-sm mt-1">{errors.exemptionStatus.message}</p>
-                  )}
-                </Form.Item>
-                <Form.Item
-                  label={
-                    <span>
-                      Minimum Salary (in USD) <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <CurrencyInput
-                    value={watch('minSalary') ?? ''}
-                    onValueChange={(value) => {
-                      setValue('minSalary', value ?? null, {
-                        shouldValidate: true,
-                      });
-                      trigger(['maxSalary', 'minSalary']);
-                    }}
-                    decimalsLimit={2}
-                    decimalScale={2}
-                    prefix="$"
-                    // Always a plain annual figure — no "/hr" suffix.
-                    placeholder="Minimum Salary"
-                    className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
-                    intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                  />
-                  {errors.minSalary && (
-                    <p className="text-red-500 text-sm mt-1">{errors.minSalary.message}</p>
-                  )}
-                </Form.Item>
-                <Form.Item
-                  label={
-                    <span>
-                      Maximum Salary (in USD) <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <CurrencyInput
-                    value={watch('maxSalary') ?? ''}
-                    onValueChange={(value) => {
-                      setValue('maxSalary', value ?? null, {
-                        shouldValidate: true,
-                      });
-                      trigger(['maxSalary', 'minSalary']);
-                    }}
-                    decimalsLimit={2}
-                    decimalScale={2}
-                    prefix="$"
-                    // Always a plain annual figure — no "/hr" suffix.
-                    placeholder="Maximum Salary"
-                    className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
-                    intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                  />
-                  {errors.maxSalary && (
-                    <p className="text-red-500 text-sm mt-1">{errors.maxSalary.message}</p>
-                  )}
-                </Form.Item>
-              </div>
-            </div>
-            <div className="mt-2">
-              <div className="w-full">
-                <span className="text-lg font-semibold">Job Skills</span>
-              </div>
-              <div className="form-grid-equal-labels grid grid-cols-3 gap-x-4 mt-4">
-                <Form.Item label={<span>Referral Bonus (in USD)</span>}>
-                  <Controller
-                    name="referralBonus"
-                    control={control}
-                    render={({ field }) => (
-                      <CurrencyInput
-                        value={field.value ?? ''}
-                        onValueChange={(value) => {
-                          field.onChange(value ? Number(value) : null);
-                        }}
-                        decimalsLimit={2}
-                        decimalScale={2}
-                        prefix="$"
-                        placeholder="Referral Bonus"
-                        className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
-                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                      />
+                        )}
+                      </Select>
+                    </div>
+                    {errors.exemptionStatus && (
+                      <p className="text-red-500 text-sm mt-1">{errors.exemptionStatus.message}</p>
                     )}
-                  />
-                  {errors.referralBonus && (
-                    <p className="text-red-500 text-sm mt-1">{errors.referralBonus.message}</p>
-                  )}
-                </Form.Item>
-                <Form.Item
-                  label={
-                    <span>
-                      Minimum Experience (In years) <span className="required-asterisk">*</span>
+                  </Form.Item>
+                  <Form.Item
+                    label={
+                      <span>
+                        Minimum Salary (in USD) <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <CurrencyInput
+                      id="field-minSalary"
+                      value={watch('minSalary') ?? ''}
+                      onValueChange={(value) => {
+                        setValue('minSalary', value ?? null, {
+                          shouldValidate: true,
+                        });
+                        trigger(['maxSalary', 'minSalary']);
+                      }}
+                      decimalsLimit={2}
+                      decimalScale={2}
+                      prefix="$"
+                      // Always a plain annual figure — no "/hr" suffix.
+                      placeholder="Minimum Salary"
+                      className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                      intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                    />
+                    {errors.minSalary && (
+                      <p className="text-red-500 text-sm mt-1">{errors.minSalary.message}</p>
+                    )}
+                  </Form.Item>
+                  <Form.Item
+                    label={
+                      <span>
+                        Maximum Salary (in USD) <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <CurrencyInput
+                      id="field-maxSalary"
+                      value={watch('maxSalary') ?? ''}
+                      onValueChange={(value) => {
+                        setValue('maxSalary', value ?? null, {
+                          shouldValidate: true,
+                        });
+                        trigger(['maxSalary', 'minSalary']);
+                      }}
+                      decimalsLimit={2}
+                      decimalScale={2}
+                      prefix="$"
+                      // Always a plain annual figure — no "/hr" suffix.
+                      placeholder="Maximum Salary"
+                      className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                      intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                    />
+                    {errors.maxSalary && (
+                      <p className="text-red-500 text-sm mt-1">{errors.maxSalary.message}</p>
+                    )}
+                  </Form.Item>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="w-full">
+                  <span className="text-lg font-semibold">Job Skills</span>
+                </div>
+                <div className="form-grid-equal-labels grid grid-cols-3 gap-x-4 mt-4">
+                  <Form.Item label={<span>Referral Bonus (in USD)</span>}>
+                    <Controller
+                      name="referralBonus"
+                      control={control}
+                      render={({ field }) => (
+                        <CurrencyInput
+                          value={field.value ?? ''}
+                          onValueChange={(value) => {
+                            field.onChange(value ? Number(value) : null);
+                          }}
+                          decimalsLimit={2}
+                          decimalScale={2}
+                          prefix="$"
+                          placeholder="Referral Bonus"
+                          className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                          intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                        />
+                      )}
+                    />
+                    {errors.referralBonus && (
+                      <p className="text-red-500 text-sm mt-1">{errors.referralBonus.message}</p>
+                    )}
+                  </Form.Item>
+                  <Form.Item
+                    label={
+                      <span>
+                        Minimum Experience (In years) <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <Input
+                      id="field-minExperience"
+                      type="text"
+                      inputMode="numeric"
+                      value={watch('minExperience') ?? ''}
+                      onChange={(e) => {
+                        let value = e.target.value;
+                        // Only allow digits
+                        value = value.replace(/[^0-9]/g, '');
+                        // Remove leading zeros but keep single zero
+                        value = value.replace(/^0+/, '0').replace(/^0+(\d)/, '$1');
+                        // Cap at 50
+                        const numValue =
+                          value === '' ? null : Math.max(0, Math.min(50, Number(value)));
+                        setValue('minExperience', numValue, {
+                          shouldValidate: true,
+                        });
+                        trigger(['minExperience', 'maxExperience']);
+                      }}
+                      placeholder="Minimum Experience"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                    />
+                    {errors.minExperience && (
+                      <p className="text-red-500 text-sm mt-1">{errors.minExperience.message}</p>
+                    )}
+                  </Form.Item>
+                  <Form.Item label={<span>Maximum Experience (In years)</span>}>
+                    <Input
+                      id="field-maxExperience"
+                      type="text"
+                      inputMode="numeric"
+                      value={watch('maxExperience') ?? ''}
+                      onChange={(e) => {
+                        let value = e.target.value;
+                        // Only allow digits
+                        value = value.replace(/[^0-9]/g, '');
+                        // Remove leading zeros but keep single zero
+                        value = value.replace(/^0+/, '0').replace(/^0+(\d)/, '$1');
+                        // Cap at 50
+                        const numValue =
+                          value === '' ? null : Math.max(0, Math.min(50, Number(value)));
+                        setValue('maxExperience', numValue, {
+                          shouldValidate: true,
+                        });
+                        trigger(['minExperience', 'maxExperience']);
+                      }}
+                      placeholder="Maximum Experience"
+                      className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                    />
+                    {errors.maxExperience && (
+                      <p className="text-red-500 text-sm mt-1">{errors.maxExperience.message}</p>
+                    )}
+                  </Form.Item>
+                </div>
+
+                {!suggestedSkillsDismissed && unaddedSuggestedSkills.length > 0 && (
+                  <div className="mt-2 flex items-center justify-between gap-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+                    <span className="text-sm text-brand-800">
+                      <span className="mr-1.5">✨</span>
+                      AI suggested {unaddedSuggestedSkills.length} skill
+                      {unaddedSuggestedSkills.length === 1 ? '' : 's'} for this role, based on the
+                      job description.
                     </span>
-                  }
-                >
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={watch('minExperience') ?? ''}
-                    onChange={(e) => {
-                      let value = e.target.value;
-                      // Only allow digits
-                      value = value.replace(/[^0-9]/g, '');
-                      // Remove leading zeros but keep single zero
-                      value = value.replace(/^0+/, '0').replace(/^0+(\d)/, '$1');
-                      // Cap at 50
-                      const numValue =
-                        value === '' ? null : Math.max(0, Math.min(50, Number(value)));
-                      setValue('minExperience', numValue, {
-                        shouldValidate: true,
-                      });
-                      trigger(['minExperience', 'maxExperience']);
-                    }}
-                    placeholder="Minimum Experience"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                  />
-                  {errors.minExperience && (
-                    <p className="text-red-500 text-sm mt-1">{errors.minExperience.message}</p>
-                  )}
-                </Form.Item>
-                <Form.Item label={<span>Maximum Experience (In years)</span>}>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={watch('maxExperience') ?? ''}
-                    onChange={(e) => {
-                      let value = e.target.value;
-                      // Only allow digits
-                      value = value.replace(/[^0-9]/g, '');
-                      // Remove leading zeros but keep single zero
-                      value = value.replace(/^0+/, '0').replace(/^0+(\d)/, '$1');
-                      // Cap at 50
-                      const numValue =
-                        value === '' ? null : Math.max(0, Math.min(50, Number(value)));
-                      setValue('maxExperience', numValue, {
-                        shouldValidate: true,
-                      });
-                      trigger(['minExperience', 'maxExperience']);
-                    }}
-                    placeholder="Maximum Experience"
-                    className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                  />
-                  {errors.maxExperience && (
-                    <p className="text-red-500 text-sm mt-1">{errors.maxExperience.message}</p>
-                  )}
-                </Form.Item>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <Button
+                        type="button"
+                        className="text-white bg-button rounded-3xl px-4 py-1.5 text-xs font-semibold cursor-pointer"
+                        onClick={handleAddAllSuggestedSkills}
+                      >
+                        ADD ALL
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => setSuggestedSkillsDismissed(true)}
+                        className="text-brand-500 hover:text-brand-700 cursor-pointer"
+                        aria-label="Dismiss suggestion"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-x-4 mt-2">
+                  <Form.Item
+                    label={
+                      <span>
+                        Required Skills <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <div id="field-mandatorySkills" className="space-y-3">
+                      <DropdownWithAddOption
+                        className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
+                        value={watch('mandatorySkills') || []}
+                        onChange={(value) =>
+                          setValue('mandatorySkills', value || [], {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }
+                        onOpenChange={(open) => {
+                          setIsMandatorySkillsDropdownOpen(open);
+                        }}
+                        options={mandatorySkills.filter(
+                          (option) => !selectedOptionalSkillIds.includes(String(option.id))
+                        )}
+                        loading={mandatorySkillsLoading || isAddingToDropdown === 'mandatorySkills'}
+                        mode="multiple"
+                        placeholder="Select Required Skills"
+                        label="Required Skills"
+                        onAddOption={(value) => handleAddOption(value, 'mandatorySkills')}
+                        onSearchChange={searchMandatorySkills}
+                        type="mandatorySkills"
+                        error={errors.mandatorySkills?.message}
+                        enableEditDelete
+                        onEditOption={handleEditOption}
+                        onDeleteOption={handleDeleteOption}
+                        onReuseOption={handleReuseOption}
+                        maxTagCount={0}
+                        maxTagPlaceholder={
+                          !isMandatorySkillsDropdownOpen
+                            ? (omittedValues: { value: number | string }[]) => (
+                                <span>
+                                  {omittedValues.length} of {mandatorySkills?.length || 20} skills
+                                  selected
+                                </span>
+                              )
+                            : null
+                        }
+                      />
+
+                      {selectedMandatorySkills.length > 0 && (
+                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700">
+                              Selected Required Skills
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedMandatorySkills.map((skill) => (
+                              <span
+                                key={skill.id}
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+                                  skill.isDeleted
+                                    ? 'bg-gray-100 text-gray-600 border-gray-300'
+                                    : 'bg-brand-100 text-brand-800 border-brand-200'
+                                }`}
+                              >
+                                {skill.name}
+                                {skill.isDeleted && (
+                                  <span className="ml-2 text-xs italic">(Deactivated)</span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = selectedMandatorySkillIds.filter(
+                                      (id) => String(id) !== String(skill.id)
+                                    );
+                                    setValue('mandatorySkills', updated, {
+                                      shouldDirty: true,
+                                      shouldValidate: true,
+                                    });
+                                  }}
+                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Form.Item>
+
+                  <Form.Item label="Optional Skills">
+                    <div className="space-y-3">
+                      <DropdownWithAddOption
+                        className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
+                        value={watch('optionalSkills') || []}
+                        onChange={(value) =>
+                          setValue('optionalSkills', value || [], {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }
+                        onOpenChange={(open) => {
+                          setIsOptionalSkillsDropdownOpen(open);
+                        }}
+                        options={optionalSkills.filter(
+                          (option) => !selectedMandatorySkillIds.includes(String(option.id))
+                        )}
+                        loading={optionalSkillsLoading || isAddingToDropdown === 'optionalSkills'}
+                        mode="multiple"
+                        placeholder="Select Optional Skills"
+                        label="Optional Skills"
+                        onAddOption={(value) => handleAddOption(value, 'optionalSkills')}
+                        onSearchChange={searchOptionalSkills}
+                        type="optionalSkills"
+                        error={errors.optionalSkills?.message}
+                        enableEditDelete
+                        onEditOption={handleEditOption}
+                        onDeleteOption={handleDeleteOption}
+                        onReuseOption={handleReuseOption}
+                        maxTagCount={0}
+                        maxTagPlaceholder={
+                          !isOptionalSkillsDropdownOpen
+                            ? (omittedValues: { value: number | string }[]) => (
+                                <span>
+                                  {omittedValues.length} of {optionalSkills?.length || 20} skills
+                                  selected
+                                </span>
+                              )
+                            : null
+                        }
+                      />
+
+                      {selectedOptionalSkills.length > 0 && (
+                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700">
+                              Selected Optional Skills
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedOptionalSkills.map((skill) => (
+                              <span
+                                key={skill.id}
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+                                  skill.isDeleted
+                                    ? 'bg-gray-100 text-gray-600 border-gray-300'
+                                    : 'bg-brand-100 text-brand-800 border-brand-200'
+                                }`}
+                              >
+                                {skill.name}
+                                {skill.isDeleted && (
+                                  <span className="ml-2 text-xs italic">(Deactivated)</span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = selectedOptionalSkillIds.filter(
+                                      (id) => String(id) !== String(skill.id)
+                                    );
+                                    setValue('optionalSkills', updated, {
+                                      shouldDirty: true,
+                                      shouldValidate: true,
+                                    });
+                                  }}
+                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Form.Item>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-4 mt-2">
+                  <Form.Item
+                    label={
+                      <span>
+                        Education Preference <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <div id="field-educationPreference">
+                      <DropdownWithAddOption
+                        className="w-full custom-select-jobs placeholder-style"
+                        value={watch('educationPreference')?.[0]}
+                        onChange={(value) =>
+                          setValue('educationPreference', value ? [value] : [], {
+                            shouldValidate: true,
+                          })
+                        }
+                        options={educationPreference}
+                        loading={
+                          educationPreferenceLoading || isAddingToDropdown === 'educationPreference'
+                        }
+                        placeholder="Select Education Preference"
+                        label="Education Preference"
+                        onAddOption={(value) => handleAddOption(value, 'educationPreference')}
+                        type="educationPreference"
+                        error={errors.educationPreference?.message}
+                        enableEditDelete
+                        onEditOption={handleEditOption}
+                        onDeleteOption={handleDeleteOption}
+                        onReuseOption={handleReuseOption}
+                      />
+                    </div>
+                  </Form.Item>
+
+                  <Form.Item
+                    label={
+                      <span>
+                        Responsibilities <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <Controller
+                      name="responsibilities"
+                      control={control}
+                      render={({ field }) => (
+                        <TextArea
+                          {...field}
+                          id="field-responsibilities"
+                          placeholder="Enter responsibilities"
+                          rows={4}
+                          maxLength={1000}
+                          showCount={{
+                            formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
+                          }}
+                          className="w-full px-4 py-2 border rounded-lg"
+                        />
+                      )}
+                    />
+                    {errors.responsibilities && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.responsibilities.message as string}
+                      </p>
+                    )}
+                  </Form.Item>
+                </div>
+
+                <div className="grid grid-cols-1 mt-2">
+                  <Form.Item label={<span>Other Requirements</span>}>
+                    <Controller
+                      name="otherRequirements"
+                      control={control}
+                      render={({ field }) => (
+                        <TextArea
+                          {...field}
+                          placeholder="Enter other requirements"
+                          rows={4}
+                          maxLength={1000}
+                          showCount={{
+                            formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
+                          }}
+                          className="w-full px-4 py-2 border rounded-lg"
+                        />
+                      )}
+                    />
+                    {errors.otherRequirements && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.otherRequirements.message}
+                      </p>
+                    )}
+                  </Form.Item>
+                </div>
               </div>
 
-              {!suggestedSkillsDismissed && unaddedSuggestedSkills.length > 0 && (
-                <div className="mt-2 flex items-center justify-between gap-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
-                  <span className="text-sm text-brand-800">
-                    <span className="mr-1.5">✨</span>
-                    AI suggested {unaddedSuggestedSkills.length} skill
-                    {unaddedSuggestedSkills.length === 1 ? '' : 's'} for this role, based on the job
-                    description.
-                  </span>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <Button
-                      type="button"
-                      className="text-white bg-button rounded-3xl px-4 py-1.5 text-xs font-semibold cursor-pointer"
-                      onClick={handleAddAllSuggestedSkills}
-                    >
-                      ADD ALL
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => setSuggestedSkillsDismissed(true)}
-                      className="text-brand-500 hover:text-brand-700 cursor-pointer"
-                      aria-label="Dismiss suggestion"
-                    >
-                      ×
-                    </button>
-                  </div>
+              {false && aiJobDescriptionId && (
+                <div className="flex w-full justify-center py-2">
+                  <Checkbox
+                    checked={isSyncingWithATS}
+                    onChange={(e) => setIsSyncingWithATS(e.target.checked)}
+                    className="custom-checkbox roboto-font"
+                  >
+                    Sync Job Description With ATS
+                  </Checkbox>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-x-4 mt-2">
-                <Form.Item label={<span>Required Skills</span>}>
-                  <div className="space-y-3">
-                    <DropdownWithAddOption
-                      className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
-                      value={watch('mandatorySkills') || []}
-                      onChange={(value) =>
-                        setValue('mandatorySkills', value || [], {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      onOpenChange={(open) => {
-                        setIsMandatorySkillsDropdownOpen(open);
-                      }}
-                      options={mandatorySkills.filter(
-                        (option) => !selectedOptionalSkillIds.includes(String(option.id))
-                      )}
-                      loading={mandatorySkillsLoading || isAddingToDropdown === 'mandatorySkills'}
-                      mode="multiple"
-                      placeholder="Select Required Skills"
-                      label="Required Skills"
-                      onAddOption={(value) => handleAddOption(value, 'mandatorySkills')}
-                      onSearchChange={searchMandatorySkills}
-                      type="mandatorySkills"
-                      error={errors.mandatorySkills?.message}
-                      enableEditDelete
-                      onEditOption={handleEditOption}
-                      onDeleteOption={handleDeleteOption}
-                      onReuseOption={handleReuseOption}
-                      maxTagCount={0}
-                      maxTagPlaceholder={
-                        !isMandatorySkillsDropdownOpen
-                          ? (omittedValues: { value: number | string }[]) => (
-                              <span>
-                                {omittedValues.length} of {mandatorySkills?.length || 20} skills
-                                selected
-                              </span>
-                            )
-                          : null
-                      }
-                    />
-
-                    {selectedMandatorySkills.length > 0 && (
-                      <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-700">
-                            Selected Required Skills
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedMandatorySkills.map((skill) => (
-                            <span
-                              key={skill.id}
-                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
-                                skill.isDeleted
-                                  ? 'bg-gray-100 text-gray-600 border-gray-300'
-                                  : 'bg-brand-100 text-brand-800 border-brand-200'
-                              }`}
-                            >
-                              {skill.name}
-                              {skill.isDeleted && (
-                                <span className="ml-2 text-xs italic">(Deactivated)</span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = selectedMandatorySkillIds.filter(
-                                    (id) => String(id) !== String(skill.id)
-                                  );
-                                  setValue('mandatorySkills', updated, {
-                                    shouldDirty: true,
-                                    shouldValidate: true,
-                                  });
-                                }}
-                                className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Form.Item>
-
-                <Form.Item label="Optional Skills">
-                  <div className="space-y-3">
-                    <DropdownWithAddOption
-                      className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
-                      value={watch('optionalSkills') || []}
-                      onChange={(value) =>
-                        setValue('optionalSkills', value || [], {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      onOpenChange={(open) => {
-                        setIsOptionalSkillsDropdownOpen(open);
-                      }}
-                      options={optionalSkills.filter(
-                        (option) => !selectedMandatorySkillIds.includes(String(option.id))
-                      )}
-                      loading={optionalSkillsLoading || isAddingToDropdown === 'optionalSkills'}
-                      mode="multiple"
-                      placeholder="Select Optional Skills"
-                      label="Optional Skills"
-                      onAddOption={(value) => handleAddOption(value, 'optionalSkills')}
-                      onSearchChange={searchOptionalSkills}
-                      type="optionalSkills"
-                      error={errors.optionalSkills?.message}
-                      enableEditDelete
-                      onEditOption={handleEditOption}
-                      onDeleteOption={handleDeleteOption}
-                      onReuseOption={handleReuseOption}
-                      maxTagCount={0}
-                      maxTagPlaceholder={
-                        !isOptionalSkillsDropdownOpen
-                          ? (omittedValues: { value: number | string }[]) => (
-                              <span>
-                                {omittedValues.length} of {optionalSkills?.length || 20} skills
-                                selected
-                              </span>
-                            )
-                          : null
-                      }
-                    />
-
-                    {selectedOptionalSkills.length > 0 && (
-                      <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-700">
-                            Selected Optional Skills
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedOptionalSkills.map((skill) => (
-                            <span
-                              key={skill.id}
-                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
-                                skill.isDeleted
-                                  ? 'bg-gray-100 text-gray-600 border-gray-300'
-                                  : 'bg-brand-100 text-brand-800 border-brand-200'
-                              }`}
-                            >
-                              {skill.name}
-                              {skill.isDeleted && (
-                                <span className="ml-2 text-xs italic">(Deactivated)</span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = selectedOptionalSkillIds.filter(
-                                    (id) => String(id) !== String(skill.id)
-                                  );
-                                  setValue('optionalSkills', updated, {
-                                    shouldDirty: true,
-                                    shouldValidate: true,
-                                  });
-                                }}
-                                className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Form.Item>
-              </div>
-
-              <div className="grid grid-cols-2 gap-x-4 mt-2">
-                <Form.Item label={<span>Education Preference</span>}>
-                  <DropdownWithAddOption
-                    className="w-full custom-select-jobs placeholder-style"
-                    value={watch('educationPreference')?.[0]}
-                    onChange={(value) =>
-                      setValue('educationPreference', value ? [value] : [], {
-                        shouldValidate: true,
-                      })
-                    }
-                    options={educationPreference}
-                    loading={
-                      educationPreferenceLoading || isAddingToDropdown === 'educationPreference'
-                    }
-                    placeholder="Select Education Preference"
-                    label="Education Preference"
-                    onAddOption={(value) => handleAddOption(value, 'educationPreference')}
-                    type="educationPreference"
-                    error={errors.educationPreference?.message}
-                    enableEditDelete
-                    onEditOption={handleEditOption}
-                    onDeleteOption={handleDeleteOption}
-                    onReuseOption={handleReuseOption}
-                  />
-                </Form.Item>
-
-                <Form.Item label={<span>Responsibilities</span>}>
-                  <Controller
-                    name="responsibilities"
-                    control={control}
-                    render={({ field }) => (
-                      <TextArea
-                        {...field}
-                        placeholder="Enter responsibilities"
-                        rows={4}
-                        maxLength={1000}
-                        showCount={{
-                          formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
-                        }}
-                        className="w-full px-4 py-2 border rounded-lg"
-                      />
-                    )}
-                  />
-                </Form.Item>
-              </div>
-
-              <div className="grid grid-cols-1 mt-2">
-                <Form.Item label={<span>Other Requirements</span>}>
-                  <Controller
-                    name="otherRequirements"
-                    control={control}
-                    render={({ field }) => (
-                      <TextArea
-                        {...field}
-                        placeholder="Enter other requirements"
-                        rows={4}
-                        maxLength={1000}
-                        showCount={{
-                          formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
-                        }}
-                        className="w-full px-4 py-2 border rounded-lg"
-                      />
-                    )}
-                  />
-                  {errors.otherRequirements && (
-                    <p className="text-red-500 text-sm mt-1">{errors.otherRequirements.message}</p>
-                  )}
-                </Form.Item>
-              </div>
-            </div>
-
-            {false && aiJobDescriptionId && (
-              <div className="flex w-full justify-center py-2">
-                <Checkbox
-                  checked={isSyncingWithATS}
-                  onChange={(e) => setIsSyncingWithATS(e.target.checked)}
-                  className="custom-checkbox roboto-font"
+              {showValidationSummary && validationIssues.length > 0 && (
+                <div
+                  ref={validationSummaryRef}
+                  role="alert"
+                  className="mx-auto mt-6 w-full max-w-2xl rounded-xl border border-red-200 bg-red-50 px-4 py-3"
                 >
-                  Sync Job Description With ATS
-                </Checkbox>
-              </div>
-            )}
-
-            {showValidationSummary && validationIssues.length > 0 && (
-              <div
-                ref={validationSummaryRef}
-                role="alert"
-                className="mx-auto mt-6 w-full max-w-2xl rounded-xl border border-red-200 bg-red-50 px-4 py-3"
-              >
-                <p className="text-sm font-semibold text-red-700">
-                  {validationIssues.length === 1
-                    ? '1 field still needs your attention:'
-                    : `${validationIssues.length} fields still need your attention:`}
-                </p>
-                <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                  {validationIssues.map((issue) => (
-                    <li key={issue.name}>
-                      <button
-                        type="button"
-                        onClick={() => scrollToFieldError(issue.message)}
-                        className="text-sm text-red-600 underline underline-offset-2 hover:text-red-800 cursor-pointer"
-                        title={issue.message}
-                      >
-                        {issue.label}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <div className="flex items-center justify-center mt-6 gap-6">
-              {!hasSavedDetails && (
-                <Button
-                  type="button"
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-                  onClick={() => onSaveDraft(watch())}
-                >
-                  SAVE AS DRAFT
-                </Button>
+                  <p className="text-sm font-semibold text-red-700">
+                    {validationIssues.length === 1
+                      ? '1 field still needs your attention:'
+                      : `${validationIssues.length} fields still need your attention:`}
+                  </p>
+                  <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                    {validationIssues.map((issue) => (
+                      <li key={issue.name}>
+                        <button
+                          type="button"
+                          onClick={() => scrollToFieldError(issue.message)}
+                          className="text-sm text-red-600 underline underline-offset-2 hover:text-red-800 cursor-pointer"
+                          title={issue.message}
+                        >
+                          {issue.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
-              {!hasSavedDetails ? (
-                <Button
-                  type="button"
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-                  onClick={handleSubmit(onSubmit, () => {
-                    setShowValidationSummary(true);
-                  })}
-                >
-                  SAVE & GENERATE DESCRIPTION
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-                  onClick={handleContinueToDescription}
-                  disabled={false}
-                >
-                  NEXT: AI JOB DESCRIPTION →
-                </Button>
-              )}
-            </div>
-          </Form>
+
+              <div className="flex items-center justify-center mt-6 gap-6">
+                {!hasSavedDetails && (
+                  <Button
+                    type="button"
+                    className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+                    onClick={() => onSaveDraft(watch())}
+                  >
+                    SAVE AS DRAFT
+                  </Button>
+                )}
+                {!hasSavedDetails ? (
+                  <Button
+                    type="button"
+                    className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+                    onClick={handleSubmit(onSubmit, (invalidFields) => {
+                      showToast({
+                        message: 'Please fill all required fields before saving.',
+                        type: 'error',
+                      });
+                      scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
+                    })}
+                  >
+                    SAVE & GENERATE DESCRIPTION
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+                    onClick={handleContinueToDescription}
+                    disabled={false}
+                  >
+                    NEXT: AI JOB DESCRIPTION →
+                  </Button>
+                )}
+              </div>
+            </Form>
           </div>
           {isBlocked && (
             <ConfirmationModal

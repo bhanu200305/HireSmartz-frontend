@@ -57,6 +57,8 @@ const extendedApi = orgApi.injectEndpoints({
   }),
 });
 
+export { extendedApi as platformScoringConfigApi };
+
 export const {
   useGetPlatformScoringConfigQuery,
   useUpdatePlatformScoringConfigMutation,

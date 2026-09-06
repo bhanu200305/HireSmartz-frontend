@@ -71,6 +71,7 @@ const editJobSlice = createSlice({
     setAtsJobOpeningId: (state, action: PayloadAction<string>) => {
       state.atsJobOpeningId = action.payload;
     },
+    // Only set this from a real server value, never after an unrelated save.
     setIsDraft: (state, action: PayloadAction<boolean>) => {
       state.isDraft = action.payload;
     },

@@ -400,187 +400,202 @@ const CandidatesListing = () => {
             <div className="min-w-[760px]">
               <div className="w-full p-2">
                 <Row gutter={[16, 16]} className="font-bold p-4 bg-[#FFFFFF] shadow heading-font">
-              <Col span={1}>
-                <Checkbox
-                  className="custom-checkbox roboto-font"
-                  checked={allSelected}
-                  onChange={toggleSelectAll}
-                  disabled={candidates.length === 0}
-                />
-              </Col>
-              <COL
-                sortable
-                sortKey="name"
-                currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
-                onSort={handleSort}
-                span={5}
-              >
-                CANDIDATE DETAILS
-              </COL>
-              <COL
-                sortable
-                sortKey="resume_score"
-                currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
-                onSort={handleSort}
-                span={4}
-              >
-                RESUME SCORE
-              </COL>
-              <COL
-                sortable
-                sortKey="applied_date"
-                currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
-                onSort={handleSort}
-                span={4}
-              >
-                APPLIED DATE
-              </COL>
-              <COL span={4}>
-                <span>STATUS</span>
-              </COL>
-              <COL span={2}>
-                <span>ACTIONS</span>
-              </COL>
-            </Row>
-          </div>
-
-          <div className="w-full">
-            {isLoading ? (
-              <Loader />
-            ) : error ? (
-              <p>
-                {getCandidateErrorMessage(error, 'Failed to load candidates. Please try again.')}
-              </p>
-            ) : candidates.length > 0 ? (
-              candidates.map((candidate) => (
-                <div key={candidate.id} className="mb-1">
-                  <div
-                    className={clsx(
-                      selected[candidate.id] && 'selected-candidate-highlight',
-                      'hover:shadow-md'
-                    )}
-                    style={{
-                      border: selected[candidate.id]
-                        ? '2px solid var(--primary)'
-                        : '2px solid transparent',
-                      borderRadius: 8,
-                      transition: 'all 0.3s ease',
-                    }}
+                  <Col span={1}>
+                    <Checkbox
+                      className="custom-checkbox roboto-font"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      disabled={candidates.length === 0}
+                    />
+                  </Col>
+                  <COL
+                    sortable
+                    sortKey="name"
+                    currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                    onSort={handleSort}
+                    span={5}
                   >
-                    <CommonCard>
-                      <Row gutter={[16, 16]} align="middle">
-                        <Col span={1}>
-                          <Checkbox
-                            className="custom-checkbox roboto-font"
-                            checked={!!selected[candidate.id]}
-                            onChange={() => toggleSelect(candidate.id)}
-                          />
-                        </Col>
-                        <Col span={5} className="min-w-0 overflow-hidden">
-                          <div
-                            className="flex items-center min-w-0 max-w-full cursor-pointer roboto-font"
-                            onClick={() =>
-                              setExpandedId((prev) => (prev === candidate.id ? null : candidate.id))
-                            }
-                          >
-                            <Link
-                              to={buildDetailsPath(candidate.id)}
-                              className="block min-w-0 flex-1 overflow-hidden text-[var(--primary)]"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <span className="block min-w-0 truncate whitespace-nowrap font-semibold underline text-[var(--primary)] leading-5">
-                                {candidateDisplayName(candidate)}
-                              </span>
-                            </Link>
-                          </div>
-                          {expandedId === candidate.id && (
-                            <div className="mt-1">
-                              <p>
-                                <span className="font-medium roboto-font">Qualification: </span>
-                                <span className="roboto-font">
-                                  {candidate.qualification || 'N/A'}
-                                </span>
-                              </p>
-                              <p>
-                                <span className="font-medium roboto-font">Email: </span>
-                                <span className="roboto-font">{candidate.email_id || 'N/A'}</span>
-                              </p>
-                              <p>
-                                <span className="font-medium roboto-font">Phone Number: </span>
-                                <span className="roboto-font">{candidate.contact_no || 'N/A'}</span>
-                              </p>
-                              <p>
-                                <span className="font-medium roboto-font">Location: </span>
-                                <span className="roboto-font">{candidate.address || 'N/A'}</span>
-                              </p>
-                              <p>
-                                <span className="font-medium roboto-font">Source: </span>
-                                <span className="roboto-font">{candidate.source || 'N/A'}</span>
-                              </p>
-                            </div>
-                          )}
-                        </Col>
-                        <Col span={4}>
-                          <p className="roboto-font">
-                            {candidate.resume_score === null ? '—' : candidate.resume_score}
-                          </p>
-                        </Col>
-                        <Col span={4}>
-                          <p className="roboto-font">
-                            {dayjs(candidate.applied_date).isValid()
-                              ? dayjs(candidate.applied_date).format('MMM DD, YYYY')
-                              : 'N/A'}
-                          </p>
-                        </Col>
-                        <Col span={4}>
-                          <Link
-                            to={buildDetailsPath(candidate.id)}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <p
-                              className={
-                                !candidate.status_code ? 'cursor-pointer font-semibold' : undefined
-                              }
-                              style={{
-                                color: !candidate.status_code ? 'var(--warning-solid)' : undefined,
-                              }}
-                            >
-                              {candidate.status_label ||
-                                statusLabelByCode.get(candidate.status_code ?? '') ||
-                                'Not yet screened'}
-                            </p>
-                          </Link>
-                        </Col>
-                        <Col span={2} className="flex items-center justify-center">
-                          <div className={actionIconRowClass}>
-                            <Tooltip title="View Assessment">
-                              <MdOutlineRemoveRedEye
-                                className="block cursor-pointer"
-                                onClick={() => navigate(buildDetailsPath(candidate.id))}
+                    CANDIDATE DETAILS
+                  </COL>
+                  <COL
+                    sortable
+                    sortKey="resume_score"
+                    currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                    onSort={handleSort}
+                    span={4}
+                  >
+                    RESUME SCORE
+                  </COL>
+                  <COL
+                    sortable
+                    sortKey="applied_date"
+                    currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                    onSort={handleSort}
+                    span={4}
+                  >
+                    APPLIED DATE
+                  </COL>
+                  <COL span={4}>
+                    <span>STATUS</span>
+                  </COL>
+                  <COL span={2}>
+                    <span>ACTIONS</span>
+                  </COL>
+                </Row>
+              </div>
+
+              <div className="w-full">
+                {isLoading ? (
+                  <Loader />
+                ) : error ? (
+                  <p>
+                    {getCandidateErrorMessage(
+                      error,
+                      'Failed to load candidates. Please try again.'
+                    )}
+                  </p>
+                ) : candidates.length > 0 ? (
+                  candidates.map((candidate) => (
+                    <div key={candidate.id} className="mb-1">
+                      <div
+                        className={clsx(
+                          selected[candidate.id] && 'selected-candidate-highlight',
+                          'hover:shadow-md'
+                        )}
+                        style={{
+                          border: selected[candidate.id]
+                            ? '2px solid var(--primary)'
+                            : '2px solid transparent',
+                          borderRadius: 8,
+                          transition: 'all 0.3s ease',
+                        }}
+                      >
+                        <CommonCard>
+                          <Row gutter={[16, 16]} align="middle">
+                            <Col span={1}>
+                              <Checkbox
+                                className="custom-checkbox roboto-font"
+                                checked={!!selected[candidate.id]}
+                                onChange={() => toggleSelect(candidate.id)}
                               />
-                            </Tooltip>
-                            <Tooltip title="Candidate Notes">
-                              <LuSquarePen
-                                size={18}
-                                className="block cursor-pointer"
+                            </Col>
+                            <Col span={5} className="min-w-0 overflow-hidden">
+                              <div
+                                className="flex items-center min-w-0 max-w-full cursor-pointer roboto-font"
                                 onClick={() =>
-                                  setNotesCandidate({
-                                    id: candidate.id,
-                                    name: candidateDisplayName(candidate),
-                                  })
+                                  setExpandedId((prev) =>
+                                    prev === candidate.id ? null : candidate.id
+                                  )
                                 }
-                              />
-                            </Tooltip>
-                          </div>
-                        </Col>
-                      </Row>
-                    </CommonCard>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p>No candidates found for this job opening.</p>
-            )}
+                              >
+                                <Link
+                                  to={buildDetailsPath(candidate.id)}
+                                  className="block min-w-0 flex-1 overflow-hidden text-[var(--primary)]"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <span className="block min-w-0 truncate whitespace-nowrap font-semibold underline text-[var(--primary)] leading-5">
+                                    {candidateDisplayName(candidate)}
+                                  </span>
+                                </Link>
+                              </div>
+                              {expandedId === candidate.id && (
+                                <div className="mt-1">
+                                  <p>
+                                    <span className="font-medium roboto-font">Qualification: </span>
+                                    <span className="roboto-font">
+                                      {candidate.qualification || 'N/A'}
+                                    </span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium roboto-font">Email: </span>
+                                    <span className="roboto-font">
+                                      {candidate.email_id || 'N/A'}
+                                    </span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium roboto-font">Phone Number: </span>
+                                    <span className="roboto-font">
+                                      {candidate.contact_no || 'N/A'}
+                                    </span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium roboto-font">Location: </span>
+                                    <span className="roboto-font">
+                                      {candidate.address || 'N/A'}
+                                    </span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium roboto-font">Source: </span>
+                                    <span className="roboto-font">{candidate.source || 'N/A'}</span>
+                                  </p>
+                                </div>
+                              )}
+                            </Col>
+                            <Col span={4}>
+                              <p className="roboto-font">
+                                {candidate.resume_score === null ? '—' : candidate.resume_score}
+                              </p>
+                            </Col>
+                            <Col span={4}>
+                              <p className="roboto-font">
+                                {dayjs(candidate.applied_date).isValid()
+                                  ? dayjs(candidate.applied_date).format('MMM DD, YYYY')
+                                  : 'N/A'}
+                              </p>
+                            </Col>
+                            <Col span={4}>
+                              <Link
+                                to={buildDetailsPath(candidate.id)}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <p
+                                  className={
+                                    !candidate.status_code
+                                      ? 'cursor-pointer font-semibold'
+                                      : undefined
+                                  }
+                                  style={{
+                                    color: !candidate.status_code
+                                      ? 'var(--warning-solid)'
+                                      : undefined,
+                                  }}
+                                >
+                                  {candidate.status_label ||
+                                    statusLabelByCode.get(candidate.status_code ?? '') ||
+                                    'Not yet screened'}
+                                </p>
+                              </Link>
+                            </Col>
+                            <Col span={2} className="flex items-center justify-center">
+                              <div className={actionIconRowClass}>
+                                <Tooltip title="View Assessment">
+                                  <MdOutlineRemoveRedEye
+                                    className="block cursor-pointer"
+                                    onClick={() => navigate(buildDetailsPath(candidate.id))}
+                                  />
+                                </Tooltip>
+                                <Tooltip title="Candidate Notes">
+                                  <LuSquarePen
+                                    size={18}
+                                    className="block cursor-pointer"
+                                    onClick={() =>
+                                      setNotesCandidate({
+                                        id: candidate.id,
+                                        name: candidateDisplayName(candidate),
+                                      })
+                                    }
+                                  />
+                                </Tooltip>
+                              </div>
+                            </Col>
+                          </Row>
+                        </CommonCard>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p>No candidates found for this job opening.</p>
+                )}
               </div>
             </div>
           </div>

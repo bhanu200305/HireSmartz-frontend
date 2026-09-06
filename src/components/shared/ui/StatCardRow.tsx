@@ -122,7 +122,9 @@ const StatCard = ({
   const isPlaceholder = displayValue === 'Not enough data yet';
 
   const core = (
-    <div className={clsx('flex items-start', tall ? 'gap-[clamp(0.375rem,3cqh,0.75rem)]' : 'gap-3')}>
+    <div
+      className={clsx('flex items-start', tall ? 'gap-[clamp(0.375rem,3cqh,0.75rem)]' : 'gap-3')}
+    >
       {icon && (
         <div
           className={clsx(

@@ -66,7 +66,9 @@ export const CareersInstantCallPage = () => {
     const noCaptcha = !captchaToken;
 
     setFirstNameError(noFirstName);
-    setPhoneError(noPhone ? 'Phone number is required' : badPhone ? PHONE_VALIDATION_MESSAGE : null);
+    setPhoneError(
+      noPhone ? 'Phone number is required' : badPhone ? PHONE_VALIDATION_MESSAGE : null
+    );
     setTosError(noTos);
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
 

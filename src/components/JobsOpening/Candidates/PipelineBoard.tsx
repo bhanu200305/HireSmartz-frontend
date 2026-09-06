@@ -61,7 +61,13 @@ type PipelineBoardProps = {
   onRoundClick?: (round: CandidateInterviewRoundView) => void;
 };
 
-const PipelineBoard = ({ rounds, scores, resumeScore, candidateId, onRoundClick }: PipelineBoardProps) => {
+const PipelineBoard = ({
+  rounds,
+  scores,
+  resumeScore,
+  candidateId,
+  onRoundClick,
+}: PipelineBoardProps) => {
   const [isSkipModalOpen, setIsSkipModalOpen] = useState(false);
   const [artifactsModalFor, setArtifactsModalFor] = useState<{
     roundId: string;

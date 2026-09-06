@@ -384,6 +384,7 @@ export type ClosureReason = {
 export type OrganizationShift = {
   id: string;
   name: string;
+  description: string | null;
   start_time: string;
   end_time: string;
   duration_minutes: number | null;
