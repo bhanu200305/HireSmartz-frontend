@@ -121,7 +121,24 @@ export type ApplyRequest = {
   referalNote?: string;
 };
 
-export type ApplyResultView = { id: string };
+/** `call_placed` is `false` if this job has no Intake Call round configured,
+ * no phone number was given, or interview-service couldn't be reached — the
+ * candidate still exists either way. Shared by `POST /candidates` (a call is
+ * attempted right after the candidate is created, when a phone number was
+ * given) and `POST /candidates/instant-call` (no resume — a call is
+ * attempted immediately). */
+export type ApplyResultView = { id: string; call_placed: boolean };
+
+export type StartInstantIntakeCallArgs = {
+  organizationId: string;
+  jobOpeningId: string;
+  firstName?: string;
+  lastName?: string;
+  emailId?: string;
+  /** Required — interview-service needs a real phone number to place the call. */
+  contactNo: string;
+  appliedJobLocationId?: string;
+};
 
 /** `UpdateCandidateRequest` — every field optional (partial update); real
  * editable fields inferred from `CandidateView`'s own writable columns.
@@ -235,6 +252,34 @@ const extendedApi = candidateApi.injectEndpoints({
       invalidatesTags: ['CandidateList'],
     }),
 
+    // POST /candidates/instant-call — Add Candidate's "Intake Call" option:
+    // no resume yet, places the call immediately (same idea as the careers
+    // page's "Talk to Us Now" path, but authenticated — no captcha).
+    startInstantIntakeCall: build.mutation<ApplyResultView, StartInstantIntakeCallArgs>({
+      query: ({
+        organizationId,
+        jobOpeningId,
+        firstName,
+        lastName,
+        emailId,
+        contactNo,
+        appliedJobLocationId,
+      }) => ({
+        url: '/candidates/instant-call',
+        method: 'POST',
+        body: {
+          organization_id: organizationId,
+          job_opening_id: jobOpeningId,
+          first_name: firstName,
+          last_name: lastName,
+          email_id: emailId,
+          contact_no: contactNo,
+          applied_job_location_id: appliedJobLocationId,
+        },
+      }),
+      invalidatesTags: ['CandidateList'],
+    }),
+
     getCandidate: build.query<CandidateView, string>({
       query: (candidateId) => `/candidates/${candidateId}`,
       providesTags: (_result, _error, candidateId) => [{ type: 'Candidate', id: candidateId }],
@@ -321,6 +366,7 @@ const extendedApi = candidateApi.injectEndpoints({
 export const {
   useUploadCandidateResumeMutation,
   useCreateCandidateMutation,
+  useStartInstantIntakeCallMutation,
   useGetCandidateQuery,
   useListCandidatesQuery,
   useLazyListCandidatesQuery,

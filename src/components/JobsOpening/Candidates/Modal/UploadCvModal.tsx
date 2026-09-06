@@ -25,6 +25,7 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 interface UploadCvModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCompleted: () => void;
 }
 
 const MAX_FILES = 30;
@@ -37,9 +38,10 @@ const MAX_SIZE_MB = 5;
 const POLL_INTERVAL_MS = 3000;
 const AUTO_CLOSE_DELAY_MS = 1500;
 
-const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
+const UploadCvModal = ({ isOpen, onClose, onCompleted }: UploadCvModalProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
+  const [completedBatchId, setCompletedBatchId] = useState<string | null>(null);
 
   const { id: jobOpeningId } = useParams<{ id: string }>();
   const tenantId = useSessionTenantId();
@@ -53,19 +55,23 @@ const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
   const isProcessing =
     !!batchId && !!batchProgress && batchProgress.parsed_files < batchProgress.valid_files;
 
-  // Once parsing finishes, close on its own — the "Done" message above is
-  // enough of a hand-off, no need to make the user click X themselves.
-  // Brief delay so the "Done" message is actually readable before it
-  // disappears.
+  // Once parsing finishes: tell the parent so it can refetch the candidate
+  // list (guarded by completedBatchId so this fires exactly once per batch,
+  // not on every 3s poll after done), then close the modal on its own after
+  // a brief delay — the "Done" message above is enough of a hand-off, no
+  // need to make the user click X themselves, but it should still be
+  // readable for a moment before it disappears.
   useEffect(() => {
-    if (!batchId || !batchProgress || isProcessing) return;
+    if (!batchId || !batchProgress || isProcessing || completedBatchId === batchId) return;
+    onCompleted();
+    setCompletedBatchId(batchId);
     const timer = setTimeout(() => {
       setFiles([]);
       setBatchId(null);
       onClose();
     }, AUTO_CLOSE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [batchId, batchProgress, isProcessing, onClose]);
+  }, [batchId, batchProgress, isProcessing, completedBatchId, onCompleted, onClose]);
 
   const handleFileSelect = (selectedFiles: File[]) => {
     const accepted: File[] = [];
@@ -122,6 +128,7 @@ const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
         // (FRONTEND_INTEGRATION_DETAILS.md §4.2's own "poll, don't assume a
         // fixed completion time").
         setBatchId(res.batch_id);
+        setCompletedBatchId(null);
       } else {
         onClose();
       }
@@ -136,6 +143,7 @@ const UploadCvModal = ({ isOpen, onClose }: UploadCvModalProps) => {
   const handleClose = () => {
     setFiles([]);
     setBatchId(null);
+    setCompletedBatchId(null);
     onClose();
   };
 

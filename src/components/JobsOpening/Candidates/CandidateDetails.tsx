@@ -37,6 +37,7 @@ import ResumeReviewModal from './Modal/ResumeReviewModal';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import PipelineBoard from './PipelineBoard';
 import { roundLabel, formatRoundStatus } from './roundDisplay';
+import { resolveCurrentRound, isRoundConcluded } from './roundProgress';
 import StatusHistoryTab from './StatusHistoryTab';
 import EditCandidateModal from './Modal/EditCandidateModal';
 
@@ -181,6 +182,21 @@ const CandidateDetails = () => {
         .replace(/[-\s]+/g, '_')
     );
 
+  // ADVANCE completes whichever round `resolveCurrentRound` says the
+  // candidate is on right now and marks the next one due — it does not
+  // check whether the CURRENT one actually happened first. Left
+  // unguarded, a recruiter can click it the instant a round becomes due
+  // and mark an interview "completed" that was never conducted. Disabled
+  // until that round's real-world outcome is known (`isRoundConcluded`);
+  // re-enables once interview-service reports it done, no-show,
+  // cancelled or aborted. The resume stage has no such external signal —
+  // only Advance itself ever concludes it — so it's exempt from this gate.
+  const currentRound = resolveCurrentRound(rounds);
+  const advanceDisabled =
+    currentRound !== null &&
+    currentRound.stage_type === 'interview' &&
+    !isRoundConcluded(currentRound);
+
   if (candidateError) {
     return (
       <p className="p-4 text-sm text-red-500">
@@ -306,8 +322,14 @@ const CandidateDetails = () => {
             {!isTerminal && (
               <div className="flex items-center gap-3">
                 <Button
-                  className="flex items-center justify-center text-sm px-6 h-[34px] gap-2 rounded-full bg-primary"
+                  className="flex items-center justify-center text-sm px-6 h-[34px] gap-2 rounded-full bg-primary disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => setStatusModal('advance')}
+                  disabled={advanceDisabled}
+                  title={
+                    advanceDisabled
+                      ? `Waiting for ${currentRound?.round_name ?? 'this round'} to conclude`
+                      : undefined
+                  }
                 >
                   <span className="text-white">ADVANCE</span>
                 </Button>

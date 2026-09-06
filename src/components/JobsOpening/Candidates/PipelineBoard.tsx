@@ -7,6 +7,7 @@ import {
 } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
+import { bucketForStatus, resolveCurrentRound, type RoundBucket } from './roundProgress';
 import SkipRoundModal from './Modal/SkipRoundModal';
 import RoundArtifactsModal from './Modal/RoundArtifactsModal';
 import { roundLabel, formatRoundStatus } from './roundDisplay';
@@ -18,33 +19,6 @@ import { roundLabel, formatRoundStatus } from './roundDisplay';
 // in CandidateDetails.tsx), nothing new fetched and no new mutations. Every
 // figure below (avg score, rounds completed, standing) is derived client-side
 // from those two arrays; no backend field carries them today.
-
-type RoundBucket = 'done' | 'current' | 'pending' | 'failed';
-
-// Mirrors candidate-service's own `KNOWN_ROUND_STATUSES` / `normalise_round_status`
-// (interview_round_status.py) — interview-service owns this vocabulary and can
-// report a value outside this set at any time, so an unrecognised status folds
-// to 'pending' (the least alarming bucket) rather than throwing.
-const ROUND_STATUS_BUCKET: Record<string, RoundBucket> = {
-  completed: 'done',
-  skipped: 'done',
-  scheduled: 'current',
-  in_progress: 'current',
-  rescheduled: 'current',
-  to_be_scheduled: 'pending',
-  pending: 'pending',
-  no_show: 'failed',
-  cancelled: 'failed',
-  aborted: 'failed',
-};
-
-const bucketForStatus = (status: string): RoundBucket => {
-  const key = status
-    .trim()
-    .toLowerCase()
-    .replace(/[-\s]+/g, '_');
-  return ROUND_STATUS_BUCKET[key] ?? 'pending';
-};
 
 const BUCKET_META: Record<
   RoundBucket,
@@ -106,13 +80,17 @@ const PipelineBoard = ({
   }
 
   const buckets = rounds.map((r) => bucketForStatus(r.status));
-  const currentIndex = buckets.findIndex((b) => b === 'current');
-  const firstPendingIndex = buckets.findIndex((b) => b === 'pending');
   const hasFailure = buckets.includes('failed');
   const allDone = buckets.every((b) => b === 'done');
 
-  const activeIndex = currentIndex !== -1 ? currentIndex : firstPendingIndex;
-  const nextRound = activeIndex !== -1 ? rounds[activeIndex] : null;
+  // The round ADVANCE would actually complete next / SEND INVITE would
+  // actually announce — NOT just "the first card whose status reads
+  // pending": an instant-call candidate with no resume yet has a resume
+  // card sitting there with status `to_be_scheduled` same as a real
+  // pending round, but it's inert (`due_at === null`) and neither action
+  // can touch it. See `roundProgress.ts`'s own docstring.
+  const nextRound = resolveCurrentRound(rounds);
+  const activeIndex = nextRound ? rounds.findIndex((r) => r.id === nextRound.id) : -1;
   const nextWhen = nextRound
     ? (formatWhen(nextRound.scheduled_at) ?? formatWhen(nextRound.due_at))
     : null;

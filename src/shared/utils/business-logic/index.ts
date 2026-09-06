@@ -53,9 +53,9 @@ export const handleArchive = async ({
 }: {
   type: string;
   recordId: number;
-  archiveFn: Function;
-  showToast: Function;
-  refetch: Function;
+  archiveFn: (payload: Record<string, unknown>) => { unwrap: () => Promise<unknown> };
+  showToast: (config: { message: string; type: string }) => void;
+  refetch: () => void;
   isArchived: boolean;
   extraPayload?: Record<string, unknown>;
 }) => {
@@ -121,9 +121,9 @@ export const handleResendInvite = async ({
 }: {
   type: string;
   recordId: number;
-  resendInviteFn: Function;
-  showToast: Function;
-  refetch: Function;
+  resendInviteFn: (payload: Record<string, unknown>) => { unwrap: () => Promise<unknown> };
+  showToast: (config: { message: string; type: string }) => void;
+  refetch: () => void;
   firstName: string;
   emailId: string;
   extraPayload?: Record<string, unknown>;
