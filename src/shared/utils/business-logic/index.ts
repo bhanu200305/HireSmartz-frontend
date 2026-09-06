@@ -190,8 +190,7 @@ const AI_JD_HEADING_KEYWORD_RE =
 
 // A section-label-shaped substring (e.g. "**Compensation:**"), possibly
 // glued onto the end of the previous sentence with no line break.
-const AI_JD_GLUED_HEADING_RE =
-  /(\*\*)?\b([A-Z][A-Za-z]*(?:\s+[A-Za-z()/-]+){0,3}):(\*\*)?(-)?/g;
+const AI_JD_GLUED_HEADING_RE = /(\*\*)?\b([A-Z][A-Za-z]*(?:\s+[A-Za-z()/-]+){0,3}):(\*\*)?(-)?/g;
 
 /** A bare (no markdown syntax) line that reads like a section label rather
  * than prose — short, doesn't trail off mid-sentence, and either matches a
@@ -335,12 +334,22 @@ export const formatAiJobDescription = (text: string): string => {
     }
 
     // A plain key: value line outside any list (e.g. "Location: Bengaluru").
-    // Skip lines that already have "**" — already bold, don't re-wrap them.
+    // Skip lines that already have "**", and require a short label before
+    // the colon so a stray colon in a sentence doesn't bold the whole line.
     if (!inListSection && line.includes(':') && !line.includes('**')) {
       const [key, ...valueParts] = line.split(':');
       const value = valueParts.join(':').trim();
-      if (value) {
-        processedLines.push(`**${key.trim()}:** ${value}`);
+      const trimmedKey = key.trim();
+      const keyWords = trimmedKey.split(/\s+/).filter(Boolean);
+      const capitalizedKeyWords = keyWords.filter((w) => /^[A-Z(]/.test(w));
+      const looksLikeLabel =
+        trimmedKey.length > 0 &&
+        trimmedKey.length <= 40 &&
+        keyWords.length <= 5 &&
+        !/[.,;]$/.test(trimmedKey) &&
+        capitalizedKeyWords.length / keyWords.length >= 0.7;
+      if (value && looksLikeLabel) {
+        processedLines.push(`**${trimmedKey}:** ${value}`);
         continue;
       }
     }
@@ -374,7 +383,9 @@ export const formatAiJobDescription = (text: string): string => {
   // An odd "**" count means an unmatched pair — drop them, don't show asterisks.
   result = result
     .split('\n')
-    .map((line) => ((line.match(/\*\*/g) || []).length % 2 !== 0 ? line.replace(/\*\*/g, '') : line))
+    .map((line) =>
+      (line.match(/\*\*/g) || []).length % 2 !== 0 ? line.replace(/\*\*/g, '') : line
+    )
     .join('\n');
 
   return result;

@@ -36,7 +36,7 @@ const SkillCategoriesTab: React.FC = () => {
       labelOf={(item) => item.name}
       columns={[
         { title: 'Name', dataIndex: 'name', key: 'name' },
-        { title: 'Description', key: 'description', render: (_, item) => item.description || '—' },
+        { title: 'Description', key: 'description', render: (_, item) => item.description || '-' },
       ]}
       fields={fields}
       emptyForm={emptyForm}

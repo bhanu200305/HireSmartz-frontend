@@ -74,7 +74,6 @@ const PipelineBoard = ({
     roundName: string;
   } | null>(null);
   const [sendRoundInvite, { isLoading: isSendingInvite }] = useSendRoundInviteMutation();
-
   if (rounds.length === 0) {
     return <p className="text-sm text-gray-500">No round plan yet.</p>;
   }
@@ -161,18 +160,29 @@ const PipelineBoard = ({
           return (
             <div
               key={round.id ?? `resume-${index}`}
-              role={onRoundClick ? 'button' : undefined}
-              tabIndex={onRoundClick ? 0 : undefined}
-              onClick={() => onRoundClick?.(round)}
-              onKeyDown={(event) => {
-                if (onRoundClick && (event.key === 'Enter' || event.key === ' ')) {
-                  event.preventDefault();
+              role={onRoundClick || isInterviewRound ? 'button' : undefined}
+              tabIndex={onRoundClick || isInterviewRound ? 0 : undefined}
+              onClick={() => {
+                if (onRoundClick) {
                   onRoundClick(round);
+                } else if (isInterviewRound) {
+                  setArtifactsModalFor({ roundId: round.id, roundName: roundLabel(round) });
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  if (onRoundClick) {
+                    event.preventDefault();
+                    onRoundClick(round);
+                  } else if (isInterviewRound) {
+                    event.preventDefault();
+                    setArtifactsModalFor({ roundId: round.id, roundName: roundLabel(round) });
+                  }
                 }
               }}
               className={`w-56 shrink-0 rounded-xl border border-neutral-200 border-t-4 bg-white shadow-xs ${meta.border} ${
                 isActive ? 'ring-2 ring-warning/40' : ''
-              } ${onRoundClick ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30' : ''}`}
+              } ${onRoundClick || isInterviewRound ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30' : ''}`}
             >
               <div className="flex items-center gap-2 px-3.5 pt-3">
                 <span

@@ -21,10 +21,9 @@ type ChartCardProps = {
 
 /**
  * Shared chart-tile shell used across every KPI dashboard (Platform Metrics,
- * Company Metrics, the home-page overview slides) — same card idiom as
- * `InterviewDashboard`'s own chart panel (rounded-xl border, hairline
- * shadow, white surface) so every one of these sections reads as one system
- * rather than a per-page bolted-on look. Same hover "pop" (lift + gradient
+ * Company Metrics, the home-page overview slides) — rounded-xl border,
+ * hairline shadow, white surface, so every one of these sections reads as
+ * one system rather than a per-page bolted-on look. Same hover "pop" (lift + gradient
  * wash) as `StatCard` — one brand gradient here rather than a per-variant
  * one, since a chart tile has no color of its own the way a stat card's
  * icon badge does.

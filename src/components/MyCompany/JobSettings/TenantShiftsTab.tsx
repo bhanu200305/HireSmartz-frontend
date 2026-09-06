@@ -11,12 +11,14 @@ import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogForm
 
 type FormValues = {
   name: string;
+  description: string | null;
   start_time: string;
   end_time: string;
 };
-const emptyForm: FormValues = { name: '', start_time: '', end_time: '' };
+const emptyForm: FormValues = { name: '', description: null, start_time: '', end_time: '' };
 const fields: CatalogField<FormValues>[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
+  { name: 'description', label: 'Description', type: 'textarea' },
   { name: 'start_time', label: 'Start time', type: 'time', required: true },
   { name: 'end_time', label: 'End time', type: 'time', required: true },
 ];
@@ -58,6 +60,7 @@ const TenantShiftsTab: React.FC = () => {
       labelOf={(item) => item.name}
       columns={[
         { title: 'Name', dataIndex: 'name', key: 'name' },
+        { title: 'Description', dataIndex: 'description', key: 'description' },
         {
           title: 'Time',
           key: 'time',
@@ -73,12 +76,14 @@ const TenantShiftsTab: React.FC = () => {
       emptyForm={emptyForm}
       toFormValues={(item) => ({
         name: item.name,
+        description: item.description ?? null,
         start_time: item.start_time,
         end_time: item.end_time,
       })}
       onCreate={(values) =>
         create({
           name: values.name.trim(),
+          description: values.description,
           start_time: values.start_time.trim(),
           end_time: values.end_time.trim(),
           duration_minutes: computeDurationMinutes(values.start_time, values.end_time),
@@ -88,6 +93,7 @@ const TenantShiftsTab: React.FC = () => {
         update({
           shiftId: id,
           name: values.name.trim(),
+          description: values.description,
           start_time: values.start_time.trim(),
           end_time: values.end_time.trim(),
           duration_minutes: computeDurationMinutes(values.start_time, values.end_time),

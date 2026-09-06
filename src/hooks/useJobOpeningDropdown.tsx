@@ -115,78 +115,81 @@ const useJobOpeningDropdown = (
   });
 
   const jobOpeningDropdown: JobOpeningDropdownOption[] = useMemo(() => {
-    switch (endpoint) {
-      case 'JOB_TYPE':
-        return (jobTypes.data ?? []).map((item) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description ?? undefined,
-        }));
-      case 'CLOSURE_REASON':
-        return (closureReasons.data ?? []).map((item) => ({
-          id: item.reason_id,
-          name: item.reason,
-          description: item.description ?? undefined,
-        }));
-      case 'JOB_MODE':
-        return (jobModes.data ?? []).map((item) => ({
-          id: item.job_mode_id,
-          name: item.name,
-          description: item.description ?? undefined,
-        }));
-      case 'ROUNDS':
-        return (roundTypes.data ?? []).map((item) => ({
-          id: item.round_id,
-          name: item.name,
-          description: item.description ?? undefined,
-          requires_duration: item.requires_duration,
-          available_variants: item.available_variants,
-          max_occurrences: item.max_occurrences,
-          special_kind: item.special_kind,
-        }));
-      case 'HIRING_MANAGER':
-      case 'RECRUITER':
-        return (users.data?.items ?? []).map((user) => ({
-          id: user.user_id,
-          name: user.full_name || user.email,
-        }));
-      case 'EXEMPTION_STATUS':
-        return [
-          { id: 'true', name: 'Exempt' },
-          { id: 'false', name: 'Non-Exempt' },
-        ];
-      case 'EDUCATION_PREFERENCE':
-        return (educationPreferences.data ?? []).map((item) => ({
-          id: item.id,
-          name: item.name,
-        }));
-      case 'LANGUAGE':
-        return (languages.data ?? []).map((item) => ({
-          id: item.language_id,
-          name: item.name,
-        }));
-      case 'SHIFT':
-        return (shifts.data?.shifts ?? []).map((item) => ({
-          id: item.id,
-          name: `${item.name} (${item.start_time.slice(0, 5)} - ${item.end_time.slice(0, 5)})`,
-        }));
-      case 'MANDATORY_SKILLS':
-      case 'OPTIONAL_SKILLS': {
-        const searched = skillsResult.data;
-        const catalog = !skillsResult.isUninitialized
-          ? (searched ?? [])
-          : (preloadedSkills.data ?? []);
-        if (catalog.length === 0) {
-          return callerKind === 'platform' ? DUMMY_SKILL_OPTIONS : [];
+    const unsorted: JobOpeningDropdownOption[] = (() => {
+      switch (endpoint) {
+        case 'JOB_TYPE':
+          return (jobTypes.data ?? []).map((item) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description ?? undefined,
+          }));
+        case 'CLOSURE_REASON':
+          return (closureReasons.data ?? []).map((item) => ({
+            id: item.reason_id,
+            name: item.reason,
+            description: item.description ?? undefined,
+          }));
+        case 'JOB_MODE':
+          return (jobModes.data ?? []).map((item) => ({
+            id: item.job_mode_id,
+            name: item.name,
+            description: item.description ?? undefined,
+          }));
+        case 'ROUNDS':
+          return (roundTypes.data ?? []).map((item) => ({
+            id: item.round_id,
+            name: item.name,
+            description: item.description ?? undefined,
+            requires_duration: item.requires_duration,
+            available_variants: item.available_variants,
+            max_occurrences: item.max_occurrences,
+            special_kind: item.special_kind,
+          }));
+        case 'HIRING_MANAGER':
+        case 'RECRUITER':
+          return (users.data?.items ?? []).map((user) => ({
+            id: user.user_id,
+            name: user.full_name || user.email,
+          }));
+        case 'EXEMPTION_STATUS':
+          return [
+            { id: 'true', name: 'Exempt' },
+            { id: 'false', name: 'Non-Exempt' },
+          ];
+        case 'EDUCATION_PREFERENCE':
+          return (educationPreferences.data ?? []).map((item) => ({
+            id: item.id,
+            name: item.name,
+          }));
+        case 'LANGUAGE':
+          return (languages.data ?? []).map((item) => ({
+            id: item.language_id,
+            name: item.name,
+          }));
+        case 'SHIFT':
+          return (shifts.data?.shifts ?? []).map((item) => ({
+            id: item.id,
+            name: `${item.name} (${item.start_time.slice(0, 5)} - ${item.end_time.slice(0, 5)})`,
+          }));
+        case 'MANDATORY_SKILLS':
+        case 'OPTIONAL_SKILLS': {
+          const searched = skillsResult.data;
+          const catalog = !skillsResult.isUninitialized
+            ? (searched ?? [])
+            : (preloadedSkills.data ?? []);
+          if (catalog.length === 0) {
+            return callerKind === 'platform' ? DUMMY_SKILL_OPTIONS : [];
+          }
+          return catalog.map((skill) => ({
+            id: skill.skill_id,
+            name: skill.skill_label,
+          }));
         }
-        return catalog.map((skill) => ({
-          id: skill.skill_id,
-          name: skill.skill_label,
-        }));
+        default:
+          return [];
       }
-      default:
-        return [];
-    }
+    })();
+    return [...unsorted].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [
     endpoint,
     jobTypes.data,

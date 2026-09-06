@@ -15,7 +15,6 @@ import {
   resetEditJobState,
   setEditJobOpeningId,
   setIsChanged,
-  setIsDraft,
   updateEditAiJobDescription,
   updateEditJobDescription,
   updateEditJobDetails,
@@ -345,7 +344,6 @@ const EditJobDescription = () => {
           jobOpeningId: savedId,
         })
       );
-      dispatch(setIsDraft(false));
       dispatch(setIsChanged(false));
       navigate(`/jobs/edit/${id}/AiJobDescription/${savedId}`);
     } catch (error) {

@@ -194,21 +194,21 @@ export const jobDetailsSchema = z
         }
       ),
     closeDate: z.string().optional(),
-    hiringManagers: z.array(catalogId).optional(),
+    hiringManagers: z.array(catalogId).min(1, 'Hiring manager is required.'),
     recruiters: z.array(catalogId).optional(),
     state: z.string().nonempty('State is required.'),
     country: z.string().nonempty('Country is required.'),
-    educationPreference: z.array(catalogId).optional(),
+    educationPreference: z.array(catalogId).min(1, 'Education preference is required.'),
     languages: z.array(catalogId).optional(),
     mandatorySkills: z
       .array(catalogId)
-      .max(15, 'You can select up to 15 required skills.')
-      .optional(),
+      .min(1, 'At least one required skill is required.')
+      .max(15, 'You can select up to 15 required skills.'),
     optionalSkills: z
       .array(catalogId)
       .max(15, 'You can select up to 15 optional skills.')
       .optional(),
-    responsibilities: z.string().optional(),
+    responsibilities: z.string().nonempty('Responsibilities is required.'),
     otherRequirements: z
       .string()
       .transform((val) => {

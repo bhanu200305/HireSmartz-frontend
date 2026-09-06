@@ -100,6 +100,7 @@ const catalogsApi = jobApi.injectEndpoints({
       OrganizationShift,
       {
         name: string;
+        description?: string | null;
         start_time: string;
         end_time: string;
         duration_minutes?: number | null;
@@ -114,6 +115,7 @@ const catalogsApi = jobApi.injectEndpoints({
       {
         shiftId: string;
         name: string;
+        description?: string | null;
         start_time: string;
         end_time: string;
         duration_minutes?: number | null;

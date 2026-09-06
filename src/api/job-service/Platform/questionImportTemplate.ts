@@ -1,10 +1,11 @@
 import { jobApi } from '../jobApi';
 
 // POST /platform/question-import-template — Super Admin replaces the fixed
-// .xlsx bulk question-import template every tenant downloads from
-// GET /master/question-import-template (see JobOpening/jobQuestions.ts's
-// useLazyGetQuestionImportTemplateQuery) and uploads back through
-// bulkImportJobQuestions. One shared file, not per-tenant — no response body.
+// .xlsx/.csv bulk question-import template every tenant downloads from
+// GET /master/question-import-template. One shared file, no response body.
+//
+// GET /platform/question-import-template — same download, just
+// platform-gated so a Super Admin token can call it.
 const extendedApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
     uploadQuestionImportTemplate: build.mutation<void, File>({
@@ -14,7 +15,16 @@ const extendedApi = jobApi.injectEndpoints({
         return { url: '/platform/question-import-template', method: 'POST', body: formData };
       },
     }),
+    getPlatformQuestionImportTemplate: build.query<
+      { download_url: string; expires_in: number },
+      void
+    >({
+      query: () => '/platform/question-import-template',
+    }),
   }),
 });
 
-export const { useUploadQuestionImportTemplateMutation } = extendedApi;
+export const {
+  useUploadQuestionImportTemplateMutation,
+  useLazyGetPlatformQuestionImportTemplateQuery,
+} = extendedApi;

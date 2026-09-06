@@ -1,11 +1,17 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../../redux/provider/store';
 import { showToast } from '../shared/ui/toast';
 import {
+  jobScoringConfigApi,
   useGetJobScoringConfigQuery,
   useUpdateJobScoringConfigMutation,
   useResetJobScoringConfigMutation,
 } from '../../api/job-service/JobOpening/jobScoringConfig';
-import type { JobScoringWeight } from '../../api/job-service/JobOpening/jobScoringConfig';
+import type {
+  JobScoringConfigData,
+  JobScoringWeight,
+} from '../../api/job-service/JobOpening/jobScoringConfig';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -39,6 +45,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
 }) => {
   const jobId = asJobId(rawJobId);
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
 
   const { data: jobScoringData, isLoading } = useGetJobScoringConfigQuery(jobId, {
     skip: !jobId,
@@ -46,6 +53,9 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
 
   const [updateScoring, { isLoading: isSaving }] = useUpdateJobScoringConfigMutation();
   const [resetScoring, { isLoading: isResetting }] = useResetJobScoringConfigMutation();
+  // Tracks which card's button should show as loading.
+  const [savingSection, setSavingSection] = useState<'resume' | 'interview' | null>(null);
+  const [resettingSection, setResettingSection] = useState<'resume' | 'interview' | null>(null);
 
   const isLocked = Boolean(jobScoringData?.data?.isLocked);
   const isEditable = !isViewMode && !isLocked;
@@ -59,10 +69,23 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
     [jobScoringData]
   );
 
+  // Patches the cache directly from the mutation's own response.
+  const patchScoringCache = useCallback(
+    (data: JobScoringConfigData) => {
+      dispatch(
+        jobScoringConfigApi.util.updateQueryData('getJobScoringConfig', jobId, (draft) => {
+          draft.data = data;
+        })
+      );
+    },
+    [dispatch, jobId]
+  );
+
   const handleSaveResume = useCallback(
     async (weights: ScoringWeight[]) => {
+      setSavingSection('resume');
       try {
-        await updateScoring({
+        const result = await updateScoring({
           jobId,
           resumeWeights: weights.map((w) => ({
             id: w.id,
@@ -71,21 +94,25 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
           })),
           interviewWeights,
         }).unwrap();
+        patchScoringCache(result.data);
         showToast({ message: 'Resume scoring configuration saved successfully.', type: 'success' });
       } catch (err) {
         showToast({
           message: getJobErrorMessage(err, 'Failed to save resume scoring configuration.'),
           type: 'error',
         });
+      } finally {
+        setSavingSection(null);
       }
     },
-    [jobId, interviewWeights, updateScoring]
+    [jobId, interviewWeights, updateScoring, patchScoringCache]
   );
 
   const handleSaveInterview = useCallback(
     async (weights: ScoringWeight[]) => {
+      setSavingSection('interview');
       try {
-        await updateScoring({
+        const result = await updateScoring({
           jobId,
           resumeWeights,
           interviewWeights: weights.map((w) => ({
@@ -94,6 +121,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
             weightPercentage: w.weightPercentage,
           })),
         }).unwrap();
+        patchScoringCache(result.data);
         showToast({
           message: 'Interview scoring configuration saved successfully.',
           type: 'success',
@@ -103,25 +131,35 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
           message: getJobErrorMessage(err, 'Failed to save interview scoring configuration.'),
           type: 'error',
         });
+      } finally {
+        setSavingSection(null);
       }
     },
-    [jobId, resumeWeights, updateScoring]
+    [jobId, resumeWeights, updateScoring, patchScoringCache]
   );
 
-  const handleReset = useCallback(async () => {
-    try {
-      await resetScoring({ jobId }).unwrap();
-      showToast({
-        message: 'Scoring configuration reset successfully.',
-        type: 'success',
-      });
-    } catch (err) {
-      showToast({
-        message: getJobErrorMessage(err, 'Failed to reset scoring configuration.'),
-        type: 'error',
-      });
-    }
-  }, [jobId, resetScoring]);
+  // Reset resets both sections; only the clicked card shows as loading.
+  const handleReset = useCallback(
+    async (section: 'resume' | 'interview') => {
+      setResettingSection(section);
+      try {
+        const result = await resetScoring({ jobId }).unwrap();
+        patchScoringCache(result.data);
+        showToast({
+          message: 'Scoring configuration reset successfully.',
+          type: 'success',
+        });
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Failed to reset scoring configuration.'),
+          type: 'error',
+        });
+      } finally {
+        setResettingSection(null);
+      }
+    },
+    [jobId, resetScoring, patchScoringCache]
+  );
 
   if (!jobId) {
     return (
@@ -174,9 +212,9 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
           weights={resumeWeights}
           categoryMeta={RESUME_CATEGORY_META}
           onSave={handleSaveResume}
-          onReset={handleReset}
-          isSaving={isSaving}
-          isResetting={isResetting}
+          onReset={() => handleReset('resume')}
+          isSaving={isSaving && savingSection === 'resume'}
+          isResetting={isResetting && resettingSection === 'resume'}
           editable={isEditable}
         />
 
@@ -187,9 +225,9 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
           weights={interviewWeights}
           categoryMeta={INTERVIEW_CATEGORY_META}
           onSave={handleSaveInterview}
-          onReset={handleReset}
-          isSaving={isSaving}
-          isResetting={isResetting}
+          onReset={() => handleReset('interview')}
+          isSaving={isSaving && savingSection === 'interview'}
+          isResetting={isResetting && resettingSection === 'interview'}
           editable={isEditable}
         />
       </div>

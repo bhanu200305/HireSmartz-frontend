@@ -1015,7 +1015,7 @@ const JobsOpening = () => {
                 onApply={handleDateTimeChange}
                 onReset={handleReset}
               />
-              <div className="cfp-dropdown-trigger w-40">
+              <div className="cfp-dropdown-trigger w-40 shrink-0">
                 <FilterSelectIcon />
                 <Select
                   placeholder="Status"

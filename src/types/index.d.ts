@@ -411,8 +411,8 @@ export type JobOpeningByIdResponse = {
     openings: number;
     minSalary: number;
     maxSalary: number;
-    minExperience: number;
-    maxExperience: number;
+    minExperience: number | null;
+    maxExperience: number | null;
     /** @deprecated backend no longer accepts this (job-service migration 0016) — see `languages` */
     isMultilingual?: boolean;
     languages?: number[];
