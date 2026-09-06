@@ -99,6 +99,38 @@ const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
 const { Option } = Select;
 
+// Human-readable labels for every Job Details field that can fail validation.
+// Used by the summary shown next to the footer buttons so a failed
+// Save/Next tells the recruiter exactly which fields need attention instead
+// of leaving them to scroll the (long) form hunting for a red message.
+const JOB_DETAILS_FIELD_LABELS: Partial<Record<keyof JobDetailsState, string>> = {
+  jobProfileCode: 'Job ID',
+  department: 'Department',
+  jobTitle: 'Job Title',
+  jobType: 'Job Type',
+  jobMode: 'Job Mode',
+  shift: 'Shift',
+  officeLocation: 'Location Name',
+  state: 'State',
+  country: 'Country',
+  hiringManagers: 'Hiring Manager',
+  recruiters: 'Recruiter',
+  openDate: 'Open Date',
+  closeDate: 'Close Date',
+  openings: 'Opening(s)',
+  exemptionStatus: 'Exemption Status',
+  minSalary: 'Minimum Salary',
+  maxSalary: 'Maximum Salary',
+  referralBonus: 'Referral Bonus',
+  minExperience: 'Minimum Experience',
+  maxExperience: 'Maximum Experience',
+  educationPreference: 'Education Preference',
+  mandatorySkills: 'Required Skills',
+  optionalSkills: 'Optional Skills',
+  responsibilities: 'Responsibilities',
+  otherRequirements: 'Other Requirements',
+};
+
 const JobDetails = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -316,6 +348,52 @@ const JobDetails = () => {
       useCultureIntro: jobDetails?.useCultureIntro ?? false,
     },
   });
+
+  // Drives the "what's still missing" summary next to the footer buttons.
+  // Turned on only after a failed Save/Next/Draft attempt; the summary
+  // itself hides again once `errors` clears.
+  const [showValidationSummary, setShowValidationSummary] = useState(false);
+  const formContainerRef = useRef<HTMLDivElement>(null);
+  const validationSummaryRef = useRef<HTMLDivElement>(null);
+
+  const validationIssues = useMemo(
+    () =>
+      Object.entries(errors)
+        .filter(([, err]) => Boolean((err as { message?: string } | undefined)?.message))
+        .map(([name, err]) => ({
+          name,
+          label:
+            JOB_DETAILS_FIELD_LABELS[name as keyof JobDetailsState] ??
+            capitalizeWordsAdvanced(name),
+          message: String((err as { message?: string }).message),
+        })),
+    [errors]
+  );
+
+  // Jump the recruiter straight to the offending field. Matches on the
+  // inline error text already rendered under each field, so no per-field
+  // markup changes are needed; falls back to the first error on the page.
+  const scrollToFieldError = useCallback((message: string) => {
+    const container = formContainerRef.current;
+    if (!container) return;
+    const errorNodes = Array.from(
+      container.querySelectorAll<HTMLElement>('.text-red-500')
+    );
+    const target =
+      errorNodes.find((node) => node.textContent?.trim() === message.trim()) ??
+      errorNodes[0];
+    if (!target) return;
+    const fieldEl = target.closest('.ant-form-item') ?? target;
+    fieldEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    fieldEl.classList.add('cfp-field-flash');
+    window.setTimeout(() => fieldEl.classList.remove('cfp-field-flash'), 1600);
+  }, []);
+
+  useEffect(() => {
+    if (showValidationSummary && validationIssues.length > 0) {
+      validationSummaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [showValidationSummary, validationIssues.length]);
 
   const persistJobId = useCallback(
     (jobId: string) => {
@@ -1380,6 +1458,7 @@ const JobDetails = () => {
       Object.entries(fieldErrors).forEach(([name, error]) => {
         setError(name as keyof JobDetailsState, error);
       });
+      setShowValidationSummary(true);
 
       return;
     }
@@ -1422,6 +1501,7 @@ const JobDetails = () => {
   };
 
   const onSubmit = async (data: JobDetailsState) => {
+    setShowValidationSummary(false);
     setAllowNavigation(true);
     dispatch(updateJobDetails(data));
     dispatch(
@@ -1578,12 +1658,10 @@ const JobDetails = () => {
       Object.entries(errors).forEach(([name, error]) => {
         setError(name as keyof JobDetailsState, { type: 'manual', message: error.message });
       });
-      showToast({
-        message: 'Please fix the highlighted fields before continuing.',
-        type: 'error',
-      });
+      setShowValidationSummary(true);
       return;
     }
+    setShowValidationSummary(false);
 
     const savedId = resolveSavedJobId();
     if (savedId) {
@@ -1667,6 +1745,7 @@ const JobDetails = () => {
       {(isUpdating || isSubmittingWithModal) && <Loader />}
       <MainLayout>
         <JobDetailsLayout>
+          <div ref={formContainerRef}>
           <Form layout="vertical" autoComplete="off" onFinish={handleSubmit(onSubmit)}>
             <div className="mt-2">
               <div className="w-full">
@@ -2725,6 +2804,34 @@ const JobDetails = () => {
               </div>
             )}
 
+            {showValidationSummary && validationIssues.length > 0 && (
+              <div
+                ref={validationSummaryRef}
+                role="alert"
+                className="mx-auto mt-6 w-full max-w-2xl rounded-xl border border-red-200 bg-red-50 px-4 py-3"
+              >
+                <p className="text-sm font-semibold text-red-700">
+                  {validationIssues.length === 1
+                    ? '1 field still needs your attention:'
+                    : `${validationIssues.length} fields still need your attention:`}
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                  {validationIssues.map((issue) => (
+                    <li key={issue.name}>
+                      <button
+                        type="button"
+                        onClick={() => scrollToFieldError(issue.message)}
+                        className="text-sm text-red-600 underline underline-offset-2 hover:text-red-800 cursor-pointer"
+                        title={issue.message}
+                      >
+                        {issue.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="flex items-center justify-center mt-6 gap-6">
               {!hasSavedDetails && (
                 <Button
@@ -2740,10 +2847,7 @@ const JobDetails = () => {
                   type="button"
                   className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
                   onClick={handleSubmit(onSubmit, () => {
-                    showToast({
-                      message: 'Please fill all required fields before saving.',
-                      type: 'error',
-                    });
+                    setShowValidationSummary(true);
                   })}
                 >
                   SAVE & GENERATE DESCRIPTION
@@ -2760,6 +2864,7 @@ const JobDetails = () => {
               )}
             </div>
           </Form>
+          </div>
           {isBlocked && (
             <ConfirmationModal
               onClose={cancelNavigation}

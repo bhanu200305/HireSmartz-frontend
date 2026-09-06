@@ -1,33 +1,15 @@
 import { z } from 'zod';
-import { UseFormSetValue } from 'react-hook-form';
-import { formatPhoneNumber } from '../methods';
 import { NameValidationOptions } from '../../../types';
 import { FORM_EMAIL_REGEX } from '../../../constants/app.constants';
 
-export const handlePhoneNumberChange = <T extends Record<string, any>>(
-  e: React.ChangeEvent<HTMLInputElement>,
-  setValue: UseFormSetValue<T>,
-  fieldName: keyof T,
-  trigger?: (name?: keyof T) => Promise<boolean>
-) => {
-  const input = e.target.value;
-  const previousInput = (e.target as any).previousValue || '';
+// Phone-number entry is handled per-country by
+// `shared/utils/validation/phoneValidation.ts` (`restrictPhoneDigits` for
+// keystrokes, `phoneWithCountry` / `isPhoneValidForCountry` for validation),
+// which enforces the digit count libphonenumber-js knows for the selected
+// country. The old US-only helpers that used to live here — a fixed
+// `(xxx) xxx-xxxx` formatter and a hard `.slice(0, 10)` — assumed every
+// number was 10 digits and have been removed; use phoneValidation.ts.
 
-  let formatted = formatPhoneNumber(input);
-
-  if (input.length < previousInput.length && previousInput.length > formatted.length) {
-    formatted = input;
-  }
-
-  setValue(fieldName as any, formatted as any, { shouldDirty: true, shouldValidate: true });
-  if (trigger) trigger(fieldName);
-  (e.target as any).previousValue = formatted;
-};
-
-export const handleRestrictPhoneNumber = (value: string): string => {
-  const cleaned = value.replace(/\D/g, '').slice(0, 10);
-  return cleaned;
-};
 export const sanitizeInput = (input: string): string => {
   return input.trim();
 };
@@ -240,35 +222,11 @@ export const passwordValidation = () => {
   });
 };
 
-export const phoneNumberValidation = () => {
-  return z
-    .string()
-    .nonempty('Phone number is required.')
-    .regex(/^\(\d{3}\) \d{3}-\d{4}$/, {
-      message: 'Phone number must be in (xxx) xxx-xxxx format.',
-    })
-    .refine(
-      (val) => {
-        const digits = val.replace(/\D/g, '');
-        return digits !== '0000000000' && digits !== '0123456789' && digits !== '1234567890';
-      },
-      { message: 'Please enter a valid phone number.' }
-    );
-};
-
-export const phoneNumberValidationSecondary = () => {
-  return z
-    .string()
-    .regex(/^\(\d{3}\) \d{3}-\d{4}$/, {
-      message: 'Phone number must be in (xxx) xxx-xxxx format.',
-    })
-    .refine(
-      (val) => {
-        const digits = val.replace(/\D/g, '');
-        return digits !== '0000000000' && digits !== '0123456789' && digits !== '1234567890';
-      },
-      { message: 'Please enter a valid phone number.' }
-    );
-};
+// NOTE: phone-number zod schemas live in
+// `shared/utils/validation/phoneValidation.ts` (`phoneWithCountry`), which
+// validates the digit count against the selected country. The old
+// `phoneNumberValidation` / `phoneNumberValidationSecondary` helpers that
+// used to sit here hard-coded the US `(xxx) xxx-xxxx` 10-digit shape and
+// have been removed.
 
 export const titleHasHtml = (value: string) => /<[^>]*>/.test(value);

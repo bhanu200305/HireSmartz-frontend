@@ -107,3 +107,18 @@
 .custom-time-picker .ant-picker-suffix {
   color: var(--primary) !important;
 }
+
+/* Brief highlight when the validation summary jumps to an offending field. */
+.cfp-field-flash {
+  animation: cfpFieldFlash 1.6s ease-out;
+  border-radius: 0.75rem;
+}
+@keyframes cfpFieldFlash {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+  15% {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.35);
+  }
+}
