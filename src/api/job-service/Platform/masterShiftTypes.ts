@@ -8,6 +8,17 @@ export type PlatformShiftType = {
   name: string;
   description: string | null;
   duration_minutes: number | null;
+  // "HH:mm:ss" or null — optional, unlike OrganizationShift's.
+  start_time: string | null;
+  end_time: string | null;
+};
+
+type ShiftTypeWriteBody = {
+  name: string;
+  description?: string | null;
+  duration_minutes?: number | null;
+  start_time?: string | null;
+  end_time?: string | null;
 };
 
 const extendedApi = jobApi.injectEndpoints({
@@ -17,21 +28,13 @@ const extendedApi = jobApi.injectEndpoints({
       transformResponse: (response: { shift_types: PlatformShiftType[] }) => response.shift_types,
       providesTags: ['PlatformShiftTypes'],
     }),
-    createPlatformShiftType: build.mutation<
-      PlatformShiftType,
-      { name: string; description?: string | null; duration_minutes?: number | null }
-    >({
+    createPlatformShiftType: build.mutation<PlatformShiftType, ShiftTypeWriteBody>({
       query: (body) => ({ url: '/platform/master-shift-types', method: 'POST', body }),
       invalidatesTags: ['PlatformShiftTypes'],
     }),
     updatePlatformShiftType: build.mutation<
       PlatformShiftType,
-      {
-        shiftTypeId: string;
-        name: string;
-        description?: string | null;
-        duration_minutes?: number | null;
-      }
+      ShiftTypeWriteBody & { shiftTypeId: string }
     >({
       query: ({ shiftTypeId, ...body }) => ({
         url: `/platform/master-shift-types/${shiftTypeId}`,

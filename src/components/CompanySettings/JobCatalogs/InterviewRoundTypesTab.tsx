@@ -87,7 +87,7 @@ const InterviewRoundTypesTab: React.FC = () => {
                 {item.special_kind}
               </Badge>
             ) : (
-              '—'
+              '-'
             ),
         },
         {

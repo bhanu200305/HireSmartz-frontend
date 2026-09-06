@@ -1,12 +1,11 @@
 import MainLayout from '../../layouts/MainLayout';
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 import recruiterImage from '../../assets/svgs/recruiter.svg';
 import hiringManagerImage from '../../assets/svgs/hiringManager.svg';
 import jobPostingImage from '../../assets/svgs/jobPosting.svg';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch, shallowEqual } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
-import InterviewDashboard from '../Dashboard/InterviewDashboard';
 import CustomerTable from '../Dashboard/CustomerTable';
 import DashboardCarousel, { DashboardSlide } from '../Dashboard/DashboardCarousel';
 import { hiringManagersHeaders } from '../../constants/hiringManager';
@@ -14,16 +13,13 @@ import { recruitersHeaders } from '../../constants/recruiters';
 import { jobOpeningsHeaders } from '../../constants/jobOpenings';
 import useFetchRoles from '../../hooks/useRoles';
 import { useOwnerDashboardMutation } from '../../api/analytics-service/Dashboard/OwnerDashboard';
-import {
-  useInterviewSummaryDashboardMutation,
-  useJobOpeningFilterQuery,
-} from '../../api/job-service/Dashboard/JobOpening';
+import { useGetJobOpeningsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import { setJobOpeningFilters } from '../../redux/slices/jobOpeningFilterSlice';
 
 import { setOrgUserFilters } from '../../redux/slices/OrgUserFilterSlice';
 import { StatusFilters } from '../shared/ui/tableHeadbar';
 import ActivityFeed from '../Dashboard/ActivityFeed';
-import { TeamOutlined, UserOutlined, AuditOutlined, SolutionOutlined } from '@ant-design/icons';
+import { TeamOutlined, UserOutlined, SolutionOutlined } from '@ant-design/icons';
 import { LuSquareActivity } from 'react-icons/lu';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
@@ -111,16 +107,14 @@ const OwnerDashboard = () => {
     );
     navigate('/organisation-users');
   };
-  const { data: jobOpeningsData } = useJobOpeningFilterQuery(
+  const { data: jobOpeningsData } = useGetJobOpeningsQuery(
     {
       page: jobOpeningFilters.page || 0,
-      pageSize: 5,
-      value: {
-        status: jobOpeningFilters.status,
-        isDraft: jobOpeningFilters.isDraft,
-        isClosed: jobOpeningFilters.isClosed,
-        isAll: jobOpeningFilters.isAll,
-      },
+      size: 5,
+      status: jobOpeningFilters.status,
+      isDraft: jobOpeningFilters.isDraft,
+      isClosed: jobOpeningFilters.isClosed,
+      isAll: jobOpeningFilters.isAll,
     },
     {
       refetchOnMountOrArgChange: true,
@@ -148,32 +142,6 @@ const OwnerDashboard = () => {
     );
     navigate('/jobs');
   };
-
-  // Interview Dashboard
-  const [fetchInterviewData, { data: interviewData, isLoading }] =
-    useInterviewSummaryDashboardMutation();
-  const date = new Date();
-  const [interviewFilters, setInterviewFilters] = useState({
-    month: date.getMonth() + 1,
-    year: date.getFullYear(),
-    roundType: null,
-  });
-
-  const handleFilterChange = (field: 'month' | 'year' | 'roundType', value: number | string) => {
-    const updatedFilters = {
-      ...interviewFilters,
-      [field]: value,
-    };
-    setInterviewFilters(updatedFilters);
-  };
-
-  useEffect(() => {
-    fetchInterviewData({
-      year: interviewFilters.year,
-      month: interviewFilters.month,
-      isOwner: role?.type === 'owner' ? true : false,
-    });
-  }, [interviewFilters.year, interviewFilters.month]);
 
   useEffect(() => {
     if (
@@ -264,25 +232,6 @@ const OwnerDashboard = () => {
                 onViewAll={handleViewAllHiringManagers}
                 onTitleClick={handleViewAllHiringManagers}
                 onIconClick={handleViewAllHiringManagers}
-                fillHeight
-              />
-            ),
-          },
-        ]
-      : []),
-    ...(canViewInterviews
-      ? [
-          {
-            key: 'interviews',
-            label: 'Interviews',
-            icon: <AuditOutlined />,
-            content: (
-              <InterviewDashboard
-                interviewData={interviewData}
-                filters={interviewFilters}
-                isLoading={isLoading}
-                handleFilterChange={handleFilterChange}
-                isOwner={role?.type === 'owner' ? true : false}
                 fillHeight
               />
             ),

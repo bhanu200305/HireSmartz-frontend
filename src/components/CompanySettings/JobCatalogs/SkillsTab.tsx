@@ -27,7 +27,7 @@ const SkillsTab: React.FC = () => {
   const [remove] = useDeletePlatformSkillMutation();
 
   const categoryName = (id: string | null) =>
-    categories.find((c) => c.category_id === id)?.name || '—';
+    categories.find((c) => c.category_id === id)?.name || '-';
 
   const fields: CatalogField<FormValues>[] = [
     { name: 'name', label: 'Name', type: 'text', required: true },
@@ -69,7 +69,7 @@ const SkillsTab: React.FC = () => {
           key: 'category',
           render: (_, item) => categoryName(item.skill_category_id),
         },
-        { title: 'Description', key: 'description', render: (_, item) => item.description || '—' },
+        { title: 'Description', key: 'description', render: (_, item) => item.description || '-' },
       ]}
       fields={fields}
       emptyForm={emptyForm}

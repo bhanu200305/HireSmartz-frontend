@@ -9,13 +9,39 @@ import {
 import PlatformCatalogTab from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
-type FormValues = { name: string; description: string; duration_minutes: number | null };
-const emptyForm: FormValues = { name: '', description: '', duration_minutes: null };
+type FormValues = {
+  name: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+};
+const emptyForm: FormValues = {
+  name: '',
+  description: '',
+  start_time: '',
+  end_time: '',
+};
 const fields: CatalogField<FormValues>[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
   { name: 'description', label: 'Description (optional)', type: 'textarea' },
-  { name: 'duration_minutes', label: 'Duration (minutes, optional)', type: 'number' },
+  // Optional — some entries have no fixed time-of-day.
+  { name: 'start_time', label: 'Start time (optional)', type: 'time' },
+  { name: 'end_time', label: 'End time (optional)', type: 'time' },
 ];
+
+/** Minutes between two "HH:mm" times, wrapping past midnight. Null if
+ * either side is unfilled. */
+const computeDurationMinutes = (startTime: string, endTime: string): number | null => {
+  if (!startTime || !endTime) return null;
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  if ([startHour, startMinute, endHour, endMinute].some(Number.isNaN)) return null;
+
+  const startTotal = startHour * 60 + startMinute;
+  const endTotal = endHour * 60 + endMinute;
+  const diff = endTotal - startTotal;
+  return diff > 0 ? diff : diff + 24 * 60;
+};
 
 /** GET/POST/PUT/DELETE /platform/master-shift-types — what /master/shift-types
  * offers a tenant when they add their own configured shift. */
@@ -39,12 +65,18 @@ const ShiftTypesTab: React.FC = () => {
         {
           title: 'Description',
           key: 'description',
-          render: (_, item) => item.description || '—',
+          render: (_, item) => item.description || '-',
+        },
+        {
+          title: 'Time',
+          key: 'time',
+          render: (_, item) =>
+            item.start_time && item.end_time ? `${item.start_time} - ${item.end_time}` : '-',
         },
         {
           title: 'Duration',
           key: 'duration_minutes',
-          render: (_, item) => (item.duration_minutes ? `${item.duration_minutes} min` : '—'),
+          render: (_, item) => (item.duration_minutes ? `${item.duration_minutes} min` : '-'),
         },
       ]}
       fields={fields}
@@ -52,13 +84,16 @@ const ShiftTypesTab: React.FC = () => {
       toFormValues={(item) => ({
         name: item.name,
         description: item.description || '',
-        duration_minutes: item.duration_minutes,
+        start_time: item.start_time || '',
+        end_time: item.end_time || '',
       })}
       onCreate={(values) =>
         create({
           name: values.name.trim(),
           description: values.description.trim() || undefined,
-          duration_minutes: values.duration_minutes,
+          start_time: values.start_time.trim() || null,
+          end_time: values.end_time.trim() || null,
+          duration_minutes: computeDurationMinutes(values.start_time, values.end_time),
         }).unwrap()
       }
       onUpdate={(id, values) =>
@@ -66,7 +101,9 @@ const ShiftTypesTab: React.FC = () => {
           shiftTypeId: id,
           name: values.name.trim(),
           description: values.description.trim() || undefined,
-          duration_minutes: values.duration_minutes,
+          start_time: values.start_time.trim() || null,
+          end_time: values.end_time.trim() || null,
+          duration_minutes: computeDurationMinutes(values.start_time, values.end_time),
         }).unwrap()
       }
       onDelete={(item) => remove(item.shift_type_id).unwrap()}

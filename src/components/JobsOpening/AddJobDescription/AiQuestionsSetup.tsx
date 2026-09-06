@@ -268,8 +268,11 @@ const AiQuestionsSetup = () => {
         window.open(result.download_url, '_blank');
         showToast({ message: 'Template downloaded successfully', type: 'success' });
       }
-    } catch {
-      showToast({ message: 'Failed to download template', type: 'error' });
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Failed to download template'),
+        type: 'error',
+      });
     }
   };
 

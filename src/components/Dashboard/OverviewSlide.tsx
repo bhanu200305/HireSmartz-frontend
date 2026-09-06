@@ -12,7 +12,7 @@ type OverviewSlideProps = {
    * own `onViewAll`/`TableFooter` below it. */
   viewAllHref: string;
   children: ReactNode;
-  /** When true, the card stretches to fill its parent's height instead of sizing to content — same convention as `InterviewDashboard`/`CustomerTable`'s own `fillHeight` prop. */
+  /** When true, the card stretches to fill its parent's height instead of sizing to content — same convention as `CustomerTable`'s own `fillHeight` prop. */
   fillHeight?: boolean;
 };
 

@@ -10,8 +10,8 @@ import {
 import PlatformCatalogTab from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
-type FormValues = { reason: string; requires_input: boolean };
-const emptyForm: FormValues = { reason: '', requires_input: false };
+type FormValues = { reason: string; requires_input: boolean; description: string };
+const emptyForm: FormValues = { reason: '', requires_input: false, description: '' };
 const fields: CatalogField<FormValues>[] = [
   { name: 'reason', label: 'Reason', type: 'text', required: true },
   {
@@ -19,6 +19,7 @@ const fields: CatalogField<FormValues>[] = [
     label: 'Recruiter must enter detail when closing a job with this reason',
     type: 'boolean',
   },
+  { name: 'description', label: 'Description (optional)', type: 'textarea' },
 ];
 
 /** GET/POST/PUT/DELETE /platform/master-closure-reasons — the fixed
@@ -50,18 +51,32 @@ const ClosureReasonsTab: React.FC = () => {
             </Badge>
           ),
         },
+        {
+          title: 'Description',
+          key: 'description',
+          render: (_, item) => item.description || '-',
+        },
       ]}
       fields={fields}
       emptyForm={emptyForm}
-      toFormValues={(item) => ({ reason: item.reason, requires_input: item.requires_input })}
+      toFormValues={(item) => ({
+        reason: item.reason,
+        requires_input: item.requires_input,
+        description: item.description || '',
+      })}
       onCreate={(values) =>
-        create({ reason: values.reason.trim(), requires_input: values.requires_input }).unwrap()
+        create({
+          reason: values.reason.trim(),
+          requires_input: values.requires_input,
+          description: values.description.trim() || undefined,
+        }).unwrap()
       }
       onUpdate={(id, values) =>
         update({
           reasonId: id,
           reason: values.reason.trim(),
           requires_input: values.requires_input,
+          description: values.description.trim() || undefined,
         }).unwrap()
       }
       onDelete={(item) => remove(item.reason_id).unwrap()}
