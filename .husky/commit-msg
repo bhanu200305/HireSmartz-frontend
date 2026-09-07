@@ -1,5 +1,5 @@
 #!/bin/sh
-bunx commitlint --edit "$1"
+npx --no-install commitlint --edit "$1"
 if [ $? -ne 0 ]; then
   echo "❌ Commit message validation failed. Fix the message and try again."
   exit 1
