@@ -65,6 +65,50 @@ export interface SessionTokenView {
   livekit_url: string;
 }
 
+export interface FollowUpRequestView {
+  id: string;
+  booking_id: string;
+  note_text: string;
+  requested_by: string;
+  requested_at: string;
+}
+
+export interface FollowUpRequestListView {
+  booking_id: string;
+  requests: FollowUpRequestView[];
+}
+
+export type ParticipantType = 'candidate' | 'interviewer';
+
+export interface ParticipantView {
+  participant_type: ParticipantType;
+  participant_ref_id: string;
+  joined_at: string;
+  left_at: string | null;
+  duration_seconds: number | null;
+}
+
+export interface ParticipationView {
+  booking_id: string;
+  participants: ParticipantView[];
+}
+
+export type ArtifactKind = 'recording' | 'transcript' | string;
+export type HandoffStatus = 'pending' | 'in_progress' | 'handed_off' | 'failed' | string;
+
+export interface ArtifactView {
+  kind: ArtifactKind;
+  external_ref: string;
+  handoff_status: HandoffStatus;
+  handed_off_at: string | null;
+  playback_token: string | null;
+}
+
+export interface BookingArtifactsView {
+  booking_id: string;
+  artifacts: ArtifactView[];
+}
+
 export interface ApiErrorDetails {
   code?: string;
   details?: unknown;
@@ -247,12 +291,20 @@ export const interviewApi = createApi({
     cancelBooking: build.mutation<BookingView, { bookingId: string; reason?: string | null }>({
       query: ({ bookingId, reason }) =>
         platform({ url: `/bookings/${bookingId}/cancel`, method: 'POST', body: { reason } }),
-      invalidatesTags: ['Booking', 'Dashboard'],
+      invalidatesTags: (_r, _e, { bookingId }) => [
+        'Booking',
+        'Dashboard',
+        { type: 'Booking', id: bookingId },
+      ],
     }),
     skipBooking: build.mutation<BookingView, { bookingId: string; reason?: string | null }>({
       query: ({ bookingId, reason }) =>
         platform({ url: `/bookings/${bookingId}/skip`, method: 'POST', body: { reason } }),
-      invalidatesTags: ['Booking', 'Dashboard'],
+      invalidatesTags: (_r, _e, { bookingId }) => [
+        'Booking',
+        'Dashboard',
+        { type: 'Booking', id: bookingId },
+      ],
     }),
     substituteInterviewer: build.mutation<
       BookingView,
@@ -264,7 +316,7 @@ export const interviewApi = createApi({
           method: 'POST',
           body: { new_interviewer_id },
         }),
-      invalidatesTags: ['Booking'],
+      invalidatesTags: (_r, _e, { bookingId }) => ['Booking', { type: 'Booking', id: bookingId }],
     }),
     updateBookingStatus: build.mutation<
       BookingView,
@@ -272,7 +324,11 @@ export const interviewApi = createApi({
     >({
       query: ({ bookingId, ...body }) =>
         platform({ url: `/bookings/${bookingId}/status`, method: 'POST', body }),
-      invalidatesTags: ['Booking', 'Dashboard'],
+      invalidatesTags: (_r, _e, { bookingId }) => [
+        'Booking',
+        'Dashboard',
+        { type: 'Booking', id: bookingId },
+      ],
     }),
     bulkUpdateBookingStatus: build.mutation<
       { results: Array<{ booking_id: string; success: boolean; error?: string }> },
@@ -288,17 +344,19 @@ export const interviewApi = createApi({
       query: (body) => platform({ url: '/bookings/bulk', method: 'POST', body }),
       invalidatesTags: ['Booking', 'Dashboard'],
     }),
-    requestFollowUp: build.mutation<unknown, { bookingId: string; note_text: string }>({
+    requestFollowUp: build.mutation<FollowUpRequestView, { bookingId: string; note_text: string }>({
       query: ({ bookingId, note_text }) =>
         platform({ url: `/bookings/${bookingId}/follow-up`, method: 'POST', body: { note_text } }),
+      invalidatesTags: (_r, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }],
     }),
-    getFollowUps: build.query<unknown, string>({
+    getFollowUps: build.query<FollowUpRequestListView, string>({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}/follow-up` }),
+      providesTags: (_r, _e, id) => [{ type: 'Booking', id }],
     }),
-    getParticipation: build.query<unknown, string>({
+    getParticipation: build.query<ParticipationView, string>({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}/participation` }),
     }),
-    getArtifacts: build.query<unknown, string>({
+    getArtifacts: build.query<BookingArtifactsView, string>({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}/artifacts` }),
     }),
     attachRecording: build.mutation<unknown, { bookingId: string; external_ref: string }>({
@@ -348,6 +406,26 @@ export const interviewApi = createApi({
     }),
     callNow: build.mutation<unknown, string>({
       query: (token) => bookingLink({ url: `/scheduling/${token}/call-now`, method: 'POST' }),
+    }),
+    // Candidate's own post-round feedback link (GET /feedback/{token} +
+    // POST). Token-only, no bearer — the candidate is not logged in.
+    getCandidateFeedbackLink: build.query<{ interview_type: InterviewType }, string>({
+      query: (token) => bookingLink({ url: `/feedback/${token}` }),
+    }),
+    submitCandidateFeedback: build.mutation<
+      { booking_id: string; submitted_at: string },
+      { token: string; rating: number; feedback_text: string }
+    >({
+      query: ({ token, ...body }) =>
+        bookingLink({ url: `/feedback/${token}`, method: 'POST', body }),
+    }),
+    // Candidate self-withdrawal link. The bare GET is deliberately inert
+    // (email clients pre-fetch links) — only submitWithdrawal's POST acts.
+    getWithdrawalLink: build.query<{ organization_name: string | null }, string>({
+      query: (token) => bookingLink({ url: `/withdraw/${token}` }),
+    }),
+    submitWithdrawal: build.mutation<{ booking_id: string; submitted_at: string }, string>({
+      query: (token) => bookingLink({ url: `/withdraw/${token}`, method: 'POST' }),
     }),
     getRecording: build.query<{ booking_id: string; external_ref: string }, string>({
       query: (token) => bookingLink({ url: `/recordings/${token}` }),
@@ -421,6 +499,10 @@ export const {
   useLazyGetAiSlotsQuery,
   useBookAiSlotMutation,
   useCallNowMutation,
+  useGetCandidateFeedbackLinkQuery,
+  useSubmitCandidateFeedbackMutation,
+  useGetWithdrawalLinkQuery,
+  useSubmitWithdrawalMutation,
   useGetRecordingQuery,
   useJoinSessionQuery,
   useJoinSessionAsInterviewerQuery,

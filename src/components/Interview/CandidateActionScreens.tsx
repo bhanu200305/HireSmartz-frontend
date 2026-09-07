@@ -1,0 +1,225 @@
+import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+
+import { Loader } from '../shared/ui/loader';
+import {
+  useGetCandidateFeedbackLinkQuery,
+  useSubmitCandidateFeedbackMutation,
+  useGetWithdrawalLinkQuery,
+  useSubmitWithdrawalMutation,
+  getInterviewErrorAction,
+  type InterviewApiError,
+} from '../../api/interview-service/client';
+import { interviewTypeLabel } from '../../pages/InterviewsPage/interviewLabels';
+
+/**
+ * The two remaining candidate-facing token links interview-service emails
+ * during the interview process:
+ *   - CANDIDATE_FEEDBACK_BASE_URL   -> /feedback?token=…   (post-round rating)
+ *   - CANDIDATE_WITHDRAWAL_BASE_URL -> /withdraw?token=…    (self-withdrawal)
+ * Both are token-only (the candidate is not logged in) and public.
+ */
+
+const Shell = ({ children }: { children: React.ReactNode }) => (
+  <div className="public-page flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
+    <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">{children}</div>
+  </div>
+);
+
+const linkErrorText = (error: InterviewApiError | undefined, fallback: string): string => {
+  if (!error) return fallback;
+  return getInterviewErrorAction(error) === 'expired-link'
+    ? 'This link has expired and can no longer be used.'
+    : error.message || fallback;
+};
+
+// ---------------------------------------------------------------------------
+// Candidate feedback  —  /feedback?token=
+// ---------------------------------------------------------------------------
+export const CandidateFeedbackPage = () => {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token') ?? '';
+
+  const { data, isLoading, isError, error } = useGetCandidateFeedbackLinkQuery(token, {
+    skip: !token,
+  });
+  const [submit, { isLoading: isSubmitting }] = useSubmitCandidateFeedbackMutation();
+
+  const [rating, setRating] = useState(0);
+  const [text, setText] = useState('');
+  const [done, setDone] = useState(false);
+
+  const roundLabel = data ? interviewTypeLabel(data.interview_type) : 'interview';
+
+  const onSubmit = async () => {
+    if (!rating || !text.trim()) return;
+    try {
+      await submit({ token, rating, feedback_text: text.trim() }).unwrap();
+      setDone(true);
+    } catch (e) {
+      alert(linkErrorText(e as InterviewApiError, 'Could not submit your feedback.'));
+    }
+  };
+
+  if (!token) {
+    return (
+      <Shell>
+        <p className="text-center text-sm text-gray-500">
+          This feedback link is missing its token — please use the link from your email.
+        </p>
+      </Shell>
+    );
+  }
+  if (isLoading) {
+    return (
+      <Shell>
+        <div className="flex justify-center py-6">
+          <Loader />
+        </div>
+      </Shell>
+    );
+  }
+  if (isError) {
+    return (
+      <Shell>
+        <p className="text-center text-sm text-gray-600">
+          {linkErrorText(error as InterviewApiError, 'This feedback link is not valid.')}
+        </p>
+      </Shell>
+    );
+  }
+  if (done) {
+    return (
+      <Shell>
+        <h1 className="text-center text-lg font-semibold text-gray-900">Thank you</h1>
+        <p className="mt-2 text-center text-sm text-gray-500">
+          Your feedback about your {roundLabel} has been shared with the hiring team.
+        </p>
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell>
+      <h1 className="text-lg font-semibold text-gray-900">How was your {roundLabel}?</h1>
+      <p className="mt-1 text-sm text-gray-500">
+        Your feedback goes to the hiring team and won’t affect your candidacy.
+      </p>
+
+      <div className="mt-5 flex gap-2">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-label={`${n} star${n > 1 ? 's' : ''}`}
+            onClick={() => setRating(n)}
+            className={`h-10 w-10 rounded-full text-lg ${
+              n <= rating ? 'bg-amber-100 text-amber-500' : 'bg-gray-100 text-gray-300'
+            }`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+
+      <textarea
+        className="mt-4 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+        rows={4}
+        placeholder="Tell us about your experience…"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+
+      <button
+        type="button"
+        disabled={!rating || !text.trim() || isSubmitting}
+        onClick={onSubmit}
+        className="mt-4 w-full rounded-3xl bg-button py-2.5 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {isSubmitting ? 'Submitting…' : 'Submit feedback'}
+      </button>
+    </Shell>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Candidate self-withdrawal  —  /withdraw?token=
+// ---------------------------------------------------------------------------
+export const WithdrawalPage = () => {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token') ?? '';
+
+  const { data, isLoading, isError, error } = useGetWithdrawalLinkQuery(token, { skip: !token });
+  const [submit, { isLoading: isSubmitting }] = useSubmitWithdrawalMutation();
+  const [done, setDone] = useState(false);
+
+  const org = useMemo(() => data?.organization_name?.trim() || 'this company', [data]);
+
+  // The bare GET is deliberately inert (email clients / scanners pre-fetch
+  // links) — withdrawal only happens on this button's POST.
+  const onWithdraw = async () => {
+    try {
+      await submit(token).unwrap();
+      setDone(true);
+    } catch (e) {
+      alert(linkErrorText(e as InterviewApiError, 'Could not process your request.'));
+    }
+  };
+
+  if (!token) {
+    return (
+      <Shell>
+        <p className="text-center text-sm text-gray-500">
+          This link is missing its token — please use the link from your email.
+        </p>
+      </Shell>
+    );
+  }
+  if (isLoading) {
+    return (
+      <Shell>
+        <div className="flex justify-center py-6">
+          <Loader />
+        </div>
+      </Shell>
+    );
+  }
+  if (isError) {
+    return (
+      <Shell>
+        <p className="text-center text-sm text-gray-600">
+          {linkErrorText(error as InterviewApiError, 'This link is not valid.')}
+        </p>
+      </Shell>
+    );
+  }
+  if (done) {
+    return (
+      <Shell>
+        <h1 className="text-center text-lg font-semibold text-gray-900">You’ve withdrawn</h1>
+        <p className="mt-2 text-center text-sm text-gray-500">
+          We’ve let {org} know you’re no longer interested in this role. Any scheduled interviews
+          will be cancelled.
+        </p>
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell>
+      <h1 className="text-lg font-semibold text-gray-900">Withdraw from this process?</h1>
+      <p className="mt-2 text-sm text-gray-600">
+        This tells {org} you’re no longer interested in this role and cancels any upcoming
+        interviews. You can’t undo this from here.
+      </p>
+      <button
+        type="button"
+        disabled={isSubmitting}
+        onClick={onWithdraw}
+        className="mt-5 w-full rounded-3xl bg-danger-bg py-2.5 text-sm font-semibold text-danger-text disabled:opacity-50"
+      >
+        {isSubmitting ? 'Processing…' : 'Withdraw from this process'}
+      </button>
+    </Shell>
+  );
+};

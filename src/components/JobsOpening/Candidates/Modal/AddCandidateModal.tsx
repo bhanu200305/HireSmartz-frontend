@@ -16,7 +16,6 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 import {
   isPhoneValidForCountry,
   PHONE_VALIDATION_MESSAGE,
-  toE164,
 } from '../../../../shared/utils/validation/phoneValidation';
 
 // Same default every other phone field in this app starts from.
