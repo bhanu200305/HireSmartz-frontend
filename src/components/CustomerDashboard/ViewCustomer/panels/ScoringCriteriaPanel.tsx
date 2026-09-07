@@ -12,6 +12,7 @@ import type { ScoringCategoryMeta, ScoringWeight } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import {
   platformScoringConfigApi,
+  useGetPlatformScoringConfigQuery,
   useGetPlatformTenantScoringConfigQuery,
   useUpdatePlatformTenantScoringConfigMutation,
 } from '../../../../api/organization-service/Platform/scoringConfig';
@@ -33,13 +34,6 @@ const buildWeightRows = (
       flatWeights[`${prefix}${categoryName}`] ?? categoryMeta[categoryName].defaultPct,
   }));
 
-const standardWeightRows = (prefix: string, categoryMeta: ScoringCategoryMeta): ScoringWeight[] =>
-  Object.keys(categoryMeta).map((categoryName) => ({
-    id: `${prefix}${categoryName}`,
-    categoryName,
-    weightPercentage: categoryMeta[categoryName].defaultPct,
-  }));
-
 /**
  * Super Admin's mirror of CompanySettings/PlatformScoringDefaultsTab.tsx —
  * same Resume/Interview `ScoringWeightCard` pair, same flat
@@ -51,6 +45,7 @@ const standardWeightRows = (prefix: string, categoryMeta: ScoringCategoryMeta): 
 const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { data, isLoading } = useGetPlatformTenantScoringConfigQuery(tenantId);
+  const { data: platformDefault } = useGetPlatformScoringConfigQuery();
   const [updateConfig, { isLoading: isSaving }] = useUpdatePlatformTenantScoringConfigMutation();
   const [isResettingResume, setIsResettingResume] = useState(false);
   const [isResettingInterview, setIsResettingInterview] = useState(false);
@@ -133,7 +128,8 @@ const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setIsResetting: (value: boolean) => void
   ) => {
     const next = { ...flatWeights };
-    standardWeightRows(prefix, categoryMeta).forEach((w) => {
+    // Reset to the platform's current default, not a frozen local constant.
+    buildWeightRows(platformDefault?.weights ?? {}, prefix, categoryMeta).forEach((w) => {
       next[String(w.id)] = w.weightPercentage;
     });
     setIsResetting(true);
@@ -156,7 +152,7 @@ const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   return (
     <div className="p-4">
       <div className="flex items-center gap-2 mb-1">
-        <h2 className="text-2xl font-semibold text-gray-800">AI Scoring Weight Distribution</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Scoring Weight Distribution</h2>
         {isLocked && (
           <Tooltip title="This company is locked to the platform default — it can't set its own weights.">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold px-2.5 py-1">

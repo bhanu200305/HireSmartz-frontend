@@ -100,10 +100,7 @@ const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
 const { Option } = Select;
 
-// Human-readable labels for every Job Details field that can fail validation.
-// Used by the summary shown next to the footer buttons so a failed
-// Save/Next tells the recruiter exactly which fields need attention instead
-// of leaving them to scroll the (long) form hunting for a red message.
+// Human-readable labels for the failed-fields summary near the footer.
 const JOB_DETAILS_FIELD_LABELS: Partial<Record<keyof JobDetailsState, string>> = {
   jobProfileCode: 'Job ID',
   department: 'Department',
@@ -369,9 +366,7 @@ const JobDetails = () => {
     },
   });
 
-  // Drives the "what's still missing" summary next to the footer buttons.
-  // Turned on only after a failed Save/Next/Draft attempt; the summary
-  // itself hides again once `errors` clears.
+  // Shown only after a failed Save/Next/Draft attempt.
   const [showValidationSummary, setShowValidationSummary] = useState(false);
   const formContainerRef = useRef<HTMLDivElement>(null);
   const validationSummaryRef = useRef<HTMLDivElement>(null);
@@ -390,9 +385,7 @@ const JobDetails = () => {
     [errors]
   );
 
-  // Jump the recruiter straight to the offending field. Matches on the
-  // inline error text already rendered under each field, so no per-field
-  // markup changes are needed; falls back to the first error on the page.
+  // Jumps to the field matching this error message, or the first error.
   const scrollToFieldError = useCallback((message: string) => {
     const container = formContainerRef.current;
     if (!container) return;

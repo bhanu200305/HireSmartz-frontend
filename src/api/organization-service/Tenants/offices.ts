@@ -32,9 +32,16 @@ export type TenantOffice = {
   zip_code: string | null;
 };
 
-/** Label for job/role location dropdowns — offices have no separate name field. */
-export const officeDisplayName = (office: TenantOffice): string =>
-  [office.city, office.state].filter(Boolean).join(', ') || office.address_line_1;
+/** Label for job/role location dropdowns — offices have no separate name
+ * field. Always appends the location code (or, failing that, the street
+ * address) so two branches in the same city/state don't render as
+ * identical rows. */
+export const officeDisplayName = (office: TenantOffice): string => {
+  const cityState = [office.city, office.state].filter(Boolean).join(', ');
+  const distinguisher = office.location_code || office.address_line_1;
+  if (!cityState) return distinguisher;
+  return distinguisher ? `${cityState} (${distinguisher})` : cityState;
+};
 
 export type UpdateTenantOfficeRequest = {
   tenantId: string;
