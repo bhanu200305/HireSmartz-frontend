@@ -20,18 +20,85 @@ const formatLocation = (
 
 // The backend returns free-text blocks (jd/responsibilities/requirements/
 // other_requirements), not markdown with '## ' section headers like the old
-// aiJobDescription field did — each block is rendered as its own card of
-// plain paragraphs/lines rather than parsed into bullet sections.
-const TextBlock = ({ title, text }: { title: string; text: string | null }) => {
+// aiJobDescription field did. The two shapes below aren't rendered the same
+// way, because they aren't the same kind of text:
+//
+// - responsibilities/requirements/other_requirements are AI-extracted, one
+//   complete point per line — a real bullet list.
+// - jd is the RAW text ai-service's jd_text_extractor.py pulls straight out
+//   of the uploaded PDF/DOCX (deliberately left unprocessed — see that
+//   module's own docstring). Its '\n's are mostly the source document's
+//   hard line-wraps, not paragraph breaks, and it can carry a stray control
+//   character where a bullet glyph's font had no proper Unicode mapping
+//   (pypdf extracts that as U+007F, which renders as an invisible box).
+//   Both are handled here rather than upstream, since jd is intentionally
+//   kept as the raw original.
+const CONTROL_CHAR = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+const BULLET_PREFIX = /^[•*-]\s*/;
+
+const BulletBlock = ({ title, text }: { title: string; text: string | null }) => {
   if (!text) return null;
-  const lines = text.split('\n').filter((l) => l.trim().length > 0);
+  const items = text
+    .split('\n')
+    .map((line) => line.replace(CONTROL_CHAR, '').trim())
+    .filter(Boolean);
+  if (items.length === 0) return null;
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-5">
       <h2 className="text-base font-bold text-gray-900 mb-3">{title}</h2>
-      <div className="space-y-2">
-        {lines.map((line, i) => (
+      <ul className="list-disc pl-5 space-y-1.5">
+        {items.map((item, i) => (
+          <li key={i} className="text-sm text-gray-600 leading-relaxed">
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+// jd's raw extracted lines are mostly mid-sentence hard-wraps, not real
+// paragraph breaks — merge lines into flowing paragraphs instead of
+// rendering one fragment per line. A line is kept accumulating into the
+// current paragraph until it ends a sentence (. ! ? :); a line that was
+// bulleted in the source (control char or -/*/• prefix) is flushed as its
+// own line instead, with a real bullet character.
+const JdBlock = ({ text }: { text: string | null }) => {
+  if (!text) return null;
+  const rawLines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const paragraphs: string[] = [];
+  let current: string[] = [];
+  for (const raw of rawLines) {
+    const isBullet = CONTROL_CHAR.test(raw) || BULLET_PREFIX.test(raw);
+    const line = raw.replace(CONTROL_CHAR, '').replace(BULLET_PREFIX, '').trim();
+    if (!line) continue;
+    if (isBullet) {
+      if (current.length) paragraphs.push(current.join(' '));
+      current = [];
+      paragraphs.push(`• ${line}`);
+      continue;
+    }
+    current.push(line);
+    if (/[.:!?]$/.test(line)) {
+      paragraphs.push(current.join(' '));
+      current = [];
+    }
+  }
+  if (current.length) paragraphs.push(current.join(' '));
+  if (paragraphs.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-5">
+      <h2 className="text-base font-bold text-gray-900 mb-3">Job Description</h2>
+      <div className="space-y-2.5">
+        {paragraphs.map((p, i) => (
           <p key={i} className="text-sm text-gray-600 leading-relaxed">
-            {line}
+            {p}
           </p>
         ))}
       </div>
@@ -146,10 +213,10 @@ export const CareersJobDetailPage = () => {
             </div>
 
             <div className="flex flex-col gap-4">
-              <TextBlock title="Job Description" text={job.jd} />
-              <TextBlock title="Responsibilities" text={job.responsibilities} />
-              <TextBlock title="Requirements" text={job.requirements} />
-              <TextBlock title="Other Requirements" text={job.other_requirements} />
+              <JdBlock text={job.jd} />
+              <BulletBlock title="Responsibilities" text={job.responsibilities} />
+              <BulletBlock title="Requirements" text={job.requirements} />
+              <BulletBlock title="Other Requirements" text={job.other_requirements} />
             </div>
           </>
         )}
