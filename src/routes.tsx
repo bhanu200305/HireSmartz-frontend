@@ -96,10 +96,27 @@ const changePasswordPage = lazyImport(() => import('./pages/UserProfile'), 'chan
 const FinancesPage = lazy(() => import('./pages/FinancesPage'));
 const InterviewEndedPage = lazy(() => import('./pages/InterviewEnded'));
 const AiCallBookingPage = lazy(() => import('./pages/AiCallBookingPage'));
+const InterviewsPage = lazy(() => import('./pages/InterviewsPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const EditInterviewRoundPage = lazy(() => import('./pages/EditInterviewRoundPage'));
 const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 const InterviewLiveKit = lazy(() => import('./components/Interview/InterviewLiveKit'));
+const CandidateJoinPage = lazyImport(
+  () => import('./components/Interview/SessionJoinScreen'),
+  'CandidateJoinPage'
+);
+const InterviewerJoinPage = lazyImport(
+  () => import('./components/Interview/SessionJoinScreen'),
+  'InterviewerJoinPage'
+);
+const CandidateFeedbackPage = lazyImport(
+  () => import('./components/Interview/CandidateActionScreens'),
+  'CandidateFeedbackPage'
+);
+const WithdrawalPage = lazyImport(
+  () => import('./components/Interview/CandidateActionScreens'),
+  'WithdrawalPage'
+);
 const MyCompanyPage = lazy(() => import('./pages/MyCompanyPage'));
 const CompanyMetricsPage = lazy(() => import('./pages/CompanyMetricsPage'));
 const CompanySettingsPage = lazy(() => import('./pages/CompanySettingsPage'));
@@ -286,6 +303,16 @@ export const Routes: RouteType[] = [
   {
     name: 'AiCallSchedule',
     path: '/ai-schedule',
+    component: AiCallSchedulePage,
+    isOpen: true,
+  },
+  {
+    // interview-service emails the candidate a scheduling link as
+    // `${CANDIDATE_SCHEDULING_BASE_URL}?token=…` — configured as
+    // `.../schedule`. Same page as /ai-schedule (it resolves the token via
+    // GET /scheduling/{token} and branches on interview_type itself).
+    name: 'CandidateSchedule',
+    path: '/schedule',
     component: AiCallSchedulePage,
     isOpen: true,
   },
@@ -681,6 +708,42 @@ export const Routes: RouteType[] = [
     component: InterviewEndedPage,
   },
   { name: 'InterviewPage', path: '/interview', component: InterviewLiveKit, isOpen: true },
+  {
+    // One-click join links emailed by interview-service when a video/panel
+    // round is scheduled: CANDIDATE_JOIN_BASE_URL=/join,
+    // INTERVIEWER_JOIN_BASE_URL=/interviewer-join, each carrying `?token=`.
+    // Public — the candidate/interviewer is not logged in; the token in the
+    // URL is the whole credential (see SessionJoinScreen).
+    name: 'CandidateJoin',
+    path: '/join',
+    component: CandidateJoinPage,
+    isOpen: true,
+  },
+  {
+    name: 'InterviewerJoin',
+    path: '/interviewer-join',
+    component: InterviewerJoinPage,
+    isOpen: true,
+  },
+  {
+    // CANDIDATE_FEEDBACK_BASE_URL — post-round rating link.
+    name: 'CandidateFeedback',
+    path: '/feedback',
+    component: CandidateFeedbackPage,
+    isOpen: true,
+  },
+  {
+    // CANDIDATE_WITHDRAWAL_BASE_URL — carried on every candidate email.
+    name: 'CandidateWithdraw',
+    path: '/withdraw',
+    component: WithdrawalPage,
+    isOpen: true,
+  },
+  {
+    name: 'Interviews',
+    path: '/interviews',
+    component: InterviewsPage,
+  },
   {
     name: 'AiCallBooking',
     path: '/ai-call-booking',
