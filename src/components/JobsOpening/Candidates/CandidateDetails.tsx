@@ -38,8 +38,6 @@ import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import PipelineBoard from './PipelineBoard';
 import { roundLabel, formatRoundStatus } from './roundDisplay';
 import { resolveCurrentRound, isRoundConcluded } from './roundProgress';
-import StatusHistoryTab from './StatusHistoryTab';
-import EditCandidateModal from './Modal/EditCandidateModal';
 
 // Rewritten against the real candidate-service contract — replaces the
 // previous ~2050-line version, which was built entirely around a legacy
