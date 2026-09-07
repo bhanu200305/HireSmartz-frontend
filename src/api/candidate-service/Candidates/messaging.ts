@@ -16,17 +16,32 @@ export type SendCandidateEmailRequest = {
 
 export type SendCandidateSmsRequest = { smsBody: string };
 
+/** Matches `candidate_message_dto.CandidateMessageSendResponse` — was
+ * missing `skipped_reason` (the same field the bulk variant's
+ * `BulkCandidateMessageResult` already carries below), even though
+ * `send_candidate_email`/`send_candidate_sms` return it same as the bulk
+ * routes do. Currently unused either way — every real send, single
+ * candidate or several, goes through the bulk mutations below (a 1-element
+ * `candidateIds` array for "one candidate"), so this type had never been
+ * exercised against a real response; kept accurate regardless. */
 export type CandidateMessageSendResponse = {
   candidate_id: string;
   sent: boolean;
+  skipped_reason: string | null;
 };
 
 export type PreviewCandidateEmailRequest = SendCandidateEmailRequest;
 export type PreviewCandidateSmsRequest = SendCandidateSmsRequest;
 
+/** `body_html` was declared non-nullable here — the real
+ * `candidate_message_dto.CandidateMessagePreviewResponse` has it as
+ * `str | None` (an SMS preview plausibly has none). Harmless in practice:
+ * `TemplatePreviewModal.tsx`'s `preview?.body_html ? ... : ...` already
+ * treats a falsy value as "fall back to plain text," so this was never a
+ * live bug — just a wrong type. */
 export type CandidateMessagePreviewResponse = {
   subject: string | null;
-  body_html: string;
+  body_html: string | null;
   body_text: string;
 };
 

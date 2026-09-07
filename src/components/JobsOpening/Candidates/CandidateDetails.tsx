@@ -32,6 +32,7 @@ import ChangeCandidateStatusModal, {
 } from './Modal/ChangeCandidateStatusModal';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
 import BulkSendSmsModal from './Modal/BulkSendSmsModal';
+import EditCandidateModal from './Modal/EditCandidateModal';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import ResumeReviewModal from './Modal/ResumeReviewModal';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';

@@ -15,14 +15,22 @@ import type { CandidateView } from '../../../../api/candidate-service/Candidates
 // untouched, this is a separate file). The real backend's status model is
 // deliberately much simpler than the legacy one it replaces: ANY
 // `master_candidate_status` code is accepted with no transition-legality
-// check, and there is no manual interview-invite side effect to orchestrate
-// here at all — interview-service books the next round automatically once
-// `candidate.round.ready` fires server-side after `POST /advance`
-// (PROJECT_UNDERSTANDING.md §5/§10). This modal does exactly two things:
+// check. This modal does exactly two things:
 //
 // - "Advance": `POST /candidates/{id}/advance` per candidate (no bulk
 //   advance endpoint exists — looped, each reported independently, same
-//   spirit as bulk messaging's per-row `skipped_reason`).
+//   spirit as bulk messaging's per-row `skipped_reason`). ADVANCE ONLY EVER
+//   completes the current round and makes the next one due — it does NOT
+//   tell interview-service to schedule it. That's a SEPARATE, explicit
+//   "Send Invite" action (`POST /candidates/{id}/send-invite`,
+//   send_round_invite.py's own docstring: "advance/skip alone do not do
+//   this"), and today it only exists single-candidate, in
+//   `PipelineBoard.tsx`'s Pipeline tab — there is no bulk-send-invite
+//   endpoint, so it can't be offered from here. (Earlier revisions of this
+//   comment/the confirm copy below claimed advance auto-schedules the next
+//   round — that stopped being true once send-invite became a required,
+//   separate step; corrected 2026-09-07, flagged by a teammate reviewing
+//   this file.)
 // - "Reject" / "Select": `POST /candidates/bulk-status` (or the single-
 //   candidate status route for one candidate), all-or-nothing, using the
 //   real `rejected`/`selected` codes resolved from master data rather than
@@ -62,9 +70,9 @@ const ChangeCandidateStatusModal = ({
   onSuccess,
 }: ChangeCandidateStatusModalProps) => {
   const [reason, setReason] = useState('');
-  const [results, setResults] = useState<{ name: string; ok: boolean; detail: string }[] | null>(
-    null
-  );
+  const [results, setResults] = useState<
+    { name: string; ok: boolean; detail: string; needsInvite: boolean }[] | null
+  >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: statuses = [] } = useListCandidateStatusesQuery();
@@ -99,12 +107,16 @@ const ChangeCandidateStatusModal = ({
             const detail = r.value.next_round
               ? `Advanced to ${r.value.next_round.round_name ?? 'next round'}`
               : 'Completed final round — moved to Selected';
-            return { name, ok: true, detail };
+            // Only a real next round needs an invite — "moved to Selected"
+            // (next_round === null) means the pipeline is finished, nothing
+            // left to schedule.
+            return { name, ok: true, detail, needsInvite: r.value.next_round !== null };
           }
           return {
             name,
             ok: false,
             detail: getCandidateErrorMessage(r.reason, 'Could not advance'),
+            needsInvite: false,
           };
         })
       );
@@ -160,10 +172,22 @@ const ChangeCandidateStatusModal = ({
                 <span className="font-medium text-gray-900">{r.name}</span>
                 <span className={`text-right shrink-0 ${r.ok ? 'text-green-600' : 'text-red-500'}`}>
                   {r.detail}
+                  {r.needsInvite && (
+                    <span className="ml-1 text-amber-600" title="Send Invite still needed">
+                      · invite not sent
+                    </span>
+                  )}
                 </span>
               </div>
             ))}
           </div>
+          {results.some((r) => r.needsInvite) && (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Advancing does not send the interview invite. There is no bulk send-invite yet — open
+              each candidate&apos;s Pipeline tab and click <strong>Send Invite</strong> for their
+              next round.
+            </p>
+          )}
           <Button
             type="button"
             onClick={onClose}
@@ -176,7 +200,7 @@ const ChangeCandidateStatusModal = ({
         <div className="flex flex-col gap-4">
           <p className="text-sm text-gray-600">
             {mode === 'advance'
-              ? "This completes each candidate's current round. If a next round exists, interview-service schedules it automatically — nothing to configure here."
+              ? "This completes each candidate's current round and makes their next one due. It does NOT send the interview invite — that's a separate step, per candidate, from their Pipeline tab."
               : `This will set ${candidates.length === 1 ? 'this candidate' : 'these candidates'} to "${MODE_LABEL[mode]}".`}
           </p>
           {mode !== 'advance' && (

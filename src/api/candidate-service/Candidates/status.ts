@@ -24,9 +24,18 @@ export type BulkChangeCandidateStatusRequest = {
   reason?: string;
 };
 
+/** Matches `candidate_dto.BulkChangeCandidateStatusResultView` field-for-
+ * field — this used to claim a single `updated_count`, which the real
+ * response has never had; the actual fields are `requested`/`updated`
+ * (verified against `candidate_dto.py` directly, 2026-09-07). `updated` can
+ * be lower than `requested` when some ids were already in the target
+ * status — those are no-ops, not failures. Neither field is read anywhere
+ * today (both call sites just show a generic success toast on `.unwrap()`),
+ * so this was a silent `undefined` waiting to happen, not a live bug. */
 export type BulkChangeCandidateStatusResultView = {
   status_code: string;
-  updated_count: number;
+  requested: number;
+  updated: number;
 };
 
 /** One row of the append-only funnel transition log. Matches

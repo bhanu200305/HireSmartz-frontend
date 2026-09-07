@@ -7,13 +7,16 @@ import candidateApi from '../candidateApi';
 // body — you cannot post a note "as" someone else. Replaces the legacy
 // `FollowUpNotes.ts` in this folder, which has no real backend equivalent.
 
+// `updated_at` used to be declared here — removed 2026-09-07. It doesn't
+// exist anywhere in candidate-service (not on `RecruiterNoteView`, not even
+// tracked internally on the entity) — editing a note just isn't
+// timestamped server-side. Confirmed unread anywhere in this codebase.
 export type RecruiterNoteView = {
   id: string;
   candidate_id: string;
   author_id: string;
   note: string;
   created_at: string;
-  updated_at: string | null;
 };
 
 export type PaginatedRecruiterNotes = {
@@ -23,10 +26,19 @@ export type PaginatedRecruiterNotes = {
 };
 
 export type AddRecruiterNoteRequest = { note: string };
-export type AddRecruiterNoteResultView = RecruiterNoteView;
+/** Matches `candidate_dto.AddRecruiterNoteResultView` — just the new note's
+ * id, NOT the full `RecruiterNoteView` this used to alias (which would have
+ * left `candidate_id`/`author_id`/`note`/`created_at` all silently
+ * `undefined` on the mutation's own result — harmless today only because
+ * `CandidateRecruiterNotesPanel.tsx` never reads them, relying on the
+ * list query's refetch for the real row instead). */
+export type AddRecruiterNoteResultView = { id: string };
 
 export type EditRecruiterNoteRequest = { note: string };
-export type EditRecruiterNoteResultView = RecruiterNoteView;
+/** Matches `candidate_dto.EditRecruiterNoteResultView` — `id` and the
+ * updated `note` text only, same "used to over-claim the full
+ * `RecruiterNoteView`" issue as `AddRecruiterNoteResultView` above. */
+export type EditRecruiterNoteResultView = { id: string; note: string };
 
 const extendedApi = candidateApi.injectEndpoints({
   endpoints: (build) => ({

@@ -76,6 +76,34 @@ export type ListPublicJobsArgs = {
   pageSize?: number;
 };
 
+// `min_experience_req`/`max_experience_req` are `Decimal` on the real
+// backend (job-service's `PublicJobListingView`/`PublicJobDetailView`) —
+// Pydantic v2 serializes `Decimal` to a JSON STRING by default (e.g.
+// `"2.0"`, not `2`), confirmed against a real response 2026-09-07. Every
+// filter/display consumer on this page was written assuming a real
+// `number`, which happened to keep working for RANGE COMPARISONS only by
+// accident (JS's `<=`/`>=` coerce a numeric string), but broke every
+// DISPLAY of it outright (`"2.0-4.0 Years of Experience"` instead of
+// `"2-4"`). Rather than leave every consumer to defend against a string
+// that might show up, this normalizes once, here, so `number | null` is
+// actually true by the time RTK Query hands data to a component.
+const toNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+const normalizePublicJobListing = (job: PublicJobListing): PublicJobListing => ({
+  ...job,
+  min_experience_req: toNumber(job.min_experience_req),
+  max_experience_req: toNumber(job.max_experience_req),
+  // salary_min/max are plain SQL integers on the backend, not Decimal —
+  // already real JSON numbers — but normalized too as cheap insurance
+  // against the same class of bug, not because one's confirmed here.
+  salary_min: toNumber(job.salary_min),
+  salary_max: toNumber(job.salary_max),
+});
+
 // GET /public/organizations/{organization_id}/branding — company name/logo
 // for the QR-board pages' header. `logo_url` is a signed, time-limited link
 // for a stored logo (or, for a tenant whose logo is a plain external URL
@@ -93,10 +121,21 @@ const extendedApi = jobApi.injectEndpoints({
         url: `/public/organizations/${organizationId}/jobs`,
         params: { page, page_size: pageSize },
       }),
+      transformResponse: (response: PublicJobListResponse) => ({
+        ...response,
+        items: response.items.map(normalizePublicJobListing),
+      }),
       providesTags: ['PublicJobs'],
     }),
     getPublicJob: build.query<PublicJobDetail, { organizationId: string; jobId: string }>({
       query: ({ organizationId, jobId }) => `/public/organizations/${organizationId}/jobs/${jobId}`,
+      transformResponse: (response: PublicJobDetail) => ({
+        ...response,
+        min_experience_req: toNumber(response.min_experience_req),
+        max_experience_req: toNumber(response.max_experience_req),
+        salary_min: toNumber(response.salary_min),
+        salary_max: toNumber(response.salary_max),
+      }),
       providesTags: (_result, _error, { jobId }) => [{ type: 'PublicJobs', id: jobId }],
     }),
     getPublicBranding: build.query<PublicOrgBranding, string>({

@@ -1,8 +1,13 @@
+import dayjs from 'dayjs';
+import { IoStar, IoStarOutline } from 'react-icons/io5';
 import { Badge, type BadgeStatus } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Loader } from '../../../shared/ui/loader';
 import { CommonCard } from '../../../shared';
-import { useListCandidateInterviewRoundArtifactsQuery } from '../../../../api/candidate-service/Candidates/interviewRounds';
+import {
+  useListCandidateInterviewRoundArtifactsQuery,
+  type CandidateInterviewRoundView,
+} from '../../../../api/candidate-service/Candidates/interviewRounds';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 
 // New — `GET /candidates/{id}/interview-rounds/{round_id}/artifacts`
@@ -38,6 +43,13 @@ type RoundArtifactsModalProps = {
   /** Must be the LOCAL round row's `id`, not job-service's `round_id`. */
   roundId: string;
   roundName: string;
+  /** The candidate's own post-round rating/text, reported by
+   * interview-service — already on the round object the caller has in
+   * hand, so it's passed straight through rather than refetched. */
+  feedback: Pick<
+    CandidateInterviewRoundView,
+    'candidate_feedback_rating' | 'candidate_feedback_text' | 'candidate_feedback_submitted_at'
+  >;
 };
 
 const RoundArtifactsModal = ({
@@ -46,6 +58,7 @@ const RoundArtifactsModal = ({
   candidateId,
   roundId,
   roundName,
+  feedback,
 }: RoundArtifactsModalProps) => {
   const { data, isLoading, error } = useListCandidateInterviewRoundArtifactsQuery(
     { candidateId, roundId },
@@ -60,6 +73,31 @@ const RoundArtifactsModal = ({
       subtitle={roundName}
       modalProps={{ width: 520 }}
     >
+      {feedback.candidate_feedback_submitted_at && (
+        <CommonCard className="mb-4">
+          <div className="flex flex-col gap-1.5 p-4">
+            <div className="text-xs font-semibold text-neutral-500">Candidate feedback</div>
+            {feedback.candidate_feedback_rating !== null && (
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: 5 }, (_, i) =>
+                  i < (feedback.candidate_feedback_rating ?? 0) ? (
+                    <IoStar key={i} className="text-warning" size={16} />
+                  ) : (
+                    <IoStarOutline key={i} className="text-neutral-300" size={16} />
+                  )
+                )}
+              </div>
+            )}
+            {feedback.candidate_feedback_text && (
+              <p className="text-sm text-neutral-700">{feedback.candidate_feedback_text}</p>
+            )}
+            <span className="text-xs text-neutral-400">
+              Submitted {dayjs(feedback.candidate_feedback_submitted_at).format('MMM D, h:mm A')}
+            </span>
+          </div>
+        </CommonCard>
+      )}
+
       {isLoading ? (
         <div className="flex justify-center py-6">
           <Loader />

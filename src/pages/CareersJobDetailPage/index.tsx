@@ -1,23 +1,15 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Spin } from 'antd';
-import { EnvironmentOutlined, CalendarOutlined } from '@ant-design/icons';
+import { EnvironmentOutlined, CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
-
-const formatSalary = (min: number | null, max: number | null): string | null => {
-  if (min === null && max === null) return null;
-  const fmt = (n: number): string => (n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${n}`);
-  if (min !== null && max !== null) return `${fmt(min)} – ${fmt(max)}`;
-  return fmt((min ?? max) as number);
-};
-
-const formatExperience = (min: number | null, max: number | null): string | null => {
-  if (min === null && max === null) return null;
-  if (min !== null && max !== null) return `${min}-${max} Years of Experience`;
-  return `${min ?? max}+ Years of Experience`;
-};
+import {
+  formatSalary,
+  formatExperience,
+  formatPostedAgo,
+} from '../../shared/utils/publicJobDisplay';
 
 const formatLocation = (
   loc: { city: string | null; state: string | null; country: string | null } | undefined
@@ -64,6 +56,7 @@ export const CareersJobDetailPage = () => {
   const experience = job ? formatExperience(job.min_experience_req, job.max_experience_req) : null;
   const salary = job ? formatSalary(job.salary_min, job.salary_max) : null;
   const primaryLocation = job?.locations?.[0] ? formatLocation(job.locations[0]) : null;
+  const postedAgo = job ? formatPostedAgo(job.job_open_date) : null;
 
   const handleApply = () => {
     // Routes through the apply-method choice (resume vs. talk-now) instead
@@ -120,6 +113,12 @@ export const CareersJobDetailPage = () => {
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <CalendarOutlined />
                   <span>{experience}</span>
+                </div>
+              )}
+              {postedAgo && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <ClockCircleOutlined />
+                  <span>{postedAgo}</span>
                 </div>
               )}
             </div>

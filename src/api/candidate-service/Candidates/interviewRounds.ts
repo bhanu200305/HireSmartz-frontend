@@ -44,6 +44,37 @@ export type CandidateInterviewRoundView = {
    * round — null until a recruiter clicks "Send Invite"; becoming due
    * (`status === "to_be_scheduled"`) does not set this by itself. */
   invite_sent_at: string | null;
+  /** Explicit PANEL interviewer selection (ids only — resolve names/emails
+   * client-side via `listEligibleInterviewers`). Empty means "no explicit
+   * selection" — interview-service falls back to auto-composing the panel.
+   * Added alongside `set_panel_interviewers`/`list_eligible_interviewers`
+   * (candidate-service commit 3ab83cb7, 2026-09-04) — not present on the
+   * resume stage in practice, but never null there either, just `[]`. */
+  interviewer_ids: string[];
+  /** The candidate's own post-round rating (1-5) and free text, reported by
+   * interview-service once the candidate submits it. All three are null
+   * together until then, or permanently for a round type with no feedback
+   * step (the Intake Call). */
+  candidate_feedback_rating: number | null;
+  candidate_feedback_text: string | null;
+  candidate_feedback_submitted_at: string | null;
+};
+
+/** One row of org-service's live interviewer directory, as returned to the
+ * PANEL round interviewer picker. `office_id` is `null` when the
+ * interviewer has no office set — treat that as "cannot be placed on-site"
+ * in any same-office filter, not "matches everywhere". */
+export type InterviewerView = {
+  id: string;
+  display_name: string;
+  email: string;
+  office_id: string | null;
+};
+
+export type SetPanelInterviewersResultView = {
+  candidate_id: string;
+  round_id: string;
+  interviewer_ids: string[];
 };
 
 /** `url` is `null` while `status` is `"reserved"` (recording not ready yet)
@@ -157,6 +188,39 @@ const extendedApi = candidateApi.injectEndpoints({
         { type: 'CandidateInterviewRounds', id: candidateId },
       ],
     }),
+
+    // GET /candidates/{id}/eligible-interviewers — every interviewer
+    // eligible for this candidate's tenant, from org-service's live
+    // directory. The PANEL round interviewer picker's option list; not
+    // scoped to one round (the same directory backs every round for this
+    // candidate).
+    listEligibleInterviewers: build.query<InterviewerView[], string>({
+      query: (candidateId) => `/candidates/${candidateId}/eligible-interviewers`,
+      transformResponse: (response: { interviewers: InterviewerView[] }) => response.interviewers,
+      providesTags: (_result, _error, candidateId) => [
+        { type: 'EligibleInterviewers', id: candidateId },
+      ],
+    }),
+
+    // PUT /candidates/{id}/interview-rounds/{round_id}/interviewers — set
+    // (or, with an empty array, clear) one PANEL round's explicit
+    // interviewer selection. `roundId` is this LOCAL round row's own `id`
+    // (`CandidateInterviewRoundView.id`), never job-service's `round_id` —
+    // same rule as the artifacts endpoint above. Only callable while the
+    // round isn't yet finished or booked; the backend 409s otherwise.
+    setPanelInterviewers: build.mutation<
+      SetPanelInterviewersResultView,
+      { candidateId: string; roundId: string; interviewerIds: string[] }
+    >({
+      query: ({ candidateId, roundId, interviewerIds }) => ({
+        url: `/candidates/${candidateId}/interview-rounds/${roundId}/interviewers`,
+        method: 'PUT',
+        body: { interviewer_ids: interviewerIds },
+      }),
+      invalidatesTags: (_result, _error, { candidateId }) => [
+        { type: 'CandidateInterviewRounds', id: candidateId },
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -167,4 +231,6 @@ export const {
   useAdvanceCandidateMutation,
   useSkipInterviewRoundMutation,
   useSendRoundInviteMutation,
+  useListEligibleInterviewersQuery,
+  useSetPanelInterviewersMutation,
 } = extendedApi;

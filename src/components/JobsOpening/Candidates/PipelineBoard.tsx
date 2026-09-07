@@ -7,9 +7,15 @@ import {
 } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
-import { bucketForStatus, resolveCurrentRound, type RoundBucket } from './roundProgress';
+import {
+  bucketForStatus,
+  isRoundConcluded,
+  resolveCurrentRound,
+  type RoundBucket,
+} from './roundProgress';
 import SkipRoundModal from './Modal/SkipRoundModal';
 import RoundArtifactsModal from './Modal/RoundArtifactsModal';
+import PanelInterviewersModal from './Modal/PanelInterviewersModal';
 import { roundLabel, formatRoundStatus } from './roundDisplay';
 
 // Renders `CandidateDetails`' Pipeline tab as a horizontal, Gantt-style step
@@ -72,6 +78,15 @@ const PipelineBoard = ({
   const [artifactsModalFor, setArtifactsModalFor] = useState<{
     roundId: string;
     roundName: string;
+    feedback: Pick<
+      CandidateInterviewRoundView,
+      'candidate_feedback_rating' | 'candidate_feedback_text' | 'candidate_feedback_submitted_at'
+    >;
+  } | null>(null);
+  const [interviewersModalFor, setInterviewersModalFor] = useState<{
+    roundId: string;
+    roundName: string;
+    currentInterviewerIds: string[];
   } | null>(null);
   const [sendRoundInvite, { isLoading: isSendingInvite }] = useSendRoundInviteMutation();
   if (rounds.length === 0) {
@@ -157,6 +172,12 @@ const PipelineBoard = ({
           // `id`, which is only ever null-shaped conceptually for the
           // resume stage, so gate the click on stage_type rather than id.
           const isInterviewRound = round.stage_type === 'interview';
+          // Same guards `set_panel_interviewers.py` enforces server-side
+          // (resume stage / already-finished / already-booked all 409) —
+          // this just keeps the trigger from inviting a click that can only
+          // ever fail.
+          const canManageInterviewers =
+            isInterviewRound && !round.interview_booking_id && !isRoundConcluded(round);
           return (
             <div
               key={round.id ?? `resume-${index}`}
@@ -166,7 +187,15 @@ const PipelineBoard = ({
                 if (onRoundClick) {
                   onRoundClick(round);
                 } else if (isInterviewRound) {
-                  setArtifactsModalFor({ roundId: round.id, roundName: roundLabel(round) });
+                  setArtifactsModalFor({
+                    roundId: round.id,
+                    roundName: roundLabel(round),
+                    feedback: {
+                      candidate_feedback_rating: round.candidate_feedback_rating,
+                      candidate_feedback_text: round.candidate_feedback_text,
+                      candidate_feedback_submitted_at: round.candidate_feedback_submitted_at,
+                    },
+                  });
                 }
               }}
               onKeyDown={(event) => {
@@ -176,7 +205,15 @@ const PipelineBoard = ({
                     onRoundClick(round);
                   } else if (isInterviewRound) {
                     event.preventDefault();
-                    setArtifactsModalFor({ roundId: round.id, roundName: roundLabel(round) });
+                    setArtifactsModalFor({
+                      roundId: round.id,
+                      roundName: roundLabel(round),
+                      feedback: {
+                        candidate_feedback_rating: round.candidate_feedback_rating,
+                        candidate_feedback_text: round.candidate_feedback_text,
+                        candidate_feedback_submitted_at: round.candidate_feedback_submitted_at,
+                      },
+                    });
                   }
                 }
               }}
@@ -225,10 +262,36 @@ const PipelineBoard = ({
                       // the round-detail drill-down) — stop it from also
                       // firing onRoundClick.
                       event.stopPropagation();
-                      setArtifactsModalFor({ roundId: round.id, roundName: roundLabel(round) });
+                      setArtifactsModalFor({
+                        roundId: round.id,
+                        roundName: roundLabel(round),
+                        feedback: {
+                          candidate_feedback_rating: round.candidate_feedback_rating,
+                          candidate_feedback_text: round.candidate_feedback_text,
+                          candidate_feedback_submitted_at: round.candidate_feedback_submitted_at,
+                        },
+                      });
                     }}
                   >
                     View recordings ›
+                  </button>
+                )}
+                {canManageInterviewers && (
+                  <button
+                    type="button"
+                    className="w-fit text-xs font-medium text-primary-600 hover:underline"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setInterviewersModalFor({
+                        roundId: round.id,
+                        roundName: roundLabel(round),
+                        currentInterviewerIds: round.interviewer_ids,
+                      });
+                    }}
+                  >
+                    {round.interviewer_ids.length > 0
+                      ? `Interviewers (${round.interviewer_ids.length}) ›`
+                      : 'Set interviewers ›'}
                   </button>
                 )}
               </div>
@@ -319,6 +382,18 @@ const PipelineBoard = ({
           candidateId={candidateId}
           roundId={artifactsModalFor.roundId}
           roundName={artifactsModalFor.roundName}
+          feedback={artifactsModalFor.feedback}
+        />
+      )}
+
+      {interviewersModalFor && (
+        <PanelInterviewersModal
+          open={!!interviewersModalFor}
+          onClose={() => setInterviewersModalFor(null)}
+          candidateId={candidateId}
+          roundId={interviewersModalFor.roundId}
+          roundName={interviewersModalFor.roundName}
+          currentInterviewerIds={interviewersModalFor.currentInterviewerIds}
         />
       )}
     </div>

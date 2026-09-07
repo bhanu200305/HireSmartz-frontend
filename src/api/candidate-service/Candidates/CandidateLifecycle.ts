@@ -48,10 +48,6 @@ export type CandidateView = {
   scoring_reason: string | null;
   resume_s3_key: string | null;
 
-  /** ai-service's verdict on the Intake Call consistency check (resume vs. what the candidate said on the call). */
-  consistency_score: number | null;
-  consistency_score_reason: string | null;
-
   /** The recruiter's own take on the resume, beside the AI score — never replacing it. */
   resume_rating: number | null;
   resume_review_comment: string | null;
@@ -64,10 +60,17 @@ export type CandidateView = {
   referal_code: string | null;
   referal_note: string | null;
 
-  /** ID.me identity-verification state — see PROJECT_UNDERSTANDING.md §7. */
-  verification_status: 'not_started' | 'in_progress' | 'completed' | 'rejected' | null;
-  verification_started_at: string | null;
-  verified_at: string | null;
+  // `consistency_score`/`consistency_score_reason` (the Intake Call
+  // consistency check) and `verification_status`/`verification_started_at`/
+  // `verified_at` (ID.me identity verification) used to be declared here —
+  // removed 2026-09-07. Both are real, tracked columns on the domain
+  // entity (`candidate.py`), but neither is projected onto the real
+  // `CandidateView` Pydantic model `GET /candidates`/`GET /candidates/{id}`
+  // actually return (verified against `candidate_dto.py` directly) — every
+  // recruiter-facing read of this type would have silently gotten
+  // `undefined` for all five, forever. Confirmed unread anywhere in this
+  // codebase before removing. If either becomes recruiter-visible later,
+  // it needs to be added to the backend's `CandidateView` first, then here.
 };
 
 export type PaginatedCandidates = {

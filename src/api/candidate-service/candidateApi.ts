@@ -120,6 +120,7 @@ export const candidateApi = createApi({
     'CandidateInterviewRounds',
     'CandidateInterviewRoundArtifacts',
     'CandidateInterviewScores',
+    'EligibleInterviewers',
     'CandidateResumeReview',
     'CandidateNotes',
     'MasterCandidateStatuses',

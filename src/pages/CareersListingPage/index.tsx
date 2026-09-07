@@ -4,6 +4,7 @@ import { Select, Spin, Input } from 'antd';
 import {
   EnvironmentOutlined,
   CalendarOutlined,
+  ClockCircleOutlined,
   SearchOutlined,
   DownOutlined,
 } from '@ant-design/icons';
@@ -11,19 +12,24 @@ import { useListPublicJobsQuery } from '../../api/job-service/PublicCareers/inde
 import type { PublicJobListing } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
+import {
+  formatSalary,
+  formatExperience,
+  formatPostedAgo,
+} from '../../shared/utils/publicJobDisplay';
 
 const { Option } = Select;
 
 // job-service's public board route only takes `page`/`page_size` — no
 // search or facet params (see api/job-service/PublicCareers/index.ts's own
 // docstring: "this client doesn't invent params the API can't answer").
-// Location/experience/salary/search filtering below is therefore done
-// entirely client-side, over one big fetch capped at the backend's own
-// MAX_PAGE_SIZE (public_router.py) rather than the 20-a-page default —
-// large enough to cover a typical org's whole open-roles list in one call,
-// so filtering and the "page X of Y" control below stay honest (both work
-// off the exact same loaded array, never disagreeing with a server-side
-// count). A card list of 20 is still what's shown at once.
+// Location/experience/salary/date-posted/search filtering below is
+// therefore done entirely client-side, over one big fetch capped at the
+// backend's own MAX_PAGE_SIZE (public_router.py) rather than the 20-a-page
+// default — large enough to cover a typical org's whole open-roles list in
+// one call, so filtering and the "page X of Y" control below stay honest
+// (both work off the exact same loaded array, never disagreeing with a
+// server-side count). A card list of 20 is still what's shown at once.
 const FETCH_SIZE = 200;
 const CARDS_PER_PAGE = 20;
 
@@ -43,9 +49,24 @@ const SALARY_BUCKETS: { value: string; label: string; min?: number; max?: number
   { value: '130+', label: '$130K+', min: 130_000 },
 ];
 
+/** `days` is how far back from now the bucket reaches; `undefined` on
+ * "Any Time" means no cutoff at all. Mirrors the experience/salary
+ * buckets' own open-ended-range shape rather than inventing a new one. */
+const DATE_POSTED_BUCKETS: { value: string; label: string; days?: number }[] = [
+  { value: 'any', label: 'Time of Posting' },
+  { value: '1', label: 'Last 24 Hours', days: 1 },
+  { value: '3', label: 'Last 3 Days', days: 3 },
+  { value: '7', label: 'Last 7 Days', days: 7 },
+  { value: '14', label: 'Last 14 Days', days: 14 },
+  { value: '30', label: 'Last 30 Days', days: 30 },
+];
+
 /** Does a job's (possibly open-ended) range overlap a filter bucket's
  * (possibly open-ended) range? A job with no upper experience bound, for
- * instance, still qualifies for the "8+ Years" bucket. */
+ * instance, still qualifies for the "8+ Years" bucket. Both sides are real
+ * `number`s by the time they reach here — `PublicCareers/index.ts`'s own
+ * `transformResponse` normalizes job-service's Decimal-as-JSON-string
+ * experience fields before this component ever sees them. */
 const rangesOverlap = (
   jobMin: number | null,
   jobMax: number | null,
@@ -60,17 +81,16 @@ const rangesOverlap = (
   return loJob <= hiBucket && hiJob >= loBucket;
 };
 
-const formatSalary = (min: number | null, max: number | null): string | null => {
-  if (min === null && max === null) return null;
-  const fmt = (n: number): string => (n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`);
-  if (min !== null && max !== null) return `${fmt(min)} - ${fmt(max)}`;
-  return fmt((min ?? max) as number);
-};
-
-const formatExperience = (min: number | null, max: number | null): string | null => {
-  if (min === null && max === null) return null;
-  if (min !== null && max !== null) return `${min}-${max} Years of Experience`;
-  return `${min ?? max}+ Years of Experience`;
+/** Same permissive philosophy as `rangesOverlap`: a job with no
+ * `job_open_date` at all matches every "posted within N days" bucket
+ * rather than being hidden by one — we genuinely don't know, so we don't
+ * assume it's stale. */
+const postedWithinDays = (jobOpenDate: string | null, days: number | undefined): boolean => {
+  if (days === undefined) return true;
+  if (!jobOpenDate) return true;
+  const postedMs = new Date(jobOpenDate).getTime();
+  if (Number.isNaN(postedMs)) return true;
+  return postedMs >= Date.now() - days * 86_400_000;
 };
 
 interface JobCardProps {
@@ -95,19 +115,29 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
 
   const experience = formatExperience(job.min_experience_req, job.max_experience_req);
   const salary = formatSalary(job.salary_min, job.salary_max);
+  const postedAgo = formatPostedAgo(job.job_open_date);
 
   return (
     <div
       onClick={goToDetail}
-      className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between hover:shadow-md transition-shadow cursor-pointer"
+      className="group bg-white rounded-2xl border border-gray-100 shadow-sm p-5 md:p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between hover:shadow-lg hover:border-gray-200 hover:-translate-y-0.5 transition-all cursor-pointer"
     >
       <div className="flex-1 min-w-0">
-        <p className="text-left text-base md:text-lg font-semibold text-gray-900 leading-tight">
-          {job.job_title ?? job.job_profile_code}
-        </p>
-        <p className="text-left text-xs text-gray-400 mt-0.5">{job.job_profile_code}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-left text-base md:text-lg font-semibold text-gray-900 leading-tight group-hover:text-primary transition-colors">
+              {job.job_title ?? job.job_profile_code}
+            </p>
+            <p className="text-left text-xs text-gray-400 mt-0.5">{job.job_profile_code}</p>
+          </div>
+          {postedAgo && (
+            <span className="shrink-0 text-[11px] font-medium text-gray-400 whitespace-nowrap mt-1">
+              {postedAgo}
+            </span>
+          )}
+        </div>
 
-        <div className="flex flex-col gap-1 mt-1.5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2.5">
           {job.location_city && (
             <div className="flex items-center gap-1.5 text-sm text-gray-500">
               <EnvironmentOutlined className="text-xs shrink-0" />
@@ -159,6 +189,7 @@ export const CareersListingPage = () => {
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [experienceBucket, setExperienceBucket] = useState('any');
   const [salaryBucket, setSalaryBucket] = useState('any');
+  const [datePostedBucket, setDatePostedBucket] = useState('any');
   const [searchText, setSearchText] = useState('');
   const [page, setPage] = useState(1);
 
@@ -186,6 +217,7 @@ export const CareersListingPage = () => {
   const filteredJobs = useMemo(() => {
     const experience = EXPERIENCE_BUCKETS.find((bucket) => bucket.value === experienceBucket);
     const salary = SALARY_BUCKETS.find((bucket) => bucket.value === salaryBucket);
+    const datePosted = DATE_POSTED_BUCKETS.find((bucket) => bucket.value === datePostedBucket);
     const query = searchText.trim().toLowerCase();
 
     return allJobs.filter((job) => {
@@ -209,19 +241,22 @@ export const CareersListingPage = () => {
       if (salary && !rangesOverlap(job.salary_min, job.salary_max, salary.min, salary.max)) {
         return false;
       }
+      if (datePosted && !postedWithinDays(job.job_open_date, datePosted.days)) {
+        return false;
+      }
       if (query) {
         const haystack = `${job.job_title ?? ''} ${job.job_profile_code}`.toLowerCase();
         if (!haystack.includes(query)) return false;
       }
       return true;
     });
-  }, [allJobs, selectedLocations, experienceBucket, salaryBucket, searchText]);
+  }, [allJobs, selectedLocations, experienceBucket, salaryBucket, datePostedBucket, searchText]);
 
   // Every filter change starts back at page 1 of the (now different)
   // filtered result set.
   useEffect(() => {
     setPage(1);
-  }, [selectedLocations, experienceBucket, salaryBucket, searchText]);
+  }, [selectedLocations, experienceBucket, salaryBucket, datePostedBucket, searchText]);
 
   const totalPages = Math.max(1, Math.ceil(filteredJobs.length / CARDS_PER_PAGE));
   const pagedJobs = filteredJobs.slice((page - 1) * CARDS_PER_PAGE, page * CARDS_PER_PAGE);
@@ -230,8 +265,16 @@ export const CareersListingPage = () => {
     setSelectedLocations([]);
     setExperienceBucket('any');
     setSalaryBucket('any');
+    setDatePostedBucket('any');
     setSearchText('');
   };
+
+  const hasActiveFilters =
+    selectedLocations.length > 0 ||
+    experienceBucket !== 'any' ||
+    salaryBucket !== 'any' ||
+    datePostedBucket !== 'any' ||
+    searchText.trim().length > 0;
 
   const activeFilterChips = [
     ...selectedLocations.map((city) => ({
@@ -257,17 +300,26 @@ export const CareersListingPage = () => {
           },
         ]
       : []),
+    ...(datePostedBucket !== 'any'
+      ? [
+          {
+            key: 'datePosted',
+            label: DATE_POSTED_BUCKETS.find((b) => b.value === datePostedBucket)?.label ?? '',
+            onRemove: () => setDatePostedBucket('any'),
+          },
+        ]
+      : []),
     ...(searchText.trim()
       ? [{ key: 'search', label: `"${searchText.trim()}"`, onRemove: () => setSearchText('') }]
       : []),
   ];
 
   return (
-    <div className="public-page min-h-screen bg-white flex flex-col">
+    <div className="public-page min-h-screen bg-gray-50 flex flex-col">
       {/* Header — company logo when the tenant has one set, via job-service's
           public branding endpoint (proxies organization-service's existing
           internal branding lookup). Falls back to the plain "CFP" mark. */}
-      <header className="bg-black text-white px-4 py-3 flex items-center justify-center relative">
+      <header className="bg-black text-white px-4 py-3 flex items-center justify-center relative shrink-0">
         {logoUrl ? (
           <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-10 object-contain" />
         ) : (
@@ -275,18 +327,42 @@ export const CareersListingPage = () => {
         )}
       </header>
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-8 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Job Openings</h1>
-        </div>
+      {/* Hero — title + role count + the search box, the most-used control,
+          gets top billing on its own row rather than buried in the filter
+          grid below. */}
+      <div className="bg-gradient-to-b from-white to-gray-50 border-b border-gray-100">
+        <div className="w-full max-w-5xl mx-auto px-4 md:px-8 pt-10 pb-7">
+          <h1 className="text-2xl md:text-4xl font-bold text-gray-900">
+            {companyName ? `Careers at ${companyName}` : 'Open Positions'}
+          </h1>
+          <p className="mt-1.5 text-sm md:text-base text-gray-500">
+            {allJobs.length > 0
+              ? `${jobsData?.total ?? allJobs.length} open role${(jobsData?.total ?? allJobs.length) === 1 ? '' : 's'} — find where you fit.`
+              : 'Explore our open roles.'}
+          </p>
 
+          <div className="mt-5 max-w-xl">
+            <Input
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search by job title"
+              prefix={<SearchOutlined className="text-gray-400" />}
+              size="large"
+              style={{ borderRadius: 999 }}
+              allowClear
+            />
+          </div>
+        </div>
+      </div>
+
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-8 py-6">
         {/* Filters — only shown once there's something to filter. Every
             control applies the moment it changes: this is all client-side
             over one already-loaded batch, so there's no network cost to
             filtering instantly. */}
         {allJobs.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 md:p-4 mb-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Select
                 mode="multiple"
                 placeholder={
@@ -336,17 +412,20 @@ export const CareersListingPage = () => {
                   </Option>
                 ))}
               </Select>
-            </div>
 
-            <div className="mt-3">
-              <Input
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                placeholder="Search by job title"
-                prefix={<SearchOutlined className="text-gray-400" />}
-                style={{ height: 40, borderRadius: 8 }}
-                allowClear
-              />
+              <Select
+                value={datePostedBucket}
+                onChange={setDatePostedBucket}
+                className="w-full"
+                suffixIcon={<DownOutlined style={{ fontSize: 10, color: '#9ca3af' }} />}
+                style={{ height: 40 }}
+              >
+                {DATE_POSTED_BUCKETS.map((bucket) => (
+                  <Option key={bucket.value} value={bucket.value}>
+                    {bucket.label}
+                  </Option>
+                ))}
+              </Select>
             </div>
 
             {activeFilterChips.length > 0 && (
@@ -386,6 +465,22 @@ export const CareersListingPage = () => {
           </div>
         )}
 
+        {/* A visible result count — proof a filter actually changed
+            something, not just a silently-shorter list a user might not
+            notice. */}
+        {!isLoading && allJobs.length > 0 && (
+          <div className="flex items-center gap-2 mb-3 text-sm text-gray-500">
+            <ClockCircleOutlined
+              className={`text-xs ${isFetching ? 'animate-spin' : 'invisible'}`}
+            />
+            <span>
+              {hasActiveFilters
+                ? `${filteredJobs.length} of ${allJobs.length} role${allJobs.length === 1 ? '' : 's'} match your filters`
+                : `${allJobs.length} open role${allJobs.length === 1 ? '' : 's'}`}
+            </span>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center items-center py-20">
             <Spin size="large" />
@@ -393,10 +488,19 @@ export const CareersListingPage = () => {
         ) : filteredJobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <SearchOutlined className="text-4xl mb-3" />
-            <p className="text-lg font-medium">No jobs found</p>
-            <p className="text-sm">
+            <p className="text-lg font-medium text-gray-600">No jobs found</p>
+            <p className="text-sm mt-1">
               {allJobs.length === 0 ? 'Please check back later' : 'Try adjusting your filters'}
             </p>
+            {allJobs.length > 0 && hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="mt-4 text-sm font-semibold text-primary hover:underline"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-4" style={{ opacity: isFetching ? 0.6 : 1 }}>
