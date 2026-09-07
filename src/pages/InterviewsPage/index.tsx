@@ -7,8 +7,12 @@ import MainLayout from '../../layouts/MainLayout';
 import { Loader } from '../../components/shared/ui/loader';
 import { Badge } from '../../components/shared/ui/badge';
 import { Button } from '../../components/shared/ui/button';
+import { showToast } from '../../components/shared';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 import {
   useListBookingsQuery,
+  useBulkUpdateBookingStatusMutation,
   type BookingStatus,
   type InterviewType,
   type InterviewApiError,
@@ -65,6 +69,11 @@ export const InterviewsPage = () => {
   // Cursor pagination: one entry per page visited; the last is the current page.
   const [cursorStack, setCursorStack] = useState<Array<string | null>>([null]);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<BookingStatus>('completed');
+
+  const canUpdate = useHasAccess(Authorities.INTERVIEW_QUESTIONS_UPDATE);
+  const [bulkUpdateStatus, bulkState] = useBulkUpdateBookingStatusMutation();
 
   const currentCursor = cursorStack[cursorStack.length - 1];
 
@@ -82,7 +91,48 @@ export const InterviewsPage = () => {
   const hasNext = Boolean(data?.next_cursor);
   const hasPrev = cursorStack.length > 1;
 
-  const resetPaging = () => setCursorStack([null]);
+  const resetPaging = () => {
+    setCursorStack([null]);
+    setSelectedIds(new Set());
+  };
+
+  const toggleOne = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const pageIds = bookings.map((b) => b.id);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const toggleAllOnPage = () =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+
+  const applyBulkStatus = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const res = await bulkUpdateStatus({
+        items: [...selectedIds].map((id) => ({ booking_id: id, target_status: bulkStatus })),
+      }).unwrap();
+      const ok = res.results.filter((r) => r.success).length;
+      const failed = res.results.length - ok;
+      showToast({
+        message: failed
+          ? `${ok} updated, ${failed} failed.`
+          : `${ok} interview${ok === 1 ? '' : 's'} set to ${bookingStatusLabel(bulkStatus)}.`,
+        type: failed ? 'warning' : 'success',
+      });
+      setSelectedIds(new Set());
+    } catch (e) {
+      const err = e as InterviewApiError;
+      showToast({ message: err?.message || 'Bulk update failed.', type: 'error' });
+    }
+  };
 
   const apiError = error as InterviewApiError | undefined;
 
@@ -139,6 +189,34 @@ export const InterviewsPage = () => {
           )}
         </div>
 
+        {canUpdate && selectedIds.size > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+            <span className="text-sm font-medium text-neutral-700">
+              {selectedIds.size} selected
+            </span>
+            <Select<BookingStatus>
+              className="w-44"
+              value={bulkStatus}
+              options={BOOKING_STATUS_OPTIONS}
+              onChange={(v) => setBulkStatus(v)}
+            />
+            <Button
+              className={PRIMARY_BTN}
+              disabled={bulkState.isLoading}
+              onClick={applyBulkStatus}
+            >
+              {bulkState.isLoading ? 'Updating…' : `Set status for ${selectedIds.size}`}
+            </Button>
+            <button
+              type="button"
+              className="text-sm font-medium text-neutral-500 hover:text-neutral-700"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs">
           {isLoading ? (
             <div className="flex justify-center py-16">
@@ -164,6 +242,16 @@ export const InterviewsPage = () => {
               <table className="min-w-[860px] w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    {canUpdate && (
+                      <th className="w-10 px-4 py-3">
+                        <input
+                          type="checkbox"
+                          aria-label="Select all on this page"
+                          checked={allOnPageSelected}
+                          onChange={toggleAllOnPage}
+                        />
+                      </th>
+                    )}
                     <th className="px-4 py-3">Candidate</th>
                     <th className="px-4 py-3">Job</th>
                     <th className="px-4 py-3">Round</th>
@@ -179,6 +267,16 @@ export const InterviewsPage = () => {
                       onClick={() => setSelectedBookingId(booking.id)}
                       className="cursor-pointer border-b border-neutral-100 last:border-0 hover:bg-neutral-50/60"
                     >
+                      {canUpdate && (
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            aria-label="Select interview"
+                            checked={selectedIds.has(booking.id)}
+                            onChange={() => toggleOne(booking.id)}
+                          />
+                        </td>
+                      )}
                       <td className="max-w-[220px] px-4 py-3">
                         <CandidateNameCell candidateId={booking.candidate_id} />
                       </td>

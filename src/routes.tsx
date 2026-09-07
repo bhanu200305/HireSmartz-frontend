@@ -117,6 +117,10 @@ const WithdrawalPage = lazyImport(
   () => import('./components/Interview/CandidateActionScreens'),
   'WithdrawalPage'
 );
+const RecordingPlaybackPage = lazyImport(
+  () => import('./components/Interview/CandidateActionScreens'),
+  'RecordingPlaybackPage'
+);
 const MyCompanyPage = lazy(() => import('./pages/MyCompanyPage'));
 const CompanyMetricsPage = lazy(() => import('./pages/CompanyMetricsPage'));
 const CompanySettingsPage = lazy(() => import('./pages/CompanySettingsPage'));
@@ -737,6 +741,13 @@ export const Routes: RouteType[] = [
     name: 'CandidateWithdraw',
     path: '/withdraw',
     component: WithdrawalPage,
+    isOpen: true,
+  },
+  {
+    // Booking-scoped recording playback link (GET /recordings/{token}).
+    name: 'RecordingPlayback',
+    path: '/recordings',
+    component: RecordingPlaybackPage,
     isOpen: true,
   },
   {

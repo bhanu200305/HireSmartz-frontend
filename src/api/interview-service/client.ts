@@ -65,6 +65,13 @@ export interface SessionTokenView {
   livekit_url: string;
 }
 
+export type VideoSessionStatus = 'active' | 'ended' | 'failed';
+
+export interface CallNowView {
+  booking_id: string;
+  initiated_at: string;
+}
+
 export interface FollowUpRequestView {
   id: string;
   booking_id: string;
@@ -107,6 +114,35 @@ export interface ArtifactView {
 export interface BookingArtifactsView {
   booking_id: string;
   artifacts: ArtifactView[];
+}
+
+export interface SessionStateView {
+  booking_id: string;
+  status: VideoSessionStatus;
+  participants: ParticipantView[];
+  recording_active: boolean;
+  egress_id: string | null;
+}
+
+export interface RecordingView {
+  booking_id: string;
+  interview_type: InterviewType;
+  start_time: string | null;
+  kind: ArtifactKind;
+  external_ref: string;
+  handoff_status: HandoffStatus;
+}
+
+export interface InterviewerCalendarStatusView {
+  interviewer_id: string;
+  display_name: string | null;
+  email: string | null;
+  calendar_connected: boolean;
+}
+
+export interface BookingInterviewerCalendarStatusView {
+  booking_id: string;
+  interviewers: InterviewerCalendarStatusView[];
 }
 
 export interface ApiErrorDetails {
@@ -338,7 +374,14 @@ export const interviewApi = createApi({
       invalidatesTags: ['Booking', 'Dashboard'],
     }),
     bulkCreateBookings: build.mutation<
-      { results: Array<{ success: boolean; booking?: BookingView; error?: string }> },
+      {
+        results: Array<{
+          index: number;
+          success: boolean;
+          booking: BookingView | null;
+          error: string | null;
+        }>;
+      },
       { items: CreateBookingRequest[] }
     >({
       query: (body) => platform({ url: '/bookings/bulk', method: 'POST', body }),
@@ -359,13 +402,18 @@ export const interviewApi = createApi({
     getArtifacts: build.query<BookingArtifactsView, string>({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}/artifacts` }),
     }),
-    attachRecording: build.mutation<unknown, { bookingId: string; external_ref: string }>({
+    getInterviewerCalendarStatus: build.query<BookingInterviewerCalendarStatusView, string>({
+      query: (bookingId) => platform({ url: `/bookings/${bookingId}/interviewer-calendar-status` }),
+      providesTags: (_r, _e, id) => [{ type: 'Booking', id }],
+    }),
+    attachRecording: build.mutation<ArtifactView, { bookingId: string; external_ref: string }>({
       query: ({ bookingId, external_ref }) =>
         platform({
           url: `/bookings/${bookingId}/recording`,
           method: 'POST',
           body: { external_ref },
         }),
+      invalidatesTags: (_r, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }],
     }),
     submitFeedback: build.mutation<
       unknown,
@@ -404,7 +452,7 @@ export const interviewApi = createApi({
       query: ({ token, ...body }) =>
         bookingLink({ url: `/scheduling/${token}/ai-slots/book`, method: 'POST', body }),
     }),
-    callNow: build.mutation<unknown, string>({
+    callNow: build.mutation<CallNowView, string>({
       query: (token) => bookingLink({ url: `/scheduling/${token}/call-now`, method: 'POST' }),
     }),
     // Candidate's own post-round feedback link (GET /feedback/{token} +
@@ -427,7 +475,7 @@ export const interviewApi = createApi({
     submitWithdrawal: build.mutation<{ booking_id: string; submitted_at: string }, string>({
       query: (token) => bookingLink({ url: `/withdraw/${token}`, method: 'POST' }),
     }),
-    getRecording: build.query<{ booking_id: string; external_ref: string }, string>({
+    getRecording: build.query<RecordingView, string>({
       query: (token) => bookingLink({ url: `/recordings/${token}` }),
     }),
     joinSession: build.query<SessionTokenView, string>({
@@ -439,7 +487,7 @@ export const interviewApi = createApi({
     createInAppSessionToken: build.mutation<SessionTokenView, string>({
       query: (bookingId) => platform({ url: `/sessions/${bookingId}/token`, method: 'POST' }),
     }),
-    getSessionState: build.query<unknown, string>({
+    getSessionState: build.query<SessionStateView, string>({
       query: (bookingId) => platform({ url: `/sessions/${bookingId}` }),
       providesTags: (_result, _error, id) => [{ type: 'Session', id }],
     }),
@@ -491,6 +539,7 @@ export const {
   useGetFollowUpsQuery,
   useGetParticipationQuery,
   useGetArtifactsQuery,
+  useGetInterviewerCalendarStatusQuery,
   useAttachRecordingMutation,
   useSubmitFeedbackMutation,
   useGetSchedulingLinkQuery,

@@ -4,7 +4,14 @@ import { useSelector, shallowEqual } from 'react-redux';
 import { Col, Row, Tooltip, Checkbox } from 'antd';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
-import { LuMail, LuMessageSquare, LuSquarePen, LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
+import {
+  LuCalendarPlus,
+  LuMail,
+  LuMessageSquare,
+  LuSquarePen,
+  LuThumbsDown,
+  LuThumbsUp,
+} from 'react-icons/lu';
 import { IoArrowRedoOutline } from 'react-icons/io5';
 import { MdClose, MdOutlineRemoveRedEye } from 'react-icons/md';
 import { CommonCard, Button, showToast } from '../../shared';
@@ -34,6 +41,7 @@ import UploadCvModal from './Modal/UploadCvModal';
 import AddCandidateModal from './Modal/AddCandidateModal';
 import BulkSendSmsModal from './Modal/BulkSendSmsModal';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
+import BulkScheduleInterviewsModal from './Modal/BulkScheduleInterviewsModal';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
@@ -97,6 +105,7 @@ const CandidatesListing = () => {
   const [notesCandidate, setNotesCandidate] = useState<{ id: string; name: string } | null>(null);
   const [isBulkEmailOpen, setIsBulkEmailOpen] = useState(false);
   const [isBulkSmsOpen, setIsBulkSmsOpen] = useState(false);
+  const [isBulkScheduleOpen, setIsBulkScheduleOpen] = useState(false);
   const [statusModal, setStatusModal] = useState<{
     mode: ChangeCandidateStatusMode;
     candidates: CandidateView[];
@@ -659,6 +668,14 @@ const CandidatesListing = () => {
                   >
                     <LuMessageSquare size={16} /> SMS
                   </Button>
+                  {canManageCandidates && (
+                    <Button
+                      className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
+                      onClick={() => setIsBulkScheduleOpen(true)}
+                    >
+                      <LuCalendarPlus size={16} /> Schedule
+                    </Button>
+                  )}
                 </div>
               </div>
               <Button
@@ -691,6 +708,16 @@ const CandidatesListing = () => {
         open={isBulkSmsOpen}
         onClose={() => setIsBulkSmsOpen(false)}
         candidates={selectedCandidates}
+      />
+      <BulkScheduleInterviewsModal
+        open={isBulkScheduleOpen}
+        onClose={() => setIsBulkScheduleOpen(false)}
+        candidates={selectedCandidates}
+        jobId={parsedJobId}
+        onScheduled={() => {
+          clearSelection();
+          refetch();
+        }}
       />
       <JobListingNotesPanel
         open={isJobNotesPanelOpen}

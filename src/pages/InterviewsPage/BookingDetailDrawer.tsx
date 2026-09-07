@@ -14,12 +14,15 @@ import {
   useGetParticipationQuery,
   useGetArtifactsQuery,
   useGetInterviewersQuery,
+  useGetInterviewerCalendarStatusQuery,
+  useGetSessionStateQuery,
   useCancelBookingMutation,
   useSkipBookingMutation,
   useUpdateBookingStatusMutation,
   useRequestFollowUpMutation,
   useSubstituteInterviewerMutation,
   useSubmitFeedbackMutation,
+  useAttachRecordingMutation,
   type BookingStatus,
   type FeedbackRecommendation,
   type InterviewApiError,
@@ -88,8 +91,16 @@ export const BookingDetailDrawer = ({
   const canFollowUp = useHasAccess(Authorities.INTERVIEW_QUESTIONS_EDIT);
 
   const isPanel = booking?.interview_type === 'panel';
+  const isVideo = booking?.interview_type === 'ai_video' || isPanel;
   const { data: interviewers } = useGetInterviewersQuery(undefined, {
     skip: !open || !isPanel || !canUpdate,
+  });
+  const { data: calendarStatus } = useGetInterviewerCalendarStatusQuery(id, {
+    skip: !open || !isPanel,
+  });
+  // Live session state — only meaningful for a scheduled/in-progress video round.
+  const { data: sessionState } = useGetSessionStateQuery(id, {
+    skip: !open || !isVideo || booking?.status !== 'scheduled',
   });
 
   const [cancelBooking, cancelState] = useCancelBookingMutation();
@@ -98,6 +109,7 @@ export const BookingDetailDrawer = ({
   const [requestFollowUp, followUpState] = useRequestFollowUpMutation();
   const [substituteInterviewer, substituteState] = useSubstituteInterviewerMutation();
   const [submitFeedback, feedbackState] = useSubmitFeedbackMutation();
+  const [attachRecording, attachState] = useAttachRecordingMutation();
 
   const [pending, setPending] = useState<PendingAction>(null);
   const [reason, setReason] = useState('');
@@ -108,6 +120,7 @@ export const BookingDetailDrawer = ({
     undefined
   );
   const [feedbackNotes, setFeedbackNotes] = useState('');
+  const [recordingRef, setRecordingRef] = useState('');
 
   // Reset transient UI whenever a different booking is opened / the drawer closes.
   useEffect(() => {
@@ -118,7 +131,20 @@ export const BookingDetailDrawer = ({
     setNewInterviewerId(undefined);
     setRecommendation(undefined);
     setFeedbackNotes('');
+    setRecordingRef('');
   }, [bookingId]);
+
+  const saveRecording = async () => {
+    if (!recordingRef.trim()) return;
+    try {
+      await attachRecording({ bookingId: id, external_ref: recordingRef.trim() }).unwrap();
+      setRecordingRef('');
+      showToast({ message: 'Recording attached.', type: 'success' });
+    } catch (e) {
+      const err = e as InterviewApiError;
+      showToast({ message: err?.message || 'Could not attach recording.', type: 'error' });
+    }
+  };
 
   const busy =
     cancelState.isLoading ||
@@ -251,6 +277,25 @@ export const BookingDetailDrawer = ({
               </div>
             </details>
 
+            {/* Panel interviewers — calendar-connection status */}
+            {isPanel && calendarStatus && calendarStatus.interviewers.length > 0 && (
+              <>
+                <SectionTitle>Panel interviewers</SectionTitle>
+                <ul className="space-y-1.5 text-sm">
+                  {calendarStatus.interviewers.map((iv) => (
+                    <li key={iv.interviewer_id} className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate text-neutral-700">
+                        {iv.display_name || iv.email || `${iv.interviewer_id.slice(0, 8)}…`}
+                      </span>
+                      <Badge status={iv.calendar_connected ? 'success' : 'warning'} dot={false}>
+                        {iv.calendar_connected ? 'Calendar connected' : 'No calendar'}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
             {/* Follow-up notes */}
             <SectionTitle>Follow-up notes</SectionTitle>
             {followUps && followUps.requests.length > 0 ? (
@@ -288,6 +333,32 @@ export const BookingDetailDrawer = ({
               </div>
             )}
 
+            {/* Live session state — scheduled video rounds only */}
+            {sessionState && (
+              <>
+                <SectionTitle>Live session</SectionTitle>
+                <div className="divide-y divide-neutral-100">
+                  <Row label="Room">
+                    <Badge
+                      status={
+                        sessionState.status === 'active'
+                          ? 'success'
+                          : sessionState.status === 'failed'
+                            ? 'danger'
+                            : 'neutral'
+                      }
+                    >
+                      {sessionState.status}
+                    </Badge>
+                  </Row>
+                  <Row label="Recording">
+                    {sessionState.recording_active ? 'Active' : 'Not recording'}
+                  </Row>
+                  <Row label="In the room">{sessionState.participants.length}</Row>
+                </div>
+              </>
+            )}
+
             {/* Participation (read-only) */}
             {participation && participation.participants.length > 0 && (
               <>
@@ -307,20 +378,56 @@ export const BookingDetailDrawer = ({
               </>
             )}
 
-            {/* Artifacts (read-only) */}
-            {artifacts && artifacts.artifacts.length > 0 && (
+            {/* Artifacts — recording/transcript references + playback link */}
+            {((artifacts && artifacts.artifacts.length > 0) || canFollowUp) && (
               <>
                 <SectionTitle>Recordings &amp; transcripts</SectionTitle>
-                <ul className="space-y-1.5 text-sm">
-                  {artifacts.artifacts.map((a, i) => (
-                    <li key={`${a.kind}-${i}`} className="flex justify-between gap-3">
-                      <span className="capitalize text-neutral-700">{a.kind}</span>
-                      <Badge status="neutral" dot={false}>
-                        {String(a.handoff_status).replace(/_/g, ' ')}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
+                {artifacts && artifacts.artifacts.length > 0 ? (
+                  <ul className="space-y-1.5 text-sm">
+                    {artifacts.artifacts.map((a, i) => (
+                      <li
+                        key={`${a.kind}-${i}`}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <span className="capitalize text-neutral-700">
+                          {a.kind}
+                          {a.playback_token && (
+                            <a
+                              href={`/recordings?token=${encodeURIComponent(a.playback_token)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 text-xs font-medium text-brand-600 hover:text-brand-700"
+                            >
+                              View
+                            </a>
+                          )}
+                        </span>
+                        <Badge status="neutral" dot={false}>
+                          {String(a.handoff_status).replace(/_/g, ' ')}
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-neutral-400">No recordings attached yet.</p>
+                )}
+                {canFollowUp && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                      placeholder="Attach recording by reference…"
+                      value={recordingRef}
+                      onChange={(e) => setRecordingRef(e.target.value)}
+                    />
+                    <Button
+                      className={GHOST_BTN}
+                      disabled={!recordingRef.trim() || attachState.isLoading}
+                      onClick={saveRecording}
+                    >
+                      Attach
+                    </Button>
+                  </div>
+                )}
               </>
             )}
 

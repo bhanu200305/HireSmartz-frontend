@@ -19,6 +19,7 @@ import { AI_SCHEDULE_WINDOW_DAYS } from '../../constants/app.constants';
 import {
   InterviewApiError,
   useBookAiSlotMutation,
+  useCallNowMutation,
   useGetSchedulingLinkQuery,
   useGetTimezonesQuery,
   useLazyGetAiSlotsQuery,
@@ -55,6 +56,13 @@ const T = {
     bookingError: 'Something went wrong. Please try again.',
     scheduledTitle: 'Interview Scheduled!',
     scheduledBody: 'Your AI screening call has been confirmed. A confirmation will be sent to',
+    callNowButton: 'Call me now instead',
+    callNowHint: "Don't want to wait for a slot? We can call you right away.",
+    callNowConfirm: 'Calling…',
+    callNowTitle: "We're calling you now",
+    callNowBody:
+      'Your phone should ring shortly. Please make sure you’re somewhere quiet and ready to talk.',
+    callNowError: "We couldn't start the call. Please pick a slot instead.",
     invalidTitle: 'Invalid Scheduling Link',
     invalidBody:
       'This scheduling link appears to be invalid or incomplete. Please use the link from your invitation email.',
@@ -86,6 +94,13 @@ const T = {
     scheduledTitle: 'Entrevista programada!',
     scheduledBody:
       'Tu llamada de selección de IA ha sido confirmada. Se enviará una confirmación a',
+    callNowButton: 'Llámame ahora',
+    callNowHint: '¿No quieres esperar a un horario? Podemos llamarte de inmediato.',
+    callNowConfirm: 'Llamando…',
+    callNowTitle: 'Te estamos llamando ahora',
+    callNowBody:
+      'Tu teléfono debería sonar en breve. Asegúrate de estar en un lugar tranquilo y listo para hablar.',
+    callNowError: 'No pudimos iniciar la llamada. Por favor, elige un horario.',
     invalidTitle: 'Enlace no válido',
     invalidBody:
       'Este enlace de programación parece ser inválido o incompleto. Usa el enlace de tu correo de invitación.',
@@ -208,6 +223,7 @@ const AiCallSchedulePage = () => {
   const [bookedSlot, setBookedSlot] = useState<AiSlot | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [hasConsent, setHasConsent] = useState(false);
+  const [calledNow, setCalledNow] = useState(false);
 
   const tzDropdownRef = useRef<HTMLDivElement>(null);
   const langDropdownRef = useRef<HTMLDivElement>(null);
@@ -216,6 +232,7 @@ const AiCallSchedulePage = () => {
   const { data: timezoneData } = useGetTimezonesQuery();
   const [loadAiSlots] = useLazyGetAiSlotsQuery();
   const [bookAiSlot] = useBookAiSlotMutation();
+  const [callNow, callNowState] = useCallNowMutation();
   const { data: schedulingLink, error: schedulingError } = useGetSchedulingLinkQuery(token, {
     skip: !token,
   });
@@ -310,6 +327,16 @@ const AiCallSchedulePage = () => {
     }
   };
 
+  const handleCallNow = async (): Promise<void> => {
+    try {
+      await callNow(token).unwrap();
+      setCalledNow(true);
+    } catch (error) {
+      const apiError = error as InterviewApiError;
+      showToast({ message: apiError.message || t.callNowError, type: 'error' });
+    }
+  };
+
   //  Calendar helpers
   const startOfMonth = currentMonth.startOf('month');
   const endOfMonth = currentMonth.endOf('month');
@@ -353,6 +380,19 @@ const AiCallSchedulePage = () => {
   const selectedTzLabel =
     timezones.find((tz) => tz.id === selectedTimezone)?.label ??
     selectedTimezone.replace(/_/g, ' ');
+
+  //  Call-now success screen
+  if (calledNow) {
+    return (
+      <div className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center">
+          <LuCircleCheck className="text-green-500 w-16 h-16 mx-auto mb-4" />
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2">{t.callNowTitle}</h1>
+          <p className="text-gray-500 text-sm">{t.callNowBody}</p>
+        </div>
+      </div>
+    );
+  }
 
   //  Success screen
   if (isBooked && bookedSlot) {
@@ -605,6 +645,18 @@ const AiCallSchedulePage = () => {
                     ))
                   )}
                 </div>
+                {schedulingLink?.interview_type === 'audio' && (
+                  <div className="border-t border-gray-100 px-5 py-4 shrink-0">
+                    <p className="text-xs text-gray-400 mb-2 text-center">{t.callNowHint}</p>
+                    <button
+                      onClick={handleCallNow}
+                      disabled={callNowState.isLoading}
+                      className="w-full py-2.5 rounded-full border border-(--primary) text-(--primary) text-sm font-semibold hover:bg-(--primary)/5 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                    >
+                      {callNowState.isLoading ? t.callNowConfirm : t.callNowButton}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -635,6 +687,9 @@ const AiCallSchedulePage = () => {
                   <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
                     <LuSearch className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                     <input
+                      // Opens only on an explicit click on the timezone button —
+                      // focusing the filter field is the expected next step.
+                      // eslint-disable-next-line jsx-a11y/no-autofocus
                       autoFocus
                       type="text"
                       value={tzSearch}

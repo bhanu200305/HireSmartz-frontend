@@ -21,16 +21,21 @@ import {
   useDeletePlatformJobTitleMutation,
   PlatformJobTitle,
 } from '../../api/organization-service/Platform/jobTitles';
-import { useListMasterDepartmentsQuery } from '../../api/organization-service/Platform/masterDepartments';
+import {
+  useListMasterDepartmentsQuery,
+  useAssignJobTitleToDepartmentMutation,
+} from '../../api/organization-service/Platform/masterDepartments';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 // `code` isn't collected here — the backend derives it from `name` (see
-// CreateJobTitleRequest's docstring) and a create requires a `department_id`
-// to seed the title's first department mapping (many-to-many after that,
-// managed from DepartmentSettingsTab). Editing only ever touches name/
-// description, never the department, so departmentId is add-only state.
-type FormState = { name: string; description: string; departmentId: string | null };
-const emptyForm: FormState = { name: '', description: '', departmentId: null };
+// CreateJobTitleRequest's docstring). A create seeds the first department
+// mapping via `department_id`; the mapping is many-to-many
+// (`master_department_job_title_mapping`), so the form takes a list and any
+// extra departments are attached with one assign call each right after the
+// title is created. Editing only ever touches name/description — departments
+// are managed from DepartmentSettingsTab — so `departmentIds` is add-only state.
+type FormState = { name: string; description: string; departmentIds: string[] };
+const emptyForm: FormState = { name: '', description: '', departmentIds: [] };
 type JobTitleRow = PlatformJobTitle & { key: string };
 
 /**
@@ -45,6 +50,7 @@ const JobTitlesTab: React.FC = () => {
   const [createJobTitle, { isLoading: isCreating }] = useCreatePlatformJobTitleMutation();
   const [updateJobTitle, { isLoading: isUpdating }] = useUpdatePlatformJobTitleMutation();
   const [deleteJobTitle] = useDeletePlatformJobTitleMutation();
+  const [assignJobTitleToDepartment] = useAssignJobTitleToDepartmentMutation();
 
   const [modalState, setModalState] = useState<{
     mode: 'add' | 'edit';
@@ -73,13 +79,13 @@ const JobTitlesTab: React.FC = () => {
     setModalState({ mode: 'add' });
   };
   const openEdit = (jobTitle: PlatformJobTitle) => {
-    setForm({ name: jobTitle.name, description: jobTitle.description || '', departmentId: null });
+    setForm({ name: jobTitle.name, description: jobTitle.description || '', departmentIds: [] });
     setModalState({ mode: 'edit', jobTitle });
   };
 
   const handleSubmit = async () => {
-    if (!form.name.trim() || (modalState?.mode === 'add' && !form.departmentId)) {
-      showToast({ message: 'Name and department are required.', type: 'error' });
+    if (!form.name.trim() || (modalState?.mode === 'add' && form.departmentIds.length === 0)) {
+      showToast({ message: 'Name and at least one department are required.', type: 'error' });
       return;
     }
     try {
@@ -94,12 +100,31 @@ const JobTitlesTab: React.FC = () => {
         }).unwrap();
         showToast({ message: 'Job title updated.', type: 'success' });
       } else {
-        await createJobTitle({
+        const [firstDepartmentId, ...extraDepartmentIds] = form.departmentIds;
+        // The create endpoint seeds exactly one mapping; the rest are
+        // attached with one assign call each (no bulk endpoint exists).
+        const created = await createJobTitle({
           name: form.name.trim(),
           description: form.description.trim() || undefined,
-          department_id: form.departmentId as string,
+          department_id: firstDepartmentId,
         }).unwrap();
-        showToast({ message: 'Job title added.', type: 'success' });
+        if (extraDepartmentIds.length > 0) {
+          await Promise.all(
+            extraDepartmentIds.map((departmentId) =>
+              assignJobTitleToDepartment({
+                departmentId,
+                jobTitleId: created.job_title_id,
+              }).unwrap()
+            )
+          );
+        }
+        showToast({
+          message:
+            form.departmentIds.length > 1
+              ? `Job title added to ${form.departmentIds.length} departments.`
+              : 'Job title added.',
+          type: 'success',
+        });
       }
       setModalState(null);
     } catch (err) {
@@ -240,10 +265,12 @@ const JobTitlesTab: React.FC = () => {
           />
           {modalState?.mode === 'add' && (
             <AntSelect
-              placeholder="Department *"
+              mode="multiple"
+              placeholder="Departments *"
               className="w-full"
-              value={form.departmentId ?? undefined}
-              onChange={(value) => setForm((prev) => ({ ...prev, departmentId: value }))}
+              value={form.departmentIds}
+              onChange={(value: string[]) => setForm((prev) => ({ ...prev, departmentIds: value }))}
+              optionFilterProp="label"
               options={(departments ?? []).map((department) => ({
                 label: department.name,
                 value: department.department_id,

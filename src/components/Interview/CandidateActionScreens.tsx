@@ -1,23 +1,26 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import dayjs from 'dayjs';
 
 import { Loader } from '../shared/ui/loader';
+import { Badge } from '../shared/ui/badge';
 import {
   useGetCandidateFeedbackLinkQuery,
   useSubmitCandidateFeedbackMutation,
   useGetWithdrawalLinkQuery,
   useSubmitWithdrawalMutation,
+  useGetRecordingQuery,
   getInterviewErrorAction,
   type InterviewApiError,
 } from '../../api/interview-service/client';
 import { interviewTypeLabel } from '../../pages/InterviewsPage/interviewLabels';
 
 /**
- * The two remaining candidate-facing token links interview-service emails
- * during the interview process:
- *   - CANDIDATE_FEEDBACK_BASE_URL   -> /feedback?token=…   (post-round rating)
- *   - CANDIDATE_WITHDRAWAL_BASE_URL -> /withdraw?token=…    (self-withdrawal)
- * Both are token-only (the candidate is not logged in) and public.
+ * Candidate-facing token links interview-service emails during the process:
+ *   - CANDIDATE_FEEDBACK_BASE_URL   -> /feedback?token=…    (post-round rating)
+ *   - CANDIDATE_WITHDRAWAL_BASE_URL -> /withdraw?token=…     (self-withdrawal)
+ *   - a recording playback link     -> /recordings?token=…  (GET /recordings/{token})
+ * All are token-only (the candidate is not logged in) and public.
  */
 
 const Shell = ({ children }: { children: React.ReactNode }) => (
@@ -220,6 +223,84 @@ export const WithdrawalPage = () => {
       >
         {isSubmitting ? 'Processing…' : 'Withdraw from this process'}
       </button>
+    </Shell>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Recording playback  —  /recordings?token=
+// ---------------------------------------------------------------------------
+const isUrl = (s: string) => /^https?:\/\//i.test(s);
+
+export const RecordingPlaybackPage = () => {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token') ?? '';
+
+  const { data, isLoading, isError, error } = useGetRecordingQuery(token, { skip: !token });
+
+  if (!token) {
+    return (
+      <Shell>
+        <p className="text-center text-sm text-gray-500">
+          This recording link is missing its token — please use the link from your email.
+        </p>
+      </Shell>
+    );
+  }
+  if (isLoading) {
+    return (
+      <Shell>
+        <div className="flex justify-center py-6">
+          <Loader />
+        </div>
+      </Shell>
+    );
+  }
+  if (isError || !data) {
+    return (
+      <Shell>
+        <p className="text-center text-sm text-gray-600">
+          {linkErrorText(error as InterviewApiError, 'This recording link is not valid.')}
+        </p>
+      </Shell>
+    );
+  }
+
+  const ready = data.handoff_status === 'handed_off';
+
+  return (
+    <Shell>
+      <h1 className="text-lg font-semibold text-gray-900">
+        {interviewTypeLabel(data.interview_type)} recording
+      </h1>
+      {data.start_time && dayjs(data.start_time).isValid() && (
+        <p className="mt-1 text-sm text-gray-500">
+          {dayjs(data.start_time).format('dddd, MMM D, YYYY · h:mm A')}
+        </p>
+      )}
+      <div className="mt-4">
+        <Badge status={ready ? 'success' : 'warning'} dot={false}>
+          {String(data.handoff_status).replace(/_/g, ' ')}
+        </Badge>
+      </div>
+      {ready ? (
+        isUrl(data.external_ref) ? (
+          <a
+            href={data.external_ref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 block w-full rounded-3xl bg-button py-2.5 text-center text-sm font-medium text-white"
+          >
+            Open recording
+          </a>
+        ) : (
+          <p className="mt-4 break-all text-xs text-gray-400">Reference: {data.external_ref}</p>
+        )
+      ) : (
+        <p className="mt-4 text-sm text-gray-500">
+          The recording is still being processed. Check back shortly.
+        </p>
+      )}
     </Shell>
   );
 };
