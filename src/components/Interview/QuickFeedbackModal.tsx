@@ -1,21 +1,30 @@
 import React, { useState, useCallback } from 'react';
 import { Button, Rate, message } from 'antd';
-import { useQuickSubmitFeedbackMutation } from '../../api/interview-service/InterviewFeedback/index';
+import {
+  useSubmitFeedbackMutation,
+  type FeedbackRecommendation,
+} from '../../api/interview-service/client';
 
 interface QuickFeedbackModalProps {
   open: boolean;
-  bookingId: number;
+  bookingId: string;
   onClose: () => void;
   onSubmitSuccess: () => void;
 }
 
-/** Map star rating (1-5) to decision string */
-const RATING_TO_DECISION: Record<number, string> = {
-  1: 'STRONG_NO',
-  2: 'NO',
-  3: 'NEUTRAL',
-  4: 'YES',
-  5: 'STRONG_YES',
+/**
+ * Map the 5-star rating to the real backend's `recommendation` vocabulary
+ * (`POST /bookings/{id}/feedback`, `strong_no | no | yes | strong_yes` —
+ * see `SubmitFeedbackRequest` in interview-service). There is no "neutral"
+ * value there, so a 3-star rating maps to `no` (a deliberate choice, not a
+ * gap — flag to product if a different mapping is wanted).
+ */
+const RATING_TO_RECOMMENDATION: Record<number, FeedbackRecommendation> = {
+  1: 'strong_no',
+  2: 'no',
+  3: 'no',
+  4: 'yes',
+  5: 'strong_yes',
 };
 
 const MAX_NOTES_LENGTH = 1000;
@@ -24,9 +33,9 @@ const MAX_NOTES_LENGTH = 1000;
  * Quick Feedback Modal
  *
  * Lightweight feedback form for interviewers to submit a star rating
- * and optional notes immediately after an interview ends.
+ * and notes immediately after an interview ends.
  *
- * Calls POST /v1/interview-feedback/quick-submit.
+ * Calls POST /bookings/{bookingId}/feedback (SubmitInterviewFeedbackUseCase).
  */
 const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
   open,
@@ -36,7 +45,7 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
 }) => {
   const [rating, setRating] = useState<number>(0);
   const [notes, setNotes] = useState<string>('');
-  const [quickSubmitFeedback, { isLoading: isSubmitting }] = useQuickSubmitFeedbackMutation();
+  const [submitFeedback, { isLoading: isSubmitting }] = useSubmitFeedbackMutation();
 
   const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -50,15 +59,19 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
       message.warning('Please select a rating before submitting.');
       return;
     }
+    const trimmedNotes = notes.trim();
+    if (!trimmedNotes) {
+      // The real endpoint requires non-empty notes (min_length=1) — this
+      // modal used to treat notes as optional against the old, dead API.
+      message.warning('Please add a note before submitting.');
+      return;
+    }
 
     try {
-      await quickSubmitFeedback({
+      await submitFeedback({
         bookingId,
-        rating,
-        notes: notes.trim() || undefined,
-        decision: RATING_TO_DECISION[rating] as any,
-        actionSource: 'END_CALL_PROMPT',
-        markAsCompleted: true,
+        recommendation: RATING_TO_RECOMMENDATION[rating],
+        notes: trimmedNotes,
       }).unwrap();
 
       message.success('Feedback submitted successfully');
@@ -68,7 +81,7 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
       message.error(errorMsg);
       console.error('Quick feedback submission error:', err);
     }
-  }, [rating, notes, bookingId, quickSubmitFeedback, onSubmitSuccess]);
+  }, [rating, notes, bookingId, submitFeedback, onSubmitSuccess]);
 
   if (!open) return null;
 
@@ -97,8 +110,14 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
 
         {/* Notes */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+          <label
+            htmlFor="quick-feedback-notes"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Notes
+          </label>
           <textarea
+            id="quick-feedback-notes"
             value={notes}
             onChange={handleNotesChange}
             placeholder="Add your comments here..."
