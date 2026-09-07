@@ -15,6 +15,7 @@ import {
   useGetTenantScoringConfigQuery,
   useUpdateTenantScoringConfigMutation,
 } from '../../api/organization-service/Tenants/scoringConfig';
+import { useGetPlatformScoringConfigQuery } from '../../api/organization-service/Platform/scoringConfig';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import { AppDispatch } from '../../redux/provider/store';
 
@@ -33,13 +34,6 @@ const buildWeightRows = (
       flatWeights[`${prefix}${categoryName}`] ?? categoryMeta[categoryName].defaultPct,
   }));
 
-const standardWeightRows = (prefix: string, categoryMeta: ScoringCategoryMeta): ScoringWeight[] =>
-  Object.keys(categoryMeta).map((categoryName) => ({
-    id: `${prefix}${categoryName}`,
-    categoryName,
-    weightPercentage: categoryMeta[categoryName].defaultPct,
-  }));
-
 /**
  * GET/PUT /v1/tenants/{tenant_id}/scoring-config — a tenant's own self-service
  * mirror of the Super Admin's per-company view
@@ -53,6 +47,7 @@ const standardWeightRows = (prefix: string, categoryMeta: ScoringCategoryMeta): 
 const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { data, isLoading } = useGetTenantScoringConfigQuery(tenantId);
+  const { data: platformDefault } = useGetPlatformScoringConfigQuery();
   const [updateConfig, { isLoading: isSaving }] = useUpdateTenantScoringConfigMutation();
   const [isResettingResume, setIsResettingResume] = useState(false);
   const [isResettingInterview, setIsResettingInterview] = useState(false);
@@ -131,7 +126,8 @@ const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) =
     setIsResetting: (value: boolean) => void
   ) => {
     const next = { ...flatWeights };
-    standardWeightRows(prefix, categoryMeta).forEach((w) => {
+    // Reset to the platform's current default, not a frozen local constant.
+    buildWeightRows(platformDefault?.weights ?? {}, prefix, categoryMeta).forEach((w) => {
       next[String(w.id)] = w.weightPercentage;
     });
     setIsResetting(true);
@@ -154,7 +150,7 @@ const ScoringCriteriaOwnerTab: React.FC<{ tenantId: string }> = ({ tenantId }) =
   return (
     <div className="p-4">
       <div className="flex items-center gap-2 mb-1">
-        <h2 className="text-2xl font-semibold text-gray-800">AI Scoring Weight Distribution</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Scoring Weight Distribution</h2>
         {isLocked && (
           <Tooltip title="Locked by CareerForcePro — contact support to change this.">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold px-2.5 py-1">

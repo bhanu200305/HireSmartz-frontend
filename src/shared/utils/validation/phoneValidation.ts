@@ -1,4 +1,8 @@
-import { isValidPhoneNumber, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js';
+import {
+  isValidPhoneNumber,
+  parsePhoneNumberFromString,
+  type CountryCode,
+} from 'libphonenumber-js';
 import type { RefinementCtx } from 'zod';
 import { countryCodes } from '../../../constants/countryCode';
 

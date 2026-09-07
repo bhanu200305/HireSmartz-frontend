@@ -75,7 +75,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   // already closed, so this is safe to run unconditionally.
   useEffect(() => {
     onCloseMobile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   // Same /v1/users/me · /v1/platform/staff/me split Header.tsx already uses

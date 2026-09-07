@@ -242,7 +242,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold text-gray-800 mb-1">AI Scoring Weight Distribution</h2>
+      <h2 className="text-2xl font-semibold text-gray-800 mb-1">Scoring Weight Distribution</h2>
       <p className="text-sm text-gray-500 mb-6">
         Set global defaults applied to all client companies, or pick one company below to view or
         override its own weights.

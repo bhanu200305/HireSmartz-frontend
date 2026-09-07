@@ -48,10 +48,6 @@ import {
   useStopRecordingMutation,
   useEndInterviewForAllMutation,
 } from '../../api/interview-service/VideoIntegration/index';
-import {
-  useLazyShouldPromptFeedbackQuery,
-  useSkipFeedbackMutation,
-} from '../../api/interview-service/InterviewFeedback/index';
 
 // UI Components
 import { showToast } from '../shared';
@@ -87,8 +83,12 @@ interface InterviewState {
   endedBy?: 'user' | 'recruiter';
   interviewEndedByRecruiter: boolean;
   categorizedQuestions?: any;
-  /** Tracks the post-interview feedback flow step */
-  feedbackFlow: 'idle' | 'checking' | 'chooser' | 'quick';
+  /** Tracks the post-interview feedback flow step. No server-side
+   * dedup check exists (the old `/interview-feedback/should-prompt`
+   * endpoint never existed on the real backend — it always resolved
+   * `Number(<a UUID string>)` to `NaN`), so this goes straight from
+   * `idle` to `chooser` once the conditions below are met. */
+  feedbackFlow: 'idle' | 'chooser' | 'quick';
 }
 
 type InterviewTokenPayload = {
@@ -222,8 +222,6 @@ const Interview: React.FC = () => {
   const [stopRecording] = useStopRecordingMutation();
   const [endInterviewForAll] = useEndInterviewForAllMutation();
   const [getAiQuestionsByUserId] = useLazyGetAiQuestionsByUserIdQuery();
-  const [checkShouldPrompt] = useLazyShouldPromptFeedbackQuery();
-  const [skipFeedback, { isLoading: isSkippingFeedback }] = useSkipFeedbackMutation();
 
   const clearSessionStorage = useCallback(() => {
     sessionStorage.removeItem('livekit_booking_id');
@@ -495,38 +493,17 @@ const Interview: React.FC = () => {
         clearSessionStorage();
       }
 
-      // Only check shouldPrompt when interview was not intentionally left by user
-      // i.e. network drop (endedBy === 'recruiter' without explicit end)
+      // Prompt when interview was not intentionally left by user — i.e. a
+      // network drop (endedBy === 'recruiter' without explicit end). No
+      // server-side dedup check exists (see feedbackFlow's own comment on
+      // InterviewState), so this goes straight to the chooser.
       if (willPromptFeedback) {
         setState((prev) => ({
           ...prev,
           hasEnded: true,
           endedBy,
-          feedbackFlow: 'checking',
+          feedbackFlow: 'chooser',
         }));
-
-        try {
-          console.log(
-            '[handleLeaveInterview] Calling checkShouldPrompt with bookingId:',
-            resolvedBookingId
-          );
-          const result = await checkShouldPrompt({
-            bookingId: Number(resolvedBookingId),
-          }).unwrap();
-          console.log('[handleLeaveInterview] checkShouldPrompt result:', result);
-
-          if (result?.data?.shouldShowPrompt) {
-            setState((prev) => ({ ...prev, feedbackFlow: 'chooser' }));
-            return;
-          }
-        } catch (err) {
-          // If API fails (e.g. network still down), fall through to ended screen
-          console.error('[handleLeaveInterview] shouldPrompt check failed:', err);
-        }
-
-        // shouldPrompt false or API failed → clear session data and show ended screen
-        clearSessionStorage();
-        setState((prev) => ({ ...prev, feedbackFlow: 'idle' }));
         return;
       }
 
@@ -538,14 +515,7 @@ const Interview: React.FC = () => {
         feedbackFlow: 'idle',
       }));
     },
-    [
-      state.recording,
-      state.token,
-      handleStopRecording,
-      decodedInterviewToken,
-      checkShouldPrompt,
-      clearSessionStorage,
-    ]
+    [state.recording, state.token, handleStopRecording, decodedInterviewToken, clearSessionStorage]
   );
 
   /**
@@ -600,44 +570,23 @@ const Interview: React.FC = () => {
         type: 'success',
       });
 
-      // Check shouldPrompt for feedback flow
+      // Show the feedback chooser — no server-side dedup check exists (see
+      // feedbackFlow's own comment on InterviewState).
       const isFeedbackFeatureEnabled = import.meta.env.VITE_INTERVIEW_FEEDBACK_FEATURE === 'true';
 
       if (isFeedbackFeatureEnabled && resolvedBookingId) {
+        // Keep session storage for the feedback prompt flow.
         setState((prev) => ({
           ...prev,
           hasEnded: true,
           endedBy: 'recruiter',
           interviewEndedByRecruiter: true,
-          feedbackFlow: 'checking',
+          feedbackFlow: 'chooser',
         }));
-
-        try {
-          console.log(
-            '[handleEndInterview] Calling checkShouldPrompt with bookingId:',
-            resolvedBookingId
-          );
-          const result = await checkShouldPrompt({
-            bookingId: Number(resolvedBookingId),
-          }).unwrap();
-          console.log('[handleEndInterview] checkShouldPrompt result:', result);
-
-          if (result?.data?.shouldShowPrompt) {
-            // Keep session storage for feedback prompt flow
-            setState((prev) => ({ ...prev, feedbackFlow: 'chooser' }));
-            return;
-          }
-        } catch (promptErr) {
-          console.error('[handleEndInterview] shouldPrompt check failed:', promptErr);
-        }
-
-        // shouldPrompt false or check failed → clear session data and show ended screen
-        clearSessionStorage();
-        setState((prev) => ({ ...prev, feedbackFlow: 'idle' }));
       } else {
         // No bookingId available or feature disabled — clear session data and show ended screen directly
         console.warn(
-          '[handleEndInterview] bookingId not found or feedback feature disabled, skipping shouldPrompt'
+          '[handleEndInterview] bookingId not found or feedback feature disabled, skipping feedback prompt'
         );
         clearSessionStorage();
         setState((prev) => ({
@@ -671,7 +620,6 @@ const Interview: React.FC = () => {
     handleStopRecording,
     endInterviewForAll,
     decodedInterviewToken,
-    checkShouldPrompt,
     clearSessionStorage,
   ]);
 
@@ -704,32 +652,13 @@ const Interview: React.FC = () => {
     setState((prev) => ({ ...prev, feedbackFlow: 'quick' }));
   }, []);
 
-  /** "Skip For Now" → call skip API, then show ended screen */
-  const handleFeedbackSkip = useCallback(async () => {
-    const resolvedBookingId =
-      decodedInterviewToken?.bookingId ||
-      (decodedInterviewToken as any)?.interviewBookingId ||
-      (decodedInterviewToken as any)?.bookingID ||
-      (decodedInterviewToken as any)?.booking_id ||
-      sessionStorage.getItem('livekit_booking_id');
-
-    console.log('[handleFeedbackSkip] Resolved bookingId:', resolvedBookingId);
-
-    if (resolvedBookingId) {
-      try {
-        await skipFeedback({
-          bookingId: Number(resolvedBookingId),
-          actionSource: 'END_CALL_PROMPT',
-        }).unwrap();
-        console.log('[handleFeedbackSkip] Skip feedback API call succeeded');
-      } catch (err) {
-        console.error('[handleFeedbackSkip] Skip feedback failed:', err);
-      }
-    }
-    // Clear session data and dismiss prompt
+  /** "Skip For Now" → dismiss prompt and show ended screen. No server-side
+   * skip-logging capability exists (see feedbackFlow's own comment on
+   * InterviewState) — this is purely a local UI dismissal. */
+  const handleFeedbackSkip = useCallback(() => {
     clearSessionStorage();
     setState((prev) => ({ ...prev, feedbackFlow: 'idle' }));
-  }, [decodedInterviewToken, skipFeedback, clearSessionStorage]);
+  }, [clearSessionStorage]);
 
   /** "Cancel" → dismiss modal and show ended screen */
   const handleFeedbackCancel = useCallback(() => {
@@ -744,25 +673,18 @@ const Interview: React.FC = () => {
   }, [clearSessionStorage]);
 
   // --- Resolve bookingId and candidateName for feedback modals ---
-  const feedbackBookingId = Number(
+  // A real UUID string — never cast through Number(), which is exactly
+  // the bug that made the old should-prompt/skip endpoints silently
+  // resolve every bookingId to NaN.
+  const feedbackBookingId: string =
     decodedInterviewToken?.bookingId ||
-      (decodedInterviewToken as any)?.interviewBookingId ||
-      (decodedInterviewToken as any)?.bookingID ||
-      (decodedInterviewToken as any)?.booking_id ||
-      sessionStorage.getItem('livekit_booking_id') ||
-      0
-  );
+    (decodedInterviewToken as any)?.interviewBookingId ||
+    (decodedInterviewToken as any)?.bookingID ||
+    (decodedInterviewToken as any)?.booking_id ||
+    sessionStorage.getItem('livekit_booking_id') ||
+    '';
   // Interview ended state — with feedback flow branching
   if (state.hasEnded) {
-    // Checking shouldPrompt — show loading
-    if (state.feedbackFlow === 'checking') {
-      return (
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-          <Spin size="large" />
-        </div>
-      );
-    }
-
     // Show feedback chooser modal
     if (state.feedbackFlow === 'chooser') {
       return (
@@ -772,7 +694,6 @@ const Interview: React.FC = () => {
             onSelectFullFeedback={handleFeedbackFullSelect}
             onSelectQuickFeedback={handleFeedbackQuickSelect}
             onSkip={handleFeedbackSkip}
-            isSkipping={isSkippingFeedback}
           />
         </div>
       );

@@ -133,6 +133,15 @@ const MenuItems = [
     requiredAuthority: Authorities.JOB_OPENING_VIEW,
   },
   {
+    // Gated on the same 'interview:read' permission interview-service's own
+    // GET /bookings endpoint enforces (require_permission("interview:read"))
+    // — so the nav item and the API it calls agree on who can see it.
+    name: 'Interviews',
+    icon: <BsCalendar4Event size={18} />,
+    path: ['/interviews'],
+    requiredAuthority: Authorities.INTERVIEW_QUESTIONS_VIEW,
+  },
+  {
     // ACTIVITY_FEED used to gate this — a frontend-only flag the real
     // backend permission-resolution call can never return (see its own "No
     // dedicated backend permission" comment in authorities.constant.ts),
