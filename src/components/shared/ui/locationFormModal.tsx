@@ -2,7 +2,7 @@ import { Select, Switch } from 'antd';
 import AntdCommonModal from './AntdCommonModal';
 import { Button } from './button';
 import { Input } from './input';
-import { formatPhoneNumber } from '../../../shared/utils/methods';
+import { restrictPhoneDigitsForCountry } from '../../../shared/utils/validation/phoneValidation';
 import { countryCodes } from '../../../constants/countryCode';
 
 const { Option } = Select;
@@ -174,6 +174,7 @@ const LocationFormModal = ({
                 onFormChange((previous) => ({
                   ...previous,
                   countryCode: value,
+                  phoneNumber: restrictPhoneDigitsForCountry(previous.phoneNumber, value),
                 }));
               }}
               className="border-none focus:ring-0 focus:outline-none bg-transparent"
@@ -199,15 +200,17 @@ const LocationFormModal = ({
               type="tel"
               value={formState.phoneNumber}
               onChange={(event) => {
-                const formatted = formatPhoneNumber(event.target.value);
                 onFormChange((previous) => ({
                   ...previous,
-                  phoneNumber: formatted,
+                  phoneNumber: restrictPhoneDigitsForCountry(
+                    event.target.value,
+                    previous.countryCode
+                  ),
                 }));
               }}
-              placeholder="(555) 123-4567"
+              placeholder="Phone number"
               className="border-none focus:ring-0 focus:outline-none w-full"
-              maxLength={14}
+              maxLength={15}
               onBlur={() => {
                 onPhoneNumberBlur?.();
               }}

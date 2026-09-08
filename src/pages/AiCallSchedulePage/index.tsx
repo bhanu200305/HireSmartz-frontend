@@ -15,12 +15,13 @@ import { useSearchParams } from 'react-router-dom';
 import { Loader } from '../../components/shared/ui/loader';
 import InterviewConsentModal from '../../components/shared/ui/InterviewConsentModal';
 import { showToast } from '../../components/shared';
-import { AI_SCHEDULE_WINDOW_DAYS } from '../../constants/app.constants';
+import { AI_SCHEDULE_WINDOW_DAYS, AI_SLOT_MIN_LEAD_MINUTES } from '../../constants/app.constants';
 import {
   InterviewApiError,
   useBookAiSlotMutation,
   useCallNowMutation,
   useGetSchedulingLinkQuery,
+  useGetSchedulingSlotsQuery,
   useGetTimezonesQuery,
   useLazyGetAiSlotsQuery,
 } from '../../api/interview-service/client';
@@ -53,6 +54,7 @@ const T = {
     back: 'Back',
     noSlots: 'No available slots for this day.',
     slotsError: 'Failed to load available slots. Please try again.',
+    slotExpired: 'That time has passed. Please pick another slot.',
     bookingError: 'Something went wrong. Please try again.',
     scheduledTitle: 'Interview Scheduled!',
     scheduledBody: 'Your AI screening call has been confirmed. A confirmation will be sent to',
@@ -63,6 +65,15 @@ const T = {
     callNowBody:
       'Your phone should ring shortly. Please make sure you’re somewhere quiet and ready to talk.',
     callNowError: "We couldn't start the call. Please pick a slot instead.",
+    panelTitle: 'Schedule your panel interview',
+    panelBody:
+      'Your interview is with a panel from the hiring team. Pick a time that works for you on the scheduling page — the panel’s live availability is shown there.',
+    panelChooseTime: 'Choose a time',
+    panelAfterBooking:
+      'Once you’ve picked a time you’ll get a calendar invite by email. You can close this page after booking.',
+    panelNotReadyTitle: 'Scheduling isn’t ready yet',
+    panelNotReadyBody:
+      'The hiring team is still setting up their calendar for this interview. You’ll get an email with a link as soon as it’s ready.',
     invalidTitle: 'Invalid Scheduling Link',
     invalidBody:
       'This scheduling link appears to be invalid or incomplete. Please use the link from your invitation email.',
@@ -90,6 +101,7 @@ const T = {
     back: 'Atrás',
     noSlots: 'No hay horarios disponibles para este día.',
     slotsError: 'Error al cargar los horarios. Por favor, inténtalo de nuevo.',
+    slotExpired: 'Esa hora ya pasó. Por favor, elige otro horario.',
     bookingError: 'Algo salió mal. Por favor, inténtalo de nuevo.',
     scheduledTitle: 'Entrevista programada!',
     scheduledBody:
@@ -101,6 +113,15 @@ const T = {
     callNowBody:
       'Tu teléfono debería sonar en breve. Asegúrate de estar en un lugar tranquilo y listo para hablar.',
     callNowError: 'No pudimos iniciar la llamada. Por favor, elige un horario.',
+    panelTitle: 'Programa tu entrevista de panel',
+    panelBody:
+      'Tu entrevista es con un panel del equipo de contratación. Elige un horario que te convenga en la página de programación, donde se muestra la disponibilidad del panel en tiempo real.',
+    panelChooseTime: 'Elegir un horario',
+    panelAfterBooking:
+      'Cuando elijas un horario recibirás una invitación de calendario por correo. Puedes cerrar esta página después de reservar.',
+    panelNotReadyTitle: 'La programación aún no está lista',
+    panelNotReadyBody:
+      'El equipo de contratación todavía está configurando su calendario para esta entrevista. Recibirás un correo con un enlace en cuanto esté listo.',
     invalidTitle: 'Enlace no válido',
     invalidBody:
       'Este enlace de programación parece ser inválido o incompleto. Usa el enlace de tu correo de invitación.',
@@ -215,6 +236,11 @@ const AiCallSchedulePage = () => {
   const [currentMonth, setCurrentMonth] = useState<Dayjs>(today);
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
   const [slots, setSlots] = useState<AiSlot[]>([]);
+  // Authoritative round duration, from the ai-slots response (job-service's
+  // recruiter-set value). The `/scheduling/{token}` header duration comes
+  // from a different source (scheduling config / a flat 30-min default) and
+  // can disagree — prefer this once we have it.
+  const [slotDurationMin, setSlotDurationMin] = useState<number | null>(null);
   const [isSlotsLoading, setIsSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<AiSlot | null>(null);
@@ -236,6 +262,12 @@ const AiCallSchedulePage = () => {
   const { data: schedulingLink, error: schedulingError } = useGetSchedulingLinkQuery(token, {
     skip: !token,
   });
+  const isPanel = schedulingLink?.interview_type === 'panel';
+  const {
+    data: panelInfo,
+    error: panelInfoError,
+    isFetching: isPanelInfoFetching,
+  } = useGetSchedulingSlotsQuery(token, { skip: !token || !isPanel });
   const timezones: TimezoneOption[] = (timezoneData?.timezones ?? []).map((timezone) => ({
     id: timezone.id,
     label: timezone.id.replace(/_/g, ' '),
@@ -279,11 +311,18 @@ const AiCallSchedulePage = () => {
           date: selectedDate.format('YYYY-MM-DD'),
           timezone: selectedTimezone,
         }).unwrap();
+        // interview-service returns every slot of the local calendar day
+        // (midnight onward), so "today" includes slots that have already
+        // passed. Only offer slots at least AI_SLOT_MIN_LEAD_MINUTES out.
+        const earliest = dayjs().add(AI_SLOT_MIN_LEAD_MINUTES, 'minute');
+        setSlotDurationMin(response.duration_minutes ?? null);
         setSlots(
-          response.slots.map((slot) => ({
-            ...slot,
-            displayTime: `${dayjs(slot.start_time).tz(selectedTimezone).format('h:mm A')} - ${dayjs(slot.end_time).tz(selectedTimezone).format('h:mm A')}`,
-          }))
+          response.slots
+            .filter((slot) => dayjs(slot.start_time).isAfter(earliest))
+            .map((slot) => ({
+              ...slot,
+              displayTime: `${dayjs(slot.start_time).tz(selectedTimezone).format('h:mm A')} - ${dayjs(slot.end_time).tz(selectedTimezone).format('h:mm A')}`,
+            }))
         );
       } catch {
         setSlotsError(t.slotsError);
@@ -297,6 +336,19 @@ const AiCallSchedulePage = () => {
 
   const handleBookSlot = async (): Promise<void> => {
     if (!selectedSlot) return;
+    // Guard against a slot that lapsed while the picker sat open.
+    if (!dayjs(selectedSlot.start_time).isAfter(dayjs().add(AI_SLOT_MIN_LEAD_MINUTES, 'minute'))) {
+      setSelectedSlot(null);
+      setBookingError(t.slotExpired);
+      if (selectedDate) {
+        void loadAiSlots({
+          token,
+          date: selectedDate.format('YYYY-MM-DD'),
+          timezone: selectedTimezone,
+        });
+      }
+      return;
+    }
     setIsBooking(true);
     setBookingError(null);
     try {
@@ -452,9 +504,68 @@ const AiCallSchedulePage = () => {
     );
   }
 
-  if (schedulingLink?.interview_type === 'panel' && schedulingLink.booking_url) {
-    window.location.replace(schedulingLink.booking_url);
-    return null;
+  // PANEL — interview-service has no free/busy integration and no panel-book
+  // endpoint, so slot picking still happens on the host's Nylas page.
+  // GET /scheduling/{token}/slots tells us whether that page exists yet
+  // (`slots_available` / `booking_url`) so we can show a real "not ready"
+  // state instead of a blind redirect to nothing.
+  if (isPanel) {
+    const panelApiError = panelInfoError as InterviewApiError | undefined;
+    const bookingUrl = panelInfo?.booking_url ?? schedulingLink?.booking_url ?? null;
+    const ready = Boolean(panelInfo?.slots_available && bookingUrl);
+    const loading = !panelApiError && !panelInfo;
+
+    return (
+      <div className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center">
+          {loading || isPanelInfoFetching ? (
+            <div className="flex justify-center py-6">
+              <Loader />
+            </div>
+          ) : panelApiError ? (
+            <>
+              <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+                {panelApiError.status === 410 ? 'Scheduling Link Expired' : t.invalidTitle}
+              </h1>
+              <p className="text-gray-500 text-sm">
+                {panelApiError.status === 410
+                  ? 'This link has already been used or has expired.'
+                  : t.invalidBody}
+              </p>
+            </>
+          ) : ready ? (
+            <>
+              <LuCalendarDays className="text-(--primary) w-14 h-14 mx-auto mb-4" />
+              <h1 className="text-2xl font-semibold text-gray-800 mb-2">{t.panelTitle}</h1>
+              <p className="text-gray-500 text-sm mb-4">{t.panelBody}</p>
+              {panelInfo?.duration_minutes ? (
+                <div className="mb-6 flex items-center justify-center gap-2 text-gray-500 text-sm">
+                  <RxClock className="w-4 h-4" />
+                  <span>
+                    {panelInfo.duration_minutes} {t.minutes}
+                  </span>
+                </div>
+              ) : null}
+              <a
+                href={bookingUrl as string}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full py-3 rounded-full bg-(--primary) text-white font-semibold text-sm hover:opacity-90 transition"
+              >
+                {t.panelChooseTime}
+              </a>
+              <p className="text-gray-400 text-xs mt-4 leading-relaxed">{t.panelAfterBooking}</p>
+            </>
+          ) : (
+            <>
+              <div className="text-5xl mb-4">🗓️</div>
+              <h1 className="text-2xl font-semibold text-gray-800 mb-2">{t.panelNotReadyTitle}</h1>
+              <p className="text-gray-500 text-sm">{t.panelNotReadyBody}</p>
+            </>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (!hasConsent) {
@@ -496,7 +607,7 @@ const AiCallSchedulePage = () => {
           <div className="flex items-center gap-2 text-gray-500 text-sm">
             <RxClock className="w-4 h-4" />
             <span>
-              {schedulingLink?.duration_minutes ?? 15} {t.minutes}
+              {slotDurationMin ?? schedulingLink?.duration_minutes ?? 15} {t.minutes}
             </span>
           </div>
         </div>

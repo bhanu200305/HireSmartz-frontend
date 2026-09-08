@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Select } from 'antd';
 import { BsCalendar4Event } from 'react-icons/bs';
 import dayjs from 'dayjs';
@@ -17,10 +17,9 @@ import {
   type InterviewType,
   type InterviewApiError,
 } from '../../api/interview-service/client';
-import { useGetJobOpeningsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
-import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 import { CandidateNameCell } from './CandidateNameCell';
 import { BookingDetailDrawer } from './BookingDetailDrawer';
+import { useJobTitleForOpening } from './useJobTitleForOpening';
 import {
   BOOKING_STATUS_OPTIONS,
   INTERVIEW_TYPE_OPTIONS,
@@ -35,23 +34,6 @@ const PRIMARY_BTN =
   'text-white bg-button rounded-3xl px-4 py-2 text-sm shadow-xs hover:shadow-sm transition-shadow';
 const SECONDARY_BTN =
   'rounded-3xl border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50';
-
-/** job_opening_id -> display title, best-effort from the recruiter's own job list. */
-const useJobTitleForOpening = (): ((jobId: string) => string) => {
-  const { data } = useGetJobOpeningsQuery({ isAll: true, size: 200 });
-  const { titleMap } = useJobTitleNameMap();
-
-  const openingMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const row of data?.data ?? []) {
-      const id = String(row.jobOpeningId);
-      map[id] = titleMap[String(row.jobTitleId)] || row.jobProfileCode || '';
-    }
-    return map;
-  }, [data, titleMap]);
-
-  return (jobId: string) => openingMap[String(jobId)] || `${jobId.slice(0, 8)}…`;
-};
 
 const formatSchedule = (start: string | null, timezone: string | null): string => {
   if (!start) return 'Not scheduled';
@@ -282,7 +264,9 @@ export const InterviewsPage = () => {
                       </td>
                       <td className="max-w-[200px] px-4 py-3">
                         <span className="block truncate text-neutral-700">
-                          {resolveJobTitle(booking.job_id)}
+                          {booking.round_snapshot?.job_title?.trim() ||
+                            resolveJobTitle(booking.job_id) ||
+                            '—'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-neutral-600">{roundLabel(booking)}</td>

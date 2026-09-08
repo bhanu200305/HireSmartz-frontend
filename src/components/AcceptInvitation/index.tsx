@@ -15,7 +15,7 @@ import {
   type InvitationErrorBody,
 } from '../../api/organization-service/Invitations/invitations';
 import { buildOtpAuthUri, generateBase32Secret } from '../../shared/utils/mfa.helpers';
-import { restrictPhoneDigits } from '../../shared/utils/validation/phoneValidation';
+import { restrictPhoneDigitsForCountry } from '../../shared/utils/validation/phoneValidation';
 import { countryCodes } from '../../constants/countryCode';
 import { acceptInvitationSchema, type AcceptInvitationFormValues } from './AcceptInvitationSchema';
 
@@ -196,7 +196,7 @@ const AcceptInvitation = () => {
     [invitation?.invited_email, mfaSecret]
   );
 
-  const { control, handleSubmit, trigger, setValue, formState } =
+  const { control, handleSubmit, trigger, setValue, getValues, formState } =
     useForm<AcceptInvitationFormValues>({
       resolver: zodResolver(acceptInvitationSchema),
       defaultValues: {
@@ -421,10 +421,14 @@ const AcceptInvitation = () => {
                       }
                       className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                       onChange={(e) => {
-                        setValue('phoneNumber', restrictPhoneDigits(e.target.value), {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        });
+                        setValue(
+                          'phoneNumber',
+                          restrictPhoneDigitsForCountry(
+                            e.target.value,
+                            getValues('countryCode') ?? ''
+                          ),
+                          { shouldDirty: true, shouldValidate: true }
+                        );
                         trigger('phoneNumber');
                       }}
                     />

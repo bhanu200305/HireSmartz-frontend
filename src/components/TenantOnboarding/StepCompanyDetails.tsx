@@ -7,7 +7,7 @@ import { Button, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import { countryCodes } from '../../constants/countryCode';
 import { sanitizeInput } from '../../shared/utils/validation/input.helpers';
-import { restrictPhoneDigits } from '../../shared/utils/validation/phoneValidation';
+import { restrictPhoneDigitsForCountry } from '../../shared/utils/validation/phoneValidation';
 import { cleanPhoneNumber, makeFirstLetterUpperCase } from '../../shared/utils/methods';
 import { useListIndustriesQuery } from '../../api/organization-service/Platform/industries';
 import { useCreateTenantMutation } from '../../api/organization-service/Tenants/tenants';
@@ -205,9 +205,14 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
           <div className="phone-input-wrapper flex items-center bg-white w-full px-4 mt-1 border rounded-3xl border-[var(--border)]">
             <Select
               value={watch('adminContactCountryCode')}
-              onChange={(value) =>
-                setValue('adminContactCountryCode', value, { shouldDirty: true })
-              }
+              onChange={(value) => {
+                setValue('adminContactCountryCode', value, { shouldDirty: true });
+                setValue(
+                  'adminContactPhone',
+                  restrictPhoneDigitsForCountry(watch('adminContactPhone') ?? '', value),
+                  { shouldDirty: true, shouldValidate: true }
+                );
+              }}
               className="border-none focus:ring-0 focus:outline-none bg-transparent"
               dropdownStyle={{ minWidth: 'min(300px, 92vw)' }}
               variant="borderless"
@@ -229,10 +234,14 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
               placeholder="Phone number"
               value={watch('adminContactPhone')}
               onChange={(e) => {
-                setValue('adminContactPhone', restrictPhoneDigits(e.target.value), {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                });
+                setValue(
+                  'adminContactPhone',
+                  restrictPhoneDigitsForCountry(
+                    e.target.value,
+                    watch('adminContactCountryCode') ?? ''
+                  ),
+                  { shouldDirty: true, shouldValidate: true }
+                );
                 trigger('adminContactPhone');
               }}
               maxLength={15}

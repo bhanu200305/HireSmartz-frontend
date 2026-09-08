@@ -31,7 +31,7 @@ import {
   useClearOwnPlatformAvatarMutation,
 } from '../../api/organization-service/Platform/staff';
 import { sanitizeInput } from '../../shared/utils/validation/input.helpers';
-import { restrictPhoneDigits } from '../../shared/utils/validation/phoneValidation';
+import { restrictPhoneDigitsForCountry } from '../../shared/utils/validation/phoneValidation';
 import { cleanPhoneNumber } from '../../shared/utils/methods';
 import {
   ALLOWED_LOGO_TYPES,
@@ -527,12 +527,17 @@ const UserProfile = () => {
                     <div className="phone-input-wrapper flex items-center bg-white w-full px-4 border rounded-3xl border-[var(--border)]">
                       <Select
                         value={watch('countryCode')}
-                        onChange={(value) =>
+                        onChange={(value) => {
                           setValue('countryCode', value, {
                             shouldValidate: true,
                             shouldDirty: true,
-                          })
-                        }
+                          });
+                          setValue(
+                            'phoneNumber',
+                            restrictPhoneDigitsForCountry(watch('phoneNumber') ?? '', value),
+                            { shouldValidate: true, shouldDirty: true }
+                          );
+                        }}
                         className="border-none focus:ring-0 focus:outline-none bg-transparent"
                         dropdownStyle={{ minWidth: 'min(300px, 92vw)' }}
                         // dropdownMatchSelectWidth={false}
@@ -556,10 +561,14 @@ const UserProfile = () => {
                         placeholder="Phone number"
                         value={watch('phoneNumber')}
                         onChange={(e) => {
-                          setValue('phoneNumber', restrictPhoneDigits(e.target.value), {
-                            shouldValidate: true,
-                            shouldDirty: true,
-                          });
+                          setValue(
+                            'phoneNumber',
+                            restrictPhoneDigitsForCountry(
+                              e.target.value,
+                              watch('countryCode') ?? ''
+                            ),
+                            { shouldValidate: true, shouldDirty: true }
+                          );
                           trigger('phoneNumber');
                         }}
                         maxLength={15}

@@ -28,6 +28,7 @@ import {
   type InterviewApiError,
 } from '../../api/interview-service/client';
 import { CandidateNameCell } from './CandidateNameCell';
+import { useJobTitleForOpening } from './useJobTitleForOpening';
 import {
   BOOKING_STATUS_OPTIONS,
   bookingStatusBadge,
@@ -46,8 +47,6 @@ const TERMINAL: BookingStatus[] = ['completed', 'cancelled', 'no_show', 'failed'
 
 const fmt = (iso: string | null): string =>
   iso && dayjs(iso).isValid() ? dayjs(iso).format('DD MMM YYYY, h:mm A') : '—';
-
-const shortId = (id: string) => `${id.slice(0, 8)}…`;
 
 type PendingAction = 'cancel' | 'skip' | 'status' | 'substitute' | null;
 
@@ -221,6 +220,11 @@ export const BookingDetailDrawer = ({
   const isTerminal = booking ? TERMINAL.includes(booking.status) : true;
   const apiError = error as InterviewApiError | undefined;
 
+  const resolveJobTitle = useJobTitleForOpening();
+  const jobTitle =
+    booking?.round_snapshot?.job_title?.trim() || (booking ? resolveJobTitle(booking.job_id) : '');
+  const roundDurationMin = booking?.round_snapshot?.duration_minutes ?? null;
+
   return (
     <Drawer
       open={open}
@@ -241,7 +245,12 @@ export const BookingDetailDrawer = ({
         <div className="flex h-full flex-col">
           <div className="flex-1 overflow-y-auto px-5 py-4">
             <div className="flex items-start justify-between gap-3">
-              <CandidateNameCell candidateId={booking.candidate_id} />
+              <div className="min-w-0">
+                <CandidateNameCell candidateId={booking.candidate_id} />
+                {jobTitle && (
+                  <div className="mt-1 truncate text-sm text-neutral-600">{jobTitle}</div>
+                )}
+              </div>
               <Badge status={bookingStatusBadge(booking.status)}>
                 {bookingStatusLabel(booking.status)}
               </Badge>
@@ -250,16 +259,15 @@ export const BookingDetailDrawer = ({
             <SectionTitle>Overview</SectionTitle>
             <div className="divide-y divide-neutral-100">
               <Row label="Type">{interviewTypeLabel(booking.interview_type)}</Row>
-              <Row label="Round">Round {booking.sequence_no}</Row>
+              <Row label="Round">
+                Round {booking.sequence_no}
+                {roundDurationMin ? ` · ${roundDurationMin} min` : ''}
+              </Row>
               <Row label="Scheduled">{fmt(booking.start_time)}</Row>
               <Row label="Ends">{fmt(booking.end_time)}</Row>
               <Row label="Timezone">{booking.attendee_timezone || '—'}</Row>
               {booking.rescheduled_from_booking_id && (
-                <Row label="Rescheduled from">
-                  <span className="font-mono text-xs">
-                    {shortId(booking.rescheduled_from_booking_id)}
-                  </span>
-                </Row>
+                <Row label="Rescheduled">Yes — moved from an earlier slot</Row>
               )}
               {booking.cancellation_reason && (
                 <Row label="Cancellation reason">{booking.cancellation_reason}</Row>
@@ -267,15 +275,18 @@ export const BookingDetailDrawer = ({
               {booking.skip_reason && <Row label="Skip reason">{booking.skip_reason}</Row>}
             </div>
 
-            <details className="mt-3 text-xs text-neutral-500">
-              <summary className="cursor-pointer select-none">Identifiers</summary>
-              <div className="mt-1 space-y-0.5 font-mono">
-                <div>booking {booking.id}</div>
-                <div>candidate {booking.candidate_id}</div>
-                <div>job {booking.job_id}</div>
-                <div>round {booking.round_id}</div>
-              </div>
-            </details>
+            <button
+              type="button"
+              className="mt-3 text-xs font-medium text-neutral-400 hover:text-neutral-600"
+              onClick={() => {
+                navigator.clipboard
+                  ?.writeText(booking.id)
+                  .then(() => showToast({ message: 'Support reference copied.', type: 'success' }))
+                  .catch(() => undefined);
+              }}
+            >
+              Copy support reference
+            </button>
 
             {/* Panel interviewers — calendar-connection status */}
             {isPanel && calendarStatus && calendarStatus.interviewers.length > 0 && (
@@ -285,7 +296,7 @@ export const BookingDetailDrawer = ({
                   {calendarStatus.interviewers.map((iv) => (
                     <li key={iv.interviewer_id} className="flex items-center justify-between gap-3">
                       <span className="min-w-0 truncate text-neutral-700">
-                        {iv.display_name || iv.email || `${iv.interviewer_id.slice(0, 8)}…`}
+                        {iv.display_name || iv.email || 'Interviewer'}
                       </span>
                       <Badge status={iv.calendar_connected ? 'success' : 'warning'} dot={false}>
                         {iv.calendar_connected ? 'Calendar connected' : 'No calendar'}
@@ -435,30 +446,37 @@ export const BookingDetailDrawer = ({
             {canFollowUp && (
               <>
                 <SectionTitle>Submit feedback</SectionTitle>
-                <div className="space-y-2">
-                  <Select<FeedbackRecommendation>
-                    className="w-full"
-                    placeholder="Recommendation"
-                    value={recommendation}
-                    options={RECOMMENDATION_OPTIONS}
-                    onChange={(v) => setRecommendation(v)}
-                  />
-                  <textarea
-                    className="w-full resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-                    rows={3}
-                    placeholder="Notes for the hiring team…"
-                    value={feedbackNotes}
-                    onChange={(e) => setFeedbackNotes(e.target.value)}
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      className={GHOST_BTN}
-                      disabled={!recommendation || !feedbackNotes.trim() || feedbackState.isLoading}
-                      onClick={sendFeedback}
-                    >
-                      Submit feedback
-                    </Button>
+                <div className="space-y-3 rounded-lg border border-neutral-200 p-3">
+                  <div>
+                    <span className="mb-1 block text-xs font-medium text-neutral-600">
+                      Recommendation
+                    </span>
+                    <Select<FeedbackRecommendation>
+                      className="w-full"
+                      size="large"
+                      placeholder="Select a recommendation"
+                      value={recommendation}
+                      options={RECOMMENDATION_OPTIONS}
+                      onChange={(v) => setRecommendation(v)}
+                    />
                   </div>
+                  <div>
+                    <span className="mb-1 block text-xs font-medium text-neutral-600">Notes</span>
+                    <textarea
+                      className="w-full resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                      rows={3}
+                      placeholder="Notes for the hiring team…"
+                      value={feedbackNotes}
+                      onChange={(e) => setFeedbackNotes(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    className={`${PRIMARY_BTN} w-full`}
+                    disabled={!recommendation || !feedbackNotes.trim() || feedbackState.isLoading}
+                    onClick={sendFeedback}
+                  >
+                    {feedbackState.isLoading ? 'Submitting…' : 'Submit feedback'}
+                  </Button>
                 </div>
               </>
             )}

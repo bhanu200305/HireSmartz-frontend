@@ -437,6 +437,15 @@ export const AI_SCHEDULE_TIMEZONE = 'America/Los_Angeles';
  */
 export const AI_SCHEDULE_WINDOW_DAYS = 13;
 
+/**
+ * Minimum lead time before an AI-call slot can be booked. interview-service
+ * enumerates slots across the whole local calendar day (midnight onward) with
+ * no "already past" filter, so for *today* the raw list includes slots that
+ * have already elapsed — the frontend drops any slot starting within this
+ * window of "now".
+ */
+export const AI_SLOT_MIN_LEAD_MINUTES = 10;
+
 // ============================================
 // DUPLICATE CANDIDATE MODAL CONSTANTS
 // ============================================

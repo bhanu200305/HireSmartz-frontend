@@ -9,7 +9,7 @@ import { countryCodes } from '../../constants/countryCode';
 import { capitalizeFirstLetter } from '../../shared/utils/validation/input.helpers';
 import {
   isPhoneValidForCountry,
-  restrictPhoneDigits,
+  restrictPhoneDigitsForCountry,
 } from '../../shared/utils/validation/phoneValidation';
 import {
   getCountries,
@@ -351,6 +351,11 @@ const BookDemoPage = () => {
   }, []);
 
   const handleChange = (name: keyof FormState, value: string) => {
+    if (name === 'countryCode') {
+      // Re-clamp the number already typed to the new country's max length.
+      setForm({ countryCode: value, phone: restrictPhoneDigitsForCountry(form.phone, value) });
+      return;
+    }
     setForm({ [name]: value });
   };
 
@@ -418,7 +423,7 @@ const BookDemoPage = () => {
   // rather than merely validated afterwards, so an invalid character can
   // never make it into the field at all.
   const handlePhoneChange = (value: string) => {
-    setForm({ phone: restrictPhoneDigits(value) });
+    setForm({ phone: restrictPhoneDigitsForCountry(value, form.countryCode) });
   };
 
   const handleHearAboutUsChange = (value: string) => {

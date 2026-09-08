@@ -16,11 +16,7 @@ export const CandidateNameCell = ({ candidateId }: { candidateId: string }) => {
   }
 
   if (isError || !data) {
-    return (
-      <span className="font-mono text-xs text-neutral-400" title={candidateId}>
-        {candidateId.slice(0, 8)}…
-      </span>
-    );
+    return <span className="text-sm text-neutral-400">Unknown candidate</span>;
   }
 
   const name = [data.first_name, data.last_name].filter(Boolean).join(' ').trim();

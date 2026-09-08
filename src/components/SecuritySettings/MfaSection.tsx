@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { isValidPhoneNumber } from 'libphonenumber-js';
+import { isPossiblePhoneNumber } from 'libphonenumber-js';
 import { MdOutlineSecurity } from 'react-icons/md';
 import { FaRegCopy } from 'react-icons/fa';
 import { Badge, Button, Input, showToast } from '..';
+import { restrictE164Input } from '../../shared/utils/validation/phoneValidation';
 import {
   useConfirmMfaMethodMutation,
   useDisableMfaMethodMutation,
@@ -23,11 +24,12 @@ const METHOD_LABELS: Record<MfaMethodType, string> = {
 };
 
 // E.164 shape, matches the backend's own check — the fast pre-check;
-// `isValidPhoneNumber` (below, where this is used) additionally confirms
-// the digit count is actually right for whichever country the leading
-// dial code implies, which this shape alone can't tell (it'd happily
-// accept a 14-digit "+91..." number, well past what a real Indian number
-// is).
+// `isPossiblePhoneNumber` (below, where this is used) additionally confirms
+// the digit count is right for whichever country the leading dial code
+// implies, which this shape alone can't tell (it'd happily accept a
+// 14-digit "+91..." number, well past what an Indian number is). The
+// enrolment's own OTP round-trip is what proves the number is reachable, so
+// a "possible" shape is enough here.
 const phoneNumberPattern = /^\+[1-9]\d{7,14}$/;
 
 /** In-place "enter the code we just sent / that's on your app" step, shared
@@ -275,12 +277,12 @@ const AddMethodButton = ({
   };
 
   if (methodType === 'sms' && showPhoneInput) {
-    const isValidPhone = phoneNumberPattern.test(phoneNumber) && isValidPhoneNumber(phoneNumber);
+    const isValidPhone = phoneNumberPattern.test(phoneNumber) && isPossiblePhoneNumber(phoneNumber);
     return (
       <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-[var(--border)] p-4 sm:flex-row sm:items-center">
         <Input
           value={phoneNumber}
-          onChange={(e) => setPhoneNumber(e.target.value.trim())}
+          onChange={(e) => setPhoneNumber(restrictE164Input(e.target.value))}
           placeholder="+919876543210"
           className="border-[var(--border)] px-4"
         />

@@ -23,6 +23,21 @@ export type InterviewType = 'audio' | 'audio_screening' | 'ai_video' | 'panel';
 export type FeedbackRecommendation = 'strong_yes' | 'yes' | 'no' | 'strong_no';
 export type InterviewAuth = 'platform' | 'public' | 'booking-link';
 
+/** Frozen copy of the job-service round definition taken when the booking
+ * was created (interview-service `create_booking`). `job_title` was threaded
+ * through 2026-09 so listings/detail views can show a real title without a
+ * cross-service join. Every field is best-effort — the snapshot is null when
+ * the plan port didn't resolve a round. */
+export interface RoundSnapshot {
+  round_id?: string;
+  sequence?: number;
+  interview_type?: InterviewType;
+  duration_minutes?: number | null;
+  presentation_mode?: string | null;
+  delivery_mode?: string | null;
+  job_title?: string | null;
+}
+
 export interface BookingView {
   id: string;
   status: BookingStatus;
@@ -31,7 +46,7 @@ export interface BookingView {
   job_id: string;
   round_id: string;
   sequence_no: number;
-  round_snapshot: Record<string, unknown> | null;
+  round_snapshot: RoundSnapshot | null;
   start_time: string | null;
   end_time: string | null;
   attendee_timezone: string | null;
@@ -70,6 +85,19 @@ export type VideoSessionStatus = 'active' | 'ended' | 'failed';
 export interface CallNowView {
   booking_id: string;
   initiated_at: string;
+}
+
+/** `GET /scheduling/{token}/slots` — PANEL only. Deliberately NOT a real
+ * availability computation: interview-service has no free/busy integration
+ * and no panel-book endpoint, so slot picking still happens on Nylas's
+ * hosted page at `booking_url`. `slots_available` is just `booking_url != null`
+ * (i.e. the host calendar grant resolved and Nylas generated a page). */
+export interface SchedulingSlotsView {
+  interview_type: InterviewType;
+  duration_minutes: number;
+  status: BookingStatus;
+  booking_url: string | null;
+  slots_available: boolean;
 }
 
 export interface FollowUpRequestView {
@@ -431,7 +459,7 @@ export const interviewApi = createApi({
       },
       string
     >({ query: (token) => bookingLink({ url: `/scheduling/${token}` }) }),
-    getSchedulingSlots: build.query<unknown, string>({
+    getSchedulingSlots: build.query<SchedulingSlotsView, string>({
       query: (token) => bookingLink({ url: `/scheduling/${token}/slots` }),
     }),
     getAiSlots: build.query<

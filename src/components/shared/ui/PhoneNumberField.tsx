@@ -2,7 +2,7 @@ import React from 'react';
 import { Select } from 'antd';
 import clsx from 'clsx';
 import { countryCodes } from '../../../constants/countryCode';
-import { restrictPhoneDigits } from '../../../shared/utils/validation/phoneValidation';
+import { restrictPhoneDigitsForCountry } from '../../../shared/utils/validation/phoneValidation';
 
 type PhoneNumberFieldProps = {
   countryCode: string | undefined;
@@ -40,7 +40,13 @@ const PhoneNumberField: React.FC<PhoneNumberFieldProps> = ({
     >
       <Select
         value={countryCode}
-        onChange={onCountryCodeChange}
+        onChange={(value) => {
+          onCountryCodeChange(value);
+          // Re-clamp what's already typed to the new country's max length
+          // (e.g. 11 digits entered under +91, then switched to +1 → 10).
+          const reclamped = restrictPhoneDigitsForCountry(phoneNumber, value);
+          if (reclamped !== phoneNumber) onPhoneNumberChange(reclamped);
+        }}
         disabled={disabled}
         variant="borderless"
         style={{ width: 78, fontSize: 14 }}
@@ -66,7 +72,9 @@ const PhoneNumberField: React.FC<PhoneNumberFieldProps> = ({
         value={phoneNumber}
         disabled={disabled}
         maxLength={15}
-        onChange={(e) => onPhoneNumberChange(restrictPhoneDigits(e.target.value))}
+        onChange={(e) =>
+          onPhoneNumberChange(restrictPhoneDigitsForCountry(e.target.value, countryCode ?? ''))
+        }
       />
     </div>
   );
