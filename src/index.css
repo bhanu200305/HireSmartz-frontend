@@ -10,6 +10,32 @@
   font-display: swap;
 } */
 
+/* Header's control row (search/categories/notifications/profile) falls back
+   to horizontal scroll at in-between desktop widths where it doesn't all
+   fit in one line — see Header/index.tsx's own comment on `lg:overflow-x-
+   auto`. Left to the browser default, that renders as a full-width,
+   chunky native scrollbar (arrow buttons and all on Windows' classic
+   theme), which looks like a stray UI element sitting right under the
+   header rather than part of it. A thin, theme-colored bar reads as
+   deliberate instead. */
+.header-controls-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+}
+.header-controls-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.header-controls-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.header-controls-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--gray-300);
+  border-radius: 999px;
+}
+.header-controls-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gray-400);
+}
+
 /* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
 .public-page input,
 .public-page textarea,

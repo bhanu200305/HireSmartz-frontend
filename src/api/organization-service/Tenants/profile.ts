@@ -86,6 +86,11 @@ export type TenantAssetUploadResponse = {
 export type ActivityLogEntry = {
   id: string;
   actor_id: string;
+  // Resolved server-side from `actor_id` — a tenant user, or (for a
+  // platform account acting on this tenant's behalf) a platform staff
+  // member. `null` when neither resolves; render `actor_id` as the
+  // fallback in that case, never leave the "By" column blank.
+  actor_name: string | null;
   // Open-ended catalog on the backend — never gate rendering on a fixed
   // union of known values (docs/frontend_guide.txt: "will keep growing over
   // time, so don't build anything that breaks on seeing a new one").

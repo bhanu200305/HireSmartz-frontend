@@ -110,11 +110,14 @@ const TenantActivityFeedTab: React.FC<{ tenantId: string; isMaster?: boolean }> 
     },
     {
       title: 'By',
-      dataIndex: 'actor_id',
-      key: 'actor_id',
-      render: (_: unknown, event: ActivityRow) => (
-        <span className="text-gray-500 text-sm font-mono">{event.actor_id}</span>
-      ),
+      dataIndex: 'actor_name',
+      key: 'actor_name',
+      render: (_: unknown, event: ActivityRow) =>
+        event.actor_name ? (
+          <span className="text-gray-700 text-sm">{event.actor_name}</span>
+        ) : (
+          <span className="text-gray-500 text-sm font-mono">{event.actor_id}</span>
+        ),
     },
     {
       title: 'When',

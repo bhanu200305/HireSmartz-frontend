@@ -16,7 +16,11 @@ import './header.css';
 import { Search, showToast } from '../shared';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { useState, useEffect } from 'react';
-import GlobalSearch from '../shared/GlobalSearch';
+import GlobalSearch, {
+  getDefaultUserDetailPath,
+  isCfpStaffResult,
+  type SearchResult,
+} from '../shared/GlobalSearch';
 import { useGetCategoriesQuery } from '../../api/search-service/Dashboard/GlobalSearch';
 import {
   useLazyGetNylasAuthUrlQuery,
@@ -491,9 +495,6 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
   // the header (search, categories, location, notifications) stays.
   const SELF_PROFILE_PATHS = ['/profile', '/change-password'];
   const isSelfProfilePage = SELF_PROFILE_PATHS.includes(location.pathname);
-  const isOrgAdmin =
-    role?.name?.trim().toLowerCase() === 'super admin' &&
-    (role?.type?.toLowerCase() === 'owner' || role?.type?.toLowerCase() === 'organization');
 
   const normalizeRoleIdentifier = (value?: string): string => {
     return (value || '').replace(/[\s_-]+/g, '').toLowerCase();
@@ -531,14 +532,23 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
       `/jobs/view/${item?.extraJson?.job_opening_id}/candidates/${item?.extraJson?.id}/details`,
     getJobDetailPath: (item: { extraJson?: { id?: number } }) =>
       `/jobs/view/${item?.extraJson?.id}/candidates`,
-    // CFP Users (the platform staff section on the Users page) has no
-    // per-staff detail page (flat list + inline offboard action) — a
-    // platform/staff search hit routes back to the Users page itself
-    // rather than a dead /view-user link.
-    getUserDetailPath: (item: { extraJson?: { id?: number } }) =>
-      isOrgAdmin
-        ? `/view-organisation-user?orgUserId=${item?.extraJson?.id}`
-        : '/organisation-users',
+    // A PLATFORM (SuperAdmin) caller has no per-user detail page of their
+    // own to send a COMPANY/COMPANY_PENDING result to — `/view-organisation-
+    // user` and the pending-invite fallback both assume the CALLER's own
+    // tenant, which a platform caller does not have. `/view-company?
+    // companyId=<tenantId>&tab=8` is that tenant's own company-detail page,
+    // Users tab — confirmed to already list both active and pending members
+    // for any company, which is exactly what a platform-wide user search
+    // needs. Only applies to COMPANY/COMPANY_PENDING: CFP staff have no
+    // tenant at all (`extraJson.tenantId` is absent for them), so they keep
+    // falling through to `defaultNavigationConfig`'s '/organisation-users'.
+    // A TENANT caller's own results (always their own team, never someone
+    // else's) also fall through unchanged — their existing per-user page
+    // and pending-invite listing are already correct for that case.
+    getUserDetailPath: (item: SearchResult) =>
+      isPlatformCaller && !isCfpStaffResult(item) && item?.extraJson?.tenantId
+        ? `/view-company?companyId=${item.extraJson.tenantId}&tab=8`
+        : getDefaultUserDetailPath(item),
     getCompanyDetailPath: (item: { extraJson?: { id?: number } }) =>
       `/view-company?companyId=${item?.extraJson?.id}`,
   };
@@ -578,7 +588,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
             otherwise the one item that can get pushed off the end — reachable
             by scrolling this row horizontally at those in-between desktop-ish
             widths. Nothing about what's IN the row changes. */}
-        <div className="flex flex-1 flex-wrap items-center justify-end gap-3 lg:flex-nowrap lg:gap-4 lg:overflow-x-auto">
+        <div className="header-controls-scroll flex flex-1 flex-wrap items-center justify-end gap-3 lg:flex-nowrap lg:gap-4 lg:overflow-x-auto">
           <Dropdown
             open={showGlobal}
             placement="bottomLeft"
