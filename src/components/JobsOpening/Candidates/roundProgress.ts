@@ -64,3 +64,30 @@ export const isRoundConcluded = (round: CandidateInterviewRoundView): boolean =>
   const bucket = bucketForStatus(round.status);
   return bucket === 'done' || bucket === 'failed';
 };
+
+/** Grace period after a round's `scheduled_at` before treating it as
+ * overdue rather than "still due any moment." Long enough that a call
+ * that's legitimately ringing or just wrapping up isn't flagged. */
+export const OVERDUE_GRACE_MINUTES = 30;
+
+/** True when a round was scheduled to happen a while ago but its status
+ * never moved past "not yet concluded." This is a client-side inference,
+ * not a real backend status — candidate-service has no "the call never
+ * happened" state to report today. Two known backend gaps produce exactly
+ * this shape (scheduled_at in the past, status stuck): interview-service
+ * can silently drop a due call when it can't resolve a phone number
+ * (`trigger_due_audio_calls.py`'s `no_phone_number` branch never retries
+ * or fails the booking), and candidate-service can lose the status update
+ * to a race between linking the booking and recording its status
+ * (`update_interview_round_status.py`'s "unresolvable booking" case,
+ * which also never retries). Surfacing this in the UI is a stopgap until
+ * either side reports a real failure state — see the intake-call
+ * findings write-up. */
+export const isOverdue = (round: CandidateInterviewRoundView): boolean => {
+  const bucket = bucketForStatus(round.status);
+  if (bucket !== 'current' && bucket !== 'pending') return false;
+  if (!round.scheduled_at) return false;
+  const scheduledMs = new Date(round.scheduled_at).getTime();
+  if (Number.isNaN(scheduledMs)) return false;
+  return scheduledMs < Date.now() - OVERDUE_GRACE_MINUTES * 60_000;
+};

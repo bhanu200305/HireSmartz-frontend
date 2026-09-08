@@ -9,6 +9,7 @@ import type { CandidateInterviewScoreView } from '../../../api/candidate-service
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import {
   bucketForStatus,
+  isOverdue,
   isRoundConcluded,
   resolveCurrentRound,
   type RoundBucket,
@@ -94,7 +95,11 @@ const PipelineBoard = ({
   }
 
   const buckets = rounds.map((r) => bucketForStatus(r.status));
-  const hasFailure = buckets.includes('failed');
+  // Client-side inference only — see `isOverdue`'s own docstring. A round
+  // stuck here reads as "needs attention" the same as a real failure,
+  // even though the backend itself has never reported one.
+  const overdueFlags = rounds.map((r) => isOverdue(r));
+  const hasFailure = buckets.includes('failed') || overdueFlags.some(Boolean);
   const allDone = buckets.every((b) => b === 'done');
 
   // The round ADVANCE would actually complete next / SEND INVITE would
@@ -154,7 +159,12 @@ const PipelineBoard = ({
       <div className="flex gap-3 overflow-x-auto pb-2">
         {rounds.map((round, index) => {
           const bucket = buckets[index];
-          const meta = BUCKET_META[bucket];
+          const overdue = overdueFlags[index];
+          // Borrows the 'failed' bucket's danger styling — an overdue round
+          // is exactly as actionable as a real failure, it's just inferred
+          // from timing rather than reported by the backend (see
+          // `isOverdue`'s docstring).
+          const meta = overdue ? BUCKET_META.failed : BUCKET_META[bucket];
           const when = formatWhen(round.scheduled_at) ?? formatWhen(round.due_at);
           const isActive = index === activeIndex;
           // The resume stage's own status never flips off "to_be_scheduled" /
@@ -225,7 +235,7 @@ const PipelineBoard = ({
                 <span
                   className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${meta.stepBg} ${meta.stepText}`}
                 >
-                  {bucket === 'done' ? '✓' : index + 1}
+                  {overdue ? '!' : bucket === 'done' ? '✓' : index + 1}
                 </span>
                 <span
                   className="truncate text-sm font-semibold text-neutral-900"
@@ -239,8 +249,17 @@ const PipelineBoard = ({
                   status={isResumeAwaitingAdvance ? 'info' : meta.badgeStatus}
                   className="w-fit"
                 >
-                  {isResumeAwaitingAdvance ? 'Score ready' : formatRoundStatus(round.status)}
+                  {overdue
+                    ? 'Overdue'
+                    : isResumeAwaitingAdvance
+                      ? 'Score ready'
+                      : formatRoundStatus(round.status)}
                 </Badge>
+                {overdue && (
+                  <span className="text-xs text-danger">
+                    No update since the scheduled time — may not have gone through.
+                  </span>
+                )}
                 {when && <span className="text-xs text-neutral-500">{when}</span>}
                 {round.duration_minutes != null && (
                   <span className="text-xs text-neutral-400">{round.duration_minutes} min</span>

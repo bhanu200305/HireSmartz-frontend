@@ -60,17 +60,30 @@ export type CandidateView = {
   referal_code: string | null;
   referal_note: string | null;
 
-  // `consistency_score`/`consistency_score_reason` (the Intake Call
-  // consistency check) and `verification_status`/`verification_started_at`/
-  // `verified_at` (ID.me identity verification) used to be declared here —
-  // removed 2026-09-07. Both are real, tracked columns on the domain
-  // entity (`candidate.py`), but neither is projected onto the real
-  // `CandidateView` Pydantic model `GET /candidates`/`GET /candidates/{id}`
-  // actually return (verified against `candidate_dto.py` directly) — every
-  // recruiter-facing read of this type would have silently gotten
-  // `undefined` for all five, forever. Confirmed unread anywhere in this
-  // codebase before removing. If either becomes recruiter-visible later,
-  // it needs to be added to the backend's `CandidateView` first, then here.
+  // `verification_status`/`verification_started_at`/`verified_at` (ID.me
+  // identity verification) used to be declared here alongside the two
+  // fields below — still removed 2026-09-07, still not projected onto the
+  // real `CandidateView` Pydantic model (verified against `candidate_dto.py`
+  // directly). If verification becomes recruiter-visible later, it needs to
+  // be added to the backend's `CandidateView` first, then here.
+
+  /** Intake Call consistency check — transcript-vs-resume authenticity
+   * signal from ai-service (`candidate.intake_call.consistency_checked`),
+   * distinct from `resume_score` (resume judged against the job). Re-added
+   * 2026-09-08 — deliberately ahead of the backend, unlike the removal note
+   * above still explains for the ID.me fields: candidate-service's own
+   * `candidate_dto.CandidateView` does NOT project these two yet (confirmed
+   * against that file directly), so both currently deserialize to
+   * `undefined` on every real response — same trap the 2026-09-07 removal
+   * was guarding against, kept anyway this time because the fix is already
+   * scoped and in flight on candidate-service's side (add both columns to
+   * `CandidateView`) rather than an open-ended "maybe later." Every read
+   * site must treat both as possibly-`undefined`, not just possibly-`null`,
+   * until that ships. Nullable either way even once backend's fix lands —
+   * neither is set until ai-service actually reports a score (mirrors
+   * `resume_score`/`scoring_reason`'s own nullability). */
+  consistency_score?: number | null;
+  consistency_score_reason?: string | null;
 };
 
 export type PaginatedCandidates = {

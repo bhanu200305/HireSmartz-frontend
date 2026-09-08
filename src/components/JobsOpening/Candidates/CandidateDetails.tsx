@@ -404,7 +404,7 @@ const CandidateDetails = () => {
                 // never showed up on the "Resume Screening" pipeline card
                 // a recruiter actually clicks into.
                 <CommonCard>
-                  <div className="p-5 grid gap-6 sm:grid-cols-2">
+                  <div className="p-5 grid gap-6 sm:grid-cols-3">
                     <div>
                       <div className="text-xs font-semibold uppercase text-gray-400">AI Score</div>
                       <div className="mt-2 text-2xl font-bold text-primary">
@@ -412,6 +412,29 @@ const CandidateDetails = () => {
                       </div>
                       {candidate?.scoring_reason && (
                         <p className="mt-1 text-sm text-gray-600">{candidate.scoring_reason}</p>
+                      )}
+                    </div>
+                    <div>
+                      {/* Intake Call consistency — transcript-vs-resume authenticity
+                          check, distinct from the AI Score beside it (that's the resume
+                          judged against the job; this is whether the call sounds like
+                          the same person). See CandidateLifecycle.ts's own note on
+                          `consistency_score` — still `undefined` on every real response
+                          until candidate-service adds it to `CandidateView`, so this
+                          renders the same "—" placeholder resume_score does today.
+                          Doesn't have a "recruiter review" of its own the way resume
+                          score does — it's a fraud signal to weigh, not something a
+                          recruiter re-scores. */}
+                      <div className="text-xs font-semibold uppercase text-gray-400">
+                        Intake Call Consistency
+                      </div>
+                      <div className="mt-2 text-2xl font-bold text-primary">
+                        {candidate?.consistency_score ?? '—'}
+                      </div>
+                      {candidate?.consistency_score_reason && (
+                        <p className="mt-1 text-sm text-gray-600">
+                          {candidate.consistency_score_reason}
+                        </p>
                       )}
                     </div>
                     <div>
@@ -598,7 +621,7 @@ const CandidateDetails = () => {
                     {candidate?.resume_rating ? 'EDIT REVIEW' : 'ADD REVIEW'}
                   </Button>
                 </div>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-3 gap-6">
                   <div>
                     <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
                       AI Score
@@ -608,6 +631,24 @@ const CandidateDetails = () => {
                     </div>
                     {candidate?.scoring_reason && (
                       <p className="text-sm text-gray-600 mt-1">{candidate.scoring_reason}</p>
+                    )}
+                  </div>
+                  <div>
+                    {/* Same Intake Call consistency signal as the Pipeline tab's
+                        resume-stage card — see that card's own comment. Kept in
+                        sync deliberately; this tab and that one show the same
+                        underlying resume data from two different entry points
+                        (comment above `isResumeStage` explains why both exist). */}
+                    <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                      Intake Call Consistency
+                    </div>
+                    <div className="text-2xl font-bold text-primary">
+                      {candidate?.consistency_score ?? '—'}
+                    </div>
+                    {candidate?.consistency_score_reason && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        {candidate.consistency_score_reason}
+                      </p>
                     )}
                   </div>
                   <div>
