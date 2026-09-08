@@ -41,7 +41,12 @@ const extendedApi = orgApi.injectEndpoints({
           method: 'POST',
           body,
         }),
-        invalidatesTags: ['InterviewQuestions'],
+        // Also writes an `interview_question_created` row to the platform
+        // audit trail (see org-service's `CreateInterviewQuestionUseCase`,
+        // same transaction) — invalidate that cache too, or the Audit Log
+        // page keeps showing whatever it had cached from before this call,
+        // even though the new entry is already in the database.
+        invalidatesTags: ['InterviewQuestions', 'PlatformAudit'],
       }
     ),
     updatePlatformInterviewQuestion: build.mutation<InterviewQuestion, UpdateInterviewQuestionArgs>(
@@ -51,7 +56,7 @@ const extendedApi = orgApi.injectEndpoints({
           method: 'PUT',
           body: { question_text, field_id },
         }),
-        invalidatesTags: ['InterviewQuestions'],
+        invalidatesTags: ['InterviewQuestions', 'PlatformAudit'],
       }
     ),
     deletePlatformInterviewQuestion: build.mutation<void, string>({
@@ -59,7 +64,7 @@ const extendedApi = orgApi.injectEndpoints({
         url: `/v1/platform/interview-questions/${questionId}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['InterviewQuestions'],
+      invalidatesTags: ['InterviewQuestions', 'PlatformAudit'],
     }),
   }),
 });

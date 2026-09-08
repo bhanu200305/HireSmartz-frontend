@@ -47,18 +47,12 @@ const describeAction = (action: string): string =>
  * useful.
  *
  * Each row shows a tenant NAME (resolved from the same tenant list the
- * filter dropdown fetches, best-effort — see `tenantNameById` below) but
- * the actor stays a raw id. That's a real backend gap, not an oversight:
- * `GET /platform/staff` (the only endpoint with staff emails/roles) returns
- * `membership_id`, while every audit entry's `actor_id` is a `user_id` —
- * two different primary keys on two different tables here, with nothing
- * exposed today to join them on the frontend. Showing a name here for real
- * needs one of: (a) `GET /platform/staff` also returning `user_id` per row,
- * so this page can build its own id -> {email, role} lookup the same way it
- * already does for tenants, or (b) `GET /platform/audit/events` resolving
- * and returning the actor's email/role itself (the more robust option —
- * it'd still show correctly for an actor who's since been offboarded or
- * changed role, which (a) would not).
+ * filter dropdown fetches, best-effort — see `tenantNameById` below) AND
+ * the actor's name — `event.actor_name`, resolved server-side from
+ * `actor_id` against platform staff (see `AuditLogEntryView`'s own
+ * docstring in org-service). Falls back to the raw `actor_id` only when
+ * that resolution comes back `null` (the membership no longer exists),
+ * same fallback shape `TenantActivityFeedTab` uses for the same reason.
  */
 const PlatformAudit: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -206,17 +200,7 @@ const PlatformAudit: React.FC = () => {
                     {describeAction(event.action)}
                   </Typography>
                   <Typography variant="caption">
-                    {/* `by {actor_id}` stays a raw id, deliberately — there's
-                        no name/email/role to show instead yet. See this
-                        file's own doc comment on why: the only endpoint with
-                        staff emails (`GET /platform/staff`) returns a
-                        different id (`membership_id`) than what audit
-                        entries record (`user_id`), with no shared key to
-                        join them on here. Tenant, by contrast, IS resolved
-                        below — `tenant_id` matches `PlatformTenantSummary
-                        .tenant_id` exactly, the same field the filter
-                        dropdown above already fetches. */}
-                    {event.target_type} · by {event.actor_id}
+                    {event.target_type} · by {event.actor_name || event.actor_id}
                     {event.tenant_id
                       ? ` · ${tenantNameById.get(event.tenant_id) ?? `tenant ${event.tenant_id}`}`
                       : ''}
