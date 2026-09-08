@@ -1,10 +1,16 @@
 import {
+  MdBadge,
+  MdCameraAlt,
   MdDelete,
   MdEdit,
+  MdMailOutline,
   MdOutlineArrowBack,
   MdOutlineFileUpload,
   MdOutlineNotifications,
   MdOutlineSecurity,
+  MdOutlineVerified,
+  MdPersonOutline,
+  MdPhoneIphone,
 } from 'react-icons/md';
 import MainLayout from '../../layouts/MainLayout';
 import { useNavigate } from 'react-router-dom';
@@ -338,306 +344,338 @@ const UserProfile = () => {
     }
   };
 
+  const displayName = [watch('firstName'), watch('lastName')].filter(Boolean).join(' ');
+  const roleLabel = isPlatformCaller ? watch('roleName') || 'Platform Admin' : 'Team Member';
+
   return (
     <>
       {(isLoading || isUpdating) && <Loader />}
       <MainLayout>
-        <div className="flex flex-col items-center bg-white px-4 mt-4 relative pt-8">
-          <div className="mb-4 self-start px-4 absolute">
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center text-gray-600 hover:text-gray-800 mb-4 cursor-pointer"
-            >
-              <MdOutlineArrowBack className="mr-2" />
-              <span>Back</span>
-            </button>
-          </div>
-          <div className="mb-4 self-end px-4 absolute right-0 flex items-center gap-4">
-            <button
-              onClick={() => navigate('/settings/notifications')}
-              className="flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"
-            >
-              <MdOutlineNotifications />
-              <span>Notifications</span>
-            </button>
-            <button
-              onClick={() => navigate('/settings/security')}
-              className="flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"
-            >
-              <MdOutlineSecurity />
-              <span>Security &amp; sessions</span>
-            </button>
-          </div>
-          <div className="bg-[#FAFAFA] p-6 md:p-10 rounded-2xl shadow-lg w-full max-w-4xl flex flex-col">
-            <h2 className="text-center text-2xl font-semibold mb-2">User Profile</h2>
-            <p className="text-center mb-6">Please enter the following details.</p>
+        <div
+          className="min-h-full pb-16 overflow-x-hidden"
+          style={{
+            background:
+              'linear-gradient(180deg, var(--surface-indigo) 0%, var(--surface-gray) 320px, var(--surface-gray) 100%)',
+          }}
+        >
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <button
+                onClick={() => navigate('/')}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-600)] hover:text-[var(--gray-900)] transition-colors cursor-pointer"
+              >
+                <MdOutlineArrowBack className="text-base" />
+                <span>Back</span>
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate('/settings/notifications')}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
+                >
+                  <MdOutlineNotifications className="text-base" />
+                  <span>Notifications</span>
+                </button>
+                <button
+                  onClick={() => navigate('/settings/security')}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
+                >
+                  <MdOutlineSecurity className="text-base" />
+                  <span>Security &amp; sessions</span>
+                </button>
+              </div>
+            </div>
+
             {profileLoaded && (
               <Form layout="vertical">
-                {/* <Form.Item
-                name="image"
-                className="w-full text-center"
-                style={{ marginBottom: '12px' }}
-              >
-                <Upload.Dragger
-                  beforeUpload={(file) => {
-                    const allowedFileTypes = ['image/png', 'image/jpeg', 'image/jpg']
-                    if (!allowedFileTypes.includes(file.type)) {
-                      showToast({
-                        message: 'Invalid file type. Please upload a valid image file.',
-                        type: 'error'
-                      })
-                      return Upload.LIST_IGNORE
-                    }
-                    return handleFileUpload(file)
-                  }}
-                  listType="picture"
-                  maxCount={1}
-                  className="border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center"
+                <div
+                  className="mt-6 bg-white rounded-3xl border border-[var(--border)] overflow-hidden"
+                  style={{ boxShadow: 'var(--elevation-md)' }}
                 >
-                  <MdOutlineFileUpload className="text-xl mb-2 text-primary mx-auto" />
-                  <p>Upload User&apos;s Image (Optional)</p>
-                </Upload.Dragger>
-              </Form.Item> */}
-                <Form.Item
-                  name="image"
-                  className="w-full text-center"
-                  style={{ marginBottom: '12px' }}
-                >
-                  {imagePreview ? (
-                    <div
-                      className="relative w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden group mx-auto"
-                      onMouseEnter={() => setIsHovered(true)}
-                      onMouseLeave={() => setIsHovered(false)}
-                    >
-                      <img
-                        src={imagePreview}
-                        alt="Profile preview"
-                        className="w-full h-full object-cover"
-                        onError={() => setImagePreview('')}
-                      />
-                      <Upload
-                        beforeUpload={handleFileUpload}
-                        showUploadList={false}
-                        className="hidden"
-                        accept="image/png, image/jpeg, image/jpg"
-                      >
-                        <button ref={uploadRef} className="hidden"></button>
-                      </Upload>
-                      {isHovered && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 gap-2">
-                          <div
-                            onClick={() => uploadRef.current?.click()}
-                            className="bg-primary rounded-full p-2 cursor-pointer hover:bg-primary-dark"
+                  {/* Hero header — avatar, name, role chip */}
+                  <div
+                    className="relative flex flex-col items-center text-center px-8 pt-12 pb-10"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, var(--surface-indigo) 0%, #ffffff 55%, var(--surface-cyan) 100%)',
+                    }}
+                  >
+                    <Form.Item name="image" className="!mb-0">
+                      {imagePreview ? (
+                        <div
+                          className="relative w-28 h-28 sm:w-32 sm:h-32 mx-auto rounded-full overflow-hidden group ring-4 ring-white"
+                          style={{ boxShadow: 'var(--elevation-md)' }}
+                          onMouseEnter={() => setIsHovered(true)}
+                          onMouseLeave={() => setIsHovered(false)}
+                        >
+                          <img
+                            src={imagePreview}
+                            alt="Profile preview"
+                            className="w-full h-full object-cover"
+                            onError={() => setImagePreview('')}
+                          />
+                          <Upload
+                            beforeUpload={handleFileUpload}
+                            showUploadList={false}
+                            className="hidden"
+                            accept="image/png, image/jpeg, image/jpg"
                           >
-                            <MdEdit className="text-white text-xl" />
-                          </div>
-                          {imagePreview && (
-                            <div
-                              className="bg-red-500 rounded-full p-2 cursor-pointer hover:bg-red-600"
+                            <button ref={uploadRef} className="hidden"></button>
+                          </Upload>
+                          <div
+                            className={`absolute inset-0 flex items-center justify-center gap-3 bg-[var(--gray-900)]/45 backdrop-blur-[1px] transition-opacity duration-200 ${
+                              isHovered ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => uploadRef.current?.click()}
+                              className="bg-white rounded-full p-2.5 cursor-pointer shadow-sm hover:scale-105 transition-transform"
+                            >
+                              <MdEdit className="text-[var(--primary)] text-lg" />
+                            </button>
+                            <button
+                              type="button"
+                              className="bg-white rounded-full p-2.5 cursor-pointer shadow-sm hover:scale-105 transition-transform"
                               onClick={handleDeleteProfilePicture}
                             >
-                              <MdDelete className="text-white text-xl" />
-                            </div>
-                          )}
+                              <MdDelete className="text-[var(--danger-solid)] text-lg" />
+                            </button>
+                          </div>
+                          {/* Always-visible camera badge — discoverable on touch, where hover never fires */}
+                          <button
+                            type="button"
+                            onClick={() => uploadRef.current?.click()}
+                            className={`absolute bottom-1 right-1 bg-[var(--primary)] rounded-full p-1.5 shadow-sm cursor-pointer transition-opacity ${
+                              isHovered ? 'opacity-0' : 'opacity-100'
+                            }`}
+                          >
+                            <MdCameraAlt className="text-white text-sm" />
+                          </button>
                         </div>
+                      ) : (
+                        <Upload.Dragger
+                          beforeUpload={handleFileUpload}
+                          listType="picture"
+                          maxCount={1}
+                          accept="image/png, image/jpeg, image/jpg"
+                          className="!w-28 !h-28 sm:!w-32 sm:!h-32 !rounded-full !border-2 !border-dashed !border-[var(--primary-300)] !bg-white/70 flex flex-col items-center justify-center mx-auto hover:!border-[var(--primary)] transition-colors"
+                        >
+                          <MdOutlineFileUpload className="text-2xl text-[var(--primary)] mx-auto" />
+                          <p className="text-[11px] leading-tight px-3 mt-1 text-[var(--gray-600)]">
+                            Upload photo
+                          </p>
+                        </Upload.Dragger>
                       )}
-                    </div>
-                  ) : (
-                    <Upload.Dragger
-                      beforeUpload={handleFileUpload}
-                      listType="picture"
-                      maxCount={1}
-                      accept="image/png, image/jpeg, image/jpg"
-                      className="border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center"
-                    >
-                      <MdOutlineFileUpload className="text-xl mb-2 text-primary mx-auto" />
-                      <p>Upload User&apos;s Image (Optional)</p>
-                    </Upload.Dragger>
-                  )}
-                </Form.Item>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-                  <Form.Item
-                    label={
-                      <span>
-                        First Name <span className="required-asterisk">*</span>
-                      </span>
-                    }
-                    name="firstName"
-                    style={{ marginBottom: '10px' }}
-                    // validateStatus={errors.firstName ? 'error' : ''}
-                    // help={errors.firstName?.message}
-                  >
-                    <Controller
-                      name="firstName"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          maxLength={100}
-                          type="text"
-                          placeholder="First Name"
-                          className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                        />
-                      )}
-                    />
-                    <p className="text-red-500">{errors.firstName?.message}</p>
-                  </Form.Item>
+                    </Form.Item>
 
-                  <Form.Item
-                    label={
-                      <span>
-                        Last Name <span className="required-asterisk">*</span>
+                    <h2 className="font-display text-xl sm:text-2xl font-bold text-[var(--gray-900)] mt-5">
+                      {displayName || 'Your Profile'}
+                    </h2>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[var(--border)] text-xs font-semibold text-[var(--primary)] uppercase tracking-wide">
+                        <MdOutlineVerified className="text-sm" />
+                        {roleLabel}
                       </span>
-                    }
-                    name="lastName"
-                    style={{ marginBottom: '10px' }}
-                  >
-                    <Controller
-                      name="lastName"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="text"
-                          maxLength={100}
-                          placeholder="Last Name"
-                          className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                        />
-                      )}
-                    />
-                    <p className="text-red-500">{errors.lastName?.message}</p>
-                  </Form.Item>
-                  {/* <Form.Item name="Title" style={{ marginBottom: '10px' }}>
-                <Input
-                  placeholder="Title"
-                  className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                  
-                />
-                <p className="text-red-500">{errors.title?.message}</p>
-              </Form.Item> */}
-                  <Form.Item
-                    label={
-                      <span>
-                        Phone Number <span className="required-asterisk">*</span>
-                      </span>
-                    }
-                    name="phone"
-                    style={{ marginBottom: '10px' }}
-                  >
-                    <div className="phone-input-wrapper flex items-center bg-white w-full px-4 border rounded-3xl border-[var(--border)]">
-                      <Select
-                        value={watch('countryCode')}
-                        onChange={(value) => {
-                          setValue('countryCode', value, {
-                            shouldValidate: true,
-                            shouldDirty: true,
-                          });
-                          setValue(
-                            'phoneNumber',
-                            restrictPhoneDigitsForCountry(watch('phoneNumber') ?? '', value),
-                            { shouldValidate: true, shouldDirty: true }
-                          );
-                        }}
-                        className="border-none focus:ring-0 focus:outline-none bg-transparent"
-                        dropdownStyle={{ minWidth: 'min(300px, 92vw)' }}
-                        // dropdownMatchSelectWidth={false}
-                        variant="borderless"
-                        style={{ width: '80px', fontSize: '14px' }}
-                        options={countryCodes.map(({ label, value, short }) => ({
-                          label: `${short} - ${label}`,
-                          value,
-                        }))}
-                        optionLabelProp="value"
-                        showSearch
-                        filterOption={(input, option) =>
-                          (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    </div>
+                    <p className="text-sm text-[var(--gray-500)] mt-2 max-w-sm">
+                      Keep your details up to date — this is what your team sees across
+                      CareerForce&nbsp;Pro.
+                    </p>
+                  </div>
+
+                  {/* Editable fields */}
+                  <div className="px-6 sm:px-10 py-8 border-t border-[var(--border)]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                      <Form.Item
+                        label={
+                          <span className="text-sm font-semibold text-[var(--gray-700)]">
+                            First Name <span className="required-asterisk">*</span>
+                          </span>
                         }
-                        placeholder="Search..."
-                        tabIndex={-1}
-                      />
-                      <div className="border-l-2 border-gray-300 h-6 mx-2"></div>
-                      <Input
-                        type="tel"
-                        placeholder="Phone number"
-                        value={watch('phoneNumber')}
-                        onChange={(e) => {
-                          setValue(
-                            'phoneNumber',
-                            restrictPhoneDigitsForCountry(
-                              e.target.value,
-                              watch('countryCode') ?? ''
-                            ),
-                            { shouldValidate: true, shouldDirty: true }
-                          );
-                          trigger('phoneNumber');
-                        }}
-                        maxLength={15}
-                        className="border-none focus:ring-0 focus:outline-none w-full"
-                      />
-                    </div>
-                    <p className="text-red-500 text-sm mt-1">{errors.countryCode?.message}</p>
+                        name="firstName"
+                        style={{ marginBottom: '18px' }}
+                      >
+                        <div className="flex items-center gap-2.5 bg-[var(--surface-gray)] w-full px-4 border rounded-2xl border-[var(--border)] transition-colors focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]">
+                          <MdPersonOutline className="text-[var(--gray-400)] text-lg shrink-0" />
+                          <Controller
+                            name="firstName"
+                            control={control}
+                            render={({ field }) => (
+                              <Input
+                                {...field}
+                                maxLength={100}
+                                type="text"
+                                placeholder="First Name"
+                                className="!bg-transparent w-full !border-0 !shadow-none !px-0 py-2.5 focus:!ring-0"
+                              />
+                            )}
+                          />
+                        </div>
+                        <p className="text-red-500 text-xs mt-1">{errors.firstName?.message}</p>
+                      </Form.Item>
 
-                    <p className="text-red-500 text-sm mt-1">{errors.phoneNumber?.message}</p>
-                  </Form.Item>
-                  <Form.Item
-                    label={
-                      <span>
-                        Email Address <span className="required-asterisk">*</span>
-                      </span>
-                    }
-                    name="email"
-                    style={{ marginBottom: '10px' }}
-                  >
-                    <Controller
-                      name="emailId"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          // Changing a platform account's login email isn't
-                          // part of this self-service surface — Membership
-                          // has no writable email field here (see
-                          // UpdateOwnPlatformProfileRequest).
-                          disabled={isPlatformCaller}
-                          placeholder="Email Address"
-                          className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\s/g, ''); // Remove all spaces
-                            field.onChange(value);
-                          }}
-                        />
-                      )}
-                    />
-                    {errors.emailId && (
-                      <p className="text-red-500 text-sm mt-1">{errors.emailId.message}</p>
-                    )}
-                  </Form.Item>
-                  <Form.Item
-                    label={
-                      <span>
-                        Role <span className="required-asterisk">*</span>
-                      </span>
-                    }
-                    name="roleName"
-                    style={{ marginBottom: '10px' }}
-                    // validateStatus={errors.firstName ? 'error' : ''}
-                    // help={errors.firstName?.message}
-                  >
-                    <Controller
-                      name="roleName"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="text"
-                          disabled
-                          placeholder="Role"
-                          className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                        />
-                      )}
-                    />
-                  </Form.Item>
-                  {/* <Form.Item name="AddressLine1" style={{ marginBottom: '10px' }}>
+                      <Form.Item
+                        label={
+                          <span className="text-sm font-semibold text-[var(--gray-700)]">
+                            Last Name <span className="required-asterisk">*</span>
+                          </span>
+                        }
+                        name="lastName"
+                        style={{ marginBottom: '18px' }}
+                      >
+                        <div className="flex items-center gap-2.5 bg-[var(--surface-gray)] w-full px-4 border rounded-2xl border-[var(--border)] transition-colors focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]">
+                          <MdPersonOutline className="text-[var(--gray-400)] text-lg shrink-0" />
+                          <Controller
+                            name="lastName"
+                            control={control}
+                            render={({ field }) => (
+                              <Input
+                                {...field}
+                                type="text"
+                                maxLength={100}
+                                placeholder="Last Name"
+                                className="!bg-transparent w-full !border-0 !shadow-none !px-0 py-2.5 focus:!ring-0"
+                              />
+                            )}
+                          />
+                        </div>
+                        <p className="text-red-500 text-xs mt-1">{errors.lastName?.message}</p>
+                      </Form.Item>
+
+                      <Form.Item
+                        label={
+                          <span className="text-sm font-semibold text-[var(--gray-700)]">
+                            Phone Number <span className="required-asterisk">*</span>
+                          </span>
+                        }
+                        name="phone"
+                        style={{ marginBottom: '18px' }}
+                      >
+                        <div className="phone-input-wrapper flex items-center gap-1.5 bg-[var(--surface-gray)] w-full pl-4 pr-2 border rounded-2xl border-[var(--border)] transition-colors focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]">
+                          <MdPhoneIphone className="text-[var(--gray-400)] text-lg shrink-0" />
+                          <Select
+                            value={watch('countryCode')}
+                            onChange={(value) => {
+                              setValue('countryCode', value, {
+                                shouldValidate: true,
+                                shouldDirty: true,
+                              });
+                              setValue(
+                                'phoneNumber',
+                                restrictPhoneDigitsForCountry(watch('phoneNumber') ?? '', value),
+                                { shouldValidate: true, shouldDirty: true }
+                              );
+                            }}
+                            className="border-none focus:ring-0 focus:outline-none bg-transparent"
+                            dropdownStyle={{ minWidth: 'min(300px, 92vw)' }}
+                            variant="borderless"
+                            style={{ width: '76px', fontSize: '14px' }}
+                            options={countryCodes.map(({ label, value, short }) => ({
+                              label: `${short} - ${label}`,
+                              value,
+                            }))}
+                            optionLabelProp="value"
+                            showSearch
+                            filterOption={(input, option) =>
+                              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
+                            placeholder="Search..."
+                            tabIndex={-1}
+                          />
+                          <div className="border-l-2 border-[var(--border)] h-6"></div>
+                          <Input
+                            type="tel"
+                            placeholder="Phone number"
+                            value={watch('phoneNumber')}
+                            onChange={(e) => {
+                              setValue(
+                                'phoneNumber',
+                                restrictPhoneDigitsForCountry(
+                                  e.target.value,
+                                  watch('countryCode') ?? ''
+                                ),
+                                { shouldValidate: true, shouldDirty: true }
+                              );
+                              trigger('phoneNumber');
+                            }}
+                            maxLength={15}
+                            className="!bg-transparent border-none focus:ring-0 focus:outline-none w-full !shadow-none py-2.5"
+                          />
+                        </div>
+                        <p className="text-red-500 text-xs mt-1">{errors.countryCode?.message}</p>
+                        <p className="text-red-500 text-xs mt-1">{errors.phoneNumber?.message}</p>
+                      </Form.Item>
+
+                      <Form.Item
+                        label={
+                          <span className="text-sm font-semibold text-[var(--gray-700)]">
+                            Email Address <span className="required-asterisk">*</span>
+                          </span>
+                        }
+                        name="email"
+                        style={{ marginBottom: '18px' }}
+                      >
+                        <div
+                          className={`flex items-center gap-2.5 w-full px-4 border rounded-2xl border-[var(--border)] transition-colors ${
+                            isPlatformCaller
+                              ? 'bg-[var(--gray-100)]'
+                              : 'bg-[var(--surface-gray)] focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]'
+                          }`}
+                        >
+                          <MdMailOutline className="text-[var(--gray-400)] text-lg shrink-0" />
+                          <Controller
+                            name="emailId"
+                            control={control}
+                            render={({ field }) => (
+                              <Input
+                                {...field}
+                                // Changing a platform account's login email isn't
+                                // part of this self-service surface — Membership
+                                // has no writable email field here (see
+                                // UpdateOwnPlatformProfileRequest).
+                                disabled={isPlatformCaller}
+                                placeholder="Email Address"
+                                className="!bg-transparent w-full !border-0 !shadow-none !px-0 py-2.5 focus:!ring-0 disabled:!text-[var(--gray-500)]"
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\s/g, ''); // Remove all spaces
+                                  field.onChange(value);
+                                }}
+                              />
+                            )}
+                          />
+                        </div>
+                        {errors.emailId && (
+                          <p className="text-red-500 text-xs mt-1">{errors.emailId.message}</p>
+                        )}
+                      </Form.Item>
+
+                      <Form.Item
+                        label={
+                          <span className="text-sm font-semibold text-[var(--gray-700)]">
+                            Role <span className="required-asterisk">*</span>
+                          </span>
+                        }
+                        name="roleName"
+                        style={{ marginBottom: '18px' }}
+                      >
+                        <div className="flex items-center gap-2.5 bg-[var(--gray-100)] w-full px-4 border rounded-2xl border-[var(--border)]">
+                          <MdBadge className="text-[var(--gray-400)] text-lg shrink-0" />
+                          <Controller
+                            name="roleName"
+                            control={control}
+                            render={({ field }) => (
+                              <Input
+                                {...field}
+                                type="text"
+                                disabled
+                                placeholder="Role"
+                                className="!bg-transparent w-full !border-0 !shadow-none !px-0 py-2.5 focus:!ring-0 disabled:!text-[var(--gray-500)]"
+                              />
+                            )}
+                          />
+                        </div>
+                      </Form.Item>
+                      {/* <Form.Item name="AddressLine1" style={{ marginBottom: '10px' }}>
                   <Input
                     type="text"
                     placeholder="Address Line 1"
@@ -767,18 +805,21 @@ const UserProfile = () => {
                   />
                   <p className="text-red-500">{errors.pinCode?.message}</p>
                 </Form.Item> */}
-                </div>
+                    </div>
 
-                <Form.Item className="flex justify-center !mt-2">
-                  <Button
-                    appname="add user"
-                    disabled={(!isDirty && !imageChanged) || isUpdating}
-                    className="w-50 text-white bg-button rounded-3xl px-4 py-2 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleSubmit(handleUpdateProfile)}
-                  >
-                    {isUpdating ? 'UPDATING...' : 'UPDATE USER'}
-                  </Button>
-                </Form.Item>
+                    <Form.Item className="flex justify-center !mb-0 !mt-4">
+                      <Button
+                        appname="add user"
+                        disabled={(!isDirty && !imageChanged) || isUpdating}
+                        className="min-w-[220px] text-white bg-button rounded-full px-8 py-3 flex items-center justify-center gap-2 font-semibold tracking-wide transition-transform hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                        style={{ boxShadow: 'var(--elevation-sm)' }}
+                        onClick={handleSubmit(handleUpdateProfile)}
+                      >
+                        {isUpdating ? 'SAVING…' : 'SAVE CHANGES'}
+                      </Button>
+                    </Form.Item>
+                  </div>
+                </div>
               </Form>
             )}
           </div>

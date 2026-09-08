@@ -3,6 +3,10 @@ import { orgApi } from '../orgApi';
 export type AuditLogEntry = {
   id: string;
   actor_id: string;
+  // Resolved server-side from `actor_id` against platform staff — `null`
+  // only if that membership no longer exists. Fall back to `actor_id` in
+  // that case, never leave the actor blank.
+  actor_name: string | null;
   actor_type: string;
   // Open-ended catalog, same reasoning as tenant activity's `action` field —
   // never gate rendering on a fixed union.
