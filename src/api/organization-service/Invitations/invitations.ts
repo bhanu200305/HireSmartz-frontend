@@ -32,6 +32,8 @@ export type InvitationErrorBody = {
 export type AcceptInvitationRequest = {
   token: string;
   password: string;
+  // This flow only ever offers the authenticator-app factor.
+  method_type: 'totp';
   mfa_secret: string;
   // The 6-digit code from the authenticator app, proving mfa_secret was
   // actually added there. Optional on the wire — a missing/wrong code just

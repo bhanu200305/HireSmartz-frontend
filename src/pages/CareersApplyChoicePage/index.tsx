@@ -20,10 +20,10 @@ export const CareersApplyChoicePage = () => {
 
   return (
     <div className="public-page min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-black text-white px-4 py-3 flex items-center justify-center relative shrink-0">
+      <header className="bg-gray-900 shadow-md text-white px-4 h-12 flex items-center justify-center relative shrink-0">
         <button
           onClick={() => navigate(-1)}
-          className="absolute left-4 text-white p-1 hover:opacity-75 transition-opacity"
+          className="absolute left-4 cursor-pointer text-white p-1 hover:opacity-75 transition-opacity"
           aria-label="Go back"
         >
           <svg
@@ -38,7 +38,11 @@ export const CareersApplyChoicePage = () => {
           </svg>
         </button>
         {logoUrl ? (
-          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-10 object-contain" />
+          <img
+            src={logoUrl}
+            alt={companyName ?? 'Company logo'}
+            className="h-14 object-contain"
+          />
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}

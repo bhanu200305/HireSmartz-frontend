@@ -250,10 +250,6 @@ const EditJobDetail = () => {
   // Local fallback label for a job title just created, until the list
   // query refetches and picks it up.
   const [extraJobTitleOptions, setExtraJobTitleOptions] = useState<JobOpeningDropdownOption[]>([]);
-  const [isHiringManagerDropdownOpen, setIsHiringManagerDropdownOpen] = useState(false);
-  const [isRecruiterDropdownOpen, setIsRecruiterDropdownOpen] = useState(false);
-  const [isMandatorySkillsDropdownOpen, setIsMandatorySkillsDropdownOpen] = useState(false);
-  const [isOptionalSkillsDropdownOpen, setIsOptionalSkillsDropdownOpen] = useState(false);
 
   const [updateJobOpening, { isLoading: isUpdatingDraft }] = useUpdateJobOpeningMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
@@ -1610,6 +1606,8 @@ const EditJobDetail = () => {
         haveDescriptionInputsChanged(descriptionInputs, jdBeforeSave)
       ) {
         try {
+          // Re-arms JD status polling.
+          setJdStatusForHydrationIsTerminal(false);
           await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
           showToast({
             message: 'Job details changed - regenerating the AI description to match…',
@@ -1853,7 +1851,7 @@ const EditJobDetail = () => {
                           variant="borderless"
                           disabled={isDisabled}
                           placeholder="Select languages"
-                          className="w-full custom-select-jobs"
+                          className="w-full custom-select-jobs placeholder-style"
                           loading={languagesLoading}
                           value={languagesLoading ? [] : (value ?? []).map(String)}
                           onChange={(next) => onChange(next)}
@@ -2037,25 +2035,17 @@ const EditJobDetail = () => {
                       shouldValidate: true,
                     });
                   }}
-                  onOpenChange={(open) => {
-                    setIsHiringManagerDropdownOpen(open);
-                  }}
                   options={hiringManagers}
                   loading={hiringManagerLoading}
                   placeholder="Select Hiring Manager"
                   type="hiringManagers"
                   mode="multiple"
                   maxTagCount={0}
-                  maxTagPlaceholder={
-                    !isHiringManagerDropdownOpen
-                      ? (omittedValues: { value: number | string }[]) => (
-                          <span>
-                            {omittedValues.length} of {hiringManagers.length} hiring managers
-                            selected
-                          </span>
-                        )
-                      : null
-                  }
+                  maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
+                    <span>
+                      {omittedValues.length} of {hiringManagers.length} hiring managers selected
+                    </span>
+                  )}
                   disabled={false}
                   enableEditDelete={false}
                   error={errors.hiringManagers?.message}
@@ -2115,24 +2105,17 @@ const EditJobDetail = () => {
                       shouldValidate: true,
                     });
                   }}
-                  onOpenChange={(open) => {
-                    setIsRecruiterDropdownOpen(open);
-                  }}
                   options={recruiters}
                   loading={recruitersLoading}
                   placeholder="Select Recruiter"
                   type="recruiters"
                   mode="multiple"
                   maxTagCount={0}
-                  maxTagPlaceholder={
-                    !isRecruiterDropdownOpen
-                      ? (omittedValues: { value: number | string }[]) => (
-                          <span>
-                            {omittedValues.length} of {recruiters.length} recruiters selected
-                          </span>
-                        )
-                      : null
-                  }
+                  maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
+                    <span>
+                      {omittedValues.length} of {recruiters.length} recruiters selected
+                    </span>
+                  )}
                   disabled={false}
                   enableEditDelete={false}
                   error={errors.recruiters?.message as string | undefined}
@@ -2343,6 +2326,8 @@ const EditJobDetail = () => {
                 control={control}
                 render={() => (
                   <CurrencyInput
+                    // Remount so the suffix updates on status change.
+                    key={`minSalary-${watch('exemptionStatus')}`}
                     id="field-minSalary"
                     value={watch('minSalary') ?? ''}
                     onValueChange={(value) => {
@@ -2354,7 +2339,13 @@ const EditJobDetail = () => {
                     decimalsLimit={2}
                     decimalScale={2}
                     prefix="$"
-                    // Always a plain annual figure — no "/hr" suffix.
+                    suffix={
+                      watch('exemptionStatus') === 'false'
+                        ? '/hr'
+                        : watch('exemptionStatus') === 'true'
+                          ? '/year'
+                          : undefined
+                    }
                     placeholder="Minimum Salary"
                     className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                     intlConfig={{ locale: 'en-US', currency: 'USD' }}
@@ -2377,6 +2368,7 @@ const EditJobDetail = () => {
                 control={control}
                 render={() => (
                   <CurrencyInput
+                    key={`maxSalary-${watch('exemptionStatus')}`}
                     id="field-maxSalary"
                     value={watch('maxSalary') ?? ''}
                     onValueChange={(value) => {
@@ -2388,7 +2380,13 @@ const EditJobDetail = () => {
                     decimalsLimit={2}
                     decimalScale={2}
                     prefix="$"
-                    // Always a plain annual figure — no "/hr" suffix.
+                    suffix={
+                      watch('exemptionStatus') === 'false'
+                        ? '/hr'
+                        : watch('exemptionStatus') === 'true'
+                          ? '/year'
+                          : undefined
+                    }
                     placeholder="Maximum Salary"
                     className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                     intlConfig={{ locale: 'en-US', currency: 'USD' }}
@@ -2530,9 +2528,6 @@ const EditJobDetail = () => {
                       shouldValidate: true,
                     })
                   }
-                  onOpenChange={(open) => {
-                    setIsMandatorySkillsDropdownOpen(open);
-                  }}
                   options={mandatorySkills.filter(
                     (option) => !selectedOptionalSkillIds.includes(String(option.id))
                   )}
@@ -2549,16 +2544,11 @@ const EditJobDetail = () => {
                   onDeleteOption={handleDeleteOption}
                   onReuseOption={handleReuseOption}
                   maxTagCount={0}
-                  maxTagPlaceholder={
-                    !isMandatorySkillsDropdownOpen
-                      ? (omittedValues: { value: number | string }[]) => (
-                          <span>
-                            {omittedValues.length} of {mandatorySkills?.length || 20} skills
-                            selected
-                          </span>
-                        )
-                      : null
-                  }
+                  maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
+                    <span>
+                      {omittedValues.length} of {mandatorySkills?.length || 20} skills selected
+                    </span>
+                  )}
                 />
 
                 {selectedMandatorySkills.length > 0 && (
@@ -2616,9 +2606,6 @@ const EditJobDetail = () => {
                       shouldValidate: true,
                     })
                   }
-                  onOpenChange={(open) => {
-                    setIsOptionalSkillsDropdownOpen(open);
-                  }}
                   options={optionalSkills.filter(
                     (option) => !selectedMandatorySkillIds.includes(String(option.id))
                   )}
@@ -2635,15 +2622,11 @@ const EditJobDetail = () => {
                   onDeleteOption={handleDeleteOption}
                   onReuseOption={handleReuseOption}
                   maxTagCount={0}
-                  maxTagPlaceholder={
-                    !isOptionalSkillsDropdownOpen
-                      ? (omittedValues: { value: number | string }[]) => (
-                          <span>
-                            {omittedValues.length} of {optionalSkills?.length || 20} skills selected
-                          </span>
-                        )
-                      : null
-                  }
+                  maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
+                    <span>
+                      {omittedValues.length} of {optionalSkills?.length || 20} skills selected
+                    </span>
+                  )}
                 />
 
                 {selectedOptionalSkills.length > 0 && (

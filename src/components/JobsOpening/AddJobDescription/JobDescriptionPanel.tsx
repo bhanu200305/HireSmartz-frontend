@@ -27,6 +27,7 @@ import { makeFirstLetterUpperCase } from '../../../shared/utils/methods';
 import { useGetTopFivePromptQuery } from '../../../api/ai-service/AiQuestion/AiQuestion';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { useGetTenantProfileQuery } from '../../../api/organization-service/Tenants/profile';
 
 const JD_STATUS_POLL_TIMEOUT_MS = 90_000;
 
@@ -74,6 +75,10 @@ const JobDescriptionPanel = ({
   const jobDetailsInRedux = useSelector((state: RootState) =>
     isEditFlow ? state.EditJobSlice.details : state.JobSlice.details
   );
+  const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
+  const { data: tenantProfile } = useGetTenantProfileQuery(tenantId ?? '', {
+    skip: !tenantId,
+  });
 
   const {
     data: prompts,
@@ -199,6 +204,8 @@ const JobDescriptionPanel = ({
   const handleGenerate = async (refineInstructions?: string, regenerate = false) => {
     if (!jobOpeningId) return;
     try {
+      // Re-arms JD status polling.
+      setJdStatusIsTerminal(false);
       await enhanceJd({ jobOpeningId, instruction: refineInstructions, regenerate }).unwrap();
       showToast({ message: 'Generating your AI job description…', type: 'success' });
       failedToastShownForJobRef.current = null;
@@ -341,9 +348,27 @@ const JobDescriptionPanel = ({
     </div>
   );
 
+  // Company logo banner, falls back to the company name.
+  const companyBanner = (
+    <div className="h-11 px-4 bg-primary rounded-lg flex items-center justify-center">
+      {tenantProfile?.logo_url ? (
+        <img
+          src={tenantProfile.logo_url}
+          alt={tenantProfile.company_name}
+          className="h-[42px] w-auto object-contain"
+        />
+      ) : (
+        <span className="text-white font-semibold text-sm">
+          {tenantProfile?.company_name}
+        </span>
+      )}
+    </div>
+  );
+
   // Generated JD with EDIT/SAVE controls, shared across entry paths.
   const jdContentCard = (
     <div className="w-full mt-4 mx-auto p-4 bg-[#FAFAFA] border border-[#E2E2E2] shadow rounded-lg">
+      {companyBanner}
       <div className="flex items-center space-x-2 justify-end">
         {isEditing ? (
           <>
@@ -431,6 +456,7 @@ const JobDescriptionPanel = ({
           </ReactMarkdown>
         </div>
       )}
+      <div className="mt-4">{companyBanner}</div>
     </div>
   );
 

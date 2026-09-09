@@ -33,6 +33,10 @@ export type PublicJobListing = {
   max_experience_req: number | null;
   salary_min: number | null;
   salary_max: number | null;
+  // true = annual salary, false = hourly.
+  is_exempted: boolean;
+  job_type_name: string | null;
+  job_mode_name: string | null;
 };
 
 export type PublicJobListResponse = {
@@ -52,12 +56,15 @@ export type PublicJobDetail = {
   max_experience_req: number | null;
   salary_min: number | null;
   salary_max: number | null;
+  is_exempted: boolean;
   jd: string | null;
   responsibilities: string | null;
   requirements: string | null;
   other_requirements: string | null;
   locations: PublicJobLocation[];
   skills: PublicJobSkill[];
+  job_type_name: string | null;
+  job_mode_name: string | null;
 };
 
 export type ListPublicJobsArgs = {

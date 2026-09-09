@@ -239,6 +239,7 @@ const AcceptInvitation = () => {
       const result = await acceptInvitation({
         token,
         password: data.password,
+        method_type: 'totp',
         mfa_secret: mfaSecret,
         mfa_code: data.mfaCode,
         first_name: data.firstName.trim(),

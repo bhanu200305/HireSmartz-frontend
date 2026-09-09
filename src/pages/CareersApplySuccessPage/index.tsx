@@ -33,9 +33,13 @@ export const CareersApplySuccessPage = () => {
 
   return (
     <div className="public-page min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-black text-white px-4 py-3 flex items-center justify-center relative shrink-0">
+      <header className="bg-gray-900 shadow-md text-white px-4 h-12 flex items-center justify-center relative shrink-0">
         {logoUrl ? (
-          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-10 object-contain" />
+          <img
+            src={logoUrl}
+            alt={companyName ?? 'Company logo'}
+            className="h-14 object-contain"
+          />
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}

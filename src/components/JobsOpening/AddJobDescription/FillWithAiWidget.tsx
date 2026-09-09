@@ -81,6 +81,8 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
     const trimmed = promptText.trim();
     if (!trimmed) return;
     try {
+      // Re-arms JD status polling.
+      setJdStatusIsTerminal(false);
       await enhanceJd({ jobOpeningId, instruction: trimmed }).unwrap();
       showToast({
         message: 'Generating your job description with AI…',

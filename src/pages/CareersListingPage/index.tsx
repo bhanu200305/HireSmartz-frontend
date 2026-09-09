@@ -7,6 +7,8 @@ import {
   ClockCircleOutlined,
   SearchOutlined,
   DownOutlined,
+  ScheduleOutlined,
+  LaptopOutlined,
 } from '@ant-design/icons';
 import { useListPublicJobsQuery } from '../../api/job-service/PublicCareers/index';
 import type { PublicJobListing } from '../../api/job-service/PublicCareers/index';
@@ -18,7 +20,7 @@ import {
   formatPostedAgo,
 } from '../../shared/utils/publicJobDisplay';
 
-const { Option } = Select;
+const { Option, OptGroup } = Select;
 
 // job-service's public board route only takes `page`/`page_size` — no
 // search or facet params (see api/job-service/PublicCareers/index.ts's own
@@ -41,19 +43,92 @@ const EXPERIENCE_BUCKETS: { value: string; label: string; min?: number; max?: nu
   { value: '8+', label: '8+ Years', min: 8 },
 ];
 
-const SALARY_BUCKETS: { value: string; label: string; min?: number; max?: number }[] = [
-  { value: 'any', label: 'Any Salary' },
-  { value: '0-50', label: 'Up to $50K', max: 50_000 },
-  { value: '50-90', label: '$50K - $90K', min: 50_000, max: 90_000 },
-  { value: '90-130', label: '$90K - $130K', min: 90_000, max: 130_000 },
-  { value: '130+', label: '$130K+', min: 130_000 },
-];
+type SalaryBucket = {
+  value: string;
+  label: string;
+  min?: number;
+  max?: number;
+  isExempted?: boolean;
+};
+
+/** Rounds to a nice display boundary. */
+const niceRoundSalary = (value: number): number => {
+  const step = value < 100_000 ? 5_000 : 10_000;
+  return Math.round(value / step) * step;
+};
+
+/** Same as `niceRoundSalary`, for hourly rates. */
+const niceRoundHourly = (value: number): number => Math.round(value);
+
+const formatBucketAmount = (n: number): string => (n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${n}`);
+
+/** Three evenly-spaced buckets over a set of same-unit salary values. */
+const buildBucketsForUnit = (
+  values: number[],
+  options: { isExempted: boolean; round: (value: number) => number; suffix: string }
+): SalaryBucket[] => {
+  const { isExempted, round, suffix } = options;
+  if (values.length === 0) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (min === max) return [];
+
+  const low = round(min + (max - min) / 3);
+  const high = round(min + (2 * (max - min)) / 3);
+  if (low >= high) return [];
+
+  return [
+    {
+      value: `${isExempted ? 'y' : 'h'}-0-${low}`,
+      label: `Up to ${formatBucketAmount(low)}${suffix}`,
+      max: low,
+      isExempted,
+    },
+    {
+      value: `${isExempted ? 'y' : 'h'}-${low}-${high}`,
+      label: `${formatBucketAmount(low)} - ${formatBucketAmount(high)}${suffix}`,
+      min: low,
+      max: high,
+      isExempted,
+    },
+    {
+      value: `${isExempted ? 'y' : 'h'}-${high}+`,
+      label: `${formatBucketAmount(high)}+${suffix}`,
+      min: high,
+      isExempted,
+    },
+  ];
+};
+
+/** Separate bucket sets for annual vs. hourly jobs — never combined. */
+const buildSalaryBuckets = (
+  jobs: { salary_min: number | null; salary_max: number | null; is_exempted: boolean }[]
+): SalaryBucket[] => {
+  const valuesFor = (isExempted: boolean): number[] =>
+    jobs
+      .filter((job) => job.is_exempted === isExempted)
+      .flatMap((job) => [job.salary_min, job.salary_max])
+      .filter((value): value is number => value !== null && value > 0);
+
+  const annualBuckets = buildBucketsForUnit(valuesFor(true), {
+    isExempted: true,
+    round: niceRoundSalary,
+    suffix: '/year',
+  });
+  const hourlyBuckets = buildBucketsForUnit(valuesFor(false), {
+    isExempted: false,
+    round: niceRoundHourly,
+    suffix: '/hr',
+  });
+
+  return [...annualBuckets, ...hourlyBuckets];
+};
 
 /** `days` is how far back from now the bucket reaches; `undefined` on
  * "Any Time" means no cutoff at all. Mirrors the experience/salary
  * buckets' own open-ended-range shape rather than inventing a new one. */
 const DATE_POSTED_BUCKETS: { value: string; label: string; days?: number }[] = [
-  { value: 'any', label: 'Time of Posting' },
+  { value: 'any', label: 'Any Time' },
   { value: '1', label: 'Last 24 Hours', days: 1 },
   { value: '3', label: 'Last 3 Days', days: 3 },
   { value: '7', label: 'Last 7 Days', days: 7 },
@@ -149,7 +224,7 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
   };
 
   const experience = formatExperience(job.min_experience_req, job.max_experience_req);
-  const salary = formatSalary(job.salary_min, job.salary_max);
+  const salary = formatSalary(job.salary_min, job.salary_max, job.is_exempted);
   const postedAgo = formatPostedAgo(job.job_open_date);
   const label = job.job_title ?? job.job_profile_code;
   const variant = avatarVariant(job.id);
@@ -197,6 +272,18 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
             <span>{experience}</span>
           </div>
         )}
+        {job.job_type_name && (
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <ScheduleOutlined className="text-xs shrink-0" />
+            <span>{job.job_type_name}</span>
+          </div>
+        )}
+        {job.job_mode_name && (
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <LaptopOutlined className="text-xs shrink-0" />
+            <span>{job.job_mode_name}</span>
+          </div>
+        )}
         {postedAgo && (
           <div className="flex items-center gap-1.5 text-xs text-gray-400">
             <ClockCircleOutlined className="text-xs shrink-0" />
@@ -207,11 +294,6 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
 
       <div className="flex flex-wrap items-center justify-between gap-3 pl-[3.5rem] md:pl-[3.75rem]">
         <div className="flex flex-wrap gap-2">
-          {job.vacancies !== null && (
-            <span className="inline-flex items-center rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
-              {job.vacancies} {job.vacancies === 1 ? 'opening' : 'openings'}
-            </span>
-          )}
           {salary && (
             <span className="inline-flex items-center rounded-full bg-accent-50 px-3 py-1 text-xs font-semibold text-accent-600">
               {salary}
@@ -221,7 +303,7 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
 
         <button
           onClick={goToApply}
-          className="whitespace-nowrap rounded-full bg-gradient-to-r from-primary-600 to-accent-500 px-6 py-2.5 text-sm font-bold tracking-wide text-white shadow-sm transition-all hover:shadow-md hover:brightness-105 active:scale-95"
+          className="cursor-pointer whitespace-nowrap rounded-full bg-gradient-to-r from-primary-600 to-accent-500 px-6 py-2.5 text-sm font-bold tracking-wide text-white shadow-sm transition-all hover:shadow-md hover:brightness-105 active:scale-95"
         >
           Apply Now
         </button>
@@ -252,7 +334,11 @@ const JobCardSkeleton = () => (
 
 export const CareersListingPage = () => {
   const { organizationId } = useParams<{ organizationId: string }>();
-  const { companyName, logoUrl } = usePublicCareersBranding(organizationId);
+  const {
+    companyName,
+    logoUrl,
+    isLoading: brandingLoading,
+  } = usePublicCareersBranding(organizationId);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -286,9 +372,11 @@ export const CareersListingPage = () => {
     [allJobs]
   );
 
+  const salaryBuckets = useMemo(() => buildSalaryBuckets(allJobs), [allJobs]);
+
   const filteredJobs = useMemo(() => {
     const experience = EXPERIENCE_BUCKETS.find((bucket) => bucket.value === experienceBucket);
-    const salary = SALARY_BUCKETS.find((bucket) => bucket.value === salaryBucket);
+    const salary = salaryBuckets.find((bucket) => bucket.value === salaryBucket);
     const datePosted = DATE_POSTED_BUCKETS.find((bucket) => bucket.value === datePostedBucket);
     const query = searchText.trim().toLowerCase();
 
@@ -310,8 +398,10 @@ export const CareersListingPage = () => {
       ) {
         return false;
       }
-      if (salary && !rangesOverlap(job.salary_min, job.salary_max, salary.min, salary.max)) {
-        return false;
+      if (salary) {
+        // Only match jobs in the same unit as the bucket.
+        if (job.is_exempted !== salary.isExempted) return false;
+        if (!rangesOverlap(job.salary_min, job.salary_max, salary.min, salary.max)) return false;
       }
       if (datePosted && !postedWithinDays(job.job_open_date, datePosted.days)) {
         return false;
@@ -367,7 +457,7 @@ export const CareersListingPage = () => {
       ? [
           {
             key: 'salary',
-            label: SALARY_BUCKETS.find((b) => b.value === salaryBucket)?.label ?? '',
+            label: salaryBuckets.find((b) => b.value === salaryBucket)?.label ?? '',
             onRemove: () => setSalaryBucket('any'),
           },
         ]
@@ -391,9 +481,13 @@ export const CareersListingPage = () => {
       {/* Header — company logo when the tenant has one set, via job-service's
           public branding endpoint (proxies organization-service's existing
           internal branding lookup). Falls back to the plain "CFP" mark. */}
-      <header className="bg-black text-white px-4 py-3 flex items-center justify-center relative shrink-0">
-        {logoUrl ? (
-          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-10 object-contain" />
+      <header className="bg-gray-900 shadow-md text-white px-4 h-12 flex items-center justify-center relative shrink-0">
+        {brandingLoading ? null : logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={companyName ?? 'Company logo'}
+            className="h-14 object-contain"
+          />
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}
@@ -403,17 +497,25 @@ export const CareersListingPage = () => {
           gets top billing on its own row rather than buried in the filter
           grid below. */}
       <div className="bg-gradient-to-b from-white to-gray-50 border-b border-gray-100">
-        <div className="w-full max-w-5xl mx-auto px-4 md:px-8 pt-10 pb-7">
-          <h1 className="text-2xl md:text-4xl font-bold text-gray-900">
-            {companyName ? `Careers at ${companyName}` : 'Open Positions'}
-          </h1>
-          <p className="mt-1.5 text-sm md:text-base text-gray-500">
-            {allJobs.length > 0
-              ? `${jobsData?.total ?? allJobs.length} open role${(jobsData?.total ?? allJobs.length) === 1 ? '' : 's'} — find where you fit.`
-              : 'Explore our open roles.'}
-          </p>
+        <div className="w-full max-w-5xl mx-auto px-4 md:px-8 pt-6 pb-5">
+          {brandingLoading ? (
+            <div className="h-9 md:h-11 w-64 md:w-80 rounded bg-gray-200 animate-pulse" />
+          ) : (
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-900">
+              {companyName ? `Careers at ${companyName}` : 'Open Positions'}
+            </h1>
+          )}
+          {isLoading ? (
+            <div className="mt-2.5 h-4 w-48 rounded bg-gray-200 animate-pulse" />
+          ) : (
+            <p className="mt-1.5 text-sm md:text-base text-gray-500">
+              {allJobs.length > 0
+                ? `${jobsData?.total ?? allJobs.length} open role${(jobsData?.total ?? allJobs.length) === 1 ? '' : 's'} - find where you fit.`
+                : 'Explore our open roles.'}
+            </p>
+          )}
 
-          <div className="mt-5 max-w-xl">
+          <div className="mt-4 max-w-xl">
             <Input
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
@@ -427,7 +529,7 @@ export const CareersListingPage = () => {
         </div>
       </div>
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-8 py-6">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-8 pt-4 pb-6">
         {/* Filters — only shown once there's something to filter. Every
             control applies the moment it changes: this is all client-side
             over one already-loaded batch, so there's no network cost to
@@ -478,11 +580,29 @@ export const CareersListingPage = () => {
                 suffixIcon={<DownOutlined style={{ fontSize: 10, color: '#9ca3af' }} />}
                 style={{ height: 40 }}
               >
-                {SALARY_BUCKETS.map((bucket) => (
-                  <Option key={bucket.value} value={bucket.value}>
-                    {bucket.label}
-                  </Option>
-                ))}
+                <Option value="any">Any Salary</Option>
+                {salaryBuckets.some((bucket) => bucket.isExempted === true) && (
+                  <OptGroup label="Annual salary">
+                    {salaryBuckets
+                      .filter((bucket) => bucket.isExempted === true)
+                      .map((bucket) => (
+                        <Option key={bucket.value} value={bucket.value}>
+                          {bucket.label}
+                        </Option>
+                      ))}
+                  </OptGroup>
+                )}
+                {salaryBuckets.some((bucket) => bucket.isExempted === false) && (
+                  <OptGroup label="Hourly salary">
+                    {salaryBuckets
+                      .filter((bucket) => bucket.isExempted === false)
+                      .map((bucket) => (
+                        <Option key={bucket.value} value={bucket.value}>
+                          {bucket.label}
+                        </Option>
+                      ))}
+                  </OptGroup>
+                )}
               </Select>
 
               <Select
@@ -512,7 +632,7 @@ export const CareersListingPage = () => {
                       type="button"
                       onClick={chip.onRemove}
                       aria-label={`Remove filter ${chip.label}`}
-                      className="w-4 h-4 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+                      className="w-4 h-4 flex cursor-pointer items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors"
                     >
                       ×
                     </button>
@@ -521,7 +641,7 @@ export const CareersListingPage = () => {
                 <button
                   type="button"
                   onClick={clearAllFilters}
-                  className="text-xs font-semibold text-gray-500 hover:text-gray-800 underline ml-1"
+                  className="cursor-pointer text-xs font-semibold text-gray-500 hover:text-gray-800 underline ml-1"
                 >
                   Clear all
                 </button>
@@ -539,16 +659,15 @@ export const CareersListingPage = () => {
 
         {/* A visible result count — proof a filter actually changed
             something, not just a silently-shorter list a user might not
-            notice. */}
-        {!isLoading && allJobs.length > 0 && (
+            notice. Only shown once a filter is active — the hero above
+            already states the total, so this would just repeat it otherwise. */}
+        {!isLoading && allJobs.length > 0 && hasActiveFilters && (
           <div className="flex items-center gap-2 mb-3 text-sm text-gray-500">
             <ClockCircleOutlined
               className={`text-xs ${isFetching ? 'animate-spin' : 'invisible'}`}
             />
             <span>
-              {hasActiveFilters
-                ? `${filteredJobs.length} of ${allJobs.length} role${allJobs.length === 1 ? '' : 's'} match your filters`
-                : `${allJobs.length} open role${allJobs.length === 1 ? '' : 's'}`}
+              {`${filteredJobs.length} of ${allJobs.length} role${allJobs.length === 1 ? '' : 's'} match your filters`}
             </span>
           </div>
         )}
@@ -570,7 +689,7 @@ export const CareersListingPage = () => {
               <button
                 type="button"
                 onClick={clearAllFilters}
-                className="mt-4 text-sm font-semibold text-primary hover:underline"
+                className="mt-4 cursor-pointer text-sm font-semibold text-primary hover:underline"
               >
                 Clear all filters
               </button>
@@ -589,7 +708,7 @@ export const CareersListingPage = () => {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-4 py-2 rounded-full border border-gray-200 text-sm font-medium disabled:opacity-40 hover:bg-gray-50 transition-colors"
+              className="cursor-pointer px-4 py-2 rounded-full border border-gray-200 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 hover:bg-gray-50 transition-colors"
             >
               Previous
             </button>
@@ -599,7 +718,7 @@ export const CareersListingPage = () => {
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="px-4 py-2 rounded-full border border-gray-200 text-sm font-medium disabled:opacity-40 hover:bg-gray-50 transition-colors"
+              className="cursor-pointer px-4 py-2 rounded-full border border-gray-200 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 hover:bg-gray-50 transition-colors"
             >
               Next
             </button>
