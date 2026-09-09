@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { LiveKitRoom, RoomAudioRenderer, VideoConference } from '@livekit/components-react';
+import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import '@livekit/components-styles';
 
 import { Loader } from '../shared/ui/loader';
@@ -11,6 +11,8 @@ import {
   type InterviewApiError,
   type SessionTokenView,
 } from '../../api/interview-service/client';
+import { DeviceCheckLobby } from './DeviceCheckLobby';
+import { InterviewRoomLayout } from './InterviewRoomLayout';
 
 type JoinRole = 'candidate' | 'interviewer';
 
@@ -45,6 +47,16 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token') ?? '';
+
+  // Device-check lobby gates the actual room connection — shown once the
+  // session token has loaded (below), before `<LiveKitRoom connect>` ever
+  // fires. `deviceChoice` carries whether the candidate/interviewer had
+  // muted themselves in the lobby, so joining the room respects that
+  // instead of always publishing both tracks regardless of what they chose.
+  const [deviceChoice, setDeviceChoice] = useState<{
+    micEnabled: boolean;
+    cameraEnabled: boolean;
+  } | null>(null);
 
   const { data, isLoading, isError, error } = useSessionToken(joinAs, token);
 
@@ -103,18 +115,22 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
     );
   }
 
+  if (!deviceChoice) {
+    return <DeviceCheckLobby onReady={setDeviceChoice} />;
+  }
+
   return (
     <div className="h-screen w-screen bg-neutral-950" data-lk-theme="default">
       <LiveKitRoom
         token={session.access_token}
         serverUrl={session.livekit_url}
         connect
-        audio
-        video
+        audio={deviceChoice.micEnabled}
+        video={deviceChoice.cameraEnabled}
         style={{ height: '100%' }}
         onDisconnected={() => navigate('/interview-ended')}
       >
-        <VideoConference />
+        <InterviewRoomLayout />
         <RoomAudioRenderer />
       </LiveKitRoom>
     </div>
