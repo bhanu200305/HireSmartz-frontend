@@ -11,6 +11,7 @@ import {
   type ListCandidatesArgs,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
 import {
+  BULK_STATUS_FAILURE_LABELS,
   useBulkChangeCandidateStatusMutation,
   useChangeCandidateStatusMutation,
 } from '../../../api/candidate-service/Candidates/status';
@@ -36,69 +37,64 @@ import { candidateDisplayName } from './candidateDisplay';
 // for how a card is kept visible mid-flight instead of vanishing until the
 // column refetches.
 //
-// Two backend rules (candidate-service, 2026-09-08) this board honours:
-//   * a status with `is_manually_settable: false` (only `withdrawn` today)
-//     still renders as a column (candidates already there stay visible) but
-//     nothing can be dropped INTO it and it's absent from the "Move to…"
-//     picker. See `canDropInto` below — driven off master data, not a
-//     hardcoded code list.
-//   * dropping onto `advanced` / `selected` also moves the candidate's
-//     interview-round progress server-side (advanced → completes the current
-//     round + makes the next due; selected → closes every open round), so
-//     `status.ts`'s mutations now invalidate `CandidateInterviewRounds` and
-//     the detail view's Pipeline tab stays in sync. Dropping onto `advanced`
-//     while the candidate is on their LAST round is a 409 — its message
-//     ("use the 'selected' status instead") is shown as-is in the error toast.
-
-// Documented funnel order (see master.ts's own module comment) — used only to
-// order the columns left-to-right; a status code this array doesn't know about
-// (future backend addition) still renders, just appended at the end rather
-// than dropped.
-const FUNNEL_ORDER = [
+// WHICH COLUMNS THIS BOARD SHOWS
+// -----------------------------------------------------------------------------
+// The backend's `master_candidate_status` has 14 codes and
+// `GET /master/candidate-statuses` returns every one — there is no "board
+// stages" concept server-side, and the status write endpoint accepts them all.
+// This board deliberately renders only these 7, in this order, as a FRONTEND
+// curation for a usable Kanban (product decision, 2026-09-09):
+//   - `advanced` is a transient "passing through" status, not a resting
+//     "where are they now" — it overlaps Interview Scheduled / In Progress.
+//     Round-to-round movement is driven from the candidate's own Pipeline tab,
+//     not this board.
+//   - `resume_rejected` / `interview_rejected` are *reasons* for `rejected`,
+//     not separate stages — folded into the one Rejected column; the exact
+//     reason still shows on the candidate's own page.
+//   - `resume_under_review`, `awaiting_resume_upload`, `resume_consistency_review`
+//     are system-driven / transient — nobody drags a card into them.
+//   - `no_show` is an exception flag that needs action, not a resting stage.
+// A candidate currently in one of the 7 hidden statuses simply does not appear
+// on the board — they're in the Table view. Setting those statuses still works
+// everywhere else (candidate detail page, table, API).
+const BOARD_STATUS_CODES = [
   'applied',
-  'resume_under_review',
   'shortlisted',
   'interview_scheduled',
   'interview_in_progress',
-  'advanced',
   'selected',
-  'resume_rejected',
-  'interview_rejected',
   'rejected',
   'withdrawn',
-];
+] as const;
 
-// A column is a valid drop target only if the backend will accept a manual
-// move INTO that status — `is_manually_settable` is `false` only for
-// `withdrawn` (withdrawal is self-service only). Such a column still renders
-// (candidates already there stay visible), it just can't receive a drop and
-// isn't offered in the multi-select "Move to…" picker. Driven off the master
-// data now, not a hardcoded code list.
-const canDropInto = (status: CandidateStatusView): boolean => status.is_manually_settable;
-
-const sortStatusesByFunnel = (statuses: CandidateStatusView[]): CandidateStatusView[] => {
-  // Prefer the backend's own `sort_order`; fall back to the documented funnel
-  // order, then to "unknown codes last".
-  const rank = (s: CandidateStatusView) => {
-    if (s.sort_order != null) return s.sort_order;
-    const idx = FUNNEL_ORDER.indexOf(s.code);
-    return idx === -1 ? 10_000 + FUNNEL_ORDER.length : 10_000 + idx;
-  };
-  return [...statuses].sort((a, b) => rank(a) - rank(b));
+// Full master list → the board's 7, in board order. A code the backend no
+// longer returns just doesn't render.
+const toBoardColumns = (statuses: CandidateStatusView[]): CandidateStatusView[] => {
+  const byCode = new Map(statuses.map((s) => [s.code, s]));
+  return BOARD_STATUS_CODES.map((code) => byCode.get(code)).filter(
+    (s): s is CandidateStatusView => s !== undefined
+  );
 };
+
+// A shown column still only accepts a DROP if the backend will accept a manual
+// move into that status — `is_manually_settable` is `false` only for
+// `withdrawn` (withdrawal is the candidate's own self-service action). The
+// Withdrawn column therefore renders (a self-withdrawn candidate stays visible)
+// but nothing can be dragged into it, and it's absent from the multi-select
+// "Move to…" picker. A recruiter takes a candidate out of the pipeline by
+// dragging them to Rejected.
+const canDropInto = (status: CandidateStatusView): boolean => status.is_manually_settable;
 
 type StageKind = 'early' | 'active' | 'positive' | 'negative' | 'neutral';
 
+// Keyed by the 7 board codes (see `BOARD_STATUS_CODES`); `kindForCode` falls
+// back to 'neutral' for anything else.
 const STAGE_KIND: Record<string, StageKind> = {
   applied: 'early',
-  resume_under_review: 'early',
   shortlisted: 'active',
   interview_scheduled: 'active',
   interview_in_progress: 'active',
-  advanced: 'active',
   selected: 'positive',
-  resume_rejected: 'negative',
-  interview_rejected: 'negative',
   rejected: 'negative',
   withdrawn: 'neutral',
 };
@@ -150,7 +146,7 @@ const CandidatesPipelineBoard = ({
   sortOrder,
   buildDetailsPath,
 }: CandidatesPipelineBoardProps) => {
-  const orderedStatuses = useMemo(() => sortStatusesByFunnel(statuses), [statuses]);
+  const orderedStatuses = useMemo(() => toBoardColumns(statuses), [statuses]);
   const [counts, setCounts] = useState<Record<string, number>>({});
 
   const handleCount = useCallback((code: string, total: number) => {
@@ -200,10 +196,24 @@ const CandidatesPipelineBoard = ({
   const [changeCandidateStatus] = useChangeCandidateStatusMutation();
   const [bulkChangeCandidateStatus] = useBulkChangeCandidateStatusMutation();
 
+  // Succeeded cards keep their ghost until the target column's own refetch
+  // reports them back (8s safety net in case that column isn't mounted);
+  // failed cards drop their ghost now so they snap straight back home.
+  const settleMoves = useCallback(
+    (succeededIds: string[], failedIds: string[]) => {
+      clearMoveEntries(failedIds);
+      if (succeededIds.length > 0) {
+        window.setTimeout(() => clearMoveEntries(succeededIds), 8000);
+      }
+    },
+    [clearMoveEntries]
+  );
+
   const performMove = useCallback(
     async (candidates: CandidateView[], targetStatusCode: string) => {
       const toMove = candidates.filter((c) => c.status_code !== targetStatusCode);
       if (toMove.length === 0) return;
+      const movingIds = toMove.map((c) => c.id);
 
       setMoves((prev) => {
         const next = { ...prev };
@@ -214,39 +224,74 @@ const CandidatesPipelineBoard = ({
       });
 
       try {
+        // ONE card: the `advanced`/`selected` guards come back as a real
+        // 409/422 — surface the backend's own wording verbatim.
         if (toMove.length === 1) {
           await changeCandidateStatus({
             candidateId: toMove[0].id,
             body: { statusCode: targetStatusCode },
           }).unwrap();
-        } else {
-          await bulkChangeCandidateStatus({
-            candidateIds: toMove.map((c) => c.id),
-            statusCode: targetStatusCode,
-          }).unwrap();
+          showToast({ message: `${candidateDisplayName(toMove[0])} moved.`, type: 'success' });
+          clearSelection();
+          settleMoves(movingIds, []);
+          return;
         }
+
+        // SEVERAL cards: `bulk-status` is partial-apply — a 200 whose
+        // `results[]` says per candidate whether it moved. `updated` and
+        // `unchanged` (already there) both count as done; `failed` carries a
+        // `failure_reason` slug.
+        const { results } = await bulkChangeCandidateStatus({
+          candidateIds: movingIds,
+          statusCode: targetStatusCode,
+        }).unwrap();
+
+        const failedIds = results.filter((r) => r.outcome === 'failed').map((r) => r.candidate_id);
+        const succeededIds = movingIds.filter((id) => !failedIds.includes(id));
+        settleMoves(succeededIds, failedIds);
+        clearSelection();
+
+        if (failedIds.length === 0) {
+          showToast({ message: `${succeededIds.length} candidates moved.`, type: 'success' });
+          return;
+        }
+
+        const reasons = [
+          ...new Set(
+            results
+              .filter((r) => r.outcome === 'failed')
+              .map(
+                (r) =>
+                  BULK_STATUS_FAILURE_LABELS[r.failure_reason ?? ''] ??
+                  r.failure_reason ??
+                  'could not be moved'
+              )
+          ),
+        ].join('; ');
         showToast({
           message:
-            toMove.length === 1
-              ? `${candidateDisplayName(toMove[0])} moved.`
-              : `${toMove.length} candidates moved.`,
-          type: 'success',
+            succeededIds.length === 0
+              ? `None moved — ${reasons}.`
+              : `${succeededIds.length} moved, ${failedIds.length} skipped — ${reasons}.`,
+          type: succeededIds.length === 0 ? 'error' : 'warning',
         });
-        clearSelection();
-        // Safety net: the target column normally clears its own ghost once
-        // the refetched list actually contains the card (see StatusColumn's
-        // landed effect) — this just guarantees it can't get stuck forever
-        // if that column isn't mounted/visible for some reason.
-        window.setTimeout(() => clearMoveEntries(toMove.map((c) => c.id)), 8000);
       } catch (e) {
-        clearMoveEntries(toMove.map((c) => c.id));
+        // A thrown error is the whole-request kind: a bad status code (422),
+        // job-service unreachable mid-batch (502), or the single-card guards.
+        clearMoveEntries(movingIds);
         showToast({
           message: getCandidateErrorMessage(e, 'Could not move candidate'),
           type: 'error',
         });
       }
     },
-    [changeCandidateStatus, bulkChangeCandidateStatus, clearSelection, clearMoveEntries]
+    [
+      changeCandidateStatus,
+      bulkChangeCandidateStatus,
+      clearSelection,
+      clearMoveEntries,
+      settleMoves,
+    ]
   );
 
   const [moveTarget, setMoveTarget] = useState('');

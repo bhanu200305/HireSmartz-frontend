@@ -1,101 +1,288 @@
-import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { Alert, Modal } from 'antd';
+import { MdOutlineArrowBack, MdOutlineCalendarMonth } from 'react-icons/md';
+import { RootState } from '../../redux/provider/store';
+import MainLayout from '../../layouts/MainLayout';
+import { Button, showToast } from '../../components/shared';
+import { Loader } from '../../components/shared/ui/loader';
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  WarningOutlined,
-  LoadingOutlined,
-} from '@ant-design/icons';
-import { CALENDAR_CONNECT_REDIRECT_DELAY_MS } from '../../constants/app.constants';
+  useLazyGetNylasAuthUrlQuery,
+  useGetNylasGrantStatusQuery,
+  useDisconnectNylasGrantMutation,
+} from '../../api/interview-service/Nylas/index';
 
 /**
- * Detects whether the `reason` param is an HTTP status code string (case 5)
- * rather than a human-readable message (case 6).
- * e.g. "400_400 BAD_REQUEST" → true
- *      "This email (...) is already connected..." → false
+ * Self-service calendar connection — every organization user, any role.
+ *
+ * Two jobs in one page:
+ *   1. The steady-state settings surface: show whether a calendar is
+ *      connected (and which account), and let the user connect / switch /
+ *      disconnect. Backed by interview-service's identity-scoped
+ *      `/calendar/*` routes — the grant is keyed by the caller's own
+ *      user_id, no role gate on the backend.
+ *   2. The OAuth landing page: interview-service's `/calendar/callback`
+ *      redirects the browser here with `?status=success|cancelled|failed`
+ *      (and an optional `&reason=`) once Nylas is done. That's surfaced as a
+ *      dismissible banner rather than a full-screen takeover — the user
+ *      stays on the page and sees the now-connected state underneath.
+ *
+ * Gated to organization sessions with the Nylas feature flag on: a platform
+ * (CFP staff) caller has no tenant for a grant to belong to.
+ */
+
+/**
+ * `true` when `reason` is an HTTP status code string (e.g. "400_400
+ * BAD_REQUEST") rather than a human-readable message we can show verbatim.
  */
 const isHttpStatusReason = (reason: string): boolean => /^\d{3}_/.test(reason.trim());
 
-type StatusType = 'success' | 'cancelled' | 'failed';
+type OAuthStatus = 'success' | 'cancelled' | 'failed';
 
 const CalendarSettingsPage = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // New backend contract: ?status=success|cancelled|failed&reason=<optional>
-  // Backwards-compat: old ?connected=true still treated as success
+  const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
+  const isPlatformCaller = callerKind === 'platform';
+  const isNylasFeatureEnabled = import.meta.env.VITE_NYLAS_FEATURE === 'true';
+  const isAvailable = isNylasFeatureEnabled && !isPlatformCaller;
+
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+
+  const {
+    data: grantStatus,
+    isLoading: isGrantStatusLoading,
+    isError: isGrantStatusError,
+  } = useGetNylasGrantStatusQuery(undefined, { skip: !isAvailable });
+  const [triggerGetAuthUrl, { isFetching: isConnecting }] = useLazyGetNylasAuthUrlQuery();
+  const [disconnectGrant, { isLoading: isDisconnecting }] = useDisconnectNylasGrantMutation();
+
+  // -- OAuth return banner (from interview-service's /calendar/callback) ------
   const rawStatus = searchParams.get('status');
-  const connected = searchParams.get('connected');
+  const connectedParam = searchParams.get('connected'); // legacy ?connected=true
   const rawReason = searchParams.get('reason');
-
-  const status: StatusType = (() => {
-    if (rawStatus === 'success') return 'success';
+  const oauthStatus: OAuthStatus | null = (() => {
+    if (rawStatus === 'success' || connectedParam === 'true') return 'success';
     if (rawStatus === 'cancelled') return 'cancelled';
     if (rawStatus === 'failed') return 'failed';
-    // Backwards-compat: old ?connected=true still treated as success
-    if (connected === 'true') return 'success';
-    return 'failed';
+    return null;
   })();
-
-  // Decode reason; only show it directly when it's a human-readable message (case 6)
   const decodedReason = rawReason ? decodeURIComponent(rawReason) : null;
   const showReasonDirectly = decodedReason !== null && !isHttpStatusReason(decodedReason);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      navigate('/');
-    }, CALENDAR_CONNECT_REDIRECT_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [navigate]);
+  const dismissBanner = () => {
+    searchParams.delete('status');
+    searchParams.delete('connected');
+    searchParams.delete('reason');
+    setSearchParams(searchParams, { replace: true });
+  };
+
+  if (!isAvailable) {
+    return <Navigate to="/profile" replace />;
+  }
+
+  const handleConnect = async () => {
+    try {
+      const { connect_url } = await triggerGetAuthUrl().unwrap();
+      window.location.href = connect_url;
+    } catch {
+      showToast({
+        message: 'Failed to start the calendar connection. Please try again.',
+        type: 'error',
+      });
+    }
+  };
+
+  const confirmSwitch = async () => {
+    setShowSwitchModal(false);
+    try {
+      await disconnectGrant().unwrap();
+      const { connect_url } = await triggerGetAuthUrl().unwrap();
+      window.location.href = connect_url;
+    } catch (err: unknown) {
+      showToast({
+        message:
+          (err as { data?: { message?: string } })?.data?.message ??
+          'Failed to switch calendar. Please try again.',
+        type: 'error',
+      });
+    }
+  };
+
+  const confirmDisconnect = async () => {
+    setShowDisconnectModal(false);
+    try {
+      await disconnectGrant().unwrap();
+      showToast({ message: 'Calendar disconnected.', type: 'success' });
+    } catch (err: unknown) {
+      showToast({
+        message:
+          (err as { data?: { message?: string } })?.data?.message ??
+          'Failed to disconnect calendar. Please try again.',
+        type: 'error',
+      });
+    }
+  };
+
+  const isConnected = !!grantStatus?.connected;
+  const busy = isConnecting || isDisconnecting;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#EBF0ED]">
-      <div className="bg-white rounded-2xl shadow-lg p-10 flex flex-col items-center gap-6 max-w-md w-full mx-4">
-        {status === 'success' && (
-          <>
-            <CheckCircleOutlined style={{ fontSize: 64, color: '#22c55e' }} />
-            <h2 className="text-2xl font-semibold text-gray-800 text-center">
-              Calendar Connected Successfully ✅
-            </h2>
-            <p className="text-gray-500 text-center text-sm">
-              Your calendar has been connected. You can now schedule interviews seamlessly.
-            </p>
-          </>
-        )}
+    <MainLayout>
+      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+        <button
+          onClick={() => navigate('/profile')}
+          className="flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+        >
+          <MdOutlineArrowBack className="mr-2" />
+          <span>Back to profile</span>
+        </button>
 
-        {status === 'cancelled' && (
-          <>
-            <WarningOutlined style={{ fontSize: 64, color: '#f59e0b' }} />
-            <h2 className="text-2xl font-semibold text-gray-800 text-center">
-              Connection Cancelled
-            </h2>
-            <p className="text-gray-500 text-center text-sm">
-              You cancelled the calendar connection. You can try again anytime from the profile
-              menu.
-            </p>
-          </>
-        )}
-
-        {status === 'failed' && (
-          <>
-            <CloseCircleOutlined style={{ fontSize: 64, color: '#ef4444' }} />
-            <h2 className="text-2xl font-semibold text-gray-800 text-center">Connection Failed</h2>
-            {showReasonDirectly ? (
-              <p className="text-gray-600 text-center text-sm">{decodedReason}</p>
-            ) : (
-              <p className="text-gray-500 text-center text-sm">
-                We were unable to connect your calendar. Please try again from the profile menu.
-              </p>
-            )}
-          </>
-        )}
-
-        <div className="flex items-center gap-2 text-gray-400 text-xs mt-2">
-          <LoadingOutlined />
-          <span>Redirecting to dashboard...</span>
+        <div className="flex items-center gap-2">
+          <MdOutlineCalendarMonth className="text-xl text-brand-700" />
+          <h1 className="text-2xl font-semibold text-gray-900">Calendar</h1>
         </div>
+
+        {oauthStatus === 'success' && (
+          <Alert
+            type="success"
+            showIcon
+            closable
+            onClose={dismissBanner}
+            message="Calendar connected"
+            description="Interviews will now be scheduled around your real availability and added to your calendar automatically."
+          />
+        )}
+        {oauthStatus === 'cancelled' && (
+          <Alert
+            type="warning"
+            showIcon
+            closable
+            onClose={dismissBanner}
+            message="Connection cancelled"
+            description="You can connect your calendar whenever you're ready."
+          />
+        )}
+        {oauthStatus === 'failed' && (
+          <Alert
+            type="error"
+            showIcon
+            closable
+            onClose={dismissBanner}
+            message="Connection failed"
+            description={
+              showReasonDirectly
+                ? decodedReason
+                : 'We were unable to connect your calendar. Please try again.'
+            }
+          />
+        )}
+
+        {isGrantStatusLoading ? (
+          <Loader />
+        ) : isGrantStatusError ? (
+          <p className="text-sm text-red-600">Could not load your calendar connection status.</p>
+        ) : (
+          <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
+            <h2 className="text-lg font-semibold text-gray-900">Connected calendar</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Connect your Google or Microsoft calendar so interviews can be scheduled around your
+              real availability and added to your calendar automatically. Panel interviews can only
+              be scheduled once every panellist has connected one.
+            </p>
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                    isConnected ? 'bg-green-500' : 'bg-gray-300'
+                  }`}
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-gray-900">
+                    {isConnected ? 'Connected' : 'Not connected'}
+                  </span>
+                  {isConnected && grantStatus?.email && (
+                    <span className="text-xs text-gray-500">{grantStatus.email}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isConnected ? (
+                  <>
+                    <Button
+                      type="button"
+                      onClick={() => setShowSwitchModal(true)}
+                      disabled={busy}
+                      className="rounded-full border border-primary-200 bg-primary-50 px-4 py-2 text-sm font-semibold text-primary-700 disabled:opacity-50"
+                    >
+                      {isConnecting ? 'Redirecting…' : 'Switch calendar'}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setShowDisconnectModal(true)}
+                      disabled={busy}
+                      className="rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 disabled:opacity-50"
+                    >
+                      {isDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleConnect}
+                    disabled={busy}
+                    className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {isConnecting ? 'Redirecting…' : 'Connect calendar'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
       </div>
-    </div>
+
+      <Modal
+        open={showSwitchModal}
+        onCancel={() => setShowSwitchModal(false)}
+        onOk={confirmSwitch}
+        okText="Yes, switch"
+        cancelText="Cancel"
+        okButtonProps={{ loading: isDisconnecting || isConnecting, danger: true }}
+        title="Switch calendar"
+        centered
+        maskClosable={false}
+      >
+        <p className="text-gray-600 text-sm">
+          Your current calendar connection will be <strong>disconnected</strong> before linking a
+          new one. Any scheduled interviews tied to the existing calendar may be affected.
+        </p>
+        <p className="text-gray-500 text-sm mt-2">Are you sure you want to continue?</p>
+      </Modal>
+
+      <Modal
+        open={showDisconnectModal}
+        onCancel={() => setShowDisconnectModal(false)}
+        onOk={confirmDisconnect}
+        okText="Yes, disconnect"
+        cancelText="Cancel"
+        okButtonProps={{ loading: isDisconnecting, danger: true }}
+        title="Disconnect calendar"
+        centered
+        maskClosable={false}
+      >
+        <p className="text-gray-600 text-sm">
+          Your calendar will be <strong>disconnected</strong>. Any scheduled interviews tied to this
+          calendar may be affected.
+        </p>
+        <p className="text-gray-500 text-sm mt-2">Are you sure you want to disconnect?</p>
+      </Modal>
+    </MainLayout>
   );
 };
 

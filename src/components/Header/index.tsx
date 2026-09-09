@@ -27,7 +27,6 @@ import {
   useGetNylasGrantStatusQuery,
   useDisconnectNylasGrantMutation,
 } from '../../api/interview-service/Nylas/index';
-import { isMultiLocationRoleName } from '../../shared/utils/business-logic';
 import {
   clearGlobalSearch,
   clearGlobalSearchCategorySelection,
@@ -131,8 +130,13 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
     skip: !tenantId,
   });
 
+  // Calendar connection is self-service for every ORGANIZATION user, any
+  // role — interview-service's `/calendar/*` routes are identity-scoped
+  // (the grant belongs to the caller's own user_id, no role gate). A
+  // platform (CFP staff) caller is the only authenticated session with no
+  // tenant for a grant to belong to, so they're the sole exclusion.
   const isNylasFeatureEnabled = import.meta.env.VITE_NYLAS_FEATURE === 'true';
-  const isCalendarUser = isMultiLocationRoleName(role?.name);
+  const isCalendarUser = !isPlatformCaller;
   const shouldFetchGrantStatus = isNylasFeatureEnabled && isCalendarUser;
 
   const [triggerGetNylasAuthUrl, { isFetching: isConnectingCalendar }] =
@@ -500,28 +504,19 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
     return (value || '').replace(/[\s_-]+/g, '').toLowerCase();
   };
 
-  const normalizedRoleName = normalizeRoleIdentifier(role?.name);
   const normalizedRoleType = normalizeRoleIdentifier(role?.type);
   const isOrganizationUser = normalizedRoleType === 'organization';
-  const isCompanySuperAdmin = isOrganizationUser && normalizedRoleName === 'superadmin';
-  const isCompanyAdmin = isOrganizationUser && normalizedRoleName === 'admin';
-  const isHiringManager = normalizedRoleName === 'hiringmanager';
-  const isRecruiter = normalizedRoleName === 'recruiter';
-  const isInterviewer = normalizedRoleName === 'interviewer';
 
-  // Platform callers (Super Admin, internal staff) have no tenant but still
-  // get an in-app feed from notification-service (invite-accepted, MFA/
-  // security alerts, etc. — see feed_router.py's module docstring). Gate on
-  // isPlatformCaller directly rather than role name/type, since platform
-  // sessions carry role.type === 'owner' and role.name === PLATFORM_CALLER_
-  // ROLE_NAME, neither of which the tenant-role checks above match.
-  const canShowNotificationBell =
-    isPlatformCaller ||
-    isCompanySuperAdmin ||
-    isCompanyAdmin ||
-    isHiringManager ||
-    isRecruiter ||
-    isInterviewer;
+  // Every authenticated user — tenant OR platform — has an in-app feed:
+  // notification-service scopes it to the caller's own notifications by
+  // identity, and there is no "may read notifications" permission
+  // (feed_router.py's module docstring). So gate the bell on the SESSION
+  // KIND, never on role NAME — a real tenant login leaves `role.name` empty
+  // (its permissions come from the dashboard fetch, not a name), so the old
+  // name allowlist hid the bell from every non-dev-bypass tenant user.
+  // `role.type` is 'organization' for any tenant session and 'owner' for a
+  // platform one, both set at login regardless of role resolution.
+  const canShowNotificationBell = isPlatformCaller || isOrganizationUser;
 
   const globalSearchNavigationConfig = {
     candidatesViewAllPath: '/candidates',
