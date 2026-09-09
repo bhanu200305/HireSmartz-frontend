@@ -139,6 +139,7 @@ const CareersApplyChoicePage = lazy(() => import('./pages/CareersApplyChoicePage
 const CareersInstantCallPage = lazy(() => import('./pages/CareersInstantCallPage'));
 const CareersIntakeCallSchedulePage = lazy(() => import('./pages/CareersIntakeCallSchedulePage'));
 const CareersApplySuccessPage = lazy(() => import('./pages/CareersApplySuccessPage'));
+const CareersResumeUploadPage = lazy(() => import('./pages/CareersResumeUploadPage'));
 const VerificationCallbackPage = lazy(() => import('./pages/VerificationCallbackPage'));
 
 // Lazy load components
@@ -380,6 +381,21 @@ export const Routes: RouteType[] = [
     name: 'CareersApplySuccess',
     path: '/careers/:organizationId/jobs/:jobId/apply/success',
     component: CareersApplySuccessPage,
+    isOpen: true,
+  },
+  {
+    // Where notification-service's "upload your resume within 24 hours"
+    // mail actually points — `LinkBuilder.resume_upload_url`, PATH segment
+    // not `/careers/...` (this candidate has no organizationId/jobId in
+    // hand, only the signed token, see the page's own module comment).
+    // MUST be `isOpen: true` — this route previously did not exist at all,
+    // so it fell through to the `path: '*'` 404 entry below, which (having
+    // neither isOpen nor isPublic set) defaults to auth-required and sent
+    // an unauthenticated candidate straight to /login before they ever saw
+    // a 404, let alone the upload form.
+    name: 'CareersResumeUpload',
+    path: '/resume-upload/:token',
+    component: CareersResumeUploadPage,
     isOpen: true,
   },
   {

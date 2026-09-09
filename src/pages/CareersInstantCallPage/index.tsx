@@ -23,9 +23,9 @@ const DEFAULT_COUNTRY_CODE = '+1';
 // §5.2). No resume yet — `contact_no` is REQUIRED here (unlike Path A's
 // optional phone), since interview-service needs a number to place the
 // call. The candidate submits a resume later via an emailed link
-// (resume-upload-link), not built as a page here — it only exists as a
-// destination reached from that email, not from anywhere in this app's own
-// navigation.
+// (`CareersResumeUploadPage`, `/resume-upload/:token`) — that page is only
+// ever reached from the email itself, never linked from anywhere in this
+// app's own navigation, so don't add a nav entry pointing at it here.
 
 export const CareersInstantCallPage = () => {
   const { organizationId, jobId } = useParams<{ organizationId: string; jobId: string }>();
