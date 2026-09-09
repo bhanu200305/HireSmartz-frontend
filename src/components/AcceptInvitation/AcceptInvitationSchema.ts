@@ -33,9 +33,14 @@ export const acceptInvitationSchema = z
     isPlatformInvite: z.boolean(),
     password: passwordValidation(),
     confirmPassword: z.string().min(1, 'Please confirm your password.'),
-    mfaAcknowledged: z.boolean().refine((val) => val === true, {
-      message: 'Add the key to your authenticator app to continue.',
-    }),
+    // Was a bare "I did this" checkbox whose state never actually reached
+    // the server — the backend armed nothing on that basis (correctly: it
+    // requires real proof). Replaced with the 6-digit code the authenticator
+    // app itself produces, which the backend verifies before turning MFA on.
+    mfaCode: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/, 'Enter the 6-digit code from your authenticator app.'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match.",

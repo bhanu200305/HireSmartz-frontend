@@ -33,6 +33,11 @@ export type AcceptInvitationRequest = {
   token: string;
   password: string;
   mfa_secret: string;
+  // The 6-digit code from the authenticator app, proving mfa_secret was
+  // actually added there. Optional on the wire — a missing/wrong code just
+  // means MFA stays off, never fails the request — but this form always
+  // sends one (see AcceptInvitationSchema.ts's mfaCode field).
+  mfa_code?: string;
   // Required for every tenant invite — see AcceptInvitationSchema.ts's
   // comment. Optional on the wire because a platform invite (never accepted
   // through this frontend flow) doesn't need one.
@@ -51,6 +56,10 @@ export type AcceptInvitationRequest = {
 export type AcceptInvitationResponse = {
   user_id: string;
   status: 'active' | string;
+  // Whether the authenticator-app factor actually got armed — not whether
+  // the user typed something. False on a wrong code; the account still
+  // exists either way (see AcceptedInvitationView on the backend).
+  mfa_enabled: boolean;
 };
 
 const extendedApi = orgApi.injectEndpoints({

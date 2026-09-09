@@ -6,7 +6,7 @@ import { FaEye, FaEyeSlash, FaCheckCircle, FaRegCopy } from 'react-icons/fa';
 import { MdLockOutline, MdErrorOutline, MdPersonOutline, MdOutlinePhone } from 'react-icons/md';
 import { get } from 'lodash-es';
 import { Select } from 'antd';
-import { Button, CustomCheckbox, Input, showToast } from '../shared';
+import { Button, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import Footer from '../Footer';
 import {
@@ -207,7 +207,7 @@ const AcceptInvitation = () => {
         isPlatformInvite: false,
         password: '',
         confirmPassword: '',
-        mfaAcknowledged: false,
+        mfaCode: '',
       },
       mode: 'onChange',
     });
@@ -236,18 +236,28 @@ const AcceptInvitation = () => {
     if (!token) return;
     setExternalServiceError(false);
     try {
-      await acceptInvitation({
+      const result = await acceptInvitation({
         token,
         password: data.password,
         mfa_secret: mfaSecret,
+        mfa_code: data.mfaCode,
         first_name: data.firstName.trim(),
         last_name: data.lastName.trim() || undefined,
         country_code: data.isPlatformInvite ? undefined : data.countryCode?.trim() || undefined,
         phone_number: data.isPlatformInvite ? undefined : data.phoneNumber?.trim() || undefined,
       }).unwrap();
       setIsAccepted(true);
-      showToast({ message: 'Account activated. You can now log in.', type: 'success' });
-      setTimeout(() => navigate('/login'), 2000);
+      // Tells the truth about what actually happened server-side, not what
+      // the form assumed — a wrong code still creates the account, just
+      // without MFA armed, and the user needs to know that rather than be
+      // told "activated" and find out otherwise at their next login.
+      showToast({
+        message: result.mfa_enabled
+          ? 'Account activated with two-factor authentication on. You can now log in.'
+          : "Account activated, but that code didn't match — two-factor authentication is off for now. You can set it up again from your account settings.",
+        type: result.mfa_enabled ? 'success' : 'warning',
+      });
+      setTimeout(() => navigate('/login'), result.mfa_enabled ? 2000 : 3500);
     } catch (err: unknown) {
       const body = get(err, 'data') as InvitationErrorBody | undefined;
       if (body?.error_code === 'EXTERNAL_SERVICE_ERROR') {
@@ -538,19 +548,26 @@ const AcceptInvitation = () => {
           {otpAuthUri && <p className="mt-2 break-all text-[10px] text-gray-400">{otpAuthUri}</p>}
 
           <Controller
-            name="mfaAcknowledged"
+            name="mfaCode"
             control={control}
             render={({ field }) => (
-              <CustomCheckbox
-                className="mt-3 custom-checkbox"
-                label="I've added this key to my authenticator app"
-                checked={field.value}
-                onChange={(e) => field.onChange(e.target.checked)}
+              <Input
+                {...field}
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="6-digit code from your app"
+                className="mt-3 w-full !normal-case px-4 py-2 bg-white border rounded-3xl tracking-widest focus:ring focus:ring-brand-300 border-[var(--border)]"
+                onChange={(e) => field.onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
               />
             )}
           />
-          {errors.mfaAcknowledged && (
-            <p className="text-red-500 text-sm px-2 py-1">{errors.mfaAcknowledged.message}</p>
+          {errors.mfaCode ? (
+            <p className="text-red-500 text-sm px-2 py-1">{errors.mfaCode.message}</p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-500">
+              Enter the code your app is showing right now to turn this on — otherwise your
+              account is created with password sign-in only, and you can set this up later.
+            </p>
           )}
         </div>
 
