@@ -15,9 +15,7 @@ const fields: CatalogField<FormValues>[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
 ];
 
-/** GET/POST/PUT/DELETE /platform/master-skill-types — e.g. "Technical",
- * "Soft Skill". Blocked from deletion while a job's skill selection or the
- * title-suggestion cache still references it. */
+/** Platform-wide skill-type catalogue (e.g. "Technical", "Soft Skill"). Blocked from deletion while still referenced. */
 const SkillTypesTab: React.FC = () => {
   const { data, isLoading } = useListPlatformSkillTypesQuery();
   const [create] = useCreatePlatformSkillTypeMutation();
@@ -32,16 +30,18 @@ const SkillTypesTab: React.FC = () => {
       items={data}
       isLoading={isLoading}
       idOf={(item) => item.skill_type_id}
-      labelOf={(item) => item.name}
-      columns={[{ title: 'Name', dataIndex: 'name', key: 'name' }]}
+      labelOf={(item) => item.skill_type}
+      columns={[{ title: 'Name', dataIndex: 'skill_type', key: 'skill_type' }]}
       fields={fields}
       emptyForm={emptyForm}
-      toFormValues={(item) => ({ name: item.name })}
-      onCreate={(values) => create({ name: values.name.trim() }).unwrap()}
-      onUpdate={(id, values) => update({ skillTypeId: id, name: values.name.trim() }).unwrap()}
+      toFormValues={(item) => ({ name: item.skill_type })}
+      onCreate={(values) => create({ skill_type: values.name.trim() }).unwrap()}
+      onUpdate={(id, values) =>
+        update({ skillTypeId: id, skill_type: values.name.trim() }).unwrap()
+      }
       onDelete={(item) => remove(item.skill_type_id).unwrap()}
       deleteConfirmTitle={(item) =>
-        `Remove "${item.name}"? Blocked while a job's skill selection or the title-suggestion cache still references it.`
+        `Remove "${item.skill_type}"? Blocked while a job's skill selection or the title-suggestion cache still references it.`
       }
     />
   );

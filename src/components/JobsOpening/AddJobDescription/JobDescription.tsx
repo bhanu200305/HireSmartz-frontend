@@ -90,7 +90,6 @@ const JobDescription = () => {
   }));
   const defaultVals = {
     educationPreference: jobDescription?.educationPreference || [],
-    //communicationSkills: jobDescription?.communicationSkills || '',
     mandatorySkills: jobDescription?.mandatorySkills || [],
     optionalSkills: jobDescription?.optionalSkills || [],
     otherRequirements: jobDescription?.otherRequirements || '',
@@ -176,7 +175,7 @@ const JobDescription = () => {
         setValue(addType, [...currentSkillIds, existingSkill.id], { shouldValidate: true });
         return;
       }
-      const createdSkill = await createOrganizationSkill({ name: formattedValue }).unwrap();
+      const createdSkill = await createOrganizationSkill({ skill: formattedValue }).unwrap();
       showToast({ message: 'Skill added successfully', type: 'success' });
       setValue(addType, [...currentSkillIds, createdSkill.skill_id], { shouldValidate: true });
     } catch (err) {
@@ -190,11 +189,7 @@ const JobDescription = () => {
     }
   };
   const handleReuseOption = async (_id: string | number, _type: string) => {
-    // Education preferences and skill-catalog entries are soft-deleted on
-    // the current backend, but none of them expose a restore/reactivate
-    // endpoint (only create/list/update/delete) — the old generic
-    // /job-opening/{type}/reuse/{id} this used to call doesn't exist on
-    // this backend at all.
+    // No restore/reactivate endpoint exists for soft-deleted entries.
     showToast({
       message: 'Removed options cannot be restored from this screen.',
       type: 'error',
@@ -205,7 +200,7 @@ const JobDescription = () => {
       try {
         await updateEducationPreference({
           preferenceId: String(id),
-          name: capitalizeWordsAdvanced(newName),
+          education_preference_name: capitalizeWordsAdvanced(newName),
         }).unwrap();
 
         showToast({ message: 'Education preference updated successfully', type: 'success' });
@@ -223,8 +218,7 @@ const JobDescription = () => {
       return;
     }
 
-    // No update endpoint exists for a tenant's own skill-catalog entries —
-    // /skills only supports POST (create) and /skills/search (read).
+    // No update endpoint exists for tenant skill-catalog entries.
     showToast({
       message: 'Skills cannot be renamed from this screen.',
       type: 'error',
@@ -259,8 +253,7 @@ const JobDescription = () => {
       return;
     }
 
-    // No delete endpoint exists for a tenant's own skill-catalog entries —
-    // same gap as handleEditOption above.
+    // No delete endpoint exists for tenant skill-catalog entries.
     showToast({
       message: 'Skills cannot be removed from this screen.',
       type: 'error',
@@ -374,35 +367,6 @@ const JobDescription = () => {
     <Form layout="vertical" onFinish={handleSubmit(onSubmit)}>
       {(isLoading || isUpdating) && <Loader />}
       <div className="grid grid-cols-2 gap-x-4">
-        {/* <Form.Item
-          label={
-            <span>
-              Communication Skills <span className="required-asterisk">*</span>
-            </span>
-          }
-        >
-          <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">
-            <Select
-              value={watch('communicationSkills') || undefined}
-              onChange={(value) =>
-                setValue('communicationSkills', value, {
-                  shouldValidate: true,
-                })
-              }
-              placeholder="Select Communication Skill Level"
-              className="w-full custom-select-jobs placeholder-style"
-              variant="borderless"
-            >
-              <Select.Option value="Basic">Basic</Select.Option>
-              <Select.Option value="Intermediate">Intermediate</Select.Option>
-              <Select.Option value="Advanced">Advanced</Select.Option>
-              <Select.Option value="Fluent / Native-like">Fluent / Native-like</Select.Option>
-            </Select>
-          </div>
-          {errors.communicationSkills && (
-            <p className="text-red-500 text-sm mt-1">{errors.communicationSkills.message}</p>
-          )}
-        </Form.Item> */}
         <Form.Item label={<span>Required Skills</span>}>
           <div className="space-y-3">
             <div

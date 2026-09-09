@@ -1,21 +1,20 @@
 import { jobApi } from '../jobApi';
 
-// GET/POST/PUT/DELETE /platform/master-shift-types — the Super Admin's
-// shift-type suggestion catalogue (what /master/shift-types offers a
-// tenant when they add their own configured shift under /shifts).
+// The Super Admin's shift-type suggestion catalogue (what /master/shift-types
+// offers a tenant adding their own shift under /shifts).
 export type PlatformShiftType = {
   shift_type_id: string;
-  name: string;
-  description: string | null;
+  shift_name: string;
+  shift_description: string | null;
   duration_minutes: number | null;
-  // "HH:mm:ss" or null — optional, unlike OrganizationShift's.
+  // "HH:mm:ss" or null.
   start_time: string | null;
   end_time: string | null;
 };
 
 type ShiftTypeWriteBody = {
-  name: string;
-  description?: string | null;
+  shift_name: string;
+  shift_description?: string | null;
   duration_minutes?: number | null;
   start_time?: string | null;
   end_time?: string | null;

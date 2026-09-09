@@ -50,29 +50,8 @@ import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
 import CandidatesPipelineBoard from './CandidatesPipelineBoard';
 import { candidateDisplayName } from './candidateDisplay';
 
-// Rewritten against candidate-service's real `GET /candidates` (job-scoped,
-// no cross-job list route exists — FRONTEND_INTEGRATION_DETAILS.md §4.3).
-// Keeps the same page anatomy as the previous version of this screen (job
-// summary header, search + filters + notes/upload actions, expandable
-// candidate rows, checkbox multi-select with a floating bulk-action bar) —
-// only the data layer and the business logic actually tied to it changed.
-//
-// Deliberately DROPPED, no real-backend equivalent (see
-// api/candidate-service/Candidates/CandidateLifecycle.ts's / status.ts's /
-// interviewRounds.ts's own module comments for the backend side of each):
-// - Manual interview-invite scheduling (AI/VIDEO/IN_PERSON round types,
-//   host/duration selection) — interview-service now books the next round
-//   automatically once a candidate advances; there is nothing left for a
-//   recruiter to configure from this screen.
-// - Resume-extraction-in-progress / "resume extraction failed, retry" state
-//   — real candidates are either present with whatever `resume_score` ai-
-//   service has produced so far (`null` = "not scored yet", not an error)
-//   or not present at all.
-// - The "New" candidate badge — no per-recruiter "seen" tracking exists
-//   (API_CONTRACT.md's "Known gaps").
-// - ATS-candidates fetch and JD-upload duplicate-batch detection — separate,
-//   job-service-owned features unrelated to candidate-service's contract;
-//   left untouched elsewhere, just not part of this rewrite.
+// Candidate list is job-scoped; there is no cross-job list route.
+// `resume_score` of null means "not scored yet", not an error.
 
 type SelectedMap = Record<string, boolean>;
 
@@ -146,7 +125,9 @@ const CandidatesListing = () => {
   const departmentName = candidateListDepartments.find(
     (d) => String(d.org_department_id) === String(departmentId)
   )?.name;
-  const jobTypeName = candidateListJobTypes.find((t) => String(t.id) === String(jobTypeId))?.name;
+  const jobTypeName = candidateListJobTypes.find(
+    (t) => String(t.id) === String(jobTypeId)
+  )?.job_type_name;
 
   const isDraft = jobOpeningData?.data?.isDraft || false;
   const isClosed = jobOpeningData?.data?.isClosed || false;
@@ -400,11 +381,7 @@ const CandidatesListing = () => {
         />
       ) : (
         <div className="w-full">
-          {/* Row/Col grid with fixed spans (not antd <Table>, which already
-              gets scroll={{x:'max-content'}} via CustomTable elsewhere in
-              the app) — overflow-x-auto + min-w keeps every column readable
-              on a narrow viewport by scrolling instead of squashing them,
-              same pattern used for MasterTable. */}
+          {/* overflow-x-auto + min-w keeps columns readable on narrow viewports. */}
           <div className="overflow-x-auto">
             <div className="min-w-[760px]">
               <div className="w-full p-2">

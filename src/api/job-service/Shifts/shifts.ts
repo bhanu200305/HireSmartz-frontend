@@ -5,14 +5,14 @@ import { jobApi } from '../jobApi';
 // from Master/master.ts's fixed shift-type suggestion catalog.
 export type OrganizationShift = {
   id: string;
-  name: string;
+  shift_name: string;
   start_time: string; // HH:MM:SS
   end_time: string;
   duration_minutes: number | null;
 };
 
 export type SaveOrganizationShiftArgs = {
-  name: string;
+  shift_name: string;
   start_time: string;
   end_time: string;
   duration_minutes?: number;

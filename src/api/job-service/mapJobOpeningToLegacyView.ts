@@ -25,18 +25,18 @@ const mapInterviewRounds = (
   }));
 
 /**
- * Shape the GET /job-openings/{id} payload so existing view/edit screens
- * that read `jobData.data.*` keep compiling. Nested ids are UUID strings
- * (typed loosely as number in the legacy declaration).
+ * Shape the GET /job-openings/{id} payload for existing view/edit screens
+ * that read `jobData.data.*`. Nested ids are UUID strings (typed loosely
+ * as number in the legacy declaration).
  */
 export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): LegacyJobData => {
   const details = job.details;
   const location = details?.locations?.[0];
   const mandatory = (details?.skills ?? []).filter(
-    (s) => String(s.skill_type).toUpperCase() === 'MANDATORY'
+    (s) => String(s.skill_type).toUpperCase() === 'REQUIRED'
   );
   const optional = (details?.skills ?? []).filter(
-    (s) => String(s.skill_type).toUpperCase() !== 'MANDATORY'
+    (s) => String(s.skill_type).toUpperCase() !== 'REQUIRED'
   );
 
   return {
@@ -57,7 +57,7 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
     interviewedCandidateCount: 0,
     responsibilities: details?.responsibilities ?? '',
     otherRequirements: details?.other_requirements ?? '',
-    communicationSkills: details?.communication_skills ?? '',
+    communicationSkills: '',
     referralBonus: details?.referral_bonus,
     hiringManagers: (details?.hiring_manager_ids ?? []) as unknown as number[],
     recruiters: (details?.recruiter_ids ?? []) as unknown as number[],
@@ -166,10 +166,10 @@ export const mapDetailsToJobDetailsState = (
       : [],
     languages: (details.language_ids ?? []) as unknown as number[],
     mandatorySkills: (details.skills ?? [])
-      .filter((s) => String(s.skill_type).toUpperCase() === 'MANDATORY')
+      .filter((s) => String(s.skill_type).toUpperCase() === 'REQUIRED')
       .map((s) => s.skill_id as unknown as number),
     optionalSkills: (details.skills ?? [])
-      .filter((s) => String(s.skill_type).toUpperCase() !== 'MANDATORY')
+      .filter((s) => String(s.skill_type).toUpperCase() !== 'REQUIRED')
       .map((s) => s.skill_id as unknown as number),
     responsibilities: details.responsibilities ?? '',
     otherRequirements: details.other_requirements ?? '',

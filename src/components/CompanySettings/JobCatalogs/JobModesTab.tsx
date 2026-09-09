@@ -16,8 +16,7 @@ const fields: CatalogField<FormValues>[] = [
   { name: 'description', label: 'Description (optional)', type: 'textarea' },
 ];
 
-/** GET/POST/PUT/DELETE /platform/master-job-modes — what a job's `mode_id`
- * on Job Details directly references (e.g. Remote, Hybrid, On-site). */
+/** Platform-wide job-mode catalogue (e.g. Remote, Hybrid, On-site). */
 const JobModesTab: React.FC = () => {
   const { data, isLoading } = useListPlatformJobModesQuery();
   const [create] = useCreatePlatformJobModeMutation();
@@ -32,25 +31,32 @@ const JobModesTab: React.FC = () => {
       items={data}
       isLoading={isLoading}
       idOf={(item) => item.job_mode_id}
-      labelOf={(item) => item.name}
+      labelOf={(item) => item.job_mode_name}
       columns={[
-        { title: 'Name', dataIndex: 'name', key: 'name' },
-        { title: 'Description', key: 'description', render: (_, item) => item.description || '-' },
+        { title: 'Name', dataIndex: 'job_mode_name', key: 'job_mode_name' },
+        {
+          title: 'Description',
+          key: 'job_mode_description',
+          render: (_, item) => item.job_mode_description || '-',
+        },
       ]}
       fields={fields}
       emptyForm={emptyForm}
-      toFormValues={(item) => ({ name: item.name, description: item.description || '' })}
+      toFormValues={(item) => ({
+        name: item.job_mode_name,
+        description: item.job_mode_description || '',
+      })}
       onCreate={(values) =>
         create({
-          name: values.name.trim(),
-          description: values.description.trim() || undefined,
+          job_mode_name: values.name.trim(),
+          job_mode_description: values.description.trim() || undefined,
         }).unwrap()
       }
       onUpdate={(id, values) =>
         update({
           jobModeId: id,
-          name: values.name.trim(),
-          description: values.description.trim() || undefined,
+          job_mode_name: values.name.trim(),
+          job_mode_description: values.description.trim() || undefined,
         }).unwrap()
       }
       onDelete={(item) => remove(item.job_mode_id).unwrap()}

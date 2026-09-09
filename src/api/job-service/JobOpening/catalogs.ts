@@ -14,18 +14,13 @@ import type {
 
 const toJobTypeOption = (item: MasterJobType): OrganizationJobType => ({
   id: item.job_type_id,
-  name: item.name,
-  description: item.description,
+  job_type_name: item.job_type_name,
+  job_type_description: item.job_type_description,
 });
 
 export type ListJobTypesArgs = {
-  /**
-   * Super Admin tokens have no `tenant_id`, so GET /job-types 403s with
-   * "this endpoint requires a tenant user". Their catalogue is
-   * GET /platform/master-job-types (MASTER_JOB_TYPE_READ). Company users
-   * must use /job-types — SaveJobDetails validates job_type_id against
-   * organization_job_type, not the platform suggestion list.
-   */
+  /** Super Admin tokens have no tenant_id, so they must read the platform
+   * catalogue (/platform/master-job-types) instead of /job-types. */
   isMaster?: boolean;
 };
 
@@ -44,21 +39,16 @@ const catalogsApi = jobApi.injectEndpoints({
       transformResponse: (response: { job_types?: JobTypeListRow[] }) =>
         (response.job_types ?? []).map((item) => ({
           id: item.id || item.job_type_id || '',
-          name: item.name,
-          description: item.description,
+          job_type_name: item.job_type_name,
+          job_type_description: item.job_type_description,
         })),
       providesTags: ['JobTypes'],
     }),
 
-    // Same isMaster split as listJobTypes above: a Super Admin token has no
-    // tenant_id (GET/POST /job-types 403s "requires a tenant user"), so
-    // Super Admin's Company Settings catalogue tab must write through
-    // /platform/master-job-types while a tenant's own Job Settings tab (and
-    // this screen's "add job type" affordance for a tenant caller) writes
-    // through /job-types.
+    // Same isMaster split as listJobTypes above.
     createJobType: build.mutation<
       OrganizationJobType,
-      { name: string; description?: string | null; isMaster?: boolean }
+      { job_type_name: string; job_type_description?: string | null; isMaster?: boolean }
     >({
       query: ({ isMaster, ...body }) => ({
         url: isMaster ? '/platform/master-job-types' : '/job-types',
@@ -71,7 +61,12 @@ const catalogsApi = jobApi.injectEndpoints({
 
     updateJobType: build.mutation<
       OrganizationJobType,
-      { jobTypeId: string; name: string; description?: string | null; isMaster?: boolean }
+      {
+        jobTypeId: string;
+        job_type_name: string;
+        job_type_description?: string | null;
+        isMaster?: boolean;
+      }
     >({
       query: ({ jobTypeId, isMaster, ...body }) => ({
         url: isMaster ? `/platform/master-job-types/${jobTypeId}` : `/job-types/${jobTypeId}`,
@@ -99,8 +94,8 @@ const catalogsApi = jobApi.injectEndpoints({
     createShift: build.mutation<
       OrganizationShift,
       {
-        name: string;
-        description?: string | null;
+        shift_name: string;
+        shift_description?: string | null;
         start_time: string;
         end_time: string;
         duration_minutes?: number | null;
@@ -114,8 +109,8 @@ const catalogsApi = jobApi.injectEndpoints({
       OrganizationShift,
       {
         shiftId: string;
-        name: string;
-        description?: string | null;
+        shift_name: string;
+        shift_description?: string | null;
         start_time: string;
         end_time: string;
         duration_minutes?: number | null;
@@ -139,7 +134,7 @@ const catalogsApi = jobApi.injectEndpoints({
     // Write side of this organization's job-mode list (listJobModes above is read-only).
     createJobMode: build.mutation<
       OrganizationJobMode,
-      { name: string; description?: string | null }
+      { job_mode_name: string; job_mode_description?: string | null }
     >({
       query: (body) => ({ url: '/job-modes', method: 'POST', body }),
       invalidatesTags: ['JobModes'],
@@ -147,7 +142,7 @@ const catalogsApi = jobApi.injectEndpoints({
 
     updateJobMode: build.mutation<
       OrganizationJobMode,
-      { jobModeId: string; name: string; description?: string | null }
+      { jobModeId: string; job_mode_name: string; job_mode_description?: string | null }
     >({
       query: ({ jobModeId, ...body }) => ({
         url: `/job-modes/${jobModeId}`,
@@ -223,10 +218,8 @@ const catalogsApi = jobApi.injectEndpoints({
       providesTags: ['Skills'],
     }),
 
-    // GET /skills — every active skill visible to this caller (platform
-    // catalogue plus this org's own additions), no query, no cap. Backs a
-    // skill dropdown's initial options before the recruiter has typed
-    // anything into searchSkills above.
+    // All active skills visible to this caller, no query/cap. Backs a
+    // skill dropdown's initial options before the user searches.
     listActiveSkills: build.query<SkillCatalogEntry[], void>({
       query: () => ({ url: '/skills', method: 'GET' }),
       transformResponse: (response: { skills: SkillCatalogEntry[] }) => response.skills ?? [],
@@ -236,11 +229,11 @@ const catalogsApi = jobApi.injectEndpoints({
     createOrganizationSkill: build.mutation<
       {
         skill_id: string;
-        name: string;
-        description: string | null;
+        skill: string;
+        skill_description: string | null;
         skill_category_id: string | null;
       },
-      { name: string; description?: string | null; skill_category_id?: string | null }
+      { skill: string; skill_description?: string | null; skill_category_id?: string | null }
     >({
       query: (body) => ({
         url: '/skills',

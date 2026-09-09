@@ -1,13 +1,12 @@
 import { jobApi } from '../jobApi';
 
-// Tenant-facing, read-only master/reference catalogs — JOB_READ only, no
-// write surface (that lives under Platform/masterCatalogs.ts, Super Admin
-// only). Mirrors app/modules/jobs/api/responses.py's *Response models.
+// Tenant-facing, read-only master/reference catalogs. Write surface lives
+// under Platform/, Super Admin only.
 
 export type InterviewRoundType = {
   round_id: string;
-  name: string;
-  description: string | null;
+  round_name: string;
+  round_description: string | null;
   max_occurrences: number | null;
   requires_duration: boolean;
   available_variants: string[] | null;
@@ -21,21 +20,21 @@ export type ClosureReason = {
 
 export type MasterShiftType = {
   shift_id: string;
-  name: string;
-  description: string | null;
+  shift_name: string;
+  shift_description: string | null;
   duration_minutes: number | null;
 };
 
 export type MasterJobType = {
   job_type_id: string;
-  name: string;
-  description: string | null;
+  job_type_name: string;
+  job_type_description: string | null;
 };
 
 export type JobMode = {
   job_mode_id: string;
-  name: string;
-  description: string | null;
+  job_mode_name: string;
+  job_mode_description: string | null;
 };
 
 export type QuestionImportTemplateResponse = {
@@ -65,8 +64,7 @@ const extendedApi = jobApi.injectEndpoints({
       query: () => '/master/job-modes',
       providesTags: ['MasterJobModes'],
     }),
-    // GET /master/question-import-template — a presigned S3 download URL,
-    // not the file bytes. Caller fetches `download_url` directly.
+    // Returns a presigned download URL, not the file bytes.
     getQuestionImportTemplate: build.query<QuestionImportTemplateResponse, void>({
       query: () => '/master/question-import-template',
     }),

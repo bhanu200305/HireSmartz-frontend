@@ -404,7 +404,9 @@ const StatusColumn = ({
 
   return (
     <div
-      ref={dropRef}
+      ref={(node) => {
+        dropRef(node);
+      }}
       className={`flex w-64 shrink-0 flex-col rounded-xl border border-neutral-200 border-t-4 bg-neutral-50 transition-colors ${meta.border} ${
         isOver && canDrop ? 'bg-primary-50 ring-2 ring-primary-300' : ''
       }`}
@@ -551,7 +553,9 @@ const CandidateCard = ({
 
   return (
     <Link
-      ref={dragRef}
+      ref={(node) => {
+        dragRef(node);
+      }}
       to={buildDetailsPath(candidate.id)}
       onClick={handleCardClick}
       className={`group relative block cursor-grab rounded-lg border bg-white p-2.5 shadow-xs transition active:cursor-grabbing hover:-translate-y-0.5 hover:shadow-md ${

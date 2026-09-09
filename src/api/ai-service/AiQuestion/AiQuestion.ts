@@ -101,9 +101,9 @@ const extendedApi = api.injectEndpoints({
 // shared `api` above.
 const jobPromptsApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
-    getTopFivePrompt: build.query<TopFivePromptResponse, { mode: string }>({
-      query: ({ mode }) => ({
-        url: `/ai/prompts/top-five/by-user?mode=${mode}`,
+    getTopFivePrompt: build.query<TopFivePromptResponse, void>({
+      query: () => ({
+        url: `/ai/prompts/top-five/by-user`,
         method: 'GET',
       }),
       transformResponse: (response: {

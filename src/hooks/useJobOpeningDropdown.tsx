@@ -45,8 +45,7 @@ const isPeopleEndpoint = (endpoint: string) =>
   endpoint === 'HIRING_MANAGER' || endpoint === 'RECRUITER';
 
 /**
- * Replaces the fictional `/job-opening/getDropdownsByType` with the real
- * catalogues each dropdown actually needs. Return shape stays
+ * Fetches the catalogue each dropdown needs. Return shape stays
  * `{ id, name }[]` so DropdownWithAddOption keeps working.
  */
 const useJobOpeningDropdown = (
@@ -75,19 +74,13 @@ const useJobOpeningDropdown = (
     skip: skip || endpoint !== 'CLOSURE_REASON',
   });
   // Platform-wide catalog, same as closure reasons — no tenant variant.
-  // What a job's `mode_id` (a publish-mandatory field per
-  // _publish_validation.py) picks from; this was previously the only
-  // mandatory Job Details field with no dropdown anywhere in the app,
-  // making every job unpublishable.
   const jobModes = useListJobModesQuery(undefined, {
     skip: skip || endpoint !== 'JOB_MODE',
   });
   const roundTypes = useListInterviewRoundTypesQuery(undefined, {
     skip: skip || endpoint !== 'ROUNDS',
   });
-  // Tenant-only endpoints — no /platform/master-* equivalent exists for
-  // either (unlike job types/shifts), so a platform caller previewing this
-  // form gets an empty list, same as the skills fallback below.
+  // Tenant-only — a platform caller previewing this form gets an empty list.
   const educationPreferences = useListEducationPreferencesQuery(undefined, {
     skip: skip || endpoint !== 'EDUCATION_PREFERENCE' || callerKind === 'platform',
   });
@@ -120,8 +113,8 @@ const useJobOpeningDropdown = (
         case 'JOB_TYPE':
           return (jobTypes.data ?? []).map((item) => ({
             id: item.id,
-            name: item.name,
-            description: item.description ?? undefined,
+            name: item.job_type_name,
+            description: item.job_type_description ?? undefined,
           }));
         case 'CLOSURE_REASON':
           return (closureReasons.data ?? []).map((item) => ({
@@ -132,14 +125,14 @@ const useJobOpeningDropdown = (
         case 'JOB_MODE':
           return (jobModes.data ?? []).map((item) => ({
             id: item.job_mode_id,
-            name: item.name,
-            description: item.description ?? undefined,
+            name: item.job_mode_name,
+            description: item.job_mode_description ?? undefined,
           }));
         case 'ROUNDS':
           return (roundTypes.data ?? []).map((item) => ({
             id: item.round_id,
-            name: item.name,
-            description: item.description ?? undefined,
+            name: item.round_name,
+            description: item.round_description ?? undefined,
             requires_duration: item.requires_duration,
             available_variants: item.available_variants,
             max_occurrences: item.max_occurrences,
@@ -159,17 +152,17 @@ const useJobOpeningDropdown = (
         case 'EDUCATION_PREFERENCE':
           return (educationPreferences.data ?? []).map((item) => ({
             id: item.id,
-            name: item.name,
+            name: item.education_preference_name,
           }));
         case 'LANGUAGE':
           return (languages.data ?? []).map((item) => ({
             id: item.language_id,
-            name: item.name,
+            name: item.language_name,
           }));
         case 'SHIFT':
           return (shifts.data?.shifts ?? []).map((item) => ({
             id: item.id,
-            name: `${item.name} (${item.start_time.slice(0, 5)} - ${item.end_time.slice(0, 5)})`,
+            name: `${item.shift_name} (${item.start_time.slice(0, 5)} - ${item.end_time.slice(0, 5)})`,
           }));
         case 'MANDATORY_SKILLS':
         case 'OPTIONAL_SKILLS': {

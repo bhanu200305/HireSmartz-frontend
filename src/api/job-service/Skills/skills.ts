@@ -17,15 +17,15 @@ export type SkillSearchArgs = {
 };
 
 export type CreateOrganizationSkillArgs = {
-  name: string;
-  description?: string;
+  skill: string;
+  skill_description?: string;
   skill_category_id?: string;
 };
 
 export type OrganizationSkill = {
   id: string;
-  name: string;
-  description: string | null;
+  skill: string;
+  skill_description: string | null;
   skill_category_id: string | null;
 };
 

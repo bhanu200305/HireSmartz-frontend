@@ -1,13 +1,10 @@
 import { jobApi } from '../jobApi';
 
-// GET/POST/PUT/DELETE /education-preferences — this organization's own
-// configured education-preference catalogue (job-service migration 0014,
-// `organization_education_preference`). What a job's
-// `education_preference_id` on Job Details actually references — replaces
-// the old fictional hardcoded list in useJobOpeningDropdown.
+// This organization's own configured education-preference catalogue —
+// what a job's `education_preference_id` on Job Details references.
 export type OrganizationEducationPreference = {
   id: string;
-  name: string;
+  education_preference_name: string;
 };
 
 const educationPreferencesApi = jobApi.injectEndpoints({
@@ -19,19 +16,22 @@ const educationPreferencesApi = jobApi.injectEndpoints({
       providesTags: ['EducationPreferences'],
     }),
 
-    createEducationPreference: build.mutation<OrganizationEducationPreference, { name: string }>({
+    createEducationPreference: build.mutation<
+      OrganizationEducationPreference,
+      { education_preference_name: string }
+    >({
       query: (body) => ({ url: '/education-preferences', method: 'POST', body }),
       invalidatesTags: ['EducationPreferences'],
     }),
 
     updateEducationPreference: build.mutation<
       OrganizationEducationPreference,
-      { preferenceId: string; name: string }
+      { preferenceId: string; education_preference_name: string }
     >({
-      query: ({ preferenceId, name }) => ({
+      query: ({ preferenceId, education_preference_name }) => ({
         url: `/education-preferences/${preferenceId}`,
         method: 'PUT',
-        body: { name },
+        body: { education_preference_name },
       }),
       invalidatesTags: ['EducationPreferences'],
     }),

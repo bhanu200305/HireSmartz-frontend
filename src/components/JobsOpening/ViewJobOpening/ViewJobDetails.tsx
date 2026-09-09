@@ -135,7 +135,7 @@ const ViewJobDetails = () => {
     jobData?.data.jobType
       ?.map((item) => {
         const catalogueType = masterJobTypes.find((jobType) => idsMatch(jobType.id, item.id));
-        return catalogueType?.name || item.jobTypeName;
+        return catalogueType?.job_type_name || item.jobTypeName;
       })
       .filter(Boolean)
       .join(', ') || '';
@@ -184,13 +184,8 @@ const ViewJobDetails = () => {
     .map((id) => languageOptions.find((option) => idsMatch(option.id, id))?.name)
     .filter((name): name is string => Boolean(name));
 
-  // Hiring-manager/recruiter ids are UUIDs (organization_job_hiring_manager.user_id /
-  // organization_job_recruiter.user_id), not numbers — `Number(uuid)` is always NaN,
-  // so the old Number()-based matching here silently filtered every real
-  // selection out and the fields always rendered empty regardless of what
-  // was actually saved. Normalize to strings and compare with `idsMatch`
-  // (already used for every other dropdown in this file: office, department,
-  // job title, job type, language, education preference) instead.
+  // Hiring-manager/recruiter ids are UUIDs, not numbers — normalize to strings
+  // and compare with `idsMatch` like the other dropdowns in this file.
   const normalizeIdArray = (values: unknown[]): string[] =>
     values
       .map((value) => {
@@ -686,13 +681,7 @@ const ViewJobDetails = () => {
                   fontSize: '13px',
                 }}
                 value={
-                  // `openDate` here is job-service's raw `job_open_date` — an
-                  // ISO 8601 datetime string (see JobDetailsResponse), not
-                  // DD-MM-YYYY. Parsing it against that format token failed
-                  // silently (dayjs returned an Invalid Date, which .format()
-                  // renders as the literal string "Invalid Date"), so this
-                  // field looked wrong/empty for every job regardless of
-                  // what was actually saved. Let dayjs parse ISO natively.
+                  // openDate is an ISO 8601 string; let dayjs parse it natively.
                   jobData?.data.openDate && dayjs(jobData.data.openDate).isValid()
                     ? dayjs(jobData.data.openDate).format('MMM DD, YYYY')
                     : ''
@@ -770,13 +759,7 @@ const ViewJobDetails = () => {
                 decimalScale={2}
                 disabled
                 prefix="$"
-                // Always a plain annual figure — no "/hr" suffix. Exemption
-                // Status (`false`/Non-Exempt is the backend's own default for
-                // every job — see `Job.is_exempted`, job.py — for any job the
-                // recruiter hasn't touched that dropdown on yet, AI-filled
-                // ones very much included) isn't a reliable signal for what
-                // unit a salary figure is in, and a JD's stated salary is
-                // virtually always annual.
+                // Always a plain annual figure — no "/hr" suffix.
                 placeholder="Minimum Salary"
                 className="w-full !lowercase"
                 style={{
@@ -812,13 +795,7 @@ const ViewJobDetails = () => {
                 decimalScale={2}
                 disabled
                 prefix="$"
-                // Always a plain annual figure — no "/hr" suffix. Exemption
-                // Status (`false`/Non-Exempt is the backend's own default for
-                // every job — see `Job.is_exempted`, job.py — for any job the
-                // recruiter hasn't touched that dropdown on yet, AI-filled
-                // ones very much included) isn't a reliable signal for what
-                // unit a salary figure is in, and a JD's stated salary is
-                // virtually always annual.
+                // Always a plain annual figure — no "/hr" suffix.
                 placeholder="Maximum Salary"
                 className="w-full !lowercase"
                 style={{
@@ -851,10 +828,7 @@ const ViewJobDetails = () => {
               decimalScale={2}
               disabled
               prefix="$"
-              // A referral bonus is always a flat one-time payment, never an
-              // hourly rate — the Exemption-Status-driven "/hr" suffix above
-              // (for min/max salary) never belonged here; it was copied
-              // alongside them by mistake.
+              // A referral bonus is always a flat one-time payment, never an hourly rate.
               // placeholder="Referral Bonus"
               className="w-full !lowercase"
               style={{

@@ -9,27 +9,17 @@ import JobDetailModal from './JobDetailModal';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 
 /**
- * 2.4 "Open jobs" — a real jobs list (job-service's own UUID-based
- * `GET /job-openings`, not the legacy numeric-ID list the "Job Openings"
- * nav page still runs on — see the two systems' write-up), with a per-job
- * KPI popup. Kept as its own section here rather than added to the
- * existing Job Openings page: that page's rows carry a different ID space
- * with no mapping to job-service's real jobs, so a KPI popup attached to
- * it couldn't query real data for the job actually clicked.
+ * "Open jobs" — a jobs list with a per-job KPI popup.
  *
- * `jobStatus`/`daysOpen` and `JobDetailModal` live in their own files now
- * (`jobOpeningListHelpers.ts`, `JobDetailModal.tsx`) so the "Active job
- * openings" KPI card's own popup (`JobOpeningsListModal`) can reuse the
- * exact same status/age reading and the exact same per-job detail, instead
- * of a second copy of both quietly drifting from this one.
+ * `jobStatus`/`daysOpen` and `JobDetailModal` live in their own files so
+ * `JobOpeningsListModal` can reuse the same status/age reading and the same
+ * per-job detail, instead of a second copy drifting from this one.
  */
 const OpenJobsSection: React.FC = () => {
   const { data, isLoading } = useGetJobOpeningsQuery({ page: 1, page_size: 10 });
   const [selectedJob, setSelectedJob] = useState<JobSummary | null>(null);
   const jobs = data?.items ?? [];
-  // `job.title` doesn't exist on the current backend contract (job-service
-  // only ever returns job_title_id — see JobSummaryView's docstring) — the
-  // real name comes from this org-service catalogue lookup instead.
+  // Job title comes from the org-service catalogue lookup, not the job summary itself.
   const { titleMap } = useJobTitleNameMap();
   const jobTitle = (job: JobSummary): string =>
     (job.job_title_id && titleMap[job.job_title_id]) || 'Untitled job';
@@ -77,7 +67,7 @@ const OpenJobsSection: React.FC = () => {
                   <td className="py-2">
                     <Badge status={status.badge}>{status.label}</Badge>
                   </td>
-                  <td className="py-2 text-neutral-600">{job.candidate_count}</td>
+                  <td className="py-2 text-neutral-600">{job.total_candidate_count}</td>
                   <td className="py-2 text-neutral-600">{job.interviewed_count}</td>
                   <td className="py-2 text-neutral-600">{daysOpen(job.job_open_date)}</td>
                 </tr>

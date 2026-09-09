@@ -1,14 +1,10 @@
-// Wire types for job-service's /job-openings surface — mirrors
-// app/modules/jobs/api/{requests,responses}.py field-for-field. This is the
-// REAL backend contract: a from-scratch draft/upload/AI-generate wizard with
-// async JD status polling, a resume/interview scoring split, a nested
-// round->questions question bank, and explicit publish/close/reopen
-// transitions — not the legacy `src/api/job-service/**` shapes (isDraft/
-// isClosed booleans on one big job object, synchronous JD fields, a flat
-// scoring config) those replace.
+// Wire types for job-service's /job-openings surface: draft/upload/
+// AI-generate entry paths, async JD status polling, a resume/interview
+// scoring split, a nested round->questions question bank, and explicit
+// publish/close/reopen transitions.
 
 export type JDStatus = 'PROCESSING' | 'GENERATING' | 'READY' | 'FAILED';
-export type SkillType = 'mandatory' | 'optional';
+export type SkillType = 'required' | 'optional';
 export type ScoringStage = 'RESUME' | 'INTERVIEW';
 export type JobStatusFilter = 'draft' | 'published' | 'closed';
 
@@ -166,7 +162,6 @@ export type JobDetailsResponse = {
   requirements: string | null;
   other_requirements: string | null;
   education_preference: string[];
-  communication_skills: string | null;
   use_culture_intro: boolean;
   is_multilingual: boolean;
   is_exempted: boolean;
@@ -214,7 +209,6 @@ export type SaveJobDetailsArgs = {
   requirements?: string | null;
   other_requirements?: string | null;
   education_preference?: string[];
-  communication_skills?: string | null;
   use_culture_intro?: boolean;
   is_multilingual?: boolean;
   is_exempted?: boolean;
@@ -461,7 +455,7 @@ export type JobSummary = {
   job_open_date: string | null;
   job_close_date: string | null;
   vacancies: number | null;
-  candidate_count: number;
+  total_candidate_count: number;
   interviewed_count: number;
   selected_count: number;
   not_selected_count: number;

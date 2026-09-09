@@ -16,11 +16,7 @@ const fields: CatalogField<FormValues>[] = [
   { name: 'description', label: 'Description (optional)', type: 'textarea' },
 ];
 
-/** GET/POST/PUT/DELETE /job-types — this organization's own configured job
- * types (what the Job Details wizard's Job Type dropdown offers a tenant
- * caller — see catalogs.ts's isMaster branch). Reuses the same
- * PlatformCatalogTab shell as Company Settings → Job Catalogs, just against
- * the tenant-scoped endpoint (isMaster: false) instead of the platform one. */
+/** This organization's own configured job types. */
 const TenantJobTypesTab: React.FC = () => {
   const { data, isLoading } = useListJobTypesQuery({ isMaster: false });
   const [create] = useCreateJobTypeMutation();
@@ -35,25 +31,32 @@ const TenantJobTypesTab: React.FC = () => {
       items={data}
       isLoading={isLoading}
       idOf={(item) => item.id}
-      labelOf={(item) => item.name}
+      labelOf={(item) => item.job_type_name}
       columns={[
-        { title: 'Name', dataIndex: 'name', key: 'name' },
-        { title: 'Description', key: 'description', render: (_, item) => item.description || '-' },
+        { title: 'Name', dataIndex: 'job_type_name', key: 'job_type_name' },
+        {
+          title: 'Description',
+          key: 'job_type_description',
+          render: (_, item) => item.job_type_description || '-',
+        },
       ]}
       fields={fields}
       emptyForm={emptyForm}
-      toFormValues={(item) => ({ name: item.name, description: item.description || '' })}
+      toFormValues={(item) => ({
+        name: item.job_type_name,
+        description: item.job_type_description || '',
+      })}
       onCreate={(values) =>
         create({
-          name: values.name.trim(),
-          description: values.description.trim() || undefined,
+          job_type_name: values.name.trim(),
+          job_type_description: values.description.trim() || undefined,
         }).unwrap()
       }
       onUpdate={(id, values) =>
         update({
           jobTypeId: id,
-          name: values.name.trim(),
-          description: values.description.trim() || undefined,
+          job_type_name: values.name.trim(),
+          job_type_description: values.description.trim() || undefined,
         }).unwrap()
       }
       onDelete={(item) => remove({ jobTypeId: item.id }).unwrap()}

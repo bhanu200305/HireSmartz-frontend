@@ -165,11 +165,8 @@ const JobsOpening = () => {
   const [, setIsJdPartialFailure] = useState<boolean>(false);
   const [, setIsJdFailed] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  // GET, not a mutation: organization-service generates this tenant's ONE QR
-  // on the first call and just re-resolves it after — see qrCode.ts's
-  // comment. Fetched only once the modal is open, on a real UUID tenantId
-  // (never the old numeric companyId decoded from the JWT, which the new
-  // auth tokens don't carry).
+  // GET, not a mutation: the backend generates the tenant's one QR on first call
+  // and re-resolves it after. Fetched only once the modal is open, on a real UUID tenantId.
   const {
     data: qrCodeData,
     isLoading: isQrLoading,
@@ -237,10 +234,7 @@ const JobsOpening = () => {
     skip: !hasTenantContext,
   });
   const { data: jobTypes = [] } = useListJobTypesQuery({ isMaster: callerKind === 'platform' });
-  // job-service's list endpoint only returns job_title_id (see mappers.ts's
-  // doc comment) — mapJobSummaryToListRow fills jobTitleName with the job's
-  // profile code as a placeholder until this resolves the real name, same
-  // as departmentName/jobTypeName below.
+  // List endpoint only returns job_title_id; this resolves the real name.
   const { titleMap } = useJobTitleNameMap();
   const { data: orgUsers } = useListUsersQuery({ limit: 200 }, { skip: !hasTenantContext });
 
@@ -248,7 +242,9 @@ const JobsOpening = () => {
     const deptMap = Object.fromEntries(
       orgDepartments.map((department) => [department.org_department_id, department.name])
     );
-    const typeMap = Object.fromEntries(jobTypes.map((jobType) => [jobType.id, jobType.name]));
+    const typeMap = Object.fromEntries(
+      jobTypes.map((jobType) => [jobType.id, jobType.job_type_name])
+    );
     const userMap = Object.fromEntries(
       (orgUsers?.items ?? []).map((user) => [user.user_id, user.full_name || user.email])
     );
@@ -275,9 +271,7 @@ const JobsOpening = () => {
     }));
   }, [data?.data, orgDepartments, jobTypes, titleMap, orgUsers]);
 
-  // Same four filter states `handleStatusChange` already applies for the
-  // status filter dropdown below — clicking a card is just a shortcut into
-  // that same filtering, not a separate mechanism.
+  // Clicking a card reuses the same filter states as the status dropdown below.
   const jobStatCards: StatCardData[] = [
     {
       icon: <MdOutlineWorkOutline />,
@@ -699,13 +693,8 @@ const JobsOpening = () => {
   };
 
   const handleCreateNewJob = () => {
-    // The pre-flight checkStatusForAtsAndCal gate is disabled: the current
-    // job-service backend (rewritten to /api/v1/job-openings/*) never
-    // implemented that endpoint — its own docs list the push-to-ATS
-    // "checkStatusForAtsAndCal direction" as explicitly not built — so the
-    // call always 404'd and silently blocked every "Add Job Opening" click.
-    // TODO: re-wire this to a real ATS/calendar readiness check once
-    // job-service exposes one (see /api/v1/ats/* for what does exist today).
+    // The pre-flight ATS/calendar readiness gate is disabled; no such endpoint exists yet.
+    // TODO: re-wire this once one is available.
     setShowCreateJobModal(true);
   };
 
@@ -919,10 +908,7 @@ const JobsOpening = () => {
             });
           },
         },
-      // Backend only allows deleting a job opening while it's still a draft
-      // (DELETE /job-openings/{id} 422s once it's ever been published or
-      // closed — see job-service routers.py's delete_draft), so this action
-      // is hidden for anything already published.
+      // Backend only allows deleting a job opening while it's still a draft.
       record?.isDraft && {
         key: 'delete',
         label: <span className="text-red-600">Delete</span>,
@@ -1082,12 +1068,7 @@ const JobsOpening = () => {
             </div>
           )}
           <div className="w-full rounded-xl overflow-hidden border border-neutral-200 bg-white shadow-xs">
-            {/* Row/Col grid with fixed spans (not antd <Table>, which already
-                gets scroll={{x:'max-content'}} via CustomTable elsewhere in
-                the app) — overflow-x-auto + min-w keeps every column
-                readable on a narrow viewport by scrolling instead of
-                squashing them, same pattern used for MasterTable and
-                CandidatesListing. */}
+            {/* overflow-x-auto + min-w keeps columns readable on narrow viewports. */}
             <div className="overflow-x-auto">
               <div className="min-w-[760px]">
                 <Row gutter={[16, 16]} className="bg-neutral-50 px-2 py-3">

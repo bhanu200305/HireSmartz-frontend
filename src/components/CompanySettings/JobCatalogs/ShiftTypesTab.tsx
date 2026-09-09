@@ -43,8 +43,7 @@ const computeDurationMinutes = (startTime: string, endTime: string): number | nu
   return diff > 0 ? diff : diff + 24 * 60;
 };
 
-/** GET/POST/PUT/DELETE /platform/master-shift-types — what /master/shift-types
- * offers a tenant when they add their own configured shift. */
+/** Platform-wide shift-type catalogue offered to a tenant configuring their own shifts. */
 const ShiftTypesTab: React.FC = () => {
   const { data, isLoading } = useListPlatformShiftTypesQuery();
   const [create] = useCreatePlatformShiftTypeMutation();
@@ -59,13 +58,13 @@ const ShiftTypesTab: React.FC = () => {
       items={data}
       isLoading={isLoading}
       idOf={(item) => item.shift_type_id}
-      labelOf={(item) => item.name}
+      labelOf={(item) => item.shift_name}
       columns={[
-        { title: 'Name', dataIndex: 'name', key: 'name' },
+        { title: 'Name', dataIndex: 'shift_name', key: 'shift_name' },
         {
           title: 'Description',
-          key: 'description',
-          render: (_, item) => item.description || '-',
+          key: 'shift_description',
+          render: (_, item) => item.shift_description || '-',
         },
         {
           title: 'Time',
@@ -82,15 +81,15 @@ const ShiftTypesTab: React.FC = () => {
       fields={fields}
       emptyForm={emptyForm}
       toFormValues={(item) => ({
-        name: item.name,
-        description: item.description || '',
+        name: item.shift_name,
+        description: item.shift_description || '',
         start_time: item.start_time || '',
         end_time: item.end_time || '',
       })}
       onCreate={(values) =>
         create({
-          name: values.name.trim(),
-          description: values.description.trim() || undefined,
+          shift_name: values.name.trim(),
+          shift_description: values.description.trim() || undefined,
           start_time: values.start_time.trim() || null,
           end_time: values.end_time.trim() || null,
           duration_minutes: computeDurationMinutes(values.start_time, values.end_time),
@@ -99,8 +98,8 @@ const ShiftTypesTab: React.FC = () => {
       onUpdate={(id, values) =>
         update({
           shiftTypeId: id,
-          name: values.name.trim(),
-          description: values.description.trim() || undefined,
+          shift_name: values.name.trim(),
+          shift_description: values.description.trim() || undefined,
           start_time: values.start_time.trim() || null,
           end_time: values.end_time.trim() || null,
           duration_minutes: computeDurationMinutes(values.start_time, values.end_time),

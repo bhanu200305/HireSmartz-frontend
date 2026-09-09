@@ -3,9 +3,9 @@ import type { Jobs } from '../../types';
 
 /**
  * Map a job-service JobSummaryResponse into the listing row shape the
- * Jobs Opening page already renders. Display names for title/department/
- * job-type/hiring-manager are resolved in the page from org-service /
- * catalog lookups — the list endpoint only returns ids.
+ * Jobs Opening page renders. Display names for title/department/job-type/
+ * hiring-manager are resolved in the page from catalog lookups — the list
+ * endpoint only returns ids.
  */
 export const mapJobSummaryToListRow = (item: JobSummaryResponse): Jobs => {
   const id = item.org_job_opening_id;
@@ -42,7 +42,7 @@ export const mapJobSummaryToListRow = (item: JobSummaryResponse): Jobs => {
     bookingCreatedCount: 0,
     inProgressCount: 0,
     invitationSentCount: 0,
-    candidateCount: item.candidate_count ?? 0,
+    candidateCount: item.total_candidate_count ?? 0,
     interviewedCandidateCount: item.interviewed_count ?? 0,
     location: item.location_city ? { id: item.location_city, name: item.location_city } : undefined,
     // Extra fields the listing uses for name resolution

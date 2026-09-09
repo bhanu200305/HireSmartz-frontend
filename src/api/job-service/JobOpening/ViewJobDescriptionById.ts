@@ -2,13 +2,11 @@ import { jobApi } from '../jobApi';
 import type { JobDetailsResponse } from '../types';
 
 /**
- * JD read/update — the real contract hangs JD off the job itself
- * (`GET/PUT /job-openings/{id}/details` and `PUT .../jd`), not a separate
- * aiJobDescription id. Hook names kept for import stability; request args
- * now take `jobOpeningId` (UUID).
+ * JD read/update — JD lives on the job itself
+ * (`GET/PUT /job-openings/{id}/details` and `PUT .../jd`).
  */
 type ViewJobDescriptionRequest = {
-  /** @deprecated use jobOpeningId — kept so call sites compile during migration */
+  /** @deprecated use jobOpeningId */
   aiJobDescriptionID?: number | string;
   jobOpeningId?: string;
 };
@@ -20,27 +18,16 @@ type ViewJobDescriptionResponse = {
   atsJobOpeningId?: string;
   source?: string;
   jd_status?: string;
-  /** True once the Job Details form has actually been saved with real
-   * content (job title + department are both required fields on that
-   * form) — false for a bare draft shell that only exists because
-   * `useStartManualJobOpening` calls `POST /job-openings/draft` up front,
-   * before the recruiter has filled in or saved anything. There's nothing
-   * for AI generation to compose from until this is true. */
+  /** True once Job Details has been saved with title + department — false
+   * for a bare draft shell with nothing for AI to compose from yet. */
   hasSavedDetails: boolean;
-  /** Which entry path created this job — 'MANUAL' | 'UPLOAD_JD' |
-   * 'AI_PROMPT' | 'ATS_IMPORT'. Only Manual/Upload jobs can call
-   * `/jd/enhance`; only AI Prompt jobs can call `/jd/regenerate` (see
-   * `EntryPath.supports_jd_enhancement`/`supports_jd_regeneration` on the
-   * backend) — the JD panel needs this to pick the right endpoint.
-   * Undefined on `updateJobDescription`'s response — that endpoint doesn't
-   * return it, but callers already hold it from the GET query by then. */
+  /** 'MANUAL' | 'UPLOAD_JD' | 'AI_PROMPT' | 'ATS_IMPORT'. Only Manual/Upload
+   * jobs can call `/jd/enhance`; only AI Prompt jobs can call
+   * `/jd/regenerate` — the JD panel needs this to pick the right endpoint.
+   * Undefined on `updateJobDescription`'s response. */
   entryPath?: string;
-  /** Structured fields AI writes alongside the JD text on generate/parse
-   * (job.jd.ready / job.jd.parsed's `responsibilities`/`other_requirements`/
-   * `min_experience_req`/etc.) — already present on the same `/details`
-   * response this query fetches, just not previously surfaced here.
-   * Undefined on `updateJobDescription`'s response, same reason as
-   * `entryPath` above. */
+  /** Structured fields AI writes alongside the JD text on generate/parse.
+   * Undefined on `updateJobDescription`'s response. */
   responsibilities?: string | null;
   otherRequirements?: string | null;
   minExperience?: number | null;
@@ -49,13 +36,9 @@ type ViewJobDescriptionResponse = {
   maxSalary?: number | null;
   // Extraction-only, never AI-composed — safe to sync back.
   vacancies?: number | null;
-  /** The job's full current skill list — includes skills AI added directly
-   * (job.jd.enhance's suggested_skills are auto-committed via job.add_skill,
-   * unlike generate/parse's suggestions-only cache; see
-   * handle_jd_enhancement_ready on the backend). `skill_type` is the
-   * catalogue's display name for the type (e.g. "Mandatory"/"Optional"),
-   * matched case-insensitively by callers. Undefined on
-   * `updateJobDescription`'s response, same reason as `entryPath` above. */
+  /** The job's full current skill list. `skill_type` is matched
+   * case-insensitively by callers. Undefined on `updateJobDescription`'s
+   * response. */
   skills?: { skill_id: string; skill_label: string; skill_type: string }[];
   // Also fed to AI enhance — exposed here for the Job Details sync check.
   shiftId?: string | null;
@@ -140,8 +123,7 @@ const extendedApi = jobApi.injectEndpoints({
       ): ViewJobDescriptionResponse => ({
         id: resolveJobId(args),
         jobDescription: response.jd ?? '',
-        // This mutation only ever runs from the EDIT panel once a
-        // description already exists — the job necessarily has details.
+        // Only runs from the EDIT panel once a description exists.
         hasSavedDetails: true,
       }),
       invalidatesTags: (_r, _e, args) => [
