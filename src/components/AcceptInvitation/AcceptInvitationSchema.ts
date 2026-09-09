@@ -33,21 +33,29 @@ export const acceptInvitationSchema = z
     isPlatformInvite: z.boolean(),
     password: passwordValidation(),
     confirmPassword: z.string().min(1, 'Please confirm your password.'),
+    // Which second factor the invite screen's method picker resolved to.
+    // MFA is mandatory now — always one of the three real choices.
+    methodType: z.enum(['totp', 'email', 'sms']),
     // Was a bare "I did this" checkbox whose state never actually reached
     // the server — the backend armed nothing on that basis (correctly: it
-    // requires real proof). Replaced with the 6-digit code the authenticator
-    // app itself produces, which the backend verifies before turning MFA on.
+    // requires real proof). Now REQUIRED end to end: a missing/wrong code
+    // fails account creation entirely rather than leaving MFA off. For
+    // "totp" it's read off the authenticator app; for "email"/"sms" it's
+    // the code sendInviteMfaCode already delivered.
     mfaCode: z
       .string()
       .trim()
-      .regex(/^\d{6}$/, 'Enter the 6-digit code from your authenticator app.'),
+      .regex(/^\d{6}$/, 'Enter the 6-digit verification code.'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match.",
     path: ['confirmPassword'],
   })
   .superRefine((data, ctx) => {
-    if (data.isPlatformInvite) return;
+    // A platform invite still needs a phone number when SMS is the chosen
+    // factor — there's no profile phone field to reuse for that invite
+    // type, so the MFA method itself drives the requirement here.
+    if (data.isPlatformInvite && data.methodType !== 'sms') return;
 
     const countryCode = data.countryCode?.trim() ?? '';
     if (!countryCode) {

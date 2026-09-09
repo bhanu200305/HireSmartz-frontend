@@ -1,18 +1,28 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaCheckCircle, FaRegCopy } from 'react-icons/fa';
-import { MdLockOutline, MdErrorOutline, MdPersonOutline, MdOutlinePhone } from 'react-icons/md';
+import {
+  MdLockOutline,
+  MdErrorOutline,
+  MdPersonOutline,
+  MdOutlinePhone,
+  MdOutlineEmail,
+  MdOutlineSms,
+  MdOutlineQrCode2,
+} from 'react-icons/md';
 import { get } from 'lodash-es';
-import { Select } from 'antd';
+import { Radio, Select } from 'antd';
 import { Button, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import Footer from '../Footer';
 import {
   useLazyValidateInvitationQuery,
   useAcceptInvitationMutation,
+  useSendInviteMfaCodeMutation,
   type InvitationErrorBody,
+  type MfaMethodType,
 } from '../../api/organization-service/Invitations/invitations';
 import { buildOtpAuthUri, generateBase32Secret } from '../../shared/utils/mfa.helpers';
 import { restrictPhoneDigitsForCountry } from '../../shared/utils/validation/phoneValidation';
@@ -78,6 +88,12 @@ const submitErrorMessageFor = (errorCode: string | undefined, fallback: string):
       return INVITATION_NOT_FOUND_COPY.message;
     case 'VALIDATION_ERROR':
       return "We couldn't process that — please check the highlighted fields and try again.";
+    // MFA is mandatory now — a wrong/missing code means NOTHING was
+    // created, on either side (see AcceptInvitationUseCase's docstring).
+    // Told plainly, not softened into "something went wrong", because the
+    // fix is specific: re-enter the code, or request a new one.
+    case 'invalid_mfa_code':
+      return "That verification code isn't correct. Double-check it, or request a new one, and try again.";
     default:
       return fallback;
   }
@@ -180,6 +196,7 @@ const AcceptInvitation = () => {
   const [validateInvitation, { data: invitation, isFetching, isError, error }] =
     useLazyValidateInvitationQuery();
   const [acceptInvitation, { isLoading: isAccepting }] = useAcceptInvitationMutation();
+  const [sendInviteMfaCode, { isLoading: isSendingCode }] = useSendInviteMfaCodeMutation();
 
   useEffect(() => {
     if (token) {
@@ -207,11 +224,22 @@ const AcceptInvitation = () => {
         isPlatformInvite: false,
         password: '',
         confirmPassword: '',
+        methodType: 'totp',
         mfaCode: '',
       },
       mode: 'onChange',
     });
   const { errors, isValid } = formState;
+  const methodType = useWatch({ control, name: 'methodType' });
+  const countryCode = useWatch({ control, name: 'countryCode' });
+  const phoneNumber = useWatch({ control, name: 'phoneNumber' });
+
+  // A code, once sent, is only valid for the destination it was sent to and
+  // the method it was sent for. Tracked outside the form because it's a
+  // fact about a network call this screen made, not a value the backend
+  // reads directly.
+  const [deliveryHint, setDeliveryHint] = useState<string | null>(null);
+  const [codeSent, setCodeSent] = useState(false);
 
   // is_platform_invite only becomes known once the token validates — until
   // then `isPlatformInvite` stays at its `false` default, which is harmless
@@ -223,6 +251,22 @@ const AcceptInvitation = () => {
     }
   }, [invitation, setValue]);
 
+  // Switching method, or editing the SMS destination after a code was sent,
+  // makes the previous code (if any) stale — clear it rather than let a
+  // leftover value from a different factor reach the submit call.
+  useEffect(() => {
+    setDeliveryHint(null);
+    setCodeSent(false);
+    setValue('mfaCode', '', { shouldValidate: true });
+  }, [methodType, setValue]);
+  useEffect(() => {
+    if (methodType === 'sms') {
+      setDeliveryHint(null);
+      setCodeSent(false);
+      setValue('mfaCode', '', { shouldValidate: true });
+    }
+  }, [countryCode, phoneNumber, methodType, setValue]);
+
   const handleCopySecret = async () => {
     try {
       await navigator.clipboard.writeText(mfaSecret);
@@ -232,14 +276,46 @@ const AcceptInvitation = () => {
     }
   };
 
+  const handleSendCode = async () => {
+    if (!token || (methodType !== 'email' && methodType !== 'sms')) return;
+    if (methodType === 'sms') {
+      const valid = await trigger(['countryCode', 'phoneNumber']);
+      if (!valid) return;
+    }
+    try {
+      const values = getValues();
+      const result = await sendInviteMfaCode({
+        token,
+        method_type: methodType,
+        phone_number:
+          methodType === 'sms'
+            ? `${values.countryCode?.trim() ?? ''}${values.phoneNumber?.trim() ?? ''}`
+            : undefined,
+      }).unwrap();
+      setDeliveryHint(result.delivery_hint);
+      setCodeSent(true);
+      showToast({ message: `Code sent to ${result.delivery_hint}.`, type: 'success' });
+    } catch (err: unknown) {
+      const body = get(err, 'data') as InvitationErrorBody | undefined;
+      showToast({
+        message: submitErrorMessageFor(
+          body?.error_code,
+          get(err, 'data.message', "Couldn't send a code. Please try again.")
+        ),
+        type: 'error',
+      });
+    }
+  };
+
   const onSubmit = async (data: AcceptInvitationFormValues) => {
     if (!token) return;
     setExternalServiceError(false);
     try {
-      const result = await acceptInvitation({
+      await acceptInvitation({
         token,
         password: data.password,
-        mfa_secret: mfaSecret,
+        method_type: data.methodType,
+        mfa_secret: data.methodType === 'totp' ? mfaSecret : undefined,
         mfa_code: data.mfaCode,
         first_name: data.firstName.trim(),
         last_name: data.lastName.trim() || undefined,
@@ -247,17 +323,13 @@ const AcceptInvitation = () => {
         phone_number: data.isPlatformInvite ? undefined : data.phoneNumber?.trim() || undefined,
       }).unwrap();
       setIsAccepted(true);
-      // Tells the truth about what actually happened server-side, not what
-      // the form assumed — a wrong code still creates the account, just
-      // without MFA armed, and the user needs to know that rather than be
-      // told "activated" and find out otherwise at their next login.
+      // A 200 here already means the chosen factor is armed — MFA is
+      // mandatory now, so there's nothing conditional left to tell the user.
       showToast({
-        message: result.mfa_enabled
-          ? 'Account activated with two-factor authentication on. You can now log in.'
-          : "Account activated, but that code didn't match — two-factor authentication is off for now. You can set it up again from your account settings.",
-        type: result.mfa_enabled ? 'success' : 'warning',
+        message: 'Account activated with two-factor authentication on. You can now log in.',
+        type: 'success',
       });
-      setTimeout(() => navigate('/login'), result.mfa_enabled ? 2000 : 3500);
+      setTimeout(() => navigate('/login'), 2000);
     } catch (err: unknown) {
       const body = get(err, 'data') as InvitationErrorBody | undefined;
       if (body?.error_code === 'EXTERNAL_SERVICE_ERROR') {
@@ -274,6 +346,11 @@ const AcceptInvitation = () => {
       });
     }
   };
+
+  // For "email"/"sms" the code must actually have been requested — the
+  // regex in the schema only checks shape, not that a real code is
+  // outstanding for it to be checked against.
+  const needsCodeRequest = methodType !== 'totp' && !codeSent;
 
   if (isFetching) {
     return (
@@ -385,8 +462,13 @@ const AcceptInvitation = () => {
           )}
         </div>
 
-        {!invitation.is_platform_invite && (
+        {(!invitation.is_platform_invite || methodType === 'sms') && (
           <div>
+            {invitation.is_platform_invite && (
+              <p className="mb-1 px-2 text-xs text-gray-500">
+                Where should we text your verification code?
+              </p>
+            )}
             <div className="flex gap-2">
               <Controller
                 name="countryCode"
@@ -529,23 +611,85 @@ const AcceptInvitation = () => {
         </div>
 
         <div className="rounded-2xl border border-[var(--border)] bg-gray-50 p-4">
-          <p className="text-sm font-medium text-gray-700">Set up two-factor authentication</p>
+          <p className="text-sm font-medium text-gray-700">Two-factor authentication</p>
           <p className="mt-1 text-xs text-gray-500">
-            Add this key to an authenticator app (Google Authenticator, 1Password, Authy…), then
-            confirm below.
+            Required to activate your account. Choose how you&apos;d like to verify it&apos;s you.
           </p>
-          <div className="mt-3 flex items-center gap-2 rounded-xl bg-white border border-[var(--border)] px-3 py-2">
-            <code className="flex-1 truncate text-xs text-gray-700">{mfaSecret}</code>
-            <button
-              type="button"
-              onClick={handleCopySecret}
-              className="text-brand-600 hover:text-brand-700 cursor-pointer shrink-0"
-              aria-label="Copy secret key"
-            >
-              <FaRegCopy />
-            </button>
-          </div>
-          {otpAuthUri && <p className="mt-2 break-all text-[10px] text-gray-400">{otpAuthUri}</p>}
+
+          <Controller
+            name="methodType"
+            control={control}
+            render={({ field }) => (
+              <Radio.Group
+                {...field}
+                buttonStyle="solid"
+                className="mt-3 flex w-full"
+                onChange={(e) => field.onChange(e.target.value as MfaMethodType)}
+              >
+                <Radio.Button value="totp" className="flex-1 text-center">
+                  <MdOutlineQrCode2 className="mr-1 inline text-base align-text-bottom" />
+                  Authenticator app
+                </Radio.Button>
+                <Radio.Button value="email" className="flex-1 text-center">
+                  <MdOutlineEmail className="mr-1 inline text-base align-text-bottom" />
+                  Email
+                </Radio.Button>
+                <Radio.Button value="sms" className="flex-1 text-center">
+                  <MdOutlineSms className="mr-1 inline text-base align-text-bottom" />
+                  Phone
+                </Radio.Button>
+              </Radio.Group>
+            )}
+          />
+
+          {methodType === 'totp' && (
+            <>
+              <p className="mt-3 text-xs text-gray-500">
+                Add this key to an authenticator app (Google Authenticator, 1Password, Authy…), then
+                confirm below.
+              </p>
+              <div className="mt-2 flex items-center gap-2 rounded-xl bg-white border border-[var(--border)] px-3 py-2">
+                <code className="flex-1 truncate text-xs text-gray-700">{mfaSecret}</code>
+                <button
+                  type="button"
+                  onClick={handleCopySecret}
+                  className="text-brand-600 hover:text-brand-700 cursor-pointer shrink-0"
+                  aria-label="Copy secret key"
+                >
+                  <FaRegCopy />
+                </button>
+              </div>
+              {otpAuthUri && (
+                <p className="mt-2 break-all text-[10px] text-gray-400">{otpAuthUri}</p>
+              )}
+            </>
+          )}
+
+          {(methodType === 'email' || methodType === 'sms') && (
+            <div className="mt-3">
+              <p className="text-xs text-gray-500">
+                {methodType === 'email' ? (
+                  <>
+                    We&apos;ll send a code to{' '}
+                    <span className="font-medium">{invitation.invited_email}</span>.
+                  </>
+                ) : (
+                  "We'll text a code to the phone number above."
+                )}
+              </p>
+              <button
+                type="button"
+                onClick={handleSendCode}
+                disabled={isSendingCode}
+                className="mt-2 rounded-3xl border border-brand-600 px-4 py-1.5 text-sm font-medium text-brand-600 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSendingCode ? 'Sending…' : codeSent ? 'Resend code' : 'Send code'}
+              </button>
+              {deliveryHint && (
+                <p className="mt-2 text-xs text-gray-500">Code sent to {deliveryHint}.</p>
+              )}
+            </div>
+          )}
 
           <Controller
             name="mfaCode"
@@ -555,18 +699,25 @@ const AcceptInvitation = () => {
                 {...field}
                 inputMode="numeric"
                 maxLength={6}
-                placeholder="6-digit code from your app"
-                className="mt-3 w-full !normal-case px-4 py-2 bg-white border rounded-3xl tracking-widest focus:ring focus:ring-brand-300 border-[var(--border)]"
+                disabled={needsCodeRequest}
+                placeholder={
+                  methodType === 'totp' ? '6-digit code from your app' : '6-digit verification code'
+                }
+                className="mt-3 w-full !normal-case px-4 py-2 bg-white border rounded-3xl tracking-widest focus:ring focus:ring-brand-300 border-[var(--border)] disabled:bg-gray-100 disabled:cursor-not-allowed"
                 onChange={(e) => field.onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
               />
             )}
           />
           {errors.mfaCode ? (
             <p className="text-red-500 text-sm px-2 py-1">{errors.mfaCode.message}</p>
+          ) : needsCodeRequest ? (
+            <p className="mt-1 text-xs text-gray-500">
+              Request a code above before entering it here.
+            </p>
           ) : (
             <p className="mt-1 text-xs text-gray-500">
-              Enter the code your app is showing right now to turn this on — otherwise your
-              account is created with password sign-in only, and you can set this up later.
+              A wrong or missing code will stop your account from being created — you&apos;ll be
+              asked to try again.
             </p>
           )}
         </div>
@@ -574,7 +725,7 @@ const AcceptInvitation = () => {
         <Button
           type="submit"
           appname="accept invitation"
-          disabled={!isValid || isAccepting}
+          disabled={!isValid || isAccepting || needsCodeRequest}
           className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white transition-all duration-150 hover:brightness-105 hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
         >
           {isAccepting ? 'Activating…' : 'Activate account'}
