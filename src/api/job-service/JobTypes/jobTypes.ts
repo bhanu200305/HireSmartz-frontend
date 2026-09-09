@@ -1,11 +1,10 @@
 import { jobApi } from '../jobApi';
 
-// This organization's own configured job type instances — what `job_type_id`
-// on Job Details references. Distinct from Master/master.ts's fixed job-type
-// suggestion catalog.
+// This organization's own configured job types — what `job_type_id` on
+// Job Details references. Distinct from Master/master.ts's suggestion list.
 export type OrganizationJobType = {
   id: string;
-  name: string;
+  job_type_name: string;
 };
 
 const extendedApi = jobApi.injectEndpoints({
@@ -14,18 +13,18 @@ const extendedApi = jobApi.injectEndpoints({
       query: () => '/job-types',
       providesTags: ['OrgJobTypes'],
     }),
-    createOrganizationJobType: build.mutation<OrganizationJobType, { name: string }>({
+    createOrganizationJobType: build.mutation<OrganizationJobType, { job_type_name: string }>({
       query: (body) => ({ url: '/job-types', method: 'POST', body }),
       invalidatesTags: ['OrgJobTypes'],
     }),
     updateOrganizationJobType: build.mutation<
       OrganizationJobType,
-      { jobTypeId: string; name: string }
+      { jobTypeId: string; job_type_name: string }
     >({
-      query: ({ jobTypeId, name }) => ({
+      query: ({ jobTypeId, job_type_name }) => ({
         url: `/job-types/${jobTypeId}`,
         method: 'PUT',
-        body: { name },
+        body: { job_type_name },
       }),
       invalidatesTags: ['OrgJobTypes'],
     }),

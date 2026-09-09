@@ -16,9 +16,7 @@ const fields: CatalogField<FormValues>[] = [
   { name: 'description', label: 'Description (optional)', type: 'textarea' },
 ];
 
-/** GET/POST/PUT/DELETE /platform/master-skill-categories — what a skill's
- * `skill_category_id` references. Blocked from deletion while a skill
- * still references it. */
+/** Platform-wide skill-category catalogue. Blocked from deletion while a skill still references it. */
 const SkillCategoriesTab: React.FC = () => {
   const { data, isLoading } = useListPlatformSkillCategoriesQuery();
   const [create] = useCreatePlatformSkillCategoryMutation();
@@ -33,30 +31,37 @@ const SkillCategoriesTab: React.FC = () => {
       items={data}
       isLoading={isLoading}
       idOf={(item) => item.category_id}
-      labelOf={(item) => item.name}
+      labelOf={(item) => item.skill_category}
       columns={[
-        { title: 'Name', dataIndex: 'name', key: 'name' },
-        { title: 'Description', key: 'description', render: (_, item) => item.description || '-' },
+        { title: 'Name', dataIndex: 'skill_category', key: 'skill_category' },
+        {
+          title: 'Description',
+          key: 'category_description',
+          render: (_, item) => item.category_description || '-',
+        },
       ]}
       fields={fields}
       emptyForm={emptyForm}
-      toFormValues={(item) => ({ name: item.name, description: item.description || '' })}
+      toFormValues={(item) => ({
+        name: item.skill_category,
+        description: item.category_description || '',
+      })}
       onCreate={(values) =>
         create({
-          name: values.name.trim(),
-          description: values.description.trim() || undefined,
+          skill_category: values.name.trim(),
+          category_description: values.description.trim() || undefined,
         }).unwrap()
       }
       onUpdate={(id, values) =>
         update({
           categoryId: id,
-          name: values.name.trim(),
-          description: values.description.trim() || undefined,
+          skill_category: values.name.trim(),
+          category_description: values.description.trim() || undefined,
         }).unwrap()
       }
       onDelete={(item) => remove(item.category_id).unwrap()}
       deleteConfirmTitle={(item) =>
-        `Remove "${item.name}"? Blocked while a skill still references it.`
+        `Remove "${item.skill_category}"? Blocked while a skill still references it.`
       }
     />
   );

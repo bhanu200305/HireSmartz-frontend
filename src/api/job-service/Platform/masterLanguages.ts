@@ -1,11 +1,10 @@
 import { jobApi } from '../jobApi';
 
-// GET/POST/PUT/DELETE /platform/master-languages — the Super Admin's
-// language catalogue. What a job's `language_ids` on Job Details pick from
-// (via the tenant-facing read-only /master/languages).
+// The Super Admin's language catalogue. What a job's `language_ids` pick
+// from (via the tenant-facing read-only /master/languages).
 export type PlatformLanguage = {
   language_id: string;
-  name: string;
+  language_name: string;
   language_code: string;
 };
 
@@ -18,14 +17,14 @@ const extendedApi = jobApi.injectEndpoints({
     }),
     createPlatformLanguage: build.mutation<
       PlatformLanguage,
-      { name: string; language_code: string }
+      { language_name: string; language_code: string }
     >({
       query: (body) => ({ url: '/platform/master-languages', method: 'POST', body }),
       invalidatesTags: ['PlatformLanguages'],
     }),
     updatePlatformLanguage: build.mutation<
       PlatformLanguage,
-      { languageId: string; name: string; language_code: string }
+      { languageId: string; language_name: string; language_code: string }
     >({
       query: ({ languageId, ...body }) => ({
         url: `/platform/master-languages/${languageId}`,

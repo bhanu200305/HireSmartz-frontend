@@ -17,8 +17,7 @@ const fields: CatalogField<FormValues>[] = [
   { name: 'language_code', label: 'Language code (e.g. en, hi)', type: 'text', required: true },
 ];
 
-/** GET/POST/PUT/DELETE /platform/master-languages — what a job's
- * `language_ids` (Job Details' Communication Language field) pick from. */
+/** Platform-wide language catalogue used by the Job Details Communication Language field. */
 const LanguagesTab: React.FC = () => {
   const { data, isLoading } = useListPlatformLanguagesQuery();
   const [create] = useCreatePlatformLanguageMutation();
@@ -33,9 +32,9 @@ const LanguagesTab: React.FC = () => {
       items={data}
       isLoading={isLoading}
       idOf={(item) => item.language_id}
-      labelOf={(item) => item.name}
+      labelOf={(item) => item.language_name}
       columns={[
-        { title: 'Name', dataIndex: 'name', key: 'name' },
+        { title: 'Name', dataIndex: 'language_name', key: 'language_name' },
         {
           title: 'Code',
           key: 'language_code',
@@ -48,14 +47,17 @@ const LanguagesTab: React.FC = () => {
       ]}
       fields={fields}
       emptyForm={emptyForm}
-      toFormValues={(item) => ({ name: item.name, language_code: item.language_code })}
+      toFormValues={(item) => ({ name: item.language_name, language_code: item.language_code })}
       onCreate={(values) =>
-        create({ name: values.name.trim(), language_code: values.language_code.trim() }).unwrap()
+        create({
+          language_name: values.name.trim(),
+          language_code: values.language_code.trim(),
+        }).unwrap()
       }
       onUpdate={(id, values) =>
         update({
           languageId: id,
-          name: values.name.trim(),
+          language_name: values.name.trim(),
           language_code: values.language_code.trim(),
         }).unwrap()
       }

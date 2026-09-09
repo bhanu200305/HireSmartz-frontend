@@ -28,6 +28,8 @@ import { useGetTopFivePromptQuery } from '../../../api/ai-service/AiQuestion/AiQ
 import { asJobId } from '../../../api/job-service/jobId';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 
+const JD_STATUS_POLL_TIMEOUT_MS = 90_000;
+
 interface JobDescriptionPanelProps {
   /** UUID of the job — JD hangs off the job, not a separate entity. */
   aiJobDescriptionId: string | number | null;
@@ -59,25 +61,16 @@ const JobDescriptionPanel = ({
   const [previewDescription, setPreviewDescription] = useState('');
   const [editorContent, setEditorContent] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
-  // Tracks which job this component instance has already shown a "JD
-  // generation failed" toast for — a plain boolean here would wrongly stay
-  // `true` across a job switch, since this component isn't remounted when
-  // only the `jobOpeningId` query param changes (route is `/job-details`,
-  // not `/job-details/:id`).
+  // Which job the "JD generation failed" toast was last shown for, so it isn't repeated.
   const failedToastShownForJobRef = useRef<string | null>(null);
-  // Previous jd_status tick, so the effect below can tell an actual
-  // GENERATING/PROCESSING -> READY completion apart from "status just
-  // happens to be READY" (also every untouched job's resting state).
+  // Previous jd_status tick, to detect an actual transition into READY.
   const prevJdStatusRef = useRef<string | undefined>(undefined);
-  // Set true the tick a completion is observed; consumed (and cleared) by
-  // the Redux-dispatch effect once the resulting refetch actually lands.
+  // True once a completion is observed, until the resulting refetch lands.
   const awaitingFreshAiFieldsRef = useRef(false);
 
   const { register, getValues, setValue, watch } = useForm({
     defaultValues: { description: '' },
   });
-  // Read fresh at dispatch time (not destructured once) so the merge below
-  // always starts from whatever's currently in Redux, not a stale closure.
   const jobDetailsInRedux = useSelector((state: RootState) =>
     isEditFlow ? state.EditJobSlice.details : state.JobSlice.details
   );
@@ -86,24 +79,41 @@ const JobDescriptionPanel = ({
     data: prompts,
     isFetching: isFetchingPrompts,
     refetch: refetchTopFivePrompt,
-  } = useGetTopFivePromptQuery({ mode: 'JD' }, { refetchOnMountOrArgChange: true });
+  } = useGetTopFivePromptQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const {
     data: response,
     isLoading,
     refetch,
   } = useGetJobDescriptionByIdQuery({ jobOpeningId }, { skip: !jobOpeningId });
-  // Whether the Job Details form has actually been saved with real content
-  // (job title + department, both required there) — false for a bare
-  // draft shell (`useStartManualJobOpening` creates one up front, before
-  // anything's filled in) and while `response` hasn't loaded yet, so this
-  // panel never shows Generate/Refine/Regenerate for a job with nothing yet
-  // to generate from.
+  // Whether Job Details has real saved content (title + department); gates Generate/Refine/Regenerate.
   const hasSavedDetails = response?.hasSavedDetails ?? false;
+  // Stops polling once a terminal status is seen for this job id.
+  const [jdStatusIsTerminal, setJdStatusIsTerminal] = useState(false);
   const { data: jdStatus } = useGetJdStatusQuery(jobOpeningId, {
     skip: !jobOpeningId,
-    pollingInterval: 2000,
+    pollingInterval: jdStatusIsTerminal ? 0 : 1000,
   });
+  useEffect(() => {
+    setJdStatusIsTerminal(false);
+  }, [jobOpeningId]);
+  useEffect(() => {
+    if (jdStatus?.status === 'READY' || jdStatus?.status === 'FAILED') {
+      setJdStatusIsTerminal(true);
+    }
+  }, [jdStatus?.status]);
+  // Safety net if a terminal status never arrives.
+  useEffect(() => {
+    if (jdStatusIsTerminal) return;
+    const timeoutId = setTimeout(() => {
+      setJdStatusIsTerminal(true);
+      showToast({
+        message: "Still generating - refresh in a moment if it doesn't appear shortly.",
+        type: 'warning',
+      });
+    }, JD_STATUS_POLL_TIMEOUT_MS);
+    return () => clearTimeout(timeoutId);
+  }, [jdStatusIsTerminal, jobOpeningId]);
   const [updateJobDescription, { isLoading: isUpdating }] = useUpdateJobDescriptionMutation();
   const [enhanceJd, { isLoading: isGenerating }] = useEnhanceJdMutation();
 
@@ -114,11 +124,7 @@ const JobDescriptionPanel = ({
     }
   }, [response]);
 
-  // Enhancement is applied directly by job-service the moment ai-service
-  // replies — there's no separate "ready, now apply it" step anymore (see
-  // enhance_jd.py's `apply_jd_enhancement`). `jd_status` flipping to READY
-  // is the only completion signal; refetching the job picks up whatever it
-  // just wrote straight into `jobDescription`.
+  // jd_status flipping to READY is the completion signal; refetch picks up the new jobDescription.
   useEffect(() => {
     if (!jobOpeningId) return;
     const previousStatus = prevJdStatusRef.current;
@@ -128,12 +134,7 @@ const JobDescriptionPanel = ({
     if (currentStatus === 'READY') {
       failedToastShownForJobRef.current = null;
       void refetch();
-      // A real GENERATING/PROCESSING -> READY completion (not just "status
-      // happens to already be READY", which is also every job's resting
-      // state) means job-service just wrote fresh structured fields —
-      // `response` above is still the pre-completion snapshot until the
-      // refetch resolves, so flag it and let the effect below apply the
-      // NEW response once it lands, rather than reading `response` here.
+      // Only flag on an actual GENERATING/PROCESSING -> READY transition, not an already-resting READY.
       if (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') {
         awaitingFreshAiFieldsRef.current = true;
       }
@@ -146,15 +147,11 @@ const JobDescriptionPanel = ({
     }
   }, [jdStatus?.status, jdStatus?.error_message, jobOpeningId, refetch]);
 
-  // Pushes AI-refreshed fields into Redux once the refetch above resolves.
-  // Plain merge — never wipes out other saved fields.
+  // Pushes AI-refreshed fields into Redux once the refetch above resolves. Merges, never overwrites.
   useEffect(() => {
     if (!awaitingFreshAiFieldsRef.current || !response) return;
     awaitingFreshAiFieldsRef.current = false;
 
-    // Skills AI suggested via job.jd.enhance are auto-committed straight
-    // onto the job (job.add_skill — unlike generate/parse's
-    // suggestions-only cache), so `response.skills` already reflects them.
     const currentMandatory = (jobDetailsInRedux.mandatorySkills || []).map(String);
     const currentOptional = (jobDetailsInRedux.optionalSkills || []).map(String);
     const { newMandatoryIds, newOptionalIds, newOptions } = mergeNewAiSkills(
@@ -197,14 +194,8 @@ const JobDescriptionPanel = ({
     setIsInputFocused(false);
   };
 
-  // The (re)generate action, with or without the recruiter's own typed
-  // instructions — REFINE and REGENERATE both go through this one action
-  // against `/jd/enhance` rather than two different endpoints. `regenerate`
-  // maps straight onto the backend's own flag — true discards the current
-  // JD text and composes fresh from Job Details fields instead of
-  // polishing it. Same endpoint the floating "Fill with AI" widget on the
-  // Job Details step uses (see FillWithAiWidget.tsx) — every job is a
-  // normal Manual-entry draft now, so there's just this one flow.
+  // Refine and Regenerate both go through this action; `regenerate` discards the current
+  // JD text and composes fresh instead of polishing it.
   const handleGenerate = async (refineInstructions?: string, regenerate = false) => {
     if (!jobOpeningId) return;
     try {
@@ -322,9 +313,7 @@ const JobDescriptionPanel = ({
     return children as string;
   };
 
-  // Shared by the Manual/Upload Refine row and the AI-Prompt regenerate row
-  // below — same input, same "top 5 prompts" suggestion dropdown, only the
-  // button next to it (and which mutation it fires) differs.
+  // Shared input + prompt-suggestion dropdown for the Refine and Regenerate rows.
   const promptInputField = (
     <div className="relative z-30 w-full">
       <Input
@@ -352,9 +341,7 @@ const JobDescriptionPanel = ({
     </div>
   );
 
-  // The generated JD itself, with its EDIT/SAVE controls — identical for
-  // every entry path once a description exists, so both the Manual/Upload
-  // branch and the AI-Prompt branch below render this same block.
+  // Generated JD with EDIT/SAVE controls, shared across entry paths.
   const jdContentCard = (
     <div className="w-full mt-4 mx-auto p-4 bg-[#FAFAFA] border border-[#E2E2E2] shadow rounded-lg">
       <div className="flex items-center space-x-2 justify-end">

@@ -18,21 +18,9 @@ const formatLocation = (
   return [loc.city, loc.state, loc.country].filter(Boolean).join(', ') || null;
 };
 
-// The backend returns free-text blocks (jd/responsibilities/requirements/
-// other_requirements), not markdown with '## ' section headers like the old
-// aiJobDescription field did. The two shapes below aren't rendered the same
-// way, because they aren't the same kind of text:
-//
-// - responsibilities/requirements/other_requirements are AI-extracted, one
-//   complete point per line — a real bullet list.
-// - jd is the RAW text ai-service's jd_text_extractor.py pulls straight out
-//   of the uploaded PDF/DOCX (deliberately left unprocessed — see that
-//   module's own docstring). Its '\n's are mostly the source document's
-//   hard line-wraps, not paragraph breaks, and it can carry a stray control
-//   character where a bullet glyph's font had no proper Unicode mapping
-//   (pypdf extracts that as U+007F, which renders as an invisible box).
-//   Both are handled here rather than upstream, since jd is intentionally
-//   kept as the raw original.
+// responsibilities/requirements/other_requirements are AI-extracted, one point per line.
+// jd is raw text extracted from the uploaded PDF/DOCX, so its line breaks are mostly
+// hard-wraps rather than paragraph breaks and can carry stray control characters.
 const CONTROL_CHAR = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 const BULLET_PREFIX = /^[•*-]\s*/;
 
@@ -58,12 +46,7 @@ const BulletBlock = ({ title, text }: { title: string; text: string | null }) =>
   );
 };
 
-// jd's raw extracted lines are mostly mid-sentence hard-wraps, not real
-// paragraph breaks — merge lines into flowing paragraphs instead of
-// rendering one fragment per line. A line is kept accumulating into the
-// current paragraph until it ends a sentence (. ! ? :); a line that was
-// bulleted in the source (control char or -/*/• prefix) is flushed as its
-// own line instead, with a real bullet character.
+// Merges hard-wrapped lines into flowing paragraphs; bulleted lines are kept as their own line.
 const JdBlock = ({ text }: { text: string | null }) => {
   if (!text) return null;
   const rawLines = text
@@ -207,7 +190,7 @@ export const CareersJobDetailPage = () => {
                   className="px-3 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-600 bg-white"
                 >
                   {skill.skill_label}
-                  {skill.skill_type.toLowerCase() === 'mandatory' ? '' : ' (preferred)'}
+                  {skill.skill_type.toLowerCase() === 'required' ? '' : ' (preferred)'}
                 </span>
               ))}
             </div>

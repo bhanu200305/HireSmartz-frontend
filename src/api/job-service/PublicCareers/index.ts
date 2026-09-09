@@ -1,17 +1,12 @@
 import jobApi from '../jobApi';
 
-// GET /public/organizations/{organization_id}/jobs[/{job_id}] — job-service's
-// public, no-login job board (public_router.py). This is the page a QR code
-// (organization-service's own GenerateTenantQrCodeUseCase) sends a candidate
-// to: `organization_id` here is the exact same UUID as the `tenant_id` the
-// QR was generated for.
+// job-service's public, no-login job board. `organization_id` here is the
+// same UUID as the tenant_id a QR code was generated for.
 //
-// Deliberately thin today — the backend route only takes `page`/`page_size`,
-// no search or location filter yet, so this client doesn't invent params the
-// API can't answer. `job_profile_code` (not a friendly title) is what the
-// list row currently carries; the detail response does have a real
-// `job_title`, so the list card falls back to showing the code until the
-// backend adds one there too.
+// Deliberately thin — the backend route only takes page/page_size, no
+// search or location filter yet. List rows only carry `job_profile_code`,
+// so the list card falls back to showing the code until the backend adds
+// a friendly title there too (the detail response already has one).
 
 export type PublicJobLocation = {
   city: string | null;
@@ -19,13 +14,8 @@ export type PublicJobLocation = {
   country: string | null;
 };
 
-// Matches job-service's actual PublicJobSkillResponse — there is no
-// `name`/`is_mandatory` on this contract (that shape belongs to internal
-// skill-catalogue dropdown options elsewhere in this codebase, a different
-// type entirely). "Mandatory" here is a string category
-// (`skill_type`), not a boolean, matched case-insensitively same as every
-// other skill_type check in this codebase (catalogue values aren't
-// guaranteed consistently cased).
+// `skill_type` is a string category (e.g. "Required"), not a boolean —
+// match it case-insensitively, catalogue values aren't consistently cased.
 export type PublicJobSkill = {
   skill_label: string;
   category: string;
@@ -76,17 +66,10 @@ export type ListPublicJobsArgs = {
   pageSize?: number;
 };
 
-// `min_experience_req`/`max_experience_req` are `Decimal` on the real
-// backend (job-service's `PublicJobListingView`/`PublicJobDetailView`) —
-// Pydantic v2 serializes `Decimal` to a JSON STRING by default (e.g.
-// `"2.0"`, not `2`), confirmed against a real response 2026-09-07. Every
-// filter/display consumer on this page was written assuming a real
-// `number`, which happened to keep working for RANGE COMPARISONS only by
-// accident (JS's `<=`/`>=` coerce a numeric string), but broke every
-// DISPLAY of it outright (`"2.0-4.0 Years of Experience"` instead of
-// `"2-4"`). Rather than leave every consumer to defend against a string
-// that might show up, this normalizes once, here, so `number | null` is
-// actually true by the time RTK Query hands data to a component.
+// `min_experience_req`/`max_experience_req` come back from the backend as
+// numeric strings (Decimal serialization), which breaks display formatting
+// even though comparisons happen to still work via JS coercion. Normalize
+// once here so `number | null` is actually true downstream.
 const toNumber = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
   const n = typeof value === 'number' ? value : Number(value);
@@ -97,18 +80,14 @@ const normalizePublicJobListing = (job: PublicJobListing): PublicJobListing => (
   ...job,
   min_experience_req: toNumber(job.min_experience_req),
   max_experience_req: toNumber(job.max_experience_req),
-  // salary_min/max are plain SQL integers on the backend, not Decimal —
-  // already real JSON numbers — but normalized too as cheap insurance
-  // against the same class of bug, not because one's confirmed here.
+  // salary_min/max are already real numbers, normalized too as cheap
+  // insurance against the same class of bug.
   salary_min: toNumber(job.salary_min),
   salary_max: toNumber(job.salary_max),
 });
 
-// GET /public/organizations/{organization_id}/branding — company name/logo
-// for the QR-board pages' header. `logo_url` is a signed, time-limited link
-// for a stored logo (or, for a tenant whose logo is a plain external URL
-// like this session's own test data, that URL passed straight through) —
-// re-fetch rather than cache past its own query lifetime.
+// Company name/logo for the QR-board pages' header. `logo_url` may be a
+// signed, time-limited link — re-fetch rather than cache past its lifetime.
 export type PublicOrgBranding = {
   company_name: string;
   logo_url: string | null;

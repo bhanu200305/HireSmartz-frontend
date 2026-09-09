@@ -8,7 +8,6 @@ type BuildSaveDetailsArgs = {
     shiftId?: string;
     modeId?: string;
     isExempted?: boolean;
-    communicationSkills?: string;
     requirements?: string;
   };
   offices?: TenantOffice[];
@@ -62,8 +61,7 @@ const toIntOrNull = (value: unknown): number | null => {
 
 /**
  * Map the wizard form state onto PUT /job-openings/{id}/details.
- * education_preference_id/language_ids are catalogue references (migration
- * 0014 — organization_education_preference/master_language), not free
+ * education_preference_id/language_ids are catalogue references, not free
  * text — skills/locations are structured rows.
  */
 export const buildSaveJobDetailsPayload = ({
@@ -95,7 +93,7 @@ export const buildSaveJobDetailsPayload = ({
     .filter(isUuid)
     .map((skill_id) => ({
       skill_id,
-      skill_type: 'mandatory',
+      skill_type: 'required',
     }));
   const optional: JobSkillPayload[] = toIdList(data.optionalSkills)
     .filter(isUuid)
@@ -114,14 +112,10 @@ export const buildSaveJobDetailsPayload = ({
   return {
     job_title_id: uuidOrNull(data.jobTitle),
     department_id: uuidOrNull(data.department),
-    // `shift` (array-of-one, same convention as jobTitle/department/jobMode
-    // above) is the real form field now; shiftId is kept as a fallback for
-    // any older caller still setting that directly.
+    // `shift` (array-of-one) is the real form field; shiftId is a fallback.
     shift_id:
       uuidOrNull(data.shift) ?? (data.shiftId && isUuid(data.shiftId) ? data.shiftId : null),
-    // jobMode (array-of-one, same convention as jobTitle/department above)
-    // is the real form field; modeId (a bare string) is kept as a fallback
-    // for any older caller still setting that directly.
+    // `jobMode` (array-of-one) is the real form field; modeId is a fallback.
     mode_id: uuidOrNull(data.jobMode) ?? (data.modeId && isUuid(data.modeId) ? data.modeId : null),
     job_type_id: uuidOrNull(data.jobType),
     hiring_manager_ids: toIdList(data.hiringManagers).filter(isUuid),
@@ -138,7 +132,6 @@ export const buildSaveJobDetailsPayload = ({
     requirements: data.requirements || null,
     other_requirements: data.otherRequirements || null,
     education_preference_id: uuidOrNull(data.educationPreference),
-    communication_skills: data.communicationSkills || null,
     use_culture_intro: Boolean(data.useCultureIntro),
     language_ids: toIdList(data.languages).filter(isUuid),
     is_exempted: Boolean(isExempted),

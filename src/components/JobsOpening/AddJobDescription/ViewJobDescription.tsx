@@ -60,12 +60,9 @@ const ViewJobDescription = () => {
     data,
     isFetching,
     refetch: refetchTopFivePrompt,
-  } = useGetTopFivePromptQuery(
-    { mode: 'JD' },
-    {
-      refetchOnMountOrArgChange: true,
-    }
-  );
+  } = useGetTopFivePromptQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const {
     data: response,
     isLoading,

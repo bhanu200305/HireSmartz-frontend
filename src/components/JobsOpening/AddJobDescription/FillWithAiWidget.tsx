@@ -15,6 +15,8 @@ interface FillWithAiWidgetProps {
 // there, so none enforced here either beyond "typed something".
 const INSTRUCTION_MAX_LENGTH = 2000;
 
+const JD_STATUS_POLL_TIMEOUT_MS = 90_000;
+
 /**
  * Floating "fill with AI" affordance for the Job Details create wizard —
  * replaces the earlier separate AI-Prompt entry point/page. Every job here
@@ -29,10 +31,32 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [promptText, setPromptText] = useState('');
   const [enhanceJd, { isLoading: isSubmitting }] = useEnhanceJdMutation();
+  // Stops polling once a terminal status is seen for this job id.
+  const [jdStatusIsTerminal, setJdStatusIsTerminal] = useState(false);
   const { data: jdStatus } = useGetJdStatusQuery(jobOpeningId, {
     skip: !jobOpeningId,
-    pollingInterval: 2000,
+    pollingInterval: jdStatusIsTerminal ? 0 : 1000,
   });
+  useEffect(() => {
+    setJdStatusIsTerminal(false);
+  }, [jobOpeningId]);
+  useEffect(() => {
+    if (jdStatus?.status === 'READY' || jdStatus?.status === 'FAILED') {
+      setJdStatusIsTerminal(true);
+    }
+  }, [jdStatus?.status]);
+  // Safety net if a terminal status never arrives.
+  useEffect(() => {
+    if (jdStatusIsTerminal) return;
+    const timeoutId = setTimeout(() => {
+      setJdStatusIsTerminal(true);
+      showToast({
+        message: "Still generating - refresh in a moment if it doesn't appear shortly.",
+        type: 'warning',
+      });
+    }, JD_STATUS_POLL_TIMEOUT_MS);
+    return () => clearTimeout(timeoutId);
+  }, [jdStatusIsTerminal, jobOpeningId]);
   const isGenerating = jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING';
   // JobDescriptionPanel's FAILED handling doesn't mount here, so show our own
   // toast; track per-job id so switching jobs doesn't suppress a new failure.
@@ -110,7 +134,7 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
             loading={isSubmitting}
             disabled={isSubmitting || isGenerating || !promptText.trim()}
           >
-            {isGenerating ? 'GENERATING…' : 'GENERATE'}
+            {isGenerating ? 'WRITING YOUR JD…' : 'GENERATE'}
           </Button>
         </div>
       )}

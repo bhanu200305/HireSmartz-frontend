@@ -58,9 +58,7 @@ const fields: CatalogField<FormValues>[] = [
   },
 ];
 
-/** GET/POST/PUT/DELETE /platform/master-interview-rounds — the fixed
- * interview-round-type catalogue a job's sequence is built from
- * (job-service migration 0017's special_kind/is_mandatory columns). */
+/** Platform-wide interview-round-type catalogue a job's sequence is built from. */
 const InterviewRoundTypesTab: React.FC = () => {
   const { data, isLoading } = useListPlatformInterviewRoundTypesQuery();
   const [create] = useCreatePlatformInterviewRoundTypeMutation();
@@ -75,9 +73,9 @@ const InterviewRoundTypesTab: React.FC = () => {
       items={data}
       isLoading={isLoading}
       idOf={(item) => item.round_type_id}
-      labelOf={(item) => item.name}
+      labelOf={(item) => item.round_name}
       columns={[
-        { title: 'Name', dataIndex: 'name', key: 'name' },
+        { title: 'Name', dataIndex: 'round_name', key: 'round_name' },
         {
           title: 'Special kind',
           key: 'special_kind',
@@ -108,7 +106,7 @@ const InterviewRoundTypesTab: React.FC = () => {
       fields={fields}
       emptyForm={emptyForm}
       toFormValues={(item) => ({
-        name: item.name,
+        name: item.round_name,
         special_kind: item.special_kind ?? '',
         is_mandatory: item.is_mandatory,
         max_occurrences: item.max_occurrences,
@@ -117,7 +115,7 @@ const InterviewRoundTypesTab: React.FC = () => {
       })}
       onCreate={(values) =>
         create({
-          name: values.name.trim(),
+          round_name: values.name.trim(),
           special_kind: values.special_kind || null,
           is_mandatory: values.is_mandatory,
           max_occurrences: values.max_occurrences,
@@ -128,7 +126,7 @@ const InterviewRoundTypesTab: React.FC = () => {
       onUpdate={(id, values) =>
         update({
           roundTypeId: id,
-          name: values.name.trim(),
+          round_name: values.name.trim(),
           special_kind: values.special_kind || null,
           is_mandatory: values.is_mandatory,
           max_occurrences: values.max_occurrences,
@@ -138,7 +136,7 @@ const InterviewRoundTypesTab: React.FC = () => {
       }
       onDelete={(item) => remove(item.round_type_id).unwrap()}
       deleteConfirmTitle={(item) =>
-        `Remove "${item.name}"? Blocked while a job's sequence still references it.`
+        `Remove "${item.round_name}"? Blocked while a job's sequence still references it.`
       }
     />
   );

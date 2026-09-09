@@ -1,11 +1,11 @@
 import { jobApi } from '../jobApi';
 
-// GET/POST/PUT/DELETE /platform/master-skill-categories — the Super Admin's
-// skill-category catalogue. What a skill's `skill_category_id` references.
+// The Super Admin's skill-category catalogue. What a skill's
+// `skill_category_id` references.
 export type PlatformSkillCategory = {
   category_id: string;
-  name: string;
-  description: string | null;
+  skill_category: string;
+  category_description: string | null;
 };
 
 const extendedApi = jobApi.injectEndpoints({
@@ -17,14 +17,14 @@ const extendedApi = jobApi.injectEndpoints({
     }),
     createPlatformSkillCategory: build.mutation<
       PlatformSkillCategory,
-      { name: string; description?: string | null }
+      { skill_category: string; category_description?: string | null }
     >({
       query: (body) => ({ url: '/platform/master-skill-categories', method: 'POST', body }),
       invalidatesTags: ['PlatformSkillCategories'],
     }),
     updatePlatformSkillCategory: build.mutation<
       PlatformSkillCategory,
-      { categoryId: string; name: string; description?: string | null }
+      { categoryId: string; skill_category: string; category_description?: string | null }
     >({
       query: ({ categoryId, ...body }) => ({
         url: `/platform/master-skill-categories/${categoryId}`,

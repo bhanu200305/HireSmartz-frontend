@@ -37,9 +37,7 @@ import QuestionRowItem from './QuestionRowItem';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 
 const DEFAULT_QUESTION_COUNT = 10;
-// Generation is fire-and-forget on the backend, so poll the question list
-// for a bounded window to detect when it's done.
-const GENERATION_POLL_INTERVAL_MS = 3000;
+const GENERATION_POLL_INTERVAL_MS = 1000;
 const GENERATION_POLL_TIMEOUT_MS = 90_000;
 
 // Human-readable text for each publish-readiness failure code.
@@ -50,7 +48,7 @@ const PUBLISH_CHECK_LABELS: Record<string, string> = {
   no_education_preference: 'Education preference is not set',
   no_location: 'At least one job location is required',
   no_skill: 'At least one skill is required',
-  no_mandatory_skill: 'At least one skill must be marked Mandatory, not just Optional',
+  no_mandatory_skill: 'At least one skill must be marked Required, not just Optional',
   no_round: 'At least one interview round is required',
   no_question: 'At least one question is required',
 };

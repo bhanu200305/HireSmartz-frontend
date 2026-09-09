@@ -69,9 +69,7 @@ export type AiOwnedJdFields = {
   maxExperience?: number | string | null;
   minSalary?: number | string | null;
   maxSalary?: number | string | null;
-  // Extraction-only, never AI-composed — safe here. Never add this to
-  // JdDescriptionInputs/haveDescriptionInputsChanged above, which drives
-  // AI-composed regeneration.
+  // Extraction-only, never AI-composed — don't add to JdDescriptionInputs above.
   vacancies?: number | string | null;
 };
 
@@ -157,7 +155,7 @@ export const mergeNewAiSkills = (
     const id = String(skill.skill_id);
     if (currentMandatoryIds.includes(id) || currentOptionalIds.includes(id)) continue;
     if (newMandatoryIds.includes(id) || newOptionalIds.includes(id)) continue;
-    if (skill.skill_type.toLowerCase() === 'mandatory') {
+    if (skill.skill_type.toLowerCase() === 'required') {
       newMandatoryIds.push(id);
     } else {
       newOptionalIds.push(id);

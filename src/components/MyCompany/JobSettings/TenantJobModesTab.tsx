@@ -16,8 +16,7 @@ const fields: CatalogField<FormValues>[] = [
   { name: 'description', label: 'Description', type: 'textarea' },
 ];
 
-/** Manages this organization's own configured job modes, offered by the Job
- * Details wizard's Job Mode dropdown. */
+/** This organization's own configured job modes. */
 const TenantJobModesTab: React.FC = () => {
   const { data, isLoading } = useListJobModesQuery();
   const [create] = useCreateJobModeMutation();
@@ -31,27 +30,33 @@ const TenantJobModesTab: React.FC = () => {
       itemNounPlural="Job modes"
       items={data?.map((item) => ({
         id: item.job_mode_id,
-        name: item.name,
-        description: item.description,
+        job_mode_name: item.job_mode_name,
+        job_mode_description: item.job_mode_description,
       }))}
       isLoading={isLoading}
       idOf={(item) => item.id}
-      labelOf={(item) => item.name}
+      labelOf={(item) => item.job_mode_name}
       columns={[
-        { title: 'Name', dataIndex: 'name', key: 'name' },
-        { title: 'Description', dataIndex: 'description', key: 'description' },
+        { title: 'Name', dataIndex: 'job_mode_name', key: 'job_mode_name' },
+        { title: 'Description', dataIndex: 'job_mode_description', key: 'job_mode_description' },
       ]}
       fields={fields}
       emptyForm={emptyForm}
-      toFormValues={(item) => ({ name: item.name, description: item.description ?? null })}
+      toFormValues={(item) => ({
+        name: item.job_mode_name,
+        description: item.job_mode_description ?? null,
+      })}
       onCreate={(values) =>
-        create({ name: values.name.trim(), description: values.description }).unwrap()
+        create({
+          job_mode_name: values.name.trim(),
+          job_mode_description: values.description,
+        }).unwrap()
       }
       onUpdate={(id, values) =>
         update({
           jobModeId: id,
-          name: values.name.trim(),
-          description: values.description,
+          job_mode_name: values.name.trim(),
+          job_mode_description: values.description,
         }).unwrap()
       }
       onDelete={(item) => remove(item.id).unwrap()}

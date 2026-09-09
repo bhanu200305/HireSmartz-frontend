@@ -1,14 +1,12 @@
 import { jobApi } from '../jobApi';
 
-// GET/POST/PUT/DELETE /platform/master-skills — the Super Admin's
-// platform-wide skill catalogue. Rows with organization_id set are a
-// company's own additions (POST /skills, see catalogs.ts's
-// createOrganizationSkill) surfaced here read-only for visibility, not
-// something Super Admin edits — is_organization_specific distinguishes them.
+// The Super Admin's platform-wide skill catalogue. Rows with
+// organization_id set are a company's own additions, surfaced here
+// read-only for visibility — is_organization_specific distinguishes them.
 export type PlatformSkill = {
   skill_id: string;
-  name: string;
-  description: string | null;
+  skill: string;
+  skill_description: string | null;
   skill_category_id: string | null;
   organization_id: string | null;
   is_organization_specific: boolean;
@@ -23,7 +21,7 @@ const extendedApi = jobApi.injectEndpoints({
     }),
     createPlatformSkill: build.mutation<
       PlatformSkill,
-      { name: string; description?: string | null; skill_category_id?: string | null }
+      { skill: string; skill_description?: string | null; skill_category_id?: string | null }
     >({
       query: (body) => ({ url: '/platform/master-skills', method: 'POST', body }),
       invalidatesTags: ['PlatformSkills'],
@@ -32,8 +30,8 @@ const extendedApi = jobApi.injectEndpoints({
       PlatformSkill,
       {
         skillId: string;
-        name: string;
-        description?: string | null;
+        skill: string;
+        skill_description?: string | null;
         skill_category_id?: string | null;
       }
     >({

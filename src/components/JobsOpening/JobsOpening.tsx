@@ -39,7 +39,7 @@ const getButtonConfig = (
 };
 
 interface JobsOpeningProps {
-  refetchCandidates?: () => void; // Add prop for refetching candidates
+  refetchCandidates?: () => void;
 }
 
 const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
@@ -94,10 +94,10 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
             ? ([details.education_preference_id] as unknown as number[])
             : [],
           mandatorySkills: (details.skills ?? [])
-            .filter((s) => String(s.skill_type).toUpperCase() === 'MANDATORY')
+            .filter((s) => String(s.skill_type).toUpperCase() === 'REQUIRED')
             .map((s) => s.skill_id as unknown as number),
           optionalSkills: (details.skills ?? [])
-            .filter((s) => String(s.skill_type).toUpperCase() !== 'MANDATORY')
+            .filter((s) => String(s.skill_type).toUpperCase() !== 'REQUIRED')
             .map((s) => s.skill_id as unknown as number),
           otherRequirements: details.other_requirements ?? '',
         })
@@ -148,7 +148,7 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
           ) : null
         }
       >
-        <Outlet context={{ refetchCandidates }} /> {/* Pass refetchCandidates to Outlet */}
+        <Outlet context={{ refetchCandidates }} />
       </JobDetailsLayout>
     </MainLayout>
   );

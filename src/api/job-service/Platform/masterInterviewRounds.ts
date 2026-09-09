@@ -1,12 +1,9 @@
 import { jobApi } from '../jobApi';
 
-// GET/POST/PUT/DELETE /platform/master-interview-rounds — the Super Admin's
-// interview-round-type catalogue (job-service migration 0017 collapsed the
-// old is_intake_call_round/is_verification_round flags into one nullable
-// special_kind column, plus is_mandatory).
+// The Super Admin's interview-round-type catalogue.
 export type PlatformInterviewRoundType = {
   round_type_id: string;
-  name: string;
+  round_name: string;
   special_kind: 'intake_call' | 'resume' | 'verification' | null;
   is_mandatory: boolean;
   max_occurrences: number | null;
@@ -15,7 +12,7 @@ export type PlatformInterviewRoundType = {
 };
 
 export type SaveInterviewRoundTypeRequest = {
-  name: string;
+  round_name: string;
   special_kind?: 'intake_call' | 'resume' | 'verification' | null;
   is_mandatory?: boolean;
   max_occurrences?: number | null;

@@ -23,8 +23,7 @@ const fields: CatalogField<FormValues>[] = [
   { name: 'end_time', label: 'End time', type: 'time', required: true },
 ];
 
-/** Minutes between two "HH:mm" times, wrapping past midnight when end is
- * earlier than start (e.g. 22:00-06:00 is 480, not negative). Null if either
+/** Minutes between two "HH:mm" times, wrapping past midnight. Null if either
  * side is unfilled. */
 const computeDurationMinutes = (startTime: string, endTime: string): number | null => {
   if (!startTime || !endTime) return null;
@@ -38,8 +37,7 @@ const computeDurationMinutes = (startTime: string, endTime: string): number | nu
   return diff > 0 ? diff : diff + 24 * 60;
 };
 
-/** GET/POST/PUT/DELETE /shifts — this organization's own configured
- * shifts. What a job's Shift dropdown on Job Details offers.
+/** This organization's own configured shifts.
  *
  * `duration_minutes` is derived from start/end time rather than entered
  * directly, to keep it from disagreeing with the times actually saved. */
@@ -57,10 +55,10 @@ const TenantShiftsTab: React.FC = () => {
       items={data}
       isLoading={isLoading}
       idOf={(item) => item.id}
-      labelOf={(item) => item.name}
+      labelOf={(item) => item.shift_name}
       columns={[
-        { title: 'Name', dataIndex: 'name', key: 'name' },
-        { title: 'Description', dataIndex: 'description', key: 'description' },
+        { title: 'Name', dataIndex: 'shift_name', key: 'shift_name' },
+        { title: 'Description', dataIndex: 'shift_description', key: 'shift_description' },
         {
           title: 'Time',
           key: 'time',
@@ -75,15 +73,15 @@ const TenantShiftsTab: React.FC = () => {
       fields={fields}
       emptyForm={emptyForm}
       toFormValues={(item) => ({
-        name: item.name,
-        description: item.description ?? null,
+        name: item.shift_name,
+        description: item.shift_description ?? null,
         start_time: item.start_time,
         end_time: item.end_time,
       })}
       onCreate={(values) =>
         create({
-          name: values.name.trim(),
-          description: values.description,
+          shift_name: values.name.trim(),
+          shift_description: values.description,
           start_time: values.start_time.trim(),
           end_time: values.end_time.trim(),
           duration_minutes: computeDurationMinutes(values.start_time, values.end_time),
@@ -92,8 +90,8 @@ const TenantShiftsTab: React.FC = () => {
       onUpdate={(id, values) =>
         update({
           shiftId: id,
-          name: values.name.trim(),
-          description: values.description,
+          shift_name: values.name.trim(),
+          shift_description: values.description,
           start_time: values.start_time.trim(),
           end_time: values.end_time.trim(),
           duration_minutes: computeDurationMinutes(values.start_time, values.end_time),

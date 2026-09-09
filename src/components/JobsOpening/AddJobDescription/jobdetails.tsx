@@ -150,6 +150,8 @@ const JOB_DETAILS_FIELD_ORDER = [
   'responsibilities',
 ];
 
+const JD_STATUS_POLL_TIMEOUT_MS = 90_000;
+
 const JobDetails = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -218,10 +220,32 @@ const JobDetails = () => {
   const hasSavedDetails = jdDetailsForGate?.hasSavedDetails ?? false;
   // Polls jd/status to catch a GENERATING/PROCESSING -> READY transition
   // and apply AI-written fields once ready — see the effect below.
+  // Stops polling once a terminal status is seen for this job id.
+  const [jdStatusForHydrationIsTerminal, setJdStatusForHydrationIsTerminal] = useState(false);
   const { data: jdStatusForHydration } = useGetJdStatusQuery(resolvedJobId, {
     skip: !resolvedJobId,
-    pollingInterval: 1500,
+    pollingInterval: jdStatusForHydrationIsTerminal ? 0 : 1000,
   });
+  useEffect(() => {
+    setJdStatusForHydrationIsTerminal(false);
+  }, [resolvedJobId]);
+  useEffect(() => {
+    if (jdStatusForHydration?.status === 'READY' || jdStatusForHydration?.status === 'FAILED') {
+      setJdStatusForHydrationIsTerminal(true);
+    }
+  }, [jdStatusForHydration?.status]);
+  // Safety net if a terminal status never arrives.
+  useEffect(() => {
+    if (jdStatusForHydrationIsTerminal) return;
+    const timeoutId = setTimeout(() => {
+      setJdStatusForHydrationIsTerminal(true);
+      showToast({
+        message: "Still generating - refresh in a moment if it doesn't appear shortly.",
+        type: 'warning',
+      });
+    }, JD_STATUS_POLL_TIMEOUT_MS);
+    return () => clearTimeout(timeoutId);
+  }, [jdStatusForHydrationIsTerminal, resolvedJobId]);
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
   // Tracks which job id the "already READY on first observation" fallback
   // has run for, so it fires at most once per job.
@@ -597,7 +621,7 @@ const JobDetails = () => {
   const handleAddAllSuggestedSkills = () => {
     if (unaddedSuggestedSkills.length === 0) return;
     const newMandatoryIds = unaddedSuggestedSkills
-      .filter((skill) => skill.suggested_skill_type === 'mandatory')
+      .filter((skill) => skill.suggested_skill_type === 'required')
       .map((skill) => skill.skill_id);
     const newOptionalIds = unaddedSuggestedSkills
       .filter((skill) => skill.suggested_skill_type === 'optional')
@@ -727,9 +751,7 @@ const JobDetails = () => {
     }
   }, [atsJobData, isFromAts, jobDetails, setValue]);
 
-  // AI-fill counterpart to the ATS hydration above — applies fields AI wrote
-  // once generation finishes (GENERATING/PROCESSING -> READY). Only fills
-  // fields the recruiter hasn't already typed into.
+  // AI-fill counterpart to the ATS hydration above; only fills fields not already typed into.
   useEffect(() => {
     const previousStatus = prevJdStatusForHydrationRef.current;
     const currentStatus = jdStatusForHydration?.status;
@@ -739,11 +761,8 @@ const JobDetails = () => {
       (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') &&
       currentStatus === 'READY';
 
-    // Fallback: AI work (initial generate, or a later Enhance/Regenerate)
-    // can finish before this page's first status poll, or while the
-    // recruiter was on a different tab, so the READY transition is never
-    // observed here. Catch that by refreshing once per job the first time
-    // status is seen READY, regardless of entry path.
+    // Fallback: refresh once per job the first time status is seen READY,
+    // in case the GENERATING -> READY transition was missed.
     const notYetSyncedThisJob =
       currentStatus === 'READY' && appliedAiFillJobIdRef.current !== resolvedJobId;
 
@@ -796,7 +815,7 @@ const JobDetails = () => {
           const id = String(skill.skill_id);
           if (currentMandatory.includes(id) || currentOptional.includes(id)) continue;
           if (newMandatory.includes(id) || newOptional.includes(id)) continue;
-          if (skill.skill_type.toLowerCase() === 'mandatory') {
+          if (skill.skill_type.toLowerCase() === 'required') {
             newMandatory.push(id);
           } else {
             newOptional.push(id);
@@ -1103,7 +1122,9 @@ const JobDetails = () => {
           setValue('educationPreference', [existingPreference.id], { shouldValidate: true });
           return;
         }
-        const created = await createEducationPreference({ name: formattedValue }).unwrap();
+        const created = await createEducationPreference({
+          education_preference_name: formattedValue,
+        }).unwrap();
         showToast({ message: 'Education preference added', type: 'success' });
         setValue('educationPreference', [created.id], { shouldValidate: true });
         refetchEducationPreference?.();
@@ -1119,7 +1140,7 @@ const JobDetails = () => {
           setValue(addType, [...currentValues, existingSkill.id], { shouldValidate: true });
           return;
         }
-        const createdSkill = await createOrganizationSkill({ name: formattedValue }).unwrap();
+        const createdSkill = await createOrganizationSkill({ skill: formattedValue }).unwrap();
         showToast({ message: 'Skill added successfully', type: 'success' });
         setValue(addType, [...currentValues, createdSkill.skill_id], { shouldValidate: true });
         return;
@@ -1135,7 +1156,7 @@ const JobDetails = () => {
         }
         // isMaster picks the Super Admin catalogue vs. the tenant's own.
         const createdJobType = await createJobType({
-          name: formattedValue,
+          job_type_name: formattedValue,
           isMaster,
         }).unwrap();
         showToast({ message: 'Job type added successfully', type: 'success' });
@@ -1292,7 +1313,7 @@ const JobDetails = () => {
       try {
         await updateJobType({
           jobTypeId: String(id),
-          name: capitalizeWordsAdvanced(newName),
+          job_type_name: capitalizeWordsAdvanced(newName),
           isMaster,
         }).unwrap();
 
@@ -1312,7 +1333,7 @@ const JobDetails = () => {
       try {
         await updateEducationPreference({
           preferenceId: String(id),
-          name: capitalizeWordsAdvanced(newName),
+          education_preference_name: capitalizeWordsAdvanced(newName),
         }).unwrap();
 
         showToast({ message: 'Education preference updated successfully', type: 'success' });
@@ -1669,12 +1690,9 @@ const JobDetails = () => {
     executeSubmit(pendingSubmitData, false);
   };
 
-  // Advances to the AI Job Description step (JobDescriptionStep.tsx) — only
-  // reachable once this step's Job Details have been saved (button below
-  // only renders once `hasSavedDetails` is true).
+  // Advances to the AI Job Description step; reachable once Job Details have been saved.
   const handleContinueToDescription = async () => {
-    // Persists any field changes made after the initial save, since this is
-    // the last chance before moving to the next step.
+    // Persists any field changes made after the initial save.
     const data = watch();
     const { errors } = validateDraft<JobDetailsState>(data, jobDetailsDraftSchema);
     if (errors) {
@@ -1719,10 +1737,8 @@ const JobDetails = () => {
         return;
       }
 
-      // A description already exists and this save actually changed a
-      // field it was generated from — regenerate it now rather than leaving the
-      // stale text in place until the recruiter notices and clicks Regenerate
-      // manually on the next step. Only regenerate if relevant fields changed.
+      // Regenerate the description now if a field it was generated from just changed,
+      // rather than leaving stale text in place.
       const descriptionInputs = {
         ...data,
         shiftId: data.shift?.[0] != null ? String(data.shift[0]) : undefined,

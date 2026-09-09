@@ -1,6 +1,6 @@
 /**
- * Types that mirror job-service's real response/request shapes
- * (services/job-service/docs/API_CONTRACT.md). IDs are UUIDs as strings.
+ * Types mirroring job-service's response/request shapes. IDs are UUIDs
+ * as strings.
  */
 
 export type JobListStatus = 'draft' | 'published' | 'closed';
@@ -77,7 +77,7 @@ export type JobLocationPayload = {
 
 export type JobSkillPayload = {
   skill_id: string;
-  skill_type: 'mandatory' | 'optional';
+  skill_type: 'required' | 'optional';
 };
 
 export type JobLocationResponse = {
@@ -121,17 +121,10 @@ export type JobDetailsResponse = {
   responsibilities: string | null;
   requirements: string | null;
   other_requirements: string | null;
-  // Both organization-scoped catalogue references now (migration 0014) —
-  // not free text. `education_preference_id` is a single value (an
-  // org_job_opening row has exactly one); `language_ids` is the set of
-  // organization_language rows this job's communication requires.
-  // is_multilingual/is_remote/resume_submission_enabled/audio_call_enabled
-  // no longer exist on the backend (migrations 0016/0017 — Resume upload
-  // and the Intake Call are unconditionally mandatory now, never a
-  // recruiter toggle; is_multilingual was unused; is_remote was never
-  // backed by anything real).
+  // Organization-scoped catalogue references, not free text.
+  // `education_preference_id` is a single value; `language_ids` is the set
+  // of languages this job's communication requires.
   education_preference_id: string | null;
-  communication_skills: string | null;
   use_culture_intro: boolean;
   language_ids: string[];
   is_exempted: boolean;
@@ -160,7 +153,6 @@ export type SaveJobDetailsRequest = {
   requirements?: string | null;
   other_requirements?: string | null;
   education_preference_id?: string | null;
-  communication_skills?: string | null;
   use_culture_intro?: boolean;
   language_ids?: string[];
   is_exempted?: boolean;
@@ -215,15 +207,14 @@ export type InterviewSequenceResponse = {
 
 export type InterviewRoundType = {
   round_id: string;
-  name: string;
-  description: string | null;
+  round_name: string;
+  round_description: string | null;
   max_occurrences: number | null;
   requires_duration: boolean;
   available_variants: string[] | null;
   is_audio_round?: boolean;
-  // 'intake_call' | 'resume' | 'verification' | null — marks the fixed
-  // anchor round types the Interview Rounds page keeps pinned to the top
-  // of the sequence (Resume + Intake Call must stay the top 2).
+  // Marks the fixed anchor round types (Resume + Intake Call) the
+  // Interview Rounds page keeps pinned to the top of the sequence.
   special_kind?: 'intake_call' | 'resume' | 'verification' | null;
 };
 
@@ -325,7 +316,7 @@ export type JobSummaryResponse = {
   is_closed: boolean;
   created_by: string | null;
   created_at: string;
-  candidate_count: number;
+  total_candidate_count: number;
   interviewed_count: number;
   selected_count: number;
   not_selected_count: number;
@@ -383,8 +374,8 @@ export type ClosureReason = {
 
 export type OrganizationShift = {
   id: string;
-  name: string;
-  description: string | null;
+  shift_name: string;
+  shift_description: string | null;
   start_time: string;
   end_time: string;
   duration_minutes: number | null;
@@ -392,41 +383,41 @@ export type OrganizationShift = {
 
 export type OrganizationJobType = {
   id: string;
-  name: string;
-  description?: string | null;
+  job_type_name: string;
+  job_type_description?: string | null;
 };
 
-/** GET /api/v1/platform/master-job-types row — Super Admin catalogue. */
+/** Super Admin's master job-type catalogue row. */
 export type MasterJobType = {
   job_type_id: string;
-  name: string;
-  description: string | null;
+  job_type_name: string;
+  job_type_description: string | null;
 };
 
 export type JobMode = {
   job_mode_id: string;
-  name: string;
-  description: string | null;
+  job_mode_name: string;
+  job_mode_description: string | null;
 };
 
-/** POST/PUT /api/v1/job-modes row — what a job's `mode_id` references. */
+/** What a job's `mode_id` references. */
 export type OrganizationJobMode = {
   id: string;
-  name: string;
-  description?: string | null;
+  job_mode_name: string;
+  job_mode_description?: string | null;
 };
 
-/** POST/PUT /api/v1/job-closure-reasons row — what a job closure's `closure_reason_id` references. */
+/** What a job closure's `closure_reason_id` references. */
 export type OrganizationClosureReason = {
   id: string;
   reason: string;
   description?: string | null;
 };
 
-/** GET /api/v1/master/languages row — what a job's `language_ids` pick from. */
+/** What a job's `language_ids` pick from. */
 export type Language = {
   language_id: string;
-  name: string;
+  language_name: string;
   language_code: string;
 };
 
