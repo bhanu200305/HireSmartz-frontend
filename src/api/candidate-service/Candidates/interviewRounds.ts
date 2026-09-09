@@ -99,6 +99,38 @@ export type AdvanceCandidateResultView = {
   next_round: CandidateInterviewRoundView | null;
 };
 
+/** One candidate's outcome from `POST /candidates/bulk-advance`. Matches
+ * `candidate_dto.BulkAdvanceItemResultView` field-for-field (verified
+ * 2026-09-08).
+ * - `advanced`  — current round completed, `next_round_id` set (or `null`
+ *   if that was the last round, in which case the candidate is now
+ *   `selected` server-side).
+ * - `unchanged` — idempotent no-op: the candidate had already finished
+ *   every round before this call. NOT a failure.
+ * - `failed`    — `failure_reason` is a machine SLUG, not a sentence
+ *   (`bulk_advance_candidates._FAILURE_REASONS`): today only
+ *   `"candidate_not_found"` | `"no_interview_rounds_planned"`. Map it for
+ *   display (see `BULK_ADVANCE_FAILURE_LABELS`). Only per-candidate failures
+ *   land here; a 422/502 fails the whole request instead. */
+export type BulkAdvanceItemResultView = {
+  candidate_id: string;
+  outcome: 'advanced' | 'unchanged' | 'failed';
+  next_round_id: string | null;
+  failure_reason: string | null;
+};
+
+/** Slugs `POST /candidates/bulk-advance` puts in `failure_reason` →
+ * human copy. Unknown slugs fall back to a generic line at the call site. */
+export const BULK_ADVANCE_FAILURE_LABELS: Record<string, string> = {
+  candidate_not_found: 'Candidate not found',
+  no_interview_rounds_planned: 'No interview rounds planned for this candidate',
+  job_opening_not_found: "This candidate's job opening no longer exists",
+};
+
+export type BulkAdvanceCandidatesResultView = {
+  results: BulkAdvanceItemResultView[];
+};
+
 /** Same shape as `AdvanceCandidateResultView` — skip and advance both end in
  * "this round is finished, here's what's next," just named for what
  * actually happened to `skipped_round`. */
@@ -154,6 +186,31 @@ const extendedApi = candidateApi.injectEndpoints({
         { type: 'CandidateInterviewRounds', id: candidateId },
         { type: 'CandidateStatusHistory', id: candidateId },
         'CandidateList',
+      ],
+    }),
+
+    // POST /candidates/bulk-advance — advance a selection of candidates to
+    // their next round. The list-view checkbox action. PARTIAL-APPLY (unlike
+    // bulk-status): each candidate advances in its own server-side
+    // transaction, so a bad id / an unplanned pipeline becomes a per-item
+    // `outcome: "failed"` | `"unchanged"` in a 200, never a whole-batch
+    // failure. Only a 422 (request shape) or 502 (job-service unreachable)
+    // fails the request. Same round semantics as single advance — completes
+    // the current round, makes the next due; does NOT send the interview
+    // invite (that's still a separate per-candidate step).
+    bulkAdvanceCandidates: build.mutation<BulkAdvanceCandidatesResultView, string[]>({
+      query: (candidateIds) => ({
+        url: '/candidates/bulk-advance',
+        method: 'POST',
+        body: { candidate_ids: candidateIds },
+      }),
+      invalidatesTags: (_result, _error, candidateIds) => [
+        ...candidateIds.flatMap((id) => [
+          { type: 'Candidate' as const, id },
+          { type: 'CandidateInterviewRounds' as const, id },
+          { type: 'CandidateStatusHistory' as const, id },
+        ]),
+        'CandidateList' as const,
       ],
     }),
 
@@ -229,6 +286,7 @@ export const {
   useListCandidateInterviewRoundsQuery,
   useListCandidateInterviewRoundArtifactsQuery,
   useAdvanceCandidateMutation,
+  useBulkAdvanceCandidatesMutation,
   useSkipInterviewRoundMutation,
   useSendRoundInviteMutation,
   useListEligibleInterviewersQuery,

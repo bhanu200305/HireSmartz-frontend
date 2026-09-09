@@ -5,33 +5,42 @@ import { RootState } from '../../redux/provider/store';
 import { setUnreadCount } from '../../redux/slices/notificationSlice';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
+import useNotificationStream from '../../hooks/useNotificationStream';
 
 const UNREAD_COUNT_POLL_INTERVAL_MS = 30_000;
 
 /**
- * Keeps the bell's unread badge current.
+ * Keeps the bell's unread badge current, in two layers:
  *
- * notification-service has no push/SSE surface by design — see
- * docs/API.md's note on `/v1/notifications/unread-count`: "the bell icon
- * polls this every 30s; returning the full page for a badge would be the
- * single most-called query in the product doing a hundred times the work it
- * needs to." This mirrors that design exactly, replacing the previous SSE
- * listener that pointed at an endpoint (`/job-opening/notifications/stream`)
- * which never existed on any backend.
+ *  - a 30s poll of `GET /v1/notifications/unread-count` — the always-on
+ *    baseline. It's the only path when the SSE feature is disabled
+ *    (`NOTIFICATION_SSE_ENABLED=false`), and it closes any gap while the
+ *    stream is reconnecting.
+ *  - notification-service's SSE stream (`useNotificationStream`) — a real-time
+ *    nudge that refetches the count the moment a notification is dispatched,
+ *    so the badge updates without waiting for the next poll.
  *
- * The feed itself (`NotificationBell.tsx`) is fetched on demand, when the
- * panel is opened — this component only keeps the badge count in sync while
- * it's closed.
+ * The feed list itself (`NotificationBell.tsx`) is still fetched on demand when
+ * the panel opens; this component only keeps the badge in sync while it's shut.
  */
 const NotificationStreamListener = () => {
   const dispatch = useDispatch();
   const loginToken = useSelector((state: RootState) => state.LoginSlice.loginToken);
   const token = loginToken || getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
-  const isPollingEnabled = Boolean(token);
+  const isEnabled = Boolean(token);
 
-  const { data } = useGetUnreadCountQuery(undefined, {
-    skip: !isPollingEnabled,
+  const { data, refetch } = useGetUnreadCountQuery(undefined, {
+    skip: !isEnabled,
     pollingInterval: UNREAD_COUNT_POLL_INTERVAL_MS,
+  });
+
+  useNotificationStream({
+    enabled: isEnabled,
+    onActivity: () => {
+      if (isEnabled) {
+        void refetch();
+      }
+    },
   });
 
   useEffect(() => {

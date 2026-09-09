@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
@@ -35,6 +35,20 @@ import { candidateDisplayName } from './candidateDisplay';
 // together, same as Jira board multi-select drag. See the `moves` state below
 // for how a card is kept visible mid-flight instead of vanishing until the
 // column refetches.
+//
+// Two backend rules (candidate-service, 2026-09-08) this board honours:
+//   * a status with `is_manually_settable: false` (only `withdrawn` today)
+//     still renders as a column (candidates already there stay visible) but
+//     nothing can be dropped INTO it and it's absent from the "Move to…"
+//     picker. See `canDropInto` below — driven off master data, not a
+//     hardcoded code list.
+//   * dropping onto `advanced` / `selected` also moves the candidate's
+//     interview-round progress server-side (advanced → completes the current
+//     round + makes the next due; selected → closes every open round), so
+//     `status.ts`'s mutations now invalidate `CandidateInterviewRounds` and
+//     the detail view's Pipeline tab stays in sync. Dropping onto `advanced`
+//     while the candidate is on their LAST round is a 409 — its message
+//     ("use the 'selected' status instead") is shown as-is in the error toast.
 
 // Documented funnel order (see master.ts's own module comment) — used only to
 // order the columns left-to-right; a status code this array doesn't know about
@@ -54,12 +68,23 @@ const FUNNEL_ORDER = [
   'withdrawn',
 ];
 
+// A column is a valid drop target only if the backend will accept a manual
+// move INTO that status — `is_manually_settable` is `false` only for
+// `withdrawn` (withdrawal is self-service only). Such a column still renders
+// (candidates already there stay visible), it just can't receive a drop and
+// isn't offered in the multi-select "Move to…" picker. Driven off the master
+// data now, not a hardcoded code list.
+const canDropInto = (status: CandidateStatusView): boolean => status.is_manually_settable;
+
 const sortStatusesByFunnel = (statuses: CandidateStatusView[]): CandidateStatusView[] => {
-  const rank = (code: string) => {
-    const idx = FUNNEL_ORDER.indexOf(code);
-    return idx === -1 ? FUNNEL_ORDER.length : idx;
+  // Prefer the backend's own `sort_order`; fall back to the documented funnel
+  // order, then to "unknown codes last".
+  const rank = (s: CandidateStatusView) => {
+    if (s.sort_order != null) return s.sort_order;
+    const idx = FUNNEL_ORDER.indexOf(s.code);
+    return idx === -1 ? 10_000 + FUNNEL_ORDER.length : 10_000 + idx;
   };
-  return [...statuses].sort((a, b) => rank(a.code) - rank(b.code));
+  return [...statuses].sort((a, b) => rank(a) - rank(b));
 };
 
 type StageKind = 'early' | 'active' | 'positive' | 'negative' | 'neutral';
@@ -280,7 +305,9 @@ const CandidatesPipelineBoard = ({
                   setMoveTarget('');
                   void performMove(Object.values(selectedCandidates), value);
                 }}
-                options={orderedStatuses.map((s) => ({ label: s.label, value: s.code }))}
+                options={orderedStatuses
+                  .filter((s) => canDropInto(s))
+                  .map((s) => ({ label: s.label, value: s.code }))}
               />
             </div>
             <Button
@@ -391,20 +418,26 @@ const StatusColumn = ({
     (m) => m.targetStatusCode === status.code && !items.some((c) => c.id === m.candidate.id)
   );
 
-  const [{ isOver, canDrop }, dropRef] = useDrop({
+  // react-dnd's connector is a callable that returns an element/null, which
+  // isn't assignable to React 19's stricter `ref` prop type. Connect a plain
+  // ref object instead (the connector accepts one) — the documented
+  // `drag(drop(ref))` pattern, minus a cast.
+  const columnRef = useRef<HTMLDivElement>(null);
+  const [{ isOver, canDrop }, connectDrop] = useDrop({
     accept: CANDIDATE_DRAG_TYPE,
     canDrop: (item: CandidateDragItem) =>
-      item.candidates.some((c) => c.status_code !== status.code),
+      canDropInto(status) && item.candidates.some((c) => c.status_code !== status.code),
     drop: (item: CandidateDragItem) => onDropCandidates(item.candidates, status.code),
     collect: (monitor) => ({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
     }),
   });
+  connectDrop(columnRef);
 
   return (
     <div
-      ref={dropRef}
+      ref={columnRef}
       className={`flex w-64 shrink-0 flex-col rounded-xl border border-neutral-200 border-t-4 bg-neutral-50 transition-colors ${meta.border} ${
         isOver && canDrop ? 'bg-primary-50 ring-2 ring-primary-300' : ''
       }`}
@@ -480,7 +513,11 @@ const CandidateCard = ({
   // Dragging a card that's part of an active multi-select carries every
   // selected candidate along with it — Jira's "select several, drag one"
   // behaviour. Dragging an unselected card only ever carries itself.
-  const [{ isDragging }, dragRef] = useDrag({
+  // Same react-dnd-connector-vs-React-19-ref-type issue as StatusColumn's
+  // drop target — connect a ref object rather than passing the connector as
+  // `ref`.
+  const cardRef = useRef<HTMLAnchorElement>(null);
+  const [{ isDragging }, connectDrag] = useDrag({
     type: CANDIDATE_DRAG_TYPE,
     item: (): CandidateDragItem => ({
       candidates:
@@ -492,6 +529,7 @@ const CandidateCard = ({
     canDrag: !isGhost,
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
+  connectDrag(cardRef);
 
   const handleCardClick = (event: MouseEvent) => {
     // While a selection is active, clicking anywhere on a card toggles it
@@ -551,7 +589,7 @@ const CandidateCard = ({
 
   return (
     <Link
-      ref={dragRef}
+      ref={cardRef}
       to={buildDetailsPath(candidate.id)}
       onClick={handleCardClick}
       className={`group relative block cursor-grab rounded-lg border bg-white p-2.5 shadow-xs transition active:cursor-grabbing hover:-translate-y-0.5 hover:shadow-md ${

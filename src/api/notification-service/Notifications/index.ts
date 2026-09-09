@@ -30,6 +30,20 @@ export interface UnreadCount {
   unread_count: number;
 }
 
+/**
+ * One-time credential for the SSE stream — matches notification-service's
+ * `StreamTicket` (app/modules/notifications/api/responses.py).
+ *
+ * The browser's `EventSource` cannot send an `Authorization` header, so the
+ * stream URL carries this instead. Minted by a normal bearer-authenticated
+ * call, short-lived (~30s), and consumed on first connect — see
+ * `useNotificationStream`.
+ */
+export interface StreamTicket {
+  ticket: string;
+  expires_in_seconds: number;
+}
+
 interface GetFeedParams {
   limit?: number;
   before?: string;
@@ -78,6 +92,18 @@ const notificationsApi = notifApi.injectEndpoints({
       }),
       invalidatesTags: ['UnreadCount'],
     }),
+    /**
+     * Mint a single-use ticket for the real-time stream. A 404 means SSE is
+     * not enabled in this environment (`NOTIFICATION_SSE_ENABLED=false`) — the
+     * caller falls back to polling. Not cached: every connect needs a fresh
+     * ticket.
+     */
+    mintNotificationStreamTicket: build.mutation<StreamTicket, void>({
+      query: () => ({
+        url: '/v1/notifications/stream-ticket',
+        method: 'POST',
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -87,4 +113,5 @@ export const {
   useGetUnreadCountQuery,
   useMarkNotificationReadMutation,
   useMarkAllNotificationsReadMutation,
+  useMintNotificationStreamTicketMutation,
 } = notificationsApi;

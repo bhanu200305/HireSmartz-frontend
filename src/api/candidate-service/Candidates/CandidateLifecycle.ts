@@ -94,8 +94,12 @@ export type PaginatedCandidates = {
 };
 
 export type ListCandidatesArgs = {
-  /** The only required param — there is no "all candidates across every job" list route. */
-  jobOpeningId: string;
+  /** OPTIONAL as of 2026-09-08 (was required, API_CONTRACT.md §"Candidate
+   * Lifecycle"). Omit for an org-wide search across every job the caller's
+   * tenant owns — this is what `SearchCandidateListing.tsx`'s global search
+   * wires to. Pass it to scope to one job's pipeline. Tenant boundary is
+   * enforced server-side either way. */
+  jobOpeningId?: string;
   search?: string;
   statusCode?: string;
   source?: string;
@@ -301,8 +305,10 @@ const extendedApi = candidateApi.injectEndpoints({
       providesTags: (_result, _error, candidateId) => [{ type: 'Candidate', id: candidateId }],
     }),
 
-    // GET /candidates — job_opening_id is required; there is no
-    // cross-job "all candidates" route (FRONTEND_INTEGRATION_DETAILS.md §4.3).
+    // GET /candidates — `job_opening_id` is OPTIONAL now: omit it for an
+    // org-wide candidate search, pass it to scope to one job's pipeline
+    // (FRONTEND_INTEGRATION_DETAILS.md §4.3). `params` drops `undefined`
+    // keys, so omitting `jobOpeningId` simply doesn't send the param.
     listCandidates: build.query<PaginatedCandidates, ListCandidatesArgs>({
       query: ({
         jobOpeningId,

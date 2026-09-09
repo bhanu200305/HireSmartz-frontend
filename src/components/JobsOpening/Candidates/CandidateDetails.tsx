@@ -37,6 +37,7 @@ import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import ResumeReviewModal from './Modal/ResumeReviewModal';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import PipelineBoard from './PipelineBoard';
+import StatusHistoryTab from './StatusHistoryTab';
 import { roundLabel, formatRoundStatus } from './roundDisplay';
 import { resolveCurrentRound, isRoundConcluded } from './roundProgress';
 

@@ -4,8 +4,14 @@ import { Button, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Loader } from '../../../shared/ui/loader';
 import { useListCandidateStatusesQuery } from '../../../../api/candidate-service/Master/master';
-import { useBulkChangeCandidateStatusMutation } from '../../../../api/candidate-service/Candidates/status';
-import { useAdvanceCandidateMutation } from '../../../../api/candidate-service/Candidates/interviewRounds';
+import {
+  useBulkChangeCandidateStatusMutation,
+  BULK_STATUS_FAILURE_LABELS,
+} from '../../../../api/candidate-service/Candidates/status';
+import {
+  useBulkAdvanceCandidatesMutation,
+  BULK_ADVANCE_FAILURE_LABELS,
+} from '../../../../api/candidate-service/Candidates/interviewRounds';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 import type { CandidateView } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
 
@@ -17,9 +23,12 @@ import type { CandidateView } from '../../../../api/candidate-service/Candidates
 // `master_candidate_status` code is accepted with no transition-legality
 // check. This modal does exactly two things:
 //
-// - "Advance": `POST /candidates/{id}/advance` per candidate (no bulk
-//   advance endpoint exists — looped, each reported independently, same
-//   spirit as bulk messaging's per-row `skipped_reason`). ADVANCE ONLY EVER
+// - "Advance": `POST /candidates/bulk-advance` — one request, partial-apply
+//   (each candidate advances in its own server-side transaction, so one
+//   failure never undoes another's; each reported independently in
+//   `results[]`, same spirit as bulk messaging's per-row `skipped_reason`).
+//   Was a per-candidate loop over `POST /candidates/{id}/advance` until the
+//   bulk endpoint landed (candidate-service, 2026-09-08). ADVANCE ONLY EVER
 //   completes the current round and makes the next one due — it does NOT
 //   tell interview-service to schedule it. That's a SEPARATE, explicit
 //   "Send Invite" action (`POST /candidates/{id}/send-invite`,
@@ -77,7 +86,7 @@ const ChangeCandidateStatusModal = ({
 
   const { data: statuses = [] } = useListCandidateStatusesQuery();
   const [bulkChangeStatus] = useBulkChangeCandidateStatusMutation();
-  const [advanceCandidate] = useAdvanceCandidateMutation();
+  const [bulkAdvanceCandidates] = useBulkAdvanceCandidatesMutation();
 
   useEffect(() => {
     if (open) {
@@ -97,31 +106,58 @@ const ChangeCandidateStatusModal = ({
     setIsSubmitting(true);
 
     if (mode === 'advance') {
-      const settled = await Promise.allSettled(
-        candidates.map((c) => advanceCandidate(c.id).unwrap())
-      );
-      setResults(
-        settled.map((r, i) => {
-          const name = candidateDisplayName(candidates[i]);
-          if (r.status === 'fulfilled') {
-            const detail = r.value.next_round
-              ? `Advanced to ${r.value.next_round.round_name ?? 'next round'}`
-              : 'Completed final round — moved to Selected';
-            // Only a real next round needs an invite — "moved to Selected"
-            // (next_round === null) means the pipeline is finished, nothing
-            // left to schedule.
-            return { name, ok: true, detail, needsInvite: r.value.next_round !== null };
-          }
-          return {
-            name,
-            ok: false,
-            detail: getCandidateErrorMessage(r.reason, 'Could not advance'),
-            needsInvite: false,
-          };
-        })
-      );
-      onSuccess();
-      setIsSubmitting(false);
+      try {
+        const { results: itemResults } = await bulkAdvanceCandidates(
+          candidates.map((c) => c.id)
+        ).unwrap();
+        const byId = new Map(itemResults.map((r) => [r.candidate_id, r]));
+        setResults(
+          candidates.map((c) => {
+            const name = candidateDisplayName(c);
+            const item = byId.get(c.id);
+            if (!item || item.outcome === 'failed') {
+              const slug = item?.failure_reason ?? '';
+              return {
+                name,
+                ok: false,
+                detail: BULK_ADVANCE_FAILURE_LABELS[slug] ?? 'Could not advance',
+                needsInvite: false,
+              };
+            }
+            if (item.outcome === 'unchanged') {
+              // Idempotent no-op — the candidate had already finished every
+              // round before this call. Not a failure.
+              return {
+                name,
+                ok: true,
+                detail: 'No change — already past the final round',
+                needsInvite: false,
+              };
+            }
+            // outcome === 'advanced'. A real next round (`next_round_id` set)
+            // still needs a separate Send Invite; `null` means that was the
+            // last round and the candidate is now Selected.
+            return {
+              name,
+              ok: true,
+              detail: item.next_round_id
+                ? 'Advanced to next round'
+                : 'Completed final round — moved to Selected',
+              needsInvite: item.next_round_id !== null,
+            };
+          })
+        );
+        onSuccess();
+      } catch (e) {
+        // Unlike the per-item outcomes above, a 422 (request shape) or 502
+        // (job-service unreachable) fails the whole call.
+        showToast({
+          message: getCandidateErrorMessage(e, 'Could not advance candidates'),
+          type: 'error',
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -135,21 +171,42 @@ const ChangeCandidateStatusModal = ({
     }
 
     try {
-      await bulkChangeStatus({
+      const { results: itemResults } = await bulkChangeStatus({
         candidateIds: candidates.map((c) => c.id),
         statusCode: targetStatus.code,
         reason: reason.trim() || undefined,
       }).unwrap();
-      showToast({
-        message: `${candidates.length} candidate${candidates.length === 1 ? '' : 's'} updated.`,
-        type: 'success',
-      });
+      const byId = new Map(itemResults.map((r) => [r.candidate_id, r]));
+      setResults(
+        candidates.map((c) => {
+          const name = candidateDisplayName(c);
+          const item = byId.get(c.id);
+          if (!item || item.outcome === 'failed') {
+            const slug = item?.failure_reason ?? '';
+            return {
+              name,
+              ok: false,
+              detail: BULK_STATUS_FAILURE_LABELS[slug] ?? 'Could not update status',
+              needsInvite: false,
+            };
+          }
+          return {
+            name,
+            ok: true,
+            detail:
+              item.outcome === 'unchanged'
+                ? 'No change — already at this status'
+                : `Set to "${MODE_LABEL[mode]}"`,
+            needsInvite: false,
+          };
+        })
+      );
       onSuccess();
-      onClose();
     } catch (e) {
-      // Bulk status is all-or-nothing — a failure here means NONE of the
-      // selected candidates were updated, unlike advance/messaging's
-      // per-item results (API_CONTRACT.md's own "all-or-nothing" note).
+      // Only a bad status_code / `withdrawn` (422) or job-service down mid-batch
+      // (502) fails the whole call now — per-candidate problems are in
+      // `results[].failure_reason` above (API_CONTRACT.md: bulk-status is
+      // partial-apply as of 2026-09-08).
       showToast({ message: getCandidateErrorMessage(e, 'Could not update status'), type: 'error' });
     } finally {
       setIsSubmitting(false);
