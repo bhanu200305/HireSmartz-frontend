@@ -167,6 +167,18 @@ const CandidateDetails = () => {
   );
 
   const isResumeStage = selectedRound?.stage_type === 'resume';
+  // Same string-match convention this file already uses for round-type
+  // inference (see the 'panel'/'video' checks around the booking button
+  // below) — `CandidateInterviewRoundView` carries no `interview_type`/
+  // `special_kind` field, only the display `round_name` sourced live from
+  // job-service, so this is the only signal available client-side. Fragile
+  // in theory (a tenant could rename the round), acceptable in practice
+  // since `master_interview_round`'s `round_name` for this special_kind is
+  // a fixed platform string, not something a job's own setup UI lets you
+  // retype freely.
+  const isIntakeCallRound =
+    selectedRound?.stage_type === 'interview' &&
+    (selectedRound.round_name?.toLowerCase().includes('intake call') ?? false);
   // Same "score already sitting here means reviewed and ready to move on"
   // read as PipelineBoard.tsx's own version of this check — the resume
   // stage's status never flips off "to_be_scheduled"/"pending" on its own,
@@ -419,13 +431,14 @@ const CandidateDetails = () => {
                       {/* Intake Call consistency — transcript-vs-resume authenticity
                           check, distinct from the AI Score beside it (that's the resume
                           judged against the job; this is whether the call sounds like
-                          the same person). See CandidateLifecycle.ts's own note on
-                          `consistency_score` — still `undefined` on every real response
-                          until candidate-service adds it to `CandidateView`, so this
-                          renders the same "—" placeholder resume_score does today.
-                          Doesn't have a "recruiter review" of its own the way resume
-                          score does — it's a fraud signal to weigh, not something a
-                          recruiter re-scores. */}
+                          the same person). candidate-service started projecting both
+                          fields onto CandidateView 2026-09-08 (see CandidateLifecycle.ts's
+                          own note) — null here now genuinely means "not scored yet"
+                          (ai-service hasn't reported one, or one of the two artifacts
+                          — resume/call transcript — isn't in yet), not "field doesn't
+                          exist." Doesn't have a "recruiter review" of its own the way
+                          resume score does — it's a fraud signal to weigh, not something
+                          a recruiter re-scores. */}
                       <div className="text-xs font-semibold uppercase text-gray-400">
                         Intake Call Consistency
                       </div>
@@ -506,6 +519,35 @@ const CandidateDetails = () => {
                       </div>
                     </div>
                   </CommonCard>
+
+                  {isIntakeCallRound && (
+                    // Same transcript-vs-resume authenticity signal shown on
+                    // the Resume stage card (see that card's own comment) —
+                    // surfaced here too since it's specifically about THIS
+                    // round's call, not just the resume. Recruiters who land
+                    // on the Intake Call round directly (its Pipeline card,
+                    // not the Resume one) should see it without a detour.
+                    <CommonCard>
+                      <div className="p-5">
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Resume Consistency
+                        </div>
+                        <div className="mt-2 text-2xl font-bold text-primary">
+                          {candidate?.consistency_score ?? '—'}
+                        </div>
+                        {candidate?.consistency_score_reason ? (
+                          <p className="mt-1 text-sm text-gray-600">
+                            {candidate.consistency_score_reason}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-sm text-gray-400">
+                            Not available yet — reported by ai-service once it has both the resume
+                            and this call&apos;s transcript.
+                          </p>
+                        )}
+                      </div>
+                    </CommonCard>
+                  )}
 
                   <CommonCard>
                     <div className="p-5 flex flex-col gap-3">

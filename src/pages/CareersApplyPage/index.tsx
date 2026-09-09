@@ -308,8 +308,24 @@ export const CareersApplyPage = () => {
             </div>
           </div>
 
-          {/* Email + Phone */}
+          {/* Phone + Email */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-800 mb-2">
+                Phone Number
+              </label>
+              <PhoneNumberField
+                countryCode={countryCode}
+                onCountryCodeChange={setCountryCode}
+                phoneNumber={phone}
+                onPhoneNumberChange={(value) => {
+                  setPhone(value);
+                  setPhoneError(null);
+                }}
+                className="h-11 rounded-full"
+              />
+              {phoneError && <p className="text-sm text-red-500 mt-1">{phoneError}</p>}
+            </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-2">
                 Email <span className="text-red-500">*</span>
@@ -332,22 +348,6 @@ export const CareersApplyPage = () => {
                 }}
               />
               {emailError && <p className="text-sm text-red-500 mt-1">Email is required</p>}
-            </div>
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-800 mb-2">
-                Phone Number
-              </label>
-              <PhoneNumberField
-                countryCode={countryCode}
-                onCountryCodeChange={setCountryCode}
-                phoneNumber={phone}
-                onPhoneNumberChange={(value) => {
-                  setPhone(value);
-                  setPhoneError(null);
-                }}
-                className="h-11 rounded-full"
-              />
-              {phoneError && <p className="text-sm text-red-500 mt-1">{phoneError}</p>}
             </div>
           </div>
 

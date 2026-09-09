@@ -70,20 +70,19 @@ export type CandidateView = {
   /** Intake Call consistency check — transcript-vs-resume authenticity
    * signal from ai-service (`candidate.intake_call.consistency_checked`),
    * distinct from `resume_score` (resume judged against the job). Re-added
-   * 2026-09-08 — deliberately ahead of the backend, unlike the removal note
-   * above still explains for the ID.me fields: candidate-service's own
-   * `candidate_dto.CandidateView` does NOT project these two yet (confirmed
-   * against that file directly), so both currently deserialize to
-   * `undefined` on every real response — same trap the 2026-09-07 removal
-   * was guarding against, kept anyway this time because the fix is already
-   * scoped and in flight on candidate-service's side (add both columns to
-   * `CandidateView`) rather than an open-ended "maybe later." Every read
-   * site must treat both as possibly-`undefined`, not just possibly-`null`,
-   * until that ships. Nullable either way even once backend's fix lands —
-   * neither is set until ai-service actually reports a score (mirrors
-   * `resume_score`/`scoring_reason`'s own nullability). */
-  consistency_score?: number | null;
-  consistency_score_reason?: string | null;
+   * 2026-09-08, same day candidate-service actually shipped the missing
+   * projection onto `CandidateView` (confirmed directly against
+   * `candidate_dto.py` — both columns existed since migration 0015, this
+   * was just the read model catching up) — unlike the ID.me fields the
+   * removal note above still applies to, this pair is now live on every
+   * real response. Nullable either way — neither is set until ai-service
+   * actually reports a score, which itself only happens once BOTH the
+   * resume is on file and the Intake Call's transcript artifact has landed
+   * (`interview_intake_call_artifacts_ready.py` gates the request on
+   * exactly that) — same nullability posture as `resume_score`/
+   * `scoring_reason`. */
+  consistency_score: number | null;
+  consistency_score_reason: string | null;
 };
 
 export type PaginatedCandidates = {
