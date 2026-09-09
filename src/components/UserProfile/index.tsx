@@ -5,6 +5,7 @@ import {
   MdEdit,
   MdMailOutline,
   MdOutlineArrowBack,
+  MdOutlineCalendarMonth,
   MdOutlineFileUpload,
   MdOutlineNotifications,
   MdOutlineSecurity,
@@ -56,6 +57,13 @@ const UserProfile = () => {
   // docstring), so there's no reason to even attempt that query for them.
   const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
   const isPlatformCaller = callerKind === 'platform';
+
+  // Self-service calendar connection — every organization user, any role
+  // (interview-service's `/calendar/*` routes are identity-scoped). A
+  // platform caller has no tenant for a grant to belong to. Mirrors the
+  // same gate in Header and CalendarSettingsPage.
+  const isCalendarSettingsAvailable =
+    import.meta.env.VITE_NYLAS_FEATURE === 'true' && !isPlatformCaller;
 
   const {
     data: tenantProfileData,
@@ -368,6 +376,15 @@ const UserProfile = () => {
                 <span>Back</span>
               </button>
               <div className="flex items-center gap-2">
+                {isCalendarSettingsAvailable && (
+                  <button
+                    onClick={() => navigate('/settings/calendar')}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
+                  >
+                    <MdOutlineCalendarMonth className="text-base" />
+                    <span>Calendar</span>
+                  </button>
+                )}
                 <button
                   onClick={() => navigate('/settings/notifications')}
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"

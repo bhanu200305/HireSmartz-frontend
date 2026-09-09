@@ -37,6 +37,7 @@ jobs:
           VITE_BACKEND_PREFIX=/api/v1
           VITE_BACKEND_ENDPOINT=https://careerforcepro.netsmartz.us
           VITE_AGORA_APP_ID=${{ secrets.VITE_AGORA_APP_ID }}
+          VITE_NYLAS_FEATURE=true
           EOF
 
           echo "📦 Installing dependencies with Bun..."
@@ -82,6 +83,7 @@ jobs:
           VITE_BACKEND_PREFIX=/api/v1
           VITE_BACKEND_ENDPOINT=https://careerforceprotest.netsmartz.us
           VITE_AGORA_APP_ID=${{ secrets.VITE_AGORA_APP_ID }}
+          VITE_NYLAS_FEATURE=true
           EOF
 
           echo "📦 Installing dependencies with Bun..."
