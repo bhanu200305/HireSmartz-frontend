@@ -306,10 +306,7 @@ const EditJobDetail = () => {
     setJdStatusForHydrationIsTerminal(false);
   }, [parsedJobId]);
   useEffect(() => {
-    if (
-      jdStatusForHydration?.status === 'READY' ||
-      jdStatusForHydration?.status === 'FAILED'
-    ) {
+    if (jdStatusForHydration?.status === 'READY' || jdStatusForHydration?.status === 'FAILED') {
       setJdStatusForHydrationIsTerminal(true);
     }
   }, [jdStatusForHydration?.status]);

@@ -2,7 +2,7 @@ import { Badge, Button, Dropdown, Empty, Spin, Select } from 'antd';
 const { Option } = Select;
 import { BellOutlined } from '@ant-design/icons';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   NOTIFICATION_FEED_MAX_LIMIT,
@@ -67,27 +67,48 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
   const [markNotificationRead] = useMarkNotificationReadMutation();
   const [markAllNotificationsRead] = useMarkAllNotificationsReadMutation();
 
-  const fetchNotifications = async () => {
-    if (disabled) {
-      return;
-    }
+  const fetchNotifications = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (disabled) {
+        return;
+      }
 
-    try {
-      setIsLoadingPanel(true);
-      const response = await getNotificationFeed(
-        { limit: NOTIFICATION_FEED_MAX_LIMIT },
-        false
-      ).unwrap();
-      dispatch(setNotificationFeed(response));
-    } catch {
-      showToast({
-        message: 'Unable to load notifications. Please try again.',
-        type: 'error',
-      });
-    } finally {
-      setIsLoadingPanel(false);
+      try {
+        if (!options?.silent) {
+          setIsLoadingPanel(true);
+        }
+        const response = await getNotificationFeed(
+          { limit: NOTIFICATION_FEED_MAX_LIMIT },
+          false
+        ).unwrap();
+        dispatch(setNotificationFeed(response));
+      } catch {
+        if (!options?.silent) {
+          showToast({
+            message: 'Unable to load notifications. Please try again.',
+            type: 'error',
+          });
+        }
+      } finally {
+        if (!options?.silent) {
+          setIsLoadingPanel(false);
+        }
+      }
+    },
+    [disabled, getNotificationFeed, dispatch]
+  );
+
+  // While the panel is open, the unread count is kept live by
+  // NotificationStreamListener (SSE, falling back to a 30s poll). If it rises
+  // it means a notification landed that isn't in the open list yet — pull the
+  // feed again, without the loading spinner so an open panel doesn't flicker.
+  const lastUnreadCountRef = useRef(unreadCount);
+  useEffect(() => {
+    if (isOpen && unreadCount > lastUnreadCountRef.current) {
+      void fetchNotifications({ silent: true });
     }
-  };
+    lastUnreadCountRef.current = unreadCount;
+  }, [isOpen, unreadCount, fetchNotifications]);
 
   const handleOpenPanel = async () => {
     if (disabled) {
