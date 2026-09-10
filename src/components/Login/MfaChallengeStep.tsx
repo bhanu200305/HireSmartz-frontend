@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
+import { MdOutlineMailLock } from 'react-icons/md';
 import { Button, Input, showToast } from '..';
 import { Loader } from '../shared/ui/loader';
 import {
@@ -10,7 +12,7 @@ import type {
   LoginTokenResponse,
   MfaRequiredResponse,
 } from '../../api/authentication-service/Login/login';
-import { getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
+import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
 
 const METHOD_LABELS: Record<string, string> = {
   totp: 'authenticator app',
@@ -47,6 +49,11 @@ const MfaChallengeStep = ({
   const [challenge, setChallenge] = useState(mfaState);
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState('');
+  // Set only for mfa_attempts_exceeded — the code field itself is now a dead
+  // end (the guard is blocking further attempts on this challenge), so this
+  // replaces the retry UI with the one real path forward instead of leaving
+  // a cleared field and no explanation.
+  const [attemptsExceeded, setAttemptsExceeded] = useState(false);
 
   const [mfaLoginVerify, { isLoading: isVerifying }] = useMfaLoginVerifyMutation();
   const [mfaLoginChallenge, { isLoading: isReissuing }] = useMfaLoginChallengeMutation();
@@ -68,10 +75,15 @@ const MfaChallengeStep = ({
       const tokens = await mfaLoginVerify({ mfa_token: challenge.mfa_token, code }).unwrap();
       onVerified(tokens);
     } catch (err) {
-      // invalid_mfa_code / mfa_challenge_expired / mfa_attempts_exceeded all
-      // land here with the backend's own (deliberately uniform) message —
-      // never invented client-side, so the same wording used on the API
-      // side reaches the user unchanged.
+      if (getAuthErrorCode(err) === 'mfa_attempts_exceeded') {
+        setAttemptsExceeded(true);
+        setCode('');
+        return;
+      }
+      // invalid_mfa_code / mfa_challenge_expired land here with the
+      // backend's own (deliberately uniform) message — never invented
+      // client-side, so the same wording used on the API side reaches the
+      // user unchanged.
       setCodeError(getAuthErrorMessage(err, 'That code was not accepted. Please try again.'));
       setCode('');
     }
@@ -102,6 +114,32 @@ const MfaChallengeStep = ({
   const otherMethods = challenge.available_methods.filter(
     (m) => m.mfa_method_id !== challenge.mfa_method_id
   );
+
+  if (attemptsExceeded) {
+    return (
+      <div className="login-tab-fade flex flex-col items-center gap-3 text-center">
+        <MdOutlineMailLock className="text-4xl text-red-500" />
+        <h2 className="text-xl font-semibold text-gray-900">Too many attempts</h2>
+        <p className="text-sm text-gray-500">
+          This code has been blocked for too many wrong attempts. If you no longer have access to
+          your two-factor method, you can recover your account instead.
+        </p>
+        <Link
+          to="/account-recovery"
+          className="mt-1 w-full rounded-3xl bg-button py-2.5 text-center font-medium text-white"
+        >
+          Recover your account
+        </Link>
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-1 flex items-center gap-1 text-gray-400 hover:text-gray-600 cursor-pointer"
+        >
+          <FaArrowLeft size={12} /> Back to login
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form key="mfa" onSubmit={handleVerify} className="login-tab-fade flex flex-col gap-4">

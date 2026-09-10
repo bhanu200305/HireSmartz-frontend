@@ -40,6 +40,9 @@ const ANONYMOUS_ENDPOINTS = new Set<string>([
   'resetPassword',
   'verifyEmail',
   'resendVerification',
+  'confirmRecoveryEmail',
+  'startAccountRecovery',
+  'completeAccountRecovery',
 ]);
 
 const fetchAuthBaseQuery = fetchBaseQuery({
@@ -137,7 +140,7 @@ export const noContentResponseHandler = async (response: Response): Promise<unde
 export const authApi = createApi({
   reducerPath: 'authApiReducer',
   baseQuery: authBaseQueryWithReauth,
-  tagTypes: ['MfaMethods', 'Sessions'],
+  tagTypes: ['MfaMethods', 'Sessions', 'RecoveryEmail'],
   endpoints: () => ({}),
 });
 
