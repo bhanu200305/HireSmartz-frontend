@@ -53,24 +53,31 @@ const MenuItems = [
     // Tenant-only, same as the page it points to (`/my-company` redirects
     // any caller with no tenant of their own straight back to `/`) — Sidebar
     // additionally requires `tenantId` for this entry, since a platform
-    // caller's static permission set happens to include COMPANY_SETTINGS_VIEW
+    // caller's static permission set happens to include COMPANY_SETTINGS_EDIT
     // too but has nowhere for this link to actually go.
+    //
+    // COMPANY_SETTINGS_EDIT ('organization:update'), NOT COMPANY_SETTINGS_VIEW
+    // ('organization:read') — read is a broad permission Recruiter/Hiring
+    // Manager also legitimately hold (organization-service migration 0063,
+    // for their job-title dropdown), which let every tenant role see this
+    // admin-only nav item once that migration ran. `organization:update` is
+    // still admin-exclusive (company_admin/cfp_admin/super_admin only).
     name: 'Company',
     icon: <MdApartment size={18} />,
     path: ['/my-company'],
-    requiredAuthority: Authorities.COMPANY_SETTINGS_VIEW,
+    requiredAuthority: Authorities.COMPANY_SETTINGS_EDIT,
   },
   {
     // Company Admin's own equivalent of the Super Admin's "Platform
     // Metrics" — same permission as "Company" above (both are this same
     // tenant's own management area), and same Sidebar tenantId guard for
     // the same reason: a platform caller's static permission set happens
-    // to include COMPANY_SETTINGS_VIEW too, but this page has nowhere to
+    // to include COMPANY_SETTINGS_EDIT too, but this page has nowhere to
     // go for them (CompanyMetrics redirects home with no tenant of its own).
     name: 'Company Metrics',
     icon: <MdOutlineInsights size={18} />,
     path: ['/company-metrics'],
-    requiredAuthority: Authorities.COMPANY_SETTINGS_VIEW,
+    requiredAuthority: Authorities.COMPANY_SETTINGS_EDIT,
   },
   {
     name: 'Company Settings',
@@ -172,13 +179,17 @@ const MenuItems = [
     //
     // Tenant-only, same as "Company"/"Company Metrics" above and for the
     // same reason: a platform caller's static permission set happens to
-    // include COMPANY_SETTINGS_VIEW too, but `/activityFeed` (ActivityFeedPage)
+    // include COMPANY_SETTINGS_EDIT too, but `/activityFeed` (ActivityFeedPage)
     // reads `tenantId ?? ''` — a dead fetch for them. See Sidebar's own
     // tenantId guard for this entry.
+    //
+    // COMPANY_SETTINGS_EDIT, NOT COMPANY_SETTINGS_VIEW — see "Company"
+    // above for why: `organization:read` is no longer admin-exclusive since
+    // migration 0063, `organization:update` still is.
     name: 'Tenant Audit Log',
     icon: <LuSquareActivity size={18} />,
     path: '/activityFeed',
-    requiredAuthority: Authorities.COMPANY_SETTINGS_VIEW,
+    requiredAuthority: Authorities.COMPANY_SETTINGS_EDIT,
   },
   {
     // Not authority-gated like the rest of this list — Sidebar filters this
