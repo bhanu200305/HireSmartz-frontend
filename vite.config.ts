@@ -9,6 +9,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   test: {
     dir: 'tests',
+    // Some modules touch `window` at import time.
+    environment: 'jsdom',
   },
   build: {
     // Raise warning threshold slightly to avoid noise from known large vendor chunks (e.g. antd)

@@ -22,7 +22,7 @@ import {
   MdOutlineCancel,
 } from 'react-icons/md';
 import { StatCardRow, type StatCardData } from '../shared/ui/StatCardRow';
-import { hasFeatureAccess } from '../../shared/utils/auth/getAccess';
+import { hasFeatureAccess, isAssignedToJob } from '../../shared/utils/auth/getAccess';
 import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import { useSessionTenantId } from '../../hooks/useSessionTenantId';
 import { shallowEqual, useDispatch, useSelector } from 'react-redux';
@@ -130,7 +130,7 @@ const JobsOpening = () => {
   const [isFromGlobalSearch, setIsFromGlobalSearch] = useState(false);
   const [, setGlobalSearchBaseQuery] = useState('');
   const [, setGlobalSearchField] = useState('');
-  const { role, callerKind } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const { role, callerKind, userId } = useSelector((state: any) => state.LoginSlice, shallowEqual);
   const tenantId = useSessionTenantId();
   const authorities = useEffectivePermissions();
   const [collapsedUsers, setCollapsedUsers] = useState<string[]>([]);
@@ -920,6 +920,8 @@ const JobsOpening = () => {
       },
     ].filter((item) => {
       if (!item) return false;
+      // Every action but View requires assignment.
+      if (item.key !== 'view' && !isAssignedToJob(record, userId, role)) return false;
       if (item.key === 'notes') {
         return hasFeatureAccess('job_opening', 'view', role, authorities);
       }

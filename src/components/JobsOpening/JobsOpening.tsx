@@ -1,12 +1,13 @@
 import MainLayout from '../../layouts/MainLayout';
 import JobDetailsLayout from '../../layouts/JobDetailsLayout';
 import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Button } from '../shared';
+import { Button, showToast } from '../shared';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import { useGetJobOpeningByIdQuery } from '../../api/job-service/JobOpening/GetJobOpeningById';
+import { isAssignedToJob } from '../../shared/utils/auth/getAccess';
 import {
   setEditJobOpeningId,
   updateEditAiJobDescription,
@@ -81,6 +82,26 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
     { jobOpeningId: parsedJobId },
     { skip: !isEditMode || !parsedJobId, refetchOnMountOrArgChange: true }
   );
+
+  const { role, userId } = useSelector((state: RootState) => (state as any).LoginSlice);
+
+  // Guards every edit tab in one place.
+  useEffect(() => {
+    if (!isEditMode || !jobData) return;
+    const assigned = isAssignedToJob(
+      {
+        hiringManagerIds: jobData.details.hiring_manager_ids,
+        recruiterIds: jobData.details.recruiter_ids,
+        createdById: jobData.details.created_by,
+      },
+      userId,
+      role
+    );
+    if (!assigned) {
+      showToast({ message: 'You are not assigned to this job.', type: 'error' });
+      navigate('/jobs', { replace: true });
+    }
+  }, [isEditMode, jobData, userId, role, navigate]);
 
   useEffect(() => {
     if (isEditMode && jobData && (!jobOpeningId || parsedJobId !== jobOpeningId)) {

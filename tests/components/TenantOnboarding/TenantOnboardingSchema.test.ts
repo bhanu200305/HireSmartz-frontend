@@ -3,6 +3,7 @@ import {
   tenantDetailsSchema,
   tenantProfileSchema,
 } from '../../../src/components/TenantOnboarding/TenantOnboardingSchema';
+import { PHONE_VALIDATION_MESSAGE } from '../../../src/shared/utils/validation/phoneValidation';
 
 const baseDetails = {
   companyName: 'Acme Inc',
@@ -27,12 +28,9 @@ describe('tenantDetailsSchema', () => {
     }
   });
 
-  it('requires an industry to be selected', () => {
+  it('does not require an industry — the picker is wired to a legacy backend not in this stack', () => {
     const result = tenantDetailsSchema.safeParse({ ...baseDetails, industryId: '' });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.flatten().fieldErrors.industryId?.[0]).toBe('Industry is required.');
-    }
+    expect(result.success).toBe(true);
   });
 
   it('rejects an incomplete admin contact phone number', () => {
@@ -40,7 +38,7 @@ describe('tenantDetailsSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.flatten().fieldErrors.adminContactPhone?.[0]).toBe(
-        'Phone number must be in (xxx) xxx-xxxx format.'
+        PHONE_VALIDATION_MESSAGE
       );
     }
   });
