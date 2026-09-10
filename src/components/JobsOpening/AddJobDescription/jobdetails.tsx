@@ -2733,8 +2733,7 @@ const JobDetails = () => {
                         maxTagCount={0}
                         maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
                           <span>
-                            {omittedValues.length} of {optionalSkills?.length || 20} skills
-                            selected
+                            {omittedValues.length} of {optionalSkills?.length || 20} skills selected
                           </span>
                         )}
                       />

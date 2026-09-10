@@ -43,7 +43,7 @@ export const isAssignedToJob = (
   if (!userId) return false;
   return Boolean(
     job.hiringManagerIds?.includes(userId) ||
-      job.recruiterIds?.includes(userId) ||
-      job.createdById === userId
+    job.recruiterIds?.includes(userId) ||
+    job.createdById === userId
   );
 };

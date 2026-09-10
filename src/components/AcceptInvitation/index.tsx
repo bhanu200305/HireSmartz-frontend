@@ -11,9 +11,11 @@ import {
   MdOutlineEmail,
   MdOutlineSms,
   MdOutlineQrCode2,
+  MdOutlineBadge,
+  MdOutlineSecurity,
 } from 'react-icons/md';
 import { get } from 'lodash-es';
-import { Radio, Select } from 'antd';
+import { Select } from 'antd';
 import { Button, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import Footer from '../Footer';
@@ -25,7 +27,10 @@ import {
   type MfaMethodType,
 } from '../../api/organization-service/Invitations/invitations';
 import { buildOtpAuthUri, generateBase32Secret } from '../../shared/utils/mfa.helpers';
-import { restrictPhoneDigitsForCountry } from '../../shared/utils/validation/phoneValidation';
+import {
+  restrictPhoneDigitsForCountry,
+  splitE164,
+} from '../../shared/utils/validation/phoneValidation';
 import { countryCodes } from '../../constants/countryCode';
 import { acceptInvitationSchema, type AcceptInvitationFormValues } from './AcceptInvitationSchema';
 
@@ -145,7 +150,13 @@ const ExternalServiceErrorBanner = ({
   </div>
 );
 
-const PageShell = ({ children }: { children: ReactNode }) => (
+/**
+ * `wide` widens the inner card for the multi-section form itself (name,
+ * phone, password, MFA all at once needs more breathing room than the
+ * narrow single-field message screens below it) without touching the
+ * outer gradient background every AuthPageShell-style screen shares.
+ */
+const PageShell = ({ children, wide = false }: { children: ReactNode; wide?: boolean }) => (
   <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
     <div
       className="pointer-events-none absolute inset-0 opacity-[0.15]"
@@ -157,7 +168,9 @@ const PageShell = ({ children }: { children: ReactNode }) => (
     <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#7dd8ee]/30 blur-3xl" />
     <div className="pointer-events-none absolute top-1/4 -right-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
     <div className="pointer-events-none absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#182a72]/30 blur-3xl" />
-    <div className="login-card-pop relative z-10 w-full max-w-md rounded-3xl bg-white px-8 py-9 shadow-2xl ring-1 ring-black/5">
+    <div
+      className={`login-card-pop relative z-10 w-full rounded-3xl bg-white px-8 py-9 shadow-2xl ring-1 ring-black/5 sm:px-10 ${wide ? 'max-w-2xl' : 'max-w-md'}`}
+    >
       <div className="mb-6 flex flex-col items-center">
         <img src="/cfpLogo.svg" alt="CareerForce Pro" className="h-10 w-auto object-contain" />
         <span className="ai-recruitment-text mt-2 text-[11px] tracking-widest">
@@ -167,6 +180,66 @@ const PageShell = ({ children }: { children: ReactNode }) => (
       {children}
     </div>
     <Footer className="relative z-10 mt-8 shrink-0 text-white/70" />
+  </div>
+);
+
+/** Small uppercase section header, shared by every group in the form below
+ * (name/phone, password, two-factor) so the wider card reads as clearly
+ * organized sections instead of one long stack of fields. */
+const SectionHeading = ({
+  icon: Icon,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  children: ReactNode;
+}) => (
+  <div className="mb-3 flex items-center gap-2">
+    <Icon className="text-base text-brand-600" />
+    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{children}</span>
+  </div>
+);
+
+type MfaOption = {
+  value: MfaMethodType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+const MFA_OPTIONS: MfaOption[] = [
+  { value: 'totp', label: 'Authenticator app', icon: MdOutlineQrCode2 },
+  { value: 'email', label: 'Email', icon: MdOutlineEmail },
+  { value: 'sms', label: 'Phone', icon: MdOutlineSms },
+];
+
+/** Equal-width, evenly-aligned method picker — replaces antd's
+ * Radio.Group/Radio.Button here, whose default sizing let the three
+ * options render at visibly different widths with wrapped label text. */
+const MfaMethodPicker = ({
+  value,
+  onChange,
+}: {
+  value: MfaMethodType;
+  onChange: (value: MfaMethodType) => void;
+}) => (
+  <div className="grid grid-cols-3 gap-2">
+    {MFA_OPTIONS.map(({ value: optionValue, label, icon: Icon }) => {
+      const selected = value === optionValue;
+      return (
+        <button
+          key={optionValue}
+          type="button"
+          onClick={() => onChange(optionValue)}
+          aria-pressed={selected}
+          className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center text-xs font-medium transition-colors cursor-pointer ${
+            selected
+              ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+              : 'border-[var(--border)] bg-white text-gray-600 hover:border-brand-300 hover:text-brand-700'
+          }`}
+        >
+          <Icon className="text-lg" />
+          <span className="leading-tight">{label}</span>
+        </button>
+      );
+    })}
   </div>
 );
 
@@ -245,9 +318,30 @@ const AcceptInvitation = () => {
   // then `isPlatformInvite` stays at its `false` default, which is harmless
   // since the form isn't rendered before `invitation` loads anyway (see the
   // isFetching/isError early returns below).
+  //
+  // Same load for `contact_phone`: a Company Admin invite already carries
+  // the phone number typed into the "Add Company" form (ConfirmTenantUseCase
+  // on the backend), so prefill it rather than make the same person type it
+  // again — still editable, still validated, just not blank by default.
+  // `shouldDirty: false` on both so an untouched prefill doesn't make the
+  // form register as "changed" before the person has actually done anything.
   useEffect(() => {
     if (invitation) {
       setValue('isPlatformInvite', invitation.is_platform_invite, { shouldValidate: true });
+      if (invitation.contact_phone) {
+        const { countryCode: prefilledCountryCode, phoneNumber: prefilledPhoneNumber } = splitE164(
+          invitation.contact_phone
+        );
+        if (prefilledCountryCode) {
+          setValue('countryCode', prefilledCountryCode, { shouldDirty: false });
+        }
+        if (prefilledPhoneNumber) {
+          setValue('phoneNumber', prefilledPhoneNumber, {
+            shouldDirty: false,
+            shouldValidate: true,
+          });
+        }
+      }
     }
   }, [invitation, setValue]);
 
@@ -392,15 +486,23 @@ const AcceptInvitation = () => {
   }
 
   return (
-    <PageShell>
+    <PageShell wide>
       {isAccepting && <Loader />}
-      <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Join {invitation.organization_name}</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          You&apos;ve been invited as{' '}
-          <span className="font-medium">{formatRole(invitation.role)}</span>. Set a password and MFA
-          to activate <span className="font-medium">{invitation.invited_email}</span>.
+      <div className="text-center mb-7">
+        <h2 className="text-2xl font-bold text-gray-900">Join {invitation.organization_name}</h2>
+        <p className="mt-1.5 text-sm text-gray-500">
+          Set a password and two-factor authentication to activate your account.
         </p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
+            <MdOutlineBadge className="text-sm" />
+            {formatRole(invitation.role)}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+            <MdOutlineEmail className="text-sm" />
+            {invitation.invited_email}
+          </span>
+        </div>
       </div>
 
       {externalServiceError && (
@@ -411,208 +513,218 @@ const AcceptInvitation = () => {
         />
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
         <div>
-          <Controller
-            name="firstName"
-            control={control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                type="text"
-                placeholder="First name*"
-                prefix={
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
-                    <MdPersonOutline className="text-brand-900 text-sm" />
-                  </div>
-                }
-                className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-              />
-            )}
-          />
-          {errors.firstName && (
-            <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
-              {errors.firstName.message}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <Controller
-            name="lastName"
-            control={control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                type="text"
-                placeholder="Last name"
-                prefix={
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
-                    <MdPersonOutline className="text-brand-900 text-sm" />
-                  </div>
-                }
-                className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-              />
-            )}
-          />
-          {errors.lastName && (
-            <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
-              {errors.lastName.message}
-            </p>
-          )}
-        </div>
-
-        {(!invitation.is_platform_invite || methodType === 'sms') && (
-          <div>
-            {invitation.is_platform_invite && (
-              <p className="mb-1 px-2 text-xs text-gray-500">
-                Where should we text your verification code?
-              </p>
-            )}
-            <div className="flex gap-2">
+          <SectionHeading icon={MdPersonOutline}>Your details</SectionHeading>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
               <Controller
-                name="countryCode"
+                name="firstName"
                 control={control}
                 render={({ field }) => (
-                  <div className="w-24 shrink-0 rounded-3xl border bg-white px-1 border-[var(--border)] focus-within:ring focus-within:ring-brand-300">
-                    <Select
-                      value={field.value}
-                      onChange={field.onChange}
-                      variant="borderless"
-                      className="w-full"
-                      showSearch
-                      popupMatchSelectWidth={280}
-                      filterOption={(input, option) =>
-                        String(option?.label ?? '')
-                          .toLowerCase()
-                          .includes(input.toLowerCase())
-                      }
-                      optionLabelProp="value"
-                      options={countryCodes.map(({ short, value, label }) => ({
-                        label: `${short} - ${label}`,
-                        value,
-                      }))}
-                    />
-                  </div>
+                  <Input
+                    {...field}
+                    type="text"
+                    placeholder="First name*"
+                    prefix={
+                      <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                        <MdPersonOutline className="text-brand-900 text-sm" />
+                      </div>
+                    }
+                    className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                  />
                 )}
               />
-              <div className="min-w-0 flex-1">
+              {errors.firstName && (
+                <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
+                  {errors.firstName.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Controller
+                name="lastName"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    type="text"
+                    placeholder="Last name"
+                    prefix={
+                      <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                        <MdPersonOutline className="text-brand-900 text-sm" />
+                      </div>
+                    }
+                    className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                  />
+                )}
+              />
+              {errors.lastName && (
+                <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
+                  {errors.lastName.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {(!invitation.is_platform_invite || methodType === 'sms') && (
+            <div className="mt-4">
+              {invitation.is_platform_invite && (
+                <p className="mb-1 px-2 text-xs text-gray-500">
+                  Where should we text your verification code?
+                </p>
+              )}
+              <div className="flex gap-2">
                 <Controller
-                  name="phoneNumber"
+                  name="countryCode"
                   control={control}
                   render={({ field }) => (
-                    <Input
-                      {...field}
-                      type="tel"
-                      placeholder="Phone number*"
-                      maxLength={15}
-                      prefix={
-                        <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
-                          <MdOutlinePhone className="text-brand-900 text-sm" />
-                        </div>
-                      }
-                      className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                      onChange={(e) => {
-                        setValue(
-                          'phoneNumber',
-                          restrictPhoneDigitsForCountry(
-                            e.target.value,
-                            getValues('countryCode') ?? ''
-                          ),
-                          { shouldDirty: true, shouldValidate: true }
-                        );
-                        trigger('phoneNumber');
-                      }}
-                    />
+                    <div className="w-24 shrink-0 rounded-3xl border bg-white px-1 border-[var(--border)] focus-within:ring focus-within:ring-brand-300">
+                      <Select
+                        value={field.value}
+                        onChange={field.onChange}
+                        variant="borderless"
+                        className="w-full"
+                        showSearch
+                        popupMatchSelectWidth={280}
+                        filterOption={(input, option) =>
+                          String(option?.label ?? '')
+                            .toLowerCase()
+                            .includes(input.toLowerCase())
+                        }
+                        optionLabelProp="value"
+                        options={countryCodes.map(({ short, value, label }) => ({
+                          label: `${short} - ${label}`,
+                          value,
+                        }))}
+                      />
+                    </div>
                   )}
                 />
+                <div className="min-w-0 flex-1">
+                  <Controller
+                    name="phoneNumber"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        type="tel"
+                        placeholder="Phone number*"
+                        maxLength={15}
+                        prefix={
+                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                            <MdOutlinePhone className="text-brand-900 text-sm" />
+                          </div>
+                        }
+                        className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                        onChange={(e) => {
+                          setValue(
+                            'phoneNumber',
+                            restrictPhoneDigitsForCountry(
+                              e.target.value,
+                              getValues('countryCode') ?? ''
+                            ),
+                            { shouldDirty: true, shouldValidate: true }
+                          );
+                          trigger('phoneNumber');
+                        }}
+                      />
+                    )}
+                  />
+                </div>
               </div>
+              {(errors.countryCode || errors.phoneNumber) && (
+                <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
+                  {errors.countryCode?.message || errors.phoneNumber?.message}
+                </p>
+              )}
             </div>
-            {(errors.countryCode || errors.phoneNumber) && (
-              <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
-                {errors.countryCode?.message || errors.phoneNumber?.message}
-              </p>
-            )}
+          )}
+        </div>
+
+        <div>
+          <SectionHeading icon={MdLockOutline}>Create a password</SectionHeading>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <Controller
+                name="password"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    type={showPassword ? 'text' : 'password'}
+                    noAutoCapitalize
+                    placeholder="Password*"
+                    prefix={
+                      <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                        <MdLockOutline className="text-brand-900 text-sm" />
+                      </div>
+                    }
+                    className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                    suffix={
+                      <button
+                        type="button"
+                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <FaEye /> : <FaEyeSlash />}
+                      </button>
+                    }
+                    onChange={(e) => {
+                      field.onChange(e);
+                      trigger('confirmPassword');
+                    }}
+                  />
+                )}
+              />
+              {errors.password && (
+                <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Controller
+                name="confirmPassword"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    noAutoCapitalize
+                    placeholder="Confirm password*"
+                    prefix={
+                      <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
+                        <MdLockOutline className="text-brand-900 text-sm" />
+                      </div>
+                    }
+                    className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                    suffix={
+                      <button
+                        type="button"
+                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
+                      </button>
+                    }
+                  />
+                )}
+              />
+              {errors.confirmPassword && (
+                <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
+                  {errors.confirmPassword.message}
+                </p>
+              )}
+            </div>
           </div>
-        )}
-
-        <div>
-          <Controller
-            name="password"
-            control={control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                type={showPassword ? 'text' : 'password'}
-                noAutoCapitalize
-                placeholder="Password*"
-                prefix={
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
-                    <MdLockOutline className="text-brand-900 text-sm" />
-                  </div>
-                }
-                className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                suffix={
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
-                }
-                onChange={(e) => {
-                  field.onChange(e);
-                  trigger('confirmPassword');
-                }}
-              />
-            )}
-          />
-          {errors.password && (
-            <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
-              {errors.password.message}
-            </p>
-          )}
         </div>
 
-        <div>
-          <Controller
-            name="confirmPassword"
-            control={control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                type={showConfirmPassword ? 'text' : 'password'}
-                noAutoCapitalize
-                placeholder="Confirm password*"
-                prefix={
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
-                    <MdLockOutline className="text-brand-900 text-sm" />
-                  </div>
-                }
-                className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                suffix={
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
-                }
-              />
-            )}
-          />
-          {errors.confirmPassword && (
-            <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
-              {errors.confirmPassword.message}
-            </p>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-[var(--border)] bg-gray-50 p-4">
-          <p className="text-sm font-medium text-gray-700">Two-factor authentication</p>
-          <p className="mt-1 text-xs text-gray-500">
+        <div className="rounded-2xl border border-[var(--border)] bg-gray-50 p-4 sm:p-5">
+          <SectionHeading icon={MdOutlineSecurity}>Two-factor authentication</SectionHeading>
+          <p className="-mt-2 mb-3 text-xs text-gray-500">
             Required to activate your account. Choose how you&apos;d like to verify it&apos;s you.
           </p>
 
@@ -620,25 +732,7 @@ const AcceptInvitation = () => {
             name="methodType"
             control={control}
             render={({ field }) => (
-              <Radio.Group
-                {...field}
-                buttonStyle="solid"
-                className="mt-3 flex w-full"
-                onChange={(e) => field.onChange(e.target.value as MfaMethodType)}
-              >
-                <Radio.Button value="totp" className="flex-1 text-center">
-                  <MdOutlineQrCode2 className="mr-1 inline text-base align-text-bottom" />
-                  Authenticator app
-                </Radio.Button>
-                <Radio.Button value="email" className="flex-1 text-center">
-                  <MdOutlineEmail className="mr-1 inline text-base align-text-bottom" />
-                  Email
-                </Radio.Button>
-                <Radio.Button value="sms" className="flex-1 text-center">
-                  <MdOutlineSms className="mr-1 inline text-base align-text-bottom" />
-                  Phone
-                </Radio.Button>
-              </Radio.Group>
+              <MfaMethodPicker value={field.value} onChange={field.onChange} />
             )}
           />
 
@@ -703,7 +797,7 @@ const AcceptInvitation = () => {
                 placeholder={
                   methodType === 'totp' ? '6-digit code from your app' : '6-digit verification code'
                 }
-                className="mt-3 w-full !normal-case px-4 py-2 bg-white border rounded-3xl tracking-widest focus:ring focus:ring-brand-300 border-[var(--border)] disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="mt-3 w-full !normal-case px-4 py-2 bg-white border rounded-3xl text-center font-mono tracking-[0.4em] focus:ring focus:ring-brand-300 border-[var(--border)] disabled:bg-gray-100 disabled:cursor-not-allowed"
                 onChange={(e) => field.onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
               />
             )}

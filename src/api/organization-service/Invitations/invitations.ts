@@ -10,6 +10,14 @@ export type ValidateInvitationResponse = {
   // Determines whether phone_number is required to accept (see
   // AcceptInvitationRequest below).
   is_platform_invite: boolean;
+  // The phone number already collected when this invite was created — the
+  // company's own admin_contact for a Company Admin invite, e.g. — so the
+  // accept form can prefill it instead of asking the same person to type a
+  // number that was already collected once. E.164 (`+<country><digits>`,
+  // split back into the form's separate country-code/digits fields via
+  // splitE164). Null when no contact phone was ever recorded for this
+  // invite.
+  contact_phone: string | null;
 };
 
 // Wire shape of every error this endpoint (and validateInvitation) returns —

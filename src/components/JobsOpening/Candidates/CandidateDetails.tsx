@@ -14,6 +14,7 @@ import {
   type CandidateView,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
 import { useListCandidateInterviewRoundsQuery } from '../../../api/candidate-service/Candidates/interviewRounds';
+import { useGetCandidateStatusHistoryQuery } from '../../../api/candidate-service/Candidates/status';
 import {
   useListCandidateInterviewScoresQuery,
   useDeleteResumeReviewMutation,
@@ -39,7 +40,14 @@ import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import PipelineBoard from './PipelineBoard';
 import StatusHistoryTab from './StatusHistoryTab';
 import { roundLabel, formatRoundStatus } from './roundDisplay';
-import { resolveCurrentRound, isRoundConcluded } from './roundProgress';
+import {
+  resolveCurrentRound,
+  isRoundConcluded,
+  isInstantCallFlow,
+  isIntakeCallRound,
+  isResumeStageRound,
+  orderRoundsForFlow,
+} from './roundProgress';
 
 // Rewritten against the real candidate-service contract — replaces the
 // previous ~2050-line version, which was built entirely around a legacy
@@ -120,9 +128,20 @@ const CandidateDetails = () => {
     { skip: !parsedJobId }
   );
 
-  const { data: rounds = [] } = useListCandidateInterviewRoundsQuery(candidateId ?? '', {
+  const { data: rawRounds = [] } = useListCandidateInterviewRoundsQuery(candidateId ?? '', {
     skip: !candidateId,
   });
+  const { data: statusHistoryData } = useGetCandidateStatusHistoryQuery(
+    { candidateId: candidateId ?? '', limit: 100 },
+    { skip: !candidateId }
+  );
+  // The instant-call flow (Intake Call first, resume within 24h) and the
+  // resume-first flow get the SAME round order from the backend today — it
+  // orders the resume stage by the job plan's single Resume Round position,
+  // which can't differ per candidate. Reorder client-side so an instant-call
+  // candidate's pipeline reads Intake Call → Resume Review. See BACKEND_GAPS.md.
+  const instantCallFlow = isInstantCallFlow(statusHistoryData?.items);
+  const rounds = orderRoundsForFlow(rawRounds, instantCallFlow);
   const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId ?? '', {
     skip: !candidateId,
   });
@@ -176,7 +195,7 @@ const CandidateDetails = () => {
   // since `master_interview_round`'s `round_name` for this special_kind is
   // a fixed platform string, not something a job's own setup UI lets you
   // retype freely.
-  const isIntakeCallRound =
+  const selectedRoundIsIntakeCall =
     selectedRound?.stage_type === 'interview' &&
     (selectedRound.round_name?.toLowerCase().includes('intake call') ?? false);
   // Same "score already sitting here means reviewed and ready to move on"
@@ -208,6 +227,21 @@ const CandidateDetails = () => {
     currentRound !== null &&
     currentRound.stage_type === 'interview' &&
     !isRoundConcluded(currentRound);
+
+  // Resume Review and the Intake Call are one unit at the head of any pipeline
+  // that has an Intake Call round: the AI scores the resume, then the call's
+  // transcript is checked against that resume for consistency. Neither round
+  // advances on its own — ADVANCE / REJECT / MARK SELECTED stay hidden until
+  // the consistency score lands (candidate-service stamps
+  // `resume_consistency_review` at the same time). Once it's in, the normal
+  // actions come back. Jobs with no Intake Call round are unaffected.
+  const planHasIntakeCall = rounds.some(isIntakeCallRound);
+  const consistencyScorePending =
+    candidate?.consistency_score === null || candidate?.consistency_score === undefined;
+  const currentRoundInIntakePair =
+    currentRound !== null && (isResumeStageRound(currentRound) || isIntakeCallRound(currentRound));
+  const actionsLockedForIntakePair =
+    planHasIntakeCall && currentRoundInIntakePair && consistencyScorePending;
 
   if (candidateError) {
     return (
@@ -331,7 +365,16 @@ const CandidateDetails = () => {
               </div>
             </div>
 
-            {!isTerminal && (
+            {!isTerminal && actionsLockedForIntakePair && (
+              <div className="flex max-w-[18rem] items-center">
+                <p className="text-xs text-gray-500">
+                  ADVANCE and REJECT unlock once the Intake Call consistency check completes
+                  (comparing the call transcript against the resume).
+                </p>
+              </div>
+            )}
+
+            {!isTerminal && !actionsLockedForIntakePair && (
               <div className="flex items-center gap-3">
                 <Button
                   className="flex items-center justify-center text-sm px-6 h-[34px] gap-2 rounded-full bg-primary disabled:cursor-not-allowed disabled:opacity-50"
@@ -520,7 +563,7 @@ const CandidateDetails = () => {
                     </div>
                   </CommonCard>
 
-                  {isIntakeCallRound && (
+                  {selectedRoundIsIntakeCall && (
                     // Same transcript-vs-resume authenticity signal shown on
                     // the Resume stage card (see that card's own comment) —
                     // surfaced here too since it's specifically about THIS

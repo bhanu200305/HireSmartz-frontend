@@ -8,13 +8,20 @@ import candidateApi from '../candidateApi';
 // that assumes they do.
 
 /**
- * `CandidateInterviewRoundView` — always includes a synthetic "resume"
- * stage FIRST (`stage_type: "resume"`, `round_id: null`) representing the
+ * `CandidateInterviewRoundView` — always includes one synthetic "resume"
+ * stage (`stage_type: "resume"`, `round_id: null`) representing the
  * resume-collection step itself, not a job-service round
- * (FRONTEND_INTEGRATION_DETAILS.md §4.5). Real rounds have
- * `stage_type: "interview"`; `round_name`/`sequence`/`duration_minutes` are
- * sourced LIVE from job-service on every read — never stored locally, so
- * don't cache these past the query's own lifetime.
+ * (FRONTEND_INTEGRATION_DETAILS.md §4.5). The list arrives in plan order,
+ * sorted by each row's real `sequence`; the resume stage is placed at the
+ * job plan's Resume Round position (no longer unconditionally first). That
+ * position is PLAN-level, so it can't differ between two candidates on the
+ * same opening who applied through the two different intake flows —
+ * `roundProgress.ts`'s `orderRoundsForFlow` reorders the resume stage per
+ * candidate on the client until the backend does it (see BACKEND_GAPS.md).
+ * Real rounds have `stage_type: "interview"`;
+ * `round_name`/`sequence`/`duration_minutes` are sourced LIVE from
+ * job-service on every read — never stored locally, so don't cache these
+ * past the query's own lifetime.
  *
  * Matches `candidate_dto.CandidateInterviewRoundView` field-for-field
  * (verified 2026-09-02 against the real Pydantic model) — `id`,
