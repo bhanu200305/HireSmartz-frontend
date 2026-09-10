@@ -1,0 +1,152 @@
+import { useEffect, useState } from 'react';
+import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
+import { Loader } from '../../../shared/ui/loader';
+import { useGetCandidateResumeDownloadQuery } from '../../../../api/candidate-service/Candidates/scoring';
+import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
+
+// Views the candidate's resume IN PLACE instead of downloading it.
+//
+// `GET /candidates/{id}/resume` returns a short-lived presigned S3 URL whose
+// stored `Content-Disposition` is `attachment` — pointing a link or
+// `window.open` at it makes the browser download the file rather than render
+// it. So the bytes are fetched here and handed to an <iframe> as a `blob:`
+// URL, which the browser's built-in PDF viewer renders inline.
+//
+// The fetch is cross-origin (S3), so it only succeeds if the bucket's CORS
+// policy allows this origin for GET. When it doesn't — or the file is a
+// DOC/DOCX, which an <iframe> can't render — it falls back to an
+// open-in-new-tab link. An inline-disposition URL from the backend would
+// drop the fetch hop entirely (see INTERVIEW_INTAKE_FLOW_BACKEND_GAPS.md).
+
+type ResumeViewerModalProps = {
+  open: boolean;
+  onClose: () => void;
+  candidateId: string;
+  candidateName: string;
+};
+
+const ResumeViewerModal = ({
+  open,
+  onClose,
+  candidateId,
+  candidateName,
+}: ResumeViewerModalProps) => {
+  const { data, isFetching, error } = useGetCandidateResumeDownloadQuery(candidateId, {
+    skip: !open,
+  });
+  const downloadUrl = data?.download_url ?? null;
+
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [inlineFailed, setInlineFailed] = useState(false);
+
+  const downloadName = `${candidateName.replace(/[^\w.-]+/g, '_') || 'candidate'}-resume.pdf`;
+
+  useEffect(() => {
+    if (!downloadUrl) return;
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setBlobUrl(null);
+    setInlineFailed(false);
+
+    fetch(downloadUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error(`resume fetch failed: ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        // S3 sometimes serves resumes as application/octet-stream, which an
+        // <iframe> won't render — retype the blob as PDF so the viewer opens.
+        const pdfBlob =
+          blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+        objectUrl = URL.createObjectURL(pdfBlob);
+        setBlobUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setInlineFailed(true);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [downloadUrl]);
+
+  return (
+    <AntdCommonModal
+      open={open}
+      onClose={onClose}
+      title="Resume"
+      subtitle={candidateName}
+      modalProps={{ width: 900 }}
+    >
+      {isFetching ? (
+        <div className="flex justify-center py-10">
+          <Loader />
+        </div>
+      ) : error ? (
+        <p className="text-sm text-red-500">
+          {getCandidateErrorMessage(error, 'Could not load the resume.')}
+        </p>
+      ) : !downloadUrl ? (
+        <p className="text-sm text-gray-500">No resume on file yet.</p>
+      ) : inlineFailed ? (
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <p className="text-sm text-gray-600">
+            This resume can&apos;t be previewed here (it may be a Word document). Download it or
+            open it in a new tab instead.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a
+              href={downloadUrl}
+              className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white"
+            >
+              DOWNLOAD RESUME
+            </a>
+            <a
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-primary-200 bg-primary-50 px-6 py-2 text-sm font-semibold text-primary-700"
+            >
+              OPEN IN NEW TAB
+            </a>
+          </div>
+        </div>
+      ) : !blobUrl ? (
+        <div className="flex justify-center py-10">
+          <Loader />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <iframe
+            title={`${candidateName} resume`}
+            src={blobUrl}
+            className="h-[70vh] w-full rounded-lg border border-neutral-200"
+          />
+          <div className="flex items-center justify-end gap-4">
+            <a
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-primary-600 hover:underline"
+            >
+              Open in new tab ›
+            </a>
+            {/* Same-origin blob: URL, so the `download` attribute is honoured
+                and the file saves without a round-trip. */}
+            <a
+              href={blobUrl}
+              download={downloadName}
+              className="rounded-full bg-primary px-5 py-1.5 text-xs font-semibold text-white"
+            >
+              DOWNLOAD RESUME
+            </a>
+          </div>
+        </div>
+      )}
+    </AntdCommonModal>
+  );
+};
+
+export default ResumeViewerModal;

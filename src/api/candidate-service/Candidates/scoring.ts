@@ -157,5 +157,6 @@ export const {
   useListCandidateInterviewScoresQuery,
   useRecordRecruiterRoundScoreMutation,
   useDeleteRecruiterRoundScoreMutation,
+  useGetCandidateResumeDownloadQuery,
   useLazyGetCandidateResumeDownloadQuery,
 } = extendedApi;
