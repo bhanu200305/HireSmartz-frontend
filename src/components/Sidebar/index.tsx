@@ -116,7 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       item.name === 'Tenant Audit Log'
     ) {
       // Mirror image of "Companies" above: a platform caller's static
-      // permission set happens to include COMPANY_SETTINGS_VIEW too, but
+      // permission set happens to include COMPANY_SETTINGS_EDIT too, but
       // `/my-company`, `/company-metrics` and `/activityFeed` all redirect
       // anyone with no tenant of their own straight back to `/` (or fetch
       // against `tenantId ?? ''`, same dead end) — a dead link for them.

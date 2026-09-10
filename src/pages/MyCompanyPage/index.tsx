@@ -4,7 +4,7 @@ import { Authorities } from '../../constants/authorities.constant';
 
 const MyCompanyPage = () => {
   return (
-    <RequirePermission permission={Authorities.COMPANY_SETTINGS_VIEW}>
+    <RequirePermission permission={Authorities.COMPANY_SETTINGS_EDIT}>
       <MyCompany />
     </RequirePermission>
   );
