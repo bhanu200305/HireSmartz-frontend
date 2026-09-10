@@ -188,6 +188,11 @@ const PipelineBoard = ({
           // `id`, which is only ever null-shaped conceptually for the
           // resume stage, so gate the click on stage_type rather than id.
           const isInterviewRound = round.stage_type === 'interview';
+          // Recordings and the transcript only exist once the call has
+          // actually happened — hide the "View recordings" entry point until
+          // the round is completed, so it isn't offered for a round that's
+          // still to_be_scheduled / scheduled / in progress.
+          const hasRecordings = isInterviewRound && bucketForStatus(round.status) === 'done';
           // Same guards `set_panel_interviewers.py` enforces server-side
           // (resume stage / already-finished / already-booked all 409) —
           // this just keeps the trigger from inviting a click that can only
@@ -197,12 +202,12 @@ const PipelineBoard = ({
           return (
             <div
               key={round.id ?? `resume-${index}`}
-              role={onRoundClick || isInterviewRound ? 'button' : undefined}
-              tabIndex={onRoundClick || isInterviewRound ? 0 : undefined}
+              role={onRoundClick || hasRecordings ? 'button' : undefined}
+              tabIndex={onRoundClick || hasRecordings ? 0 : undefined}
               onClick={() => {
                 if (onRoundClick) {
                   onRoundClick(round);
-                } else if (isInterviewRound) {
+                } else if (hasRecordings) {
                   setArtifactsModalFor({
                     roundId: round.id,
                     roundName: roundLabel(round),
@@ -219,7 +224,7 @@ const PipelineBoard = ({
                   if (onRoundClick) {
                     event.preventDefault();
                     onRoundClick(round);
-                  } else if (isInterviewRound) {
+                  } else if (hasRecordings) {
                     event.preventDefault();
                     setArtifactsModalFor({
                       roundId: round.id,
@@ -235,7 +240,7 @@ const PipelineBoard = ({
               }}
               className={`w-56 shrink-0 rounded-xl border border-neutral-200 border-t-4 bg-white shadow-xs ${meta.border} ${
                 isActive ? 'ring-2 ring-warning/40' : ''
-              } ${onRoundClick || isInterviewRound ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30' : ''}`}
+              } ${onRoundClick || hasRecordings ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30' : ''}`}
             >
               <div className="flex items-center gap-2 px-3.5 pt-3">
                 <span
@@ -272,7 +277,7 @@ const PipelineBoard = ({
                     Score: {resumeScore}
                   </span>
                 )}
-                {isInterviewRound && (
+                {hasRecordings && (
                   <button
                     type="button"
                     className="w-fit text-xs font-medium text-primary-600 hover:underline"
@@ -292,7 +297,7 @@ const PipelineBoard = ({
                       });
                     }}
                   >
-                    View recordings ›
+                    View recording &amp; transcript ›
                   </button>
                 )}
                 {canManageInterviewers && (

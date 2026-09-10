@@ -127,16 +127,14 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
               optionFilterProp="label"
               disabled={rolesForbidden}
               notFoundContent={
-                rolesForbidden
-                  ? "You don't have permission to view platform roles."
-                  : undefined
+                rolesForbidden ? "You don't have permission to view platform roles." : undefined
               }
               options={platformRoles.map((r) => ({ label: r.roleName, value: r.roleName }))}
             />
             {rolesForbidden && (
               <p className="text-xs text-red-500">
-                You don&apos;t have permission to view platform roles, so none can be picked here
-                — ask an admin to grant role-read access.
+                You don&apos;t have permission to view platform roles, so none can be picked here —
+                ask an admin to grant role-read access.
               </p>
             )}
             {canCreateRole && (
