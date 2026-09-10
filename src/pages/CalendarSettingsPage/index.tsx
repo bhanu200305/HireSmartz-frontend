@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Alert, Modal } from 'antd';
@@ -80,6 +80,24 @@ const CalendarSettingsPage = () => {
     setSearchParams(searchParams, { replace: true });
   };
 
+  const isConnected = !!grantStatus?.connected;
+  const grantStatusResolved = !isGrantStatusLoading && !isGrantStatusError;
+
+  // The OAuth callback lands here with a `?status=` param that the browser
+  // keeps until it's cleared. A `failed` / `cancelled` param sitting on top
+  // of a live "Connected" grant is stale — usually an initial hiccup
+  // followed by a successful retry — so once the backend confirms a grant
+  // is connected, strip the contradicting param instead of showing both
+  // states at once. `success` is left alone: it agrees with the panel.
+  const bannerContradictsConnectedState =
+    grantStatusResolved && isConnected && (oauthStatus === 'failed' || oauthStatus === 'cancelled');
+
+  useEffect(() => {
+    if (bannerContradictsConnectedState) {
+      dismissBanner();
+    }
+  }, [bannerContradictsConnectedState]);
+
   if (!isAvailable) {
     return <Navigate to="/profile" replace />;
   }
@@ -127,7 +145,6 @@ const CalendarSettingsPage = () => {
     }
   };
 
-  const isConnected = !!grantStatus?.connected;
   const busy = isConnecting || isDisconnecting;
 
   return (
@@ -156,7 +173,7 @@ const CalendarSettingsPage = () => {
             description="Interviews will now be scheduled around your real availability and added to your calendar automatically."
           />
         )}
-        {oauthStatus === 'cancelled' && (
+        {oauthStatus === 'cancelled' && !bannerContradictsConnectedState && (
           <Alert
             type="warning"
             showIcon
@@ -166,7 +183,7 @@ const CalendarSettingsPage = () => {
             description="You can connect your calendar whenever you're ready."
           />
         )}
-        {oauthStatus === 'failed' && (
+        {oauthStatus === 'failed' && !bannerContradictsConnectedState && (
           <Alert
             type="error"
             showIcon

@@ -1,5 +1,5 @@
 import MainLayout from '../../layouts/MainLayout';
-import { useEffect, useReducer } from 'react';
+import { useMemo } from 'react';
 import recruiterImage from '../../assets/svgs/recruiter.svg';
 import hiringManagerImage from '../../assets/svgs/hiringManager.svg';
 import jobPostingImage from '../../assets/svgs/jobPosting.svg';
@@ -12,7 +12,7 @@ import { hiringManagersHeaders } from '../../constants/hiringManager';
 import { recruitersHeaders } from '../../constants/recruiters';
 import { jobOpeningsHeaders } from '../../constants/jobOpenings';
 import useFetchRoles from '../../hooks/useRoles';
-import { useOwnerDashboardMutation } from '../../api/analytics-service/Dashboard/OwnerDashboard';
+import { useListUsersQuery, type OrgUser } from '../../api/organization-service/Users/users';
 import { useGetJobOpeningsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import { setJobOpeningFilters } from '../../redux/slices/jobOpeningFilterSlice';
 
@@ -26,31 +26,42 @@ import { Authorities } from '../../constants/authorities.constant';
 import { MdOutlineInsights } from 'react-icons/md';
 import HiringOverviewSlide from '../Dashboard/HiringOverviewSlide';
 
+// One dashboard "team member" card row, mapped from organization-service's
+// real `GET /v1/users` shape. Replaces the old `analytics-service`
+// `/orguserservice/org/user/dashboard/filters` call, which no longer exists
+// on any deployed service — so the Recruiters and Hiring Managers slides
+// rendered empty for every non-platform role (the fetch also only ran for
+// Super Admin / Admin).
+type TeamRow = { id: string; fullName: string; email: string; roleLabel: string };
+
+const MAX_DASHBOARD_ROWS = 5;
+
+// The `role` query param on `GET /v1/users` takes a BASE role name (and
+// server-side also matches any of the tenant's own roles derived from it),
+// so the filtering — including custom role names — happens on the backend.
+const RECRUITER_ROLE = 'recruiter';
+const HIRING_MANAGER_ROLE = 'hiring_manager';
+
+const toTeamRow = (user: OrgUser): TeamRow => ({
+  id: user.user_id,
+  fullName: user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || '—',
+  email: user.email,
+  roleLabel: user.role ?? '—',
+});
+
 const OwnerDashboard = () => {
   const navigate = useNavigate();
-  const [localState, setLocalState] = useReducer(
-    (prevState, newState) => ({ ...prevState, ...newState }),
-    {
-      recruiterData: [],
-      hiringManagerData: [],
-      jobOpeningsData: [],
-      totalRecruiters: 0,
-      totalHiringManagers: 0,
-      totalJobOpenings: 0,
-      closureRate: 0,
-    }
-  );
 
-  const { jobOpeningFilters, role } = useSelector(
+  const { jobOpeningFilters, role, tenantId } = useSelector(
     (state: RootState) => ({
       jobOpeningFilters: state.JobOpeningFiltersSlice,
       role: state.LoginSlice.role,
+      tenantId: state.LoginSlice.tenantId,
     }),
     shallowEqual
   );
   const dispatch = useDispatch();
   const { roles } = useFetchRoles();
-  const [OwnerDashboard] = useOwnerDashboardMutation();
 
   const recruiterRole = Array.isArray(roles?.data)
     ? roles.data.find((r) => r.roleName.toLowerCase() === 'recruiter')
@@ -62,30 +73,30 @@ const OwnerDashboard = () => {
   const recruiterRoleId = recruiterRole?.id;
   const hiringManagerRoleId = hiringManagerRole?.id;
 
-  // Fetch recruiter or hiring manager data
-  const getDashboardData = async (roleId: string | number, key: string, countKey: string) => {
-    if (!roleId) return;
+  // One backend call per role — `GET /v1/users?role=…` does the filtering,
+  // custom tenant roles included. Gated on USER_VIEW (the directory-read
+  // permission), so a role without it simply doesn't get these two slides.
+  const canViewOrgStats = useHasAccess(Authorities.USER_VIEW);
+  const usersQuerySkip = { skip: !tenantId || !canViewOrgStats };
 
-    try {
-      const res = await OwnerDashboard({
-        page: 0,
-        pageSize: 5,
-        value: {
-          roleTypeMappingId: roleId,
-          status: true,
-          isArchived: undefined,
-          searchQuery: '',
-        },
-      }).unwrap();
+  const { data: recruiterUsers } = useListUsersQuery(
+    { role: RECRUITER_ROLE, limit: MAX_DASHBOARD_ROWS, offset: 0 },
+    usersQuerySkip
+  );
+  const { data: hiringManagerUsers } = useListUsersQuery(
+    { role: HIRING_MANAGER_ROLE, limit: MAX_DASHBOARD_ROWS, offset: 0 },
+    usersQuerySkip
+  );
 
-      setLocalState({
-        [key]: res.data,
-        [countKey]: res.totalElements || 0,
-      });
-    } catch (err) {
-      console.error(`Error fetching data for role ID ${roleId}:`, err);
-    }
-  };
+  const recruiterRows = useMemo(
+    () => (recruiterUsers?.items ?? []).map(toTeamRow),
+    [recruiterUsers]
+  );
+  const hiringManagerRows = useMemo(
+    () => (hiringManagerUsers?.items ?? []).map(toTeamRow),
+    [hiringManagerUsers]
+  );
+
   const handleViewAllRecruiters = () => {
     dispatch(
       setOrgUserFilters({
@@ -143,22 +154,10 @@ const OwnerDashboard = () => {
     navigate('/jobs');
   };
 
-  useEffect(() => {
-    if (
-      (role?.name === 'Super Admin' || role?.name === 'Admin') &&
-      recruiterRoleId &&
-      hiringManagerRoleId
-    ) {
-      getDashboardData(recruiterRoleId, 'recruiterData', 'totalRecruiters');
-      getDashboardData(hiringManagerRoleId, 'hiringManagerData', 'totalHiringManagers');
-    }
-  }, [role, status, recruiterRoleId, hiringManagerRoleId]);
-
   // Location-resolved via useEffectivePermissions — a widget backed by a
   // permission this user doesn't hold at their active location disappears
   // on switch, rather than every widget always showing regardless of role
   // or location the way the old role.name checks did.
-  const canViewOrgStats = useHasAccess(Authorities.USER_VIEW);
   const canViewActivity = useHasAccess(Authorities.ACTIVITY_FEED);
   const canViewJobOpenings = useHasAccess(Authorities.JOB_OPENING_VIEW);
   const canViewInterviews = useHasAccess(Authorities.CANDIDATE_VIEW);
@@ -196,13 +195,10 @@ const OwnerDashboard = () => {
               <CustomerTable
                 headers={recruitersHeaders}
                 title="Recruiters"
-                data={localState.recruiterData}
+                data={recruiterRows.slice(0, MAX_DASHBOARD_ROWS)}
                 role={role.type}
                 icon={recruiterImage}
-                getData={() =>
-                  getDashboardData(recruiterRoleId ?? 0, 'recruiterData', 'totalRecruiters')
-                }
-                count={localState.totalRecruiters < 5 ? localState.totalRecruiters : 5}
+                count={Math.min(recruiterRows.length, MAX_DASHBOARD_ROWS)}
                 onViewAll={handleViewAllRecruiters}
                 onTitleClick={handleViewAllRecruiters}
                 onIconClick={handleViewAllRecruiters}
@@ -218,17 +214,10 @@ const OwnerDashboard = () => {
               <CustomerTable
                 headers={hiringManagersHeaders}
                 title="Hiring Managers"
-                data={localState.hiringManagerData}
+                data={hiringManagerRows.slice(0, MAX_DASHBOARD_ROWS)}
                 role={role.type}
                 icon={hiringManagerImage}
-                getData={() =>
-                  getDashboardData(
-                    hiringManagerRoleId ?? 0,
-                    'hiringManagerData',
-                    'totalHiringManagers'
-                  )
-                }
-                count={localState.totalHiringManagers < 5 ? localState.totalHiringManagers : 5}
+                count={Math.min(hiringManagerRows.length, MAX_DASHBOARD_ROWS)}
                 onViewAll={handleViewAllHiringManagers}
                 onTitleClick={handleViewAllHiringManagers}
                 onIconClick={handleViewAllHiringManagers}

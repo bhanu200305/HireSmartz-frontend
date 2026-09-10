@@ -10,18 +10,26 @@ const OwnerTableBody: React.FC<OwnerTableBodyProps> = ({ data, title }) => {
     <>
       {(title === 'Recruiters' || title === 'Hiring Managers') && (
         <tbody>
-          {data?.map((customer: any, index: number) => (
-            <tr key={customer?.id + '_' + index}>
-              <td
-                className="py-2 px-1 hover:text-primary cursor-pointer"
-                onClick={() => navigate(`/view-organisation-user?orgUserId=${customer.id}`)}
-              >
-                <p className="text-primary underline">{customer?.employeeId} </p>
+          {data?.length ? (
+            data.map((row: any, index: number) => (
+              <tr key={`${row?.id ?? 'user'}_${index}`}>
+                <td
+                  className="py-2 px-1 hover:text-primary cursor-pointer"
+                  onClick={() => navigate(`/view-organisation-user?orgUserId=${row.id}`)}
+                >
+                  <p className="text-primary underline">{row?.fullName}</p>
+                </td>
+                <td className="py-2 px-1">{row?.email}</td>
+                <td className="py-2 px-1">{row?.roleLabel}</td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={3} className="py-6 text-center text-sm text-neutral-400">
+                No {title?.toLowerCase()} yet.
               </td>
-              <td className="py-2 px-1">{customer?.firstName + ' ' + customer?.lastName}</td>
-              <td className="py-2 px-1">{customer?.emailId}</td>
             </tr>
-          ))}
+          )}
         </tbody>
       )}
       {title === 'Job Openings' && (

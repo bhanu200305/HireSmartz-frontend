@@ -1,1 +1,1 @@
-export const recruitersHeaders = ['EMPLOYEE CODE', 'FULL NAME', 'EMAIL'];
+export const recruitersHeaders = ['FULL NAME', 'EMAIL', 'ROLE'];
