@@ -152,11 +152,7 @@ export const CareersJobDetailPage = () => {
           </svg>
         </button>
         {brandingLoading ? null : logoUrl ? (
-          <img
-            src={logoUrl}
-            alt={companyName ?? 'Company logo'}
-            className="h-14 object-contain"
-          />
+          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-14 object-contain" />
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}

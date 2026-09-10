@@ -60,7 +60,8 @@ const niceRoundSalary = (value: number): number => {
 /** Same as `niceRoundSalary`, for hourly rates. */
 const niceRoundHourly = (value: number): number => Math.round(value);
 
-const formatBucketAmount = (n: number): string => (n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${n}`);
+const formatBucketAmount = (n: number): string =>
+  n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${n}`;
 
 /** Three evenly-spaced buckets over a set of same-unit salary values. */
 const buildBucketsForUnit = (
@@ -483,11 +484,7 @@ export const CareersListingPage = () => {
           internal branding lookup). Falls back to the plain "CFP" mark. */}
       <header className="bg-gray-900 shadow-md text-white px-4 h-12 flex items-center justify-center relative shrink-0">
         {brandingLoading ? null : logoUrl ? (
-          <img
-            src={logoUrl}
-            alt={companyName ?? 'Company logo'}
-            className="h-14 object-contain"
-          />
+          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-14 object-contain" />
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}
