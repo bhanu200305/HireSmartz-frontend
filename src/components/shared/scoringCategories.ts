@@ -1,19 +1,7 @@
 /**
- * The Resume/Interview scoring category catalogue — labels, descriptions,
- * standard default weights, and slider colors.
- *
- * Category NAMES (the object keys) mirror job-service's real domain enums
- * (`ResumeScoringCategory`/`InterviewScoringCategory` in
- * app/modules/jobs/domain/enums/scoring_category.py) and the `defaultPct`
- * values mirror its `_STANDARD_RESUME_WEIGHTS`/`_STANDARD_INTERVIEW_WEIGHTS`
- * seed constants — these are the only real "Resume/Interview scoring
- * categories" defined anywhere in the codebase, so both this page and
- * JobScoringCriteriaTab.tsx (per-job scoring) draw from the same list
- * rather than each inventing their own.
- *
- * Single source of truth: shared by JobScoringCriteriaTab.tsx (per-job) and
- * CompanySettings/PlatformScoringDefaultsTab.tsx (platform/company default)
- * so the two pages can never drift apart on labels, colors, or defaults.
+ * Fallback labels/descriptions/default weights/colors for scoring
+ * categories, keyed by category_code. The API's own live values (from
+ * master_scoring_category) take priority wherever available.
  */
 
 export type ScoringCategoryMeta = Record<
@@ -49,7 +37,7 @@ export const RESUME_CATEGORY_META: ScoringCategoryMeta = {
 };
 
 export const INTERVIEW_CATEGORY_META: ScoringCategoryMeta = {
-  SKILLS: {
+  SKILLS_MATCH: {
     label: 'Skills Match',
     description: 'Technical skills, soft skills, and communication',
     defaultPct: 40,

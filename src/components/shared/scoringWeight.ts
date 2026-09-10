@@ -1,14 +1,14 @@
 /**
- * `ScoringWeight` + normalization helper for ScoringWeightCard (ui/scoringWeightCard.tsx).
- * Kept in its own module, not exported alongside the component, so that file
- * stays component-only — mixing a component export with plain function
- * exports in the same file breaks Vite's Fast Refresh (see the
- * react-refresh/only-export-components lint rule it was tripping).
+ * `ScoringWeight` + normalization helper for ScoringWeightCard. Kept in its
+ * own module so that file stays component-only (Fast Refresh).
  */
 
 export type ScoringWeight = {
   id: string | number;
   categoryName: string;
+  // Live label/description from the API, preferred over categoryMeta's static lookup.
+  displayName?: string;
+  description?: string;
   weightPercentage: number;
 };
 
@@ -34,6 +34,8 @@ export const normalizeScoringWeights = (weights: unknown): ScoringWeight[] => {
       return {
         id: candidate.id ?? index + 1,
         categoryName,
+        displayName: candidate.displayName,
+        description: candidate.description,
         weightPercentage: clampWeight(candidate.weightPercentage),
       } as ScoringWeight;
     })

@@ -1538,8 +1538,8 @@ const EditJobDetail = () => {
     // Ensure the language selection cannot be changed if interviews have started
     const hasInterviewsStarted = jobData?.data?.interviewedCandidateCount !== 0;
     const languagesValue = hasInterviewsStarted
-      ? (data.languages ?? [])
-      : (jobData?.data?.languages ?? []);
+      ? (jobData?.data?.languages ?? [])
+      : (data.languages ?? []);
 
     const processedData = {
       ...data,

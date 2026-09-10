@@ -19,10 +19,6 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
       providesTags: (_r, _e, jobOpeningId) => [{ type: 'JobQuestions', id: jobOpeningId }],
     }),
 
-    // Backend route (job-service migration 0015 "Split the mandatory round
-    // into Intake Call + optional Audio Screening") renamed this from
-    // /audio-questions to /intake-call-questions — response shape
-    // (`{ questions: [{ question_id, question_text }] }`) is unchanged.
     getAudioQuestions: build.query<{ questions: AudioQuestionResponse[] }, string>({
       query: (jobOpeningId) => ({
         url: `/job-openings/${jobOpeningId}/intake-call-questions`,
@@ -47,12 +43,22 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
 
     generateJobQuestions: build.mutation<
       { generation_status?: 'GENERATING' },
-      { jobOpeningId: string; question_count: number; interview_round_id?: string | null }
+      {
+        jobOpeningId: string;
+        question_count: number;
+        interview_round_id?: string | null;
+        // Hiring Panel section pick, ignored otherwise.
+        category_codes?: string[] | null;
+      }
     >({
-      query: ({ jobOpeningId, question_count, interview_round_id }) => ({
+      query: ({ jobOpeningId, question_count, interview_round_id, category_codes }) => ({
         url: `/job-openings/${jobOpeningId}/questions/generate`,
         method: 'POST',
-        body: { question_count, interview_round_id: interview_round_id ?? null },
+        body: {
+          question_count,
+          interview_round_id: interview_round_id ?? null,
+          category_codes: category_codes ?? null,
+        },
       }),
       invalidatesTags: (_r, _e, { jobOpeningId }) => [{ type: 'JobQuestions', id: jobOpeningId }],
     }),
@@ -64,15 +70,23 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
         question_count: number;
         instruction?: string | null;
         interview_round_id?: string | null;
+        category_codes?: string[] | null;
       }
     >({
-      query: ({ jobOpeningId, question_count, instruction, interview_round_id }) => ({
+      query: ({
+        jobOpeningId,
+        question_count,
+        instruction,
+        interview_round_id,
+        category_codes,
+      }) => ({
         url: `/job-openings/${jobOpeningId}/questions/regenerate`,
         method: 'POST',
         body: {
           question_count,
           instruction: instruction ?? null,
           interview_round_id: interview_round_id ?? null,
+          category_codes: category_codes ?? null,
         },
       }),
       invalidatesTags: (_r, _e, { jobOpeningId }) => [{ type: 'JobQuestions', id: jobOpeningId }],

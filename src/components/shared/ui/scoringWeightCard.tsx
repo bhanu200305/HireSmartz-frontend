@@ -7,12 +7,8 @@ import { normalizeScoringWeights } from '../scoringWeight';
 import type { ScoringWeight } from '../scoringWeight';
 
 /**
- * The "Resume/Interview Scoring Categories" card — colored weight
- * distribution bar, per-category slider with a default-% hint, Reset to
- * Defaults / Save. Extracted from JobsOpening/JobScoringCriteriaTab.tsx (the
- * per-job scoring editor) so CompanySettings/PlatformScoringDefaultsTab.tsx
- * (the platform/company default editor) renders byte-for-byte the same
- * card instead of a hand-copied lookalike that drifts over time.
+ * The "Resume/Interview Scoring Categories" card - shared across every
+ * scoring-weight editing screen.
  */
 
 interface DistributionBarProps {
@@ -45,7 +41,7 @@ const DistributionBar: React.FC<DistributionBarProps> = ({ weights, categoryMeta
                 className="inline-block w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: meta?.color ?? '#94a3b8' }}
               />
-              {meta?.label ?? w.categoryName}: {w.weightPercentage}%
+              {w.displayName ?? meta?.label ?? w.categoryName}: {w.weightPercentage}%
             </span>
           );
         })}
@@ -159,9 +155,11 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
               <div className="flex items-start justify-between mb-1">
                 <div>
                   <p className="text-sm font-medium text-gray-700">
-                    {meta?.label ?? w.categoryName}
+                    {w.displayName ?? meta?.label ?? w.categoryName}
                   </p>
-                  <p className="text-xs text-gray-400">{meta?.description ?? ''}</p>
+                  <p className="text-xs text-gray-400">
+                    {w.description ?? meta?.description ?? ''}
+                  </p>
                   <p className="text-xs text-primary-500 mt-0.5">
                     Default: {meta?.defaultPct ?? '—'}%
                   </p>

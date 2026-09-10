@@ -1,153 +1,135 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Tooltip } from 'antd';
 import { MdLock } from 'react-icons/md';
-import {
-  INTERVIEW_CATEGORY_META,
-  RESUME_CATEGORY_META,
-  ScoringWeightCard,
-  showToast,
-} from '../../../shared';
-import type { ScoringCategoryMeta, ScoringWeight } from '../../../shared';
+import { ScoringWeightCard, showToast } from '../../../shared';
+import type { ScoringWeight } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import {
-  platformScoringConfigApi,
-  useGetPlatformScoringConfigQuery,
-  useGetPlatformTenantScoringConfigQuery,
-  useUpdatePlatformTenantScoringConfigMutation,
-} from '../../../../api/organization-service/Platform/scoringConfig';
-import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
+  organizationScoringConfigApi,
+  useGetPlatformOrganizationScoringCriteriaQuery,
+  useResetPlatformOrganizationScoringCriteriaMutation,
+  useSavePlatformOrganizationScoringCriteriaMutation,
+} from '../../../../api/job-service/JobOpening/organizationScoringConfig';
+import type {
+  CategoryWeightOverride,
+  OrganizationScoringCriteriaResponse,
+} from '../../../../api/job-service/types';
+import { getJobErrorMessage } from '../../../../shared/utils/auth/jobError.helpers';
 import { AppDispatch } from '../../../../redux/provider/store';
 
-const RESUME_KEY_PREFIX = 'resume:';
-const INTERVIEW_KEY_PREFIX = 'interview:';
-
-const buildWeightRows = (
-  flatWeights: Record<string, number>,
-  prefix: string,
-  categoryMeta: ScoringCategoryMeta
+const toWeights = (
+  panel: OrganizationScoringCriteriaResponse['resume'] | undefined
 ): ScoringWeight[] =>
-  Object.keys(categoryMeta).map((categoryName) => ({
-    id: `${prefix}${categoryName}`,
-    categoryName,
-    weightPercentage:
-      flatWeights[`${prefix}${categoryName}`] ?? categoryMeta[categoryName].defaultPct,
+  (panel?.weights ?? []).map((w) => ({
+    id: w.category_code,
+    categoryName: w.category_code,
+    displayName: w.display_name,
+    description: w.description,
+    weightPercentage: Number(w.weight_pct),
   }));
 
+const toOverrides = (weights: ScoringWeight[]): CategoryWeightOverride[] =>
+  weights.map((w) => ({ category_code: w.categoryName, weight_pct: w.weightPercentage }));
+
 /**
- * Super Admin's mirror of CompanySettings/PlatformScoringDefaultsTab.tsx —
- * same Resume/Interview `ScoringWeightCard` pair, same flat
- * `{category: weight}` wire format and namespacing convention (see that
- * file's own docstring). No company picker here: `tenantId` is already fixed
- * by the page this panel lives on, so this only ever edits that one
- * company's override — never the platform-wide default.
+ * Super Admin's mirror of MyCompany/ScoringCriteriaOwnerTab.tsx, for one
+ * fixed tenant instead of the caller's own.
  */
 const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { data, isLoading } = useGetPlatformTenantScoringConfigQuery(tenantId);
-  const { data: platformDefault } = useGetPlatformScoringConfigQuery();
-  const [updateConfig, { isLoading: isSaving }] = useUpdatePlatformTenantScoringConfigMutation();
-  const [isResettingResume, setIsResettingResume] = useState(false);
-  const [isResettingInterview, setIsResettingInterview] = useState(false);
-  // Tracks which card's Save button should show as loading.
+  const { data, isLoading } = useGetPlatformOrganizationScoringCriteriaQuery(tenantId);
+  const [saveScoring, { isLoading: isSaving }] =
+    useSavePlatformOrganizationScoringCriteriaMutation();
+  const [resetScoring, { isLoading: isResetting }] =
+    useResetPlatformOrganizationScoringCriteriaMutation();
   const [savingSection, setSavingSection] = useState<'resume' | 'interview' | null>(null);
+  const [resettingSection, setResettingSection] = useState<'resume' | 'interview' | null>(null);
 
-  const flatWeights = useMemo(() => data?.weights ?? {}, [data?.weights]);
+  const resumeWeights = useMemo(() => toWeights(data?.resume), [data]);
+  const interviewWeights = useMemo(() => toWeights(data?.interview), [data]);
+  const isLocked = Boolean(data?.is_locked);
 
-  const resumeWeights = useMemo(
-    () => buildWeightRows(flatWeights, RESUME_KEY_PREFIX, RESUME_CATEGORY_META),
-    [flatWeights]
+  const patchCache = useCallback(
+    (result: OrganizationScoringCriteriaResponse) => {
+      dispatch(
+        organizationScoringConfigApi.util.updateQueryData(
+          'getPlatformOrganizationScoringCriteria',
+          tenantId,
+          () => result
+        )
+      );
+    },
+    [dispatch, tenantId]
   );
-  const interviewWeights = useMemo(
-    () => buildWeightRows(flatWeights, INTERVIEW_KEY_PREFIX, INTERVIEW_CATEGORY_META),
-    [flatWeights]
+
+  const handleSaveResume = useCallback(
+    async (weights: ScoringWeight[]) => {
+      setSavingSection('resume');
+      try {
+        const result = await saveScoring({
+          organizationId: tenantId,
+          resume_weights: toOverrides(weights),
+          interview_weights: toOverrides(interviewWeights),
+        }).unwrap();
+        patchCache(result);
+        showToast({ message: 'Resume scoring weights saved.', type: 'success' });
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Failed to save resume scoring weights.'),
+          type: 'error',
+        });
+      } finally {
+        setSavingSection(null);
+      }
+    },
+    [tenantId, interviewWeights, saveScoring, patchCache]
+  );
+
+  const handleSaveInterview = useCallback(
+    async (weights: ScoringWeight[]) => {
+      setSavingSection('interview');
+      try {
+        const result = await saveScoring({
+          organizationId: tenantId,
+          resume_weights: toOverrides(resumeWeights),
+          interview_weights: toOverrides(weights),
+        }).unwrap();
+        patchCache(result);
+        showToast({ message: 'Interview scoring weights saved.', type: 'success' });
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Failed to save interview scoring weights.'),
+          type: 'error',
+        });
+      } finally {
+        setSavingSection(null);
+      }
+    },
+    [tenantId, resumeWeights, saveScoring, patchCache]
+  );
+
+  const handleReset = useCallback(
+    async (section: 'resume' | 'interview') => {
+      setResettingSection(section);
+      try {
+        const result = await resetScoring({ organizationId: tenantId }).unwrap();
+        patchCache(result);
+        showToast({ message: 'Scoring weights reset to platform defaults.', type: 'success' });
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Failed to reset scoring weights.'),
+          type: 'error',
+        });
+      } finally {
+        setResettingSection(null);
+      }
+    },
+    [tenantId, resetScoring, patchCache]
   );
 
   if (isLoading) return <Loader />;
-  // No `available` flag on this contract (organization-service owns this
-  // outright now — see migration 0030's docstring) — a missing/empty
-  // `weights` map just means this company hasn't overridden anything yet,
-  // and buildWeightRows already falls back to each category's default
-  // percentage, so the cards render with sensible defaults instead of an
-  // error box. `!data` past this point means the query itself genuinely
-  // failed (network/auth), not "service unavailable" — nothing sensible to
-  // render, so bail quietly rather than crash on `isLocked` below.
   if (!data) return null;
-  const isLocked = data.is_locked;
-
-  // Patches the cache directly from the mutation's own response.
-  const persist = async (nextFlatWeights: Record<string, number>) => {
-    const result = await updateConfig({ tenantId, weights: nextFlatWeights }).unwrap();
-    dispatch(
-      platformScoringConfigApi.util.updateQueryData(
-        'getPlatformTenantScoringConfig',
-        tenantId,
-        () => result
-      )
-    );
-  };
-
-  const savePanel = async (
-    weights: ScoringWeight[],
-    panelLabel: string,
-    section: 'resume' | 'interview'
-  ) => {
-    const total = weights.reduce((sum, w) => sum + w.weightPercentage, 0);
-    if (total !== 100) {
-      showToast({
-        message: `${panelLabel} weights must total 100%. Current total: ${total}%`,
-        type: 'error',
-      });
-      return;
-    }
-    const next = { ...flatWeights };
-    weights.forEach((w) => {
-      next[String(w.id)] = w.weightPercentage;
-    });
-    setSavingSection(section);
-    try {
-      await persist(next);
-      showToast({ message: `${panelLabel} scoring weights saved.`, type: 'success' });
-    } catch (err) {
-      showToast({
-        message: getOrgErrorMessage(
-          err,
-          `Failed to save ${panelLabel.toLowerCase()} scoring weights.`
-        ),
-        type: 'error',
-      });
-    } finally {
-      setSavingSection(null);
-    }
-  };
-
-  const resetPanel = async (
-    prefix: string,
-    categoryMeta: ScoringCategoryMeta,
-    panelLabel: string,
-    setIsResetting: (value: boolean) => void
-  ) => {
-    const next = { ...flatWeights };
-    // Reset to the platform's current default, not a frozen local constant.
-    buildWeightRows(platformDefault?.weights ?? {}, prefix, categoryMeta).forEach((w) => {
-      next[String(w.id)] = w.weightPercentage;
-    });
-    setIsResetting(true);
-    try {
-      await persist(next);
-      showToast({ message: `${panelLabel} scoring weights reset to defaults.`, type: 'success' });
-    } catch (err) {
-      showToast({
-        message: getOrgErrorMessage(
-          err,
-          `Failed to reset ${panelLabel.toLowerCase()} scoring weights.`
-        ),
-        type: 'error',
-      });
-    } finally {
-      setIsResetting(false);
-    }
-  };
 
   return (
     <div className="p-4">
@@ -169,16 +151,14 @@ const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <ScoringWeightCard
           title="Resume Scoring Categories"
           subtitle="Applies to Resume Screening"
-          infoText="Resume categories are always evaluated. All 4 categories must total exactly 100%."
+          infoText="Resume categories are always evaluated. All categories must total exactly 100%."
           weights={resumeWeights}
-          categoryMeta={RESUME_CATEGORY_META}
-          onSave={(weights) => savePanel(weights, 'Resume', 'resume')}
-          onReset={() =>
-            resetPanel(RESUME_KEY_PREFIX, RESUME_CATEGORY_META, 'Resume', setIsResettingResume)
-          }
+          categoryMeta={{}}
+          onSave={handleSaveResume}
+          onReset={() => handleReset('resume')}
           isSaving={isSaving && savingSection === 'resume'}
-          isResetting={isResettingResume}
-          editable={!isLocked}
+          isResetting={isResetting && resettingSection === 'resume'}
+          editable
         />
 
         <ScoringWeightCard
@@ -186,19 +166,12 @@ const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           subtitle="Applies to AI Audio Screening and Video Interview"
           infoText="If a category is not covered in an interview, its weight is redistributed proportionally across the remaining categories."
           weights={interviewWeights}
-          categoryMeta={INTERVIEW_CATEGORY_META}
-          onSave={(weights) => savePanel(weights, 'Interview', 'interview')}
-          onReset={() =>
-            resetPanel(
-              INTERVIEW_KEY_PREFIX,
-              INTERVIEW_CATEGORY_META,
-              'Interview',
-              setIsResettingInterview
-            )
-          }
+          categoryMeta={{}}
+          onSave={handleSaveInterview}
+          onReset={() => handleReset('interview')}
           isSaving={isSaving && savingSection === 'interview'}
-          isResetting={isResettingInterview}
-          editable={!isLocked}
+          isResetting={isResetting && resettingSection === 'interview'}
+          editable
         />
       </div>
     </div>

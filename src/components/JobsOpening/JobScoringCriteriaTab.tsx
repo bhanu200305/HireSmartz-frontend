@@ -24,13 +24,7 @@ import type { ScoringWeight } from '../shared';
 import { getJobErrorMessage } from '../../shared/utils/auth/jobError.helpers';
 import { asJobId } from '../../api/job-service/jobId';
 
-const normalizeWeights = (weights: unknown): JobScoringWeight[] =>
-  normalizeScoringWeights(weights).map((w) => ({
-    ...w,
-    id: w.id,
-    categoryName: w.categoryName,
-    weightPercentage: w.weightPercentage,
-  }));
+const normalizeWeights = (weights: unknown): JobScoringWeight[] => normalizeScoringWeights(weights);
 
 interface JobScoringCriteriaTabProps {
   jobId: string;
@@ -237,15 +231,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
           <Button
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
             onClick={() =>
-              // The Edit wizard's own interview step lives at
-              // /jobs/edit/:id/interview, not the create wizard's bare
-              // /interview-setup (which has no job-id context at all — it
-              // reads JobSlice, which an edit session never populates).
-              // Hardcoding the create-mode path here sent every edit
-              // session to a route with no way to know which job it was
-              // for, surfacing as "please save the job details first" on
-              // arrival and an apparently-empty Job Details on the way
-              // back.
+              // Edit mode needs the job-id-aware route, not the create wizard's bare path.
               navigate(isEditMode ? `/jobs/edit/${jobId}/interview` : '/interview-setup')
             }
           >
