@@ -20,7 +20,13 @@ export type InvitationErrorCode =
   | 'INVITATION_EXPIRED'
   | 'INVITATION_ALREADY_ACCEPTED'
   | 'VALIDATION_ERROR'
-  | 'EXTERNAL_SERVICE_ERROR';
+  | 'EXTERNAL_SERVICE_ERROR'
+  // authentication-service's InvalidMfaCodeError.code, unchanged as it
+  // crosses organization-service (see InvalidInvitationMfaCodeError's own
+  // docstring on that side) — lowercase, unlike every other code here,
+  // because it is authentication-service's own error code reused verbatim
+  // rather than one of organization-service's INVITATION_* codes.
+  | 'invalid_mfa_code';
 
 export type InvitationErrorBody = {
   error_code: InvitationErrorCode | string;
@@ -29,17 +35,21 @@ export type InvitationErrorBody = {
   details?: Record<string, unknown>;
 };
 
+export type MfaMethodType = 'totp' | 'email' | 'sms';
+
 export type AcceptInvitationRequest = {
   token: string;
   password: string;
-  // This flow only ever offers the authenticator-app factor.
-  method_type: 'totp';
-  mfa_secret: string;
-  // The 6-digit code from the authenticator app, proving mfa_secret was
-  // actually added there. Optional on the wire — a missing/wrong code just
-  // means MFA stays off, never fails the request — but this form always
-  // sends one (see AcceptInvitationSchema.ts's mfaCode field).
-  mfa_code?: string;
+  method_type: MfaMethodType;
+  // Only meaningful for "totp" — the client-generated secret shown on
+  // screen. Absent for "email"/"sms", which verify against a code
+  // sendInviteMfaCode already delivered.
+  mfa_secret?: string;
+  // The 6-digit code proving the chosen factor actually works. REQUIRED now
+  // — MFA verification happens before the account is created, and a
+  // missing/wrong code fails the whole request instead of leaving MFA
+  // quietly disabled. See AcceptInvitationSchema.ts's mfaCode field.
+  mfa_code: string;
   // Required for every tenant invite — see AcceptInvitationSchema.ts's
   // comment. Optional on the wire because a platform invite (never accepted
   // through this frontend flow) doesn't need one.
@@ -58,10 +68,25 @@ export type AcceptInvitationRequest = {
 export type AcceptInvitationResponse = {
   user_id: string;
   status: 'active' | string;
-  // Whether the authenticator-app factor actually got armed — not whether
-  // the user typed something. False on a wrong code; the account still
-  // exists either way (see AcceptedInvitationView on the backend).
-  mfa_enabled: boolean;
+  // No mfa_enabled field: MFA is mandatory now, so a 200 here already means
+  // the chosen factor is armed. A missing/wrong code means this call
+  // rejects instead (error_code "invalid_mfa_code"), and nothing is
+  // created at all — see AcceptedInvitationView on the backend.
+};
+
+export type SendInviteMfaCodeRequest = {
+  token: string;
+  method_type: Extract<MfaMethodType, 'email' | 'sms'>;
+  // Required, and only meaningful, when method_type is "sms". E.164 —
+  // country code + digits, no separators (e.g. "+919876543210").
+  phone_number?: string;
+};
+
+export type SendInviteMfaCodeResponse = {
+  method_type: string;
+  // Masked destination, safe to show on screen — e.g. "jo••••@example.com"
+  // or "+•••••1234".
+  delivery_hint: string;
 };
 
 const extendedApi = orgApi.injectEndpoints({
@@ -92,7 +117,21 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['TenantInvitations'],
     }),
+    // Step one of the two-step "email"/"sms" flow: mint and deliver a code
+    // BEFORE the account exists. Not called for "totp", which has no
+    // delivery step — the code comes from the app the user already has.
+    sendInviteMfaCode: build.mutation<SendInviteMfaCodeResponse, SendInviteMfaCodeRequest>({
+      query: ({ token, ...body }) => ({
+        url: `/v1/invitations/${token}/mfa/send-code`,
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
 });
 
-export const { useLazyValidateInvitationQuery, useAcceptInvitationMutation } = extendedApi;
+export const {
+  useLazyValidateInvitationQuery,
+  useAcceptInvitationMutation,
+  useSendInviteMfaCodeMutation,
+} = extendedApi;
