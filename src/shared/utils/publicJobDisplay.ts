@@ -7,11 +7,18 @@
 // experience fields as JSON strings on the wire — see that file's own
 // `toNumber` comment) — every function here can assume real `number | null`.
 
-export const formatSalary = (min: number | null, max: number | null): string | null => {
+const fmtAmount = (n: number): string => (n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${n}`);
+
+/** isExempted: true = annual, false = hourly. */
+export const formatSalary = (
+  min: number | null,
+  max: number | null,
+  isExempted: boolean
+): string | null => {
   if (min === null && max === null) return null;
-  const fmt = (n: number): string => (n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${n}`);
-  if (min !== null && max !== null) return `${fmt(min)} - ${fmt(max)}`;
-  return fmt((min ?? max) as number);
+  const suffix = isExempted ? '/year' : '/hr';
+  if (min !== null && max !== null) return `${fmtAmount(min)} - ${fmtAmount(max)}${suffix}`;
+  return `${fmtAmount((min ?? max) as number)}${suffix}`;
 };
 
 /** `0` is a real, meaningful value here ("no experience required"), not

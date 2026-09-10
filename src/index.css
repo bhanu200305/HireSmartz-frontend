@@ -215,6 +215,12 @@ canvas[data-agora-recording='true'] {
   background: transparent !important;
 }
 
+/* Dropdowns should show a pointer cursor, not a text cursor. */
+.ant-select:not(.ant-select-disabled) .ant-select-selector,
+.ant-select:not(.ant-select-disabled) .ant-select-selection-search-input {
+  cursor: pointer !important;
+}
+
 /* Prevent suffix arrow (caret) from overlapping placeholder/value text
    in custom-select dropdowns at any browser zoom level. */
 .custom-select .ant-select-selection-placeholder,

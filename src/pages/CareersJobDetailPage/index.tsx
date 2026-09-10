@@ -1,7 +1,13 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Spin } from 'antd';
-import { EnvironmentOutlined, CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import {
+  EnvironmentOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  ScheduleOutlined,
+  LaptopOutlined,
+} from '@ant-design/icons';
 import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
@@ -23,67 +29,75 @@ const formatLocation = (
 // hard-wraps rather than paragraph breaks and can carry stray control characters.
 const CONTROL_CHAR = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 const BULLET_PREFIX = /^[•*-]\s*/;
+const HEADING_PREFIX = /^#{1,6}\s*/;
 
-const BulletBlock = ({ title, text }: { title: string; text: string | null }) => {
-  if (!text) return null;
-  const items = text
-    .split('\n')
-    .map((line) => line.replace(CONTROL_CHAR, '').trim())
-    .filter(Boolean);
-  if (items.length === 0) return null;
+// Merges hard-wrapped lines into paragraphs; strips Markdown heading/bullet syntax.
+type JdLine = { kind: 'heading' | 'bullet' | 'text'; text: string };
 
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-5">
-      <h2 className="text-base font-bold text-gray-900 mb-3">{title}</h2>
-      <ul className="list-disc pl-5 space-y-1.5">
-        {items.map((item, i) => (
-          <li key={i} className="text-sm text-gray-600 leading-relaxed">
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-
-// Merges hard-wrapped lines into flowing paragraphs; bulleted lines are kept as their own line.
-const JdBlock = ({ text }: { text: string | null }) => {
+const JdBlock = ({ text, jobTitle }: { text: string | null; jobTitle: string | null }) => {
   if (!text) return null;
   const rawLines = text
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean);
 
-  const paragraphs: string[] = [];
+  const lines: JdLine[] = [];
   let current: string[] = [];
+  const flushCurrent = () => {
+    if (current.length) lines.push({ kind: 'text', text: current.join(' ') });
+    current = [];
+  };
   for (const raw of rawLines) {
+    if (HEADING_PREFIX.test(raw)) {
+      flushCurrent();
+      const heading = raw.replace(HEADING_PREFIX, '').trim();
+      // Substitute the real title for the literal heading text.
+      const resolvedHeading =
+        heading.toLowerCase() === 'job title' && jobTitle ? jobTitle : heading;
+      if (resolvedHeading) {
+        lines.push({ kind: 'heading', text: resolvedHeading });
+      }
+      continue;
+    }
     const isBullet = CONTROL_CHAR.test(raw) || BULLET_PREFIX.test(raw);
     const line = raw.replace(CONTROL_CHAR, '').replace(BULLET_PREFIX, '').trim();
     if (!line) continue;
     if (isBullet) {
-      if (current.length) paragraphs.push(current.join(' '));
-      current = [];
-      paragraphs.push(`• ${line}`);
+      flushCurrent();
+      lines.push({ kind: 'bullet', text: line });
       continue;
     }
     current.push(line);
-    if (/[.:!?]$/.test(line)) {
-      paragraphs.push(current.join(' '));
-      current = [];
-    }
+    if (/[.:!?]$/.test(line)) flushCurrent();
   }
-  if (current.length) paragraphs.push(current.join(' '));
-  if (paragraphs.length === 0) return null;
+  flushCurrent();
+  if (lines.length === 0) return null;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-5">
       <h2 className="text-base font-bold text-gray-900 mb-3">Job Description</h2>
       <div className="space-y-2.5">
-        {paragraphs.map((p, i) => (
-          <p key={i} className="text-sm text-gray-600 leading-relaxed">
-            {p}
-          </p>
-        ))}
+        {lines.map((line, i) => {
+          if (line.kind === 'heading') {
+            return (
+              <h3 key={i} className="text-sm font-bold text-gray-900 pt-1.5 first:pt-0">
+                {line.text}
+              </h3>
+            );
+          }
+          if (line.kind === 'bullet') {
+            return (
+              <p key={i} className="text-sm text-gray-600 leading-relaxed pl-4 -indent-4">
+                • {line.text}
+              </p>
+            );
+          }
+          return (
+            <p key={i} className="text-sm text-gray-600 leading-relaxed">
+              {line.text}
+            </p>
+          );
+        })}
       </div>
     </div>
   );
@@ -92,7 +106,11 @@ const JdBlock = ({ text }: { text: string | null }) => {
 export const CareersJobDetailPage = () => {
   const { organizationId, jobId } = useParams<{ organizationId: string; jobId: string }>();
   const navigate = useNavigate();
-  const { companyName, logoUrl } = usePublicCareersBranding(organizationId);
+  const {
+    companyName,
+    logoUrl,
+    isLoading: brandingLoading,
+  } = usePublicCareersBranding(organizationId);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -104,7 +122,7 @@ export const CareersJobDetailPage = () => {
   );
 
   const experience = job ? formatExperience(job.min_experience_req, job.max_experience_req) : null;
-  const salary = job ? formatSalary(job.salary_min, job.salary_max) : null;
+  const salary = job ? formatSalary(job.salary_min, job.salary_max, job.is_exempted) : null;
   const primaryLocation = job?.locations?.[0] ? formatLocation(job.locations[0]) : null;
   const postedAgo = job ? formatPostedAgo(job.job_open_date) : null;
 
@@ -116,10 +134,10 @@ export const CareersJobDetailPage = () => {
 
   return (
     <div className="public-page min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-black text-white px-4 py-3 flex items-center justify-center relative shrink-0">
+      <header className="bg-gray-900 shadow-md text-white px-4 h-12 flex items-center justify-center relative shrink-0">
         <button
           onClick={() => navigate(-1)}
-          className="absolute left-4 text-white p-1 hover:opacity-75 transition-opacity"
+          className="absolute left-4 cursor-pointer text-white p-1 hover:opacity-75 transition-opacity"
           aria-label="Go back"
         >
           <svg
@@ -133,16 +151,20 @@ export const CareersJobDetailPage = () => {
             <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {logoUrl ? (
-          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-10 object-contain" />
+        {brandingLoading ? null : logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={companyName ?? 'Company logo'}
+            className="h-14 object-contain"
+          />
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}
       </header>
 
-      <main className="flex-1 w-full max-w-3xl mx-auto px-4 md:px-8 py-6 pb-32">
+      <main className="w-full max-w-3xl mx-auto px-4 md:px-8 py-6">
         {isLoading || !job ? (
-          <div className="flex justify-center py-20">
+          <div className="flex justify-center items-center min-h-[70vh]">
             <Spin size="large" />
           </div>
         ) : (
@@ -165,6 +187,18 @@ export const CareersJobDetailPage = () => {
                   <span>{experience}</span>
                 </div>
               )}
+              {job.job_type_name && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <ScheduleOutlined />
+                  <span>{job.job_type_name}</span>
+                </div>
+              )}
+              {job.job_mode_name && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <LaptopOutlined />
+                  <span>{job.job_mode_name}</span>
+                </div>
+              )}
               {postedAgo && (
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <ClockCircleOutlined />
@@ -174,11 +208,6 @@ export const CareersJobDetailPage = () => {
             </div>
 
             <div className="flex flex-wrap gap-2 mb-6">
-              {job.vacancies !== null && (
-                <span className="px-3 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-600 bg-white">
-                  {job.vacancies} {job.vacancies === 1 ? 'opening' : 'openings'}
-                </span>
-              )}
               {salary && (
                 <span className="px-3 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-600 bg-white">
                   {salary}
@@ -196,21 +225,18 @@ export const CareersJobDetailPage = () => {
             </div>
 
             <div className="flex flex-col gap-4">
-              <JdBlock text={job.jd} />
-              <BulletBlock title="Responsibilities" text={job.responsibilities} />
-              <BulletBlock title="Requirements" text={job.requirements} />
-              <BulletBlock title="Other Requirements" text={job.other_requirements} />
+              <JdBlock text={job.jd} jobTitle={job.job_title} />
             </div>
           </>
         )}
       </main>
 
       {job && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 z-10">
+        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-4 z-10">
           <div className="max-w-3xl mx-auto">
             <button
               onClick={handleApply}
-              className="w-full bg-black text-white font-bold tracking-widest text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all"
+              className="w-full cursor-pointer bg-black text-white font-bold tracking-widest text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all"
             >
               APPLY FOR THIS JOB
             </button>

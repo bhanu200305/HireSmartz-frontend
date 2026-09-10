@@ -103,6 +103,7 @@ export type JobDetailsResponse = {
   org_job_opening_id: string;
   job_profile_code: string;
   entry_path: string;
+  created_by: string;
   job_title_id: string | null;
   department_id: string | null;
   shift_id: string | null;

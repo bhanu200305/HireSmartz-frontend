@@ -107,10 +107,10 @@ export const CareersInstantCallPage = () => {
 
   return (
     <div className="public-page min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-black text-white px-4 py-3 flex items-center justify-center relative shrink-0">
+      <header className="bg-gray-900 shadow-md text-white px-4 h-12 flex items-center justify-center relative shrink-0">
         <button
           onClick={() => navigate(-1)}
-          className="absolute left-4 text-white p-1 hover:opacity-75 transition-opacity"
+          className="absolute left-4 cursor-pointer text-white p-1 hover:opacity-75 transition-opacity"
           aria-label="Go back"
         >
           <svg
@@ -125,13 +125,17 @@ export const CareersInstantCallPage = () => {
           </svg>
         </button>
         {logoUrl ? (
-          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-10 object-contain" />
+          <img
+            src={logoUrl}
+            alt={companyName ?? 'Company logo'}
+            className="h-14 object-contain"
+          />
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}
       </header>
 
-      <main className="flex-1 w-full max-w-3xl mx-auto px-4 md:px-8 py-6 pb-36">
+      <main className="w-full max-w-3xl mx-auto px-4 md:px-8 py-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Talk to Us Now</h1>
         <p className="text-sm text-gray-500 mb-5">
           Leave your number and we&apos;ll call you shortly — no resume needed yet.
@@ -320,12 +324,12 @@ export const CareersInstantCallPage = () => {
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 z-10">
+      <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-4 z-10">
         <div className="max-w-3xl mx-auto">
           <button
             onClick={() => void handleSubmit()}
             disabled={isSubmitting || !recaptchaSiteKey}
-            className="w-full bg-black text-white font-bold tracking-widest text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all disabled:opacity-60"
+            className="w-full cursor-pointer bg-black text-white font-bold tracking-widest text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? 'SUBMITTING…' : 'REQUEST A CALL'}
           </button>

@@ -4,14 +4,17 @@ import { acceptInvitationSchema } from '../../../src/components/AcceptInvitation
 const basePayload = {
   firstName: 'Ada',
   lastName: 'Lovelace',
+  countryCode: '+1',
   phoneNumber: '(555) 123-4567',
+  isPlatformInvite: false,
   password: 'Str0ng!Passw0rd',
   confirmPassword: 'Str0ng!Passw0rd',
-  mfaAcknowledged: true,
+  methodType: 'totp' as const,
+  mfaCode: '123456',
 };
 
 describe('acceptInvitationSchema', () => {
-  it('accepts a matching password + acknowledged MFA setup', () => {
+  it('accepts a matching password + a valid 6-digit MFA code', () => {
     const result = acceptInvitationSchema.safeParse(basePayload);
     expect(result.success).toBe(true);
   });
@@ -37,6 +40,26 @@ describe('acceptInvitationSchema', () => {
     }
   });
 
+  it('rejects a missing country code — required for every tenant invite', () => {
+    const result = acceptInvitationSchema.safeParse({ ...basePayload, countryCode: '' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors.countryCode?.[0]).toBe(
+        'Please select a country code.'
+      );
+    }
+  });
+
+  it('accepts a platform invite with no country code/phone number at all', () => {
+    const result = acceptInvitationSchema.safeParse({
+      ...basePayload,
+      isPlatformInvite: true,
+      countryCode: '',
+      phoneNumber: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('rejects mismatched passwords', () => {
     const result = acceptInvitationSchema.safeParse({
       ...basePayload,
@@ -50,12 +73,12 @@ describe('acceptInvitationSchema', () => {
     }
   });
 
-  it('rejects submission until MFA is acknowledged', () => {
-    const result = acceptInvitationSchema.safeParse({ ...basePayload, mfaAcknowledged: false });
+  it('rejects an mfaCode that is not a 6-digit number', () => {
+    const result = acceptInvitationSchema.safeParse({ ...basePayload, mfaCode: '123' });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.mfaAcknowledged?.[0]).toBe(
-        'Add the key to your authenticator app to continue.'
+      expect(result.error.flatten().fieldErrors.mfaCode?.[0]).toBe(
+        'Enter the 6-digit verification code.'
       );
     }
   });

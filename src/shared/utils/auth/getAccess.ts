@@ -31,3 +31,19 @@ export const hasFeatureAccess = (
   const allowedAuthorities = ROLE_AUTHORITIES[role?.type]?.[convertToCamelCase(role?.name)] || [];
   return allowedAuthorities.includes(requiredAuthority);
 };
+
+/** Job-level gate on top of hasFeatureAccess — assigned, created, or admin. */
+export const isAssignedToJob = (
+  job: { hiringManagerIds?: string[]; recruiterIds?: string[]; createdById?: string | null },
+  userId: string | null | undefined,
+  role: { name: string; type: string }
+): boolean => {
+  // Not convertToCamelCase — it doesn't handle underscore_case.
+  if (role?.type === 'owner' || role?.name === 'company_admin') return true;
+  if (!userId) return false;
+  return Boolean(
+    job.hiringManagerIds?.includes(userId) ||
+      job.recruiterIds?.includes(userId) ||
+      job.createdById === userId
+  );
+};
