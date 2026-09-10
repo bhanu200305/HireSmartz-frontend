@@ -62,6 +62,11 @@ const JobDescription = () => {
   const isFromAts = location.state?.refresh;
   const atsJobOpeningId = location.state?.atsJobOpeningId;
   const { details, jobOpeningId } = useSelector((state: RootState) => state.JobSlice);
+  const { role } = useSelector((state: RootState) => state.LoginSlice);
+  // POST /skills requires organization:update, which only company_admin
+  // (and platform roles) hold — hide the add-option affordance for roles
+  // that would just get a 403.
+  const canAddSkill = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
   const [saveJobOpening, { isLoading }] = useSaveJobOpeningMutation();
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
@@ -387,7 +392,9 @@ const JobDescription = () => {
                 mode="multiple"
                 placeholder="Select Required Skills"
                 label="Required Skills"
-                onAddOption={(value) => handleAddOption(value, 'mandatorySkills')}
+                onAddOption={
+                  canAddSkill ? (value) => handleAddOption(value, 'mandatorySkills') : undefined
+                }
                 onSearchChange={searchMandatorySkills}
                 type="mandatorySkills"
                 error={errors.mandatorySkills?.message}
@@ -460,7 +467,9 @@ const JobDescription = () => {
                 mode="multiple"
                 placeholder="Select Optional Skills"
                 label="Optional Skills"
-                onAddOption={(value) => handleAddOption(value, 'optionalSkills')}
+                onAddOption={
+                  canAddSkill ? (value) => handleAddOption(value, 'optionalSkills') : undefined
+                }
                 onSearchChange={searchOptionalSkills}
                 type="optionalSkills"
                 error={errors.optionalSkills?.message}

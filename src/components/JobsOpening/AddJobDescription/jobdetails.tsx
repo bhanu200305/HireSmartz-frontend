@@ -175,7 +175,11 @@ const JobDetails = () => {
     aiJobDescriptionId: state.JobSlice.aiJobDescriptionId,
     jobOpeningId: state.JobSlice.jobOpeningId,
   }));
-  const { loginToken } = useSelector((state: any) => state.LoginSlice);
+  const { loginToken, role } = useSelector((state: any) => state.LoginSlice);
+  // POST /skills requires organization:update, which only company_admin
+  // (and platform roles) hold — hide the add-option affordance for roles
+  // that would just get a 403.
+  const canAddSkill = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
   const sessionTenantId = useSessionTenantId();
   const { data: platformTenants } = useListPlatformTenantsQuery(
     { limit: 50 },
@@ -2643,7 +2647,11 @@ const JobDetails = () => {
                         mode="multiple"
                         placeholder="Select Required Skills"
                         label="Required Skills"
-                        onAddOption={(value) => handleAddOption(value, 'mandatorySkills')}
+                        onAddOption={
+                          canAddSkill
+                            ? (value) => handleAddOption(value, 'mandatorySkills')
+                            : undefined
+                        }
                         onSearchChange={searchMandatorySkills}
                         type="mandatorySkills"
                         error={errors.mandatorySkills?.message}
@@ -2722,7 +2730,11 @@ const JobDetails = () => {
                         mode="multiple"
                         placeholder="Select Optional Skills"
                         label="Optional Skills"
-                        onAddOption={(value) => handleAddOption(value, 'optionalSkills')}
+                        onAddOption={
+                          canAddSkill
+                            ? (value) => handleAddOption(value, 'optionalSkills')
+                            : undefined
+                        }
                         onSearchChange={searchOptionalSkills}
                         type="optionalSkills"
                         error={errors.optionalSkills?.message}
