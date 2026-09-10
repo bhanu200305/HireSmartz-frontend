@@ -37,6 +37,7 @@ import EditCandidateModal from './Modal/EditCandidateModal';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import ResumeReviewModal from './Modal/ResumeReviewModal';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
+import ResumeViewerModal from './Modal/ResumeViewerModal';
 import PipelineBoard from './PipelineBoard';
 import StatusHistoryTab from './StatusHistoryTab';
 import { roundLabel, formatRoundStatus } from './roundDisplay';
@@ -107,6 +108,7 @@ const CandidateDetails = () => {
   const [isSmsOpen, setIsSmsOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isResumeReviewOpen, setIsResumeReviewOpen] = useState(false);
+  const [isResumeViewerOpen, setIsResumeViewerOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedRound, setSelectedRound] = useState<CandidateInterviewRoundView | null>(null);
   const [isCreatingBooking, setIsCreatingBooking] = useState(false);
@@ -163,8 +165,15 @@ const CandidateDetails = () => {
   const handleDownloadResume = async () => {
     if (!candidateId) return;
     try {
-      const res = await getResumeDownload(candidateId).unwrap();
-      window.open(res.download_url, '_blank', 'noopener');
+      const { download_url } = await getResumeDownload(candidateId).unwrap();
+      // The presigned URL is stored with an `attachment` disposition, so a
+      // plain anchor click saves the file (VIEW RESUME opens the in-app
+      // viewer instead — see ResumeViewerModal).
+      const anchor = document.createElement('a');
+      anchor.href = download_url;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener';
+      anchor.click();
     } catch (e) {
       showToast({ message: getCandidateErrorMessage(e, 'Resume not available'), type: 'error' });
     }
@@ -242,6 +251,49 @@ const CandidateDetails = () => {
     currentRound !== null && (isResumeStageRound(currentRound) || isIntakeCallRound(currentRound));
   const actionsLockedForIntakePair =
     planHasIntakeCall && currentRoundInIntakePair && consistencyScorePending;
+
+  // Interview Summary tab helper. The resume stage and the Intake Call round
+  // never produce a `CandidateInterviewScore` — their real outputs are the AI
+  // resume score and the Intake Call consistency score, both on the candidate
+  // record. Fold them in here so the summary shows those numbers and reads
+  // "Completed" for a scored resume, instead of the raw "To Be Scheduled" /
+  // "Pending" status the round row still carries.
+  const summariseRound = (round: CandidateInterviewRoundView) => {
+    const roundScore = scores.find((s) => s.candidate_interview_round_id === round.id);
+    const recruiterOrAiScore = roundScore?.recruiter_score ?? roundScore?.score ?? null;
+
+    if (isResumeStageRound(round)) {
+      const scored = candidate?.resume_score != null;
+      return {
+        roundScore,
+        chartValue: candidate?.resume_score ?? null,
+        scoreText: scored ? `${candidate?.resume_score} · AI resume score` : null,
+        statusText: scored ? 'Completed' : formatStatus(round.status),
+        outcomeLabel: scored ? 'Scored' : null,
+      };
+    }
+    if (isIntakeCallRound(round)) {
+      const checked = candidate?.consistency_score != null;
+      return {
+        roundScore,
+        chartValue: candidate?.consistency_score ?? null,
+        scoreText: checked ? `${candidate?.consistency_score} · resume consistency` : null,
+        statusText: formatRoundStatus(round.status),
+        outcomeLabel: checked ? 'Checked' : null,
+      };
+    }
+    return {
+      roundScore,
+      chartValue: recruiterOrAiScore,
+      scoreText: recruiterOrAiScore != null ? `${recruiterOrAiScore} / 5` : null,
+      statusText: formatRoundStatus(round.status),
+      outcomeLabel: roundScore
+        ? roundScore.recruiter_score != null
+          ? 'Reviewed'
+          : 'Scored'
+        : null,
+    };
+  };
 
   if (candidateError) {
     return (
@@ -772,13 +824,21 @@ const CandidateDetails = () => {
                 {candidate?.resume_s3_key ? (
                   <>
                     <p className="text-sm text-gray-600">A resume is on file for this candidate.</p>
-                    <Button
-                      className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white"
-                      onClick={() => void handleDownloadResume()}
-                      disabled={isResumeUrlLoading}
-                    >
-                      {isResumeUrlLoading ? 'PREPARING…' : 'VIEW / DOWNLOAD RESUME'}
-                    </Button>
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                      <Button
+                        className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white"
+                        onClick={() => setIsResumeViewerOpen(true)}
+                      >
+                        VIEW RESUME
+                      </Button>
+                      <Button
+                        className="rounded-full border border-primary-200 bg-primary-50 px-6 py-2 text-sm font-semibold text-primary-700 disabled:opacity-50"
+                        onClick={() => void handleDownloadResume()}
+                        disabled={isResumeUrlLoading}
+                      >
+                        {isResumeUrlLoading ? 'PREPARING…' : 'DOWNLOAD'}
+                      </Button>
+                    </div>
                   </>
                 ) : (
                   <p className="text-sm text-gray-500">No resume on file yet.</p>
@@ -799,16 +859,11 @@ const CandidateDetails = () => {
                       <div className="mt-4 h-28 rounded-lg bg-gradient-to-b from-primary-50 to-white px-2 pt-2">
                         <div className="flex h-full items-start gap-2 border-b border-gray-100">
                           {rounds.map((round, index) => {
-                            // `CandidateInterviewScoreView` carries no round
-                            // name/id of its own — resolve it via
-                            // `candidate_interview_round_id` against the
-                            // LOCAL round row's `id` (not `.round_id`,
-                            // job-service's id — see interviewRounds.ts's
-                            // note on that mix-up).
-                            const score = scores.find(
-                              (item) => item.candidate_interview_round_id === round.id
-                            );
-                            const value = score?.recruiter_score ?? score?.score;
+                            // The resume stage / Intake Call rows have no
+                            // `CandidateInterviewScore`; `summariseRound`
+                            // substitutes the AI resume score and the
+                            // consistency score respectively.
+                            const { chartValue, scoreText } = summariseRound(round);
                             return (
                               <div
                                 key={round.id ?? `score-${index}`}
@@ -816,7 +871,9 @@ const CandidateDetails = () => {
                               >
                                 <span
                                   className="mt-auto mb-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-white"
-                                  title={value == null ? 'No score recorded' : `${value} / 5`}
+                                  title={
+                                    chartValue == null ? 'No score recorded' : (scoreText ?? '')
+                                  }
                                 />
                                 <span className="h-0.5 w-full bg-primary/20" />
                               </div>
@@ -830,7 +887,7 @@ const CandidateDetails = () => {
                             key={round.id ?? `label-${index}`}
                             className="min-w-0 flex-1 truncate text-center"
                           >
-                            {round.round_name || 'Round'}
+                            {roundLabel(round)}
                           </span>
                         ))}
                       </div>
@@ -851,11 +908,9 @@ const CandidateDetails = () => {
                         </thead>
                         <tbody>
                           {rounds.map((round, index) => {
-                            const score = scores.find(
-                              (item) => item.candidate_interview_round_id === round.id
-                            );
-                            const roundName = round.round_name || 'Interview Round';
-                            const finalScore = score?.recruiter_score ?? score?.score;
+                            const roundName = roundLabel(round);
+                            const { roundScore, scoreText, statusText, outcomeLabel } =
+                              summariseRound(round);
                             return (
                               <tr
                                 key={round.id ?? `summary-${index}`}
@@ -863,36 +918,34 @@ const CandidateDetails = () => {
                               >
                                 <td className="px-2 py-3 font-medium text-gray-800">{roundName}</td>
                                 <td className="px-2 py-3 text-gray-500">
-                                  {score?.recruiter_scored_by ?? 'Not assigned'}
+                                  {roundScore?.recruiter_scored_by ?? 'Not assigned'}
                                 </td>
                                 <td className="px-2 py-3 text-gray-700">
-                                  {finalScore == null
-                                    ? formatStatus(round.status)
-                                    : `${finalScore} / 5`}
+                                  {scoreText ?? statusText}
                                 </td>
                                 <td className="px-2 py-3">
-                                  {score ? (
+                                  {outcomeLabel ? (
                                     <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
-                                      {score.recruiter_score != null ? 'Reviewed' : 'Scored'}
+                                      {outcomeLabel}
                                     </span>
                                   ) : (
                                     <span className="text-gray-400">—</span>
                                   )}
                                 </td>
                                 <td className="px-2 py-3">
-                                  {score && (
+                                  {roundScore && (
                                     <Button
                                       className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700"
                                       onClick={() =>
                                         setScoreModalFor({
-                                          scoreId: score.id,
+                                          scoreId: roundScore.id,
                                           roundName,
-                                          currentScore: score.recruiter_score,
-                                          currentReason: score.recruiter_score_reason,
+                                          currentScore: roundScore.recruiter_score,
+                                          currentReason: roundScore.recruiter_score_reason,
                                         })
                                       }
                                     >
-                                      {score.recruiter_score ? 'EDIT' : 'SCORE'}
+                                      {roundScore.recruiter_score ? 'EDIT' : 'SCORE'}
                                     </Button>
                                   )}
                                 </td>
@@ -928,11 +981,28 @@ const CandidateDetails = () => {
                     <CommonCard>
                       <div className="p-5">
                         <h3 className="text-sm font-semibold text-gray-900">AI Summary</h3>
-                        <p className="mt-4 text-sm leading-6 text-gray-600">
-                          {scores.length > 0
-                            ? `${scores.length} interview score${scores.length === 1 ? '' : 's'} recorded across ${rounds.length} round${rounds.length === 1 ? '' : 's'}. Review the round details and scores above.`
-                            : 'AI summary will appear after an interview produces a score or transcript.'}
-                        </p>
+                        <ul className="mt-4 space-y-1.5 text-sm leading-6 text-gray-600">
+                          <li>
+                            AI resume score:{' '}
+                            <span className="font-semibold text-gray-800">
+                              {candidate?.resume_score ?? 'pending'}
+                            </span>
+                          </li>
+                          {planHasIntakeCall && (
+                            <li>
+                              Intake Call consistency:{' '}
+                              <span className="font-semibold text-gray-800">
+                                {candidate?.consistency_score ??
+                                  'pending — reported once the call transcript and resume are both in'}
+                              </span>
+                            </li>
+                          )}
+                          <li>
+                            {scores.length > 0
+                              ? `${scores.length} interview score${scores.length === 1 ? '' : 's'} recorded across ${rounds.length} round${rounds.length === 1 ? '' : 's'}.`
+                              : 'No interview-round scores yet — they appear here once a round produces a score or transcript.'}
+                          </li>
+                        </ul>
                       </div>
                     </CommonCard>
                   </div>
@@ -1005,6 +1075,14 @@ const CandidateDetails = () => {
           candidateId={candidateId}
           currentRating={candidate?.resume_rating ?? null}
           currentComment={candidate?.resume_review_comment ?? null}
+        />
+      )}
+      {candidateId && (
+        <ResumeViewerModal
+          open={isResumeViewerOpen}
+          onClose={() => setIsResumeViewerOpen(false)}
+          candidateId={candidateId}
+          candidateName={candidateDisplayName(candidate)}
         />
       )}
       {scoreModalFor && candidateId && (
