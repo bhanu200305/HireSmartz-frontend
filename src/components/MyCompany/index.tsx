@@ -63,12 +63,17 @@ const MyCompany: React.FC = () => {
   // Location-resolved (useEffectivePermissions already varies by
   // useActiveLocation) — a tab a user can't view at their active location
   // is filtered out of `items` below entirely, not just its buttons.
-  const canViewCompanyDetails = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
+  // COMPANY_SETTINGS_EDIT ('organization:update'), not COMPANY_SETTINGS_VIEW
+  // ('organization:read') — read is a broad permission Recruiter/Hiring
+  // Manager also legitimately hold, so these admin-only tabs need the
+  // still-admin-exclusive update permission instead. See MyCompanyPage's
+  // own gate, fixed the same way.
+  const canViewCompanyDetails = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const canViewLocations = useHasAccess(Authorities.LOCATION_VIEW);
   const canViewDepartments = useHasAccess(Authorities.DEPARTMENT_VIEW);
-  const canViewFeatureSettings = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
+  const canViewFeatureSettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const canViewTeam = useHasAccess(Authorities.INVITATION_VIEW);
-  const canViewActivity = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
+  const canViewActivity = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const canViewInterviewQuestions = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
   // Same permission string culture-intro's backend routes gate on
   // (`interview:read`) — organization-service reuses INTERVIEW_QUESTIONS_VIEW's
