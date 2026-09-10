@@ -27,7 +27,11 @@ const OwnerTableBody: React.FC<OwnerTableBodyProps> = ({ data, title }) => {
       {title === 'Job Openings' && (
         <tbody>
           {data?.map((customer: any, index: number) => (
-            <tr key={customer?.id + index}>
+            // Job-opening rows carry `jobOpeningId`, not `id` — `customer?.id
+            // + index` was `undefined + n` => `NaN` for every row (duplicate
+            // keys). Use the real id, string-joined so a missing one can't
+            // collapse to NaN again.
+            <tr key={`${customer?.jobOpeningId ?? 'job'}_${index}`}>
               <td
                 className="py-2 px-1 hover:text-primary cursor-pointer"
                 onClick={() =>

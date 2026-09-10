@@ -1,10 +1,11 @@
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 
-// Shared between PipelineBoard.tsx (visual pipeline + Send Invite/Skip
-// Round gating) and CandidateDetails.tsx (the ADVANCE button's disabled
-// state) — one definition of "what round is this candidate really on" and
-// "is that round's real-world outcome already known", so the two can never
-// disagree about either.
+// Shared between PipelineBoard.tsx (visual pipeline + Send Invite gating)
+// and CandidateDetails.tsx (the ADVANCE button's disabled state) — one
+// definition of "what round is this candidate really on" and "is that
+// round's real-world outcome already known", so the two can never disagree
+// about either. Also the one place the resume/intake-call ordering and the
+// two intake flows are reasoned about (`orderRoundsForFlow` below).
 
 export type RoundBucket = 'done' | 'current' | 'pending' | 'failed';
 
@@ -33,6 +34,62 @@ export const bucketForStatus = (status: string): RoundBucket => {
   return ROUND_STATUS_BUCKET[key] ?? 'pending';
 };
 
+/** The synthetic resume stage — job-service has no round behind it, so it's
+ * matched on `stage_type`, never a name. */
+export const isResumeStageRound = (round: CandidateInterviewRoundView): boolean =>
+  round.stage_type === 'resume';
+
+/** The Intake Call round. `CandidateInterviewRoundView` carries no round-kind
+ * field — only the display `round_name` sourced live from job-service — so
+ * this is a name match, same convention `CandidateDetails.tsx` already uses
+ * for its own round-type inference. `master_interview_round`'s name for this
+ * kind is a fixed platform string, not tenant-editable, so it holds in
+ * practice. */
+export const isIntakeCallRound = (round: CandidateInterviewRoundView): boolean =>
+  round.stage_type === 'interview' &&
+  (round.round_name?.toLowerCase().includes('intake call') ?? false);
+
+/** True when this candidate came through the instant-call flow — the Intake
+ * Call was placed FIRST and the resume was uploaded within 24h afterwards —
+ * rather than the resume-first flow. Detected from the funnel history:
+ * `awaiting_resume_upload` is stamped ONLY on the instant-call path
+ * (candidate-service `interview_intake_call_finished.py`, Path A), so its
+ * presence anywhere in the history is a reliable marker.
+ *
+ * WHY THE FRONTEND HAS TO DECIDE THIS
+ * `GET /candidates/{id}/interview-rounds` orders the synthetic resume stage
+ * by the job PLAN's single Resume Round position, which is one value per job
+ * and cannot differ between two candidates on the same opening. So two
+ * candidates who applied to the same job through the two different flows get
+ * the same pipeline order from the backend today. See BACKEND_GAPS.md — once
+ * candidate-service orders the resume stage per candidate, `orderRoundsForFlow`
+ * below becomes a no-op and both can be removed. */
+export const isInstantCallFlow = (statusHistory: { status_code: string }[] | undefined): boolean =>
+  (statusHistory ?? []).some((entry) => entry.status_code === 'awaiting_resume_upload');
+
+/** Moves the resume stage to sit immediately AFTER the Intake Call round for
+ * instant-call-flow candidates, so the pipeline reads in the order things
+ * actually happened for them (call, then resume). Idempotent: a no-op when
+ * `instantCallFlow` is false, when either row is missing, or when the resume
+ * stage is already positioned after the Intake Call (e.g. once the backend
+ * starts ordering this itself). Never reorders anything but those two rows. */
+export const orderRoundsForFlow = (
+  rounds: CandidateInterviewRoundView[],
+  instantCallFlow: boolean
+): CandidateInterviewRoundView[] => {
+  if (!instantCallFlow) return rounds;
+  const resumeIdx = rounds.findIndex(isResumeStageRound);
+  const intakeIdx = rounds.findIndex(isIntakeCallRound);
+  if (resumeIdx === -1 || intakeIdx === -1 || resumeIdx > intakeIdx) return rounds;
+  const reordered = [...rounds];
+  const [resume] = reordered.splice(resumeIdx, 1);
+  // `intakeIdx` is now the Intake Call round's own new index (it shifted down
+  // by one when the earlier resume row was spliced out); inserting at that
+  // index drops the resume stage directly after it.
+  reordered.splice(intakeIdx, 0, resume);
+  return reordered;
+};
+
 /** Mirrors candidate-service's `_current_round.resolve_current_round` — the
  * round ADVANCE would complete next, and SEND INVITE would announce. The
  * resume stage is excluded while still inert (`due_at === null`): an
@@ -40,9 +97,10 @@ export const bucketForStatus = (status: string): RoundBucket => {
  * action to act on until a resume is attached, even though its `status`
  * literally reads `to_be_scheduled` same as a real pending round.
  *
- * Assumes `rounds` already arrives in plan order (resume stage first, then
- * job-service's own sequence) — same as the real `GET .../interview-rounds`
- * response and every existing caller of this array.
+ * Assumes `rounds` already arrives in the order the candidate walks them —
+ * the `GET .../interview-rounds` response, optionally after
+ * `orderRoundsForFlow` has moved the resume stage for an instant-call
+ * candidate. Every caller passes the same (possibly reordered) array.
  */
 export const resolveCurrentRound = (
   rounds: CandidateInterviewRoundView[]

@@ -47,7 +47,6 @@ import ChangeCandidateStatusModal, {
 } from './Modal/ChangeCandidateStatusModal';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
-import CandidatesPipelineBoard from './CandidatesPipelineBoard';
 import { candidateDisplayName } from './candidateDisplay';
 
 // Candidate list is job-scoped; there is no cross-job list route.
@@ -68,7 +67,6 @@ const CandidatesListing = () => {
   const { id } = useParams<{ id: string }>();
   const parsedJobId = asJobId(id);
 
-  const [viewMode, setViewMode] = useState<'table' | 'board'>('table');
   const [search, setSearch] = useState('');
   const [statusCode, setStatusCode] = useState<string | undefined>();
   const [source, setSource] = useState<string | undefined>();
@@ -261,32 +259,6 @@ const CandidatesListing = () => {
             <div className="flex justify-end">
               <div className="flex flex-col items-end gap-4 w-full lg:w-auto">
                 <div className="flex flex-wrap items-center justify-end gap-4 w-full lg:w-auto">
-                  <div className="inline-flex shrink-0 gap-1 rounded-lg bg-neutral-100 p-1">
-                    <button
-                      type="button"
-                      className={clsx(
-                        'rounded-md px-3 py-1.5 text-xs font-semibold transition',
-                        viewMode === 'table'
-                          ? 'bg-white text-primary-700 shadow-xs'
-                          : 'text-neutral-500 hover:text-neutral-700'
-                      )}
-                      onClick={() => setViewMode('table')}
-                    >
-                      Table
-                    </button>
-                    <button
-                      type="button"
-                      className={clsx(
-                        'rounded-md px-3 py-1.5 text-xs font-semibold transition',
-                        viewMode === 'board'
-                          ? 'bg-white text-primary-700 shadow-xs'
-                          : 'text-neutral-500 hover:text-neutral-700'
-                      )}
-                      onClick={() => setViewMode('board')}
-                    >
-                      Board
-                    </button>
-                  </div>
                   <Search
                     appname="candidates listing"
                     placeholder="Search Candidate..."
@@ -369,232 +341,213 @@ const CandidatesListing = () => {
         </div>
       </div>
 
-      {viewMode === 'board' ? (
-        <CandidatesPipelineBoard
-          jobOpeningId={parsedJobId}
-          statuses={statuses}
-          search={search}
-          source={source}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          buildDetailsPath={buildDetailsPath}
-        />
-      ) : (
-        <div className="w-full">
-          {/* overflow-x-auto + min-w keeps columns readable on narrow viewports. */}
-          <div className="overflow-x-auto">
-            <div className="min-w-[760px]">
-              <div className="w-full p-2">
-                <Row gutter={[16, 16]} className="font-bold p-4 bg-[#FFFFFF] shadow heading-font">
-                  <Col span={1}>
-                    <Checkbox
-                      className="custom-checkbox roboto-font"
-                      checked={allSelected}
-                      onChange={toggleSelectAll}
-                      disabled={candidates.length === 0}
-                    />
-                  </Col>
-                  <COL
-                    sortable
-                    sortKey="name"
-                    currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
-                    onSort={handleSort}
-                    span={5}
-                  >
-                    CANDIDATE DETAILS
-                  </COL>
-                  <COL
-                    sortable
-                    sortKey="resume_score"
-                    currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
-                    onSort={handleSort}
-                    span={4}
-                  >
-                    RESUME SCORE
-                  </COL>
-                  <COL
-                    sortable
-                    sortKey="applied_date"
-                    currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
-                    onSort={handleSort}
-                    span={4}
-                  >
-                    APPLIED DATE
-                  </COL>
-                  <COL span={4}>
-                    <span>STATUS</span>
-                  </COL>
-                  <COL span={2}>
-                    <span>ACTIONS</span>
-                  </COL>
-                </Row>
-              </div>
+      <div className="w-full">
+        {/* overflow-x-auto + min-w keeps columns readable on narrow viewports. */}
+        <div className="overflow-x-auto">
+          <div className="min-w-[760px]">
+            <div className="w-full p-2">
+              <Row gutter={[16, 16]} className="font-bold p-4 bg-[#FFFFFF] shadow heading-font">
+                <Col span={1}>
+                  <Checkbox
+                    className="custom-checkbox roboto-font"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    disabled={candidates.length === 0}
+                  />
+                </Col>
+                <COL
+                  sortable
+                  sortKey="name"
+                  currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                  onSort={handleSort}
+                  span={5}
+                >
+                  CANDIDATE DETAILS
+                </COL>
+                <COL
+                  sortable
+                  sortKey="resume_score"
+                  currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                  onSort={handleSort}
+                  span={4}
+                >
+                  RESUME SCORE
+                </COL>
+                <COL
+                  sortable
+                  sortKey="applied_date"
+                  currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                  onSort={handleSort}
+                  span={4}
+                >
+                  APPLIED DATE
+                </COL>
+                <COL span={4}>
+                  <span>STATUS</span>
+                </COL>
+                <COL span={2}>
+                  <span>ACTIONS</span>
+                </COL>
+              </Row>
+            </div>
 
-              <div className="w-full">
-                {isLoading ? (
-                  <Loader />
-                ) : error ? (
-                  <p>
-                    {getCandidateErrorMessage(
-                      error,
-                      'Failed to load candidates. Please try again.'
-                    )}
-                  </p>
-                ) : candidates.length > 0 ? (
-                  candidates.map((candidate) => (
-                    <div key={candidate.id} className="mb-1">
-                      <div
-                        className={clsx(
-                          selected[candidate.id] && 'selected-candidate-highlight',
-                          'hover:shadow-md'
-                        )}
-                        style={{
-                          border: selected[candidate.id]
-                            ? '2px solid var(--primary)'
-                            : '2px solid transparent',
-                          borderRadius: 8,
-                          transition: 'all 0.3s ease',
-                        }}
-                      >
-                        <CommonCard>
-                          <Row gutter={[16, 16]} align="middle">
-                            <Col span={1}>
-                              <Checkbox
-                                className="custom-checkbox roboto-font"
-                                checked={!!selected[candidate.id]}
-                                onChange={() => toggleSelect(candidate.id)}
-                              />
-                            </Col>
-                            <Col span={5} className="min-w-0 overflow-hidden">
-                              <div
-                                className="flex items-center min-w-0 max-w-full cursor-pointer roboto-font"
-                                onClick={() =>
-                                  setExpandedId((prev) =>
-                                    prev === candidate.id ? null : candidate.id
-                                  )
-                                }
-                              >
-                                <Link
-                                  to={buildDetailsPath(candidate.id)}
-                                  className="block min-w-0 flex-1 overflow-hidden text-[var(--primary)]"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <span className="block min-w-0 truncate whitespace-nowrap font-semibold underline text-[var(--primary)] leading-5">
-                                    {candidateDisplayName(candidate)}
-                                  </span>
-                                </Link>
-                              </div>
-                              {expandedId === candidate.id && (
-                                <div className="mt-1">
-                                  <p>
-                                    <span className="font-medium roboto-font">Qualification: </span>
-                                    <span className="roboto-font">
-                                      {candidate.qualification || 'N/A'}
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="font-medium roboto-font">Email: </span>
-                                    <span className="roboto-font">
-                                      {candidate.email_id || 'N/A'}
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="font-medium roboto-font">Phone Number: </span>
-                                    <span className="roboto-font">
-                                      {candidate.contact_no || 'N/A'}
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="font-medium roboto-font">Location: </span>
-                                    <span className="roboto-font">
-                                      {candidate.address || 'N/A'}
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="font-medium roboto-font">Source: </span>
-                                    <span className="roboto-font">{candidate.source || 'N/A'}</span>
-                                  </p>
-                                </div>
-                              )}
-                            </Col>
-                            <Col span={4}>
-                              <p className="roboto-font">
-                                {candidate.resume_score === null ? '—' : candidate.resume_score}
-                              </p>
-                            </Col>
-                            <Col span={4}>
-                              <p className="roboto-font">
-                                {dayjs(candidate.applied_date).isValid()
-                                  ? dayjs(candidate.applied_date).format('MMM DD, YYYY')
-                                  : 'N/A'}
-                              </p>
-                            </Col>
-                            <Col span={4}>
+            <div className="w-full">
+              {isLoading ? (
+                <Loader />
+              ) : error ? (
+                <p>
+                  {getCandidateErrorMessage(error, 'Failed to load candidates. Please try again.')}
+                </p>
+              ) : candidates.length > 0 ? (
+                candidates.map((candidate) => (
+                  <div key={candidate.id} className="mb-1">
+                    <div
+                      className={clsx(
+                        selected[candidate.id] && 'selected-candidate-highlight',
+                        'hover:shadow-md'
+                      )}
+                      style={{
+                        border: selected[candidate.id]
+                          ? '2px solid var(--primary)'
+                          : '2px solid transparent',
+                        borderRadius: 8,
+                        transition: 'all 0.3s ease',
+                      }}
+                    >
+                      <CommonCard>
+                        <Row gutter={[16, 16]} align="middle">
+                          <Col span={1}>
+                            <Checkbox
+                              className="custom-checkbox roboto-font"
+                              checked={!!selected[candidate.id]}
+                              onChange={() => toggleSelect(candidate.id)}
+                            />
+                          </Col>
+                          <Col span={5} className="min-w-0 overflow-hidden">
+                            <div
+                              className="flex items-center min-w-0 max-w-full cursor-pointer roboto-font"
+                              onClick={() =>
+                                setExpandedId((prev) =>
+                                  prev === candidate.id ? null : candidate.id
+                                )
+                              }
+                            >
                               <Link
                                 to={buildDetailsPath(candidate.id)}
+                                className="block min-w-0 flex-1 overflow-hidden text-[var(--primary)]"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <p
-                                  className={
-                                    !candidate.status_code
-                                      ? 'cursor-pointer font-semibold'
-                                      : undefined
-                                  }
-                                  style={{
-                                    color: !candidate.status_code
-                                      ? 'var(--warning-solid)'
-                                      : undefined,
-                                  }}
-                                >
-                                  {candidate.status_label ||
-                                    statusLabelByCode.get(candidate.status_code ?? '') ||
-                                    'Not yet screened'}
-                                </p>
+                                <span className="block min-w-0 truncate whitespace-nowrap font-semibold underline text-[var(--primary)] leading-5">
+                                  {candidateDisplayName(candidate)}
+                                </span>
                               </Link>
-                            </Col>
-                            <Col span={2} className="flex items-center justify-center">
-                              <div className={actionIconRowClass}>
-                                <Tooltip title="View Assessment">
-                                  <MdOutlineRemoveRedEye
-                                    className="block cursor-pointer"
-                                    onClick={() => navigate(buildDetailsPath(candidate.id))}
-                                  />
-                                </Tooltip>
-                                <Tooltip title="Candidate Notes">
-                                  <LuSquarePen
-                                    size={18}
-                                    className="block cursor-pointer"
-                                    onClick={() =>
-                                      setNotesCandidate({
-                                        id: candidate.id,
-                                        name: candidateDisplayName(candidate),
-                                      })
-                                    }
-                                  />
-                                </Tooltip>
+                            </div>
+                            {expandedId === candidate.id && (
+                              <div className="mt-1">
+                                <p>
+                                  <span className="font-medium roboto-font">Qualification: </span>
+                                  <span className="roboto-font">
+                                    {candidate.qualification || 'N/A'}
+                                  </span>
+                                </p>
+                                <p>
+                                  <span className="font-medium roboto-font">Email: </span>
+                                  <span className="roboto-font">{candidate.email_id || 'N/A'}</span>
+                                </p>
+                                <p>
+                                  <span className="font-medium roboto-font">Phone Number: </span>
+                                  <span className="roboto-font">
+                                    {candidate.contact_no || 'N/A'}
+                                  </span>
+                                </p>
+                                <p>
+                                  <span className="font-medium roboto-font">Location: </span>
+                                  <span className="roboto-font">{candidate.address || 'N/A'}</span>
+                                </p>
+                                <p>
+                                  <span className="font-medium roboto-font">Source: </span>
+                                  <span className="roboto-font">{candidate.source || 'N/A'}</span>
+                                </p>
                               </div>
-                            </Col>
-                          </Row>
-                        </CommonCard>
-                      </div>
+                            )}
+                          </Col>
+                          <Col span={4}>
+                            <p className="roboto-font">
+                              {candidate.resume_score === null ? '—' : candidate.resume_score}
+                            </p>
+                          </Col>
+                          <Col span={4}>
+                            <p className="roboto-font">
+                              {dayjs(candidate.applied_date).isValid()
+                                ? dayjs(candidate.applied_date).format('MMM DD, YYYY')
+                                : 'N/A'}
+                            </p>
+                          </Col>
+                          <Col span={4}>
+                            <Link
+                              to={buildDetailsPath(candidate.id)}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <p
+                                className={
+                                  !candidate.status_code
+                                    ? 'cursor-pointer font-semibold'
+                                    : undefined
+                                }
+                                style={{
+                                  color: !candidate.status_code
+                                    ? 'var(--warning-solid)'
+                                    : undefined,
+                                }}
+                              >
+                                {candidate.status_label ||
+                                  statusLabelByCode.get(candidate.status_code ?? '') ||
+                                  'Not yet screened'}
+                              </p>
+                            </Link>
+                          </Col>
+                          <Col span={2} className="flex items-center justify-center">
+                            <div className={actionIconRowClass}>
+                              <Tooltip title="View Assessment">
+                                <MdOutlineRemoveRedEye
+                                  className="block cursor-pointer"
+                                  onClick={() => navigate(buildDetailsPath(candidate.id))}
+                                />
+                              </Tooltip>
+                              <Tooltip title="Candidate Notes">
+                                <LuSquarePen
+                                  size={18}
+                                  className="block cursor-pointer"
+                                  onClick={() =>
+                                    setNotesCandidate({
+                                      id: candidate.id,
+                                      name: candidateDisplayName(candidate),
+                                    })
+                                  }
+                                />
+                              </Tooltip>
+                            </div>
+                          </Col>
+                        </Row>
+                      </CommonCard>
                     </div>
-                  ))
-                ) : (
-                  <p>No candidates found for this job opening.</p>
-                )}
-              </div>
+                  </div>
+                ))
+              ) : (
+                <p>No candidates found for this job opening.</p>
+              )}
             </div>
           </div>
-
-          <MasterPagination
-            current={page + 1}
-            pageSize={PAGE_SIZE}
-            total={data?.total ?? 0}
-            itemLabel="Candidates"
-            onPageChange={(p) => setPage(p - 1)}
-          />
         </div>
-      )}
+
+        <MasterPagination
+          current={page + 1}
+          pageSize={PAGE_SIZE}
+          total={data?.total ?? 0}
+          itemLabel="Candidates"
+          onPageChange={(p) => setPage(p - 1)}
+        />
+      </div>
 
       {selectedCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 animate-slideUp">

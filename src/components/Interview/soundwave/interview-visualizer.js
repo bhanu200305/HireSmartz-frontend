@@ -42,11 +42,15 @@ export class InterviewVisualizer {
     if (!canvas) throw new Error('InterviewVisualizer: canvas element required');
     this.cv = canvas;
     this.o = {
-      variant: 'aperture', state: 'ai', sensitivity: 1.15, motionSpeed: 1,
-      glow: true, connectors: true,
+      variant: 'aperture',
+      state: 'ai',
+      sensitivity: 1.15,
+      motionSpeed: 1,
+      glow: true,
+      connectors: true,
       hues: { ...DEFAULT_HUES, ...(opts.hues || {}) },
       chromas: { ...DEFAULT_CHROMAS, ...(opts.chromas || {}) },
-      ...opts
+      ...opts,
     };
 
     this.state = this.o.state;
@@ -66,7 +70,7 @@ export class InterviewVisualizer {
         w: 0.6 + Math.random() * 1.5,
         b: i % BANDS,
         sa: Math.random() * Math.PI * 2,
-        sr: 0.15 + Math.random() * 1.15
+        sr: 0.15 + Math.random() * 1.15,
       };
     });
 
@@ -95,15 +99,19 @@ export class InterviewVisualizer {
     this.state = next;
   }
 
-  setVariant(v) { this.o.variant = v; }
+  setVariant(v) {
+    this.o.variant = v;
+  }
 
-  set(opts) { Object.assign(this.o, opts); }
+  set(opts) {
+    Object.assign(this.o, opts);
+  }
 
   /** Ask for the mic. Resolves true on success, false if denied. */
   async enableMic() {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true }
+        audio: { echoCancellation: true, noiseSuppression: true },
       });
       this.actx = this.actx || new (window.AudioContext || window.webkitAudioContext)();
       await this.actx.resume();
@@ -121,7 +129,7 @@ export class InterviewVisualizer {
   }
 
   disableMic() {
-    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    if (this.stream) this.stream.getTracks().forEach((t) => t.stop());
     this.stream = null;
     this.analyser = null;
   }
@@ -138,7 +146,9 @@ export class InterviewVisualizer {
     if (!r.width || !r.height) return;
     this.cv.width = Math.round(r.width * dpr);
     this.cv.height = Math.round(r.height * dpr);
-    this.dpr = dpr; this.w = r.width; this.h = r.height;
+    this.dpr = dpr;
+    this.w = r.width;
+    this.h = r.height;
   }
 
   destroy() {
@@ -146,7 +156,10 @@ export class InterviewVisualizer {
     window.removeEventListener('resize', this._onResize);
     if (this._ro) this._ro.disconnect();
     this.disableMic();
-    if (this.actx) { this.actx.close(); this.actx = null; }
+    if (this.actx) {
+      this.actx.close();
+      this.actx = null;
+    }
   }
 
   /* ---------- signal ---------- */
@@ -156,7 +169,9 @@ export class InterviewVisualizer {
   _sim(t, seed) {
     const g = (Math.sin(t * 0.42 + seed) + Math.sin(t * 0.27 + seed * 2.3)) * 0.5;
     const gate = Math.max(0, Math.min(1, (g + 0.35) * 3.2));
-    const car = Math.abs(Math.sin(t * 8.3 + seed) * Math.sin(t * 3.1 + seed * 1.7) * Math.sin(t * 19.7));
+    const car = Math.abs(
+      Math.sin(t * 8.3 + seed) * Math.sin(t * 3.1 + seed * 1.7) * Math.sin(t * 19.7)
+    );
     const syl = 0.45 + 0.55 * Math.abs(Math.sin(t * 5.4 + seed * 0.8));
     return gate * (0.22 + 0.78 * car * syl);
   }
@@ -164,7 +179,8 @@ export class InterviewVisualizer {
   _frame(dt) {
     const sens = this.o.sensitivity;
     this.t += dt * this.o.motionSpeed;
-    const t = this.t, mode = this.state;
+    const t = this.t,
+      mode = this.state;
     let target = 0;
     let live = false;
 
@@ -177,13 +193,13 @@ export class InterviewVisualizer {
         const n = this.freq.length;
         let s = 0;
         for (let i = 2; i < 140; i++) s += this.freq[i] * this.freq[i];
-        target = Math.min(1, Math.sqrt(s / 138) / 118 * sens * 1.6);
+        target = Math.min(1, (Math.sqrt(s / 138) / 118) * sens * 1.6);
         for (let i = 0; i < BANDS; i++) {
           const lo = Math.floor(Math.pow(i / BANDS, 1.7) * n * 0.5) + 2;
           const hi = Math.max(lo + 3, Math.floor(Math.pow((i + 1) / BANDS, 1.7) * n * 0.5) + 2);
           let acc = 0;
           for (let k = lo; k < hi; k++) acc += this.freq[k];
-          const v = Math.min(1, acc / (hi - lo) / 150 * sens);
+          const v = Math.min(1, (acc / (hi - lo) / 150) * sens);
           this.bands[i] += (v - this.bands[i]) * 0.24;
         }
       } else {
@@ -196,7 +212,8 @@ export class InterviewVisualizer {
     if (!live) {
       target *= sens;
       for (let i = 0; i < BANDS; i++) {
-        const v = target * (1 - i / 34) * (0.45 + 0.55 * Math.abs(Math.sin(t * (1.6 + i * 0.31) + i)));
+        const v =
+          target * (1 - i / 34) * (0.45 + 0.55 * Math.abs(Math.sin(t * (1.6 + i * 0.31) + i)));
         this.bands[i] += (v - this.bands[i]) * 0.2;
       }
     }
@@ -218,15 +235,21 @@ export class InterviewVisualizer {
   /* ---------- color ---------- */
 
   _hue() {
-    let h = 0, c = 0, tot = 0;
+    let h = 0,
+      c = 0,
+      tot = 0;
     for (const k in this.mix) {
       const m = this.mix[k];
-      h += this.o.hues[k] * m; c += this.o.chromas[k] * m; tot += m;
+      h += this.o.hues[k] * m;
+      c += this.o.chromas[k] * m;
+      tot += m;
     }
     return tot > 0.001 ? [h / tot, c / tot] : [250, 0.05];
   }
 
-  col(l, c, h, a) { return `oklch(${l} ${c} ${h} / ${a})`; }
+  col(l, c, h, a) {
+    return `oklch(${l} ${c} ${h} / ${a})`;
+  }
 
   _ctx() {
     const ctx = this.cv.getContext('2d');
@@ -238,8 +261,14 @@ export class InterviewVisualizer {
   /* ---------- 1a · APERTURE ---------- */
 
   _drawAperture() {
-    const ctx = this._ctx(), w = this.w, h = this.h, t = this.t;
-    const cx = w / 2, cy = h / 2, lvl = this.lvl, [hu, ch] = this._hue();
+    const ctx = this._ctx(),
+      w = this.w,
+      h = this.h,
+      t = this.t;
+    const cx = w / 2,
+      cy = h / 2,
+      lvl = this.lvl,
+      [hu, ch] = this._hue();
     const base = Math.min(w, h) * 0.13;
     const glow = this.o.glow;
 
@@ -251,27 +280,37 @@ export class InterviewVisualizer {
 
     ctx.lineJoin = 'round';
     for (let i = 0; i < 6; i++) {
-      const rBase = base * (0.62 + i * 0.36)
-        + lvl * base * (1.35 - i * 0.14)
-        + Math.sin(t * 0.6 + i * 0.7) * base * 0.045;
+      const rBase =
+        base * (0.62 + i * 0.36) +
+        lvl * base * (1.35 - i * 0.14) +
+        Math.sin(t * 0.6 + i * 0.7) * base * 0.045;
       ctx.beginPath();
       const N = 150;
       for (let k = 0; k <= N; k++) {
         const a = (k / N) * Math.PI * 2;
-        const bnd = this.bands[(i * 4 + k % 4) % BANDS];
-        const d = 1
-          + 0.055 * Math.sin(a * 3 + t * (0.7 + i * 0.13) + i)
-          + 0.04 * Math.sin(a * 5 - t * 1.1 + i * 2.1)
-          + (0.16 + i * 0.03) * bnd * Math.sin(a * (4 + i) + t * 1.7);
+        const bnd = this.bands[(i * 4 + (k % 4)) % BANDS];
+        const d =
+          1 +
+          0.055 * Math.sin(a * 3 + t * (0.7 + i * 0.13) + i) +
+          0.04 * Math.sin(a * 5 - t * 1.1 + i * 2.1) +
+          (0.16 + i * 0.03) * bnd * Math.sin(a * (4 + i) + t * 1.7);
         const r = rBase * d * (0.25 + 0.75 * this.conv);
-        const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r * 0.97;
+        const x = cx + Math.cos(a) * r,
+          y = cy + Math.sin(a) * r * 0.97;
         k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
       }
       ctx.closePath();
       ctx.lineWidth = Math.max(0.5, 1.5 - i * 0.19);
-      ctx.strokeStyle = this.col(0.86 - i * 0.02, ch, hu + i * 3,
-        (0.62 - i * 0.085) * (0.35 + 0.65 * this.conv) + lvl * 0.14);
-      if (glow) { ctx.shadowBlur = 16 + lvl * 26; ctx.shadowColor = this.col(0.8, ch, hu, 0.5); }
+      ctx.strokeStyle = this.col(
+        0.86 - i * 0.02,
+        ch,
+        hu + i * 3,
+        (0.62 - i * 0.085) * (0.35 + 0.65 * this.conv) + lvl * 0.14
+      );
+      if (glow) {
+        ctx.shadowBlur = 16 + lvl * 26;
+        ctx.shadowColor = this.col(0.8, ch, hu, 0.5);
+      }
       ctx.stroke();
       ctx.shadowBlur = 0;
     }
@@ -281,7 +320,9 @@ export class InterviewVisualizer {
     cg.addColorStop(0, this.col(0.97, ch * 0.5, hu, 0.9));
     cg.addColorStop(1, this.col(0.8, ch, hu, 0));
     ctx.fillStyle = cg;
-    ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+    ctx.fill();
 
     // connecting: comet sweep, fades out as the session locks in
     const sweep = 1 - this.conv;
@@ -301,8 +342,13 @@ export class InterviewVisualizer {
   /* ---------- 1b · BRAID ---------- */
 
   _drawBraid() {
-    const ctx = this._ctx(), w = this.w, h = this.h, t = this.t;
-    const cy = h / 2, lvl = this.lvl, [hu, ch] = this._hue();
+    const ctx = this._ctx(),
+      w = this.w,
+      h = this.h,
+      t = this.t;
+    const cy = h / 2,
+      lvl = this.lvl,
+      [hu, ch] = this._hue();
     const glow = this.o.glow;
     const pad = w * 0.08;
 
@@ -318,14 +364,19 @@ export class InterviewVisualizer {
 
     for (let k = 0; k < 5; k++) {
       ctx.beginPath();
-      const N = 220, amp = h * (0.145 - k * 0.021);
+      const N = 220,
+        amp = h * (0.145 - k * 0.021);
       for (let i = 0; i <= N; i++) {
-        const u = i / N, x = pad + u * (w - pad * 2);
+        const u = i / N,
+          x = pad + u * (w - pad * 2);
         const env = Math.pow(Math.sin(Math.PI * u), 1.35); // pinch at both ends
         const bnd = this.bands[Math.floor(u * 20) + 2] || 0;
         let y = cy;
-        y += env * amp * (0.1 + lvl * 1.6 + bnd * 0.7)
-          * Math.sin(u * (5.5 + k * 1.6) - t * (1.5 + k * 0.32) + k * 1.1);
+        y +=
+          env *
+          amp *
+          (0.1 + lvl * 1.6 + bnd * 0.7) *
+          Math.sin(u * (5.5 + k * 1.6) - t * (1.5 + k * 0.32) + k * 1.1);
         y += env * amp * 0.34 * Math.sin(u * (11 + k * 2.4) + t * (0.8 + k * 0.2));
         y += env * h * 0.022 * Math.sin(u * 3 + t * 0.5 + k);
         if (pulse > 0.01) {
@@ -336,7 +387,10 @@ export class InterviewVisualizer {
       }
       ctx.lineWidth = Math.max(0.55, 1.7 - k * 0.26);
       ctx.strokeStyle = this.col(0.9 - k * 0.03, ch, hu + k * 5, 0.72 - k * 0.11);
-      if (glow) { ctx.shadowBlur = 14 + lvl * 24; ctx.shadowColor = this.col(0.82, ch, hu, 0.55); }
+      if (glow) {
+        ctx.shadowBlur = 14 + lvl * 24;
+        ctx.shadowColor = this.col(0.82, ch, hu, 0.55);
+      }
       ctx.stroke();
       ctx.shadowBlur = 0;
     }
@@ -344,18 +398,27 @@ export class InterviewVisualizer {
     ctx.strokeStyle = this.col(0.72, 0.01, 80, 0.35);
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(pad * 0.55, cy); ctx.lineTo(pad * 0.55 + 10, cy);
-    ctx.moveTo(w - pad * 0.55, cy); ctx.lineTo(w - pad * 0.55 - 10, cy);
+    ctx.moveTo(pad * 0.55, cy);
+    ctx.lineTo(pad * 0.55 + 10, cy);
+    ctx.moveTo(w - pad * 0.55, cy);
+    ctx.lineTo(w - pad * 0.55 - 10, cy);
     ctx.stroke();
   }
 
   /* ---------- 1c · FIELD ---------- */
 
   _drawField() {
-    const ctx = this._ctx(), w = this.w, h = this.h, t = this.t;
-    const cx = w / 2, cy = h / 2, lvl = this.lvl, [hu, ch] = this._hue();
+    const ctx = this._ctx(),
+      w = this.w,
+      h = this.h,
+      t = this.t;
+    const cx = w / 2,
+      cy = h / 2,
+      lvl = this.lvl,
+      [hu, ch] = this._hue();
     const R = Math.min(w, h) * 0.42;
-    const glow = this.o.glow, links = this.o.connectors;
+    const glow = this.o.glow,
+      links = this.o.connectors;
 
     const bgr = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.6);
     bgr.addColorStop(0, this.col(0.75, ch, hu, 0.13 + lvl * 0.2));
@@ -371,7 +434,8 @@ export class InterviewVisualizer {
       // scattered origin -> formation, driven by conv (0 while connecting)
       const sx = cx + Math.cos(p.sa) * R * 1.7 * p.sr;
       const sy = cy + Math.sin(p.sa) * R * 1.7 * p.sr;
-      const tx = cx + Math.cos(a) * rr, ty = cy + Math.sin(a) * rr * 0.94;
+      const tx = cx + Math.cos(a) * rr,
+        ty = cy + Math.sin(a) * rr * 0.94;
       const c = this.conv;
       pts.push({ x: sx + (tx - sx) * c, y: sy + (ty - sy) * c, w: p.w, l: bnd, r: p.r });
     }
@@ -381,7 +445,8 @@ export class InterviewVisualizer {
       ctx.lineWidth = 0.6;
       for (let i = 0; i < pts.length; i++) {
         for (let j = i + 1; j < pts.length; j++) {
-          const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+          const dx = pts[i].x - pts[j].x,
+            dy = pts[i].y - pts[j].y;
           const d2 = dx * dx + dy * dy;
           if (d2 < thr * thr) {
             const a = (1 - Math.sqrt(d2) / thr) * (0.06 + lvl * 0.36) * this.conv;
@@ -395,7 +460,10 @@ export class InterviewVisualizer {
       }
     }
 
-    if (glow) { ctx.shadowBlur = 10 + lvl * 20; ctx.shadowColor = this.col(0.85, ch, hu, 0.6); }
+    if (glow) {
+      ctx.shadowBlur = 10 + lvl * 20;
+      ctx.shadowColor = this.col(0.85, ch, hu, 0.6);
+    }
     for (const p of pts) {
       const rad = p.w * (0.85 + lvl * 1.5 + p.l * 1.2);
       ctx.beginPath();
@@ -410,7 +478,9 @@ export class InterviewVisualizer {
     cg.addColorStop(0, this.col(0.98, ch * 0.4, hu, 0.85 * this.conv));
     cg.addColorStop(1, this.col(0.85, ch, hu, 0));
     ctx.fillStyle = cg;
-    ctx.beginPath(); ctx.arc(cx, cy, core * 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, core * 3, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 

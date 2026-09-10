@@ -358,9 +358,7 @@ const JobDescriptionPanel = ({
           className="h-[42px] w-auto object-contain"
         />
       ) : (
-        <span className="text-white font-semibold text-sm">
-          {tenantProfile?.company_name}
-        </span>
+        <span className="text-white font-semibold text-sm">{tenantProfile?.company_name}</span>
       )}
     </div>
   );

@@ -130,10 +130,7 @@ const JobsOpening = () => {
   const [isFromGlobalSearch, setIsFromGlobalSearch] = useState(false);
   const [, setGlobalSearchBaseQuery] = useState('');
   const [, setGlobalSearchField] = useState('');
-  const { role, callerKind, userId } = useSelector(
-    (state: any) => state.LoginSlice,
-    shallowEqual
-  );
+  const { role, callerKind, userId } = useSelector((state: any) => state.LoginSlice, shallowEqual);
   const tenantId = useSessionTenantId();
   const authorities = useEffectivePermissions();
   const [collapsedUsers, setCollapsedUsers] = useState<string[]>([]);
