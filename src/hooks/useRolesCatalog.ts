@@ -31,6 +31,16 @@ export type UseRolesCatalogResult = {
   roles: Role[];
   isLoading: boolean;
   error: unknown;
+  /**
+   * True when the catalog fetch specifically failed with 403 — the caller's
+   * token doesn't carry a role-read permission for this scope. Distinct from
+   * `roles` simply being `[]`: an antd `Select` renders both identically
+   * ("No data"), which reads as "this org has no roles" when the real story
+   * is "you aren't allowed to see them". Cost a teammate real debugging time
+   * tracing a blocked invite back to this, so it's surfaced here once rather
+   * than left for every call site to rediscover.
+   */
+  isForbidden: boolean;
   createRole: (payload: CreateRolePayload) => Promise<Role>;
   updateRole: (payload: UpdateRolePayload) => Promise<Role>;
   deleteRole: (roleId: string) => Promise<void>;
@@ -120,6 +130,14 @@ export const useRolesCatalog = (args: UseRolesCatalogArgs): UseRolesCatalogResul
   const skip = scope === 'tenant' && isMaster && !tenantId;
 
   const { data, isLoading, isFetching, error } = useListRolesQuery(ctx, { skip });
+  // RTK Query's FetchBaseQueryError puts the HTTP status directly on
+  // `.status` — checked here rather than via the org-service error-code
+  // helpers (getOrgErrorCode etc.) because those read `err.data...`, and a
+  // 403 from `require_permission` on this route is exactly the shape they're
+  // built for, but importing that dependency into a data-access hook that
+  // has no other org-service-error awareness felt like the wrong direction;
+  // `.status` is enough to answer the one question this hook needs to.
+  const isForbidden = (error as { status?: unknown } | undefined)?.status === 403;
   // Every surface (GET /v1/roles, /v1/platform/roles,
   // /v1/platform/tenants/{id}/roles) returns the FULL 8-system-role catalog
   // regardless of which one you call — platform staff need to see every
@@ -250,6 +268,7 @@ export const useRolesCatalog = (args: UseRolesCatalogArgs): UseRolesCatalogResul
     roles,
     isLoading: isLoading || isFetching,
     error,
+    isForbidden,
     createRole,
     updateRole,
     deleteRole,

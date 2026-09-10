@@ -14,7 +14,6 @@ import {
   resolveCurrentRound,
   type RoundBucket,
 } from './roundProgress';
-import SkipRoundModal from './Modal/SkipRoundModal';
 import RoundArtifactsModal from './Modal/RoundArtifactsModal';
 import PanelInterviewersModal from './Modal/PanelInterviewersModal';
 import { roundLabel, formatRoundStatus } from './roundDisplay';
@@ -75,7 +74,6 @@ const PipelineBoard = ({
   candidateId,
   onRoundClick,
 }: PipelineBoardProps) => {
-  const [isSkipModalOpen, setIsSkipModalOpen] = useState(false);
   const [artifactsModalFor, setArtifactsModalFor] = useState<{
     roundId: string;
     roundName: string;
@@ -95,12 +93,22 @@ const PipelineBoard = ({
   }
 
   const buckets = rounds.map((r) => bucketForStatus(r.status));
+  // A resume stage with a score is shown as Completed — the AI scored it, so
+  // that step of the resume+Intake-Call pair is done (see the card below and
+  // BACKEND_GAPS.md: the backend still leaves its raw status at
+  // `to_be_scheduled`/`pending` until an explicit Advance, which for this
+  // pair never happens on its own).
+  const resumeScored = (r: CandidateInterviewRoundView) =>
+    r.stage_type === 'resume' && resumeScore !== null;
+  const displayBuckets: RoundBucket[] = rounds.map((r, i) =>
+    resumeScored(r) ? 'done' : buckets[i]
+  );
   // Client-side inference only — see `isOverdue`'s own docstring. A round
   // stuck here reads as "needs attention" the same as a real failure,
   // even though the backend itself has never reported one.
   const overdueFlags = rounds.map((r) => isOverdue(r));
-  const hasFailure = buckets.includes('failed') || overdueFlags.some(Boolean);
-  const allDone = buckets.every((b) => b === 'done');
+  const hasFailure = displayBuckets.includes('failed') || overdueFlags.some(Boolean);
+  const allDone = displayBuckets.every((b) => b === 'done');
 
   // The round ADVANCE would actually complete next / SEND INVITE would
   // actually announce — NOT just "the first card whose status reads
@@ -108,19 +116,19 @@ const PipelineBoard = ({
   // card sitting there with status `to_be_scheduled` same as a real
   // pending round, but it's inert (`due_at === null`) and neither action
   // can touch it. See `roundProgress.ts`'s own docstring.
-  const nextRound = resolveCurrentRound(rounds);
-  const activeIndex = nextRound ? rounds.findIndex((r) => r.id === nextRound.id) : -1;
+  const currentRound = resolveCurrentRound(rounds);
+  let activeIndex = currentRound ? rounds.findIndex((r) => r.id === currentRound.id) : -1;
+  // A scored resume stage shows as Completed, so the real "current" work is
+  // the next outstanding round after it (the Intake Call, in the pair).
+  if (activeIndex !== -1 && resumeScored(rounds[activeIndex])) {
+    activeIndex = rounds.findIndex((_round, i) => i > activeIndex && displayBuckets[i] !== 'done');
+  }
+  const nextRound = activeIndex !== -1 ? rounds[activeIndex] : null;
   const nextWhen = nextRound
     ? (formatWhen(nextRound.scheduled_at) ?? formatWhen(nextRound.due_at))
     : null;
-  const nextIsResumeAwaitingAdvance =
-    nextRound?.stage_type === 'resume' &&
-    buckets[activeIndex] === 'pending' &&
-    resumeScore !== null;
-  // Send Invite / Skip Round only ever apply to a real interview round —
-  // send_round_invite.py/skip_interview_round.py both explicitly refuse the
-  // resume stage (ResumeStageHasNoInviteError / the same guard on skip), so
-  // the resume stage only ever gets the Advance hint above, never these.
+  // Send Invite only ever applies to a real interview round —
+  // send_round_invite.py refuses the resume stage (ResumeStageHasNoInviteError).
   const nextIsInterviewRound = nextRound?.stage_type === 'interview';
   const nextRoundAlreadyBooked = !!nextRound?.interview_booking_id;
 
@@ -146,7 +154,7 @@ const PipelineBoard = ({
       ? (scoreValues.reduce((sum, v) => sum + v, 0) / scoreValues.length).toFixed(1)
       : null;
 
-  const completedCount = buckets.filter((b) => b === 'done').length;
+  const completedCount = displayBuckets.filter((b) => b === 'done').length;
 
   const standing: { status: BadgeStatus; label: string } = hasFailure
     ? { status: 'danger', label: 'Needs attention' }
@@ -158,7 +166,7 @@ const PipelineBoard = ({
     <div className="flex flex-col gap-5">
       <div className="flex gap-3 overflow-x-auto pb-2">
         {rounds.map((round, index) => {
-          const bucket = buckets[index];
+          const bucket = displayBuckets[index];
           const overdue = overdueFlags[index];
           // Borrows the 'failed' bucket's danger styling — an overdue round
           // is exactly as actionable as a real failure, it's just inferred
@@ -167,15 +175,13 @@ const PipelineBoard = ({
           const meta = overdue ? BUCKET_META.failed : BUCKET_META[bucket];
           const when = formatWhen(round.scheduled_at) ?? formatWhen(round.due_at);
           const isActive = index === activeIndex;
-          // The resume stage's own status never flips off "to_be_scheduled" /
-          // "pending" on its own — record_resume_score.py only ever writes
-          // the candidate's resume_score/skills/location, never this round's
-          // status; only an explicit Advance (advance_candidate.py) marks it
-          // complete. So a score already sitting here means "reviewed and
-          // ready to move on," not "waiting on a booking" — the generic
-          // status label reads as the latter, so it's swapped out below.
-          const isResumeAwaitingAdvance =
-            round.stage_type === 'resume' && bucket === 'pending' && resumeScore !== null;
+          // The resume stage's raw status never flips off
+          // "to_be_scheduled"/"pending" on its own (record_resume_score.py
+          // writes only the score, never this round's status — see
+          // BACKEND_GAPS.md). A score sitting here means the AI has assessed
+          // it: that half of the resume+Intake-Call pair is done, so the card
+          // reads Completed rather than pending.
+          const isResumeScored = resumeScored(round);
           // Recordings/transcripts only ever exist for a real interview
           // round (there's nothing for the synthetic resume stage to
           // record) — the artifacts endpoint keys off this round row's own
@@ -245,14 +251,11 @@ const PipelineBoard = ({
                 </span>
               </div>
               <div className="flex flex-col gap-1.5 px-3.5 pb-3.5 pt-2.5">
-                <Badge
-                  status={isResumeAwaitingAdvance ? 'info' : meta.badgeStatus}
-                  className="w-fit"
-                >
+                <Badge status={meta.badgeStatus} className="w-fit">
                   {overdue
                     ? 'Overdue'
-                    : isResumeAwaitingAdvance
-                      ? 'Score ready'
+                    : isResumeScored
+                      ? 'Completed'
                       : formatRoundStatus(round.status)}
                 </Badge>
                 {overdue && (
@@ -268,9 +271,6 @@ const PipelineBoard = ({
                   <span className="text-xs font-semibold text-primary-600">
                     Score: {resumeScore}
                   </span>
-                )}
-                {isResumeAwaitingAdvance && (
-                  <span className="text-xs text-neutral-500">Awaiting Advance to move on</span>
                 )}
                 {isInterviewRound && (
                   <button
@@ -341,11 +341,7 @@ const PipelineBoard = ({
           <div className="text-xs text-neutral-400">Next step</div>
           <div className="font-semibold text-neutral-900">
             {nextRound ? roundLabel(nextRound) : 'None — pipeline complete'}
-            {nextIsResumeAwaitingAdvance ? (
-              <span className="ml-1 font-normal text-neutral-500">· click Advance</span>
-            ) : (
-              nextWhen && <span className="ml-1 font-normal text-neutral-500">· {nextWhen}</span>
-            )}
+            {nextWhen && <span className="ml-1 font-normal text-neutral-500">· {nextWhen}</span>}
           </div>
           {nextIsInterviewRound && (
             <div className="mt-2 flex flex-wrap gap-2">
@@ -357,13 +353,6 @@ const PipelineBoard = ({
                 className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSendingInvite ? 'Sending…' : 'SEND INVITE'}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setIsSkipModalOpen(true)}
-                className="rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
-              >
-                SKIP ROUND
               </Button>
             </div>
           )}
@@ -383,16 +372,6 @@ const PipelineBoard = ({
           <Badge status={standing.status}>{standing.label}</Badge>
         </div>
       </div>
-
-      {nextRound && nextIsInterviewRound && (
-        <SkipRoundModal
-          open={isSkipModalOpen}
-          onClose={() => setIsSkipModalOpen(false)}
-          candidateId={candidateId}
-          roundName={roundLabel(nextRound)}
-          onSuccess={() => setIsSkipModalOpen(false)}
-        />
-      )}
 
       {artifactsModalFor && (
         <RoundArtifactsModal

@@ -1,10 +1,16 @@
-import { api } from '../../index';
+import { orgApi } from '../../organization-service/orgApi';
 import { isDevAuthBypassEnabled } from '../../../shared/utils/auth/devAuthBypass';
 import { devRoleStore } from '../../../shared/utils/dev/devRoleStore';
+import { getRoleTemplate } from '../../../components/RolesManagement/data/roleTemplates';
 
-// See roles.ts — same lightweight dropdown shape, kept separate on purpose
-// (this hits /roles/all/list, the cross-scope listing) rather than importing
-// from roles.ts, so the two endpoints stay independently swappable.
+// See roles.ts — same lightweight dropdown shape and same org-service move.
+// org-service has no single "cross-scope" listing; each surface (/v1/roles,
+// /v1/platform/roles) already returns the full 8-system-role catalog, so
+// this resolves to the same per-scope path roles.ts uses.
+type BackendRoleRow = { role_id: string; name: string };
+const rolesPath = (isOwnerRole?: boolean): string =>
+  isOwnerRole ? '/v1/platform/roles' : '/v1/roles';
+const toDisplayName = (name: string): string => getRoleTemplate(name)?.label ?? name;
 export type Role = {
   id: string;
   roleName: string;
@@ -22,7 +28,7 @@ type GetRolesParams = {
   isOwnerRole?: boolean;
 };
 
-const extendedApi = api.injectEndpoints({
+const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     getAllRoles: build.query<GetRolesResponse, GetRolesParams>({
       queryFn: async ({ isOwnerRole }, _queryApi, _extraOptions, baseQuery) => {
@@ -34,13 +40,17 @@ const extendedApi = api.injectEndpoints({
           return { data: { data: roles, success: true, message: 'ok' } };
         }
 
-        const result = await baseQuery({
-          url: '/roles/all/list',
-          method: 'GET',
-          params: isOwnerRole !== undefined ? { isOwnerRole } : {},
-        });
+        const result = await baseQuery({ url: rolesPath(isOwnerRole), method: 'GET' });
         if (result.error) return { error: result.error };
-        return { data: result.data as GetRolesResponse };
+
+        const rows = (result.data as { roles?: BackendRoleRow[] })?.roles ?? [];
+        return {
+          data: {
+            data: rows.map((row) => ({ id: row.role_id, roleName: toDisplayName(row.name) })),
+            success: true,
+            message: 'ok',
+          },
+        };
       },
       providesTags: [{ type: 'Roles', id: 'LIST' }],
     }),

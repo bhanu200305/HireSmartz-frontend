@@ -55,6 +55,9 @@ const EditDetailedInterviewRoundPage = lazy(() => import('./pages/EditDetailedIn
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
+const ConfirmRecoveryEmailPage = lazy(() => import('./pages/ConfirmRecoveryEmailPage'));
+const StartAccountRecoveryPage = lazy(() => import('./pages/StartAccountRecoveryPage'));
+const CompleteAccountRecoveryPage = lazy(() => import('./pages/CompleteAccountRecoveryPage'));
 const SecuritySettingsPage = lazy(() => import('./pages/SecuritySettingsPage'));
 const NotificationSettingsPage = lazy(() => import('./pages/NotificationSettingsPage'));
 const AdminToolsPage = lazy(() => import('./pages/AdminToolsPage'));
@@ -221,6 +224,30 @@ export const Routes: RouteType[] = [
     // exactly, same reasoning as ResetPassword above.
     path: '/verify-email/:token',
     component: VerifyEmailPage,
+    // isOpen, not isPublic — same reasoning as ResetPassword above.
+    isOpen: true,
+  },
+  {
+    name: 'ConfirmRecoveryEmail',
+    // Must match notification-service's LinkBuilder.recovery_email_confirmation_url()
+    // exactly, same reasoning as VerifyEmail above.
+    path: '/confirm-recovery-email/:token',
+    component: ConfirmRecoveryEmailPage,
+    // isOpen, not isPublic — same reasoning as ResetPassword above.
+    isOpen: true,
+  },
+  {
+    name: 'StartAccountRecovery',
+    path: '/account-recovery',
+    component: StartAccountRecoveryPage,
+    isPublic: true,
+  },
+  {
+    name: 'CompleteAccountRecovery',
+    // Must match notification-service's LinkBuilder.account_recovery_url()
+    // exactly, same reasoning as ResetPassword above.
+    path: '/account-recovery/:token/complete',
+    component: CompleteAccountRecoveryPage,
     // isOpen, not isPublic — same reasoning as ResetPassword above.
     isOpen: true,
   },

@@ -2,6 +2,7 @@ import { MdOutlineArrowBack, MdOutlineShield } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
 import MfaSection from './MfaSection';
+import RecoverySection from './RecoverySection';
 import SessionsSection from './SessionsSection';
 
 /**
@@ -32,6 +33,7 @@ const SecuritySettings = () => {
         </div>
 
         <MfaSection />
+        <RecoverySection />
         <SessionsSection />
       </div>
     </MainLayout>

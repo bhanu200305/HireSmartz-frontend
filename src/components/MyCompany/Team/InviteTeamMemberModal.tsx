@@ -75,6 +75,7 @@ const InviteTeamMemberForm = ({
     roles,
     isLoading: isLoadingRoles,
     createRole,
+    isForbidden: rolesForbidden,
   } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: false });
 
   // Offices feed the Create Role wizard's optional per-location permission
@@ -202,10 +203,20 @@ const InviteTeamMemberForm = ({
                 showSearch
                 optionFilterProp="label"
                 className="w-full mt-1"
+                disabled={rolesForbidden}
+                notFoundContent={
+                  rolesForbidden ? "You don't have permission to view roles." : undefined
+                }
                 options={roles.map((role) => ({ label: role.roleName, value: role.roleName }))}
               />
             )}
           />
+          {rolesForbidden && (
+            <p className="mt-1 text-xs text-red-500">
+              You don&apos;t have permission to view roles, so none can be picked here — ask an
+              admin to grant role-read access.
+            </p>
+          )}
           {canCreateRole && (
             <button
               type="button"
