@@ -77,6 +77,11 @@ const PipelineBoard = ({
   const [artifactsModalFor, setArtifactsModalFor] = useState<{
     roundId: string;
     roundName: string;
+    // Which inline player to show the recording with — 'PANEL'/'AI_VIDEO'
+    // get a video player, everything else (AUDIO/AUDIO_SCREENING, or an
+    // unclassifiable round) gets an audio player. See
+    // `CandidateInterviewRoundView.round_type`'s own doc comment.
+    roundType: string | null;
     feedback: Pick<
       CandidateInterviewRoundView,
       'candidate_feedback_rating' | 'candidate_feedback_text' | 'candidate_feedback_submitted_at'
@@ -196,9 +201,29 @@ const PipelineBoard = ({
           // Same guards `set_panel_interviewers.py` enforces server-side
           // (resume stage / already-finished / already-booked all 409) —
           // this just keeps the trigger from inviting a click that can only
-          // ever fail.
+          // ever fail. Also gated on `round_type === 'PANEL'` — AI Video and
+          // Audio Screening (and the Intake Call) are AI-conducted, with no
+          // human interviewer for a recruiter to set, so this control has
+          // nothing to do there. `round_type` is null-safe against an
+          // unclassifiable round (treated as "not a Panel round" — see
+          // `CandidateInterviewRoundView.round_type`'s own doc comment).
           const canManageInterviewers =
-            isInterviewRound && !round.interview_booking_id && !isRoundConcluded(round);
+            isInterviewRound &&
+            round.round_type === 'PANEL' &&
+            !round.interview_booking_id &&
+            !isRoundConcluded(round);
+          // Same round-id match the Summary tab's "Scores across rounds"
+          // chart and table use (`CandidateInterviewScoreView` carries no
+          // round name/id of its own — resolve it via
+          // `candidate_interview_round_id` against this LOCAL round row's
+          // `id`, not `.round_id` — see interviewRounds.ts's note on that
+          // mix-up). The resume stage card already showed its score below;
+          // interview rounds never did, even though `scores` was already
+          // passed into this component.
+          const roundScore = isInterviewRound
+            ? scores.find((s) => s.candidate_interview_round_id === round.id)
+            : undefined;
+          const roundScoreValue = roundScore?.recruiter_score ?? roundScore?.score;
           return (
             <div
               key={round.id ?? `resume-${index}`}
@@ -211,6 +236,7 @@ const PipelineBoard = ({
                   setArtifactsModalFor({
                     roundId: round.id,
                     roundName: roundLabel(round),
+                    roundType: round.round_type,
                     feedback: {
                       candidate_feedback_rating: round.candidate_feedback_rating,
                       candidate_feedback_text: round.candidate_feedback_text,
@@ -229,6 +255,7 @@ const PipelineBoard = ({
                     setArtifactsModalFor({
                       roundId: round.id,
                       roundName: roundLabel(round),
+                      roundType: round.round_type,
                       feedback: {
                         candidate_feedback_rating: round.candidate_feedback_rating,
                         candidate_feedback_text: round.candidate_feedback_text,
@@ -277,6 +304,11 @@ const PipelineBoard = ({
                     Score: {resumeScore}
                   </span>
                 )}
+                {isInterviewRound && roundScoreValue != null && (
+                  <span className="text-xs font-semibold text-primary-600">
+                    Score: {roundScoreValue} / 5
+                  </span>
+                )}
                 {hasRecordings && (
                   <button
                     type="button"
@@ -289,6 +321,7 @@ const PipelineBoard = ({
                       setArtifactsModalFor({
                         roundId: round.id,
                         roundName: roundLabel(round),
+                        roundType: round.round_type,
                         feedback: {
                           candidate_feedback_rating: round.candidate_feedback_rating,
                           candidate_feedback_text: round.candidate_feedback_text,
@@ -385,6 +418,7 @@ const PipelineBoard = ({
           candidateId={candidateId}
           roundId={artifactsModalFor.roundId}
           roundName={artifactsModalFor.roundName}
+          roundType={artifactsModalFor.roundType}
           feedback={artifactsModalFor.feedback}
         />
       )}

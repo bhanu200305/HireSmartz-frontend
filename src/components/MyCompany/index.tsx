@@ -18,7 +18,11 @@ import CultureIntroTab from './CultureIntroTab';
 import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
 import QrManagementTab from './QrManagementTab';
 import NotificationSettingsTab from './NotificationSettingsTab';
-import JobSettingsTab from './JobSettingsTab';
+import TenantJobTypesTab from './JobSettings/TenantJobTypesTab';
+import TenantShiftsTab from './JobSettings/TenantShiftsTab';
+import TenantJobModesTab from './JobSettings/TenantJobModesTab';
+import TenantClosureReasonsTab from './JobSettings/TenantClosureReasonsTab';
+import TenantEducationPreferencesTab from './JobSettings/TenantEducationPreferencesTab';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
@@ -101,73 +105,180 @@ const MyCompany: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  const items: TabsProps['items'] = [
-    canViewCompanyDetails && {
-      key: '1',
-      label: 'Company Details',
-      children: <CompanyProfileTab tenantId={tenantId} />,
-    },
-    canViewLocations && {
-      key: '2',
-      label: 'Locations',
-      children: <CompanyLocationsTab tenantId={tenantId} />,
-    },
-    canViewDepartments && {
-      key: '3',
-      label: 'Departments',
-      children: <DepartmentsTab tenantId={tenantId} />,
-    },
-    canViewFeatureSettings && {
-      key: '4',
-      label: 'Feature Settings',
-      children: <EntitlementsTab tenantId={tenantId} />,
-    },
-    canViewTeam && { key: '5', label: 'Team', children: <TeamTab tenantId={tenantId} /> },
-    canViewActivity && {
-      key: '6',
-      label: 'Activity',
-      children: <TenantActivityFeedTab tenantId={tenantId} />,
-    },
-    canViewInterviewQuestions && {
-      key: '7',
-      label: 'Intake Questions',
-      children: <InterviewQuestionsTab tenantId={tenantId} />,
-    },
-    // New key (12), not renumbered into the '7'/'8' gap, so existing
-    // `?tab=` links to every other tab keep working.
-    canViewCultureIntro && {
-      key: '12',
-      label: 'Culture Intro',
-      children: <CultureIntroTab tenantId={tenantId} />,
+  // Intake Questions (InterviewQuestionsTab) was parked behind a
+  // "coming soon" placeholder pending two things: the job posting workflow
+  // it hangs off of, and a way for a company that never customized its own
+  // set to still see something sensible. Both are done — Add Job Opening's
+  // Questions step already shows this company's current questions
+  // read-only (AiQuestionsSetup.tsx), and organization-service now
+  // live-inherits the Super Admin's platform default for any company that
+  // hasn't diverged (ListJobQuestionsUseCase) rather than requiring one
+  // seeded copy per tenant up front. Swapped back in below.
+  //
+  // Scoring Criteria, QR Management and Notification Settings aren't
+  // job-workflow-adjacent in that sense — each configures something that
+  // already exists independent of any job posting, and each has a real tab
+  // wired below:
+  //  - Scoring Criteria / QR Management: mirror the Super Admin's
+  //    per-company ScoringCriteriaPanel/QrCodePanel (see
+  //    CustomerDashboard/ViewCustomer), just tenant-scoped to the signed-in
+  //    session instead of an arbitrary tenant_id from the URL.
+  //  - Notification Settings: one tab collecting Email Templates,
+  //    Notification Copy, and SMS Templates as sub-tabs — those three used
+  //    to be separate top-level tabs here, each real and independently
+  //    working, just sitting side by side with every other My Company
+  //    section instead of grouped under the one thing they're all actually
+  //    about. See NotificationSettingsTab's own doc comment for what each
+  //    sub-tab is and why they're distinct systems, not one feature split
+  //    three ways.
+
+  // With Notification Settings folded in, this page had grown to 12 flat
+  // top-level tabs in one horizontally-scrolling row. Grouped here into 4
+  // topic tabs instead, each opening its own short row of the real leaf
+  // tabs below it (same two-level pattern Notification Settings already
+  // used for its own 3 sub-tabs) — purely a navigation regrouping, nothing
+  // below changed behavior, data, or backend calls. Leaf `key`s are
+  // untouched on purpose: OnboardingChecklist's CHECKLIST_STEPS deep-links
+  // by leaf key alone ('1', '2', '3', '5'), so `handleTabChange` resolving
+  // a leaf key to its group below keeps those links (and any other
+  // `?tab=<leaf key>` link) working exactly as before.
+  const groups: { key: string; label: string; tabs: TabsProps['items'] }[] = [
+    {
+      key: 'profile',
+      label: 'Company Profile',
+      tabs: [
+        canViewCompanyDetails && {
+          key: '1',
+          label: 'Company Details',
+          children: <CompanyProfileTab tenantId={tenantId} />,
+        },
+        canViewLocations && {
+          key: '2',
+          label: 'Locations',
+          children: <CompanyLocationsTab tenantId={tenantId} />,
+        },
+        canViewDepartments && {
+          key: '3',
+          label: 'Departments',
+          children: <DepartmentsTab tenantId={tenantId} />,
+        },
+      ].filter(Boolean) as TabsProps['items'],
     },
     {
-      key: '8',
-      label: 'Scoring Criteria',
-      children: <ScoringCriteriaOwnerTab />,
+      key: 'team',
+      label: 'Team & Access',
+      tabs: [
+        canViewTeam && { key: '5', label: 'Team', children: <TeamTab tenantId={tenantId} /> },
+        canViewActivity && {
+          key: '6',
+          label: 'Activity',
+          children: <TenantActivityFeedTab tenantId={tenantId} />,
+        },
+      ].filter(Boolean) as TabsProps['items'],
     },
-    canViewQrManagement && {
-      key: '9',
-      label: 'QR Management',
-      children: <QrManagementTab tenantId={tenantId} />,
-    },
-    canViewJobSettings && {
-      key: '11',
-      label: 'Job Settings',
-      children: <JobSettingsTab />,
-    },
-    // Gated per sub-tab, not on the whole tab — see NotificationSettingsTab's
-    // canViewEmailTemplates prop.
     {
-      key: '10',
-      label: 'Notification Settings',
-      children: (
-        <NotificationSettingsTab
-          tenantId={tenantId}
-          canViewEmailTemplates={canViewEmailTemplates}
-        />
-      ),
+      key: 'hiring',
+      label: 'Hiring Configuration',
+      tabs: [
+        canViewInterviewQuestions && {
+          key: '7',
+          label: 'Intake Questions',
+          children: <InterviewQuestionsTab tenantId={tenantId} />,
+        },
+        // Key kept as '12' — not renumbered into the '7'/'8' gap, so
+        // existing `?tab=` links to every other tab keep working.
+        canViewCultureIntro && {
+          key: '12',
+          label: 'Culture Intro',
+          children: <CultureIntroTab tenantId={tenantId} />,
+        },
+        {
+          key: '8',
+          label: 'Scoring Criteria',
+          children: <ScoringCriteriaOwnerTab />,
+        },
+        // Former "Job Settings" tab's own 5 sub-tabs, promoted to direct
+        // leaves here instead of sitting one level deeper behind a "Job
+        // Settings" tab — same job-workflow catalogues (job types/shifts/
+        // job modes/closure reasons/education preferences feeding the Job
+        // Details/Close Job steps), just flattened so Hiring Configuration
+        // doesn't nest a third tab level for only this one entry. New keys
+        // (13-17), not reusing the old '11' — nothing deep-links to it.
+        canViewJobSettings && {
+          key: '13',
+          label: 'Job Types',
+          children: <TenantJobTypesTab />,
+        },
+        canViewJobSettings && {
+          key: '14',
+          label: 'Shifts',
+          children: <TenantShiftsTab />,
+        },
+        canViewJobSettings && {
+          key: '15',
+          label: 'Job Modes',
+          children: <TenantJobModesTab />,
+        },
+        canViewJobSettings && {
+          key: '16',
+          label: 'Closure Reasons',
+          children: <TenantClosureReasonsTab />,
+        },
+        canViewJobSettings && {
+          key: '17',
+          label: 'Education Preferences',
+          children: <TenantEducationPreferencesTab />,
+        },
+      ].filter(Boolean) as TabsProps['items'],
     },
-  ].filter(Boolean) as TabsProps['items'];
+    {
+      key: 'tools',
+      label: 'Tools & Settings',
+      tabs: [
+        canViewQrManagement && {
+          key: '9',
+          label: 'QR Management',
+          children: <QrManagementTab tenantId={tenantId} />,
+        },
+        canViewFeatureSettings && {
+          key: '4',
+          label: 'Feature Settings',
+          children: <EntitlementsTab tenantId={tenantId} />,
+        },
+        // Not gated on canViewEmailTemplates itself — "SMS Templates" (one
+        // of this tab's 3 sub-tabs) never had a permission gate of its own
+        // before this consolidation, so hiding the whole tab behind
+        // EMAIL_TEMPLATE_VIEW would take that access away from anyone who
+        // held it without also holding EMAIL_TEMPLATE_VIEW. The gate
+        // applies per sub-tab instead — see NotificationSettingsTab's own
+        // canViewEmailTemplates prop.
+        {
+          key: '10',
+          label: 'Notification Settings',
+          children: (
+            <NotificationSettingsTab
+              tenantId={tenantId}
+              canViewEmailTemplates={canViewEmailTemplates}
+            />
+          ),
+        },
+      ].filter(Boolean) as TabsProps['items'],
+    },
+  ].filter((group) => (group.tabs?.length ?? 0) > 0);
+
+  // Which group the current leaf tab lives in — derived from `currentTab`
+  // rather than tracked as its own `?group=` param, so a leaf-level deep
+  // link (OnboardingChecklist, or a bookmarked `?tab=2`) opens the right
+  // group automatically instead of needing two URL params kept in sync.
+  const activeGroup =
+    groups.find((group) => group.tabs?.some((tab) => tab.key === currentTab)) ?? groups[0];
+
+  const handleGroupChange = (groupKey: string) => {
+    const firstLeafTab = groups.find((group) => group.key === groupKey)?.tabs?.[0];
+    if (firstLeafTab) {
+      handleTabChange(String(firstLeafTab.key));
+    }
+  };
 
   return (
     <MainLayout>
@@ -227,10 +338,20 @@ const MyCompany: React.FC = () => {
             />
 
             <Tabs
+              activeKey={activeGroup.key}
+              onChange={handleGroupChange}
+              items={groups.map((group) => ({
+                key: group.key,
+                label: group.label,
+                children: null,
+              }))}
+              className="my-company-group-tabs many-tabs"
+            />
+            <Tabs
               activeKey={currentTab}
               onChange={handleTabChange}
-              items={items}
-              className="my-company-tabs many-tabs"
+              items={activeGroup.tabs}
+              className="my-company-tabs many-tabs mt-1"
             />
           </div>
         </div>

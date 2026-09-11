@@ -123,6 +123,7 @@ const CandidateDetails = () => {
     data: candidate,
     isLoading: isCandidateLoading,
     error: candidateError,
+    refetch: refetchCandidate,
   } = useGetCandidateQuery(candidateId ?? '', { skip: !candidateId });
 
   const { data: jobOpeningData } = useGetJobOpeningByIdQuery(
@@ -184,6 +185,10 @@ const CandidateDetails = () => {
     try {
       await deleteResumeReview(candidateId).unwrap();
       showToast({ message: 'Review removed.', type: 'success' });
+      // Explicit on top of `deleteResumeReview`'s own tag invalidation —
+      // same belt-and-suspenders reasoning as `refetchCandidate` after
+      // saving a review below.
+      refetchCandidate();
     } catch (e) {
       showToast({ message: getCandidateErrorMessage(e, 'Could not remove review'), type: 'error' });
     }
@@ -195,18 +200,14 @@ const CandidateDetails = () => {
   );
 
   const isResumeStage = selectedRound?.stage_type === 'resume';
-  // Same string-match convention this file already uses for round-type
-  // inference (see the 'panel'/'video' checks around the booking button
-  // below) — `CandidateInterviewRoundView` carries no `interview_type`/
-  // `special_kind` field, only the display `round_name` sourced live from
-  // job-service, so this is the only signal available client-side. Fragile
-  // in theory (a tenant could rename the round), acceptable in practice
-  // since `master_interview_round`'s `round_name` for this special_kind is
-  // a fixed platform string, not something a job's own setup UI lets you
-  // retype freely.
-  const selectedRoundIsIntakeCall =
-    selectedRound?.stage_type === 'interview' &&
-    (selectedRound.round_name?.toLowerCase().includes('intake call') ?? false);
+  // `roundProgress.ts`'s shared `isIntakeCallRound` — this used to
+  // duplicate that check inline via a `round_name` string match instead of
+  // reusing it, which was also the older, fragile version of the check
+  // (see that helper's own doc comment for why `round_type` replaced it).
+  // Reusing the one shared definition means this file's drill-down and
+  // `planHasIntakeCall`/`currentRoundInIntakePair` below can never disagree
+  // about which round is the Intake Call.
+  const selectedRoundIsIntakeCall = Boolean(selectedRound && isIntakeCallRound(selectedRound));
   // Same "score already sitting here means reviewed and ready to move on"
   // read as PipelineBoard.tsx's own version of this check — the resume
   // stage's status never flips off "to_be_scheduled"/"pending" on its own,
@@ -857,25 +858,39 @@ const CandidateDetails = () => {
                     <div className="p-5">
                       <h3 className="text-sm font-semibold text-gray-900">Scores across rounds</h3>
                       <div className="mt-4 h-28 rounded-lg bg-gradient-to-b from-primary-50 to-white px-2 pt-2">
-                        <div className="flex h-full items-start gap-2 border-b border-gray-100">
+                        <div className="flex h-full items-end gap-2 border-b border-gray-100">
                           {rounds.map((round, index) => {
                             // The resume stage / Intake Call rows have no
                             // `CandidateInterviewScore`; `summariseRound`
                             // substitutes the AI resume score and the
                             // consistency score respectively.
                             const { chartValue, scoreText } = summariseRound(round);
+                            // Scores are on a 0-5 scale (see the table below
+                            // and RecruiterRoundScoreModal) — map that onto
+                            // the column's height so the dot/bar actually
+                            // moves with the score instead of every column
+                            // rendering identically regardless of value,
+                            // which is what made this chart look "static".
+                            const pct =
+                              chartValue == null
+                                ? 0
+                                : Math.max(0, Math.min(100, (chartValue / 5) * 100));
                             return (
                               <div
                                 key={round.id ?? `score-${index}`}
-                                className="flex h-full flex-1 flex-col items-center justify-between"
+                                className="relative flex h-full flex-1 flex-col items-center justify-end"
                               >
                                 <span
-                                  className="mt-auto mb-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-white"
+                                  className="w-full max-w-[10px] rounded-t bg-primary/25"
+                                  style={{ height: `${pct}%` }}
+                                />
+                                <span
+                                  className="absolute h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-primary ring-2 ring-white"
+                                  style={{ bottom: `${pct}%` }}
                                   title={
                                     chartValue == null ? 'No score recorded' : (scoreText ?? '')
                                   }
                                 />
-                                <span className="h-0.5 w-full bg-primary/20" />
                               </div>
                             );
                           })}
@@ -1072,6 +1087,7 @@ const CandidateDetails = () => {
         <ResumeReviewModal
           open={isResumeReviewOpen}
           onClose={() => setIsResumeReviewOpen(false)}
+          onSaved={refetchCandidate}
           candidateId={candidateId}
           currentRating={candidate?.resume_rating ?? null}
           currentComment={candidate?.resume_review_comment ?? null}
