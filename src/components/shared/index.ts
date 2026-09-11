@@ -8,6 +8,8 @@ export { default as DonutStat } from './ui/DonutStat';
 export type { DonutSlice } from './ui/DonutStat';
 export { default as FunnelBars } from './ui/FunnelBars';
 export type { FunnelStageBar } from './ui/FunnelBars';
+export { default as HiringPipeline } from './ui/HiringPipeline';
+export type { PipelineStage } from './ui/HiringPipeline';
 export { default as LiveBadge } from './ui/LiveBadge';
 export { Badge } from './ui/badge';
 export type { BadgeStatus } from './ui/badge';

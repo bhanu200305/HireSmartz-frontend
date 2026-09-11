@@ -10,7 +10,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { ChartCard, DonutStat, FunnelBars } from '../shared';
+import { ChartCard, DonutStat, HiringPipeline } from '../shared';
 import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import {
   useGetHiringFunnelQuery,
@@ -178,12 +178,12 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       <ChartCard
         title="Hiring funnel"
         subtitle="Candidate progression and drop-off by stage"
-        typeTag="Funnel"
+        typeTag="Pipeline"
         isLoading={isFunnelLoading}
         available={funnelStages.length > 0}
         span={2}
       >
-        <FunnelBars stages={funnelStages} color={COLOR_PRIMARY} />
+        <HiringPipeline stages={funnelStages} />
       </ChartCard>
 
       <ChartCard

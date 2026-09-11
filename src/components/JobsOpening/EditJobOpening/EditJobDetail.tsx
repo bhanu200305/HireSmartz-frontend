@@ -44,11 +44,7 @@ import {
 } from '../../../redux/slices/editJobOpeningSlice';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import { get } from 'lodash-es';
-import {
-  capitalizeWordsAdvanced,
-  safeDecodeToken,
-  validateDraft,
-} from '../../../shared/utils/methods';
+import { capitalizeWordsAdvanced, validateDraft } from '../../../shared/utils/methods';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
 import {
   useCreateOrganizationSkillMutation,
@@ -92,7 +88,7 @@ import { Loader } from '../../shared/ui/loader';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
-import { useGetCompanyDetailsQuery } from '../../../api/tenant-service/Company/viewCompany';
+import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
 
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
@@ -146,14 +142,12 @@ const EditJobDetail = () => {
     }),
     shallowEqual
   );
-  const { loginToken, role } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  const { role } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
   // POST /skills requires organization:update, which only company_admin
   // (and platform roles) hold — hide the add-option affordance for roles
   // that would just get a 403.
   const canAddSkill = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
   const tenantId = useSessionTenantId();
-  const decodedToken = safeDecodeToken<{ companyId?: number | string }>(loginToken);
-  const parsedCompanyId = Number(decodedToken?.companyId || 0);
   const [, setSelectedLocationIdForUsers] = useState<string | undefined>(undefined);
 
   const { data: offices = [], isFetching: loadingJobLocations } = useListTenantOfficesQuery(
@@ -165,10 +159,15 @@ const EditJobDetail = () => {
   const [addTenantDepartment] = useAddTenantDepartmentMutation();
   const [updateTenantDepartment] = useUpdateTenantDepartmentMutation();
   const [deleteTenantDepartment] = useDeleteTenantDepartmentMutation();
-  const { data: companyDetails } = useGetCompanyDetailsQuery(
-    { companyId: parsedCompanyId },
-    { skip: !parsedCompanyId }
-  );
+  // The real culture-intro backend (organization-service's
+  // `/v1/tenants/{tenant_id}/culture-intro`) — this used to read
+  // `cultureIntroText` off the legacy `/orguserservice/companies/findById`
+  // response instead, a field that endpoint never actually returns, so the
+  // toggle below was permanently disabled regardless of whether the tenant
+  // had really set one up in My Company -> Culture Intro.
+  const { data: tenantCultureIntro } = useGetTenantCultureIntroQuery(tenantId ?? '', {
+    skip: !tenantId,
+  });
   const [createTenantJobTitle] = useCreateTenantJobTitleMutation();
   const [updateTenantJobTitle] = useUpdateTenantJobTitleMutation();
   const [deleteTenantJobTitle] = useDeleteTenantJobTitleMutation();
@@ -547,7 +546,7 @@ const EditJobDetail = () => {
       name: officeDisplayName(office),
     }))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const cultureInfoText = String(companyDetails?.cultureIntroText || '').trim();
+  const cultureInfoText = String(tenantCultureIntro?.intro_text || '').trim();
   const hasCultureInfo = Boolean(cultureInfoText);
 
   const selectedLocationDetails = offices.find((office) =>
