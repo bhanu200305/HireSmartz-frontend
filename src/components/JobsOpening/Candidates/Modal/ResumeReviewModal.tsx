@@ -14,6 +14,14 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 type ResumeReviewModalProps = {
   open: boolean;
   onClose: () => void;
+  /** Called right after a successful save, on top of `recordResumeReview`'s
+   * own `Candidate` tag invalidation — explicit, rather than trusting that
+   * invalidation alone reaches every subscriber in time, the same
+   * belt-and-suspenders posture `CompanyProfileTab.tsx` already uses for
+   * its own save. Lets the button behind this modal (ADD REVIEW -> EDIT
+   * REVIEW) flip the moment the modal closes instead of only whenever the
+   * background refetch happens to land. */
+  onSaved?: () => void;
   candidateId: string;
   currentRating: number | null;
   currentComment: string | null;
@@ -22,6 +30,7 @@ type ResumeReviewModalProps = {
 const ResumeReviewModal = ({
   open,
   onClose,
+  onSaved,
   candidateId,
   currentRating,
   currentComment,
@@ -44,6 +53,7 @@ const ResumeReviewModal = ({
         body: { rating: rating || undefined, comment: comment.trim() || undefined },
       }).unwrap();
       showToast({ message: 'Resume review saved.', type: 'success' });
+      onSaved?.();
       onClose();
     } catch (e) {
       showToast({ message: getCandidateErrorMessage(e, 'Could not save review'), type: 'error' });
