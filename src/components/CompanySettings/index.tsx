@@ -45,56 +45,65 @@ const CompanySettings: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  const items = React.useMemo<TabsProps['items']>(
+  // Grouped into 3 topic tabs instead of 9 flat ones in one
+  // horizontally-scrolling row — same two-level pattern as My Company's own
+  // Company Settings page (MyCompany/index.tsx). Purely a navigation
+  // regrouping: leaf `key`s are unchanged, so any existing `?tab=<n>` link
+  // still resolves the same leaf, now nested one level under its group.
+  //  - Master Data: the catalog entities (industries, departments, job
+  //    titles, department<->job-title assignment, job catalogs) this screen
+  //    was originally built to manage.
+  //  - Hiring Defaults: the platform-wide defaults a tenant inherits until
+  //    it customizes its own — scoring weights, intake questions, culture
+  //    intro (see PlatformScoringDefaultsTab / IntakeQuestionsTab /
+  //    CultureIntroTab's own doc comments for the inheritance mechanics).
+  //  - Notification Settings: kept as its own top-level entry rather than
+  //    folded into either group above — it's already a 2-sub-tab group of
+  //    its own (Notification Templates, SMS Templates), not a leaf that
+  //    belongs under Master Data or Hiring Defaults.
+  const groups = React.useMemo<{ key: string; label: string; tabs: TabsProps['items'] }[]>(
     () => [
       {
-        key: '1',
-        label: 'Industries',
-        children: <IndustriesTab />,
+        key: 'master-data',
+        label: 'Master Data',
+        tabs: [
+          { key: '1', label: 'Industries', children: <IndustriesTab /> },
+          { key: '2', label: 'Departments', children: <DepartmentsTab /> },
+          { key: '3', label: 'Job Titles', children: <JobTitlesTab /> },
+          { key: '4', label: 'Department Settings', children: <DepartmentSettingsTab /> },
+          { key: '6', label: 'Job Catalogs', children: <JobCatalogsTab /> },
+        ],
       },
       {
-        key: '2',
-        label: 'Departments',
-        children: <DepartmentsTab />,
+        key: 'hiring-defaults',
+        label: 'Hiring Defaults',
+        tabs: [
+          { key: '5', label: 'Default Scoring Weights', children: <PlatformScoringDefaultsTab /> },
+          { key: '8', label: 'Intake Questions', children: <IntakeQuestionsTab /> },
+          { key: '9', label: 'Culture Intro', children: <CultureIntroTab /> },
+        ],
       },
       {
-        key: '3',
-        label: 'Job Titles',
-        children: <JobTitlesTab />,
-      },
-      {
-        key: '4',
-        label: 'Department Settings',
-        children: <DepartmentSettingsTab />,
-      },
-      {
-        key: '5',
-        label: 'Default Scoring Weights',
-        children: <PlatformScoringDefaultsTab />,
-      },
-      {
-        key: '6',
-        label: 'Job Catalogs',
-        children: <JobCatalogsTab />,
-      },
-      {
-        key: '7',
+        key: 'notifications',
         label: 'Notification Settings',
-        children: <NotificationSettingsTab />,
-      },
-      {
-        key: '8',
-        label: 'Intake Questions',
-        children: <IntakeQuestionsTab />,
-      },
-      {
-        key: '9',
-        label: 'Culture Intro',
-        children: <CultureIntroTab />,
+        tabs: [{ key: '7', label: 'Notification Settings', children: <NotificationSettingsTab /> }],
       },
     ],
     []
   );
+
+  // Which group the current leaf tab lives in — derived from `currentTab`
+  // rather than tracked as its own `?group=` param, so a bookmarked
+  // `?tab=<n>` link opens the right group automatically.
+  const activeGroup =
+    groups.find((group) => group.tabs?.some((tab) => tab.key === currentTab)) ?? groups[0];
+
+  const handleGroupChange = (groupKey: string) => {
+    const firstLeafTab = groups.find((group) => group.key === groupKey)?.tabs?.[0];
+    if (firstLeafTab) {
+      handleTabChange(String(firstLeafTab.key));
+    }
+  };
 
   return (
     <MainLayout>
@@ -117,11 +126,28 @@ const CompanySettings: React.FC = () => {
             </div>
 
             <Tabs
-              activeKey={currentTab}
-              onChange={handleTabChange}
-              items={items}
+              activeKey={activeGroup.key}
+              onChange={handleGroupChange}
+              items={groups.map((group) => ({
+                key: group.key,
+                label: group.label,
+                children: null,
+              }))}
               className="many-tabs"
             />
+            {/* Single-leaf groups (Notification Settings) skip the inner
+                strip entirely — a second tab row with one tab in it would
+                just repeat the outer tab's own label back at the user. */}
+            {(activeGroup.tabs?.length ?? 0) > 1 ? (
+              <Tabs
+                activeKey={currentTab}
+                onChange={handleTabChange}
+                items={activeGroup.tabs}
+                className="many-tabs mt-1"
+              />
+            ) : (
+              activeGroup.tabs?.[0]?.children
+            )}
           </div>
         </div>
       </div>

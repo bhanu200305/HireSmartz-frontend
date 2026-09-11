@@ -12,7 +12,7 @@ import { Input } from '../../shared';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { useListJobTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
-import { useGetCompanyDetailsQuery } from '../../../api/tenant-service/Company/viewCompany';
+import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
 import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
 import {
   officeDisplayName,
@@ -72,7 +72,6 @@ const ViewJobDetails = () => {
   }, [refetch]);
 
   const viewData = jobData?.data as ViewJobData | undefined;
-  const companyId = viewData?.location?.companyId;
 
   const { data: orgDepartments = [] } = useListTenantDepartmentsQuery(tenantId ?? '', {
     skip: !tenantId,
@@ -94,10 +93,16 @@ const ViewJobDetails = () => {
     { tenantId: tenantId ?? '', departmentId: String(jobDepartmentId) },
     { skip: !tenantId || !jobDepartmentId }
   );
-  const { data: companyDetails } = useGetCompanyDetailsQuery(
-    { companyId: Number(companyId) },
-    { skip: !companyId }
-  );
+  // The real culture-intro backend (organization-service's
+  // `/v1/tenants/{tenant_id}/culture-intro`) — this used to read
+  // `cultureIntroText` off the legacy `/orguserservice/companies/findById`
+  // response instead, a field that endpoint never actually returns, so the
+  // info tooltip below always claimed "no company culture information
+  // provided" even when the tenant had really set one up in My Company ->
+  // Culture Intro.
+  const { data: tenantCultureIntro } = useGetTenantCultureIntroQuery(tenantId ?? '', {
+    skip: !tenantId,
+  });
   const locationData = viewData?.location;
   const fallbackOfficeLocation = jobData?.data?.officeLocation?.[0];
   const selectedOffice = offices.find((office) => idsMatch(office.office_id, locationData?.id));
@@ -153,7 +158,7 @@ const ViewJobDetails = () => {
     selectedOffice?.country || locationData?.country || fallbackOfficeLocation?.country?.name || '';
   const locationZipCode =
     selectedOffice?.zip_code || locationData?.zipCode || locationData?.zip || '';
-  const cultureInfoText = String(companyDetails?.cultureIntroText || '').trim();
+  const cultureInfoText = String(tenantCultureIntro?.intro_text || '').trim();
   const hasCultureInfo = Boolean(cultureInfoText);
   const selectedLocationIdForUsers = locationData?.id;
   const isRemoteJob = jobData?.data?.isRemote ?? false;

@@ -39,7 +39,7 @@ import {
   useGetJobDescriptionByIdQuery,
   useLazyGetJobDescriptionByIdQuery,
 } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
-import { useGetCompanyDetailsQuery } from '../../../api/tenant-service/Company/viewCompany';
+import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
 import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import { asJobId } from '../../../api/job-service/jobId';
@@ -187,7 +187,16 @@ const JobDetails = () => {
   const decodedToken = safeDecodeToken<{ companyName: string; companyId?: number | string }>(
     loginToken
   );
-  const parsedCompanyId = Number(decodedToken?.companyId || 0);
+  // The real culture-intro backend (organization-service's
+  // `/v1/tenants/{tenant_id}/culture-intro`) — this used to read
+  // `cultureIntroText`/`cultureIntroDefaultEnabled` off the legacy
+  // `/orguserservice/companies/findById` response instead, fields that
+  // endpoint never actually returns, so the toggle below was permanently
+  // disabled (no company ever appeared to have culture info) regardless of
+  // whether the tenant had really set one up in My Company -> Culture Intro.
+  const { data: tenantCultureIntro } = useGetTenantCultureIntroQuery(tenantId ?? '', {
+    skip: !tenantId,
+  });
   const [, setSelectedLocationIdForUsers] = useState<string | undefined>(undefined);
 
   const [allowNavigation, setAllowNavigation] = useState(false);
@@ -326,11 +335,6 @@ const JobDetails = () => {
   const { jobOpeningDropdown: recruiters, loading: recruitersLoading } = useJobOpeningDropdown(
     'RECRUITER',
     'create'
-  );
-
-  const { data: companyDetails } = useGetCompanyDetailsQuery(
-    { companyId: parsedCompanyId },
-    { skip: !parsedCompanyId }
   );
 
   const generateJobProfileCode = () => {
@@ -655,14 +659,8 @@ const JobDetails = () => {
       isDeleted: false,
     }))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const cultureInfoText = String(companyDetails?.cultureIntroText || '').trim();
+  const cultureInfoText = String(tenantCultureIntro?.intro_text || '').trim();
   const hasCultureInfo = Boolean(cultureInfoText);
-  const isCultureIntroDefaultEnabled = Boolean(companyDetails?.cultureIntroDefaultEnabled);
-  const hasPersistedCultureIntroSelection = Object.prototype.hasOwnProperty.call(
-    jobDetails,
-    'useCultureIntro'
-  );
-  const [hasUserChangedCultureIntro, setHasUserChangedCultureIntro] = useState(false);
   const useCultureIntroValue = Boolean(watch('useCultureIntro'));
 
   const excludeFieldsForDirtyCheck = (obj: Partial<JobDetailsState>) => {
@@ -906,38 +904,22 @@ const JobDetails = () => {
     setValue('state', selectedLocationDetails.state ?? '', { shouldValidate: true });
   }, [selectedLocationDetails, setValue]);
 
+  // A job that was saved with the toggle on, for a company that has since
+  // cleared its culture intro text (or one being edited for a different
+  // tenant with none), would otherwise keep silently claiming it'll play an
+  // intro that no longer exists — force it off the moment there's nothing
+  // to play. (There's no company-level "default this on for new jobs"
+  // setting in the backend, so unlike the info text itself, the toggle's
+  // starting value is otherwise left alone — off for a new job, whatever
+  // was persisted for an existing one.)
   useEffect(() => {
-    if (!companyDetails) return;
-
-    if (!hasCultureInfo) {
-      if (useCultureIntroValue) {
-        setValue('useCultureIntro', false, {
-          shouldValidate: true,
-          shouldDirty: false,
-        });
-      }
-      return;
-    }
-
-    if (hasUserChangedCultureIntro || hasPersistedCultureIntroSelection) {
-      return;
-    }
-
-    if (isCultureIntroDefaultEnabled && !useCultureIntroValue) {
-      setValue('useCultureIntro', true, {
+    if (!hasCultureInfo && useCultureIntroValue) {
+      setValue('useCultureIntro', false, {
         shouldValidate: true,
         shouldDirty: false,
       });
     }
-  }, [
-    companyDetails,
-    hasCultureInfo,
-    hasPersistedCultureIntroSelection,
-    hasUserChangedCultureIntro,
-    isCultureIntroDefaultEnabled,
-    setValue,
-    useCultureIntroValue,
-  ]);
+  }, [hasCultureInfo, setValue, useCultureIntroValue]);
 
   /**
    * Job titles require a department. Keep a stored title when it still exists
@@ -1991,7 +1973,6 @@ const JobDetails = () => {
                       <Switch
                         checked={useCultureIntroValue}
                         onChange={(checked) => {
-                          setHasUserChangedCultureIntro(true);
                           setValue('useCultureIntro', checked, {
                             shouldDirty: true,
                             shouldValidate: true,
