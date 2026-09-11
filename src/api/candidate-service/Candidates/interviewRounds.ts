@@ -35,6 +35,14 @@ export type CandidateInterviewRoundView = {
   stage_type: 'resume' | 'interview';
   round_id: string | null;
   round_name: string;
+  /** This round's medium, matching interview-service's own `InterviewType`
+   * enum — "AUDIO" (the Intake Call) | "AUDIO_SCREENING" | "AI_VIDEO" |
+   * "PANEL" (the Hiring Panel round — the only one with a human
+   * interviewer to pick). Null for the resume stage and for a real round
+   * the backend classifier can't place. Added 2026-09-11 specifically so
+   * "does this round even have interviewers to set" doesn't have to guess
+   * from `round_name`, a Super-Admin-editable string. */
+  round_type: string | null;
   sequence: number;
   duration_minutes: number | null;
   /** Plain string, not an FK — interview-service owns this vocabulary, expect new values over time. */
