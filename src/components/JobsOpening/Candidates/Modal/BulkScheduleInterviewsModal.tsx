@@ -76,6 +76,10 @@ const CandidateRoundRow = ({
         interview_type: interviewTypeForRound(current.round_name),
         interviewer_id: null,
         immediate: false,
+        // Without this, interview-service has no way to report this
+        // booking's status/score back to the right round — it silently
+        // never updates, even once the call completes.
+        candidate_interview_round_id: current.id,
       },
     };
   }, [rounds, isLoading, isError, candidate.id, jobId]);

@@ -686,6 +686,11 @@ const CandidateDetails = () => {
                                 interview_type: interviewType,
                                 interviewer_id: null,
                                 immediate: false,
+                                // Without this, interview-service has no way
+                                // to report this booking's status/score back
+                                // to the right round — it silently never
+                                // updates, even once the call completes.
+                                candidate_interview_round_id: selectedRound.id,
                               },
                             })
                               .unwrap()
