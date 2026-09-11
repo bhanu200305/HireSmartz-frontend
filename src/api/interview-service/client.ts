@@ -65,6 +65,14 @@ export interface CreateBookingRequest {
   attempt_of?: string | null;
   immediate: boolean;
   candidate_phone_number?: string | null;
+  /** candidate-service's own `CandidateInterviewRoundView.id` for the round
+   * being booked. Without it, interview-service has no way to report back
+   * which round this booking belongs to — the round's pipeline status and
+   * score then never update, silently, even once the call completes. Always
+   * pass it when booking from a candidate's round (i.e. every manual/
+   * recruiter-driven booking) — omit only for a booking with no
+   * candidate-service round to correlate to. */
+  candidate_interview_round_id?: string | null;
 }
 
 export interface PaginatedBookings {

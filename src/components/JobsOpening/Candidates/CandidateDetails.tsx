@@ -268,6 +268,9 @@ const CandidateDetails = () => {
       return {
         roundScore,
         chartValue: candidate?.resume_score ?? null,
+        // Resume score is 0-100, same scale as the AI round score below.
+        pct:
+          candidate?.resume_score == null ? 0 : Math.max(0, Math.min(100, candidate.resume_score)),
         scoreText: scored ? `${candidate?.resume_score} · AI resume score` : null,
         statusText: scored ? 'Completed' : formatStatus(round.status),
         outcomeLabel: scored ? 'Scored' : null,
@@ -278,15 +281,37 @@ const CandidateDetails = () => {
       return {
         roundScore,
         chartValue: candidate?.consistency_score ?? null,
+        // Consistency score is 0-100, same scale as the AI round score below.
+        pct:
+          candidate?.consistency_score == null
+            ? 0
+            : Math.max(0, Math.min(100, candidate.consistency_score)),
         scoreText: checked ? `${candidate?.consistency_score} · resume consistency` : null,
         statusText: formatRoundStatus(round.status),
         outcomeLabel: checked ? 'Checked' : null,
       };
     }
+    // Scores are on two different scales depending on who produced them —
+    // a recruiter's manual review is 0-5, the AI round score is 0-100 (see
+    // RecruiterRoundScoreModal) — so the bar height must divide by the
+    // scale that's actually present, not a fixed /5, or every AI-scored
+    // round renders maxed out regardless of its real value.
+    const pct =
+      roundScore?.recruiter_score != null
+        ? Math.max(0, Math.min(100, (roundScore.recruiter_score / 5) * 100))
+        : roundScore?.score != null
+          ? Math.max(0, Math.min(100, roundScore.score))
+          : 0;
     return {
       roundScore,
       chartValue: recruiterOrAiScore,
-      scoreText: recruiterOrAiScore != null ? `${recruiterOrAiScore} / 5` : null,
+      pct,
+      scoreText:
+        roundScore?.recruiter_score != null
+          ? `${roundScore.recruiter_score} / 5`
+          : roundScore?.score != null
+            ? `${roundScore.score} / 100 · AI score`
+            : null,
       statusText: formatRoundStatus(round.status),
       outcomeLabel: roundScore
         ? roundScore.recruiter_score != null
@@ -687,6 +712,11 @@ const CandidateDetails = () => {
                                 interview_type: interviewType,
                                 interviewer_id: null,
                                 immediate: false,
+                                // Without this, interview-service has no way
+                                // to report this booking's status/score back
+                                // to the right round — it silently never
+                                // updates, even once the call completes.
+                                candidate_interview_round_id: selectedRound.id,
                               },
                             })
                               .unwrap()
@@ -863,18 +893,13 @@ const CandidateDetails = () => {
                             // The resume stage / Intake Call rows have no
                             // `CandidateInterviewScore`; `summariseRound`
                             // substitutes the AI resume score and the
-                            // consistency score respectively.
-                            const { chartValue, scoreText } = summariseRound(round);
-                            // Scores are on a 0-5 scale (see the table below
-                            // and RecruiterRoundScoreModal) — map that onto
-                            // the column's height so the dot/bar actually
-                            // moves with the score instead of every column
-                            // rendering identically regardless of value,
-                            // which is what made this chart look "static".
-                            const pct =
-                              chartValue == null
-                                ? 0
-                                : Math.max(0, Math.min(100, (chartValue / 5) * 100));
+                            // consistency score respectively, and resolves
+                            // `pct` against whichever scale that round's
+                            // score actually uses (0-5 recruiter review vs
+                            // 0-100 AI score) so the bar height moves with
+                            // the real value instead of every AI-scored
+                            // round rendering maxed out.
+                            const { chartValue, pct, scoreText } = summariseRound(round);
                             return (
                               <div
                                 key={round.id ?? `score-${index}`}
