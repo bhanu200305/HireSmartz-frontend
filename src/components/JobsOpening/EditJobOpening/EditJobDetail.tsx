@@ -146,7 +146,11 @@ const EditJobDetail = () => {
     }),
     shallowEqual
   );
-  const { loginToken } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  const { loginToken, role } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  // POST /skills requires organization:update, which only company_admin
+  // (and platform roles) hold — hide the add-option affordance for roles
+  // that would just get a 403.
+  const canAddSkill = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
   const tenantId = useSessionTenantId();
   const decodedToken = safeDecodeToken<{ companyId?: number | string }>(loginToken);
   const parsedCompanyId = Number(decodedToken?.companyId || 0);
@@ -1534,8 +1538,8 @@ const EditJobDetail = () => {
     // Ensure the language selection cannot be changed if interviews have started
     const hasInterviewsStarted = jobData?.data?.interviewedCandidateCount !== 0;
     const languagesValue = hasInterviewsStarted
-      ? (data.languages ?? [])
-      : (jobData?.data?.languages ?? []);
+      ? (jobData?.data?.languages ?? [])
+      : (data.languages ?? []);
 
     const processedData = {
       ...data,
@@ -2535,7 +2539,9 @@ const EditJobDetail = () => {
                   mode="multiple"
                   placeholder="Select Required Skills"
                   label="Required Skills"
-                  onAddOption={(value) => handleAddOption(value, 'mandatorySkills')}
+                  onAddOption={
+                    canAddSkill ? (value) => handleAddOption(value, 'mandatorySkills') : undefined
+                  }
                   onSearchChange={searchMandatorySkills}
                   type="mandatorySkills"
                   error={errors.mandatorySkills?.message}
@@ -2613,7 +2619,9 @@ const EditJobDetail = () => {
                   mode="multiple"
                   placeholder="Select Optional Skills"
                   label="Optional Skills"
-                  onAddOption={(value) => handleAddOption(value, 'optionalSkills')}
+                  onAddOption={
+                    canAddSkill ? (value) => handleAddOption(value, 'optionalSkills') : undefined
+                  }
                   onSearchChange={searchOptionalSkills}
                   type="optionalSkills"
                   error={errors.optionalSkills?.message as string | undefined}

@@ -1,12 +1,15 @@
 import { jobApi } from '../jobApi';
-import type { CategoryWeight, ScoringCriteriaResponse } from '../types';
+import type { CategoryWeightOverride, ScoringCriteriaResponse } from '../types';
 
 export type JobScoringStage = 'RESUME' | 'INTERVIEW';
 
 export type JobScoringWeight = {
   id: string | number;
   categoryName: string;
+  displayName?: string;
+  description?: string;
   weightPercentage: number;
+  appliesPanel?: boolean;
 };
 
 export type JobScoringConfigData = {
@@ -29,17 +32,22 @@ export type UpdateJobScoringConfigRequest = {
   interviewWeights: JobScoringWeight[];
 };
 
-const toApiWeights = (weights: JobScoringWeight[]): CategoryWeight[] =>
+const toApiWeights = (weights: JobScoringWeight[]): CategoryWeightOverride[] =>
   weights.map((w) => ({
-    category_name: w.categoryName,
+    category_code: w.categoryName,
     weight_pct: w.weightPercentage,
   }));
 
-const fromApiWeights = (weights: CategoryWeight[]): JobScoringWeight[] =>
+const fromApiWeights = (
+  weights: ScoringCriteriaResponse['resume']['weights']
+): JobScoringWeight[] =>
   (weights ?? []).map((w, index) => ({
-    id: w.category_name || index + 1,
-    categoryName: w.category_name,
+    id: w.category_code || index + 1,
+    categoryName: w.category_code,
+    displayName: w.display_name,
+    description: w.description,
     weightPercentage: Number(w.weight_pct),
+    appliesPanel: w.applies_panel,
   }));
 
 const toUiResponse = (response: ScoringCriteriaResponse): JobScoringConfigResponse => ({

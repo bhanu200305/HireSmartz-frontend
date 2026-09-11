@@ -162,7 +162,17 @@ export type SaveJobDetailsRequest = {
 };
 
 export type CategoryWeight = {
-  category_name: string;
+  category_code: string;
+  display_name: string;
+  description: string;
+  weight_pct: number | string;
+  applies_audio_screening: boolean;
+  applies_ai_video: boolean;
+  applies_panel: boolean;
+};
+
+export type CategoryWeightOverride = {
+  category_code: string;
   weight_pct: number | string;
 };
 
@@ -179,8 +189,53 @@ export type ScoringCriteriaResponse = {
 };
 
 export type SaveScoringCriteriaRequest = {
-  resume_weights: CategoryWeight[];
-  interview_weights: CategoryWeight[];
+  resume_weights: CategoryWeightOverride[];
+  interview_weights: CategoryWeightOverride[];
+};
+
+export type OrganizationScoringCriteriaResponse = {
+  organization_id: string;
+  is_locked: boolean;
+  resume: ScoringPanelResponse;
+  interview: ScoringPanelResponse;
+};
+
+export type SaveOrganizationScoringCriteriaRequest = {
+  resume_weights: CategoryWeightOverride[];
+  interview_weights: CategoryWeightOverride[];
+};
+
+export type MasterScoringCategory = {
+  scoring_category_id: string;
+  stage: 'RESUME' | 'INTERVIEW';
+  category_code: string;
+  display_name: string;
+  description: string;
+  default_weight_pct: number | string;
+  applies_audio_screening: boolean;
+  applies_ai_video: boolean;
+  applies_panel: boolean;
+};
+
+export type ListMasterScoringCategoriesResponse = {
+  categories: MasterScoringCategory[];
+};
+
+export type UpdateMasterScoringCategoryRequest = {
+  display_name: string;
+  description: string;
+  applies_audio_screening: boolean;
+  applies_ai_video: boolean;
+  applies_panel: boolean;
+};
+
+export type MasterScoringCategoryWeight = {
+  category_code: string;
+  weight_pct: number | string;
+};
+
+export type SaveMasterScoringCategoryWeightsRequest = {
+  weights: MasterScoringCategoryWeight[];
 };
 
 export type InterviewRoundResponse = {
@@ -225,7 +280,7 @@ export type QuestionResponse = {
   source: string;
   answer_text: string | null;
   interview_round_id: string;
-  topic_skill: string | null;
+  scoring_sections: string[];
 };
 
 export type RoundQuestionsResponse = {
@@ -246,7 +301,7 @@ export type QuestionRequest = {
   question_text: string;
   answer_text?: string | null;
   interview_round_id?: string | null;
-  topic_skill?: string | null;
+  scoring_sections?: string[];
 };
 
 export type AudioQuestionResponse = {

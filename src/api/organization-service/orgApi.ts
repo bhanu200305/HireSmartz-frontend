@@ -10,20 +10,12 @@ import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
 import { handleRefreshToken } from '../../services/AuthService';
 
-// organization-service is a SEPARATE deployable from the one
-// VITE_BACKEND_ENDPOINT points at (see .env.local's comment on both this and
-// VITE_AUTH_SERVICE_ENDPOINT) — same reasoning, same pattern as
-// api/authentication-service/authApi.ts: own reducerPath, own baseQuery,
-// registered separately in redux/reducers and redux/provider/store. Every
-// file under api/organization-service/** rides on this instead of the
-// shared `api` in src/api/index.ts.
+// organization-service is a separate deployable with its own reducerPath/
+// baseQuery, same pattern as authApi.ts.
 const BASE_URL = import.meta.env.VITE_ORG_SERVICE_ENDPOINT as string;
 
-// organization-service's own anonymous routes — reachable with no bearer
-// token because the caller has no session yet (an invite is validated and
-// accepted BEFORE the invited person has ever logged in). Keyed by RTK
-// Query endpoint name, matching what `api.endpoint` gives the base query —
-// same convention as authApi.ts's ANONYMOUS_ENDPOINTS.
+// Reachable with no bearer token — the caller has no session yet (e.g. an
+// invite is validated/accepted before the invited person logs in).
 const ANONYMOUS_ENDPOINTS = new Set<string>(['validateInvitation', 'acceptInvitation']);
 
 const fetchOrgBaseQuery = fetchBaseQuery({
@@ -44,19 +36,9 @@ const fetchOrgBaseQuery = fetchBaseQuery({
   },
 });
 
-// organization-service's ResponseEnvelopeMiddleware wraps every /v1/* JSON
-// body — success or error — in {status_code, status, message, data}
-// (services/organization-service/app/core/middleware/response_envelope.py).
-// On success the real payload sits one level down, under `data`; each
-// endpoint's own `transformResponse` (or return type, where there isn't one)
-// already assumes it's looking at that unwrapped payload directly — e.g.
-// listIndustries reads `response.industries`, which only exists on the
-// inner object, not the envelope. Unwrapped centrally here so every
-// endpoint file can go on assuming the shape its types already declare,
-// instead of every single one re-deriving `.data.data` by hand. Error
-// responses are untouched: `getOrgErrorMessage`/`get(error, 'data.message')`
-// already reads the envelope's own top-level `message`, which errors don't
-// nest a second time.
+// Unwraps the {status_code, status, message, data} envelope every
+// organization-service response carries, so endpoint files can assume the
+// plain payload their types already declare.
 const rawOrgBaseQuery: typeof fetchOrgBaseQuery = async (args, api, extraOptions) => {
   const result = await fetchOrgBaseQuery(args, api, extraOptions);
   if (
@@ -121,9 +103,7 @@ export const orgApi = createApi({
     'OwnProfile',
     'RoleAssignments',
     'InterviewQuestions',
-    'ScoringConfig',
     'PlatformTenants',
-    'PlatformScoringConfig',
     'Industries',
     'JobTitles',
     'PlatformStaff',

@@ -32,6 +32,11 @@ export type ListUsersArgs = {
   includeInactive?: boolean;
   limit?: number;
   offset?: number;
+  /** Base role name to filter by, e.g. `'recruiter'` or `'hiring_manager'`
+   * — the backend also matches any of this tenant's own roles derived from
+   * that base. Omit for the whole directory. A name that isn't a real role
+   * 404s. */
+  role?: string;
 };
 
 export type ListUsersResponse = {
@@ -105,6 +110,9 @@ const extendedApi = orgApi.injectEndpoints({
           include_inactive: args?.includeInactive ?? false,
           limit: args?.limit ?? 50,
           offset: args?.offset ?? 0,
+          // `undefined` params are dropped by fetchBaseQuery, so this only
+          // narrows to a role when one is actually passed.
+          role: args?.role,
         },
       }),
       providesTags: ['OrgUsers'],

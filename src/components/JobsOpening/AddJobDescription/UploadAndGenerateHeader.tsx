@@ -87,7 +87,7 @@ export const UploadAndGenerateHeader = ({
           </div>
 
           <button
-            className="border border-primary text-primary hover:bg-gray-50 bg-white p-2.5 rounded-full flex items-center justify-center shadow-sm relative group"
+            className="border border-primary text-primary hover:bg-gray-50 bg-white p-2.5 rounded-full flex items-center justify-center shadow-sm relative group cursor-pointer disabled:cursor-not-allowed"
             onClick={onDownloadTemplate}
             disabled={isDownloading}
             title="Download Template"

@@ -75,6 +75,11 @@ const EditJobDescription = () => {
     }),
     shallowEqual
   );
+  const { role } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  // POST /skills requires organization:update, which only company_admin
+  // (and platform roles) hold — hide the add-option affordance for roles
+  // that would just get a 403.
+  const canAddSkill = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
 
   const {
     handleSubmit,
@@ -373,7 +378,11 @@ const EditJobDescription = () => {
                         loading={mandatorySkillsLoading}
                         placeholder="Select Required Skills"
                         label="Required Skills"
-                        onAddOption={(newValue) => handleAddOption(newValue, 'mandatorySkills')}
+                        onAddOption={
+                          canAddSkill
+                            ? (newValue) => handleAddOption(newValue, 'mandatorySkills')
+                            : undefined
+                        }
                         onSearchChange={searchMandatorySkills}
                         type="mandatorySkills"
                         mode="multiple"
@@ -453,7 +462,11 @@ const EditJobDescription = () => {
                       loading={optionalSkillsLoading}
                       placeholder="Select Optional Skills"
                       label="Optional Skills"
-                      onAddOption={(newValue) => handleAddOption(newValue, 'optionalSkills')}
+                      onAddOption={
+                        canAddSkill
+                          ? (newValue) => handleAddOption(newValue, 'optionalSkills')
+                          : undefined
+                      }
                       onSearchChange={searchOptionalSkills}
                       type="optionalSkills"
                       mode="multiple"

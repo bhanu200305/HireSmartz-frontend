@@ -22,6 +22,7 @@ import {
   jobQuestionsApi,
 } from '../../../api/job-service/JobOpening/jobQuestions';
 import { useListInterviewRoundTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
+import { useGetJobScoringConfigQuery } from '../../../api/job-service/JobOpening/jobScoringConfig';
 import {
   useLazyValidateForPublishQuery,
   usePublishJobMutation,
@@ -170,6 +171,36 @@ const AiQuestionsSetup = () => {
   // Content fingerprint rather than a count, since REPLACE can reduce the count.
   const questionsSnapshotKey = useMemo(() => questions.map((q) => q.id).join(','), [questions]);
 
+  // Hiring Panel = available_variants ["online", "offline"].
+  const activeRoundTypeId = jdRounds.find(
+    (round) => round.round_instance_id === activeRoundInstanceId
+  )?.round_id;
+  const isHiringPanelActiveRound = useMemo(() => {
+    const variants = roundTypes.find((rt) => rt.round_id === activeRoundTypeId)?.available_variants;
+    return (
+      !!variants &&
+      variants.length === 2 &&
+      variants.includes('online') &&
+      variants.includes('offline')
+    );
+  }, [roundTypes, activeRoundTypeId]);
+
+  const { data: scoringData } = useGetJobScoringConfigQuery(activeJobOpeningId, {
+    skip: !activeJobOpeningId || !isHiringPanelActiveRound,
+  });
+  const scoringSectionOptions = useMemo(
+    () =>
+      isHiringPanelActiveRound
+        ? (scoringData?.data?.interviewConfig?.weights ?? [])
+            .filter((w) => w.appliesPanel)
+            .map((w) => ({
+              code: w.categoryName,
+              label: w.displayName ?? w.categoryName,
+            }))
+        : [],
+    [isHiringPanelActiveRound, scoringData]
+  );
+
   // Stop polling once the list differs from its pre-generation snapshot.
   useEffect(() => {
     if (!isGeneratingQuestions) return;
@@ -200,7 +231,7 @@ const AiQuestionsSetup = () => {
     question_text: question.question_text,
     answer_text: question.answer_text,
     interview_round_id: question.interview_round_id,
-    topic_skill: question.topic_skill,
+    scoring_sections: question.scoring_sections,
   });
 
   // Shared save path for add/edit/delete — sends the job's whole updated
@@ -225,7 +256,8 @@ const AiQuestionsSetup = () => {
 
   const handleGenerateDefaultQuestions = async (
     mode: 'ADD' | 'REPLACE',
-    questionCount: number = DEFAULT_QUESTION_COUNT
+    questionCount: number = DEFAULT_QUESTION_COUNT,
+    categoryCodes: string[] | null = null
   ) => {
     if (!activeJobOpeningId) {
       showToast({ message: 'Missing Job ID', type: 'error' });
@@ -239,12 +271,14 @@ const AiQuestionsSetup = () => {
           jobOpeningId: activeJobOpeningId,
           question_count: questionCount,
           interview_round_id: activeRoundInstanceId,
+          category_codes: categoryCodes,
         }).unwrap();
       } else {
         await generateJobQuestions({
           jobOpeningId: activeJobOpeningId,
           question_count: questionCount,
           interview_round_id: activeRoundInstanceId,
+          category_codes: categoryCodes,
         }).unwrap();
       }
       showToast({ message: 'Question generation started', type: 'success' });
@@ -678,6 +712,7 @@ const AiQuestionsSetup = () => {
           onConfirm={handleGenerateDefaultQuestions}
           isLoading={isGenerateRequestPending}
           hasExistingQuestions={visibleQuestions.length > 0}
+          scoringSectionOptions={scoringSectionOptions}
         />
         <div className="mt-6 flex justify-center">
           <Button

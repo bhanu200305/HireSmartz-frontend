@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { MdClose, MdPostAdd, MdOutlineRotateLeft } from 'react-icons/md';
 import { Button, Typography } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
@@ -15,15 +15,23 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
   onConfirm,
   isLoading = false,
   hasExistingQuestions = true,
+  scoringSectionOptions = [],
 }) => {
   const [selectedMode, setSelectedMode] = useState<'ADD' | 'REPLACE' | null>(null);
   // Raw typed text, kept separate from the clamped value so the field can go empty mid-edit.
   const [questionCountText, setQuestionCountText] = useState(String(DEFAULT_QUESTION_COUNT));
+  const [selectedCategoryCodes, setSelectedCategoryCodes] = useState<string[]>([]);
+
+  // Avoid submitting a stale selection from a previous open/round.
+  useEffect(() => {
+    if (open) setSelectedCategoryCodes([]);
+  }, [open]);
 
   if (!open) return null;
 
   // Nothing to append to or replace when the list is already empty.
   const effectiveMode = hasExistingQuestions ? selectedMode : 'REPLACE';
+  const showSectionPicker = scoringSectionOptions.length > 0;
 
   const clampedQuestionCount = () => {
     const parsed = Number(questionCountText);
@@ -31,9 +39,19 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
     return Math.min(MAX_QUESTION_COUNT, Math.max(MIN_QUESTION_COUNT, Math.trunc(parsed)));
   };
 
+  const toggleCategoryCode = (code: string) => {
+    setSelectedCategoryCodes((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+  };
+
   const handleConfirmClick = () => {
     if (effectiveMode) {
-      onConfirm(effectiveMode, clampedQuestionCount());
+      onConfirm(
+        effectiveMode,
+        clampedQuestionCount(),
+        showSectionPicker && selectedCategoryCodes.length > 0 ? selectedCategoryCodes : null
+      );
     }
   };
 
@@ -155,6 +173,44 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
                   newly generated ones.
                 </Typography>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Scoring-section picker - Hiring Panel rounds only */}
+        {showSectionPicker && (
+          <div className="mb-6">
+            <Typography
+              variant="subtitle2"
+              className="text-gray-800 font-semibold font-sora block mb-1"
+            >
+              Scoring sections
+            </Typography>
+            <Typography variant="caption" className="text-gray-500 font-roboto block mb-2">
+              Pick which sections to generate questions from. Leave nothing selected to use every
+              section.
+            </Typography>
+            <div className="flex flex-wrap gap-2">
+              {scoringSectionOptions.map((option) => {
+                const isSelected = selectedCategoryCodes.includes(option.code);
+                return (
+                  <button
+                    key={option.code}
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => toggleCategoryCode(option.code)}
+                    className={clsx(
+                      'px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer',
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50 text-brand-700'
+                        : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400',
+                      isLoading && 'opacity-50 cursor-not-allowed'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

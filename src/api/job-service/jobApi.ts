@@ -10,18 +10,9 @@ import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
 import { handleRefreshToken } from '../../services/AuthService';
 
-// job-service is a SEPARATE deployable from the one VITE_BACKEND_ENDPOINT
-// points at (see .env comments on VITE_JOB_SERVICE_ENDPOINT) — same
-// reasoning and same pattern as api/organization-service/orgApi.ts and
-// api/authentication-service/authApi.ts: own reducerPath, own baseQuery,
-// registered separately in redux/reducers and redux/provider/store. Every
-// file under api/job-service/** rides on this instead of the shared `api`
-// in src/api/index.ts.
-//
-// Includes the /api/v1 prefix (unlike orgApi's bare /v1) — that's how
-// job-service mounts its public routes (app/main.py); every endpoint path in
-// api/job-service/** is written relative to it (e.g. '/job-openings', not
-// '/api/v1/job-openings').
+// job-service is a separate deployable with its own reducerPath/baseQuery,
+// same pattern as orgApi.ts/authApi.ts. Includes /api/v1 (unlike orgApi's
+// bare /v1) — every endpoint path below is relative to it.
 const BASE_URL = import.meta.env.VITE_JOB_SERVICE_ENDPOINT as string;
 
 const fetchJobBaseQuery = fetchBaseQuery({
@@ -30,13 +21,8 @@ const fetchJobBaseQuery = fetchBaseQuery({
     if (import.meta.env.VITE_ENV === 'development') {
       headers.set('ngrok-skip-browser-warning', 'true');
     }
-    // job-service has no anonymous frontend-facing route (every /api/v1/*
-    // route requires a real bearer token — see routers.py's
-    // require_permission/require_platform_permission on every one of them;
-    // the one unauthenticated route, GET /ats/callback, is a server-side
-    // OAuth redirect target the browser navigates to directly, never an RTK
-    // Query call), so unlike orgApi there's no ANONYMOUS_ENDPOINTS set to
-    // skip here.
+    // Every job-service route requires a bearer token, so unlike orgApi
+    // there's no ANONYMOUS_ENDPOINTS set to skip here.
     const state = getState();
     const token: string | undefined =
       getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS) || get(state, 'LoginSlice.loginToken');
@@ -47,15 +33,10 @@ const fetchJobBaseQuery = fetchBaseQuery({
   },
 });
 
-// job-service's ResponseEnvelopeMiddleware wraps every /api/v1/* JSON body
-// — success or error — in {status_code, status, message, data}
-// (services/job-service/docs/API_CONTRACT.md §1). On success the real
-// payload sits one level down under `data`; every endpoint file below
-// assumes it's looking at that unwrapped payload directly. Unwrapped
-// centrally here, same pattern as orgApi.ts / authApi.ts / notifApi.ts.
-// Error responses are untouched: getJobErrorMessage reads the envelope's
-// top-level `message`. SSE streams (bulk JD progress) are not JSON and
-// never hit this path.
+// Unwraps the {status_code, status, message, data} envelope every
+// job-service response carries, so endpoint files can assume the plain
+// payload. Same pattern as orgApi.ts/authApi.ts. SSE streams aren't JSON
+// and never hit this path.
 const rawJobBaseQuery: typeof fetchJobBaseQuery = async (args, api, extraOptions) => {
   const result = await fetchJobBaseQuery(args, api, extraOptions);
   if (
@@ -128,6 +109,9 @@ export const jobApi = createApi({
     'WizardState',
     'EducationPreferences',
     'Languages',
+    'OrganizationScoringCriteria',
+    'PlatformOrganizationScoringCriteria',
+    'PlatformScoringCategories',
     // Tags used by the Super Admin's platform master-catalogue CRUD tabs
     // (Company Settings → Job Catalogs) — one per /platform/master-* group.
     // Job Types reuses the tenant-facing 'JobTypes' tag above (catalogs.ts's
