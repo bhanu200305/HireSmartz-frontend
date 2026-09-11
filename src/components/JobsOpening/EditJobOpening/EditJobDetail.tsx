@@ -244,7 +244,6 @@ const EditJobDetail = () => {
   const [allowNavigation, setAllowNavigation] = useState(false);
   const [showRegenerateConfirmModal, setShowRegenerateConfirmModal] = useState(false);
   const [pendingNavigationData, setPendingNavigationData] = useState<any>(null);
-  const [isCheckingJdSource, setIsCheckingJdSource] = useState(false);
   const [isAddingToDropdown, setIsAddingToDropdown] = useState<string | null>(null);
   const [suggestedSkillsDismissed, setSuggestedSkillsDismissed] = useState(false);
   // Local labels for AI-suggested skills the catalogue dropdown hasn't cached yet.
@@ -471,10 +470,10 @@ const EditJobDetail = () => {
   const handleAddAllSuggestedSkills = () => {
     if (unaddedSuggestedSkills.length === 0) return;
     const newMandatoryIds = unaddedSuggestedSkills
-      .filter((skill) => skill.suggested_skill_type === 'required')
+      .filter((skill) => skill.suggested_skill_type.toLowerCase() === 'required')
       .map((skill) => skill.skill_id);
     const newOptionalIds = unaddedSuggestedSkills
-      .filter((skill) => skill.suggested_skill_type === 'optional')
+      .filter((skill) => skill.suggested_skill_type.toLowerCase() === 'optional')
       .map((skill) => skill.skill_id);
 
     if (newMandatoryIds.length > 0) {
@@ -1648,7 +1647,7 @@ const EditJobDetail = () => {
   };
   return (
     <>
-      {(isFetchingJobData || isUpdatingDraft || isRegenerating || isCheckingJdSource) && <Loader />}
+      {(isFetchingJobData || isUpdatingDraft || isRegenerating) && <Loader />}
       <Form
         layout="vertical"
         onFinish={handleSubmit(onSubmit, (invalidFields) => {
@@ -1700,7 +1699,6 @@ const EditJobDetail = () => {
                       ? '[&_.ant-select-selection-item]:!text-gray-400'
                       : ''
                   }`}
-                  autoFocus
                   value={watch('department')?.[0]}
                   onChange={(value) => {
                     setValue('department', value ? [value] : [], { shouldValidate: true });
@@ -1874,7 +1872,7 @@ const EditJobDetail = () => {
 
           <div className="mt-2 max-w-[33%]">
             <div className="flex items-center gap-2">
-              <label className="text-sm capitalize">Company Culture</label>
+              <span className="text-sm capitalize">Company Culture</span>
               <Tooltip
                 trigger={['hover', 'click']}
                 title={hasCultureInfo ? cultureInfoText : 'No company culture information provided'}

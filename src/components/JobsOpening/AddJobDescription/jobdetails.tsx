@@ -259,6 +259,7 @@ const JobDetails = () => {
   const [updateJobType] = useUpdateJobTypeMutation();
   const [deleteJobType] = useDeleteJobTypeMutation();
   const [isSyncingWithATS, setIsSyncingWithATS] = useState(false);
+  const showAtsSyncCheckbox = false;
   const [showRegenerateConfirmModal, setShowRegenerateConfirmModal] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
   const [isSubmittingWithModal, setIsSubmittingWithModal] = useState(false);
@@ -621,10 +622,10 @@ const JobDetails = () => {
   const handleAddAllSuggestedSkills = () => {
     if (unaddedSuggestedSkills.length === 0) return;
     const newMandatoryIds = unaddedSuggestedSkills
-      .filter((skill) => skill.suggested_skill_type === 'required')
+      .filter((skill) => skill.suggested_skill_type.toLowerCase() === 'required')
       .map((skill) => skill.skill_id);
     const newOptionalIds = unaddedSuggestedSkills
-      .filter((skill) => skill.suggested_skill_type === 'optional')
+      .filter((skill) => skill.suggested_skill_type.toLowerCase() === 'optional')
       .map((skill) => skill.skill_id);
 
     if (newMandatoryIds.length > 0) {
@@ -1823,7 +1824,6 @@ const JobDetails = () => {
                     <div id="field-department">
                       <DropdownWithAddOption
                         className="w-full custom-select-jobs placeholder-style"
-                        autoFocus
                         value={watch('department')[0]}
                         onChange={(value) => {
                           setValue('department', value ? [value] : [], { shouldValidate: true });
@@ -2888,7 +2888,7 @@ const JobDetails = () => {
                 </div>
               </div>
 
-              {false && aiJobDescriptionId && (
+              {showAtsSyncCheckbox && aiJobDescriptionId && (
                 <div className="flex w-full justify-center py-2">
                   <Checkbox
                     checked={isSyncingWithATS}
