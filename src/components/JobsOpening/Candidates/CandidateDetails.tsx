@@ -24,6 +24,7 @@ import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candi
 import {
   useCreateBookingMutation,
   useGetBookingQuery,
+  useRequestCallRescheduleMutation,
   useLazyGetCalendarConnectUrlQuery,
 } from '../../../api/interview-service/client';
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
@@ -40,11 +41,12 @@ import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import ResumeViewerModal from './Modal/ResumeViewerModal';
 import PipelineBoard from './PipelineBoard';
 import StatusHistoryTab from './StatusHistoryTab';
-import { roundLabel, formatRoundStatus } from './roundDisplay';
+import { roundLabel, formatRoundStatus, formatCallIntent } from './roundDisplay';
 import {
   resolveCurrentRound,
   isRoundConcluded,
   isInstantCallFlow,
+  isAudioScreeningRound,
   isIntakeCallRound,
   isResumeStageRound,
   orderRoundsForFlow,
@@ -159,6 +161,8 @@ const CandidateDetails = () => {
   const { data: selectedBooking } = useGetBookingQuery(selectedRound?.interview_booking_id ?? '', {
     skip: !selectedRound?.interview_booking_id,
   });
+  const [requestCallReschedule, { isLoading: isRequestingReschedule }] =
+    useRequestCallRescheduleMutation();
   const [getCalendarConnectUrl] = useLazyGetCalendarConnectUrlQuery();
 
   const handleBackToList = () => navigate(`/jobs/view/${parsedJobId}/candidates`);
@@ -177,6 +181,23 @@ const CandidateDetails = () => {
       anchor.click();
     } catch (e) {
       showToast({ message: getCandidateErrorMessage(e, 'Resume not available'), type: 'error' });
+    }
+  };
+
+  const handleRequestCallReschedule = async () => {
+    if (!selectedRound?.interview_booking_id) return;
+    try {
+      await requestCallReschedule(selectedRound.interview_booking_id).unwrap();
+      showToast({
+        message:
+          'Reschedule requested — the candidate has been emailed a new link, valid for 24 hours.',
+        type: 'success',
+      });
+    } catch (e) {
+      showToast({
+        message: getCandidateErrorMessage(e, 'Could not request a reschedule'),
+        type: 'error',
+      });
     }
   };
 
@@ -208,6 +229,12 @@ const CandidateDetails = () => {
   // `planHasIntakeCall`/`currentRoundInIntakePair` below can never disagree
   // about which round is the Intake Call.
   const selectedRoundIsIntakeCall = Boolean(selectedRound && isIntakeCallRound(selectedRound));
+  // Call-intent card (added 2026-09-13) applies to both voice rounds —
+  // Audio Screening never had its own boolean before this, so it's
+  // computed inline rather than adding a third near-duplicate constant.
+  const selectedRoundIsVoiceCall = Boolean(
+    selectedRound && (isIntakeCallRound(selectedRound) || isAudioScreeningRound(selectedRound))
+  );
   // Same "score already sitting here means reviewed and ready to move on"
   // read as PipelineBoard.tsx's own version of this check — the resume
   // stage's status never flips off "to_be_scheduled"/"pending" on its own,
@@ -268,10 +295,13 @@ const CandidateDetails = () => {
       return {
         roundScore,
         chartValue: candidate?.resume_score ?? null,
-        // Resume score is 0-100, same scale as the AI round score below.
+        // Resume score is 0-10 (ai-service's score_resume.py), not 0-100 —
+        // scale up for the bar height.
         pct:
-          candidate?.resume_score == null ? 0 : Math.max(0, Math.min(100, candidate.resume_score)),
-        scoreText: scored ? `${candidate?.resume_score} · AI resume score` : null,
+          candidate?.resume_score == null
+            ? 0
+            : Math.max(0, Math.min(100, candidate.resume_score * 10)),
+        scoreText: scored ? `${candidate?.resume_score} / 10 · AI resume score` : null,
         statusText: scored ? 'Completed' : formatStatus(round.status),
         outcomeLabel: scored ? 'Scored' : null,
       };
@@ -281,12 +311,14 @@ const CandidateDetails = () => {
       return {
         roundScore,
         chartValue: candidate?.consistency_score ?? null,
-        // Consistency score is 0-100, same scale as the AI round score below.
+        // Consistency score is 0-10 (ai-service's
+        // check_intake_call_consistency.py), not 0-100 — scale up for the
+        // bar height.
         pct:
           candidate?.consistency_score == null
             ? 0
-            : Math.max(0, Math.min(100, candidate.consistency_score)),
-        scoreText: checked ? `${candidate?.consistency_score} · resume consistency` : null,
+            : Math.max(0, Math.min(100, candidate.consistency_score * 10)),
+        scoreText: checked ? `${candidate?.consistency_score} / 10 · resume consistency` : null,
         statusText: formatRoundStatus(round.status),
         outcomeLabel: checked ? 'Checked' : null,
       };
@@ -641,6 +673,51 @@ const CandidateDetails = () => {
                     </div>
                   </CommonCard>
 
+                  {selectedRoundIsVoiceCall && (
+                    // What actually happened on the call — completed,
+                    // asked to reschedule, said not interested, never
+                    // picked up, or cut off with no clear reason. Backed by
+                    // interview-service's own `GET /bookings/{id}`
+                    // (`selectedBooking`, already fetched above), not
+                    // candidate-service — this field doesn't exist there.
+                    <CommonCard>
+                      <div className="p-5">
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Call Outcome
+                        </div>
+                        <div className="mt-2 text-lg font-bold text-primary">
+                          {formatCallIntent(selectedBooking?.call_intent ?? null)}
+                        </div>
+                        {selectedBooking?.call_intent_reason ? (
+                          <p className="mt-1 text-sm text-gray-600">
+                            {selectedBooking.call_intent_reason}
+                          </p>
+                        ) : selectedBooking?.call_intent == null ? (
+                          <p className="mt-1 text-sm text-gray-400">
+                            Not available yet — updates once this call has ended.
+                          </p>
+                        ) : null}
+                        {selectedBooking?.call_intent != null && (
+                          // Only offered once the call has actually
+                          // concluded (a `call_intent` exists) — matches
+                          // interview-service's own eligibility check on
+                          // POST /bookings/{id}/request-reschedule, so this
+                          // is never offered somewhere the backend would
+                          // just reject it.
+                          <Button
+                            className="mt-3 rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+                            disabled={isRequestingReschedule}
+                            onClick={() => void handleRequestCallReschedule()}
+                          >
+                            {isRequestingReschedule
+                              ? 'Sending…'
+                              : 'Create Booking (Reschedule Call)'}
+                          </Button>
+                        )}
+                      </div>
+                    </CommonCard>
+                  )}
+
                   {selectedRoundIsIntakeCall && (
                     // Same transcript-vs-resume authenticity signal shown on
                     // the Resume stage card (see that card's own comment) —
@@ -771,6 +848,7 @@ const CandidateDetails = () => {
               rounds={rounds}
               scores={scores}
               resumeScore={candidate?.resume_score ?? null}
+              consistencyScore={candidate?.consistency_score ?? null}
               candidateId={candidateId}
               onRoundClick={(round) => {
                 setSelectedRound(round);

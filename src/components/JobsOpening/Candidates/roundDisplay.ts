@@ -13,3 +13,23 @@ export const formatRoundStatus = (status: string) =>
     .replace(/[_-]+/g, ' ')
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Unknown';
+
+// `BookingView.call_intent` labels, added 2026-09-13 — a fixed, small
+// vocabulary from interview-service's `_call_intent.py`/`mark_no_show`/
+// `mark_failed`, not a free-form string, so a lookup table beats generic
+// snake_case-to-title-case formatting (that would turn `not_interested`
+// into "Not Interested", which reads fine, but `ended_unclear` into "Ended
+// Unclear", which doesn't — worth spelling out properly).
+const CALL_INTENT_LABELS: Record<string, string> = {
+  completed: 'Completed the interview',
+  reschedule_requested: 'Asked to reschedule',
+  not_interested: 'Not interested in the role',
+  no_answer: "Didn't pick up",
+  technical_failure: 'Call failed (technical issue)',
+  ended_unclear: 'Call ended abruptly — no clear reason given',
+};
+
+export const formatCallIntent = (callIntent: string | null): string =>
+  callIntent != null
+    ? (CALL_INTENT_LABELS[callIntent] ?? formatRoundStatus(callIntent))
+    : 'Pending';

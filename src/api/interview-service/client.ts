@@ -53,6 +53,15 @@ export interface BookingView {
   rescheduled_from_booking_id: string | null;
   cancellation_reason: string | null;
   skip_reason: string | null;
+  /** Added 2026-09-13 — a recruiter-facing summary of what actually
+   * happened on an AUDIO/AUDIO_SCREENING call: one of `no_answer`,
+   * `technical_failure`, `reschedule_requested`, `not_interested`,
+   * `ended_unclear`, or `completed`. `null` for every other interview_type,
+   * and `null` for AUDIO/AUDIO_SCREENING until the call has actually
+   * ended. See `formatCallIntent` in roundDisplay.ts for the display
+   * label. */
+  call_intent: string | null;
+  call_intent_reason: string | null;
 }
 
 export interface CreateBookingRequest {
@@ -348,6 +357,18 @@ export const interviewApi = createApi({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}` }),
       providesTags: (_result, _error, id) => [{ type: 'Booking', id }],
     }),
+    // Manually requests a reschedule for a concluded AUDIO/AUDIO_SCREENING
+    // call — creates a fresh attempt booking and emails the candidate a
+    // 24h scheduling link. `bookingId` is the ORIGINAL (concluded) booking,
+    // not the new one this creates. Only invalidates `Booking` for the
+    // original id — the round list refetch (candidate-service, not this
+    // slice) is what surfaces the new attempt row, same as the automatic
+    // reschedule flow already relies on.
+    requestCallReschedule: build.mutation<BookingView, string>({
+      query: (bookingId) =>
+        platform({ url: `/bookings/${bookingId}/request-reschedule`, method: 'POST' }),
+      invalidatesTags: (_result, _error, bookingId) => [{ type: 'Booking', id: bookingId }],
+    }),
     listBookings: build.query<
       PaginatedBookings,
       Partial<{
@@ -564,6 +585,7 @@ export const {
   useDisconnectCalendarMutation,
   useCreateBookingMutation,
   useGetBookingQuery,
+  useRequestCallRescheduleMutation,
   useListBookingsQuery,
   useCancelBookingMutation,
   useSkipBookingMutation,
