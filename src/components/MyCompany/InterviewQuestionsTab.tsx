@@ -1,14 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Select } from 'antd';
-import { MdDelete } from 'react-icons/md';
+import { MdDelete, MdOutlineUploadFile } from 'react-icons/md';
 import { Button, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import IntakeQuestionsBulkImportModal from '../shared/IntakeQuestionsBulkImportModal';
 import {
   useListInterviewQuestionsQuery,
   useCreateInterviewQuestionMutation,
   useUpdateInterviewQuestionMutation,
   useDeleteInterviewQuestionMutation,
+  useLazyGetInterviewQuestionsTemplateQuery,
+  useBulkImportInterviewQuestionsMutation,
   InterviewQuestion,
 } from '../../api/organization-service/Tenants/interviewQuestions';
 import { useListResumeTemplateFieldsQuery } from '../../api/organization-service/resumeTemplateFields';
@@ -16,7 +19,7 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 
-const MAX_QUESTIONS = 8;
+const MAX_QUESTIONS = 7;
 
 type Draft = { text: string; fieldId: string };
 
@@ -29,11 +32,9 @@ type Draft = { text: string; fieldId: string };
  * `ListJobQuestionsUseCase`/`_job_question_fork.py`). Backed by
  * `/v1/tenants/{tenant_id}/audio-questions` (POST/PATCH/DELETE) — a
  * question can be added back up to `MAX_QUESTIONS`, so trimming the set
- * below the platform default isn't a one-way trip. Still no bulk replace
- * and no AI-suggestion endpoint, so neither control is offered — the SET's
- * starting composition is still the Super Admin's call
- * (CompanySettings/IntakeQuestionsTab.tsx), this just lets a Company Admin
- * refill their own copy after trimming it.
+ * below the platform default isn't a one-way trip. `bulk-import` (below)
+ * REPLACES the whole set from an uploaded file instead of adding to it —
+ * the one non-additive control here. Still no AI-suggestion endpoint.
  *
  * Every question is now required to carry a `field_id` — which
  * ResumeTemplateField (Introduction/Education/Experience/...) its spoken
@@ -49,6 +50,9 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
   const [createQuestion, { isLoading: isCreating }] = useCreateInterviewQuestionMutation();
   const [updateQuestion, { isLoading: isSaving }] = useUpdateInterviewQuestionMutation();
   const [deleteQuestion] = useDeleteInterviewQuestionMutation();
+  const [triggerGetTemplate] = useLazyGetInterviewQuestionsTemplateQuery();
+  const [bulkImportQuestions] = useBulkImportInterviewQuestionsMutation();
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   // The backend gates create/update/delete on this same tab behind one
   // permission string (`interview:write`, see routers.py's
   // `create_job_question`/`update_job_question`/`delete_job_question`) —
@@ -161,14 +165,35 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
         <Typography variant="h5" className="m-0">
           Intake Questions
         </Typography>
-        <span
-          className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-            atCap ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-600'
-          }`}
-        >
-          {questions.length}/{MAX_QUESTIONS}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+              atCap ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            {questions.length}/{MAX_QUESTIONS}
+          </span>
+          {canCreate && (
+            <Button
+              type="button"
+              onClick={() => setIsBulkImportOpen(true)}
+              className="flex items-center gap-1.5 border border-gray-300 bg-white text-gray-700 rounded-full px-3 py-1.5 text-sm hover:bg-gray-50"
+            >
+              <MdOutlineUploadFile />
+              Bulk import
+            </Button>
+          )}
+        </div>
       </div>
+
+      <IntakeQuestionsBulkImportModal
+        open={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        currentCount={questions.length}
+        targetLabel="your company"
+        onDownloadTemplate={() => triggerGetTemplate(tenantId).unwrap()}
+        onUpload={(file) => bulkImportQuestions({ tenantId, file }).unwrap()}
+      />
       <Typography variant="body2" className="mb-6 block">
         Your HR/interpersonal question set, asked in every candidate&apos;s first-round intake call.
         Each question is tied to one Resume Field — the section of a candidate&apos;s resume its
