@@ -65,10 +65,11 @@ const extendedApi = jobApi.injectEndpoints({
       providesTags: [{ type: 'JobOpenings', id: 'LIST' }],
     }),
 
-    getJobStats: build.query<JobStatsResponse, void>({
-      query: () => ({
+    getJobStats: build.query<JobStatsResponse, { assignedToMe?: boolean } | void>({
+      query: (args) => ({
         url: '/job-openings/stats',
         method: 'GET',
+        params: args?.assignedToMe ? { assigned_to_me: true } : undefined,
       }),
       providesTags: ['JobStats'],
     }),

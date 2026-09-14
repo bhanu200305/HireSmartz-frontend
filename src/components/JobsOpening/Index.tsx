@@ -40,6 +40,7 @@ import {
 import MasterPagination from '../shared/ui/MasterPagination';
 import { setJobOpeningFilters } from '../../redux/slices/jobOpeningFilterSlice';
 import { Col, Dropdown, Modal, Row, Select, MenuProps, Tooltip } from 'antd';
+import clsx from 'clsx';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { DateTimePayload, Jobs, SortDirection } from '../../types';
 import DateTimeRangePicker from '../shared/ui/datePicker';
@@ -71,6 +72,7 @@ import {
 import useEventSource from '../../hooks/useEventSource';
 import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
+import { Authorities } from '../../constants/authorities.constant';
 
 const { Option } = Select;
 
@@ -238,6 +240,19 @@ const JobsOpening = () => {
     refetchOnMountOrArgChange: true,
   });
   const { data: jobStats } = useGetJobStatsQuery(undefined, { skip: !hasTenantContext });
+  // JOB_OPENING_CREATE is granted only to hiring_manager and company_admin
+  // (never recruiter) — the same reliable, permission-based signal already
+  // used elsewhere in this file, rather than role.name, whose JWT claim
+  // isn't always populated. backend's assigned_to_me is a no-op for any
+  // other role anyway. See getJobStats.
+  const canFilterToMyJobs = authorities.includes(Authorities.JOB_OPENING_CREATE);
+  // Defaults to org-wide, matching their existing view before this toggle
+  // existed — "my jobs" is an opt-in, not the default.
+  const [showMyJobsOnly, setShowMyJobsOnly] = useState(false);
+  const { data: myJobStats } = useGetJobStatsQuery(
+    { assignedToMe: true },
+    { skip: !hasTenantContext || !canFilterToMyJobs }
+  );
   const { data: orgDepartments = [] } = useListTenantDepartmentsQuery(tenantId ?? '', {
     skip: !hasTenantContext,
   });
@@ -288,33 +303,37 @@ const JobsOpening = () => {
     onSelect: (job) => navigate(`/jobs/view/${job.jobOpeningId}/candidates?page=1&size=10`),
   });
 
+  // canFilterToMyJobs toggles which stats feed the cards below (mine vs
+  // org-wide); everyone else always sees org-wide, same as before.
+  const statsForCards = canFilterToMyJobs && showMyJobsOnly ? myJobStats : jobStats;
+
   // Clicking a card reuses the same filter states as the status dropdown below.
   const jobStatCards: StatCardData[] = [
     {
       icon: <MdOutlineWorkOutline />,
       label: 'Open Roles',
-      value: jobStats?.published_count,
+      value: statsForCards?.published_count,
       variant: 'blue',
       onClick: () => handleStatusChange('ACTIVE'),
     },
     {
       icon: <MdOutlineEditNote />,
       label: 'Drafts',
-      value: jobStats?.draft_count,
+      value: statsForCards?.draft_count,
       variant: 'orange',
       onClick: () => handleStatusChange('Draft'),
     },
     {
       icon: <MdOutlineCancel />,
       label: 'Closed',
-      value: jobStats?.closed_count,
+      value: statsForCards?.closed_count,
       variant: 'neutral',
       onClick: () => handleStatusChange('Closed'),
     },
     {
       icon: <MdOutlineCheckCircle />,
       label: 'Total Job Openings',
-      value: jobStats?.total_count,
+      value: statsForCards?.total_count,
       variant: 'green',
       onClick: () => handleStatusChange('All'),
     },
@@ -1098,6 +1117,34 @@ const JobsOpening = () => {
           </div>
           {jobStats && (
             <div className="px-2 mb-2">
+              {canFilterToMyJobs && (
+                <div className="mb-3 inline-flex rounded-full border border-neutral-200 bg-neutral-100 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowMyJobsOnly(false)}
+                    className={clsx(
+                      'cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                      !showMyJobsOnly
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-neutral-500 hover:text-neutral-700'
+                    )}
+                  >
+                    All jobs
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowMyJobsOnly(true)}
+                    className={clsx(
+                      'cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                      showMyJobsOnly
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-neutral-500 hover:text-neutral-700'
+                    )}
+                  >
+                    My jobs
+                  </button>
+                </div>
+              )}
               <StatCardRow cards={jobStatCards} columns={4} />
             </div>
           )}
