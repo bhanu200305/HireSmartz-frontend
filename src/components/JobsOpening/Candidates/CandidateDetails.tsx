@@ -84,7 +84,7 @@ import {
 //   call detail) — that's interview-service's data, not yet surfaced
 //   through candidate-service.
 
-type TabKey = 'pipeline' | 'assessment' | 'resume' | 'summary' | 'sms' | 'history';
+type TabKey = 'assessment' | 'resume' | 'summary' | 'sms' | 'history';
 
 const candidateHeaderIconCircle =
   'inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--primary)] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 disabled:opacity-40';
@@ -106,7 +106,7 @@ const CandidateDetails = () => {
   }>();
   const parsedJobId = asJobId(jobIdFromParams);
 
-  const [activeTab, setActiveTab] = useState<TabKey>('pipeline');
+  const [activeTab, setActiveTab] = useState<TabKey>('assessment');
   const [statusModal, setStatusModal] = useState<ChangeCandidateStatusMode | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [isSmsOpen, setIsSmsOpen] = useState(false);
@@ -501,8 +501,8 @@ const CandidateDetails = () => {
             </div>
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1 space-y-1">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex-1 min-w-[220px] space-y-1">
               <div className="flex items-center text-sm gap-2">
                 <p className="font-bold">Job ID:</p>
                 <span className="text-gray-500">
@@ -526,6 +526,17 @@ const CandidateDetails = () => {
                     ? '-'
                     : candidate.resume_score}
                 </span>
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-[220px] space-y-1">
+              <div className="flex items-center text-sm gap-2">
+                <p className="font-bold">Email:</p>
+                <span className="text-gray-500">{candidate?.email_id ?? 'N/A'}</span>
+              </div>
+              <div className="flex items-center text-sm gap-2">
+                <p className="font-bold">Phone:</p>
+                <span className="text-gray-500">{candidate?.contact_no ?? 'N/A'}</span>
               </div>
             </div>
 
@@ -570,6 +581,26 @@ const CandidateDetails = () => {
         </div>
       </div>
 
+      {/* Pipeline stays visible above the tab strip regardless of which tab
+          is selected — previously it was itself just another tab, so
+          switching to Resume/Assessment/etc. hid it entirely. Still hidden
+          during the round drill-down below (selectedRound), same as the
+          tab strip, since that view is reached BY clicking a card here and
+          showing the whole board again above it would be redundant. */}
+      {!selectedRound && candidateId && (
+        <div className="mb-6 bg-white px-6 py-4 shadow-sm rounded-xl">
+          <PipelineBoard
+            rounds={rounds}
+            scores={scores}
+            resumeScore={candidate?.resume_score ?? null}
+            candidateId={candidateId}
+            onRoundClick={(round) => {
+              setSelectedRound(round);
+            }}
+          />
+        </div>
+      )}
+
       <div className="flex flex-col bg-[#FAFAFA] rounded-2xl overflow-hidden">
         <div className="px-6">
           {!selectedRound && (
@@ -578,7 +609,6 @@ const CandidateDetails = () => {
               onChange={(key) => setActiveTab(key as TabKey)}
               className="view-candidate-tabs"
               items={[
-                { key: 'pipeline', label: 'Pipeline' },
                 { key: 'assessment', label: 'Assessment' },
                 { key: 'resume', label: 'Resume' },
                 { key: 'summary', label: 'Interview Summary' },
@@ -840,16 +870,6 @@ const CandidateDetails = () => {
                 </>
               )}
             </div>
-          ) : activeTab === 'pipeline' && candidateId ? (
-            <PipelineBoard
-              rounds={rounds}
-              scores={scores}
-              resumeScore={candidate?.resume_score ?? null}
-              candidateId={candidateId}
-              onRoundClick={(round) => {
-                setSelectedRound(round);
-              }}
-            />
           ) : null}
 
           {!selectedRound && activeTab === 'assessment' && (

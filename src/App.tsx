@@ -1,14 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { renderRoutes, Routes as AllRoutes } from './routes';
 import { ToastContainer } from 'react-toastify';
 import { useInternetConnection } from './hooks/useInternetConnection';
+import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
 import NotificationStreamListener from './components/Header/NotificationStreamListener';
 import {
   clearLegacyImpersonationLocalStorage,
   validateImpersonationSessionOwnership,
 } from './shared/utils/auth/localstorage.helpers';
 import DevRoleSwitcher from './components/DevRoleSwitcher';
+import { requestGlobalSearchFocus } from './redux/slices/globalSearchSlice';
+import ShortcutsHelpModal from './components/shared/ShortcutsHelpModal';
 
 const App = () => {
   // Monitor internet connection globally
@@ -16,6 +20,23 @@ const App = () => {
 
   const { pathname } = useLocation();
   const isPublicPage = pathname.startsWith('/public/');
+  const dispatch = useDispatch();
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+
+  // Mounted here (not MainLayout) because MainLayout isn't wrapped around
+  // every route yet — App.tsx is the one component every page actually
+  // renders through, so it's the only place a shortcut is guaranteed to
+  // work everywhere. Skipped on public/unauthenticated pages (e.g. the
+  // careers apply flow) the same way NotificationStreamListener already is
+  // below, so a public visitor typing into a form isn't surprised by either
+  // shortcut firing.
+  useKeyboardShortcut('k', () => dispatch(requestGlobalSearchFocus()), {
+    ctrlOrCmd: true,
+    enabled: !isPublicPage,
+  });
+  useKeyboardShortcut('?', () => setShowShortcutsHelp((v) => !v), {
+    enabled: !isPublicPage,
+  });
 
   useEffect(() => {
     clearLegacyImpersonationLocalStorage();
@@ -41,6 +62,7 @@ const App = () => {
       {!isPublicPage && <NotificationStreamListener />}
       <Routes>{renderRoutes(AllRoutes)}</Routes>
       <DevRoleSwitcher />
+      <ShortcutsHelpModal open={showShortcutsHelp} onClose={() => setShowShortcutsHelp(false)} />
     </div>
   );
 };

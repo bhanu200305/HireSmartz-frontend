@@ -110,6 +110,8 @@ const PlatformTenantsListModal: React.FC<{ onClose: () => void }> = ({ onClose }
                 onClick: () => setSelectedTenant(tenant),
                 className: 'cursor-pointer',
               })}
+              enableKeyboardNav
+              onRowEnter={(tenant) => setSelectedTenant(tenant)}
               emptyText={
                 <div className="py-10 text-center text-sm text-neutral-400">No companies yet.</div>
               }

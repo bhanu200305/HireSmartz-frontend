@@ -169,6 +169,8 @@ const CustomerTable = () => {
               onClick: () => navigate(`/view-company?companyId=${tenant.tenant_id}`),
               className: 'cursor-pointer',
             })}
+            enableKeyboardNav
+            onRowEnter={(tenant) => navigate(`/view-company?companyId=${tenant.tenant_id}`)}
             emptyText={
               !isLoading ? (
                 <div className="py-10 text-center text-gray-400 text-sm">No companies found.</div>

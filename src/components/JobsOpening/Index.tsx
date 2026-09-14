@@ -51,6 +51,7 @@ import {
 } from '../../api/job-service/JobOpening/GetJobOpeningById';
 import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
+import { useRovingFocus } from '../../hooks/useRovingFocus';
 import { useListUsersQuery } from '../../api/organization-service/Users/users';
 import { useListJobTypesQuery } from '../../api/job-service/JobOpening/catalogs';
 import { showToast } from '../shared';
@@ -277,6 +278,15 @@ const JobsOpening = () => {
       createdByName: job.createdById ? userMap[job.createdById] : undefined,
     }));
   }, [data?.data, orgDepartments, jobTypes, titleMap, orgUsers]);
+
+  // ArrowUp/ArrowDown moves focus between listed job rows below, Enter opens
+  // the focused job — the same destination the title `<Link>` on each row
+  // already navigates to.
+  const { focusedIndex: focusedJobIndex, handleKeyDown: handleJobListKeyDown } = useRovingFocus({
+    items: listedJobs,
+    isActive: true,
+    onSelect: (job) => navigate(`/jobs/view/${job.jobOpeningId}/candidates?page=1&size=10`),
+  });
 
   // Clicking a card reuses the same filter states as the status dropdown below.
   const jobStatCards: StatCardData[] = [
@@ -1157,11 +1167,17 @@ const JobsOpening = () => {
                     ACTIONS
                   </Col>
                 </Row>
-                <div className="divide-y divide-neutral-100">
-                  {listedJobs.map((jobs) => (
+                <div className="divide-y divide-neutral-100" onKeyDown={handleJobListKeyDown}>
+                  {listedJobs.map((jobs, jobIndex) => (
                     <div
                       key={jobs.jobOpeningId}
-                      className="px-2 py-3 hover:bg-neutral-50 transition-colors"
+                      tabIndex={0}
+                      role="link"
+                      className={`px-2 py-3 hover:bg-neutral-50 transition-colors focus:outline-none ${
+                        focusedJobIndex === jobIndex
+                          ? 'bg-primary-50 ring-1 ring-inset ring-primary-200'
+                          : ''
+                      }`}
                     >
                       <Row gutter={[16, 16]} align="middle">
                         <Col span={5}>
