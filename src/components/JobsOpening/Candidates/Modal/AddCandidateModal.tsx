@@ -17,6 +17,7 @@ import {
   isPhoneValidForCountry,
   PHONE_VALIDATION_MESSAGE,
 } from '../../../../shared/utils/validation/phoneValidation';
+import { useEnterToSubmit } from '../../../../hooks/useEnterToSubmit';
 
 // Same default every other phone field in this app starts from.
 const DEFAULT_COUNTRY_CODE = '+1';
@@ -174,6 +175,13 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
     }
   };
 
+  // Only live while the "resume" tab is showing — the "bulk" tab swaps in
+  // BulkResumeUploadPanel entirely, and an Enter keypress bubbling up from
+  // there has nothing to do with this single-candidate submit.
+  const { onKeyDown: handleEnterToSubmit } = useEnterToSubmit(() => void handleSubmit(), {
+    enabled: open && !isSubmitting && mode === 'resume',
+  });
+
   return (
     <AntdCommonModal
       open={open}
@@ -186,7 +194,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
       }
       modalProps={{ width: 560 }}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
         <div className="grid grid-cols-2 gap-2 rounded-full bg-gray-100 p-1">
           <button
             type="button"

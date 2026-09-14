@@ -108,6 +108,8 @@ const JobOpeningsListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                 onClick: () => setSelectedJob(job),
                 className: 'cursor-pointer',
               })}
+              enableKeyboardNav
+              onRowEnter={(job) => setSelectedJob(job)}
               emptyText={
                 <div className="py-10 text-center text-sm text-neutral-400">
                   No active job openings.
