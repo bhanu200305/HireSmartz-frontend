@@ -671,7 +671,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
               <Search
                 ref={searchInputRef}
                 appname="Search"
-                placeholder="Search... (Ctrl/Cmd+K)"
+                placeholder="Search..."
                 allowClear
                 className="my-search"
                 value={searchQuery}
