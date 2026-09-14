@@ -57,6 +57,13 @@ export const isIntakeCallRound = (round: CandidateInterviewRoundView): boolean =
 export const isAudioScreeningRound = (round: CandidateInterviewRoundView): boolean =>
   round.stage_type === 'interview' && round.round_type === 'AUDIO_SCREENING';
 
+/** The AI Video round — same reasoning as `isIntakeCallRound` above.
+ * Added 2026-09-14: the call-intent/reschedule-request feature extended
+ * to cover this round type too, alongside Audio Screening and the Intake
+ * Call. */
+export const isAiVideoRound = (round: CandidateInterviewRoundView): boolean =>
+  round.stage_type === 'interview' && round.round_type === 'AI_VIDEO';
+
 /** True when this candidate came through the instant-call flow — the Intake
  * Call was placed FIRST and the resume was uploaded within 24h afterwards —
  * rather than the resume-first flow. Detected from the funnel history:

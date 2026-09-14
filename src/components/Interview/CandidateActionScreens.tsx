@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 
@@ -43,9 +43,32 @@ export const CandidateFeedbackPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
+  // AI_VIDEO/PANEL candidates arrive here straight from SessionJoinScreen's
+  // `onDisconnected`, reusing the same SESSION_PURPOSE token — the round's
+  // booking is marked COMPLETED by LiveKit's own `room_finished` webhook,
+  // which can genuinely still be in flight for a few seconds after the
+  // candidate's browser itself disconnects. Rather than a dead-end error on
+  // that race, poll briefly while the backend reports FEEDBACK_NOT_AVAILABLE
+  // (`getInterviewErrorAction` -> 'not-ready').
+  const [isWaitingForCompletion, setIsWaitingForCompletion] = useState(false);
+
   const { data, isLoading, isError, error } = useGetCandidateFeedbackLinkQuery(token, {
     skip: !token,
+    pollingInterval: isWaitingForCompletion ? 2000 : 0,
   });
+
+  useEffect(() => {
+    if (data) {
+      setIsWaitingForCompletion(false);
+      return;
+    }
+    if (isError) {
+      setIsWaitingForCompletion(
+        getInterviewErrorAction(error as InterviewApiError) === 'not-ready'
+      );
+    }
+  }, [data, isError, error]);
+
   const [submit, { isLoading: isSubmitting }] = useSubmitCandidateFeedbackMutation();
 
   const [rating, setRating] = useState(0);
@@ -79,6 +102,18 @@ export const CandidateFeedbackPage = () => {
         <div className="flex justify-center py-6">
           <Loader />
         </div>
+      </Shell>
+    );
+  }
+  if (isError && isWaitingForCompletion) {
+    return (
+      <Shell>
+        <div className="flex justify-center py-6">
+          <Loader />
+        </div>
+        <p className="mt-2 text-center text-sm text-gray-500">
+          Wrapping up your interview — this will just take a moment…
+        </p>
       </Shell>
     );
   }

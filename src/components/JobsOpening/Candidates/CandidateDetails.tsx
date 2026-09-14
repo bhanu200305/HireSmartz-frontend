@@ -24,6 +24,7 @@ import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candi
 import {
   useCreateBookingMutation,
   useGetBookingQuery,
+  useGetBookingHistoryQuery,
   useRequestCallRescheduleMutation,
   useLazyGetCalendarConnectUrlQuery,
 } from '../../../api/interview-service/client';
@@ -46,6 +47,7 @@ import {
   resolveCurrentRound,
   isRoundConcluded,
   isInstantCallFlow,
+  isAiVideoRound,
   isAudioScreeningRound,
   isIntakeCallRound,
   isResumeStageRound,
@@ -126,7 +128,14 @@ const CandidateDetails = () => {
     isLoading: isCandidateLoading,
     error: candidateError,
     refetch: refetchCandidate,
-  } = useGetCandidateQuery(candidateId ?? '', { skip: !candidateId });
+  } = useGetCandidateQuery(candidateId ?? '', {
+    skip: !candidateId,
+    // A self-service withdrawal (or any other status change) arrives via
+    // an async event chain, not this page's own action — same reasoning
+    // the round-score/artifact queries below already poll on.
+    pollingInterval: 20_000,
+    skipPollingIfUnfocused: true,
+  });
 
   const { data: jobOpeningData } = useGetJobOpeningByIdQuery(
     { jobOpeningId: parsedJobId },
@@ -161,6 +170,13 @@ const CandidateDetails = () => {
   const { data: selectedBooking } = useGetBookingQuery(selectedRound?.interview_booking_id ?? '', {
     skip: !selectedRound?.interview_booking_id,
   });
+  // Every past attempt for this round, not just the current one — see
+  // getBookingHistory's own docstring for why interview-service, not
+  // candidate-service, is the only place this survives a reschedule.
+  const { data: bookingHistory } = useGetBookingHistoryQuery(
+    selectedRound?.interview_booking_id ?? '',
+    { skip: !selectedRound?.interview_booking_id }
+  );
   const [requestCallReschedule, { isLoading: isRequestingReschedule }] =
     useRequestCallRescheduleMutation();
   const [getCalendarConnectUrl] = useLazyGetCalendarConnectUrlQuery();
@@ -216,9 +232,19 @@ const CandidateDetails = () => {
   };
 
   const statusUpper = (candidate?.status_code ?? '').toLowerCase();
-  const isTerminal = ['selected', 'rejected', 'resume_rejected', 'interview_rejected'].includes(
-    statusUpper
-  );
+  // Matches master.ts's own documented funnel comment — every code marked
+  // "(terminal)" there. `withdrawn` was missing here (added 2026-09-14): a
+  // candidate who withdrew via their own email link (interview-service's
+  // `POST /withdraw/{token}` -> candidate-service's real status
+  // transition, already fully wired) still saw ADVANCE/REJECT on their own
+  // profile, since nothing here recognized that status as terminal.
+  const isTerminal = [
+    'selected',
+    'rejected',
+    'resume_rejected',
+    'interview_rejected',
+    'withdrawn',
+  ].includes(statusUpper);
 
   const isResumeStage = selectedRound?.stage_type === 'resume';
   // `roundProgress.ts`'s shared `isIntakeCallRound` — this used to
@@ -229,11 +255,15 @@ const CandidateDetails = () => {
   // `planHasIntakeCall`/`currentRoundInIntakePair` below can never disagree
   // about which round is the Intake Call.
   const selectedRoundIsIntakeCall = Boolean(selectedRound && isIntakeCallRound(selectedRound));
-  // Call-intent card (added 2026-09-13) applies to both voice rounds —
-  // Audio Screening never had its own boolean before this, so it's
-  // computed inline rather than adding a third near-duplicate constant.
+  // Call-intent card (added 2026-09-13, extended to AI Video 2026-09-14)
+  // applies to all three voice/video rounds interview-service derives an
+  // intent for — computed inline rather than adding three near-duplicate
+  // constants.
   const selectedRoundIsVoiceCall = Boolean(
-    selectedRound && (isIntakeCallRound(selectedRound) || isAudioScreeningRound(selectedRound))
+    selectedRound &&
+    (isIntakeCallRound(selectedRound) ||
+      isAudioScreeningRound(selectedRound) ||
+      isAiVideoRound(selectedRound))
   );
   // Same "score already sitting here means reviewed and ready to move on"
   // read as PipelineBoard.tsx's own version of this check — the resume
@@ -714,6 +744,43 @@ const CandidateDetails = () => {
                               : 'Create Booking (Reschedule Call)'}
                           </Button>
                         )}
+                      </div>
+                    </CommonCard>
+                  )}
+
+                  {selectedRoundIsVoiceCall && (bookingHistory?.length ?? 0) > 1 && (
+                    // Only shown once there's actually more than one
+                    // attempt — a single-entry "history" would just repeat
+                    // the Call Outcome card above. `bookingHistory` is
+                    // oldest-first; render it newest-first so the most
+                    // recent (and most relevant) attempt reads first.
+                    <CommonCard>
+                      <div className="p-5">
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Reschedule History
+                        </div>
+                        <div className="mt-3 flex flex-col gap-3">
+                          {[...(bookingHistory ?? [])].reverse().map((attempt, index) => (
+                            <div
+                              key={attempt.id}
+                              className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                            >
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">
+                                  {index === 0
+                                    ? 'Current attempt'
+                                    : `Attempt ${bookingHistory!.length - index}`}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {formatDateTime(attempt.start_time) ?? 'Not yet scheduled'}
+                                </div>
+                              </div>
+                              <span className="shrink-0 text-xs font-semibold text-primary-600">
+                                {formatCallIntent(attempt.call_intent)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </CommonCard>
                   )}
