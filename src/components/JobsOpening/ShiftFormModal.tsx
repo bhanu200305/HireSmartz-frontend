@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import { Button } from '../shared';
-import CatalogFormFields, { type CatalogField } from '../CompanySettings/JobCatalogs/CatalogFormFields';
+import CatalogFormFields, {
+  type CatalogField,
+} from '../CompanySettings/JobCatalogs/CatalogFormFields';
 
 export type ShiftFormValues = {
   name: string;
@@ -19,10 +21,7 @@ const fields: CatalogField<ShiftFormValues>[] = [
 
 /** Minutes between two "HH:mm" times, wrapping past midnight. Null if
  * either side is unfilled. */
-export const computeShiftDurationMinutes = (
-  startTime: string,
-  endTime: string
-): number | null => {
+export const computeShiftDurationMinutes = (startTime: string, endTime: string): number | null => {
   if (!startTime || !endTime) return null;
   const [startHour, startMinute] = startTime.split(':').map(Number);
   const [endHour, endMinute] = endTime.split(':').map(Number);

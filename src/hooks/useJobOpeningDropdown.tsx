@@ -99,7 +99,12 @@ const useJobOpeningDropdown = (
   const tenantUsers = useListUsersQuery(
     {
       limit: 200,
-      role: endpoint === 'HIRING_MANAGER' ? 'hiring_manager' : endpoint === 'RECRUITER' ? 'recruiter' : undefined,
+      role:
+        endpoint === 'HIRING_MANAGER'
+          ? 'hiring_manager'
+          : endpoint === 'RECRUITER'
+            ? 'recruiter'
+            : undefined,
     },
     { skip: skip || !needsPeople || isMaster }
   );

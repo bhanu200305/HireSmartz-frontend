@@ -139,10 +139,7 @@ const JobTitlesTab: React.FC = () => {
       showToast({ message: 'Job title removed.', type: 'success' });
     } catch (err) {
       showToast({
-        message: getOrgErrorMessage(
-          err,
-          'Failed to remove job title; a company may still use it.'
-        ),
+        message: getOrgErrorMessage(err, 'Failed to remove job title; a company may still use it.'),
         type: 'error',
       });
     } finally {

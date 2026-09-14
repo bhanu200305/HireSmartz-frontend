@@ -39,7 +39,7 @@ interface StatCardRowProps {
    * half-empty last row whenever the card count doesn't divide evenly into
    * however many 200px columns happen to fit. Omit to keep the auto-fit
    * behavior. */
-  columns?: 2 | 3 | 4;
+  columns?: 2 | 3 | 4 | 5;
   /** Gives each card a taller minimum height with its content vertically
    * centered — for a 2-column grid in a capped-width container (the
    * Dashboard carousel slide), where a squarish tile reads better than a
@@ -47,10 +47,11 @@ interface StatCardRowProps {
   tall?: boolean;
 }
 
-const COLUMN_CLASSES: Record<2 | 3 | 4, string> = {
+const COLUMN_CLASSES: Record<2 | 3 | 4 | 5, string> = {
   2: 'sm:grid-cols-2',
   3: 'sm:grid-cols-2 xl:grid-cols-3',
   4: 'sm:grid-cols-2 xl:grid-cols-4',
+  5: 'sm:grid-cols-2 xl:grid-cols-5',
 };
 
 // Brand-token badge/accent pairs (src/theme/index.css) — one small spot of

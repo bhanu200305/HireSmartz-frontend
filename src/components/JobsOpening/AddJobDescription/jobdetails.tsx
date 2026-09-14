@@ -2027,12 +2027,8 @@ const JobDetails = () => {
                         error={errors.department?.message}
                         enableEditDelete={canManageCatalogueEntries}
                         onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                        onDeleteOption={
-                          canManageCatalogueEntries ? handleDeleteOption : undefined
-                        }
-                        onReuseOption={
-                          canManageCatalogueEntries ? handleReuseOption : undefined
-                        }
+                        onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                        onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
                       />
                     </div>
                   </Form.Item>
@@ -2071,12 +2067,8 @@ const JobDetails = () => {
                         className="w-full custom-select-jobs placeholder-style"
                         enableEditDelete={canManageCatalogueEntries}
                         onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                        onDeleteOption={
-                          canManageCatalogueEntries ? handleDeleteOption : undefined
-                        }
-                        onReuseOption={
-                          canManageCatalogueEntries ? handleReuseOption : undefined
-                        }
+                        onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                        onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
                       />
                     </div>
                   </Form.Item>
@@ -2105,12 +2097,8 @@ const JobDetails = () => {
                         error={errors.jobType?.message}
                         enableEditDelete={canManageCatalogueEntries}
                         onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                        onDeleteOption={
-                          canManageCatalogueEntries ? handleDeleteOption : undefined
-                        }
-                        onReuseOption={
-                          canManageCatalogueEntries ? handleReuseOption : undefined
-                        }
+                        onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                        onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
                       />
                     </div>
                   </Form.Item>
@@ -2139,12 +2127,8 @@ const JobDetails = () => {
                         error={errors.jobMode?.message}
                         enableEditDelete={canManageCatalogueEntries}
                         onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                        onDeleteOption={
-                          canManageCatalogueEntries ? handleDeleteOption : undefined
-                        }
-                        onReuseOption={
-                          canManageCatalogueEntries ? handleReuseOption : undefined
-                        }
+                        onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                        onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
                       />
                     </div>
                   </Form.Item>
@@ -3079,12 +3063,8 @@ const JobDetails = () => {
                         error={errors.educationPreference?.message}
                         enableEditDelete={canManageCatalogueEntries}
                         onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                        onDeleteOption={
-                          canManageCatalogueEntries ? handleDeleteOption : undefined
-                        }
-                        onReuseOption={
-                          canManageCatalogueEntries ? handleReuseOption : undefined
-                        }
+                        onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                        onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
                       />
                     </div>
                   </Form.Item>

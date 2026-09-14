@@ -19,7 +19,7 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 
-const MAX_QUESTIONS = 7;
+const MAX_QUESTIONS = 8;
 
 type Draft = { text: string; fieldId: string };
 
@@ -66,6 +66,16 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
     () => fields.map((f) => ({ value: f.field_id, label: f.field_label })),
     [fields]
   );
+  // Resume-field display order (Introduction, Education, Experience, ...) —
+  // organization-service's own seed for `order_index` (migration 0051), not
+  // re-declared here so this can never drift from what Super Admin actually
+  // configures. A question whose field isn't in this map yet (fields still
+  // loading, or a legacy untagged row) sorts last rather than disappearing.
+  const fieldOrderById = useMemo(() => {
+    const map = new Map<string, number>();
+    fields.forEach((f) => map.set(f.field_id, f.order_index));
+    return map;
+  }, [fields]);
 
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -129,7 +139,20 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
     }
   };
 
-  const questions = useMemo(() => data?.questions ?? [], [data]);
+  // Always shown in resume-field order (Introduction, Education, Experience,
+  // ...), never insertion order — a manually added question and a bulk-
+  // imported one must land in the same place on screen. `data.questions`
+  // itself carries whatever order the backend returned it in (creation
+  // order for manual adds, file-row order for bulk import), so this is the
+  // one place that order gets normalized before anything renders.
+  const questions = useMemo(() => {
+    const list = data?.questions ?? [];
+    const orderFor = (fieldId: string | null | undefined): number => {
+      if (!fieldId) return Number.MAX_SAFE_INTEGER;
+      return fieldOrderById.get(fieldId) ?? Number.MAX_SAFE_INTEGER;
+    };
+    return [...list].sort((a, b) => orderFor(a.field_id) - orderFor(b.field_id));
+  }, [data, fieldOrderById]);
   const atCap = questions.length >= MAX_QUESTIONS;
 
   const handleAdd = async () => {
