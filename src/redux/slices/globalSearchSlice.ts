@@ -5,6 +5,14 @@ interface GlobalSearchState {
   lastSearchedQuery: string;
   selectedCategoryValue: string | null;
   selectedCategoryField: string;
+  /**
+   * Bumped (not toggled) by the global Ctrl/Cmd+K shortcut so Header.tsx can
+   * focus/open the search box from anywhere. A counter rather than a
+   * boolean: a plain toggle would silently no-op the second time Ctrl+K is
+   * pressed while the panel is already open (same value in, no state
+   * change, no re-render).
+   */
+  focusRequestId: number;
 }
 
 const initialState: GlobalSearchState = {
@@ -12,6 +20,7 @@ const initialState: GlobalSearchState = {
   lastSearchedQuery: '',
   selectedCategoryValue: null,
   selectedCategoryField: '',
+  focusRequestId: 0,
 };
 
 const globalSearchSlice = createSlice({
@@ -40,6 +49,9 @@ const globalSearchSlice = createSlice({
       state.selectedCategoryValue = null;
       state.selectedCategoryField = '';
     },
+    requestGlobalSearchFocus: (state) => {
+      state.focusRequestId += 1;
+    },
   },
 });
 
@@ -49,5 +61,6 @@ export const {
   setGlobalSearchCategorySelection,
   clearGlobalSearchCategorySelection,
   clearGlobalSearch,
+  requestGlobalSearchFocus,
 } = globalSearchSlice.actions;
 export default globalSearchSlice.reducer;

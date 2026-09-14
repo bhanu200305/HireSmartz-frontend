@@ -84,6 +84,8 @@ export const COL = ({
         style={{
           display: 'flex',
           alignItems: 'center',
+          flexWrap: 'nowrap',
+          whiteSpace: 'nowrap',
           //   fontWeight: isActiveSort ? 600 : 'normal'
         }}
       >

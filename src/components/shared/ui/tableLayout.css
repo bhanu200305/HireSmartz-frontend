@@ -41,3 +41,12 @@
 .customTable .ant-table-row {
   transition: background-color 0.15s ease;
 }
+
+/* Roving-focus highlight for keyboard nav (CustomTable's `enableKeyboardNav`
+   prop) — mirrors the hover treatment above so keyboard and mouse focus
+   look consistent, plus a visible outline for users navigating by keyboard
+   without a pointer nearby. */
+.customTable .ant-table-tbody > tr.customTable-row-focused > td {
+  background: var(--color-primary-50) !important;
+  box-shadow: inset 0 0 0 1px var(--color-primary-200, #c7d2fe);
+}

@@ -481,7 +481,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
         centered
         width="80vw"
         maskClosable={false}
-        keyboard={false}
+        keyboard
         className="custom-modal"
       >
         {renderContent()}
