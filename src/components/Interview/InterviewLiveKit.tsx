@@ -36,6 +36,7 @@ import {
   MdStopScreenShare,
   MdChatBubbleOutline,
   MdOutlineSettings,
+  MdOutlineQuestionAnswer,
 } from 'react-icons/md';
 import { Tooltip, Button, Spin, message, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
@@ -84,7 +85,14 @@ interface InterviewState {
   egressId: string | null;
   showLeavingModal: boolean;
   isRecordingModalVisible: boolean;
-  activeSidebar: 'info' | 'participants' | 'assessment' | 'chat' | 'settings' | null;
+  activeSidebar:
+    | 'info'
+    | 'participants'
+    | 'assessment'
+    | 'panel-questions'
+    | 'chat'
+    | 'settings'
+    | null;
   interviewToken: string | null;
   hasEnded: boolean;
   endedBy?: 'user' | 'recruiter';
@@ -97,6 +105,26 @@ interface InterviewState {
    * `idle` to `chooser` once the conditions below are met. */
   feedbackFlow: 'idle' | 'chooser' | 'quick';
 }
+
+/**
+ * A Hiring Panel round's reference question set, pushed over the LiveKit
+ * data channel by ai-service once the room opens — distinct from the
+ * `{ role: ... }` presence message every participant broadcasts (see
+ * `handleDataReceived` below, which tells the two apart by shape:
+ * `resume_based`/`instructions` only ever appear on this one). Read-only —
+ * unlike `categorizedQuestions`/`assessmentScores` above, nothing here is
+ * scored or saved back.
+ */
+type PanelQuestionItem = {
+  question_text: string;
+  scoring_sections?: string[];
+};
+
+type PanelQuestionsMessage = {
+  resume_based: PanelQuestionItem[];
+  jd_based: PanelQuestionItem[];
+  instructions: string;
+};
 
 type InterviewTokenPayload = {
   role?: string;
@@ -824,7 +852,14 @@ const Interview: React.FC = () => {
  * Renders inside LiveKitRoom context
  * Contains video grid, controls, sidebar
  */
-type SidebarKey = 'info' | 'participants' | 'assessment' | 'chat' | 'settings' | null;
+type SidebarKey =
+  | 'info'
+  | 'participants'
+  | 'assessment'
+  | 'panel-questions'
+  | 'chat'
+  | 'settings'
+  | null;
 
 interface InterviewContentProps {
   token: LiveKitTokenResponse;
@@ -896,6 +931,21 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
     selectedAudioDevice: null,
     selectedVideoDevice: null,
   });
+
+  // Hiring Panel reference questions — pushed by ai-service over the data
+  // channel, see PanelQuestionsMessage's own docstring above. `null` until
+  // the message arrives (which can be never, if this round isn't a Panel
+  // round or ai-service hasn't published yet).
+  const [panelQuestions, setPanelQuestions] = useState<PanelQuestionsMessage | null>(null);
+  // Whether the "please introduce yourselves"-style instructions banner is
+  // still showing — separate from `panelQuestions` itself so dismissing the
+  // banner doesn't lose the question set from the sidebar, and re-shown
+  // (see handleDataReceived) if a fresher instructions string arrives.
+  const [showInstructionsBanner, setShowInstructionsBanner] = useState(false);
+  // Guards the one-shot `message.info` toast below from re-firing on every
+  // redelivery of the same instructions text (ai-service may re-publish on
+  // reconnect) — only toast again if the text actually changed.
+  const lastToastedInstructionsRef = useRef<string | null>(null);
 
   // Assessment scoring state
   const [assessmentScores, setAssessmentScores] = useState<{
@@ -1239,15 +1289,53 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
       payload: Uint8Array,
       participant?: { identity: string } | undefined
     ) => {
-      if (!participant) return;
+      let decoded: any;
       try {
-        const decoded = JSON.parse(new TextDecoder().decode(payload));
-        if (decoded.role) {
-          remoteRolesRef.current.set(participant.identity, decoded.role);
-          checkForInterviewer();
-        }
+        decoded = JSON.parse(new TextDecoder().decode(payload));
       } catch {
-        // Not a JSON role message, ignore
+        // Not a JSON message, ignore
+        return;
+      }
+
+      if (decoded.role) {
+        // Only the role message needs a sender to attribute the role to —
+        // every real participant broadcasts their own via publishData, so
+        // this is always populated for that case.
+        if (!participant) return;
+        remoteRolesRef.current.set(participant.identity, decoded.role);
+        checkForInterviewer();
+        return;
+      }
+
+      if (decoded.resume_based !== undefined || decoded.instructions !== undefined) {
+        // Hiring Panel question set — distinguished from the role message
+        // above by shape, not by sender identity (see PanelQuestionsMessage's
+        // own docstring). Unlike the role message, this is pushed by
+        // ai-service through LiveKit's server-side RoomService/SendData API
+        // (see ai-service's livekit_room_data_publisher.py), not a real
+        // connected participant's own publishData — the LiveKit protocol's
+        // DataPacket then carries no sending participant at all, so
+        // `participant` is `undefined` here. Deliberately NOT gated on it.
+        //
+        // ai-service targets `destination_identities` at the LiveKit
+        // transport level for this message in online mode, so a candidate's
+        // client never receives it in the first place; this `isRecruiter`
+        // check is a defensive fallback only, for the documented case where
+        // ai-service falls back to broadcasting because
+        // `interviewer_identities` wasn't populated upstream.
+        if (isRecruiter) {
+          const next: PanelQuestionsMessage = {
+            resume_based: Array.isArray(decoded.resume_based) ? decoded.resume_based : [],
+            jd_based: Array.isArray(decoded.jd_based) ? decoded.jd_based : [],
+            instructions: typeof decoded.instructions === 'string' ? decoded.instructions : '',
+          };
+          setPanelQuestions(next);
+          setShowInstructionsBanner(true);
+          if (next.instructions && lastToastedInstructionsRef.current !== next.instructions) {
+            lastToastedInstructionsRef.current = next.instructions;
+            message.info(next.instructions, 8);
+          }
+        }
       }
     };
 
@@ -1267,7 +1355,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
       room.off('dataReceived', handleDataReceived as any);
       room.off('participantDisconnected', handleParticipantDisconnected as any);
     };
-  }, [room, token.role, onUpdateRecordingState]);
+  }, [room, token.role, isRecruiter, onUpdateRecordingState]);
 
   useEffect(() => {
     if (!navigator.mediaDevices?.enumerateDevices) {
@@ -1357,6 +1445,21 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
       <div className="flex-1 flex flex-col">
         {/* Video Grid */}
         <div className="flex-1 relative overflow-hidden pb-20">
+          {isRecruiter && showInstructionsBanner && panelQuestions?.instructions && (
+            <div className="absolute top-4 left-1/2 z-40 w-[min(90%,640px)] -translate-x-1/2 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-sm text-amber-100 shadow-lg backdrop-blur-md">
+              <div className="flex items-start justify-between gap-3">
+                <p className="leading-relaxed">{panelQuestions.instructions}</p>
+                <button
+                  type="button"
+                  onClick={() => setShowInstructionsBanner(false)}
+                  className="shrink-0 text-amber-200/70 transition-colors hover:text-white"
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
           <VideoGrid token={token} liveKit={liveKit} isRecording={recording} />
         </div>
 
@@ -1538,6 +1641,26 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
               </Tooltip>
             )}
 
+            {isRecruiter && (
+              <Tooltip title="Panel Questions">
+                <Button
+                  type="text"
+                  size="small"
+                  className={`${controlButtonClass} ${activeSidebar === 'panel-questions' ? 'text-brand-400 bg-white/10' : ''}`}
+                  icon={
+                    <MdOutlineQuestionAnswer
+                      className={
+                        activeSidebar === 'panel-questions' ? 'text-brand-400' : 'text-white'
+                      }
+                    />
+                  }
+                  onClick={() =>
+                    onSidebarChange(activeSidebar === 'panel-questions' ? null : 'panel-questions')
+                  }
+                />
+              </Tooltip>
+            )}
+
             <Tooltip title="Chat">
               <span className="relative inline-flex">
                 <Button
@@ -1630,11 +1753,13 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
         title={
           displaySidebar === 'assessment'
             ? 'Assessment'
-            : displaySidebar === 'chat'
-              ? 'Chat'
-              : displaySidebar === 'settings'
-                ? 'Settings'
-                : 'Participants'
+            : displaySidebar === 'panel-questions'
+              ? 'Panel Questions'
+              : displaySidebar === 'chat'
+                ? 'Chat'
+                : displaySidebar === 'settings'
+                  ? 'Settings'
+                  : 'Participants'
         }
       >
         {displaySidebar === 'chat' && (
@@ -1794,6 +1919,77 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
             >
               SAVE FEEDBACK
             </Button>
+          </div>
+        )}
+
+        {displaySidebar === 'panel-questions' && isRecruiter && (
+          <div className="space-y-5">
+            {panelQuestions?.instructions && (
+              <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2.5 text-xs leading-relaxed text-amber-100">
+                {panelQuestions.instructions}
+              </div>
+            )}
+
+            {!panelQuestions ||
+            (panelQuestions.resume_based.length === 0 && panelQuestions.jd_based.length === 0) ? (
+              <p className="text-sm text-gray-400">No panel questions received yet.</p>
+            ) : (
+              <>
+                {panelQuestions.resume_based.length > 0 && (
+                  <div>
+                    <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Resume-based
+                    </h4>
+                    <ol className="list-decimal space-y-3 pl-5">
+                      {panelQuestions.resume_based.map((q, idx) => (
+                        <li key={idx} className="text-sm leading-relaxed text-gray-200">
+                          {q.question_text}
+                          {q.scoring_sections && q.scoring_sections.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {q.scoring_sections.map((section) => (
+                                <span
+                                  key={section}
+                                  className="rounded-full bg-gray-700/70 px-2 py-0.5 text-[10px] text-gray-300"
+                                >
+                                  {section}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {panelQuestions.jd_based.length > 0 && (
+                  <div>
+                    <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      JD-based
+                    </h4>
+                    <ol className="list-decimal space-y-3 pl-5">
+                      {panelQuestions.jd_based.map((q, idx) => (
+                        <li key={idx} className="text-sm leading-relaxed text-gray-200">
+                          {q.question_text}
+                          {q.scoring_sections && q.scoring_sections.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {q.scoring_sections.map((section) => (
+                                <span
+                                  key={section}
+                                  className="rounded-full bg-gray-700/70 px-2 py-0.5 text-[10px] text-gray-300"
+                                >
+                                  {section}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </Sidebar>

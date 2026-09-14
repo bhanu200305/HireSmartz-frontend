@@ -3,10 +3,18 @@ import { MdOutlineWorkOutline } from 'react-icons/md';
 import { Badge } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import { useGetJobOpeningsListLegacyQuery as useGetJobOpeningsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
-import type { JobSummary } from '../../api/job-service/JobOpenings/types';
+import type { JobListArgs, JobSummary } from '../../api/job-service/JobOpenings/types';
 import { jobStatus, daysOpen } from './jobOpeningListHelpers';
 import JobDetailModal from './JobDetailModal';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
+
+type OpenJobsSectionProps = {
+  /** Narrows the list to one status — e.g. `'published'` for the Recruiter
+   * KPI dashboard's "Open jobs list" (`GET /job-openings?status=published`).
+   * Omitted (default) keeps this section's original org-wide/all-status
+   * behavior on the Company Metrics page. */
+  status?: JobListArgs['status'];
+};
 
 /**
  * "Open jobs" — a jobs list with a per-job KPI popup.
@@ -15,8 +23,8 @@ import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
  * `JobOpeningsListModal` can reuse the same status/age reading and the same
  * per-job detail, instead of a second copy drifting from this one.
  */
-const OpenJobsSection: React.FC = () => {
-  const { data, isLoading } = useGetJobOpeningsQuery({ page: 1, page_size: 10 });
+const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
+  const { data, isLoading } = useGetJobOpeningsQuery({ page: 1, page_size: 10, status });
   const [selectedJob, setSelectedJob] = useState<JobSummary | null>(null);
   const jobs = data?.items ?? [];
   // Job title comes from the org-service catalogue lookup, not the job summary itself.
