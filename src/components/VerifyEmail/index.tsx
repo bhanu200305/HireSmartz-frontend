@@ -77,7 +77,7 @@ const VerifyEmail = () => {
           <FaCheckCircle className="text-4xl text-brand-600" />
           <h2 className="text-xl font-semibold text-gray-900">Already verified</h2>
           <p className="text-sm text-gray-500">
-            This address was confirmed already — go ahead and log in.
+            This address was confirmed already, go ahead and log in.
           </p>
           <Link to="/login" className="mt-2 text-sm text-primary hover:underline">
             Go to login
@@ -93,7 +93,7 @@ const VerifyEmail = () => {
         <MdErrorOutline className="text-4xl text-red-500" />
         <h2 className="text-xl font-semibold text-gray-900">This link isn&apos;t valid</h2>
         <p className="text-sm text-gray-500">
-          {errorMessage || 'Verification links expire — ask for a new one from the login page.'}
+          {errorMessage || 'Verification links expire; ask for a new one from the login page.'}
         </p>
         <Link to="/login" className="mt-2 text-sm text-primary hover:underline">
           Back to login

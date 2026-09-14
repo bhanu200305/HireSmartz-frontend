@@ -54,7 +54,7 @@ const EditMasterSmsTemplateModal: React.FC<{
     <AntdCommonModal
       open={template !== null}
       onClose={onClose}
-      title={`Edit platform default SMS — ${template.notification_type}`}
+      title={`Edit platform default SMS: ${template.notification_type}`}
       modalProps={{ width: 560 }}
     >
       <div className="flex flex-col gap-4">
@@ -107,7 +107,7 @@ const MasterSmsTemplatesSection: React.FC = () => {
             Platform default SMS templates
           </Typography>
           <Typography variant="caption" className="block text-gray-500">
-            The only SMS copy that exists for these types — there is no per-organisation override.
+            The only SMS copy that exists for these types; there is no per-organization override.
           </Typography>
         </div>
         <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-500">

@@ -161,7 +161,7 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
                     {w.description ?? meta?.description ?? ''}
                   </p>
                   <p className="text-xs text-primary-500 mt-0.5">
-                    Default: {w.defaultWeightPercentage ?? meta?.defaultPct ?? '—'}%
+                    Default: {w.defaultWeightPercentage ?? meta?.defaultPct ?? '-'}%
                   </p>
                 </div>
                 <input

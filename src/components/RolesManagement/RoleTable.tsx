@@ -81,7 +81,7 @@ const RoleTable: React.FC<RoleTableProps> = ({
           {systemRoleLabel(role.baseRoleName)}
         </Badge>
       ) : (
-        <span className="text-gray-300 text-sm">—</span>
+        <span className="text-gray-300 text-sm">-</span>
       ),
   };
 
@@ -127,7 +127,7 @@ const RoleTable: React.FC<RoleTableProps> = ({
         <span className="text-gray-500 text-sm">
           {role.locationPermissions.length > 0
             ? `${role.locationPermissions.length} location${role.locationPermissions.length === 1 ? '' : 's'}`
-            : '—'}
+            : '-'}
         </span>
       ),
     },
@@ -157,7 +157,7 @@ const RoleTable: React.FC<RoleTableProps> = ({
                 Delete
               </button>
             )}
-            {!canEdit && !canDelete && <span className="text-gray-300">—</span>}
+            {!canEdit && !canDelete && <span className="text-gray-300">-</span>}
           </div>
         ),
     },

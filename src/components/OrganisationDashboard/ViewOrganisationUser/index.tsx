@@ -180,7 +180,7 @@ const ViewOrgUser = () => {
           </Typography>
           <p className="text-xs text-gray-500 mb-3">
             Offices this person is attached to. This is what the location switcher on their own
-            dashboard offers — a role&apos;s per-location permissions only take effect at a location
+            dashboard offers; a role&apos;s per-location permissions only take effect at a location
             they&apos;re attached to here.
           </p>
 
@@ -195,11 +195,11 @@ const ViewOrgUser = () => {
                 >
                   {/* City alone isn't unique — two offices in the same city
                       with no location_code read identically otherwise. */}
-                  {office.city} — {office.address_line_1}
+                  {office.city}, {office.address_line_1}
                   {user.is_active && (
                     <button
                       type="button"
-                      aria-label={`Detach ${office.city} — ${office.address_line_1}`}
+                      aria-label={`Detach ${office.city}, ${office.address_line_1}`}
                       disabled={isDetaching}
                       onClick={() => handleDetachLocation(office.office_id)}
                       className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50"
@@ -224,7 +224,7 @@ const ViewOrgUser = () => {
                 onChange={(value) => setPendingLocationId(value ?? undefined)}
                 disabled={attachableOffices.length === 0}
                 options={attachableOffices.map((office) => ({
-                  label: `${office.city} — ${office.address_line_1}`,
+                  label: `${office.city}, ${office.address_line_1}`,
                   value: office.office_id,
                 }))}
               />
@@ -301,7 +301,7 @@ const ViewOrgUser = () => {
 
       {showConfirm && (
         <ConfirmationModal
-          title="Deactivate this user? This is reversible — their record and role history are kept, not deleted."
+          title="Deactivate this user? This is reversible; their record and role history are kept, not deleted."
           confirmText="DEACTIVATE"
           isLoading={isDeactivating}
           onConfirm={handleDeactivate}

@@ -92,7 +92,7 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
     return (
       <CenteredMessage
         title="Missing interview link"
-        detail="Open the link from your interview email — it needs to include the token."
+        detail="Open the link from your interview email; it needs to include the token."
       />
     );
   }

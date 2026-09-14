@@ -109,9 +109,7 @@ export const CareersResumeUploadPage = () => {
       // about (409: nothing to do, you're already covered; 422: too late,
       // contact the recruiter directly).
       if (statusCode === 409) {
-        setSubmitError(
-          "You've already submitted a resume for this application — no action needed."
-        );
+        setSubmitError("You've already submitted a resume for this application; no action needed.");
       } else if (statusCode === 422) {
         setSubmitError(
           'This link has expired (resume uploads close 24 hours after your call). Please contact the recruiter directly.'
@@ -134,7 +132,7 @@ export const CareersResumeUploadPage = () => {
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-10">
         {!token ? (
           <p className="text-sm text-gray-500 text-center max-w-sm mx-auto">
-            This link is missing its token — please use the link from your email instead of
+            This link is missing its token. Please use the link from your email instead of
             navigating here directly.
           </p>
         ) : isLoadingDetails ? (
@@ -155,7 +153,7 @@ export const CareersResumeUploadPage = () => {
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Resume received!</h1>
             <p className="text-sm text-gray-500">
-              Thanks{linkDetails?.data.first_name ? `, ${linkDetails.data.first_name}` : ''} — your
+              Thanks{linkDetails?.data.first_name ? `, ${linkDetails.data.first_name}` : ''}, your
               resume is on its way to the hiring team. No further action needed on your end.
             </p>
           </div>
@@ -167,7 +165,7 @@ export const CareersResumeUploadPage = () => {
                 : 'Upload your resume'}
             </h1>
             <p className="text-sm text-gray-500 mb-8">
-              Following up on your call — add your resume below to finish your application.
+              Following up on your call. Add your resume below to finish your application.
             </p>
 
             <div className="flex flex-col gap-5">
@@ -236,8 +234,8 @@ export const CareersResumeUploadPage = () => {
                 />
               ) : (
                 <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                  This form can&apos;t accept uploads right now — reCAPTCHA isn&apos;t configured
-                  for this site. Please contact the site administrator.
+                  This form can&apos;t accept uploads right now; reCAPTCHA isn&apos;t configured for
+                  this site. Please contact the site administrator.
                 </p>
               )}
               {captchaError && <p className="text-sm text-red-500 -mt-2">{captchaError}</p>}

@@ -268,7 +268,7 @@ const IntakeQuestionsTab: React.FC = () => {
         }
         extraWarning={
           isPlatformDefault
-            ? 'This also removes every company’s own added questions, everywhere — not just the platform default. Every company will end up with exactly this file’s questions.'
+            ? 'This also removes every company’s own added questions, everywhere, not just the platform default. Every company will end up with exactly this file’s questions.'
             : undefined
         }
         onDownloadTemplate={() => triggerGetTemplate().unwrap()}

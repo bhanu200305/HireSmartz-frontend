@@ -368,7 +368,7 @@ export const CareersApplyPage = () => {
               Message &amp; data rates may apply. Reply STOP to opt out.
               <br />
               <span className="text-gray-400">
-                (Optional – you can apply without agreeing to SMS communication)
+                (Optional: you can apply without agreeing to SMS communication)
               </span>
             </label>
           </div>
@@ -435,7 +435,7 @@ export const CareersApplyPage = () => {
             />
           ) : (
             <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-              This form can&apos;t accept applications right now — reCAPTCHA isn&apos;t configured
+              This form can&apos;t accept applications right now; reCAPTCHA isn&apos;t configured
               for this site. Please contact the site administrator.
             </p>
           )}

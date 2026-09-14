@@ -252,7 +252,7 @@ const DemoIllustration = () => (
         Talk to our team
       </span>
       <h2 className="font-display mt-5 text-3xl leading-tight font-extrabold text-white sm:text-4xl">
-        See CareerForce Pro in action
+        See Careerforce Pro in action
       </h2>
       <p className="mt-4 max-w-sm text-sm text-white/75">
         Get a personalized walkthrough of how AI-powered hiring can help your team screen faster and
@@ -297,10 +297,10 @@ const SuccessPanel = ({ onReset }: { onReset: () => void }) => (
       <LuCheck />
     </span>
     <h2 className="font-display mt-6 text-2xl font-extrabold text-neutral-900">
-      Thanks — you&apos;re all set!
+      Thanks, you&apos;re all set!
     </h2>
     <p className="mt-2 max-w-sm text-sm text-neutral-500">
-      Our team will reach out shortly to schedule your personalized CareerForce Pro demo.
+      Our team will reach out shortly to schedule your personalized Careerforce Pro demo.
     </p>
     <button
       type="button"
@@ -319,7 +319,7 @@ const buildHeardAboutUs = (selection: string, detail: string): string => {
   if (selection === HEAR_ABOUT_US_OTHER) {
     return trimmedDetail ? `Other: ${trimmedDetail}` : HEAR_ABOUT_US_OTHER;
   }
-  return trimmedDetail ? `${selection} — ${trimmedDetail}` : selection;
+  return trimmedDetail ? `${selection}: ${trimmedDetail}` : selection;
 };
 
 // Joins city/state/country into the single string the backend's `location`
@@ -557,7 +557,7 @@ const BookDemoPage = () => {
                           .includes(input.toLowerCase())
                       }
                       options={countryCodes.map(({ short, value, label }) => ({
-                        label: `${short} — ${label}`,
+                        label: `${short}: ${label}`,
                         value,
                       }))}
                     />
@@ -724,7 +724,7 @@ const BookDemoPage = () => {
                     placeholder={
                       form.hearAboutUs === HEAR_ABOUT_US_OTHER
                         ? 'Please tell us where you heard about us'
-                        : 'Optional — a colleague, event, or article name'
+                        : 'Optional: a colleague, event, or article name'
                     }
                     maxLength={HEAR_ABOUT_US_DETAIL_MAX}
                     value={form.hearAboutUsDetail}
@@ -743,7 +743,7 @@ const BookDemoPage = () => {
                 </button>
 
                 <p className="text-center text-[11px] leading-relaxed text-neutral-400">
-                  By providing your phone number, you agree to receive SMS messages from CareerForce
+                  By providing your phone number, you agree to receive SMS messages from Careerforce
                   Pro related to your demo request. Message frequency varies. Message &amp; data
                   rates may apply. Reply STOP to unsubscribe or HELP for help. See our{' '}
                   <span className="font-medium text-neutral-500">Terms of Service</span> and{' '}

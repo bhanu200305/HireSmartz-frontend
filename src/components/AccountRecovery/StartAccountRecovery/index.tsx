@@ -64,7 +64,7 @@ const StartAccountRecovery = () => {
         <h2 className="text-xl font-semibold text-gray-900">Recover your account</h2>
         <p className="mt-1 text-sm text-gray-500">
           Lost access to your email <span className="whitespace-nowrap">and</span> your
-          authenticator? Enter your recovery email — this will reset your password{' '}
+          authenticator? Enter your recovery email; this will reset your password{' '}
           <span className="font-medium">and remove your two-factor methods</span> so you can set
           them up again.
         </p>
@@ -90,7 +90,7 @@ const StartAccountRecovery = () => {
         </Button>
 
         <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-500">
-          Never set up a recovery email, or lost access to it too? Contact support — we&apos;ll
+          Never set up a recovery email, or lost access to it too? Contact support and we&apos;ll
           verify your identity manually.
         </p>
 

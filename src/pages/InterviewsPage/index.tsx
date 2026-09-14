@@ -43,7 +43,7 @@ const formatSchedule = (start: string | null, timezone: string | null): string =
 };
 
 const roundLabel = (booking: { sequence_no: number }): string =>
-  booking.sequence_no ? `Round ${booking.sequence_no}` : '—';
+  booking.sequence_no ? `Round ${booking.sequence_no}` : '-';
 
 export const InterviewsPage = () => {
   const [statusFilter, setStatusFilter] = useState<BookingStatus | undefined>(undefined);
@@ -266,7 +266,7 @@ export const InterviewsPage = () => {
                         <span className="block truncate text-neutral-700">
                           {booking.round_snapshot?.job_title?.trim() ||
                             resolveJobTitle(booking.job_id) ||
-                            '—'}
+                            '-'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-neutral-600">{roundLabel(booking)}</td>

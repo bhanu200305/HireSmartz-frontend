@@ -105,7 +105,7 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
             options={(offices ?? []).map((office) => ({
               // City alone isn't unique — two offices in the same city read
               // identically otherwise.
-              label: `${office.city} — ${office.address_line_1}`,
+              label: `${office.city}, ${office.address_line_1}`,
               value: office.office_id,
             }))}
           />

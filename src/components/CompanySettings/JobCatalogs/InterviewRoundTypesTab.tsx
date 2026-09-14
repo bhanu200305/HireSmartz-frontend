@@ -31,7 +31,7 @@ const fields: CatalogField<FormValues>[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
   {
     name: 'special_kind',
-    label: 'Special kind (optional — at most one round may hold each)',
+    label: 'Special kind (optional, at most one round may hold each)',
     type: 'select',
     options: [
       { label: 'Intake Call', value: 'intake_call' },
@@ -54,7 +54,7 @@ const fields: CatalogField<FormValues>[] = [
     name: 'available_variants',
     label: 'Available variants, comma-separated (optional)',
     type: 'tags',
-    helperText: 'e.g. soundwave, avatar — leave blank for round types with no variant.',
+    helperText: 'e.g. soundwave, avatar; leave blank for round types with no variant.',
   },
 ];
 

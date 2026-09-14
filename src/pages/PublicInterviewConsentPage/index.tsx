@@ -71,9 +71,9 @@ export const PublicInterviewConsentPage = () => {
         }
         disclaimer={
           <p className="mt-4">
-            You may decline without affecting your candidacy — an alternative interview option
-            (e.g., live call with a recruiter) is available upon request. Please contact the hiring
-            manager directly.
+            You may decline without affecting your candidacy. An alternative interview option (e.g.,
+            live call with a recruiter) is available upon request. Please contact the hiring manager
+            directly.
           </p>
         }
         consentLabel="I have read and agree to the above, and I consent to this recorded, AI-assisted interview."

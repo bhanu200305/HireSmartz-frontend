@@ -157,7 +157,7 @@ const EntitlementsPanel: React.FC<EntitlementsPanelProps> = ({
                 <Tooltip
                   title={
                     isLocked
-                      ? "Locked — this company can't change this flag themselves. Click to unlock."
+                      ? "Locked. This company can't change this flag themselves. Click to unlock."
                       : "Lock this flag so the company can't change it themselves."
                   }
                 >

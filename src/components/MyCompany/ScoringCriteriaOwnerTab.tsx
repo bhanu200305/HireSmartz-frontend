@@ -134,7 +134,7 @@ const ScoringCriteriaOwnerTab: React.FC = () => {
       <div className="flex items-center gap-2 mb-1">
         <h2 className="text-2xl font-semibold text-gray-800">Scoring Weight Distribution</h2>
         {isLocked && (
-          <Tooltip title="Locked by CareerForcePro. Contact support to change this.">
+          <Tooltip title="Locked by Careerforce Pro. Contact support to change this.">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold px-2.5 py-1">
               <MdLock size={13} /> Locked
             </span>

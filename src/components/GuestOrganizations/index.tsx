@@ -110,7 +110,7 @@ const GuestOrganizations: React.FC = () => {
           <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
             <HiOutlineSpeakerphone size={18} />
           </span>
-          <h2 className="font-display text-xl font-bold text-gray-900">Book a Demo — Leads</h2>
+          <h2 className="font-display text-xl font-bold text-gray-900">Book a Demo: Leads</h2>
         </div>
 
         {isLoading ? (

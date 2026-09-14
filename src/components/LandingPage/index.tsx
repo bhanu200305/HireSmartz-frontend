@@ -218,7 +218,7 @@ const Hero = () => (
         </h1>
         <p className="mt-5 max-w-lg text-base leading-relaxed text-neutral-500 sm:text-lg">
           Transform manual, inconsistent hiring into a scalable, data-driven workflow with our
-          AI-powered Talent Acquisition platform — from job descriptions to offer, all in one place.
+          AI-powered Talent Acquisition platform, from job descriptions to offer, all in one place.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link
@@ -267,7 +267,7 @@ const TALENT_SEARCH = [
     icon: <LuListOrdered />,
     title: 'Resume Ranker',
     description:
-      'Automatically parses and scores resumes based on skill match, experience, and potential — surfacing the best fits instantly.',
+      'Automatically parses and scores resumes based on skill match, experience, and potential, surfacing the best fits instantly.',
   },
 ];
 
@@ -318,7 +318,7 @@ const FeaturesSection = () => (
         Eliminate Hiring Headaches
       </h2>
       <p className="mt-4 text-base text-neutral-500 sm:text-lg">
-        Reclaim your peace of mind with AI tools that take the stress out of high-volume hiring —
+        Reclaim your peace of mind with AI tools that take the stress out of high-volume hiring,
         from job postings to offer letters.
       </p>
     </Reveal>
@@ -396,8 +396,8 @@ const RankingSpotlight = () => (
           Resume Scoring &amp; <span className="text-accent-400">Stack Ranking</span>
         </h2>
         <p className="mt-4 text-white/60">
-          Our AI engine reads beyond keywords — it understands context, career progression, and
-          skill depth to instantly rank thousands of applicants.
+          Our AI engine reads beyond keywords; it understands context, career progression, and skill
+          depth to instantly rank thousands of applicants.
         </p>
         <ul className="mt-6 space-y-3">
           {RANKING_POINTS.map((point) => (
@@ -446,7 +446,7 @@ const WhyCfp = () => (
   <section id="why-cfp" className="mx-auto max-w-6xl px-5 py-24 sm:px-8">
     <Reveal className="text-center">
       <h2 className="font-display text-3xl font-extrabold text-neutral-900 sm:text-4xl">
-        Why CareerForce Pro
+        Why Careerforce Pro
       </h2>
       <p className="mt-3 text-neutral-500">
         Deep, dependable, and built to scale with your hiring needs.
@@ -482,7 +482,7 @@ const CtaBanner = () => (
         Stay Ahead of the Curve with AI-Powered Hiring
       </h2>
       <p className="relative mx-auto mt-4 max-w-xl text-white/80">
-        Enable consistency and confidence while embracing the future of hiring with CareerForce Pro.
+        Enable consistency and confidence while embracing the future of hiring with Careerforce Pro.
       </p>
       <div className="relative mt-8 flex flex-wrap items-center justify-center gap-4">
         <Link

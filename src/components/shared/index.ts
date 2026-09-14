@@ -18,6 +18,7 @@ export { Code } from './ui/code';
 export { Form } from './ui/form';
 export { Input } from './ui/input';
 export { default as PhoneNumberField } from './ui/PhoneNumberField';
+export { default as NameTitleSelect } from './ui/NameTitleSelect';
 export { Textarea } from './ui/textarea';
 export { Search } from './ui/search';
 export { CustomCheckbox } from './ui/checkbox';

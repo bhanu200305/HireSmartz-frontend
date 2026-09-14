@@ -141,7 +141,7 @@ const ForgotPassword = () => {
       {/* Left Side Image - flex-2 to take more space */}
       <div className="flex-2 h-full flex flex-col justify-center items-center px-10">
         <h3 className="font-display text-5xl font-extrabold">
-          <span className="text-primary-600">careerforce pro</span>
+          <span className="text-primary-600">Careerforce Pro</span>
         </h3>
         <span className="ai-recruitment-text mb-8 mt-2 ">AI POWERED RECRUITMENT SOLUTIONS</span>
         <img
@@ -154,7 +154,7 @@ const ForgotPassword = () => {
             Revolutionizing Talent Acquisition with AI Precision
           </span>
           <span className="text-gray-600 text-sm mt-4">
-            careerforce pro is an end-to-end AI-powered recruitment platform that empowers
+            Careerforce Pro is an end-to-end AI-powered recruitment platform that empowers
             organizations to streamline hiring processes, reduce manual effort, and secure top
             talent with unparalleled efficiency.
           </span>

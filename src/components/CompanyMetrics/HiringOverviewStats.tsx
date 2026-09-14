@@ -95,7 +95,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
             value: isInterviewsLoading ? undefined : completedInterviews?.total?.toLocaleString(),
             footer: (
               <p className="text-[11px] text-neutral-400">
-                Breakdown by Audio / AI / Panel — coming soon
+                Breakdown by Audio / AI / Panel: coming soon
               </p>
             ),
           },

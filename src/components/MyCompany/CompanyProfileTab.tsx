@@ -447,7 +447,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <div className="mt-4 p-4 rounded-xl border border-primary-100 bg-primary-50/40">
           <div className="flex items-center justify-between mb-3">
             <Typography variant="subtitle2" className="font-semibold text-gray-800">
-              Scraped from {form.website_url} — review before applying
+              Scraped from {form.website_url}, review before applying
             </Typography>
             <button
               type="button"
@@ -510,7 +510,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               )}
           </div>
           <p className="mt-3 text-xs text-gray-400">
-            Applied fields are staged into the form below — click Save changes to persist them.
+            Applied fields are staged into the form below. Click Save changes to persist them.
           </p>
         </div>
       )}

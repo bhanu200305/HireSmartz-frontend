@@ -65,7 +65,7 @@ const PackPicker: React.FC = () => {
         Template pack
       </Typography>
       <Typography variant="caption" className="mb-4 block text-gray-500">
-        A pack is a theme — choosing one restyles every notification you send at once. Sample
+        A pack is a theme; choosing one restyles every notification you send at once. Sample
         rendered with a sample invitation; already-sent mail is never affected.
       </Typography>
 

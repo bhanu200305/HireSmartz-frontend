@@ -33,7 +33,7 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
 }) => (
   <div className="flex flex-col">
     <p className="text-xs text-gray-500 mb-4">
-      Every box starts checked to your own permissions — uncheck anything this role shouldn&apos;t
+      Every box starts checked to your own permissions; uncheck anything this role shouldn&apos;t
       have. You can&apos;t grant a permission you don&apos;t hold yourself.
     </p>
 

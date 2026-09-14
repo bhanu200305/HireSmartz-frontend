@@ -11,7 +11,7 @@ export const jobStatus = (job: JobSummary): { label: string; badge: BadgeStatus 
 };
 
 export const daysOpen = (openDate: string | null): string => {
-  if (!openDate) return '—';
+  if (!openDate) return '-';
   const days = Math.max(0, Math.floor((Date.now() - new Date(openDate).getTime()) / 86400000));
   return `${days}d`;
 };

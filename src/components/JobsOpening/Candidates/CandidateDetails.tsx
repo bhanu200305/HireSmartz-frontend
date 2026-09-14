@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Rate, Tabs, Tooltip } from 'antd';
+import { Rate, Select, Tabs, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import { LuMail, LuPencil, LuSquarePen, LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
 import { IoChatbubbleEllipses } from 'react-icons/io5';
@@ -13,7 +13,11 @@ import {
   useGetCandidateQuery,
   type CandidateView,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
-import { useListCandidateInterviewRoundsQuery } from '../../../api/candidate-service/Candidates/interviewRounds';
+import {
+  useListCandidateInterviewRoundsQuery,
+  useListEligibleInterviewersQuery,
+  useSetPanelInterviewersMutation,
+} from '../../../api/candidate-service/Candidates/interviewRounds';
 import { useGetCandidateStatusHistoryQuery } from '../../../api/candidate-service/Candidates/status';
 import {
   useListCandidateInterviewScoresQuery,
@@ -112,6 +116,11 @@ const CandidateDetails = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedRound, setSelectedRound] = useState<CandidateInterviewRoundView | null>(null);
   const [isCreatingBooking, setIsCreatingBooking] = useState(false);
+  // PANEL round interviewer picker, inline above Create Booking — seeded
+  // from whatever's already saved on the round (e.g. set earlier from
+  // PipelineBoard's own Panel Interviewers picker) whenever the selected
+  // round changes, below.
+  const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<string[]>([]);
   const [scoreModalFor, setScoreModalFor] = useState<{
     scoreId: string;
     roundName: string;
@@ -156,6 +165,23 @@ const CandidateDetails = () => {
   const [getResumeDownload, { isLoading: isResumeUrlLoading }] =
     useLazyGetCandidateResumeDownloadQuery();
   const [createBooking] = useCreateBookingMutation();
+  const isPanelRound = Boolean(selectedRound?.round_name?.toLowerCase().includes('panel'));
+  const [setPanelInterviewers, { isLoading: isSavingInterviewers }] =
+    useSetPanelInterviewersMutation();
+  const { data: eligibleInterviewers, isLoading: isLoadingInterviewers } =
+    useListEligibleInterviewersQuery(candidateId ?? '', {
+      skip: !candidateId || !isPanelRound || Boolean(selectedRound?.interview_booking_id),
+    });
+  // Re-seeded whenever the SELECTED ROUND changes (by id, not by reference —
+  // `setSelectedRound` below replaces the object on every booking-created/
+  // interviewers-saved success, and re-seeding on every such change would
+  // stomp whatever the recruiter is mid-picking) so switching rounds shows
+  // that round's own saved selection instead of leftover state from
+  // whichever round was open before.
+  useEffect(() => {
+    setSelectedInterviewerIds(selectedRound?.interviewer_ids ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRound?.id]);
   const { data: selectedBooking } = useGetBookingQuery(selectedRound?.interview_booking_id ?? '', {
     skip: !selectedRound?.interview_booking_id,
   });
@@ -191,6 +217,66 @@ const CandidateDetails = () => {
       refetchCandidate();
     } catch (e) {
       showToast({ message: getCandidateErrorMessage(e, 'Could not remove review'), type: 'error' });
+    }
+  };
+
+  const handleCreateBooking = async () => {
+    if (!candidateId || !parsedJobId || !selectedRound?.round_id) return;
+    // Belt-and-suspenders alongside the button's own `disabled` — a PANEL
+    // booking with no roster falls back to interview-service auto-composing
+    // it from whichever calendar-connected interviewers are in the pool,
+    // which is exactly the untested, no-real-caller path this picker exists
+    // to avoid (see CreateBookingRequest.interviewer_ids's own comment).
+    if (isPanelRound && selectedInterviewerIds.length === 0) return;
+
+    setIsCreatingBooking(true);
+    const name = selectedRound.round_name?.toLowerCase() ?? '';
+    const interviewType = name.includes('panel')
+      ? 'panel'
+      : name.includes('video')
+        ? 'ai_video'
+        : 'audio_screening';
+    try {
+      // Saved to the round FIRST — same data `PipelineBoard`'s own Panel
+      // Interviewers picker writes — so the selection is a real, visible
+      // fact about this round (wherever `interviewer_ids` is already shown)
+      // rather than something only this one booking call ever learns about.
+      if (isPanelRound) {
+        await setPanelInterviewers({
+          candidateId,
+          roundId: selectedRound.id,
+          interviewerIds: selectedInterviewerIds,
+        }).unwrap();
+      }
+      const booking = await createBooking({
+        body: {
+          candidate_id: candidateId,
+          job_id: parsedJobId,
+          round_id: selectedRound.round_id,
+          sequence_no: selectedRound.sequence ?? 1,
+          interview_type: interviewType,
+          interviewer_id: null,
+          interviewer_ids: isPanelRound ? selectedInterviewerIds : null,
+          immediate: false,
+          // Without this, interview-service has no way to report this
+          // booking's status/score back to the right round — it silently
+          // never updates, even once the call completes.
+          candidate_interview_round_id: selectedRound.id,
+        },
+      }).unwrap();
+      setSelectedRound({
+        ...selectedRound,
+        interview_booking_id: booking.id,
+        interviewer_ids: isPanelRound ? selectedInterviewerIds : selectedRound.interviewer_ids,
+      });
+      showToast({ message: 'Booking created successfully.', type: 'success' });
+    } catch (error) {
+      showToast({
+        message: getCandidateErrorMessage(error, 'Could not create booking.'),
+        type: 'error',
+      });
+    } finally {
+      setIsCreatingBooking(false);
     }
   };
 
@@ -437,7 +523,7 @@ const CandidateDetails = () => {
                 <p className="font-bold">Resume Score:</p>
                 <span className="text-gray-500">
                   {candidate?.resume_score === null || candidate?.resume_score === undefined
-                    ? '—'
+                    ? '-'
                     : candidate.resume_score}
                 </span>
               </div>
@@ -542,7 +628,7 @@ const CandidateDetails = () => {
                     <div>
                       <div className="text-xs font-semibold uppercase text-gray-400">AI Score</div>
                       <div className="mt-2 text-2xl font-bold text-primary">
-                        {candidate?.resume_score ?? '—'}
+                        {candidate?.resume_score ?? '-'}
                       </div>
                       {candidate?.scoring_reason && (
                         <p className="mt-1 text-sm text-gray-600">{candidate.scoring_reason}</p>
@@ -564,7 +650,7 @@ const CandidateDetails = () => {
                         Intake Call Consistency
                       </div>
                       <div className="mt-2 text-2xl font-bold text-primary">
-                        {candidate?.consistency_score ?? '—'}
+                        {candidate?.consistency_score ?? '-'}
                       </div>
                       {candidate?.consistency_score_reason && (
                         <p className="mt-1 text-sm text-gray-600">
@@ -615,8 +701,8 @@ const CandidateDetails = () => {
                           Round details
                         </div>
                         <div className="mt-2 text-sm text-gray-700">
-                          Sequence {selectedRound.sequence ?? '—'} ·{' '}
-                          {selectedRound.duration_minutes ?? '—'} minutes
+                          Sequence {selectedRound.sequence ?? '-'} ·{' '}
+                          {selectedRound.duration_minutes ?? '-'} minutes
                         </div>
                         <div className="mt-2 text-sm text-gray-700">
                           {selectedRound.scheduled_at
@@ -632,10 +718,10 @@ const CandidateDetails = () => {
                           Name: {candidateDisplayName(candidate)}
                         </div>
                         <div className="mt-2 text-sm text-gray-700">
-                          Email: {candidate?.email_id || '—'}
+                          Email: {candidate?.email_id || '-'}
                         </div>
                         <div className="mt-2 text-sm text-gray-700">
-                          Phone: {candidate?.contact_no || '—'}
+                          Phone: {candidate?.contact_no || '-'}
                         </div>
                       </div>
                     </div>
@@ -654,7 +740,7 @@ const CandidateDetails = () => {
                           Resume Consistency
                         </div>
                         <div className="mt-2 text-2xl font-bold text-primary">
-                          {candidate?.consistency_score ?? '—'}
+                          {candidate?.consistency_score ?? '-'}
                         </div>
                         {candidate?.consistency_score_reason ? (
                           <p className="mt-1 text-sm text-gray-600">
@@ -662,7 +748,7 @@ const CandidateDetails = () => {
                           </p>
                         ) : (
                           <p className="mt-1 text-sm text-gray-400">
-                            Not available yet — reported by ai-service once it has both the resume
+                            Not available yet; reported by ai-service once it has both the resume
                             and this call&apos;s transcript.
                           </p>
                         )}
@@ -684,6 +770,37 @@ const CandidateDetails = () => {
                           Create a booking to start scheduling this round.
                         </p>
                       )}
+                      {isPanelRound && !selectedRound.interview_booking_id && (
+                        <div>
+                          <label
+                            htmlFor="panel-interviewer-select"
+                            className="mb-1 block text-sm text-gray-800"
+                          >
+                            Interviewer(s) <span className="required-asterisk">*</span>
+                          </label>
+                          <Select
+                            id="panel-interviewer-select"
+                            mode="multiple"
+                            className="w-full"
+                            placeholder="Choose who sits on this round's panel"
+                            loading={isLoadingInterviewers}
+                            value={selectedInterviewerIds}
+                            onChange={(value) => setSelectedInterviewerIds(value)}
+                            showSearch
+                            optionFilterProp="label"
+                            notFoundContent={
+                              isLoadingInterviewers ? 'Loading…' : 'No eligible interviewers found'
+                            }
+                            options={(eligibleInterviewers ?? []).map((interviewer) => ({
+                              label: `${interviewer.display_name} (${interviewer.email})`,
+                              value: interviewer.id,
+                            }))}
+                          />
+                          <p className="mt-1 text-xs text-gray-400">
+                            Pick at least one panel interviewer to enable Create Booking.
+                          </p>
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-3">
                         <Button
                           className={`rounded-full px-5 py-2 text-sm font-semibold ${
@@ -692,63 +809,20 @@ const CandidateDetails = () => {
                               : 'bg-primary text-white'
                           }`}
                           disabled={
-                            Boolean(selectedRound.interview_booking_id) || isCreatingBooking
+                            Boolean(selectedRound.interview_booking_id) ||
+                            isCreatingBooking ||
+                            isSavingInterviewers ||
+                            (isPanelRound && selectedInterviewerIds.length === 0)
                           }
-                          onClick={() => {
-                            if (!candidateId || !parsedJobId || !selectedRound.round_id) return;
-                            setIsCreatingBooking(true);
-                            const name = selectedRound.round_name?.toLowerCase() ?? '';
-                            const interviewType = name.includes('panel')
-                              ? 'panel'
-                              : name.includes('video')
-                                ? 'ai_video'
-                                : 'audio_screening';
-                            void createBooking({
-                              body: {
-                                candidate_id: candidateId,
-                                job_id: parsedJobId,
-                                round_id: selectedRound.round_id,
-                                sequence_no: selectedRound.sequence ?? 1,
-                                interview_type: interviewType,
-                                interviewer_id: null,
-                                immediate: false,
-                                // Without this, interview-service has no way
-                                // to report this booking's status/score back
-                                // to the right round — it silently never
-                                // updates, even once the call completes.
-                                candidate_interview_round_id: selectedRound.id,
-                              },
-                            })
-                              .unwrap()
-                              .then((booking) => {
-                                setSelectedRound({
-                                  ...selectedRound,
-                                  interview_booking_id: booking.id,
-                                });
-                                showToast({
-                                  message: 'Booking created successfully.',
-                                  type: 'success',
-                                });
-                              })
-                              .catch((error) =>
-                                showToast({
-                                  message: getCandidateErrorMessage(
-                                    error,
-                                    'Could not create booking.'
-                                  ),
-                                  type: 'error',
-                                })
-                              )
-                              .finally(() => setIsCreatingBooking(false));
-                          }}
+                          onClick={() => void handleCreateBooking()}
                         >
-                          {isCreatingBooking
+                          {isCreatingBooking || isSavingInterviewers
                             ? 'CREATING…'
                             : selectedRound.interview_booking_id
                               ? 'INVITATION CREATED'
                               : 'CREATE BOOKING'}
                         </Button>
-                        {selectedRound.round_name?.toLowerCase().includes('panel') && (
+                        {isPanelRound && (
                           <Button
                             className="rounded-full border border-primary-300 bg-white px-5 py-2 text-sm font-semibold text-primary-700"
                             onClick={() => {
@@ -796,7 +870,7 @@ const CandidateDetails = () => {
                       AI Score
                     </div>
                     <div className="text-2xl font-bold text-primary">
-                      {candidate?.resume_score ?? '—'}
+                      {candidate?.resume_score ?? '-'}
                     </div>
                     {candidate?.scoring_reason && (
                       <p className="text-sm text-gray-600 mt-1">{candidate.scoring_reason}</p>
@@ -812,7 +886,7 @@ const CandidateDetails = () => {
                       Intake Call Consistency
                     </div>
                     <div className="text-2xl font-bold text-primary">
-                      {candidate?.consistency_score ?? '—'}
+                      {candidate?.consistency_score ?? '-'}
                     </div>
                     {candidate?.consistency_score_reason && (
                       <p className="text-sm text-gray-600 mt-1">
@@ -969,7 +1043,7 @@ const CandidateDetails = () => {
                                       {outcomeLabel}
                                     </span>
                                   ) : (
-                                    <span className="text-gray-400">—</span>
+                                    <span className="text-gray-400">-</span>
                                   )}
                                 </td>
                                 <td className="px-2 py-3">
@@ -1033,14 +1107,14 @@ const CandidateDetails = () => {
                               Intake Call consistency:{' '}
                               <span className="font-semibold text-gray-800">
                                 {candidate?.consistency_score ??
-                                  'pending — reported once the call transcript and resume are both in'}
+                                  'pending, reported once the call transcript and resume are both in'}
                               </span>
                             </li>
                           )}
                           <li>
                             {scores.length > 0
                               ? `${scores.length} interview score${scores.length === 1 ? '' : 's'} recorded across ${rounds.length} round${rounds.length === 1 ? '' : 's'}.`
-                              : 'No interview-round scores yet — they appear here once a round produces a score or transcript.'}
+                              : 'No interview-round scores yet; they appear here once a round produces a score or transcript.'}
                           </li>
                         </ul>
                       </div>
@@ -1055,7 +1129,7 @@ const CandidateDetails = () => {
             <CommonCard>
               <div className="p-5 flex flex-col items-center gap-3 text-center">
                 <p className="text-sm text-gray-500 max-w-md">
-                  Message history isn&apos;t available yet — this sends a new SMS, it doesn&apos;t
+                  Message history isn&apos;t available yet; this sends a new SMS, it doesn&apos;t
                   show a conversation thread.
                 </p>
                 <Button

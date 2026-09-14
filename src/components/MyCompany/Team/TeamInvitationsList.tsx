@@ -26,7 +26,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const handleResend = async (invitationId: string) => {
     try {
       await resend({ tenantId, invitationId }).unwrap();
-      showToast({ message: 'Invitation resent — expiry pushed out 48 hours.', type: 'success' });
+      showToast({ message: 'Invitation resent, expiry pushed out 48 hours.', type: 'success' });
     } catch (err) {
       showToast({
         message: getOrgErrorMessage(err, 'Failed to resend invitation.'),

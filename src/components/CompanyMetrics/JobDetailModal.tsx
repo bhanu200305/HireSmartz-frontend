@@ -25,7 +25,7 @@ const capitalize = (value: string): string =>
 const RESUME_SCORE_BAND_ORDER: ResumeScoreBand[] = ['0-2', '2-4', '4-6', '6-8', '8-10'];
 
 const COMING_SOON_ROUND_TYPE =
-  'Coming soon — interview-service no longer breaks bookings down by Audio/AI/Panel, only by status.';
+  'Coming soon: interview-service no longer breaks bookings down by Audio/AI/Panel, only by status.';
 
 /**
  * One job's own KPI popup — real applicant/funnel/applications-over-time/
@@ -89,9 +89,9 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
     },
     {
       // `average` is `null` when nothing has been scored yet, not `0` —
-      // API_CONTRACT.md's own distinction, rendered as "—" not "0.0".
+      // API_CONTRACT.md's own distinction, rendered as "-" not "0.0".
       label: 'Avg AI score',
-      value: isAvgScoreLoading ? undefined : (averageResumeScore?.average?.toFixed(1) ?? '—'),
+      value: isAvgScoreLoading ? undefined : (averageResumeScore?.average?.toFixed(1) ?? '-'),
     },
   ];
 

@@ -191,11 +191,11 @@ const EmailLayoutSection: React.FC = () => {
   return (
     <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
       <Typography variant="h6" className="mb-1 block">
-        Brand colours &amp; banner
+        Brand colors &amp; banner
       </Typography>
       <Typography variant="caption" className="mb-4 block text-gray-500">
-        Applies to candidate-facing mail only — your company logo already shows there. This never
-        changes the Company-Admin invite or sign-in emails, which always carry CareerForce
+        Applies to candidate-facing mail only, since your company logo already shows there. This
+        never changes the Company-Admin invite or sign-in emails, which always carry Careerforce
         Pro&apos;s own branding.
       </Typography>
 

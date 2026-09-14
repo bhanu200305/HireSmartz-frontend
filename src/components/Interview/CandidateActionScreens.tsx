@@ -68,7 +68,7 @@ export const CandidateFeedbackPage = () => {
     return (
       <Shell>
         <p className="text-center text-sm text-gray-500">
-          This feedback link is missing its token — please use the link from your email.
+          This feedback link is missing its token. Please use the link from your email.
         </p>
       </Shell>
     );
@@ -173,7 +173,7 @@ export const WithdrawalPage = () => {
     return (
       <Shell>
         <p className="text-center text-sm text-gray-500">
-          This link is missing its token — please use the link from your email.
+          This link is missing its token. Please use the link from your email.
         </p>
       </Shell>
     );
@@ -242,7 +242,7 @@ export const RecordingPlaybackPage = () => {
     return (
       <Shell>
         <p className="text-center text-sm text-gray-500">
-          This recording link is missing its token — please use the link from your email.
+          This recording link is missing its token. Please use the link from your email.
         </p>
       </Shell>
     );

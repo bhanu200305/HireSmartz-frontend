@@ -190,7 +190,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
       showToast({
         message: nextLocked
           ? 'Company locked to its current weights.'
-          : 'Company unlocked — it can set its own weights again.',
+          : 'Company unlocked; it can set its own weights again.',
         type: 'success',
       });
     } catch (err) {
@@ -204,7 +204,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
   const handleReset = async (section: 'resume' | 'interview') => {
     if (isPlatformDefault) {
       showToast({
-        message: 'This is the platform default — there is nothing to reset it to.',
+        message: 'This is the platform default; there is nothing to reset it to.',
         type: 'info',
       });
       return;
@@ -262,7 +262,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
           }
         />
         {!isPlatformDefault && !isLoading && (
-          <Tooltip title="Locked means this company can't edit its own weights — only Super Admin can change them here.">
+          <Tooltip title="Locked means this company can't edit its own weights; only Super Admin can change them here.">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold px-2.5 py-1">
               <MdLock size={13} />
               Locked

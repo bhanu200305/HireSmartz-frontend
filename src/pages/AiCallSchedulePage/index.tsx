@@ -67,7 +67,7 @@ const T = {
     callNowError: "We couldn't start the call. Please pick a slot instead.",
     panelTitle: 'Schedule your panel interview',
     panelBody:
-      'Your interview is with a panel from the hiring team. Pick a time that works for you on the scheduling page — the panel’s live availability is shown there.',
+      'Your interview is with a panel from the hiring team. Pick a time that works for you on the scheduling page; the panel’s live availability is shown there.',
     panelChooseTime: 'Choose a time',
     panelAfterBooking:
       'Once you’ve picked a time you’ll get a calendar invite by email. You can close this page after booking.',
@@ -177,7 +177,7 @@ const voiceConsentDescriptionEn = (
 
 const voiceConsentDisclaimerEn = (
   <p className="mt-4">
-    You may decline without affecting your candidacy — an alternative interview option (e.g., live
+    You may decline without affecting your candidacy. An alternative interview option (e.g., live
     call with a recruiter) is available upon request. Please contact the hiring manager directly.
   </p>
 );

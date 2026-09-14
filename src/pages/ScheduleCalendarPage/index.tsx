@@ -60,7 +60,7 @@ const voiceConsentDescriptionEn = (
 
 const voiceConsentDisclaimerEn = (
   <p className="mt-4">
-    You may decline without affecting your candidacy — an alternative interview option (e.g., live
+    You may decline without affecting your candidacy. An alternative interview option (e.g., live
     call with a recruiter) is available upon request. Please contact the hiring manager directly.
   </p>
 );

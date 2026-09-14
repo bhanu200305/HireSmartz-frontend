@@ -203,7 +203,7 @@ const DepartmentSettingsTab: React.FC = () => {
 
       {!selectedDepartmentId ? (
         <div className="p-6 text-center text-gray-400 text-sm border rounded-xl">
-          No departments yet — add one on the Departments tab first.
+          No departments yet. Add one on the Departments tab first.
         </div>
       ) : (
         <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm relative">
@@ -213,7 +213,7 @@ const DepartmentSettingsTab: React.FC = () => {
             </div>
           )}
           <div className="px-4 py-3 flex justify-between items-center border-b border-neutral-200 bg-gray-50">
-            <Typography variant="body1">{activeDepartmentName} — job titles</Typography>
+            <Typography variant="body1">{activeDepartmentName}: job titles</Typography>
             <Badge status={stagedMappedIds.size > 0 ? 'info' : 'neutral'} dot={false}>
               {stagedMappedIds.size} of {(allJobTitles ?? []).length} selected
             </Badge>

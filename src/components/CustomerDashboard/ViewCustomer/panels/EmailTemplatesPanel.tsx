@@ -94,8 +94,8 @@ const TenantThemeSection: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             Brand colours
           </Typography>
           <Typography variant="caption" className="block text-gray-500">
-            Applies to this company&apos;s candidate-facing mail only — never their invite email,
-            which always carries CareerForce Pro&apos;s own branding.
+            Applies to this company&apos;s candidate-facing mail only, never their invite email,
+            which always carries Careerforce Pro&apos;s own branding.
           </Typography>
         </div>
         <Button

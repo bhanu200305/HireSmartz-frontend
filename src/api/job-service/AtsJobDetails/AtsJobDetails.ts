@@ -29,7 +29,7 @@ const extendedApi = jobApi.injectEndpoints({
           id: job.ats_job_id,
           name: job.title || job.ats_job_id,
           ats_job_id: job.ats_job_id,
-          combinedName: job.title ? `${job.ats_job_id} — ${job.title}` : job.ats_job_id,
+          combinedName: job.title ? `${job.ats_job_id}: ${job.title}` : job.ats_job_id,
         })),
       }),
       providesTags: ['AtsJobs'],

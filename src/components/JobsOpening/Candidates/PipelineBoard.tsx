@@ -143,7 +143,7 @@ const PipelineBoard = ({
       showToast({
         message: result.invite_sent
           ? `Invite sent for ${result.round.round_name}.`
-          : 'Invite already sent moments ago — not sent again.',
+          : 'Invite already sent moments ago; not sent again.',
         type: result.invite_sent ? 'success' : 'info',
       });
     } catch (e) {
@@ -292,7 +292,7 @@ const PipelineBoard = ({
                 </Badge>
                 {overdue && (
                   <span className="text-xs text-danger">
-                    No update since the scheduled time — may not have gone through.
+                    No update since the scheduled time; may not have gone through.
                   </span>
                 )}
                 {when && <span className="text-xs text-neutral-500">{when}</span>}
@@ -380,7 +380,7 @@ const PipelineBoard = ({
         <div>
           <div className="text-xs text-neutral-400">Next step</div>
           <div className="font-semibold text-neutral-900">
-            {nextRound ? roundLabel(nextRound) : 'None — pipeline complete'}
+            {nextRound ? roundLabel(nextRound) : 'None, pipeline complete'}
             {nextWhen && <span className="ml-1 font-normal text-neutral-500">· {nextWhen}</span>}
           </div>
           {nextIsInterviewRound && (
@@ -405,7 +405,7 @@ const PipelineBoard = ({
         </div>
         <div>
           <div className="text-xs text-neutral-400">Avg. score so far</div>
-          <div className="font-semibold text-neutral-900">{avgScore ?? '—'}</div>
+          <div className="font-semibold text-neutral-900">{avgScore ?? '-'}</div>
         </div>
         <div>
           <div className="text-xs text-neutral-400">Overall standing</div>
