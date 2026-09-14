@@ -89,9 +89,8 @@ const CompleteAccountRecovery = () => {
           <FaCheckCircle className="text-4xl text-brand-600" />
           <h2 className="text-xl font-semibold text-gray-900">Account recovered</h2>
           <p className="text-sm text-gray-500">
-            Your password was reset and your two-factor methods were removed for safety.
-            You&apos;ll be asked to set up MFA again next time you log in. Redirecting you to log
-            in…
+            Your password was reset and your two-factor methods were removed for safety. You&apos;ll
+            be asked to set up MFA again next time you log in. Redirecting you to log in…
           </p>
         </div>
       </AuthPageShell>
