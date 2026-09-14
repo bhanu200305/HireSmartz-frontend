@@ -147,7 +147,8 @@ const AiQuestionsSetup = () => {
           createdById: activeJobOpening.details?.created_by,
         },
         userId,
-        role
+        role,
+        effectivePermissions
       );
 
   // Editing an already-published job skips publish and just saves; editing

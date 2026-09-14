@@ -60,10 +60,7 @@ const buildCurrentSortKey = (sortBy: string, sortOrder: 'asc' | 'desc') =>
 
 const CandidatesListing = () => {
   const navigate = useNavigate();
-  const { role, callerKind, userId } = useSelector(
-    (state: any) => state.LoginSlice,
-    shallowEqual
-  );
+  const { role, callerKind, userId } = useSelector((state: any) => state.LoginSlice, shallowEqual);
   const tenantId = useSessionTenantId();
   const effectivePermissions = useEffectivePermissions();
   const { id } = useParams<{ id: string }>();
@@ -105,7 +102,8 @@ const CandidatesListing = () => {
           createdById: jobOpeningData.details?.created_by,
         },
         userId,
-        role
+        role,
+        effectivePermissions
       );
   const canManageCandidates =
     hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) ||

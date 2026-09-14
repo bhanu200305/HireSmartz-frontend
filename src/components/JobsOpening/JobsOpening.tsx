@@ -102,7 +102,8 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
           createdById: jobData.details.created_by,
         },
         userId,
-        role
+        role,
+        effectivePermissions
       );
     if (!canEdit) {
       showToast({ message: 'You are not assigned to this job.', type: 'error' });

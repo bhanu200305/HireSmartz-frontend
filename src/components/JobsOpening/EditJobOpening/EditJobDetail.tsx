@@ -335,7 +335,8 @@ const EditJobDetail = () => {
           createdById: jobData.details?.created_by,
         },
         userId,
-        role
+        role,
+        effectivePermissions
       );
 
   const {
@@ -2083,9 +2084,7 @@ const EditJobDetail = () => {
                 type="shift"
                 enableEditDelete={canManageCatalogueEntries}
                 onAddOption={
-                  canManageCatalogueEntries
-                    ? (value) => handleAddShiftOption(value)
-                    : undefined
+                  canManageCatalogueEntries ? (value) => handleAddShiftOption(value) : undefined
                 }
                 onEditOption={
                   canManageCatalogueEntries ? (id) => handleEditShiftOption(id) : undefined
@@ -2830,7 +2829,9 @@ const EditJobDetail = () => {
                   placeholder="Select Required Skills"
                   label="Required Skills"
                   onAddOption={
-                    canManageCatalogueEntries ? (value) => handleAddOption(value, 'mandatorySkills') : undefined
+                    canManageCatalogueEntries
+                      ? (value) => handleAddOption(value, 'mandatorySkills')
+                      : undefined
                   }
                   onSearchChange={searchMandatorySkills}
                   type="mandatorySkills"
@@ -2911,7 +2912,9 @@ const EditJobDetail = () => {
                   placeholder="Select Optional Skills"
                   label="Optional Skills"
                   onAddOption={
-                    canManageCatalogueEntries ? (value) => handleAddOption(value, 'optionalSkills') : undefined
+                    canManageCatalogueEntries
+                      ? (value) => handleAddOption(value, 'optionalSkills')
+                      : undefined
                   }
                   onSearchChange={searchOptionalSkills}
                   type="optionalSkills"
