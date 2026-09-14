@@ -335,7 +335,8 @@ const EditJobDetail = () => {
           createdById: jobData.details?.created_by,
         },
         userId,
-        role
+        role,
+        effectivePermissions
       );
 
   const {

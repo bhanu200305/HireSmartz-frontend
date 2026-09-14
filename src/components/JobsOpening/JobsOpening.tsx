@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import { useGetJobOpeningByIdQuery } from '../../api/job-service/JobOpening/GetJobOpeningById';
-import { hasFeatureAccess, isAssignedToJob } from '../../shared/utils/auth/getAccess';
+import { isAssignedToJob } from '../../shared/utils/auth/getAccess';
 import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import {
   setEditJobOpeningId,
@@ -93,18 +93,17 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
   // canEditThisJob for the same pairing.
   useEffect(() => {
     if (!isEditMode || !jobData) return;
-    const canEdit =
-      hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) &&
-      isAssignedToJob(
-        {
-          hiringManagerIds: jobData.details.hiring_manager_ids,
-          recruiterIds: jobData.details.recruiter_ids,
-          createdById: jobData.details.created_by,
-        },
-        userId,
-        role
-      );
-    if (!canEdit) {
+    const assigned = isAssignedToJob(
+      {
+        hiringManagerIds: jobData.details.hiring_manager_ids,
+        recruiterIds: jobData.details.recruiter_ids,
+        createdById: jobData.details.created_by,
+      },
+      userId,
+      role,
+      effectivePermissions
+    );
+    if (!assigned) {
       showToast({ message: 'You are not assigned to this job.', type: 'error' });
       navigate('/jobs', { replace: true });
     }

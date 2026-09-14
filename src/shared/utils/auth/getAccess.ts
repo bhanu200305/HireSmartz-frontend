@@ -1,15 +1,24 @@
 import { Authorities, ROLE_AUTHORITIES } from '../../../constants/authorities.constant';
-import { convertToCamelCase } from '../methods';
 
-/**
- * Feature/action-level gate for buttons and menu items (as opposed to
- * useHasAccess, which is the hook form of the same check).
- *
- * `effectivePermissions` should be the caller's resolved permission set —
- * pass the result of useEffectivePermissions() so this never disagrees with
- * useHasAccess/the sidebar. If omitted (legacy call sites not yet updated),
- * this falls back to the static ROLE_AUTHORITIES seed only, same as before.
- */
+// Normalizes a role name for comparison, regardless of casing/format.
+export const normalizeRoleName = (name: string | null | undefined): string =>
+  (name ?? '').toLowerCase().replace(/[^a-z]/g, '');
+
+export const findRoleAuthorities = (
+  type: string | undefined,
+  name: string | undefined
+): Authorities[] => {
+  const rolesForType = ROLE_AUTHORITIES[type as keyof typeof ROLE_AUTHORITIES] as
+    | Record<string, Authorities[]>
+    | undefined;
+  if (!rolesForType) return [];
+  const target = normalizeRoleName(name);
+  const key = Object.keys(rolesForType).find((k) => normalizeRoleName(k) === target);
+  return key ? rolesForType[key] : [];
+};
+
+// Feature/action-level gate for buttons and menu items. Pass
+// useEffectivePermissions()'s result as effectivePermissions when available.
 export const hasFeatureAccess = (
   feature: 'user' | 'company' | 'job_opening' | 'dashboard' | 'job_configuration',
   action: 'create' | 'view' | 'edit' | 'archive' | 'resend',
@@ -28,18 +37,33 @@ export const hasFeatureAccess = (
     return effectivePermissions.includes(requiredAuthority);
   }
 
-  const allowedAuthorities = ROLE_AUTHORITIES[role?.type]?.[convertToCamelCase(role?.name)] || [];
-  return allowedAuthorities.includes(requiredAuthority);
+  return findRoleAuthorities(role?.type, role?.name).includes(requiredAuthority);
 };
 
-/** Job-level gate on top of hasFeatureAccess — assigned, created, or admin. */
+// Roles that bypass per-job assignment entirely.
+const _ASSIGNMENT_EXEMPT_ROLE_NAMES = new Set([
+  'companyadmin',
+  'superadmin',
+  'cfpadmin',
+  'cfpsupport',
+]);
+
+// Job-level gate on top of hasFeatureAccess — assigned, created, or admin.
+// JOB_OPENING_DELETE is company_admin-and-above only, so it also serves as
+// a reliable org-wide bypass signal.
 export const isAssignedToJob = (
   job: { hiringManagerIds?: string[]; recruiterIds?: string[]; createdById?: string | null },
   userId: string | null | undefined,
-  role: { name: string; type: string }
+  role: { name: string; type: string },
+  effectivePermissions: Authorities[] = []
 ): boolean => {
-  // Not convertToCamelCase — it doesn't handle underscore_case.
-  if (role?.type === 'owner' || role?.name === 'company_admin') return true;
+  if (
+    role?.type === 'owner' ||
+    _ASSIGNMENT_EXEMPT_ROLE_NAMES.has(normalizeRoleName(role?.name)) ||
+    effectivePermissions.includes(Authorities.JOB_OPENING_DELETE)
+  ) {
+    return true;
+  }
   if (!userId) return false;
   return Boolean(
     job.hiringManagerIds?.includes(userId) ||
