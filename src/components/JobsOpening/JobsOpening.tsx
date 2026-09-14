@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import { useGetJobOpeningByIdQuery } from '../../api/job-service/JobOpening/GetJobOpeningById';
 import { isAssignedToJob } from '../../shared/utils/auth/getAccess';
+import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import {
   setEditJobOpeningId,
   updateEditAiJobDescription,
@@ -84,6 +85,7 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
   );
 
   const { role, userId } = useSelector((state: RootState) => (state as any).LoginSlice);
+  const effectivePermissions = useEffectivePermissions();
 
   // Guards every edit tab in one place.
   useEffect(() => {
@@ -95,13 +97,14 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
         createdById: jobData.details.created_by,
       },
       userId,
-      role
+      role,
+      effectivePermissions
     );
     if (!assigned) {
       showToast({ message: 'You are not assigned to this job.', type: 'error' });
       navigate('/jobs', { replace: true });
     }
-  }, [isEditMode, jobData, userId, role, navigate]);
+  }, [isEditMode, jobData, userId, role, effectivePermissions, navigate]);
 
   useEffect(() => {
     if (isEditMode && jobData && (!jobOpeningId || parsedJobId !== jobOpeningId)) {

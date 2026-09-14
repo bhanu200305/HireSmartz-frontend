@@ -107,7 +107,8 @@ const CandidatesListing = () => {
           createdById: jobOpeningData.details?.created_by,
         },
         userId,
-        role
+        role,
+        effectivePermissions
       );
   const canManageCandidates =
     hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) ||

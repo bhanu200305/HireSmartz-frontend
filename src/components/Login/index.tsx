@@ -331,11 +331,14 @@ const Login = () => {
     const userId = decodedToken.sub || undefined;
     const tenantId = decodedToken.tenant_id ?? null;
     const callerKind: 'tenant' | 'platform' = tenantId ? 'tenant' : 'platform';
-    // DashboardPage branches on role.type ('owner' | 'organization', else 404),
-    // and getAccess.ts's isAssignedToJob exempts role.name === 'company_admin' -
-    // both need a real role.name, not just permissions from the fetch below.
+    // The `roles` claim is alphabetically sorted, and a user can hold more
+    // than one role — always prefer company_admin when present rather than
+    // picking whichever role happens to sort first.
+    const tenantRoleName = decodedToken.roles?.includes('company_admin')
+      ? 'company_admin'
+      : decodedToken.roles?.[0] || '';
     const role = {
-      name: callerKind === 'platform' ? PLATFORM_CALLER_ROLE_NAME : decodedToken.roles?.[0] || '',
+      name: callerKind === 'platform' ? PLATFORM_CALLER_ROLE_NAME : tenantRoleName,
       type: callerKind === 'platform' ? 'owner' : 'organization',
     };
     const canManageCompanySettings = extractCanManageCompanySettings(token);

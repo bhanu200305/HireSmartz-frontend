@@ -889,7 +889,7 @@ const JobsOpening = () => {
           setJobNotesFor({
             id: record.jobOpeningId,
             title: record.jobTitleName ?? '',
-            canWrite: isAssignedToJob(record, userId, role),
+            canWrite: isAssignedToJob(record, userId, role, authorities),
           }),
       },
       !record.isClosed && {
@@ -939,7 +939,7 @@ const JobsOpening = () => {
     ].filter((item) => {
       if (!item) return false;
       // Every action but View requires assignment.
-      if (item.key !== 'view' && !isAssignedToJob(record, userId, role)) return false;
+      if (item.key !== 'view' && !isAssignedToJob(record, userId, role, authorities)) return false;
       if (item.key === 'notes') {
         return hasFeatureAccess('job_opening', 'view', role, authorities);
       }
@@ -1174,11 +1174,6 @@ const JobsOpening = () => {
                                 {renderHighlightedField(jobs.jobTitleName, 'jobTitleName')}
                               </span>
                             </Link>
-                            {!isAssignedToJob(jobs, userId, role) && (
-                              <Badge status="neutral" dot={false}>
-                                View only
-                              </Badge>
-                            )}
                             <span
                               className="ml-1 cursor-pointer"
                               onClick={(e) => {

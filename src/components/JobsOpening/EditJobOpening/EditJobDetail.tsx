@@ -92,6 +92,7 @@ import {
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { Loader } from '../../shared/ui/loader';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
@@ -163,6 +164,7 @@ const EditJobDetail = () => {
     shallowEqual
   );
   const { role, userId } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  const effectivePermissions = useEffectivePermissions();
   // hiring_manager/recruiter can only pick an existing catalogue entry,
   // never add/edit/delete one from this form.
   const canManageCatalogueEntries = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
@@ -325,7 +327,8 @@ const EditJobDetail = () => {
           createdById: jobData.details?.created_by,
         },
         userId,
-        role
+        role,
+        effectivePermissions
       );
 
   const {
