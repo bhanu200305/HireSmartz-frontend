@@ -19,6 +19,7 @@ import {
   useListCandidateInterviewScoresQuery,
   useDeleteResumeReviewMutation,
   useLazyGetCandidateResumeDownloadQuery,
+  useRequestResumeUploadMutation,
 } from '../../../api/candidate-service/Candidates/scoring';
 import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candidates/notes';
 import {
@@ -166,6 +167,8 @@ const CandidateDetails = () => {
   const [deleteResumeReview] = useDeleteResumeReviewMutation();
   const [getResumeDownload, { isLoading: isResumeUrlLoading }] =
     useLazyGetCandidateResumeDownloadQuery();
+  const [requestResumeUpload, { isLoading: isRequestingResumeUpload }] =
+    useRequestResumeUploadMutation();
   const [createBooking] = useCreateBookingMutation();
   const { data: selectedBooking } = useGetBookingQuery(selectedRound?.interview_booking_id ?? '', {
     skip: !selectedRound?.interview_booking_id,
@@ -197,6 +200,22 @@ const CandidateDetails = () => {
       anchor.click();
     } catch (e) {
       showToast({ message: getCandidateErrorMessage(e, 'Resume not available'), type: 'error' });
+    }
+  };
+
+  const handleRequestResumeUpload = async () => {
+    if (!candidateId) return;
+    try {
+      await requestResumeUpload(candidateId).unwrap();
+      showToast({
+        message: 'Resume requested — the candidate has been emailed an upload link.',
+        type: 'success',
+      });
+    } catch (e) {
+      showToast({
+        message: getCandidateErrorMessage(e, 'Could not request a resume'),
+        type: 'error',
+      });
     }
   };
 
@@ -1017,7 +1036,16 @@ const CandidateDetails = () => {
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-gray-500">No resume on file yet.</p>
+                  <>
+                    <p className="text-sm text-gray-500">No resume on file yet.</p>
+                    <Button
+                      className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      onClick={() => void handleRequestResumeUpload()}
+                      disabled={isRequestingResumeUpload}
+                    >
+                      {isRequestingResumeUpload ? 'REQUESTING…' : 'REQUEST RESUME'}
+                    </Button>
+                  </>
                 )}
               </div>
             </CommonCard>

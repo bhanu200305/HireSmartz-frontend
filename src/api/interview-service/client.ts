@@ -246,6 +246,11 @@ export type InterviewErrorAction =
 export interface SessionNotYetStartedDetails {
   booking_id: string;
   starts_at: string;
+  /** How many minutes before `starts_at` a candidate may join — added
+   * 2026-09-14 alongside interview-service's 15 -> 5 minute window change,
+   * so this number is never hardcoded on the frontend and can't drift from
+   * the backend's own setting. */
+  early_join_window_minutes: number;
 }
 
 export const getInterviewErrorAction = (error: InterviewApiError): InterviewErrorAction => {

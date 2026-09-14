@@ -90,7 +90,13 @@ const useNowTick = (enabled: boolean) => {
   }, [enabled]);
 };
 
-const EarlyJoinCountdown = ({ startsAt }: { startsAt: string }) => {
+const EarlyJoinCountdown = ({
+  startsAt,
+  earlyJoinWindowMinutes,
+}: {
+  startsAt: string;
+  earlyJoinWindowMinutes?: number;
+}) => {
   const startsAtMs = useMemo(() => new Date(startsAt).getTime(), [startsAt]);
   const hasValidStartsAt = !Number.isNaN(startsAtMs);
   useNowTick(hasValidStartsAt);
@@ -116,6 +122,12 @@ const EarlyJoinCountdown = ({ startsAt }: { startsAt: string }) => {
       <p className="text-4xl font-semibold tabular-nums text-white">
         {formatCountdown(remainingMs)}
       </p>
+      {earlyJoinWindowMinutes != null && (
+        <p className="text-sm text-neutral-400">
+          You can join up to {earlyJoinWindowMinutes} minute
+          {earlyJoinWindowMinutes === 1 ? '' : 's'} before your interview starts.
+        </p>
+      )}
       <p className="text-sm text-neutral-400">
         This page will take you into the interview automatically once it starts — no need to refresh
         or reopen the link.
@@ -190,7 +202,12 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
 
   if (errorAction === 'not-yet-started') {
     const details = apiError?.details as SessionNotYetStartedDetails | undefined;
-    return <EarlyJoinCountdown startsAt={details?.starts_at ?? ''} />;
+    return (
+      <EarlyJoinCountdown
+        startsAt={details?.starts_at ?? ''}
+        earlyJoinWindowMinutes={details?.early_join_window_minutes}
+      />
+    );
   }
 
   if (isLoading) {
