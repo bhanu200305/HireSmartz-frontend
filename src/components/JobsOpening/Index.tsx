@@ -149,7 +149,11 @@ const JobsOpening = () => {
     inProgressCount: 0,
     invitationSentCount: 0,
   });
-  const [jobNotesFor, setJobNotesFor] = useState<{ id: string; title: string } | null>(null);
+  const [jobNotesFor, setJobNotesFor] = useState<{
+    id: string;
+    title: string;
+    canWrite: boolean;
+  } | null>(null);
 
   const [qrModalOpen, setQrModalOpen] = useState<boolean>(false);
   const [showCreateJobModal, setShowCreateJobModal] = useState<boolean>(false);
@@ -162,8 +166,11 @@ const JobsOpening = () => {
   const [jdUploadError, setJdUploadError] = useState<string>('');
   const [isJdUploading, setIsJdUploading] = useState<boolean>(false);
   const [isJdCompleted, setIsJdCompleted] = useState<boolean>(false);
-  const [, setIsJdPartialFailure] = useState<boolean>(false);
-  const [, setIsJdFailed] = useState<boolean>(false);
+  const [isJdPartialFailure, setIsJdPartialFailure] = useState<boolean>(false);
+  const [isJdFailed, setIsJdFailed] = useState<boolean>(false);
+  const [jdFailedItems, setJdFailedItems] = useState<{ filename: string; error: string | null }[]>(
+    []
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // GET, not a mutation: the backend generates the tenant's one QR on first call
   // and re-resolves it after. Fetched only once the modal is open, on a real UUID tenantId.
@@ -403,63 +410,71 @@ const JobsOpening = () => {
         return;
       }
 
-      const eventData = payload as {
-        status?: string;
-        message?: string;
-        detail?: string;
-        processed?: number;
-        total?: number;
-        currentFile?: string | null;
-        progress?: number;
-        percentage?: number;
-        progressPercentage?: number;
-        eventName?: string;
+      // Matches JdUploadBatchSummaryResponse (job-service's api/responses.py) -
+      // the stream sends only these raw counts, never a status/progress field.
+      const summary = payload as {
+        batch_id?: string;
+        total_files?: number;
+        processing_count?: number;
+        succeeded_count?: number;
+        failed_count?: number;
+        items?: { filename: string; status: string; error: string | null }[];
       };
 
-      const processedCount = Number(eventData.processed);
-      const totalCount = Number(eventData.total);
-      const hasStepProgress =
-        Number.isFinite(processedCount) && Number.isFinite(totalCount) && totalCount > 0;
-
-      const rawProgress = hasStepProgress
-        ? (processedCount / totalCount) * 100
-        : (eventData.progressPercentage ?? eventData.progress ?? eventData.percentage ?? 0);
-      const normalizedProgress = Number(rawProgress);
-
-      if (Number.isFinite(normalizedProgress)) {
-        const safeProgress = Math.max(0, Math.min(100, normalizedProgress));
-        setJdProgress(safeProgress);
+      const totalFiles = Number(summary.total_files);
+      const processingCount = Number(summary.processing_count) || 0;
+      const succeededCount = Number(summary.succeeded_count) || 0;
+      const failedCount = Number(summary.failed_count) || 0;
+      if (!Number.isFinite(totalFiles) || totalFiles <= 0) {
+        return;
       }
+      const doneCount = succeededCount + failedCount;
 
-      if (eventData.currentFile && String(eventData.currentFile).trim()) {
-        setJdProgressMessage(`Processing ${eventData.currentFile}...`);
-      } else if (eventData.detail) {
-        setJdProgressMessage(eventData.detail);
-      } else if (eventData.message) {
-        setJdProgressMessage(eventData.message);
-      }
+      setJdProgress(Math.max(0, Math.min(100, (doneCount / totalFiles) * 100)));
 
-      const status = String(eventData.status || eventData.eventName || '').toUpperCase();
-      const isCompletedStatus = status.includes('BATCH_COMPLETED') || status === 'COMPLETED';
+      const currentItem = summary.items?.find((item) => item.status === 'processing');
+      setJdProgressMessage(
+        currentItem
+          ? `Processing ${currentItem.filename}...`
+          : `Processed ${doneCount} of ${totalFiles} file(s)...`
+      );
 
-      if (!isCompletedStatus) {
+      const isBatchComplete = processingCount === 0 && doneCount >= totalFiles;
+      if (!isBatchComplete) {
         return;
       }
 
-      const summaryText = 'Batch completed. Please review uploaded jobs.';
+      const failedItems = (summary.items ?? [])
+        .filter((item) => item.status === 'failed')
+        .map((item) => ({ filename: item.filename, error: item.error }));
 
       setIsJdUploading(false);
       setIsJdCompleted(true);
       setJdBatchId(null);
       setJdProgress(100);
-      setJdProgressMessage(summaryText);
+      setJdFailedItems(failedItems);
 
-      setIsJdPartialFailure(false);
-      setIsJdFailed(false);
-      showToast({
-        type: 'success',
-        message: 'JD uploaded successfully.',
-      });
+      if (failedCount === 0) {
+        setIsJdPartialFailure(false);
+        setIsJdFailed(false);
+        setJdProgressMessage('Batch completed. Please review uploaded jobs.');
+        showToast({ type: 'success', message: 'JD uploaded successfully.' });
+      } else if (succeededCount === 0) {
+        setIsJdFailed(true);
+        setIsJdPartialFailure(false);
+        setJdProgressMessage('All files failed to process.');
+        showToast({ type: 'error', message: 'All files failed to process.' });
+      } else {
+        setIsJdPartialFailure(true);
+        setIsJdFailed(false);
+        setJdProgressMessage(
+          `${succeededCount} of ${totalFiles} file(s) processed - ${failedCount} failed.`
+        );
+        showToast({
+          type: 'warning',
+          message: `${succeededCount} of ${totalFiles} job(s) created - ${failedCount} file(s) failed.`,
+        });
+      }
       refetch();
     },
     onAbort: () => {
@@ -713,6 +728,7 @@ const JobsOpening = () => {
     setIsJdCompleted(false);
     setIsJdPartialFailure(false);
     setIsJdFailed(false);
+    setJdFailedItems([]);
   };
 
   const isValidJdFile = (file: File): boolean => {
@@ -731,6 +747,7 @@ const JobsOpening = () => {
     setIsJdCompleted(false);
     setIsJdPartialFailure(false);
     setIsJdFailed(false);
+    setJdFailedItems([]);
     setJdUploadError('');
     setJdProgress(10);
     setJdProgressMessage('Uploading file(s)...');
@@ -872,6 +889,7 @@ const JobsOpening = () => {
           setJobNotesFor({
             id: record.jobOpeningId,
             title: record.jobTitleName ?? '',
+            canWrite: isAssignedToJob(record, userId, role),
           }),
       },
       !record.isClosed && {
@@ -924,6 +942,10 @@ const JobsOpening = () => {
       if (item.key !== 'view' && !isAssignedToJob(record, userId, role)) return false;
       if (item.key === 'notes') {
         return hasFeatureAccess('job_opening', 'view', role, authorities);
+      }
+      // "Duplicate" has no dedicated backend authority - it shares job:write with "create".
+      if (item.key === 'duplicate') {
+        return hasFeatureAccess('job_opening', 'create', role, authorities);
       }
       if (hasFeatureAccess('job_opening', item.key as any, role, authorities)) return true;
       return false;
@@ -1337,6 +1359,7 @@ const JobsOpening = () => {
           }}
           jobTitle={jobNotesFor?.title}
           jobOpeningId={jobNotesFor?.id}
+          canWrite={jobNotesFor?.canWrite ?? true}
         />
 
         <input
@@ -1494,9 +1517,7 @@ const JobsOpening = () => {
 
                 {jdFiles.length > 1 && (
                   <>
-                    <p className="text-xs text-primary">
-                      {`Progress: ${Math.round(jdProgress)}% of 100% completed`}
-                    </p>
+                    <p className="text-xs text-primary">{`${Math.round(jdProgress)}% complete`}</p>
                     <div className="h-1 w-full bg-gray-200 rounded">
                       <div
                         className="h-1 bg-success rounded transition-all duration-300"
@@ -1510,11 +1531,37 @@ const JobsOpening = () => {
 
             {jdUploadError && <p className="text-sm text-red-500 mt-4">{jdUploadError}</p>}
 
-            {isJdCompleted && jdFiles.length > 0 && (
+            {(isJdFailed || isJdPartialFailure) && jdFailedItems.length > 0 && (
+              <div
+                className={`mt-4 rounded-lg p-4 border ${
+                  isJdFailed ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'
+                }`}
+              >
+                <p className={`text-sm mb-2 ${isJdFailed ? 'text-red-800' : 'text-yellow-800'}`}>
+                  {isJdFailed
+                    ? 'None of the files could be processed:'
+                    : 'These file(s) could not be processed:'}
+                </p>
+                <ul className="text-xs space-y-1 list-disc list-inside">
+                  {jdFailedItems.map((item) => (
+                    <li
+                      key={item.filename}
+                      className={isJdFailed ? 'text-red-700' : 'text-yellow-700'}
+                    >
+                      {item.filename}
+                      {item.error ? ` - ${item.error}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {isJdCompleted && !isJdFailed && jdFiles.length > 0 && (
               <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-sm text-green-800 mb-4">
-                  All uploaded jobs have been created as Draft jobs. You can review and publish them
-                  from the Job Openings page.
+                  {isJdPartialFailure
+                    ? 'The rest of the uploaded jobs have been created as Draft jobs. You can review and publish them from the Job Openings page.'
+                    : 'All uploaded jobs have been created as Draft jobs. You can review and publish them from the Job Openings page.'}
                 </p>
                 {jdFiles.length === 1 ? (
                   <Button

@@ -817,10 +817,6 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.INTERVIEW_QUESTIONS_VIEW,
       Authorities.INTERVIEW_QUESTIONS_EDIT,
       Authorities.JOB_OPENING_VIEW,
-      Authorities.JOB_OPENING_EDIT,
-      // No JOB_OPENING_CREATE — Recruiters can edit jobs they're assigned to
-      // (see isAssignedToJob) but never create or publish one; matches
-      // organization-service's RBAC seed (job:read+update, no job:write).
       Authorities.USER_VIEW,
     ],
     interviewer: [

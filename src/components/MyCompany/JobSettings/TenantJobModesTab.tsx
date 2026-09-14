@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  useListJobModesQuery,
+  useListOrganizationJobModesQuery,
   useCreateJobModeMutation,
   useUpdateJobModeMutation,
   useDeleteJobModeMutation,
@@ -18,7 +18,7 @@ const fields: CatalogField<FormValues>[] = [
 
 /** This organization's own configured job modes. */
 const TenantJobModesTab: React.FC = () => {
-  const { data, isLoading } = useListJobModesQuery();
+  const { data, isLoading } = useListOrganizationJobModesQuery();
   const [create] = useCreateJobModeMutation();
   const [update] = useUpdateJobModeMutation();
   const [remove] = useDeleteJobModeMutation();
@@ -28,11 +28,7 @@ const TenantJobModesTab: React.FC = () => {
       title="Your company's configured job modes."
       itemNounSingular="Job mode"
       itemNounPlural="Job modes"
-      items={data?.map((item) => ({
-        id: item.job_mode_id,
-        job_mode_name: item.job_mode_name,
-        job_mode_description: item.job_mode_description,
-      }))}
+      items={data}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.job_mode_name}

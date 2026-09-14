@@ -6,6 +6,7 @@ import { jobApi } from '../jobApi';
 export type OrganizationShift = {
   id: string;
   shift_name: string;
+  shift_description: string | null;
   start_time: string; // HH:MM:SS
   end_time: string;
   duration_minutes: number | null;
@@ -13,6 +14,7 @@ export type OrganizationShift = {
 
 export type SaveOrganizationShiftArgs = {
   shift_name: string;
+  shift_description?: string | null;
   start_time: string;
   end_time: string;
   duration_minutes?: number;

@@ -2,9 +2,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Select, Switch, Tooltip } from 'antd';
 import { MdLock } from 'react-icons/md';
-import { ScoringWeightCard, showToast } from '../shared';
+import { ScoringWeightCard, showToast, toOptionalWeight } from '../shared';
 import type { ScoringWeight } from '../shared';
 import { Loader } from '../shared/ui/loader';
+import { RESUME_CATEGORY_META, INTERVIEW_CATEGORY_META } from '../shared/scoringCategories';
 import {
   masterScoringCategoriesApi,
   useListMasterScoringCategoriesQuery,
@@ -38,6 +39,7 @@ const toMasterWeights = (categories: MasterScoringCategory[] | undefined): Scori
     displayName: c.display_name,
     description: c.description,
     weightPercentage: Number(c.default_weight_pct),
+    defaultWeightPercentage: toOptionalWeight(c.default_weight_pct),
   }));
 
 const toTenantWeights = (
@@ -49,6 +51,7 @@ const toTenantWeights = (
     displayName: w.display_name,
     description: w.description,
     weightPercentage: Number(w.weight_pct),
+    defaultWeightPercentage: toOptionalWeight(w.default_weight_pct),
   }));
 
 const toOverrides = (weights: ScoringWeight[]): CategoryWeightOverride[] =>
@@ -283,7 +286,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
             subtitle="Applies to Resume Screening"
             infoText="Resume categories are always evaluated. All categories must total exactly 100%."
             weights={resumeWeights}
-            categoryMeta={{}}
+            categoryMeta={RESUME_CATEGORY_META}
             onSave={(weights) => savePanel(weights, 'Resume', 'RESUME', 'resume')}
             onReset={() => handleReset('resume')}
             isSaving={isSaving && savingSection === 'resume'}
@@ -296,7 +299,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
             subtitle="Applies to AI Audio Screening and Video Interview"
             infoText="If a category is not covered in an interview, its weight is redistributed proportionally across the remaining categories."
             weights={interviewWeights}
-            categoryMeta={{}}
+            categoryMeta={INTERVIEW_CATEGORY_META}
             onSave={(weights) => savePanel(weights, 'Interview', 'INTERVIEW', 'interview')}
             onReset={() => handleReset('interview')}
             isSaving={isSaving && savingSection === 'interview'}

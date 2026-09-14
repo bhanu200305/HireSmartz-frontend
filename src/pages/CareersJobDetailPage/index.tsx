@@ -7,6 +7,8 @@ import {
   ClockCircleOutlined,
   ScheduleOutlined,
   LaptopOutlined,
+  FieldTimeOutlined,
+  ReadOutlined,
 } from '@ant-design/icons';
 import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
@@ -193,6 +195,18 @@ export const CareersJobDetailPage = () => {
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <LaptopOutlined />
                   <span>{job.job_mode_name}</span>
+                </div>
+              )}
+              {job.shift_name && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <FieldTimeOutlined />
+                  <span>{job.shift_name}</span>
+                </div>
+              )}
+              {job.education_preference_name && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <ReadOutlined />
+                  <span>{job.education_preference_name}</span>
                 </div>
               )}
               {postedAgo && (

@@ -142,6 +142,8 @@ type JobListingNotesPanelProps = {
    * Ignored when `jobOpeningId` is set.
    */
   notes?: CandidateNoteItem[];
+  /** Mirrors the backend's require_job_assignment gate — see NotesSidePanel. */
+  canWrite?: boolean;
 };
 
 const JobListingNotesPanel = ({
@@ -150,6 +152,7 @@ const JobListingNotesPanel = ({
   jobTitle,
   jobOpeningId,
   notes: legacyNotes = [],
+  canWrite = true,
 }: JobListingNotesPanelProps) => {
   const titleText = jobTitle?.trim() ? `Job Notes - ${jobTitle.trim()}` : 'Job Notes';
 
@@ -242,6 +245,7 @@ const JobListingNotesPanel = ({
       isLoadingNotes={useApi && isFetching}
       placeholderNotes={useApi ? [] : JOB_NOTES_DUMMY}
       placeholderAuthoredIndexes={useApi ? [] : [3]}
+      canWrite={canWrite}
     />
   );
 };
