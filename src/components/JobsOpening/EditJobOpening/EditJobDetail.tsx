@@ -65,7 +65,8 @@ import {
 import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
-import { isAssignedToJob } from '../../../shared/utils/auth/getAccess';
+import { hasFeatureAccess, isAssignedToJob } from '../../../shared/utils/auth/getAccess';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
 import {
   officeDisplayName,
   useListTenantOfficesQuery,
@@ -163,6 +164,7 @@ const EditJobDetail = () => {
     shallowEqual
   );
   const { role, userId } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  const effectivePermissions = useEffectivePermissions();
   // hiring_manager/recruiter can only pick an existing catalogue entry,
   // never add/edit/delete one from this form.
   const canManageCatalogueEntries = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
@@ -316,9 +318,17 @@ const EditJobDetail = () => {
   );
 
   // True while jobData hasn't loaded yet, so this never blocks Save early.
+  // Two checks, not one: hasFeatureAccess covers the ROLE ("can this role
+  // ever edit a job it's assigned to" — false for recruiter, who is
+  // view-only now), isAssignedToJob covers the SPECIFIC job ("is this one of
+  // the jobs this person is assigned to"). Recruiter reaching this page
+  // directly (e.g. a stale URL) for a job they ARE assigned to must still be
+  // blocked — job-service's own permission check would reject the save
+  // anyway, but this keeps the form from looking editable in the meantime.
   const canEditThisJob = !jobData
     ? true
-    : isAssignedToJob(
+    : hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) &&
+      isAssignedToJob(
         {
           hiringManagerIds: jobData.details?.hiring_manager_ids,
           recruiterIds: jobData.details?.recruiter_ids,
@@ -3058,7 +3068,7 @@ const EditJobDetail = () => {
         </div>
         {!canEditThisJob && (
           <p className="text-center text-red-500 text-sm mt-4">
-            You can only edit jobs you're assigned to as hiring manager or recruiter.
+            You don't have permission to edit this job.
           </p>
         )}
         <div className="flex items-center justify-center mt-6 gap-6">
