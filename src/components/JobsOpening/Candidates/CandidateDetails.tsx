@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Rate, Select, Tabs, Tooltip } from 'antd';
 import dayjs from 'dayjs';
@@ -8,6 +8,7 @@ import { CommonCard, Button, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import { NotesPillTrigger } from '../Notes/NotesPillTrigger';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
+import { useGetJobQuestionsQuery } from '../../../api/job-service/JobOpening/jobQuestions';
 import { asJobId } from '../../../api/job-service/jobId';
 import {
   useGetCandidateQuery,
@@ -32,6 +33,8 @@ import {
   useGetBookingHistoryQuery,
   useRequestCallRescheduleMutation,
   useLazyGetCalendarConnectUrlQuery,
+  useGetArtifactsQuery,
+  useUploadOfflineRecordingMutation,
 } from '../../../api/interview-service/client';
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
@@ -180,6 +183,16 @@ const CandidateDetails = () => {
     useRequestResumeUploadMutation();
   const [createBooking] = useCreateBookingMutation();
   const isPanelRound = Boolean(selectedRound?.round_name?.toLowerCase().includes('panel'));
+  // Job Service's question bank, grouped by round — matched back to the
+  // SELECTED round by `sequence`, not `round_id`: a round TYPE (e.g.
+  // "Hiring Panel") can repeat more than once in one job's plan and every
+  // repeat shares the same `round_id`, so sequence is the one key that
+  // actually disambiguates which repeat this is (see BookingDetailDrawer's
+  // own version of this same match for the full reasoning).
+  const { data: jobQuestions } = useGetJobQuestionsQuery(parsedJobId, {
+    skip: !isPanelRound || !parsedJobId,
+  });
+  const roundQuestions = jobQuestions?.rounds.find((r) => r.sequence === selectedRound?.sequence);
   const [setPanelInterviewers, { isLoading: isSavingInterviewers }] =
     useSetPanelInterviewersMutation();
   const { data: eligibleInterviewers, isLoading: isLoadingInterviewers } =
@@ -208,6 +221,50 @@ const CandidateDetails = () => {
   const [requestCallReschedule, { isLoading: isRequestingReschedule }] =
     useRequestCallRescheduleMutation();
   const [getCalendarConnectUrl] = useLazyGetCalendarConnectUrlQuery();
+
+  // Offline hiring-panel recording: `POST /bookings/{id}/recording/upload`
+  // — the candidate visited in person, so there's no LiveKit session to
+  // detect a recording automatically; a recruiter attaches the audio file
+  // by hand instead. Needs a real booking to attach to, so this only shows
+  // once one exists. `getArtifacts` (not a booking field) is the only way
+  // to know a recording is already on file — checked so a second upload
+  // attempt is disabled rather than silently accepted and ignored (the
+  // backend's own idempotent-retry just hands back the FIRST upload for a
+  // booking that already has one, never replaces it).
+  const { data: bookingArtifacts } = useGetArtifactsQuery(
+    selectedRound?.interview_booking_id ?? '',
+    { skip: !isPanelRound || !selectedRound?.interview_booking_id }
+  );
+  const hasRecording = Boolean(
+    bookingArtifacts?.artifacts.some((artifact) => artifact.kind === 'recording')
+  );
+  const [uploadOfflineRecording, { isLoading: isUploadingAudio }] =
+    useUploadOfflineRecordingMutation();
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAudioFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Cleared unconditionally so picking the SAME filename again after a
+    // failed upload still fires a change event.
+    e.target.value = '';
+    if (!file || !selectedRound?.interview_booking_id) return;
+    if (!file.type.startsWith('audio/')) {
+      showToast({ message: 'Please choose an audio file.', type: 'error' });
+      return;
+    }
+    try {
+      await uploadOfflineRecording({
+        bookingId: selectedRound.interview_booking_id,
+        file,
+      }).unwrap();
+      showToast({ message: 'Recording uploaded.', type: 'success' });
+    } catch (error) {
+      showToast({
+        message: getCandidateErrorMessage(error, 'Could not upload the recording.'),
+        type: 'error',
+      });
+    }
+  };
 
   const handleBackToList = () => navigate(`/jobs/view/${parsedJobId}/candidates`);
 
@@ -250,7 +307,7 @@ const CandidateDetails = () => {
       await requestCallReschedule(selectedRound.interview_booking_id).unwrap();
       showToast({
         message:
-          'Reschedule requested — the candidate has been emailed a new link, valid for 24 hours.',
+          'Reschedule requested. The candidate has been emailed a new link, valid for 24 hours.',
         type: 'success',
       });
     } catch (e) {
@@ -949,6 +1006,33 @@ const CandidateDetails = () => {
                     </CommonCard>
                   )}
 
+                  {isPanelRound && (
+                    <CommonCard>
+                      <div className="p-5 flex flex-col gap-3">
+                        <h4 className="font-semibold text-gray-900">Interview questions</h4>
+                        <p className="text-sm text-gray-600">
+                          Visible to whoever is preparing for or sitting on this panel.
+                        </p>
+                        {roundQuestions && roundQuestions.questions.length > 0 ? (
+                          <ol className="list-decimal space-y-3 pl-5 text-sm">
+                            {roundQuestions.questions.map((q) => (
+                              <li key={q.id} className="text-gray-800">
+                                {q.question_text}
+                                {q.answer_text && (
+                                  <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
+                                )}
+                              </li>
+                            ))}
+                          </ol>
+                        ) : (
+                          <p className="text-sm text-gray-400">
+                            No questions have been added for this round yet.
+                          </p>
+                        )}
+                      </div>
+                    </CommonCard>
+                  )}
+
                   <CommonCard>
                     <div className="p-5 flex flex-col gap-3">
                       <h4 className="font-semibold text-gray-900">Interview scheduling</h4>
@@ -1026,6 +1110,32 @@ const CandidateDetails = () => {
                           >
                             CONNECT CALENDAR
                           </Button>
+                        )}
+                        {isPanelRound && selectedRound.interview_booking_id && (
+                          <>
+                            <input
+                              ref={audioFileInputRef}
+                              type="file"
+                              accept="audio/*"
+                              className="hidden"
+                              onChange={(e) => void handleAudioFileSelected(e)}
+                            />
+                            <Button
+                              className={`rounded-full px-5 py-2 text-sm font-semibold ${
+                                hasRecording
+                                  ? 'border border-green-200 bg-green-50 text-green-700'
+                                  : 'border border-primary-300 bg-white text-primary-700'
+                              }`}
+                              disabled={isUploadingAudio || hasRecording}
+                              onClick={() => audioFileInputRef.current?.click()}
+                            >
+                              {isUploadingAudio
+                                ? 'UPLOADING…'
+                                : hasRecording
+                                  ? 'RECORDING UPLOADED'
+                                  : 'UPLOAD AUDIO'}
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>

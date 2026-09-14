@@ -112,7 +112,7 @@ export const CandidateFeedbackPage = () => {
           <Loader />
         </div>
         <p className="mt-2 text-center text-sm text-gray-500">
-          Wrapping up your interview — this will just take a moment…
+          Wrapping up your interview. This will just take a moment…
         </p>
       </Shell>
     );

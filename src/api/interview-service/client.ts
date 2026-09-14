@@ -519,6 +519,7 @@ export const interviewApi = createApi({
     }),
     getArtifacts: build.query<BookingArtifactsView, string>({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}/artifacts` }),
+      providesTags: (_r, _e, id) => [{ type: 'Booking', id }],
     }),
     getInterviewerCalendarStatus: build.query<BookingInterviewerCalendarStatusView, string>({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}/interviewer-calendar-status` }),
@@ -531,6 +532,24 @@ export const interviewApi = createApi({
           method: 'POST',
           body: { external_ref },
         }),
+      invalidatesTags: (_r, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }],
+    }),
+    // `POST /bookings/{id}/recording/upload` — real bytes, for a booking
+    // that never went through a provider webhook (e.g. an offline
+    // hiring-panel round: the candidate visits in person, still gets
+    // recorded on a phone/recorder, still gets scored, just with no LiveKit
+    // session to detect the recording automatically). Sibling to
+    // `attachRecording` above, which only ever took an already-existing
+    // storage reference — this is the only place in this service that
+    // accepts an actual file upload. Same idempotent-retry shape: a second
+    // upload for a booking that already has one returns the existing
+    // artifact rather than erroring.
+    uploadOfflineRecording: build.mutation<ArtifactView, { bookingId: string; file: File }>({
+      query: ({ bookingId, file }) => {
+        const body = new FormData();
+        body.append('file', file);
+        return platform({ url: `/bookings/${bookingId}/recording/upload`, method: 'POST', body });
+      },
       invalidatesTags: (_r, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }],
     }),
     submitFeedback: build.mutation<
@@ -661,6 +680,7 @@ export const {
   useGetArtifactsQuery,
   useGetInterviewerCalendarStatusQuery,
   useAttachRecordingMutation,
+  useUploadOfflineRecordingMutation,
   useSubmitFeedbackMutation,
   useGetSchedulingLinkQuery,
   useGetSchedulingSlotsQuery,
