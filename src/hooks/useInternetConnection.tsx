@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { showToast } from '../components';
+import { showToast } from '../components/shared/ui/toast';
 
 const connectionState = {
   listenersAttached: false,

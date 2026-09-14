@@ -9,6 +9,7 @@ const basePayload = {
   isPlatformInvite: false,
   password: 'Str0ng!Passw0rd',
   confirmPassword: 'Str0ng!Passw0rd',
+  methodType: 'email' as const,
   mfaCode: '123456',
 };
 
@@ -77,7 +78,7 @@ describe('acceptInvitationSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.flatten().fieldErrors.mfaCode?.[0]).toBe(
-        'Enter the 6-digit code from your authenticator app.'
+        'Enter the 6-digit verification code.'
       );
     }
   });

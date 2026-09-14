@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FaEye, FaEyeSlash, FaCheckCircle, FaRegCopy } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaCheckCircle } from 'react-icons/fa';
 import {
   MdLockOutline,
   MdErrorOutline,
@@ -10,7 +10,6 @@ import {
   MdOutlinePhone,
   MdOutlineEmail,
   MdOutlineSms,
-  MdOutlineQrCode2,
   MdOutlineBadge,
   MdOutlineSecurity,
 } from 'react-icons/md';
@@ -26,7 +25,6 @@ import {
   type InvitationErrorBody,
   type MfaMethodType,
 } from '../../api/organization-service/Invitations/invitations';
-import { buildOtpAuthUri, generateBase32Secret } from '../../shared/utils/mfa.helpers';
 import {
   restrictPhoneDigitsForCountry,
   splitE164,
@@ -205,14 +203,18 @@ type MfaOption = {
   icon: React.ComponentType<{ className?: string }>;
 };
 const MFA_OPTIONS: MfaOption[] = [
-  { value: 'totp', label: 'Authenticator app', icon: MdOutlineQrCode2 },
   { value: 'email', label: 'Email', icon: MdOutlineEmail },
   { value: 'sms', label: 'Phone', icon: MdOutlineSms },
 ];
 
+// Authenticator app (TOTP) is deliberately not offered here — the client
+// wants only email/SMS at first-time setup. It's still available afterward
+// from Security Settings (see MfaSection.tsx) for anyone who wants to add it
+// voluntarily; this picker just never shows it as a starting choice.
+
 /** Equal-width, evenly-aligned method picker — replaces antd's
- * Radio.Group/Radio.Button here, whose default sizing let the three
- * options render at visibly different widths with wrapped label text. */
+ * Radio.Group/Radio.Button here, whose default sizing let the options
+ * render at visibly different widths with wrapped label text. */
 const MfaMethodPicker = ({
   value,
   onChange,
@@ -220,7 +222,7 @@ const MfaMethodPicker = ({
   value: MfaMethodType;
   onChange: (value: MfaMethodType) => void;
 }) => (
-  <div className="grid grid-cols-3 gap-2">
+  <div className="grid grid-cols-2 gap-2">
     {MFA_OPTIONS.map(({ value: optionValue, label, icon: Icon }) => {
       const selected = value === optionValue;
       return (
@@ -277,15 +279,6 @@ const AcceptInvitation = () => {
     }
   }, [token, validateInvitation]);
 
-  const mfaSecret = useMemo(() => generateBase32Secret(), [invitation?.invited_email]);
-  const otpAuthUri = useMemo(
-    () =>
-      invitation?.invited_email
-        ? buildOtpAuthUri({ secret: mfaSecret, accountEmail: invitation.invited_email })
-        : '',
-    [invitation?.invited_email, mfaSecret]
-  );
-
   const { control, handleSubmit, trigger, setValue, getValues, formState } =
     useForm<AcceptInvitationFormValues>({
       resolver: zodResolver(acceptInvitationSchema),
@@ -297,7 +290,7 @@ const AcceptInvitation = () => {
         isPlatformInvite: false,
         password: '',
         confirmPassword: '',
-        methodType: 'totp',
+        methodType: 'email',
         mfaCode: '',
       },
       mode: 'onChange',
@@ -361,15 +354,6 @@ const AcceptInvitation = () => {
     }
   }, [countryCode, phoneNumber, methodType, setValue]);
 
-  const handleCopySecret = async () => {
-    try {
-      await navigator.clipboard.writeText(mfaSecret);
-      showToast({ message: 'Secret key copied.', type: 'success' });
-    } catch {
-      showToast({ message: 'Could not copy — please select and copy manually.', type: 'error' });
-    }
-  };
-
   const handleSendCode = async () => {
     if (!token || (methodType !== 'email' && methodType !== 'sms')) return;
     if (methodType === 'sms') {
@@ -409,7 +393,6 @@ const AcceptInvitation = () => {
         token,
         password: data.password,
         method_type: data.methodType,
-        mfa_secret: data.methodType === 'totp' ? mfaSecret : undefined,
         mfa_code: data.mfaCode,
         first_name: data.firstName.trim(),
         last_name: data.lastName.trim() || undefined,
@@ -441,10 +424,10 @@ const AcceptInvitation = () => {
     }
   };
 
-  // For "email"/"sms" the code must actually have been requested — the
-  // regex in the schema only checks shape, not that a real code is
-  // outstanding for it to be checked against.
-  const needsCodeRequest = methodType !== 'totp' && !codeSent;
+  // The code must actually have been requested — the regex in the schema
+  // only checks shape, not that a real code is outstanding for it to be
+  // checked against.
+  const needsCodeRequest = !codeSent;
 
   if (isFetching) {
     return (
@@ -736,29 +719,6 @@ const AcceptInvitation = () => {
             )}
           />
 
-          {methodType === 'totp' && (
-            <>
-              <p className="mt-3 text-xs text-gray-500">
-                Add this key to an authenticator app (Google Authenticator, 1Password, Authy…), then
-                confirm below.
-              </p>
-              <div className="mt-2 flex items-center gap-2 rounded-xl bg-white border border-[var(--border)] px-3 py-2">
-                <code className="flex-1 truncate text-xs text-gray-700">{mfaSecret}</code>
-                <button
-                  type="button"
-                  onClick={handleCopySecret}
-                  className="text-brand-600 hover:text-brand-700 cursor-pointer shrink-0"
-                  aria-label="Copy secret key"
-                >
-                  <FaRegCopy />
-                </button>
-              </div>
-              {otpAuthUri && (
-                <p className="mt-2 break-all text-[10px] text-gray-400">{otpAuthUri}</p>
-              )}
-            </>
-          )}
-
           {(methodType === 'email' || methodType === 'sms') && (
             <div className="mt-3">
               <p className="text-xs text-gray-500">
@@ -794,9 +754,7 @@ const AcceptInvitation = () => {
                 inputMode="numeric"
                 maxLength={6}
                 disabled={needsCodeRequest}
-                placeholder={
-                  methodType === 'totp' ? '6-digit code from your app' : '6-digit verification code'
-                }
+                placeholder="6-digit verification code"
                 className="mt-3 w-full !normal-case px-4 py-2 bg-white border rounded-3xl text-center font-mono tracking-[0.4em] focus:ring focus:ring-brand-300 border-[var(--border)] disabled:bg-gray-100 disabled:cursor-not-allowed"
                 onChange={(e) => field.onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
               />

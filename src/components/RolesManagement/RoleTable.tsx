@@ -2,6 +2,7 @@ import React from 'react';
 import type { TableProps } from 'antd';
 import { CustomTable, Badge, InfoHint, RolePermissionsHint } from '../shared';
 import type { Role } from '../../types';
+import { systemRoleLabel } from './data/roleTemplates';
 
 type RoleRow = Role & { key: string };
 type RoleColumn = NonNullable<TableProps<RoleRow>['columns']>[number];
@@ -77,7 +78,7 @@ const RoleTable: React.FC<RoleTableProps> = ({
     render: (_: unknown, role: RoleRow) =>
       role.baseRoleName ? (
         <Badge status="neutral" dot={false}>
-          {role.baseRoleName}
+          {systemRoleLabel(role.baseRoleName)}
         </Badge>
       ) : (
         <span className="text-gray-300 text-sm">—</span>
@@ -92,7 +93,7 @@ const RoleTable: React.FC<RoleTableProps> = ({
       render: (_: unknown, role: RoleRow) => (
         <span className="inline-flex items-center gap-1.5 font-semibold text-gray-900">
           {role.description && <InfoHint content={shortenDescription(role.description)} />}
-          {role.roleName}
+          {role.isSystemRole ? systemRoleLabel(role.roleName) : role.roleName}
         </span>
       ),
     },

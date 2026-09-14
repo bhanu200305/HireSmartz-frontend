@@ -1143,7 +1143,7 @@ const JobsOpening = () => {
                     >
                       <Row gutter={[16, 16]} align="middle">
                         <Col span={5}>
-                          <div className="flex items-center">
+                          <div className="flex items-center flex-wrap gap-1.5">
                             <Link
                               to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
                               className="font-semibold text-primary underline hover:text-primary roboto-font"
@@ -1152,8 +1152,13 @@ const JobsOpening = () => {
                                 {renderHighlightedField(jobs.jobTitleName, 'jobTitleName')}
                               </span>
                             </Link>
+                            {!isAssignedToJob(jobs, userId, role) && (
+                              <Badge status="neutral" dot={false}>
+                                View only
+                              </Badge>
+                            )}
                             <span
-                              className="ml-2 cursor-pointer"
+                              className="ml-1 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleCollapse(jobs.jobOpeningId.toString());
