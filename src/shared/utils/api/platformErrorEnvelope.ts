@@ -22,12 +22,24 @@ export const getPlatformErrorBody = (err: unknown): PlatformApiErrorBody | undef
   get(err, 'data') as PlatformApiErrorBody | undefined;
 
 /**
+ * Backend error messages are lowercase, log-style, not styled for a toast.
+ * Capitalizes, normalizes dashes, and ensures a trailing period.
+ */
+const toToastCase = (message: string): string => {
+  const withoutDashes = message.replace(/\s*[—–]\s*/g, ' - ');
+  const capitalized = withoutDashes.charAt(0).toUpperCase() + withoutDashes.slice(1);
+  return /[.!?]$/.test(capitalized) ? capitalized : `${capitalized}.`;
+};
+
+/**
  * The message to show a user. Never branch UI logic on this string — only on
  * `error_code` (getPlatformErrorCode) — services deliberately keep some
  * failure modes worded identically (e.g. auth's anti-enumeration responses).
  */
-export const getPlatformErrorMessage = (err: unknown, fallback: string): string =>
-  get(err, 'data.message', fallback);
+export const getPlatformErrorMessage = (err: unknown, fallback: string): string => {
+  const message = get(err, 'data.message') as string | undefined;
+  return message ? toToastCase(message) : fallback;
+};
 
 /**
  * On an error response, the shared exception handler's shape
@@ -42,6 +54,10 @@ export const getPlatformErrorMessage = (err: unknown, fallback: string): string 
  */
 export const getPlatformErrorCode = (err: unknown): string | undefined =>
   get(err, 'data.data.error_code') ?? get(err, 'data.error_code');
+
+/** Extra structured data an error attached (e.g. `failed_checks`) — same nesting as `getPlatformErrorCode`. */
+export const getPlatformErrorDetails = (err: unknown): Record<string, unknown> | undefined =>
+  get(err, 'data.data.details') ?? get(err, 'data.details');
 
 export const getPlatformErrorRequestId = (err: unknown): string | undefined =>
   get(err, 'data.request_id') || undefined;

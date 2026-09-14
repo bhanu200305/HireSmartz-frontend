@@ -12,6 +12,9 @@ interface DropdownOption {
   used?: boolean;
   isDeleted?: boolean;
   isPrimary?: boolean;
+  /** False hides edit/delete for this option even when `enableEditDelete` is on
+   * for the whole dropdown - e.g. a platform-shared skill vs. an org's own. */
+  isEditable?: boolean;
 }
 interface DropdownWithAddOptionProps {
   value: any;
@@ -215,7 +218,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
     !options.some((opt) => opt.name.toLowerCase() === searchValue.toLowerCase());
 
   const shouldShowEditDeleteActions = (option: DropdownOption) => {
-    return enableEditDelete && !option.isDeleted;
+    return enableEditDelete && !option.isDeleted && option.isEditable !== false;
   };
   const shouldShowReuseAction = (option: DropdownOption) => {
     return option.isDeleted && onReuseOption;

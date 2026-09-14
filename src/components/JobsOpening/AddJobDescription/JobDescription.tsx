@@ -33,7 +33,11 @@ import {
   useState,
 } from 'react';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
-import { useCreateOrganizationSkillMutation } from '../../../api/job-service/JobOpening/catalogs';
+import {
+  useCreateOrganizationSkillMutation,
+  useUpdateOrganizationSkillMutation,
+  useDeleteOrganizationSkillMutation,
+} from '../../../api/job-service/JobOpening/catalogs';
 import {
   useUpdateEducationPreferenceMutation,
   useDeleteEducationPreferenceMutation,
@@ -70,6 +74,8 @@ const JobDescription = () => {
   const [saveJobOpening, { isLoading }] = useSaveJobOpeningMutation();
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
+  const [updateOrganizationSkill] = useUpdateOrganizationSkillMutation();
+  const [deleteOrganizationSkill] = useDeleteOrganizationSkillMutation();
   const {
     jobOpeningDropdown: educationPreference,
     loading: educationPreferenceLoading,
@@ -80,12 +86,14 @@ const JobDescription = () => {
     loading: mandatorySkillsLoading,
     refetch: refetchMandatorySkills,
     searchSkills: searchMandatorySkills,
+    totalSkillsCount: totalMandatorySkillsCount,
   } = useJobOpeningDropdown('MANDATORY_SKILLS', 'create');
   const {
     jobOpeningDropdown: optionalSkills,
     loading: optionalSkillsLoading,
     refetch: refetchOptionalSkills,
     searchSkills: searchOptionalSkills,
+    totalSkillsCount: totalOptionalSkillsCount,
   } = useJobOpeningDropdown('OPTIONAL_SKILLS', 'create');
 
   const { jobDescription, aiJobDescriptionId } = useSelector((state: RootState) => ({
@@ -177,10 +185,26 @@ const JobDescription = () => {
         (skill) => skill.name.toLowerCase() === normalizedValue
       );
       if (existingSkill) {
+        // The picker's filter only hides skills already on the other list from
+        // selection, not from a typed exact-name match - block that case explicitly.
+        const otherType = addType === 'mandatorySkills' ? 'optionalSkills' : 'mandatorySkills';
+        const otherSkillIds = (watch(otherType) || []).map(String);
+        if (otherSkillIds.includes(String(existingSkill.id))) {
+          showToast({
+            message: `"${existingSkill.name}" is already selected as ${
+              otherType === 'mandatorySkills' ? 'a required' : 'an optional'
+            } skill.`,
+            type: 'error',
+          });
+          return;
+        }
         setValue(addType, [...currentSkillIds, existingSkill.id], { shouldValidate: true });
         return;
       }
       const createdSkill = await createOrganizationSkill({ skill: formattedValue }).unwrap();
+      // Refetch before setValue so the new option exists in `options`; otherwise
+      // the label briefly renders as a raw uuid.
+      await (addType === 'mandatorySkills' ? refetchMandatorySkills() : refetchOptionalSkills());
       showToast({ message: 'Skill added successfully', type: 'success' });
       setValue(addType, [...currentSkillIds, createdSkill.skill_id], { shouldValidate: true });
     } catch (err) {
@@ -223,11 +247,23 @@ const JobDescription = () => {
       return;
     }
 
-    // No update endpoint exists for tenant skill-catalog entries.
-    showToast({
-      message: 'Skills cannot be renamed from this screen.',
-      type: 'error',
-    });
+    if (type === 'mandatorySkills' || type === 'optionalSkills') {
+      // The dropdown only shows the edit icon for this organization's own
+      // skills (isEditable) - a platform-shared one never reaches here.
+      try {
+        await updateOrganizationSkill({
+          skillId: String(id),
+          skill: capitalizeWordsAdvanced(newName),
+        }).unwrap();
+        showToast({ message: 'Skill updated successfully', type: 'success' });
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Something went wrong while updating the skill.'),
+          type: 'error',
+        });
+      }
+      return;
+    }
   };
 
   const handleDeleteOption = async (id: string | number, type: string) => {
@@ -258,11 +294,28 @@ const JobDescription = () => {
       return;
     }
 
-    // No delete endpoint exists for tenant skill-catalog entries.
-    showToast({
-      message: 'Skills cannot be removed from this screen.',
-      type: 'error',
-    });
+    if (type === 'mandatorySkills' || type === 'optionalSkills') {
+      // The dropdown only shows the delete icon for this organization's own
+      // skills (isEditable) - a platform-shared one never reaches here.
+      try {
+        await deleteOrganizationSkill({ skillId: String(id) }).unwrap();
+        showToast({ message: 'Skill removed successfully', type: 'success' });
+
+        const currentValue = watch(type as keyof JobDescriptionState);
+        if (Array.isArray(currentValue)) {
+          const updatedValues = currentValue.filter((value) => String(value) !== String(id));
+          setValue(type as keyof JobDescriptionState, updatedValues, { shouldValidate: true });
+        } else if (String(currentValue) === String(id)) {
+          setValue(type as keyof JobDescriptionState, undefined, { shouldValidate: true });
+        }
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Something went wrong while removing the skill.'),
+          type: 'error',
+        });
+      }
+      return;
+    }
   };
 
   const onSaveDraft = async (data: Partial<JobDescriptionState>) => {
@@ -398,14 +451,16 @@ const JobDescription = () => {
                 onSearchChange={searchMandatorySkills}
                 type="mandatorySkills"
                 error={errors.mandatorySkills?.message}
+                // isEditable hides icons on platform-shared skills; canAddSkill hides them
+                // for roles without organization:update, which the API would 403 anyway.
                 enableEditDelete
-                onEditOption={handleEditOption}
-                onDeleteOption={handleDeleteOption}
+                onEditOption={canAddSkill ? handleEditOption : undefined}
+                onDeleteOption={canAddSkill ? handleDeleteOption : undefined}
                 onReuseOption={handleReuseOption}
                 maxTagCount={0}
                 maxTagPlaceholder={(omittedValues: any) => (
                   <span>
-                    {omittedValues.length} of {mandatorySkills?.length || 20} skills selected
+                    {omittedValues.length} of {totalMandatorySkillsCount} skills selected
                   </span>
                 )}
               />
@@ -474,13 +529,13 @@ const JobDescription = () => {
                 type="optionalSkills"
                 error={errors.optionalSkills?.message}
                 enableEditDelete
-                onEditOption={handleEditOption}
-                onDeleteOption={handleDeleteOption}
+                onEditOption={canAddSkill ? handleEditOption : undefined}
+                onDeleteOption={canAddSkill ? handleDeleteOption : undefined}
                 onReuseOption={handleReuseOption}
                 maxTagCount={0}
                 maxTagPlaceholder={(omittedValues: any) => (
                   <span>
-                    {omittedValues.length} of {optionalSkills?.length || 20} skills selected
+                    {omittedValues.length} of {totalOptionalSkillsCount} skills selected
                   </span>
                 )}
               />

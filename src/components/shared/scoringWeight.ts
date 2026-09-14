@@ -10,6 +10,8 @@ export type ScoringWeight = {
   displayName?: string;
   description?: string;
   weightPercentage: number;
+  // Live platform default from the API, preferred over categoryMeta's static defaultPct.
+  defaultWeightPercentage?: number;
 };
 
 const clampWeight = (value: unknown): number => {
@@ -19,6 +21,11 @@ const clampWeight = (value: unknown): number => {
   if (normalized > 100) return 100;
   return normalized;
 };
+
+/** A missing/null default should fall through to categoryMeta's static
+ * value, not render as 0% — `Number(null/undefined)` would otherwise. */
+export const toOptionalWeight = (value: unknown): number | undefined =>
+  value === null || value === undefined ? undefined : clampWeight(value);
 
 export const normalizeScoringWeights = (weights: unknown): ScoringWeight[] => {
   if (!Array.isArray(weights)) return [];
@@ -37,6 +44,10 @@ export const normalizeScoringWeights = (weights: unknown): ScoringWeight[] => {
         displayName: candidate.displayName,
         description: candidate.description,
         weightPercentage: clampWeight(candidate.weightPercentage),
+        defaultWeightPercentage:
+          candidate.defaultWeightPercentage === undefined
+            ? undefined
+            : clampWeight(candidate.defaultWeightPercentage),
       } as ScoringWeight;
     })
     .filter((weight): weight is ScoringWeight => Boolean(weight));

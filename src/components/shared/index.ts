@@ -42,7 +42,7 @@ export { default as RolePermissionsHint } from './ui/RolePermissionsHint';
 export { AuthPageShell } from './ui/authPageShell';
 export { ScoringWeightCard } from './ui/scoringWeightCard';
 export type { ScoringWeightCardProps } from './ui/scoringWeightCard';
-export { normalizeScoringWeights } from './scoringWeight';
+export { normalizeScoringWeights, toOptionalWeight } from './scoringWeight';
 export type { ScoringWeight } from './scoringWeight';
 export { RESUME_CATEGORY_META, INTERVIEW_CATEGORY_META } from './scoringCategories';
 export type { ScoringCategoryMeta } from './scoringCategories';

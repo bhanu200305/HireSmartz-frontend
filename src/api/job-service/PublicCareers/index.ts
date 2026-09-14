@@ -65,6 +65,8 @@ export type PublicJobDetail = {
   skills: PublicJobSkill[];
   job_type_name: string | null;
   job_mode_name: string | null;
+  shift_name: string | null;
+  education_preference_name: string | null;
 };
 
 export type ListPublicJobsArgs = {

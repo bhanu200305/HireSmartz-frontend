@@ -2,6 +2,7 @@ import {
   PlatformApiErrorBody,
   getPlatformErrorBody,
   getPlatformErrorCode,
+  getPlatformErrorDetails,
   getPlatformErrorMessage,
   getPlatformErrorRequestId,
 } from '../api/platformErrorEnvelope';
@@ -22,6 +23,9 @@ export const getJobErrorMessage = getPlatformErrorMessage;
 
 /** Branch on this for a specific `error_code`; never on the message text. */
 export const getJobErrorCode = getPlatformErrorCode;
+
+/** Structured extras a specific error attached, e.g. `failed_checks`. */
+export const getJobErrorDetails = getPlatformErrorDetails;
 
 /** Worth surfacing in support-facing copy — ties a report to a server log. */
 export const getJobErrorRequestId = getPlatformErrorRequestId;

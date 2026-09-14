@@ -325,7 +325,7 @@ const PipelineBoard = ({
                       : `Score: ${roundScoreValue} / 100 · AI score`}
                   </span>
                 )}
-                {isInterviewRound && (
+                {hasRecordings && (
                   <button
                     type="button"
                     className="w-fit text-xs font-medium text-primary-600 hover:underline"

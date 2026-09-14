@@ -325,25 +325,17 @@ const Login = () => {
   const completeRealLogin = async (tokens: LoginTokenResponse, loggedInEmail: string) => {
     const token = tokens.access_token;
     const refreshToken = tokens.refresh_token;
-    // Real access tokens carry `sub` (the user id) and, for a tenant caller
-    // only, `tenant_id` (authentication-service docs/API_CONTRACT.md's
-    // JWT-claims table). A platform caller's token has no `tenant_id` claim
-    // at all — that absence, not any dedicated flag, is how "Super Admin /
-    // internal staff" is distinguished from "tenant user" everywhere in the
-    // backend, so the frontend mirrors it here rather than inventing its own
-    // signal.
-    const decodedToken = jwtDecode<{ sub: string; tenant_id?: string }>(token);
+    // Presence of `tenant_id` in the token, not a dedicated flag, is how the
+    // backend distinguishes a platform caller (Super Admin) from a tenant user.
+    const decodedToken = jwtDecode<{ sub: string; tenant_id?: string; roles?: string[] }>(token);
     const userId = decodedToken.sub || undefined;
     const tenantId = decodedToken.tenant_id ?? null;
     const callerKind: 'tenant' | 'platform' = tenantId ? 'tenant' : 'platform';
-    // DashboardPage branches on role.type ('owner' | 'organization', else 404)
-    // — mirror callerKind so a real login lands on a dashboard, not the 404
-    // fallback. role.name is only resolvable for a platform caller — see
-    // PLATFORM_CALLER_ROLE_NAME's comment for why that's a justified
-    // assignment rather than a guess (a tenant caller's real permissions
-    // come from the fetch below instead, and don't need this fallback).
+    // DashboardPage branches on role.type ('owner' | 'organization', else 404),
+    // and getAccess.ts's isAssignedToJob exempts role.name === 'company_admin' -
+    // both need a real role.name, not just permissions from the fetch below.
     const role = {
-      name: callerKind === 'platform' ? PLATFORM_CALLER_ROLE_NAME : '',
+      name: callerKind === 'platform' ? PLATFORM_CALLER_ROLE_NAME : decodedToken.roles?.[0] || '',
       type: callerKind === 'platform' ? 'owner' : 'organization',
     };
     const canManageCompanySettings = extractCanManageCompanySettings(token);

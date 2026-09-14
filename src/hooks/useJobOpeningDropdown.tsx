@@ -2,7 +2,7 @@ import {
   useListActiveSkillsQuery,
   useListClosureReasonsQuery,
   useListInterviewRoundTypesQuery,
-  useListJobModesQuery,
+  useListOrganizationJobModesQuery,
   useListJobTypesQuery,
   useListLanguagesQuery,
   useLazySearchSkillsQuery,
@@ -12,7 +12,7 @@ import { useGetOrganizationShiftsQuery } from '../api/job-service/Shifts/shifts'
 import { useListUsersQuery } from '../api/organization-service/Users/users';
 import { useListPlatformTenantUsersQuery } from '../api/organization-service/Platform/users';
 import { useListPlatformTenantsQuery } from '../api/organization-service/Platform/tenants';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../redux/provider/store';
 import { useSessionTenantId } from './useSessionTenantId';
@@ -28,6 +28,9 @@ export type JobOpeningDropdownOption = {
   available_variants?: string[] | null;
   max_occurrences?: number | null;
   special_kind?: 'intake_call' | 'resume' | 'verification' | null;
+  /** Skills only: false for a platform-shared skill, so the UI can offer
+   * rename/remove only for this organization's own additions. */
+  isEditable?: boolean;
 };
 
 const DUMMY_SKILL_OPTIONS: JobOpeningDropdownOption[] = [
@@ -73,9 +76,9 @@ const useJobOpeningDropdown = (
   const closureReasons = useListClosureReasonsQuery(undefined, {
     skip: skip || endpoint !== 'CLOSURE_REASON',
   });
-  // Platform-wide catalog, same as closure reasons — no tenant variant.
-  const jobModes = useListJobModesQuery(undefined, {
-    skip: skip || endpoint !== 'JOB_MODE',
+  // This organization's own configured list — empty for a platform caller.
+  const jobModes = useListOrganizationJobModesQuery(undefined, {
+    skip: skip || endpoint !== 'JOB_MODE' || callerKind === 'platform',
   });
   const roundTypes = useListInterviewRoundTypesQuery(undefined, {
     skip: skip || endpoint !== 'ROUNDS',
@@ -92,7 +95,14 @@ const useJobOpeningDropdown = (
   const shifts = useGetOrganizationShiftsQuery(undefined, {
     skip: skip || endpoint !== 'SHIFT' || callerKind === 'platform',
   });
-  const tenantUsers = useListUsersQuery({ limit: 200 }, { skip: skip || !needsPeople || isMaster });
+  // Each dropdown only ever offers users actually holding that role.
+  const tenantUsers = useListUsersQuery(
+    {
+      limit: 200,
+      role: endpoint === 'HIRING_MANAGER' ? 'hiring_manager' : endpoint === 'RECRUITER' ? 'recruiter' : undefined,
+    },
+    { skip: skip || !needsPeople || isMaster }
+  );
   const platformUsers = useListPlatformTenantUsersQuery(
     { tenantId: tenantId ?? '', limit: 200 },
     { skip: skip || !needsPeople || !isMaster || !tenantId }
@@ -106,6 +116,10 @@ const useJobOpeningDropdown = (
   const preloadedSkills = useListActiveSkillsQuery(undefined, {
     skip: skip || !isSkillsEndpoint(endpoint) || callerKind === 'platform',
   });
+  // `skillsResult.isUninitialized` stays true forever once a search has ever
+  // fired, so it can't tell "searching now" from "searched once, cleared" -
+  // track that explicitly instead.
+  const [hasActiveSkillSearch, setHasActiveSkillSearch] = useState(false);
 
   const jobOpeningDropdown: JobOpeningDropdownOption[] = useMemo(() => {
     const unsorted: JobOpeningDropdownOption[] = (() => {
@@ -124,7 +138,7 @@ const useJobOpeningDropdown = (
           }));
         case 'JOB_MODE':
           return (jobModes.data ?? []).map((item) => ({
-            id: item.job_mode_id,
+            id: item.id,
             name: item.job_mode_name,
             description: item.job_mode_description ?? undefined,
           }));
@@ -167,15 +181,14 @@ const useJobOpeningDropdown = (
         case 'MANDATORY_SKILLS':
         case 'OPTIONAL_SKILLS': {
           const searched = skillsResult.data;
-          const catalog = !skillsResult.isUninitialized
-            ? (searched ?? [])
-            : (preloadedSkills.data ?? []);
+          const catalog = hasActiveSkillSearch ? (searched ?? []) : (preloadedSkills.data ?? []);
           if (catalog.length === 0) {
             return callerKind === 'platform' ? DUMMY_SKILL_OPTIONS : [];
           }
           return catalog.map((skill) => ({
             id: skill.skill_id,
             name: skill.skill_label,
+            isEditable: Boolean(skill.is_organization_specific),
           }));
         }
         default:
@@ -194,7 +207,7 @@ const useJobOpeningDropdown = (
     shifts.data,
     users.data,
     skillsResult.data,
-    skillsResult.isUninitialized,
+    hasActiveSkillSearch,
     preloadedSkills.data,
     callerKind,
   ]);
@@ -211,16 +224,18 @@ const useJobOpeningDropdown = (
     preloadedSkills.isLoading ||
     skillsResult.isFetching;
 
-  const refetch = () => {
-    if (endpoint === 'JOB_TYPE') jobTypes.refetch();
-    if (endpoint === 'CLOSURE_REASON') closureReasons.refetch();
-    if (endpoint === 'JOB_MODE') jobModes.refetch();
-    if (endpoint === 'ROUNDS') roundTypes.refetch();
-    if (endpoint === 'EDUCATION_PREFERENCE') educationPreferences.refetch();
-    if (endpoint === 'LANGUAGE') languages.refetch();
-    if (endpoint === 'SHIFT') shifts.refetch();
-    if (needsPeople) users.refetch();
-    if (isSkillsEndpoint(endpoint)) preloadedSkills.refetch();
+  // Awaitable so callers can refetch before setValue, letting the new id
+  // already exist in options when the form re-renders instead of showing a raw uuid.
+  const refetch = async () => {
+    if (endpoint === 'JOB_TYPE') await jobTypes.refetch();
+    if (endpoint === 'CLOSURE_REASON') await closureReasons.refetch();
+    if (endpoint === 'JOB_MODE') await jobModes.refetch();
+    if (endpoint === 'ROUNDS') await roundTypes.refetch();
+    if (endpoint === 'EDUCATION_PREFERENCE') await educationPreferences.refetch();
+    if (endpoint === 'LANGUAGE') await languages.refetch();
+    if (endpoint === 'SHIFT') await shifts.refetch();
+    if (needsPeople) await users.refetch();
+    if (isSkillsEndpoint(endpoint)) await preloadedSkills.refetch();
   };
 
   return {
@@ -232,9 +247,17 @@ const useJobOpeningDropdown = (
       if (!isSkillsEndpoint(endpoint)) return;
       const query = q.trim();
       if (query.length >= 2) {
+        setHasActiveSkillSearch(true);
         void searchSkills({ q: query });
+      } else {
+        // Box cleared (or back below 2 chars) - fall back to the full
+        // catalogue rather than keeping the last search's stale results.
+        setHasActiveSkillSearch(false);
       }
     },
+    // Full catalogue size, unaffected by the search endpoint's 20-result cap -
+    // used for "N of X skills selected" regardless of an in-progress search.
+    totalSkillsCount: isSkillsEndpoint(endpoint) ? (preloadedSkills.data?.length ?? 0) : 0,
   };
 };
 
