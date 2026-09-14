@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Drawer, Select } from 'antd';
 import dayjs from 'dayjs';
 
@@ -23,10 +23,12 @@ import {
   useSubstituteInterviewerMutation,
   useSubmitFeedbackMutation,
   useAttachRecordingMutation,
+  useUploadOfflineRecordingMutation,
   type BookingStatus,
   type FeedbackRecommendation,
   type InterviewApiError,
 } from '../../api/interview-service/client';
+import { useGetJobQuestionsQuery } from '../../api/job-service/JobOpening/jobQuestions';
 import { CandidateNameCell } from './CandidateNameCell';
 import { useJobTitleForOpening } from './useJobTitleForOpening';
 import {
@@ -88,6 +90,10 @@ export const BookingDetailDrawer = ({
   const canCancel = useHasAccess(Authorities.INTERVIEW_QUESTIONS_DELETE);
   const canUpdate = useHasAccess(Authorities.INTERVIEW_QUESTIONS_UPDATE);
   const canFollowUp = useHasAccess(Authorities.INTERVIEW_QUESTIONS_EDIT);
+  // Looser than the action gates above — a panel interviewer who only
+  // needs to READ this round's questions before the call may well hold
+  // interview:read without holding update/delete/edit.
+  const canViewQuestions = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
 
   const isPanel = booking?.interview_type === 'panel';
   const isVideo = booking?.interview_type === 'ai_video' || isPanel;
@@ -97,6 +103,19 @@ export const BookingDetailDrawer = ({
   const { data: calendarStatus } = useGetInterviewerCalendarStatusQuery(id, {
     skip: !open || !isPanel,
   });
+  // Job Service owns the question bank, grouped by round — matched back to
+  // THIS booking's round by `sequence_no`, not `round_id`, because a round
+  // TYPE (e.g. "Hiring Panel") can repeat more than once in one job's plan
+  // and every repeat shares the same `round_id`; only the sequence number
+  // is unique per round instance (see candidate-service's own
+  // `CandidateInterviewRound.job_round_instance_id` docstring for the full
+  // reasoning — that's the id that actually disambiguates repeats, but
+  // interview-service's booking never carries it, so sequence is the one
+  // key both sides already agree on).
+  const { data: jobQuestions } = useGetJobQuestionsQuery(booking?.job_id ?? '', {
+    skip: !open || !isPanel || !canViewQuestions || !booking?.job_id,
+  });
+  const roundQuestions = jobQuestions?.rounds.find((r) => r.sequence === booking?.sequence_no);
   // Live session state — only meaningful for a scheduled/in-progress video round.
   const { data: sessionState } = useGetSessionStateQuery(id, {
     skip: !open || !isVideo || booking?.status !== 'scheduled',
@@ -109,6 +128,8 @@ export const BookingDetailDrawer = ({
   const [substituteInterviewer, substituteState] = useSubstituteInterviewerMutation();
   const [submitFeedback, feedbackState] = useSubmitFeedbackMutation();
   const [attachRecording, attachState] = useAttachRecordingMutation();
+  const [uploadOfflineRecording, uploadState] = useUploadOfflineRecordingMutation();
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
 
   const [pending, setPending] = useState<PendingAction>(null);
   const [reason, setReason] = useState('');
@@ -142,6 +163,29 @@ export const BookingDetailDrawer = ({
     } catch (e) {
       const err = e as InterviewApiError;
       showToast({ message: err?.message || 'Could not attach recording.', type: 'error' });
+    }
+  };
+
+  // Real bytes, alongside `saveRecording`'s by-reference version above —
+  // same sibling relationship `upload_offline_recording.py` documents
+  // server-side. Both endpoints are idempotent per booking (a second call
+  // to EITHER one just hands back whatever the FIRST call stored, never
+  // replaces it), so `hasRecording` below disables both once one exists
+  // rather than letting a second attempt look like it did something.
+  const handleAudioFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) {
+      showToast({ message: 'Please choose an audio file.', type: 'error' });
+      return;
+    }
+    try {
+      await uploadOfflineRecording({ bookingId: id, file }).unwrap();
+      showToast({ message: 'Recording uploaded.', type: 'success' });
+    } catch (e2) {
+      const err = e2 as InterviewApiError;
+      showToast({ message: err?.message || 'Could not upload the recording.', type: 'error' });
     }
   };
 
@@ -218,6 +262,7 @@ export const BookingDetailDrawer = ({
   };
 
   const isTerminal = booking ? TERMINAL.includes(booking.status) : true;
+  const hasRecording = Boolean(artifacts?.artifacts.some((a) => a.kind === 'recording'));
   const apiError = error as InterviewApiError | undefined;
 
   const resolveJobTitle = useJobTitleForOpening();
@@ -304,6 +349,40 @@ export const BookingDetailDrawer = ({
                     </li>
                   ))}
                 </ul>
+              </>
+            )}
+
+            {/* Interview questions — this round's slice of the job's question
+                bank, read-only. What a panel interviewer opens this drawer
+                for. */}
+            {isPanel && canViewQuestions && (
+              <>
+                <SectionTitle>Interview questions</SectionTitle>
+                {roundQuestions && roundQuestions.questions.length > 0 ? (
+                  <ol className="list-decimal space-y-3 pl-5 text-sm">
+                    {roundQuestions.questions.map((q) => (
+                      <li key={q.id} className="text-neutral-800">
+                        {q.question_text}
+                        {q.answer_text && (
+                          <p className="mt-0.5 text-xs text-neutral-400">{q.answer_text}</p>
+                        )}
+                        {q.scoring_sections.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {q.scoring_sections.map((section) => (
+                              <Badge key={section} status="neutral" dot={false}>
+                                {section}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-sm text-neutral-400">
+                    No questions have been added for this round yet.
+                  </p>
+                )}
               </>
             )}
 
@@ -423,20 +502,40 @@ export const BookingDetailDrawer = ({
                   <p className="text-sm text-neutral-400">No recordings attached yet.</p>
                 )}
                 {canFollowUp && (
-                  <div className="mt-2 flex gap-2">
-                    <input
-                      className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-                      placeholder="Attach recording by reference…"
-                      value={recordingRef}
-                      onChange={(e) => setRecordingRef(e.target.value)}
-                    />
-                    <Button
-                      className={GHOST_BTN}
-                      disabled={!recordingRef.trim() || attachState.isLoading}
-                      onClick={saveRecording}
-                    >
-                      Attach
-                    </Button>
+                  <div className="mt-2 flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <input
+                        className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:opacity-50"
+                        placeholder="Attach recording by reference…"
+                        value={recordingRef}
+                        onChange={(e) => setRecordingRef(e.target.value)}
+                        disabled={hasRecording}
+                      />
+                      <Button
+                        className={GHOST_BTN}
+                        disabled={!recordingRef.trim() || attachState.isLoading || hasRecording}
+                        onClick={saveRecording}
+                      >
+                        Attach
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-neutral-400">or</span>
+                      <input
+                        ref={audioFileInputRef}
+                        type="file"
+                        accept="audio/*"
+                        className="hidden"
+                        onChange={(e) => void handleAudioFileSelected(e)}
+                      />
+                      <Button
+                        className={GHOST_BTN}
+                        disabled={uploadState.isLoading || hasRecording}
+                        onClick={() => audioFileInputRef.current?.click()}
+                      >
+                        {uploadState.isLoading ? 'Uploading…' : 'Upload a recording file'}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </>
