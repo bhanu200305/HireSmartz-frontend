@@ -166,6 +166,7 @@ export type CategoryWeight = {
   display_name: string;
   description: string;
   weight_pct: number | string;
+  default_weight_pct: number | string;
   applies_audio_screening: boolean;
   applies_ai_video: boolean;
   applies_panel: boolean;
@@ -184,6 +185,7 @@ export type ScoringPanelResponse = {
 export type ScoringCriteriaResponse = {
   org_job_opening_id: string;
   is_locked: boolean;
+  locked_reason: 'organization' | 'job' | null;
   resume: ScoringPanelResponse;
   interview: ScoringPanelResponse;
 };
@@ -482,6 +484,8 @@ export type SkillCatalogEntry = {
   skill_label: string;
   skill_category_id: string | null;
   category_name: string;
+  /** True only for this org's own added skill - gates rename/remove in the UI. */
+  is_organization_specific?: boolean;
 };
 
 export type AtsConnection = {

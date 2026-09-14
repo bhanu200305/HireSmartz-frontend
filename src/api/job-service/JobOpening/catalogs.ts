@@ -8,12 +8,15 @@ import type {
   OrganizationClosureReason,
   OrganizationJobMode,
   OrganizationJobType,
-  OrganizationShift,
   SkillCatalogEntry,
 } from '../types';
 
-const toJobTypeOption = (item: MasterJobType): OrganizationJobType => ({
-  id: item.job_type_id,
+// Tenant (`/job-types`) responds with `id`, platform (`/platform/master-job-types`)
+// with `job_type_id` - same split `listJobTypes` above tolerates.
+const toJobTypeOption = (
+  item: Partial<MasterJobType> & OrganizationJobType
+): OrganizationJobType => ({
+  id: item.id || item.job_type_id || '',
   job_type_name: item.job_type_name,
   job_type_description: item.job_type_description,
 });
@@ -55,7 +58,8 @@ const catalogsApi = jobApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      transformResponse: (response: MasterJobType) => toJobTypeOption(response),
+      transformResponse: (response: Partial<MasterJobType> & OrganizationJobType) =>
+        toJobTypeOption(response),
       invalidatesTags: ['JobTypes'],
     }),
 
@@ -73,7 +77,8 @@ const catalogsApi = jobApi.injectEndpoints({
         method: 'PUT',
         body,
       }),
-      transformResponse: (response: MasterJobType) => toJobTypeOption(response),
+      transformResponse: (response: Partial<MasterJobType> & OrganizationJobType) =>
+        toJobTypeOption(response),
       invalidatesTags: ['JobTypes'],
     }),
 
@@ -85,53 +90,24 @@ const catalogsApi = jobApi.injectEndpoints({
       invalidatesTags: ['JobTypes'],
     }),
 
-    listShifts: build.query<OrganizationShift[], void>({
-      query: () => ({ url: '/shifts', method: 'GET' }),
-      transformResponse: (response: { shifts: OrganizationShift[] }) => response.shifts ?? [],
-      providesTags: ['Shifts'],
-    }),
+    // Shift CRUD lives in ../Shifts/shifts.ts, not here.
 
-    createShift: build.mutation<
-      OrganizationShift,
-      {
-        shift_name: string;
-        shift_description?: string | null;
-        start_time: string;
-        end_time: string;
-        duration_minutes?: number | null;
-      }
-    >({
-      query: (body) => ({ url: '/shifts', method: 'POST', body }),
-      invalidatesTags: ['Shifts'],
-    }),
-
-    updateShift: build.mutation<
-      OrganizationShift,
-      {
-        shiftId: string;
-        shift_name: string;
-        shift_description?: string | null;
-        start_time: string;
-        end_time: string;
-        duration_minutes?: number | null;
-      }
-    >({
-      query: ({ shiftId, ...body }) => ({ url: `/shifts/${shiftId}`, method: 'PUT', body }),
-      invalidatesTags: ['Shifts'],
-    }),
-
-    deleteShift: build.mutation<void, string>({
-      query: (shiftId) => ({ url: `/shifts/${shiftId}`, method: 'DELETE' }),
-      invalidatesTags: ['Shifts'],
-    }),
-
+    // The platform-wide job-mode suggestion catalogue (Super Admin managed) —
+    // distinct from this organization's own configured list below.
     listJobModes: build.query<JobMode[], void>({
       query: () => ({ url: '/master/job-modes', method: 'GET' }),
       transformResponse: (response: { job_modes: JobMode[] }) => response.job_modes ?? [],
       providesTags: ['JobModes'],
     }),
 
-    // Write side of this organization's job-mode list (listJobModes above is read-only).
+    // This organization's own configured job-mode list.
+    listOrganizationJobModes: build.query<OrganizationJobMode[], void>({
+      query: () => ({ url: '/job-modes', method: 'GET' }),
+      transformResponse: (response: { job_modes: OrganizationJobMode[] }) =>
+        response.job_modes ?? [],
+      providesTags: ['JobModes'],
+    }),
+
     createJobMode: build.mutation<
       OrganizationJobMode,
       { job_mode_name: string; job_mode_description?: string | null }
@@ -229,7 +205,7 @@ const catalogsApi = jobApi.injectEndpoints({
     createOrganizationSkill: build.mutation<
       {
         skill_id: string;
-        skill: string;
+        skill_label: string;
         skill_description: string | null;
         skill_category_id: string | null;
       },
@@ -242,6 +218,38 @@ const catalogsApi = jobApi.injectEndpoints({
       }),
       invalidatesTags: ['Skills'],
     }),
+
+    // 404s for a platform-global skill or another organization's - backend enforces ownership.
+    updateOrganizationSkill: build.mutation<
+      {
+        skill_id: string;
+        skill_label: string;
+        skill_description: string | null;
+        skill_category_id: string | null;
+      },
+      {
+        skillId: string;
+        skill: string;
+        skill_description?: string | null;
+        skill_category_id?: string | null;
+      }
+    >({
+      query: ({ skillId, ...body }) => ({
+        url: `/skills/${skillId}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Skills'],
+    }),
+
+    // Same ownership scoping as the rename above; blocked while any job still selects it.
+    deleteOrganizationSkill: build.mutation<void, { skillId: string }>({
+      query: ({ skillId }) => ({
+        url: `/skills/${skillId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Skills'],
+    }),
   }),
 });
 
@@ -250,11 +258,8 @@ export const {
   useCreateJobTypeMutation,
   useUpdateJobTypeMutation,
   useDeleteJobTypeMutation,
-  useListShiftsQuery,
-  useCreateShiftMutation,
-  useUpdateShiftMutation,
-  useDeleteShiftMutation,
   useListJobModesQuery,
+  useListOrganizationJobModesQuery,
   useCreateJobModeMutation,
   useUpdateJobModeMutation,
   useDeleteJobModeMutation,
@@ -268,4 +273,6 @@ export const {
   useLazySearchSkillsQuery,
   useListActiveSkillsQuery,
   useCreateOrganizationSkillMutation,
+  useUpdateOrganizationSkillMutation,
+  useDeleteOrganizationSkillMutation,
 } = catalogsApi;

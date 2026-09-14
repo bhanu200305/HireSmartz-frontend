@@ -9,12 +9,14 @@ export type JobScoringWeight = {
   displayName?: string;
   description?: string;
   weightPercentage: number;
+  defaultWeightPercentage?: number;
   appliesPanel?: boolean;
 };
 
 export type JobScoringConfigData = {
   jobOpeningId: string;
   isLocked: boolean;
+  lockedReason: 'organization' | 'job' | null;
   resumeConfig: { weights: JobScoringWeight[] };
   interviewConfig: { weights: JobScoringWeight[] };
 };
@@ -38,6 +40,10 @@ const toApiWeights = (weights: JobScoringWeight[]): CategoryWeightOverride[] =>
     weight_pct: w.weightPercentage,
   }));
 
+/** A missing/null default should stay undefined, not become 0 via `Number(null)`. */
+const toOptionalNumber = (value: unknown): number | undefined =>
+  value === null || value === undefined ? undefined : Number(value);
+
 const fromApiWeights = (
   weights: ScoringCriteriaResponse['resume']['weights']
 ): JobScoringWeight[] =>
@@ -47,6 +53,7 @@ const fromApiWeights = (
     displayName: w.display_name,
     description: w.description,
     weightPercentage: Number(w.weight_pct),
+    defaultWeightPercentage: toOptionalNumber(w.default_weight_pct),
     appliesPanel: w.applies_panel,
   }));
 
@@ -56,6 +63,7 @@ const toUiResponse = (response: ScoringCriteriaResponse): JobScoringConfigRespon
   data: {
     jobOpeningId: response.org_job_opening_id,
     isLocked: response.is_locked,
+    lockedReason: response.locked_reason,
     resumeConfig: { weights: fromApiWeights(response.resume?.weights ?? []) },
     interviewConfig: { weights: fromApiWeights(response.interview?.weights ?? []) },
   },

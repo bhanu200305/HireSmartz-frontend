@@ -27,7 +27,7 @@ import { useListTenantDepartmentsQuery } from '../../../api/organization-service
 import { useListTenantJobTitlesQuery } from '../../../api/organization-service/Tenants/jobTitles';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
-import { hasFeatureAccess } from '../../../shared/utils/auth/getAccess';
+import { hasFeatureAccess, isAssignedToJob } from '../../../shared/utils/auth/getAccess';
 import { asJobId } from '../../../api/job-service/jobId';
 import {
   useListCandidatesQuery,
@@ -61,7 +61,10 @@ const buildCurrentSortKey = (sortBy: string, sortOrder: 'asc' | 'desc') =>
 
 const CandidatesListing = () => {
   const navigate = useNavigate();
-  const { role, callerKind } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const { role, callerKind, userId } = useSelector(
+    (state: any) => state.LoginSlice,
+    shallowEqual
+  );
   const tenantId = useSessionTenantId();
   const effectivePermissions = useEffectivePermissions();
   const { id } = useParams<{ id: string }>();
@@ -94,6 +97,18 @@ const CandidatesListing = () => {
   );
 
   const canViewJobNotes = hasFeatureAccess('job_opening', 'view', role, effectivePermissions);
+  // Reading notes needs only view access; writing needs job assignment.
+  const canWriteJobNotes = !jobOpeningData
+    ? true
+    : isAssignedToJob(
+        {
+          hiringManagerIds: jobOpeningData.details?.hiring_manager_ids,
+          recruiterIds: jobOpeningData.details?.recruiter_ids,
+          createdById: jobOpeningData.details?.created_by,
+        },
+        userId,
+        role
+      );
   const canManageCandidates =
     hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) ||
     hasFeatureAccess('job_opening', 'create', role, effectivePermissions);
@@ -654,6 +669,7 @@ const CandidatesListing = () => {
         onClose={() => setIsJobNotesPanelOpen(false)}
         jobTitle={jobTitleName}
         jobOpeningId={parsedJobId}
+        canWrite={canWriteJobNotes}
       />
       <CandidateRecruiterNotesPanel
         open={Boolean(notesCandidate)}

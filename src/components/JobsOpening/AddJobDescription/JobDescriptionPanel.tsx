@@ -476,13 +476,11 @@ const JobDescriptionPanel = ({
 
       {!aiJobDescriptionId ? (
         <div className="w-full p-6 bg-[#FAFAFA] border border-dashed border-[#E2E2E2] rounded-lg text-center text-gray-400 text-sm">
-          Save the job details on the left first - the AI description generates automatically and
-          appears here.
+          Save the job details first - the AI description generates automatically and appears here.
         </div>
       ) : !hasSavedDetails ? (
         <div className="w-full p-6 bg-[#FAFAFA] border border-dashed border-[#E2E2E2] rounded-lg text-center text-gray-400 text-sm">
-          Save the job details on the left first - the AI description generates automatically and
-          appears here.
+          Save the job details first - the AI description generates automatically and appears here.
         </div>
       ) : !previewDescription ? (
         <div className="w-full p-6 bg-[#FAFAFA] border border-dashed border-[#E2E2E2] rounded-lg text-center">

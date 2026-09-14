@@ -52,6 +52,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
   const [resettingSection, setResettingSection] = useState<'resume' | 'interview' | null>(null);
 
   const isLocked = Boolean(jobScoringData?.data?.isLocked);
+  const lockedReason = jobScoringData?.data?.lockedReason ?? null;
   const isEditable = !isViewMode && !isLocked;
 
   const resumeWeights = useMemo(
@@ -192,7 +193,9 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
       <h2 className="text-2xl font-semibold text-gray-800 mb-1">Scoring Weight Distribution</h2>
       <p className="text-sm text-gray-500 mb-6">
         {isLocked
-          ? 'Scoring weights are locked for this job.'
+          ? lockedReason === 'organization'
+            ? 'Locked by your organization admin. Contact them to change this.'
+            : 'Locked. A candidate has already applied to this job.'
           : isEditable
             ? 'Customize scoring weights for this specific job opening. Both panels are saved together.'
             : 'Scoring weights configured for this job opening.'}

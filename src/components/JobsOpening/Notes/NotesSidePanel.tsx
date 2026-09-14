@@ -71,6 +71,8 @@ export type NotesSidePanelProps = {
    * even when RTK briefly exposes the wrong cache entry.
    */
   notesScopeKey?: string;
+  /** Job only: false hides the composer and edit/delete menu, read-only. */
+  canWrite?: boolean;
 };
 
 const parseDate = (value?: string) => {
@@ -145,6 +147,7 @@ const NotesSidePanel = ({
   isLoadingNotes = false,
   showCandidateRoundContextLabel = false,
   notesScopeKey = '',
+  canWrite = true,
 }: NotesSidePanelProps) => {
   const isJob = variant === 'job';
   const useRemote = Boolean(remoteActions);
@@ -463,7 +466,7 @@ const NotesSidePanel = ({
                 { key: 'delete', label: 'Delete' },
               ];
 
-              const showAuthorMenu = isAuthor;
+              const showAuthorMenu = isAuthor && canWrite;
 
               return (
                 <div key={note.id} className={isCompact ? 'mb-3 last:mb-1' : 'mb-4 last:mb-2'}>
@@ -617,26 +620,32 @@ const NotesSidePanel = ({
               </p>
             </div>
           ) : null}
-          <div className="relative z-10">
-            <textarea
-              className={`relative z-10 w-full border border-gray-300 rounded-lg pr-12 pb-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-600/40 ${
-                isCompact ? 'p-2 min-h-[64px]' : 'p-2.5'
-              }`}
-              rows={isCompact ? 2 : 3}
-              placeholder={composerPlaceholder}
-              value={newNoteContent}
-              onChange={(e) => setNewNoteContent(e.target.value)}
-            />
-            <button
-              type="button"
-              className="absolute z-20 text-primary-600 hover:text-primary-700 disabled:opacity-50 disabled:cursor-not-allowed bottom-2.5 right-3 pointer-events-auto p-0.5 rounded-md hover:bg-primary-600/10 transition-colors"
-              onClick={() => void handlePost()}
-              disabled={!newNoteContent.trim() || isPosting}
-              aria-label="Post note"
-            >
-              <IoPaperPlaneOutline size={isCompact ? 20 : 22} aria-hidden />
-            </button>
-          </div>
+          {canWrite ? (
+            <div className="relative z-10">
+              <textarea
+                className={`relative z-10 w-full border border-gray-300 rounded-lg pr-12 pb-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-600/40 ${
+                  isCompact ? 'p-2 min-h-[64px]' : 'p-2.5'
+                }`}
+                rows={isCompact ? 2 : 3}
+                placeholder={composerPlaceholder}
+                value={newNoteContent}
+                onChange={(e) => setNewNoteContent(e.target.value)}
+              />
+              <button
+                type="button"
+                className="absolute z-20 text-primary-600 hover:text-primary-700 disabled:opacity-50 disabled:cursor-not-allowed bottom-2.5 right-3 pointer-events-auto p-0.5 rounded-md hover:bg-primary-600/10 transition-colors"
+                onClick={() => void handlePost()}
+                disabled={!newNoteContent.trim() || isPosting}
+                aria-label="Post note"
+              >
+                <IoPaperPlaneOutline size={isCompact ? 20 : 22} aria-hidden />
+              </button>
+            </div>
+          ) : (
+            <p className={`text-center text-[#717171] ${isCompact ? 'text-[12px] pb-2' : 'text-sm pb-3'}`}>
+              You can only add notes to jobs you're assigned to.
+            </p>
+          )}
           <div
             className={`flex items-center justify-between text-gray-400 ${isCompact ? 'text-[11px] mt-1' : 'text-xs mt-2'}`}
           >
