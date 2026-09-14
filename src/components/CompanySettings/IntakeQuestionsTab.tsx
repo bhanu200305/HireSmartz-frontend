@@ -63,6 +63,16 @@ const IntakeQuestionsTab: React.FC = () => {
     () => fields.map((f) => ({ value: f.field_id, label: f.field_label })),
     [fields]
   );
+  // Resume-field display order (Introduction, Education, Experience, ...) —
+  // organization-service's own seed for `order_index` (migration 0051), not
+  // re-declared here so this can never drift from what's actually
+  // configured. A question whose field isn't in this map yet (fields still
+  // loading, or a legacy untagged row) sorts last rather than disappearing.
+  const fieldOrderById = useMemo(() => {
+    const map = new Map<string, number>();
+    fields.forEach((f) => map.set(f.field_id, f.order_index));
+    return map;
+  }, [fields]);
 
   const { data: platformData, isLoading: isPlatformLoading } =
     useListPlatformInterviewQuestionsQuery(undefined, { skip: !isPlatformDefault });
@@ -88,7 +98,18 @@ const IntakeQuestionsTab: React.FC = () => {
 
   const data = isPlatformDefault ? platformData : tenantData;
   const isLoading = isPlatformDefault ? isPlatformLoading : isTenantLoading;
-  const questions = useMemo(() => data?.questions ?? [], [data]);
+  // Always shown in resume-field order, never insertion order — a manually
+  // added question and a bulk-imported one must land in the same place on
+  // screen, same normalization MyCompany/InterviewQuestionsTab.tsx applies
+  // for the Company Admin view of this same data.
+  const questions = useMemo(() => {
+    const list = data?.questions ?? [];
+    const orderFor = (fieldId: string | null | undefined): number => {
+      if (!fieldId) return Number.MAX_SAFE_INTEGER;
+      return fieldOrderById.get(fieldId) ?? Number.MAX_SAFE_INTEGER;
+    };
+    return [...list].sort((a, b) => orderFor(a.field_id) - orderFor(b.field_id));
+  }, [data, fieldOrderById]);
 
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
