@@ -9,6 +9,7 @@ import type { CandidateInterviewScoreView } from '../../../api/candidate-service
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import {
   bucketForStatus,
+  isIntakeCallRound,
   isOverdue,
   isRoundConcluded,
   resolveCurrentRound,
@@ -63,6 +64,13 @@ type PipelineBoardProps = {
   rounds: CandidateInterviewRoundView[];
   scores: CandidateInterviewScoreView[];
   resumeScore: number | null;
+  // The Intake Call round never produces a `CandidateInterviewScore` — its
+  // real output is this resume-consistency check on the candidate record
+  // (see `isIntakeCallRound`'s own docstring). Passed separately, same
+  // convention as `resumeScore`, so this card can show the right number
+  // instead of falling through to whatever (if anything) `scores` has for
+  // that round's id.
+  consistencyScore: number | null;
   candidateId: string;
   onRoundClick?: (round: CandidateInterviewRoundView) => void;
 };
@@ -71,6 +79,7 @@ const PipelineBoard = ({
   rounds,
   scores,
   resumeScore,
+  consistencyScore,
   candidateId,
   onRoundClick,
 }: PipelineBoardProps) => {
@@ -304,7 +313,12 @@ const PipelineBoard = ({
                     Score: {resumeScore}
                   </span>
                 )}
-                {isInterviewRound && roundScoreValue != null && (
+                {isIntakeCallRound(round) && consistencyScore !== null && (
+                  <span className="text-xs font-semibold text-primary-600">
+                    Consistency: {consistencyScore} / 10
+                  </span>
+                )}
+                {isInterviewRound && !isIntakeCallRound(round) && roundScoreValue != null && (
                   <span className="text-xs font-semibold text-primary-600">
                     {roundScore?.recruiter_score != null
                       ? `Score: ${roundScoreValue} / 5`

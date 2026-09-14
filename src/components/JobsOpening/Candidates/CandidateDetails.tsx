@@ -23,11 +23,14 @@ import {
   useListCandidateInterviewScoresQuery,
   useDeleteResumeReviewMutation,
   useLazyGetCandidateResumeDownloadQuery,
+  useRequestResumeUploadMutation,
 } from '../../../api/candidate-service/Candidates/scoring';
 import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candidates/notes';
 import {
   useCreateBookingMutation,
   useGetBookingQuery,
+  useGetBookingHistoryQuery,
+  useRequestCallRescheduleMutation,
   useLazyGetCalendarConnectUrlQuery,
 } from '../../../api/interview-service/client';
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
@@ -44,11 +47,13 @@ import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import ResumeViewerModal from './Modal/ResumeViewerModal';
 import PipelineBoard from './PipelineBoard';
 import StatusHistoryTab from './StatusHistoryTab';
-import { roundLabel, formatRoundStatus } from './roundDisplay';
+import { roundLabel, formatRoundStatus, formatCallIntent } from './roundDisplay';
 import {
   resolveCurrentRound,
   isRoundConcluded,
   isInstantCallFlow,
+  isAiVideoRound,
+  isAudioScreeningRound,
   isIntakeCallRound,
   isResumeStageRound,
   orderRoundsForFlow,
@@ -133,7 +138,14 @@ const CandidateDetails = () => {
     isLoading: isCandidateLoading,
     error: candidateError,
     refetch: refetchCandidate,
-  } = useGetCandidateQuery(candidateId ?? '', { skip: !candidateId });
+  } = useGetCandidateQuery(candidateId ?? '', {
+    skip: !candidateId,
+    // A self-service withdrawal (or any other status change) arrives via
+    // an async event chain, not this page's own action — same reasoning
+    // the round-score/artifact queries below already poll on.
+    pollingInterval: 20_000,
+    skipPollingIfUnfocused: true,
+  });
 
   const { data: jobOpeningData } = useGetJobOpeningByIdQuery(
     { jobOpeningId: parsedJobId },
@@ -164,6 +176,8 @@ const CandidateDetails = () => {
   const [deleteResumeReview] = useDeleteResumeReviewMutation();
   const [getResumeDownload, { isLoading: isResumeUrlLoading }] =
     useLazyGetCandidateResumeDownloadQuery();
+  const [requestResumeUpload, { isLoading: isRequestingResumeUpload }] =
+    useRequestResumeUploadMutation();
   const [createBooking] = useCreateBookingMutation();
   const isPanelRound = Boolean(selectedRound?.round_name?.toLowerCase().includes('panel'));
   const [setPanelInterviewers, { isLoading: isSavingInterviewers }] =
@@ -180,11 +194,19 @@ const CandidateDetails = () => {
   // whichever round was open before.
   useEffect(() => {
     setSelectedInterviewerIds(selectedRound?.interviewer_ids ?? []);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRound?.id]);
   const { data: selectedBooking } = useGetBookingQuery(selectedRound?.interview_booking_id ?? '', {
     skip: !selectedRound?.interview_booking_id,
   });
+  // Every past attempt for this round, not just the current one — see
+  // getBookingHistory's own docstring for why interview-service, not
+  // candidate-service, is the only place this survives a reschedule.
+  const { data: bookingHistory } = useGetBookingHistoryQuery(
+    selectedRound?.interview_booking_id ?? '',
+    { skip: !selectedRound?.interview_booking_id }
+  );
+  const [requestCallReschedule, { isLoading: isRequestingReschedule }] =
+    useRequestCallRescheduleMutation();
   const [getCalendarConnectUrl] = useLazyGetCalendarConnectUrlQuery();
 
   const handleBackToList = () => navigate(`/jobs/view/${parsedJobId}/candidates`);
@@ -203,6 +225,39 @@ const CandidateDetails = () => {
       anchor.click();
     } catch (e) {
       showToast({ message: getCandidateErrorMessage(e, 'Resume not available'), type: 'error' });
+    }
+  };
+
+  const handleRequestResumeUpload = async () => {
+    if (!candidateId) return;
+    try {
+      await requestResumeUpload(candidateId).unwrap();
+      showToast({
+        message: 'Resume requested — the candidate has been emailed an upload link.',
+        type: 'success',
+      });
+    } catch (e) {
+      showToast({
+        message: getCandidateErrorMessage(e, 'Could not request a resume'),
+        type: 'error',
+      });
+    }
+  };
+
+  const handleRequestCallReschedule = async () => {
+    if (!selectedRound?.interview_booking_id) return;
+    try {
+      await requestCallReschedule(selectedRound.interview_booking_id).unwrap();
+      showToast({
+        message:
+          'Reschedule requested — the candidate has been emailed a new link, valid for 24 hours.',
+        type: 'success',
+      });
+    } catch (e) {
+      showToast({
+        message: getCandidateErrorMessage(e, 'Could not request a reschedule'),
+        type: 'error',
+      });
     }
   };
 
@@ -281,9 +336,19 @@ const CandidateDetails = () => {
   };
 
   const statusUpper = (candidate?.status_code ?? '').toLowerCase();
-  const isTerminal = ['selected', 'rejected', 'resume_rejected', 'interview_rejected'].includes(
-    statusUpper
-  );
+  // Matches master.ts's own documented funnel comment — every code marked
+  // "(terminal)" there. `withdrawn` was missing here (added 2026-09-14): a
+  // candidate who withdrew via their own email link (interview-service's
+  // `POST /withdraw/{token}` -> candidate-service's real status
+  // transition, already fully wired) still saw ADVANCE/REJECT on their own
+  // profile, since nothing here recognized that status as terminal.
+  const isTerminal = [
+    'selected',
+    'rejected',
+    'resume_rejected',
+    'interview_rejected',
+    'withdrawn',
+  ].includes(statusUpper);
 
   const isResumeStage = selectedRound?.stage_type === 'resume';
   // `roundProgress.ts`'s shared `isIntakeCallRound` — this used to
@@ -294,6 +359,16 @@ const CandidateDetails = () => {
   // `planHasIntakeCall`/`currentRoundInIntakePair` below can never disagree
   // about which round is the Intake Call.
   const selectedRoundIsIntakeCall = Boolean(selectedRound && isIntakeCallRound(selectedRound));
+  // Call-intent card (added 2026-09-13, extended to AI Video 2026-09-14)
+  // applies to all three voice/video rounds interview-service derives an
+  // intent for — computed inline rather than adding three near-duplicate
+  // constants.
+  const selectedRoundIsVoiceCall = Boolean(
+    selectedRound &&
+    (isIntakeCallRound(selectedRound) ||
+      isAudioScreeningRound(selectedRound) ||
+      isAiVideoRound(selectedRound))
+  );
   // Same "score already sitting here means reviewed and ready to move on"
   // read as PipelineBoard.tsx's own version of this check — the resume
   // stage's status never flips off "to_be_scheduled"/"pending" on its own,
@@ -354,10 +429,13 @@ const CandidateDetails = () => {
       return {
         roundScore,
         chartValue: candidate?.resume_score ?? null,
-        // Resume score is 0-100, same scale as the AI round score below.
+        // Resume score is 0-10 (ai-service's score_resume.py), not 0-100 —
+        // scale up for the bar height.
         pct:
-          candidate?.resume_score == null ? 0 : Math.max(0, Math.min(100, candidate.resume_score)),
-        scoreText: scored ? `${candidate?.resume_score} · AI resume score` : null,
+          candidate?.resume_score == null
+            ? 0
+            : Math.max(0, Math.min(100, candidate.resume_score * 10)),
+        scoreText: scored ? `${candidate?.resume_score} / 10 · AI resume score` : null,
         statusText: scored ? 'Completed' : formatStatus(round.status),
         outcomeLabel: scored ? 'Scored' : null,
       };
@@ -367,12 +445,14 @@ const CandidateDetails = () => {
       return {
         roundScore,
         chartValue: candidate?.consistency_score ?? null,
-        // Consistency score is 0-100, same scale as the AI round score below.
+        // Consistency score is 0-10 (ai-service's
+        // check_intake_call_consistency.py), not 0-100 — scale up for the
+        // bar height.
         pct:
           candidate?.consistency_score == null
             ? 0
-            : Math.max(0, Math.min(100, candidate.consistency_score)),
-        scoreText: checked ? `${candidate?.consistency_score} · resume consistency` : null,
+            : Math.max(0, Math.min(100, candidate.consistency_score * 10)),
+        scoreText: checked ? `${candidate?.consistency_score} / 10 · resume consistency` : null,
         statusText: formatRoundStatus(round.status),
         outcomeLabel: checked ? 'Checked' : null,
       };
@@ -593,6 +673,7 @@ const CandidateDetails = () => {
             rounds={rounds}
             scores={scores}
             resumeScore={candidate?.resume_score ?? null}
+            consistencyScore={candidate?.consistency_score ?? null}
             candidateId={candidateId}
             onRoundClick={(round) => {
               setSelectedRound(round);
@@ -756,6 +837,88 @@ const CandidateDetails = () => {
                       </div>
                     </div>
                   </CommonCard>
+
+                  {selectedRoundIsVoiceCall && (
+                    // What actually happened on the call — completed,
+                    // asked to reschedule, said not interested, never
+                    // picked up, or cut off with no clear reason. Backed by
+                    // interview-service's own `GET /bookings/{id}`
+                    // (`selectedBooking`, already fetched above), not
+                    // candidate-service — this field doesn't exist there.
+                    <CommonCard>
+                      <div className="p-5">
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Call Outcome
+                        </div>
+                        <div className="mt-2 text-lg font-bold text-primary">
+                          {formatCallIntent(selectedBooking?.call_intent ?? null)}
+                        </div>
+                        {selectedBooking?.call_intent_reason ? (
+                          <p className="mt-1 text-sm text-gray-600">
+                            {selectedBooking.call_intent_reason}
+                          </p>
+                        ) : selectedBooking?.call_intent == null ? (
+                          <p className="mt-1 text-sm text-gray-400">
+                            Not available yet — updates once this call has ended.
+                          </p>
+                        ) : null}
+                        {selectedBooking?.call_intent != null && (
+                          // Only offered once the call has actually
+                          // concluded (a `call_intent` exists) — matches
+                          // interview-service's own eligibility check on
+                          // POST /bookings/{id}/request-reschedule, so this
+                          // is never offered somewhere the backend would
+                          // just reject it.
+                          <Button
+                            className="mt-3 rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+                            disabled={isRequestingReschedule}
+                            onClick={() => void handleRequestCallReschedule()}
+                          >
+                            {isRequestingReschedule
+                              ? 'Sending…'
+                              : 'Create Booking (Reschedule Call)'}
+                          </Button>
+                        )}
+                      </div>
+                    </CommonCard>
+                  )}
+
+                  {selectedRoundIsVoiceCall && (bookingHistory?.length ?? 0) > 1 && (
+                    // Only shown once there's actually more than one
+                    // attempt — a single-entry "history" would just repeat
+                    // the Call Outcome card above. `bookingHistory` is
+                    // oldest-first; render it newest-first so the most
+                    // recent (and most relevant) attempt reads first.
+                    <CommonCard>
+                      <div className="p-5">
+                        <div className="text-xs font-semibold uppercase text-gray-400">
+                          Reschedule History
+                        </div>
+                        <div className="mt-3 flex flex-col gap-3">
+                          {[...(bookingHistory ?? [])].reverse().map((attempt, index) => (
+                            <div
+                              key={attempt.id}
+                              className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                            >
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">
+                                  {index === 0
+                                    ? 'Current attempt'
+                                    : `Attempt ${bookingHistory!.length - index}`}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {formatDateTime(attempt.start_time) ?? 'Not yet scheduled'}
+                                </div>
+                              </div>
+                              <span className="shrink-0 text-xs font-semibold text-primary-600">
+                                {formatCallIntent(attempt.call_intent)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </CommonCard>
+                  )}
 
                   {selectedRoundIsIntakeCall && (
                     // Same transcript-vs-resume authenticity signal shown on
@@ -966,7 +1129,16 @@ const CandidateDetails = () => {
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-gray-500">No resume on file yet.</p>
+                  <>
+                    <p className="text-sm text-gray-500">No resume on file yet.</p>
+                    <Button
+                      className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      onClick={() => void handleRequestResumeUpload()}
+                      disabled={isRequestingResumeUpload}
+                    >
+                      {isRequestingResumeUpload ? 'REQUESTING…' : 'REQUEST RESUME'}
+                    </Button>
+                  </>
                 )}
               </div>
             </CommonCard>

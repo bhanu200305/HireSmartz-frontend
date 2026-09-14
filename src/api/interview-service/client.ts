@@ -53,6 +53,15 @@ export interface BookingView {
   rescheduled_from_booking_id: string | null;
   cancellation_reason: string | null;
   skip_reason: string | null;
+  /** Added 2026-09-13 — a recruiter-facing summary of what actually
+   * happened on an AUDIO/AUDIO_SCREENING call: one of `no_answer`,
+   * `technical_failure`, `reschedule_requested`, `not_interested`,
+   * `ended_unclear`, or `completed`. `null` for every other interview_type,
+   * and `null` for AUDIO/AUDIO_SCREENING until the call has actually
+   * ended. See `formatCallIntent` in roundDisplay.ts for the display
+   * label. */
+  call_intent: string | null;
+  call_intent_reason: string | null;
 }
 
 export interface CreateBookingRequest {
@@ -195,6 +204,20 @@ export interface ApiErrorDetails {
   details?: unknown;
 }
 
+// The real shape of an error envelope's `data` field, per
+// `cfp_platform.middleware.response_envelope`'s own docstring:
+// {error_code, request_id, details} — NOT {code, details} as
+// `ApiErrorDetails` above (used only for the `InterviewApiError`
+// constructor's own param bag) might suggest. Fixed 2026-09-14 — every
+// `error.code === '...'` branch in `getInterviewErrorAction` silently
+// never matched before this, since the code was read from a `code` field
+// that never existed on the real payload.
+interface ErrorEnvelopeData {
+  error_code?: string;
+  request_id?: string | null;
+  details?: unknown;
+}
+
 export class InterviewApiError extends Error {
   readonly status: number;
   readonly code?: string;
@@ -215,6 +238,7 @@ export type InterviewErrorAction =
   | 'not-your-session'
   | 'not-found'
   | 'not-ready'
+  | 'not-yet-started'
   | 'disable-action'
   | 'refetch-slots'
   | 'expired-link'
@@ -224,12 +248,33 @@ export type InterviewErrorAction =
   | 'contact-us'
   | 'toast';
 
+// `SessionNotYetStartedError`'s own `details` shape — see
+// interview-service's `booking_exceptions.py`. Read via
+// `apiError.details as SessionNotYetStartedDetails` once
+// `getInterviewErrorAction` returns `'not-yet-started'`.
+export interface SessionNotYetStartedDetails {
+  booking_id: string;
+  starts_at: string;
+  /** How many minutes before `starts_at` a candidate may join — added
+   * 2026-09-14 alongside interview-service's 15 -> 5 minute window change,
+   * so this number is never hardcoded on the frontend and can't drift from
+   * the backend's own setting. */
+  early_join_window_minutes: number;
+}
+
 export const getInterviewErrorAction = (error: InterviewApiError): InterviewErrorAction => {
   if (error.status === 401) return 'login';
   if (error.status === 410) return 'expired-link';
+  if (error.status === 425) return 'not-yet-started';
   if (error.status === 500) return 'toast';
   if (error.status === 409) return error.code === 'SLOT_FULL' ? 'refetch-slots' : 'disable-action';
-  if (error.status === 422) return 'inline-error';
+  if (error.status === 422)
+    // FEEDBACK_NOT_AVAILABLE covers the transient "the call just ended,
+    // the room_finished webhook hasn't marked the booking COMPLETED yet"
+    // race, not just "no feedback step for this round type" — same
+    // "not-ready" treatment as RECORDING_NOT_AVAILABLE below, i.e. worth
+    // a short poll rather than a dead-end error.
+    return error.code === 'FEEDBACK_NOT_AVAILABLE' ? 'not-ready' : 'inline-error';
   if (error.status === 404)
     return error.code === 'RECORDING_NOT_AVAILABLE' ? 'not-ready' : 'not-found';
   if (error.status === 403)
@@ -280,15 +325,17 @@ const interviewBaseQuery: BaseQueryFn<InterviewFetchArgs, unknown, InterviewApiE
   const payload = result.data ?? result.error?.data;
 
   if (result.error) {
+    // `status` (the real HTTP status, a number) is authoritative — the
+    // envelope's own `payload.status_code` is a human-readable STRING
+    // ("425 Too Early", per `_status_code_label`), never a number, despite
+    // the `Envelope` type above claiming otherwise.
     const status = typeof result.error.status === 'number' ? result.error.status : 0;
     if (isEnvelope(payload)) {
+      const errorData = payload.data as ErrorEnvelopeData | null;
       return {
-        error: new InterviewApiError(payload.status_code || status, payload.message, {
-          code:
-            typeof (payload.data as ApiErrorDetails | null)?.code === 'string'
-              ? (payload.data as ApiErrorDetails).code
-              : undefined,
-          details: payload.data,
+        error: new InterviewApiError(status, payload.message, {
+          code: typeof errorData?.error_code === 'string' ? errorData.error_code : undefined,
+          details: errorData?.details,
         }),
       };
     }
@@ -303,9 +350,13 @@ const interviewBaseQuery: BaseQueryFn<InterviewFetchArgs, unknown, InterviewApiE
   if (!isEnvelope(payload)) {
     return { error: new InterviewApiError(0, 'Interview Service returned an invalid response') };
   }
-  if (payload.status !== 'success' || payload.status_code >= 400) {
+  if (payload.status !== 'success') {
+    const errorData = payload.data as ErrorEnvelopeData | null;
     return {
-      error: new InterviewApiError(payload.status_code, payload.message, { details: payload.data }),
+      error: new InterviewApiError(0, payload.message, {
+        code: typeof errorData?.error_code === 'string' ? errorData.error_code : undefined,
+        details: errorData?.details,
+      }),
     };
   }
   return { data: payload.data };
@@ -356,6 +407,28 @@ export const interviewApi = createApi({
     getBooking: build.query<BookingView, string>({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}` }),
       providesTags: (_result, _error, id) => [{ type: 'Booking', id }],
+    }),
+    // The full reschedule-attempt chain behind `bookingId`, oldest first —
+    // interview-service is the only place this history still exists (see
+    // that endpoint's own docstring: candidate-service only ever tracks
+    // the current attempt). Always pass the round's CURRENT
+    // interview_booking_id — this only walks backward (ancestors), never
+    // forward.
+    getBookingHistory: build.query<BookingView[], string>({
+      query: (bookingId) => platform({ url: `/bookings/${bookingId}/history` }),
+      providesTags: (_result, _error, id) => [{ type: 'Booking', id }],
+    }),
+    // Manually requests a reschedule for a concluded AUDIO/AUDIO_SCREENING
+    // call — creates a fresh attempt booking and emails the candidate a
+    // 24h scheduling link. `bookingId` is the ORIGINAL (concluded) booking,
+    // not the new one this creates. Only invalidates `Booking` for the
+    // original id — the round list refetch (candidate-service, not this
+    // slice) is what surfaces the new attempt row, same as the automatic
+    // reschedule flow already relies on.
+    requestCallReschedule: build.mutation<BookingView, string>({
+      query: (bookingId) =>
+        platform({ url: `/bookings/${bookingId}/request-reschedule`, method: 'POST' }),
+      invalidatesTags: (_result, _error, bookingId) => [{ type: 'Booking', id: bookingId }],
     }),
     listBookings: build.query<
       PaginatedBookings,
@@ -573,6 +646,8 @@ export const {
   useDisconnectCalendarMutation,
   useCreateBookingMutation,
   useGetBookingQuery,
+  useGetBookingHistoryQuery,
+  useRequestCallRescheduleMutation,
   useListBookingsQuery,
   useCancelBookingMutation,
   useSkipBookingMutation,
