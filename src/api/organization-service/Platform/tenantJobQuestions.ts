@@ -21,6 +21,11 @@ export type DeletePlatformTenantJobQuestionArgs = {
   questionId: string;
 };
 
+export type BulkImportJobQuestionsResponse = {
+  created: InterviewQuestion[];
+  replaced_count: number;
+};
+
 /**
  * GET/POST/PATCH/DELETE /v1/platform/tenants/{tenant_id}/audio-questions[/{id}]
  * — a Super Admin viewing, adding to, or editing ONE SPECIFIC company's own
@@ -83,6 +88,29 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'InterviewQuestions', id: tenantId },
       ],
     }),
+    // No separate template endpoint here — the file is identical regardless
+    // of which company is selected, so this reuses
+    // `useLazyGetIntakeQuestionsTemplateQuery` from Platform/interviewQuestions.ts.
+    // Replaces this ONE company's entire list, never the platform default
+    // or any other company — see BulkImportJobQuestionsUseCase on the backend.
+    bulkImportPlatformTenantJobQuestions: build.mutation<
+      BulkImportJobQuestionsResponse,
+      { tenantId: string; file: File }
+    >({
+      query: ({ tenantId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/v1/platform/tenants/${tenantId}/audio-questions/bulk-import`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'InterviewQuestions', id: `platform-${tenantId}` },
+        { type: 'InterviewQuestions', id: tenantId },
+      ],
+    }),
   }),
 });
 
@@ -91,4 +119,5 @@ export const {
   useCreatePlatformTenantJobQuestionMutation,
   useUpdatePlatformTenantJobQuestionMutation,
   useDeletePlatformTenantJobQuestionMutation,
+  useBulkImportPlatformTenantJobQuestionsMutation,
 } = extendedApi;

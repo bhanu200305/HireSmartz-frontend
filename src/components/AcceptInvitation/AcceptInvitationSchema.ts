@@ -34,14 +34,17 @@ export const acceptInvitationSchema = z
     password: passwordValidation(),
     confirmPassword: z.string().min(1, 'Please confirm your password.'),
     // Which second factor the invite screen's method picker resolved to.
-    // MFA is mandatory now — always one of the three real choices.
-    methodType: z.enum(['totp', 'email', 'sms']),
+    // MFA is mandatory now — always one of these two. Authenticator app
+    // (TOTP) is deliberately not offered at first-time setup — see
+    // MfaMethodPicker's own comment in index.tsx — so it isn't a valid
+    // submission here either; someone who wants it can still add it later
+    // from Security Settings, which enrolls it through a different flow.
+    methodType: z.enum(['email', 'sms']),
     // Was a bare "I did this" checkbox whose state never actually reached
     // the server — the backend armed nothing on that basis (correctly: it
     // requires real proof). Now REQUIRED end to end: a missing/wrong code
-    // fails account creation entirely rather than leaving MFA off. For
-    // "totp" it's read off the authenticator app; for "email"/"sms" it's
-    // the code sendInviteMfaCode already delivered.
+    // fails account creation entirely rather than leaving MFA off — the
+    // code sendInviteMfaCode already delivered.
     mfaCode: z
       .string()
       .trim()

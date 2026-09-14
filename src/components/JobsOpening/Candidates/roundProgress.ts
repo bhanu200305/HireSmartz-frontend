@@ -39,15 +39,17 @@ export const bucketForStatus = (status: string): RoundBucket => {
 export const isResumeStageRound = (round: CandidateInterviewRoundView): boolean =>
   round.stage_type === 'resume';
 
-/** The Intake Call round. `CandidateInterviewRoundView` carries no round-kind
- * field — only the display `round_name` sourced live from job-service — so
- * this is a name match, same convention `CandidateDetails.tsx` already uses
- * for its own round-type inference. `master_interview_round`'s name for this
- * kind is a fixed platform string, not tenant-editable, so it holds in
- * practice. */
+/** The Intake Call round — `round_type === 'AUDIO'` is candidate-service's
+ * real classification (added 2026-09-11, see
+ * `CandidateInterviewRoundView.round_type`'s own doc comment), matching
+ * interview-service's own `InterviewType.AUDIO` ("the Intake Call" per
+ * that enum's docstring). Used to be a name match against `round_name`
+ * (`.includes('intake call')`) — a Super-Admin-editable string, not a
+ * reliable type signal, and the reason the Intake Call Consistency score
+ * could silently fail to show up on a tenant whose round type wasn't
+ * literally named that. */
 export const isIntakeCallRound = (round: CandidateInterviewRoundView): boolean =>
-  round.stage_type === 'interview' &&
-  (round.round_name?.toLowerCase().includes('intake call') ?? false);
+  round.stage_type === 'interview' && round.round_type === 'AUDIO';
 
 /** True when this candidate came through the instant-call flow — the Intake
  * Call was placed FIRST and the resume was uploaded within 24h afterwards —
@@ -131,16 +133,25 @@ export const OVERDUE_GRACE_MINUTES = 30;
 /** True when a round was scheduled to happen a while ago but its status
  * never moved past "not yet concluded." This is a client-side inference,
  * not a real backend status — candidate-service has no "the call never
- * happened" state to report today. Two known backend gaps produce exactly
- * this shape (scheduled_at in the past, status stuck): interview-service
- * can silently drop a due call when it can't resolve a phone number
- * (`trigger_due_audio_calls.py`'s `no_phone_number` branch never retries
- * or fails the booking), and candidate-service can lose the status update
- * to a race between linking the booking and recording its status
- * (`update_interview_round_status.py`'s "unresolvable booking" case,
- * which also never retries). Surfacing this in the UI is a stopgap until
- * either side reports a real failure state — see the intake-call
- * findings write-up. */
+ * happened" state to report today.
+ *
+ * Used to produce exactly this shape (`scheduled_at` in the past, status
+ * still stuck at `to_be_scheduled`/`pending`) via a SECOND known gap:
+ * candidate-service used to only ever learn a round was actually scheduled
+ * from a separate `interview.status.transitioned` event, which could lose
+ * a race against the booking-link write it depended on and never retry.
+ * Fixed 2026-09-11 — `CandidateInterviewRound.attach_booking` now stamps
+ * `status` to `scheduled` itself the moment a real booking lands, so
+ * `scheduled_at` being set is now unconditional proof `status` is at least
+ * `scheduled` (bucket `current`), never stuck behind it. What's left for
+ * this function to actually catch is a round that reached `scheduled` (or
+ * later) and then genuinely never got a conclusion reported — either
+ * interview-service silently dropping a due call it couldn't resolve a
+ * phone number for (`trigger_due_audio_calls.py`'s `no_phone_number`
+ * branch never retries or fails the booking), or any other gap in
+ * interview-service ever reporting a final outcome. Surfacing this in the
+ * UI is a stopgap until interview-service reports a real failure state for
+ * every such case — see the intake-call findings write-up. */
 export const isOverdue = (round: CandidateInterviewRoundView): boolean => {
   const bucket = bucketForStatus(round.status);
   if (bucket !== 'current' && bucket !== 'pending') return false;

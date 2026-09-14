@@ -9,7 +9,7 @@ const basePayload = {
   isPlatformInvite: false,
   password: 'Str0ng!Passw0rd',
   confirmPassword: 'Str0ng!Passw0rd',
-  methodType: 'totp' as const,
+  methodType: 'email' as const,
   mfaCode: '123456',
 };
 
