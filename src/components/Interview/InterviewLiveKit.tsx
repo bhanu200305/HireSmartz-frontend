@@ -31,7 +31,12 @@ import {
   FaClipboardList,
   FaRegCommentDots,
 } from 'react-icons/fa';
-import { MdScreenShare, MdStopScreenShare } from 'react-icons/md';
+import {
+  MdScreenShare,
+  MdStopScreenShare,
+  MdChatBubbleOutline,
+  MdOutlineSettings,
+} from 'react-icons/md';
 import { Tooltip, Button, Spin, message, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
 import { jwtDecode } from 'jwt-decode';
@@ -53,6 +58,8 @@ import {
 import { showToast } from '../shared';
 import VideoGrid from './VideoGridLiveKit';
 import Sidebar from '../InterviewUser/Sidebar';
+import { ChatPanel, useUnreadChatCount } from './shared/ChatPanel';
+import { SettingsPanel } from './shared/SettingsPanel';
 import InterviewEndedScreen from './InterviewEndedScreen';
 import FeedbackPromptModal from './FeedbackPromptModal';
 import QuickFeedbackModal from './QuickFeedbackModal';
@@ -77,7 +84,7 @@ interface InterviewState {
   egressId: string | null;
   showLeavingModal: boolean;
   isRecordingModalVisible: boolean;
-  activeSidebar: 'info' | 'participants' | 'assessment' | null;
+  activeSidebar: 'info' | 'participants' | 'assessment' | 'chat' | 'settings' | null;
   interviewToken: string | null;
   hasEnded: boolean;
   endedBy?: 'user' | 'recruiter';
@@ -817,10 +824,12 @@ const Interview: React.FC = () => {
  * Renders inside LiveKitRoom context
  * Contains video grid, controls, sidebar
  */
+type SidebarKey = 'info' | 'participants' | 'assessment' | 'chat' | 'settings' | null;
+
 interface InterviewContentProps {
   token: LiveKitTokenResponse;
   recording: boolean;
-  activeSidebar: 'info' | 'participants' | 'assessment' | null;
+  activeSidebar: SidebarKey;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onLeaveInterview: (endedBy?: 'user' | 'recruiter') => void;
@@ -828,7 +837,7 @@ interface InterviewContentProps {
   onUpdateRecordingState: (isRecording: boolean) => void;
   interviewEndedByRecruiter: boolean;
   categorizedQuestions?: any;
-  onSidebarChange: (sidebar: 'info' | 'participants' | 'assessment' | null) => void;
+  onSidebarChange: (sidebar: SidebarKey) => void;
 }
 
 interface DeviceInfo {
@@ -851,6 +860,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
   // Use LiveKit hook
   const liveKit = useLiveKit();
   const room = useRoomContext();
+  const unreadChatCount = useUnreadChatCount(activeSidebar === 'chat');
   const controlButtonClass = 'text-white hover:!text-white/90 hover:!bg-white/10';
 
   // Track if user manually left (vs room being ended by recruiter)
@@ -1528,6 +1538,41 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
               </Tooltip>
             )}
 
+            <Tooltip title="Chat">
+              <span className="relative inline-flex">
+                <Button
+                  type="text"
+                  size="small"
+                  className={`${controlButtonClass} ${activeSidebar === 'chat' ? 'text-brand-400 bg-white/10' : ''}`}
+                  icon={
+                    <MdChatBubbleOutline
+                      className={activeSidebar === 'chat' ? 'text-brand-400' : 'text-white'}
+                    />
+                  }
+                  onClick={() => onSidebarChange(activeSidebar === 'chat' ? null : 'chat')}
+                />
+                {unreadChatCount > 0 && (
+                  <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand-500 px-0.5 text-[9px] font-bold text-white">
+                    {unreadChatCount}
+                  </span>
+                )}
+              </span>
+            </Tooltip>
+
+            <Tooltip title="Settings">
+              <Button
+                type="text"
+                size="small"
+                className={`${controlButtonClass} ${activeSidebar === 'settings' ? 'text-brand-400 bg-white/10' : ''}`}
+                icon={
+                  <MdOutlineSettings
+                    className={activeSidebar === 'settings' ? 'text-brand-400' : 'text-white'}
+                  />
+                }
+                onClick={() => onSidebarChange(activeSidebar === 'settings' ? null : 'settings')}
+              />
+            </Tooltip>
+
             <Tooltip title="Leave">
               <Button
                 type="text"
@@ -1582,8 +1627,60 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
       <Sidebar
         isOpen={!!activeSidebar}
         onClose={() => onSidebarChange(null)}
-        title={displaySidebar === 'assessment' ? 'Assessment' : 'Participants'}
+        title={
+          displaySidebar === 'assessment'
+            ? 'Assessment'
+            : displaySidebar === 'chat'
+              ? 'Chat'
+              : displaySidebar === 'settings'
+                ? 'Settings'
+                : 'Participants'
+        }
       >
+        {displaySidebar === 'chat' && (
+          <ChatPanel embedded open onClose={() => onSidebarChange(null)} />
+        )}
+
+        {displaySidebar === 'settings' && (
+          <SettingsPanel
+            embedded
+            open
+            onClose={() => onSidebarChange(null)}
+            devicesSection={
+              <div className="flex flex-col gap-3 text-sm text-white">
+                <div>
+                  <p className="mb-1 text-xs text-neutral-400">Microphone</p>
+                  <select
+                    value={devices.selectedAudioDevice ?? ''}
+                    onChange={(e) => void handleSelectAudioDevice(e.target.value)}
+                    className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-1.5"
+                  >
+                    {devices.audioDevices.map((d) => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-neutral-400">Camera</p>
+                  <select
+                    value={devices.selectedVideoDevice ?? ''}
+                    onChange={(e) => void handleSelectVideoDevice(e.target.value)}
+                    className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-1.5"
+                  >
+                    {devices.videoDevices.map((d) => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            }
+          />
+        )}
+
         {displaySidebar === 'assessment' && categorizedQuestions?.categories && (
           <div className="space-y-4">
             {Object.entries(categorizedQuestions.categories).map(
