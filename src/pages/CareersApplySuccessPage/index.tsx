@@ -26,7 +26,7 @@ export const CareersApplySuccessPage = () => {
 
   const message =
     callPlacedParam === 'true'
-      ? "We've received your request — Iris will call you shortly."
+      ? "We've received your request; Iris will call you shortly."
       : callPlacedParam === 'false'
         ? "We've received your request, but couldn't place the call right now. Our team will follow up by phone or email."
         : "We've received your application. We'll be in touch if you're a match.";

@@ -9,7 +9,7 @@ import { StatCardRow, ChartCard } from '../../../shared';
 import type { StatCardData } from '../../../shared';
 import { useGetPlatformTenantDashboardQuery } from '../../../../api/organization-service/Platform/tenants';
 
-const COMING_SOON = 'Coming soon — needs a platform-scoped job-service/candidate-service endpoint.';
+const COMING_SOON = 'Coming soon: needs a platform-scoped job-service/candidate-service endpoint.';
 
 /**
  * 1.5 Tenants — the analytics popup for one company, Super Admin side.
@@ -103,7 +103,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           subtitle="Candidates grouped by resume-score band"
           typeTag="Bar"
           available={false}
-          unavailableLabel="Coming soon — no scoring-distribution endpoint yet."
+          unavailableLabel="Coming soon: no scoring-distribution endpoint yet."
         >
           <div />
         </ChartCard>

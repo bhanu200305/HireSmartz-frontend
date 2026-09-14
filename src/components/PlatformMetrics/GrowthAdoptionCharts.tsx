@@ -230,7 +230,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
         typeTag="Area"
         isLoading={isLoginsTrendLoading}
         available={Boolean(loginsTrend?.available) && adoptionTrendData.length > 0}
-        unavailableLabel="Unavailable — authentication-service didn't answer."
+        unavailableLabel="Unavailable: authentication-service didn't answer."
       >
         <ResponsiveContainer width="100%" height={chartHeight}>
           <AreaChart data={adoptionTrendData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
@@ -272,7 +272,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
         typeTag="Stacked column"
         isLoading={isLoginsTrendLoading}
         available={Boolean(loginsTrend?.available) && authHealthData.length > 0}
-        unavailableLabel="Unavailable — authentication-service didn't answer."
+        unavailableLabel="Unavailable: authentication-service didn't answer."
       >
         <ResponsiveContainer width="100%" height={chartHeight}>
           <BarChart data={authHealthData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
@@ -320,7 +320,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
         typeTag="Donut"
         isLoading={isMfaLoading}
         available={Boolean(mfa?.available) && mfa!.total > 0}
-        unavailableLabel="Unavailable — authentication-service didn't answer."
+        unavailableLabel="Unavailable: authentication-service didn't answer."
       >
         <DonutStat data={mfaData} centerLabel="Attempts" />
       </ChartCard>
@@ -331,7 +331,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
         typeTag="Horizontal bar"
         isLoading={isSessionsLoading}
         available={Boolean(sessions?.available) && deviceUsageData.length > 0}
-        unavailableLabel="Unavailable — authentication-service didn't answer."
+        unavailableLabel="Unavailable: authentication-service didn't answer."
         span={2}
       >
         <ResponsiveContainer width="100%" height={chartHeight}>

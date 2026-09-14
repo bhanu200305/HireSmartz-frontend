@@ -139,7 +139,7 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
                       {formatTenantStatusLabel(tenant.status)}
                     </Badge>
                   </td>
-                  <td className="py-3 px-3 text-neutral-600">{tenant.admin_email || '—'}</td>
+                  <td className="py-3 px-3 text-neutral-600">{tenant.admin_email || '-'}</td>
                   <td className="py-3 px-3 text-neutral-600">
                     {formatTenantDate(tenant.created_at)}
                   </td>

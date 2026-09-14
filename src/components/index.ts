@@ -18,7 +18,6 @@ export { default as UpdateInterviewRound } from './JobsOpening/EditJobOpening/Up
 export { default as AiQuestions } from './JobsOpening/ViewJobOpening/AiQuestions';
 export { default as Candidates } from './JobsOpening/Candidates/CandidatesListing';
 export { default as ViewCandidateDetails } from './JobsOpening/Candidates/CandidateDetails';
-export { default as UploadCvModal } from './JobsOpening/Candidates/Modal/UploadCvModal';
 export { default as ViewJobDescription } from './JobsOpening/AddJobDescription/ViewJobDescription';
 export { default as ViewJdDetails } from './JobsOpening/ViewJobOpening/ViewJdDetails';
 export { default as ViewJobSkills } from './JobsOpening/ViewJobOpening/ViewJobSkills';

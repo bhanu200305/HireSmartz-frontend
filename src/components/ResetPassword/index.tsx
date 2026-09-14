@@ -100,7 +100,7 @@ const ResetPassword = () => {
       <div className="mb-6 text-center">
         <h2 className="text-xl font-semibold text-gray-900">Set a new password</h2>
         <p className="mt-1 text-sm text-gray-500">
-          This will sign you out on every device — you&apos;ll need to log back in with the new
+          This will sign you out on every device. You&apos;ll need to log back in with the new
           password.
         </p>
       </div>

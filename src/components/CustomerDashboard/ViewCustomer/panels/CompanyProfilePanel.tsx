@@ -301,7 +301,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         </Field>
         <Field label="Admin contact">
           <ReadOnlyPill>
-            <span className="truncate">{profile.admin_contact || '—'}</span>
+            <span className="truncate">{profile.admin_contact || '-'}</span>
           </ReadOnlyPill>
         </Field>
       </div>

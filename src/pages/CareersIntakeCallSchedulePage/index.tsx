@@ -89,10 +89,7 @@ export const CareersIntakeCallSchedulePage = () => {
     } catch (e) {
       // A slot going stale between fetch and book (someone else took it) is
       // the expected failure mode here — surface the server's own message.
-      const message = getCandidateErrorMessage(
-        e,
-        'Could not book that slot — please pick another.'
-      );
+      const message = getCandidateErrorMessage(e, 'Could not book that slot. Please pick another.');
       setBookingError(message);
       if (selectedDate) {
         void fetchSlots({ token, date: selectedDate.format('YYYY-MM-DD'), timezone });
@@ -123,7 +120,7 @@ export const CareersIntakeCallSchedulePage = () => {
     return (
       <div className="public-page min-h-screen bg-gray-50 flex items-center justify-center p-6">
         <p className="text-sm text-gray-500 text-center max-w-sm">
-          This scheduling link is missing its token — please use the link from your application
+          This scheduling link is missing its token. Please use the link from your application
           confirmation instead of navigating here directly.
         </p>
       </div>
@@ -285,7 +282,7 @@ export const CareersIntakeCallSchedulePage = () => {
                       {dayjs(selectedSlot.start_time).format('h:mm A')}
                     </p>
                     <p className="text-gray-400 text-xs mt-1">
-                      {dayjs(selectedSlot.start_time).format('h:mm A')} –{' '}
+                      {dayjs(selectedSlot.start_time).format('h:mm A')} to{' '}
                       {dayjs(selectedSlot.end_time).format('h:mm A')}
                     </p>
                   </div>
@@ -330,7 +327,7 @@ export const CareersIntakeCallSchedulePage = () => {
                       </div>
                     ) : slots.length === 0 ? (
                       <div className="text-center text-sm text-gray-400 py-10">
-                        No times available on this day — try another date.
+                        No times available on this day. Try another date.
                       </div>
                     ) : (
                       slots.map((slot) => (

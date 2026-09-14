@@ -105,7 +105,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
         message:
           sentCount === res.results.length
             ? `Email sent to ${sentCount} candidate${sentCount === 1 ? '' : 's'}.`
-            : `Email sent to ${sentCount} of ${res.results.length} — see skipped reasons below.`,
+            : `Email sent to ${sentCount} of ${res.results.length}; see skipped reasons below.`,
         type: sentCount > 0 ? 'success' : 'warning',
       });
     } catch (e) {
@@ -192,7 +192,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
                     <span className="text-green-600 shrink-0">Sent</span>
                   ) : (
                     <span className="text-red-500 text-right shrink-0">
-                      Skipped{r.reason ? ` — ${r.reason}` : ''}
+                      Skipped{r.reason ? `: ${r.reason}` : ''}
                     </span>
                   )}
                 </div>

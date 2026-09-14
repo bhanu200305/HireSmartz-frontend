@@ -58,7 +58,7 @@ export const isPhoneValidForCountry = (nationalNumber: string, dialCode: string)
 };
 
 export const PHONE_VALIDATION_MESSAGE =
-  'Enter a valid phone number for the selected country — the digit count must match.';
+  'Enter a valid phone number for the selected country; the digit count must match.';
 
 /** Digits only, capped at the E.164 ceiling — see that constant's own comment. */
 export const restrictPhoneDigits = (raw: string): string =>

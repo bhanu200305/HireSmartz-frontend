@@ -62,12 +62,12 @@ const TenantShiftsTab: React.FC = () => {
         {
           title: 'Time',
           key: 'time',
-          render: (_, item) => `${item.start_time} – ${item.end_time}`,
+          render: (_, item) => `${item.start_time} to ${item.end_time}`,
         },
         {
           title: 'Duration',
           key: 'duration_minutes',
-          render: (_, item) => (item.duration_minutes ? `${item.duration_minutes} min` : '—'),
+          render: (_, item) => (item.duration_minutes ? `${item.duration_minutes} min` : '-'),
         },
       ]}
       fields={fields}

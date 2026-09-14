@@ -170,7 +170,7 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
         <div>
           <p className="text-xs text-gray-500 mb-3">
             {rows.filter((r) => r.include).length} of {rows.length} rows will be invited. Pick a
-            role for each — a row with no role can&apos;t be confirmed.
+            role for each; a row with no role can&apos;t be confirmed.
           </p>
           <StaffBulkImportRows
             roleNames={roleNames}

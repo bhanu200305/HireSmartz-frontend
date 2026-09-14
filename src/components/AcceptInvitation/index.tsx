@@ -47,7 +47,7 @@ const INVITATION_NOT_FOUND_COPY = {
 };
 const INVITATION_EXPIRED_COPY = {
   title: 'This invite has expired',
-  message: 'Ask whoever invited you to resend it — invites are valid for 48 hours.',
+  message: 'Ask whoever invited you to resend it. Invites are valid for 48 hours.',
 };
 const INVITATION_ALREADY_ACCEPTED_COPY = {
   title: 'Already set up',
@@ -90,7 +90,7 @@ const submitErrorMessageFor = (errorCode: string | undefined, fallback: string):
     case 'INVITATION_NOT_FOUND':
       return INVITATION_NOT_FOUND_COPY.message;
     case 'VALIDATION_ERROR':
-      return "We couldn't process that — please check the highlighted fields and try again.";
+      return "We couldn't process that. Please check the highlighted fields and try again.";
     // MFA is mandatory now — a wrong/missing code means NOTHING was
     // created, on either side (see AcceptInvitationUseCase's docstring).
     // Told plainly, not softened into "something went wrong", because the
@@ -130,8 +130,8 @@ const ExternalServiceErrorBanner = ({
         </p>
         <p className="mt-1 text-sm text-red-700">
           Something went wrong on our end while activating {invitedEmail}. Your invite is still
-          valid, so it&apos;s safe to try again — but if this happens more than once, please contact
-          your admin or CareerForce Pro support before trying a different email address. Your
+          valid, so it&apos;s safe to try again, but if this happens more than once, please contact
+          your admin or Careerforce Pro support before trying a different email address. Your
           account may have been partially created, and support can check before you continue.
         </p>
       </div>
@@ -170,7 +170,7 @@ const PageShell = ({ children, wide = false }: { children: ReactNode; wide?: boo
       className={`login-card-pop relative z-10 w-full rounded-3xl bg-white px-8 py-9 shadow-2xl ring-1 ring-black/5 sm:px-10 ${wide ? 'max-w-2xl' : 'max-w-md'}`}
     >
       <div className="mb-6 flex flex-col items-center">
-        <img src="/cfpLogo.svg" alt="CareerForce Pro" className="h-10 w-auto object-contain" />
+        <img src="/cfpLogo.svg" alt="Careerforce Pro" className="h-10 w-auto object-contain" />
         <span className="ai-recruitment-text mt-2 text-[11px] tracking-widest">
           AI POWERED RECRUITMENT SOLUTIONS
         </span>
@@ -768,7 +768,7 @@ const AcceptInvitation = () => {
             </p>
           ) : (
             <p className="mt-1 text-xs text-gray-500">
-              A wrong or missing code will stop your account from being created — you&apos;ll be
+              A wrong or missing code will stop your account from being created; you&apos;ll be
               asked to try again.
             </p>
           )}

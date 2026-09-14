@@ -129,7 +129,7 @@ const CfpUsers: React.FC = () => {
             <MdDelete className="text-red-500" />
           </button>
         ) : (
-          <span className="text-gray-300">—</span>
+          <span className="text-gray-300">-</span>
         ),
     },
   ];

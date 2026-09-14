@@ -53,7 +53,7 @@ const ConfirmEnrolment = ({
       await navigator.clipboard.writeText(enrolment.secret);
       showToast({ message: 'Secret key copied.', type: 'success' });
     } catch {
-      showToast({ message: 'Could not copy — please select and copy manually.', type: 'error' });
+      showToast({ message: 'Could not copy. Please select and copy manually.', type: 'error' });
     }
   };
 
@@ -336,7 +336,7 @@ const MfaSection = () => {
           <p className="mb-4 text-sm text-gray-500">
             {data.is_complete
               ? 'Your account meets the recommended minimum of two factors.'
-              : `We recommend at least ${data.minimum_required} factors — a single one is a single point of failure if you lose access to it.`}
+              : `We recommend at least ${data.minimum_required} factors; a single one is a single point of failure if you lose access to it.`}
           </p>
 
           <div className="flex flex-col gap-3">

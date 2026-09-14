@@ -117,7 +117,7 @@ const PlatformEmailTemplateOverrideModal: React.FC<PlatformEmailTemplateOverride
       <AntdCommonModal
         open={open}
         onClose={onClose}
-        title={`Edit template — ${humanizeType(override.notification_type)}`}
+        title={`Edit template: ${humanizeType(override.notification_type)}`}
         subtitle="Change the words this message sends on this company's behalf. Layout, colors and branding come from this tenant's Email Templates layout instead."
         modalProps={{ width: 720 }}
       >

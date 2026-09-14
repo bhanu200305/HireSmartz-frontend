@@ -103,6 +103,17 @@ const ChangeCandidateStatusModal = ({
 
   const handleConfirm = async () => {
     if (candidates.length === 0) return;
+    // Backend does not enforce this today — `BulkChangeCandidateStatusRequest.
+    // reason` / `ChangeCandidateStatusRequest.reason` are both plain
+    // `str | None`, no conditional requirement tied to `status_code`, unlike
+    // `SkipInterviewRoundRequest.reason` and `RecordRecruiterRoundScoreRequest.
+    // reason` in the same file, which ARE mandatory with a comment explaining
+    // why. This is the client-side half of "a rejection needs a reason" until
+    // that's closed server-side too.
+    if (mode === 'reject' && !reason.trim()) {
+      showToast({ message: 'A reason is required to reject a candidate.', type: 'error' });
+      return;
+    }
     setIsSubmitting(true);
 
     if (mode === 'advance') {
@@ -130,7 +141,7 @@ const ChangeCandidateStatusModal = ({
               return {
                 name,
                 ok: true,
-                detail: 'No change — already past the final round',
+                detail: 'No change, already past the final round',
                 needsInvite: false,
               };
             }
@@ -142,7 +153,7 @@ const ChangeCandidateStatusModal = ({
               ok: true,
               detail: item.next_round_id
                 ? 'Advanced to next round'
-                : 'Completed final round — moved to Selected',
+                : 'Completed final round, moved to Selected',
               needsInvite: item.next_round_id !== null,
             };
           })
@@ -163,7 +174,7 @@ const ChangeCandidateStatusModal = ({
 
     if (!targetStatus) {
       showToast({
-        message: `Could not resolve the "${mode}" status from master data — try again shortly.`,
+        message: `Could not resolve the "${mode}" status from master data. Try again shortly.`,
         type: 'error',
       });
       setIsSubmitting(false);
@@ -195,7 +206,7 @@ const ChangeCandidateStatusModal = ({
             ok: true,
             detail:
               item.outcome === 'unchanged'
-                ? 'No change — already at this status'
+                ? 'No change, already at this status'
                 : `Set to "${MODE_LABEL[mode]}"`,
             needsInvite: false,
           };
@@ -240,9 +251,9 @@ const ChangeCandidateStatusModal = ({
           </div>
           {results.some((r) => r.needsInvite) && (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Advancing does not send the interview invite. There is no bulk send-invite yet — open
-              each candidate&apos;s Pipeline tab and click <strong>Send Invite</strong> for their
-              next round.
+              Advancing does not send the interview invite. There is no bulk send-invite yet, so
+              open each candidate&apos;s Pipeline tab and click <strong>Send Invite</strong> for
+              their next round.
             </p>
           )}
           <Button
@@ -257,13 +268,13 @@ const ChangeCandidateStatusModal = ({
         <div className="flex flex-col gap-4">
           <p className="text-sm text-gray-600">
             {mode === 'advance'
-              ? "This completes each candidate's current round and makes their next one due. It does NOT send the interview invite — that's a separate step, per candidate, from their Pipeline tab."
+              ? "This completes each candidate's current round and makes their next one due. It does NOT send the interview invite; that's a separate step, per candidate, from their Pipeline tab."
               : `This will set ${candidates.length === 1 ? 'this candidate' : 'these candidates'} to "${MODE_LABEL[mode]}".`}
           </p>
           {mode !== 'advance' && (
             <div>
               <label htmlFor="status-change-reason" className="mb-1 block text-sm text-gray-800">
-                Reason (optional)
+                Reason {mode === 'reject' && <span className="required-asterisk">*</span>}
               </label>
               <TextArea
                 id="status-change-reason"
@@ -278,7 +289,9 @@ const ChangeCandidateStatusModal = ({
           <Button
             type="button"
             onClick={() => void handleConfirm()}
-            disabled={isSubmitting || candidates.length === 0}
+            disabled={
+              isSubmitting || candidates.length === 0 || (mode === 'reject' && !reason.trim())
+            }
             className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
           >
             {isSubmitting ? <Loader /> : `CONFIRM ${MODE_LABEL[mode].toUpperCase()}`}

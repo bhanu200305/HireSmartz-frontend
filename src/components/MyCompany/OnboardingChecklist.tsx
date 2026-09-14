@@ -91,7 +91,7 @@ const OnboardingChecklist = ({ companyId, status, onNavigateToTab }: OnboardingC
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Getting started</h3>
             <p className="mt-0.5 text-xs text-gray-500">
-              {completedCount} of {totalCount} steps done — a few things left to finish setting up
+              {completedCount} of {totalCount} steps done, a few things left to finish setting up
               your workspace.
             </p>
           </div>

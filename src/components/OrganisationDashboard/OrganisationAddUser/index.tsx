@@ -4,7 +4,14 @@ import { useSelector } from 'react-redux';
 import { MdOutlineArrowBack } from 'react-icons/md';
 import { Select } from 'antd';
 import MainLayout from '../../../layouts/MainLayout';
-import { Button, Input, PhoneNumberField, Typography, showToast } from '../../shared';
+import {
+  Button,
+  Input,
+  NameTitleSelect,
+  PhoneNumberField,
+  Typography,
+  showToast,
+} from '../../shared';
 import { RootState } from '../../../redux/provider/store';
 import {
   useCreateUserMutation,
@@ -178,10 +185,13 @@ const AddOrganisationUser = () => {
         </Typography>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input placeholder="Email *" type="email" {...field('email')} />
           <Input placeholder="First name *" {...field('first_name')} />
           <Input placeholder="Last name" {...field('last_name')} />
-          <Input placeholder="Title" {...field('title')} />
+          <Input placeholder="Email *" type="email" {...field('email')} />
+          <NameTitleSelect
+            value={form.title}
+            onChange={(value) => setForm((prev) => ({ ...prev, title: value ?? '' }))}
+          />
           <PhoneNumberField
             countryCode={form.country_code}
             onCountryCodeChange={(value) => setForm((prev) => ({ ...prev, country_code: value }))}
@@ -208,7 +218,7 @@ const AddOrganisationUser = () => {
             onRoleChange={(value) => setForm((prev) => ({ ...prev, role_id: value }))}
             locationIds={form.location_ids}
             onLocationIdsChange={(value) => setForm((prev) => ({ ...prev, location_ids: value }))}
-            rolePlaceholder="Role (optional — can be assigned later)"
+            rolePlaceholder="Role (optional, can be assigned later)"
             tenantId={tenantId ?? undefined}
             onCreateRole={createRole}
           />

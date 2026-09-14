@@ -11,9 +11,9 @@ import type { RoleScope } from '../../../types';
  * why Dashboard/Job Configuration/Activity/My Company/Subscriptions are
  * excluded and so have no entry here). */
 const MODULE_DESCRIPTIONS: Partial<Record<PermissionModule, string>> = {
-  Company: 'Manage client companies on the platform — add, edit, approve, and archive tenants.',
+  Company: 'Manage client companies on the platform: add, edit, approve, and archive tenants.',
   'Company Settings': "View and update this company's own profile and configuration.",
-  'CFP Users': "Manage CareerForce Pro's internal staff accounts.",
+  'CFP Users': "Manage Careerforce Pro's internal staff accounts.",
   'Organization Users': "Manage a company's own team members.",
   'Departments & Locations': 'Manage departments and office locations.',
   'Team & Invitations': 'Send, update, and revoke invitations to join the team.',

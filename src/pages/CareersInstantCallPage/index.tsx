@@ -134,7 +134,7 @@ export const CareersInstantCallPage = () => {
       <main className="w-full max-w-3xl mx-auto px-4 md:px-8 py-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Talk to Us Now</h1>
         <p className="text-sm text-gray-500 mb-5">
-          Leave your number and we&apos;ll call you shortly — no resume needed yet.
+          Leave your number and we&apos;ll call you shortly. No resume needed yet.
         </p>
 
         {job && (
@@ -253,7 +253,7 @@ export const CareersInstantCallPage = () => {
               I agree to receive SMS updates about my application.
               <br />
               <span className="text-gray-400">
-                (Optional – you can continue without agreeing to SMS communication)
+                (Optional: you can continue without agreeing to SMS communication)
               </span>
             </label>
           </div>
@@ -312,7 +312,7 @@ export const CareersInstantCallPage = () => {
             />
           ) : (
             <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-              This form can&apos;t accept requests right now — reCAPTCHA isn&apos;t configured for
+              This form can&apos;t accept requests right now; reCAPTCHA isn&apos;t configured for
               this site. Please contact the site administrator.
             </p>
           )}

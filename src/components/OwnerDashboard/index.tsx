@@ -44,9 +44,9 @@ const HIRING_MANAGER_ROLE = 'hiring_manager';
 
 const toTeamRow = (user: OrgUser): TeamRow => ({
   id: user.user_id,
-  fullName: user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || '—',
+  fullName: user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || '-',
   email: user.email,
-  roleLabel: user.role ?? '—',
+  roleLabel: user.role ?? '-',
 });
 
 const OwnerDashboard = () => {
@@ -272,7 +272,7 @@ const OwnerDashboard = () => {
             Dashboard
           </h1>
           <p className="mt-1 text-xs text-neutral-500 sm:text-sm">
-            {greeting}. Here&apos;s what&apos;s happening across careerforce pro today.
+            {greeting}. Here&apos;s what&apos;s happening across Careerforce Pro today.
           </p>
         </div>
 

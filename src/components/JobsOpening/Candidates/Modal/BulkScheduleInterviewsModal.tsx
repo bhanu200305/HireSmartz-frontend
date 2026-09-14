@@ -161,7 +161,7 @@ const BulkScheduleInterviewsModal = ({
         message:
           okCount === res.results.length
             ? `Booking created for ${okCount} candidate${okCount === 1 ? '' : 's'}.`
-            : `${okCount} of ${res.results.length} bookings created — see details below.`,
+            : `${okCount} of ${res.results.length} bookings created; see details below.`,
         type: okCount > 0 ? 'success' : 'warning',
       });
       if (okCount > 0) onScheduled?.();
@@ -232,7 +232,7 @@ const BulkScheduleInterviewsModal = ({
                   <span className="shrink-0 text-green-600">Booked</span>
                 ) : (
                   <span className="shrink-0 text-right text-red-500">
-                    Failed{r.reason ? ` — ${r.reason}` : ''}
+                    Failed{r.reason ? `: ${r.reason}` : ''}
                   </span>
                 )}
               </div>

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import TextArea from 'antd/es/input/TextArea';
-import { Button, Input, showToast } from '../shared';
+import { Button, showToast } from '../shared';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import PlainTextEmailBodyEditor from '../shared/ui/PlainTextEmailBodyEditor';
+import PlaceholderProtectedField from '../shared/ui/PlaceholderProtectedField';
 import type { TemplateOverride } from '../../api/notification-service/TemplateSettings/index';
 import {
   usePreviewTemplateMutation,
@@ -120,8 +120,8 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
       <AntdCommonModal
         open={open}
         onClose={onClose}
-        title={`Edit template — ${humanizeType(override.notification_type)}`}
-        subtitle="Change the words this message sends. Layout, colors and branding come from your Email Templates pack instead — see the sections above."
+        title={`Edit template: ${humanizeType(override.notification_type)}`}
+        subtitle="Change the words this message sends. Layout, colors and branding come from your Email Templates pack instead; see the sections above."
         modalProps={{ width: 720 }}
       >
         <div className="flex flex-col gap-4">
@@ -133,9 +133,9 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
 
           <div>
             <p className="mb-1 block text-sm font-medium text-gray-700">Subject</p>
-            <Input
+            <PlaceholderProtectedField
               value={subject}
-              onChange={(e) => setSubject(e.target.value)}
+              onChange={setSubject}
               placeholder="e.g. {{ code }} is your sign-in code"
             />
           </div>
@@ -145,9 +145,10 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
           {hasSms && (
             <div>
               <p className="mb-1 block text-sm font-medium text-gray-700">SMS message</p>
-              <TextArea
+              <PlaceholderProtectedField
+                as="textarea"
                 value={smsMessage}
-                onChange={(e) => setSmsMessage(e.target.value)}
+                onChange={setSmsMessage}
                 rows={3}
               />
             </div>

@@ -37,7 +37,6 @@ import {
 import { useListCandidateStatusesQuery } from '../../../api/candidate-service/Master/master';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
-import UploadCvModal from './Modal/UploadCvModal';
 import AddCandidateModal from './Modal/AddCandidateModal';
 import BulkSendSmsModal from './Modal/BulkSendSmsModal';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
@@ -76,7 +75,6 @@ const CandidatesListing = () => {
 
   const [selected, setSelected] = useState<SelectedMap>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddCandidateModalOpen, setIsAddCandidateModalOpen] = useState(false);
   const [isJobNotesPanelOpen, setIsJobNotesPanelOpen] = useState(false);
   const [notesCandidate, setNotesCandidate] = useState<{ id: string; name: string } | null>(null);
@@ -297,30 +295,6 @@ const CandidatesListing = () => {
                     <Tooltip
                       title={
                         isDraft
-                          ? 'Cannot upload resumes to draft job openings'
-                          : isClosed
-                            ? 'Cannot upload resumes to closed job openings'
-                            : ''
-                      }
-                    >
-                      <span>
-                        <Button
-                          className="text-white bg-primary rounded-full px-4 py-2"
-                          onClick={() =>
-                            !isDraft && !isClosed ? setIsUploadModalOpen(true) : null
-                          }
-                          disabled={isDraft || isClosed}
-                        >
-                          UPLOAD RESUME
-                        </Button>
-                      </span>
-                    </Tooltip>
-                  )}
-
-                  {canManageCandidates && (
-                    <Tooltip
-                      title={
-                        isDraft
                           ? 'Cannot add candidates to draft job openings'
                           : isClosed
                             ? 'Cannot add candidates to closed job openings'
@@ -329,7 +303,7 @@ const CandidatesListing = () => {
                     >
                       <span>
                         <Button
-                          className="rounded-full border border-primary-200 bg-primary-50 px-4 py-2 text-primary-700 font-semibold"
+                          className="text-white bg-primary rounded-full px-4 py-2 font-semibold"
                           onClick={() =>
                             !isDraft && !isClosed ? setIsAddCandidateModalOpen(true) : null
                           }
@@ -485,7 +459,7 @@ const CandidatesListing = () => {
                           </Col>
                           <Col span={4}>
                             <p className="roboto-font">
-                              {candidate.resume_score === null ? '—' : candidate.resume_score}
+                              {candidate.resume_score === null ? '-' : candidate.resume_score}
                             </p>
                           </Col>
                           <Col span={4}>
@@ -674,14 +648,10 @@ const CandidatesListing = () => {
         title={`Candidate Notes - ${notesCandidate?.name || ''}`.trim()}
         candidateId={notesCandidate?.id}
       />
-      <UploadCvModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        onCompleted={refetch}
-      />
       <AddCandidateModal
         open={isAddCandidateModalOpen}
         onClose={() => setIsAddCandidateModalOpen(false)}
+        onBulkImportCompleted={refetch}
       />
     </div>
   );

@@ -107,7 +107,7 @@ const IndustriesTab: React.FC = () => {
       showToast({ message: 'Industry removed.', type: 'success' });
     } catch (err) {
       showToast({
-        message: getOrgErrorMessage(err, 'Failed to remove industry — a company may still use it.'),
+        message: getOrgErrorMessage(err, 'Failed to remove industry; a company may still use it.'),
         type: 'error',
       });
     } finally {
@@ -146,7 +146,7 @@ const IndustriesTab: React.FC = () => {
       sorter: (a: IndustryRow, b: IndustryRow) =>
         (a.description ?? '').localeCompare(b.description ?? ''),
       render: (_: unknown, industry: IndustryRow) => (
-        <span className="text-gray-500 text-sm">{industry.description || '—'}</span>
+        <span className="text-gray-500 text-sm">{industry.description || '-'}</span>
       ),
     },
     {

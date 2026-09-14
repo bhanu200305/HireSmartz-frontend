@@ -24,4 +24,4 @@ export const formatTenantDate = (isoDate: string | null): string =>
         day: 'numeric',
         year: 'numeric',
       })
-    : '—';
+    : '-';
