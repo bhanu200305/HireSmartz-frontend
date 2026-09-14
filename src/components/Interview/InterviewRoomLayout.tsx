@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   ParticipantTile,
   DisconnectButton,
@@ -5,10 +6,19 @@ import {
   useTracks,
   useRemoteParticipants,
   useLocalParticipant,
+  useMediaDeviceSelect,
+  LayoutContextProvider,
   type TrackReference,
 } from '@livekit/components-react';
 import { Track } from 'livekit-client';
+import { MdChatBubbleOutline, MdOutlineSettings } from 'react-icons/md';
 import { SoundwaveTile } from './soundwave/SoundwaveTile';
+import { useSpotlight } from './shared/useSpotlight';
+import { PinButton } from './shared/PinButton';
+import { TileLabel } from './shared/TileLabel';
+import { SpotlightStage, type SpotlightSide } from './shared/SpotlightStage';
+import { ChatPanel, useUnreadChatCount } from './shared/ChatPanel';
+import { SettingsPanel } from './shared/SettingsPanel';
 
 // The custom room UI that replaces LiveKit's stock `<VideoConference />`
 // (what `SessionJoinScreen` used before this component existed — a generic
@@ -33,12 +43,32 @@ import { SoundwaveTile } from './soundwave/SoundwaveTile';
 // tile, always with both mic and camera toggles, for every round type. Per
 // product decision: the candidate's camera stays on in AI_VIDEO rounds too,
 // it's only the *other* side of the call that goes audio-only.
-export const InterviewRoomLayout = () => {
+//
+// PIN/SPOTLIGHT — added alongside chat/settings/background
+// -------------------------------------------------------------------------
+// Wraps the tile area in `LayoutContextProvider` so `ParticipantTile`'s own
+// built-in pin-on-click (previously wired to nothing, see useSpotlight.ts)
+// becomes real. Panel rounds can have 3+ human interviewers on the call —
+// `SpotlightStage` handles that by falling back to a filmstrip of small
+// tiles instead of a single PIP once there's more than one non-pinned side.
+const InterviewRoomLayoutInner = () => {
   const { localParticipant, cameraTrack: localCameraPublication } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
+  const { isPinned, togglePin } = useSpotlight();
+
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const unreadChatCount = useUnreadChatCount(isChatOpen);
 
   const cameraTrackRefs = useTracks([Track.Source.Camera], { onlySubscribed: true });
   const micTrackRefs = useTracks([Track.Source.Microphone], { onlySubscribed: true });
+
+  // Flow B has no device-picker UI today — use LiveKit's own primitives
+  // rather than duplicating Flow A's hand-rolled enumerate/switch logic a
+  // second time (see plan's §7).
+  const micDevices = useMediaDeviceSelect({ kind: 'audioinput' });
+  const cameraDevices = useMediaDeviceSelect({ kind: 'videoinput' });
+  const speakerDevices = useMediaDeviceSelect({ kind: 'audiooutput' });
 
   const localCameraTrackRef: TrackReference | undefined = localCameraPublication
     ? {
@@ -48,52 +78,167 @@ export const InterviewRoomLayout = () => {
       }
     : undefined;
 
+  const localTile = (
+    <div className="relative h-full w-full">
+      {localCameraTrackRef ? (
+        <ParticipantTile trackRef={localCameraTrackRef} className="h-full w-full rounded-2xl" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center rounded-2xl bg-neutral-900 text-sm text-neutral-500">
+          Camera off
+        </div>
+      )}
+      <PinButton
+        pinned={isPinned(localParticipant.identity, Track.Source.Camera)}
+        onClick={() =>
+          localCameraTrackRef
+            ? togglePin(localCameraTrackRef)
+            : togglePin({
+                participant: localParticipant,
+                source: Track.Source.Camera,
+              })
+        }
+        className="absolute right-3 top-3 z-10"
+      />
+    </div>
+  );
+
+  const remoteSides: (SpotlightSide & { identity: string; source: Track.Source })[] =
+    remoteParticipants.length === 0
+      ? []
+      : remoteParticipants.map((participant) => {
+          const cameraRef = cameraTrackRefs.find(
+            (ref) => ref.participant.identity === participant.identity
+          );
+          const micRef = micTrackRefs.find(
+            (ref) => ref.participant.identity === participant.identity
+          );
+          const pinRef: TrackReference | undefined = cameraRef ?? micRef;
+          const source = cameraRef ? Track.Source.Camera : Track.Source.Microphone;
+          const node = (
+            <div className="relative h-full w-full">
+              {cameraRef ? (
+                <ParticipantTile trackRef={cameraRef} className="h-full w-full rounded-2xl" />
+              ) : (
+                <>
+                  <SoundwaveTile audioTrackRef={micRef} label="" className="h-full w-full" />
+                  <TileLabel>Interviewer</TileLabel>
+                </>
+              )}
+              {pinRef && (
+                <PinButton
+                  pinned={isPinned(participant.identity, source)}
+                  onClick={() => togglePin(pinRef)}
+                  className="absolute right-3 top-3 z-10"
+                />
+              )}
+            </div>
+          );
+          return { key: participant.identity, node, identity: participant.identity, source };
+        });
+
+  const localSide: SpotlightSide & { identity: string; source: Track.Source } = {
+    key: localParticipant.identity,
+    node: localTile,
+    identity: localParticipant.identity,
+    source: Track.Source.Camera,
+  };
+
+  const allSides = [localSide, ...remoteSides];
+  const pinnedSide = allSides.find((side) => isPinned(side.identity, side.source));
+
+  const showEmptyState = remoteParticipants.length === 0;
+
   return (
     <div className="flex h-full w-full flex-col bg-neutral-950">
-      <div className="grid flex-1 grid-cols-1 gap-3 p-3 sm:grid-cols-2">
-        {/* Local — the candidate. Always a real camera tile, never the
-            waveform, regardless of round type. */}
-        <div className="min-h-[220px]">
-          {localCameraTrackRef ? (
-            <ParticipantTile trackRef={localCameraTrackRef} className="h-full w-full rounded-2xl" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center rounded-2xl bg-neutral-900 text-sm text-neutral-500">
-              Camera off
+      <div className="relative flex-1 p-3">
+        {pinnedSide ? (
+          <SpotlightStage
+            main={pinnedSide}
+            others={allSides.filter((s) => s.key !== pinnedSide.key)}
+          />
+        ) : showEmptyState ? (
+          <div className="grid h-full grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="min-h-[220px]">{localTile}</div>
+            <div className="min-h-[220px]">
+              <SoundwaveTile audioTrackRef={undefined} label="Waiting to join…" />
             </div>
-          )}
-        </div>
-
-        {/* Remote — one tile per remote participant. Empty room (nobody has
-            joined the AI agent / interviewer yet) still shows a waiting
-            waveform in the 'connecting' state rather than a blank slot, so
-            the layout doesn't jump the moment they do join. */}
-        {remoteParticipants.length === 0 ? (
-          <div className="min-h-[220px]">
-            <SoundwaveTile audioTrackRef={undefined} label="Waiting to join…" />
           </div>
         ) : (
-          remoteParticipants.map((participant) => {
-            const cameraRef = cameraTrackRefs.find(
-              (ref) => ref.participant.identity === participant.identity
-            );
-            const micRef = micTrackRefs.find(
-              (ref) => ref.participant.identity === participant.identity
-            );
-            return (
-              <div key={participant.identity} className="min-h-[220px]">
-                {cameraRef ? (
-                  <ParticipantTile trackRef={cameraRef} className="h-full w-full rounded-2xl" />
-                ) : (
-                  <SoundwaveTile audioTrackRef={micRef} label="Interviewer" />
-                )}
+          <div className="grid h-full grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="min-h-[220px]">{localTile}</div>
+            {remoteSides.map((side) => (
+              <div key={side.key} className="min-h-[220px]">
+                {side.node}
               </div>
-            );
-          })
+            ))}
+          </div>
+        )}
+
+        {isChatOpen && (
+          <div className="absolute inset-y-3 right-3 z-30 w-full max-w-sm">
+            <ChatPanel open={isChatOpen} onClose={() => setIsChatOpen(false)} />
+          </div>
+        )}
+        {isSettingsOpen && (
+          <div className="absolute inset-y-3 right-3 z-30 w-full max-w-sm">
+            <SettingsPanel
+              open={isSettingsOpen}
+              onClose={() => setIsSettingsOpen(false)}
+              devicesSection={
+                <div className="flex flex-col gap-3 text-sm text-white">
+                  <div>
+                    <p className="mb-1 text-xs text-neutral-400">Microphone</p>
+                    <select
+                      value={micDevices.activeDeviceId}
+                      onChange={(e) => void micDevices.setActiveMediaDevice(e.target.value)}
+                      className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-1.5"
+                    >
+                      {micDevices.devices.map((d) => (
+                        <option key={d.deviceId} value={d.deviceId}>
+                          {d.label || 'Microphone'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-neutral-400">Camera</p>
+                    <select
+                      value={cameraDevices.activeDeviceId}
+                      onChange={(e) => void cameraDevices.setActiveMediaDevice(e.target.value)}
+                      className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-1.5"
+                    >
+                      {cameraDevices.devices.map((d) => (
+                        <option key={d.deviceId} value={d.deviceId}>
+                          {d.label || 'Camera'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {speakerDevices.devices.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-xs text-neutral-400">Speaker</p>
+                      <select
+                        value={speakerDevices.activeDeviceId}
+                        onChange={(e) => void speakerDevices.setActiveMediaDevice(e.target.value)}
+                        className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-1.5"
+                      >
+                        {speakerDevices.devices.map((d) => (
+                          <option key={d.deviceId} value={d.deviceId}>
+                            {d.label || 'Speaker'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              }
+            />
+          </div>
         )}
       </div>
 
       {/* Room chrome — mic + camera toggle always both present for the
-          candidate (never conditional on round type), plus leave. */}
+          candidate (never conditional on round type), plus chat/settings/leave. */}
       <div className="flex items-center justify-center gap-3 border-t border-neutral-800 bg-neutral-900 px-4 py-3">
         <TrackToggle
           source={Track.Source.Microphone}
@@ -103,6 +248,34 @@ export const InterviewRoomLayout = () => {
           source={Track.Source.Camera}
           className="rounded-full border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 data-[lk-enabled=false]:bg-red-600 data-[lk-enabled=false]:border-red-600"
         />
+        <button
+          type="button"
+          onClick={() => {
+            setIsChatOpen((v) => !v);
+            setIsSettingsOpen(false);
+          }}
+          className="relative rounded-full border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
+          aria-pressed={isChatOpen}
+        >
+          <MdChatBubbleOutline size={18} />
+          {unreadChatCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-500 px-1 text-[10px] font-bold text-white">
+              {unreadChatCount}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsSettingsOpen((v) => !v);
+            setIsChatOpen(false);
+          }}
+          className="rounded-full border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
+          aria-pressed={isSettingsOpen}
+          aria-label="Settings"
+        >
+          <MdOutlineSettings size={18} />
+        </button>
         <DisconnectButton className="rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-500">
           Leave
         </DisconnectButton>
@@ -110,5 +283,11 @@ export const InterviewRoomLayout = () => {
     </div>
   );
 };
+
+export const InterviewRoomLayout = () => (
+  <LayoutContextProvider>
+    <InterviewRoomLayoutInner />
+  </LayoutContextProvider>
+);
 
 export default InterviewRoomLayout;
