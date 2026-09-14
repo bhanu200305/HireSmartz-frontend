@@ -59,8 +59,8 @@ const NotificationCopyTab: React.FC = () => {
               Notification copy
             </Typography>
             <Typography variant="caption" className="block text-gray-500">
-              Every system message CareerForce Pro can send on your behalf. Edit the ones you&apos;d
-              like in your own words — the rest use the platform&apos;s default copy inside your
+              Every system message Careerforce Pro can send on your behalf. Edit the ones you&apos;d
+              like in your own words; the rest use the platform&apos;s default copy inside your
               chosen pack.
             </Typography>
           </div>

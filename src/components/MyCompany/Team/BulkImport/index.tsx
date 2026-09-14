@@ -223,7 +223,7 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
         <div>
           <p className="text-xs text-gray-500 mb-3">
             {rows.filter((r) => r.include).length} of {rows.length} rows will be invited. Pick a
-            role for each — a row with no role can&apos;t be confirmed.
+            role for each; a row with no role can&apos;t be confirmed.
           </p>
           <BulkImportRows
             roles={roles ?? []}
@@ -258,7 +258,7 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
             {result.created} invitation{result.created !== 1 ? 's' : ''} sent.
           </p>
           {result.skipped > 0 && (
-            <p className="text-xs text-gray-500">{result.skipped} skipped — already invited.</p>
+            <p className="text-xs text-gray-500">{result.skipped} skipped, already invited.</p>
           )}
           {result.suppressed > 0 && (
             <p className="text-xs text-amber-600">

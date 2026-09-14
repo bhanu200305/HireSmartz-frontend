@@ -181,7 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         <img
           src={WHITE_LOGO_SRC}
-          alt="careerforce pro"
+          alt="Careerforce Pro"
           className={isCollapsed ? 'h-7 w-7 object-contain' : 'h-8 w-auto object-contain'}
           style={isCollapsed ? { objectPosition: 'left' } : undefined}
         />

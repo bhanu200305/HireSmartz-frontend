@@ -34,7 +34,7 @@ const formatRelativeTime = (isoDate: string | null): string => {
   return `${Math.floor(hours / 24)}d ago`;
 };
 
-const COMING_SOON = 'Coming soon — needs a platform-scoped job-service/candidate-service endpoint.';
+const COMING_SOON = 'Coming soon: needs a platform-scoped job-service/candidate-service endpoint.';
 
 /**
  * One company's analytics — opened in place, no route change. Clicking a
@@ -179,7 +179,7 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
             subtitle="Candidates grouped by resume-score band"
             typeTag="Bar"
             available={false}
-            unavailableLabel="Coming soon — no scoring-distribution endpoint yet."
+            unavailableLabel="Coming soon: no scoring-distribution endpoint yet."
           >
             <div />
           </ChartCard>

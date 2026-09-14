@@ -31,7 +31,7 @@ const Navbar = () => {
         <Link to="/">
           <img
             src="/cfpLogo.svg"
-            alt="CareerForce Pro"
+            alt="Careerforce Pro"
             className="h-8 w-auto object-contain sm:h-9"
           />
         </Link>

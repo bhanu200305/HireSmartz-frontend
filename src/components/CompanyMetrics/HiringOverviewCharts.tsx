@@ -188,7 +188,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
 
       <ChartCard
         title="Interviews by status"
-        subtitle="Round counts across every open job — not yet split by Audio Round / AI Interview / Panel Interview"
+        subtitle="Round counts across every open job, not yet split by Audio Round / AI Interview / Panel Interview"
         typeTag="Bar"
         isLoading={isInterviewsLoading}
         available={interviewStatusData.length > 0}

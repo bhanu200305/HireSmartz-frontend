@@ -109,7 +109,7 @@ const DepartmentsTab: React.FC = () => {
       showToast({
         message: getOrgErrorMessage(
           err,
-          'Failed to remove department — a company may still use it.'
+          'Failed to remove department; a company may still use it.'
         ),
         type: 'error',
       });
@@ -149,7 +149,7 @@ const DepartmentsTab: React.FC = () => {
       sorter: (a: DepartmentRow, b: DepartmentRow) =>
         (a.description ?? '').localeCompare(b.description ?? ''),
       render: (_: unknown, department: DepartmentRow) => (
-        <span className="text-gray-500 text-sm">{department.description || '—'}</span>
+        <span className="text-gray-500 text-sm">{department.description || '-'}</span>
       ),
     },
     {

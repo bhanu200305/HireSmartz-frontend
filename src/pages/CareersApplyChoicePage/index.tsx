@@ -71,7 +71,7 @@ export const CareersApplyChoicePage = () => {
             <div className="text-3xl mb-3">📞</div>
             <div className="font-bold text-gray-900 mb-1">Talk to Us Now</div>
             <p className="text-sm text-gray-500">
-              Skip the form — give us a call number and we&apos;ll call you. Upload your resume
+              Skip the form. Give us a call number and we&apos;ll call you. Upload your resume
               afterward.
             </p>
           </button>

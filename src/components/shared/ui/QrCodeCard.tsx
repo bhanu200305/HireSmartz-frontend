@@ -34,7 +34,7 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
   const hasQr = Boolean(imageUrl);
 
   const defaultSubtitle = hasQr
-    ? 'Share this code or link — anyone who scans it or opens it lands on your public job listings, no login required.'
+    ? 'Share this code or link. Anyone who scans it or opens it lands on your public job listings, no login required.'
     : 'Create a secure entry point for candidates. Scanning it takes them straight to your open jobs.';
 
   const handleCopyLink = (): void => {

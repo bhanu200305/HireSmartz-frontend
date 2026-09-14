@@ -86,7 +86,7 @@ export const THEME_COLOR_GROUPS: ThemeColorGroup[] = [
   },
   {
     title: 'Button',
-    description: 'The primary call-to-action button — e.g. "Reset your password".',
+    description: 'The primary call-to-action button, e.g. "Reset your password".',
     fields: [
       { key: 'button_background', label: 'Button background' },
       { key: 'button_text', label: 'Button text' },
@@ -111,7 +111,7 @@ export const THEME_COLOR_GROUPS: ThemeColorGroup[] = [
   },
   {
     title: 'Second call-to-action',
-    description: 'Reserved for a future second button — no current template has one.',
+    description: 'Reserved for a future second button; no current template has one.',
     fields: [
       { key: 'action_button_background', label: 'Background', reserved: true },
       { key: 'action_button_text', label: 'Text', reserved: true },

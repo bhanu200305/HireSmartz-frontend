@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import TextArea from 'antd/es/input/TextArea';
-import { Input, Typography } from '../index';
+import { Typography } from '../index';
+import PlaceholderProtectedField from './PlaceholderProtectedField';
 import {
   parseEmailBody,
   rebuildEmailBody,
@@ -42,15 +42,16 @@ const PlainTextEmailBodyEditor: React.FC<PlainTextEmailBodyEditorProps> = ({
     return (
       <div>
         <p className="mb-1 block text-sm font-medium text-gray-700">
-          Body (HTML — without header/footer, those come from the layout)
+          Body (HTML, without header/footer; those come from the layout)
         </p>
         <p className="mb-2 text-xs text-amber-600">
           This template&apos;s content doesn&apos;t match the usual shape, so it&apos;s shown as raw
           HTML rather than plain text.
         </p>
-        <TextArea
+        <PlaceholderProtectedField
+          as="textarea"
           value={htmlBody}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
           rows={14}
           className="font-mono text-xs"
           disabled={disabled}
@@ -66,10 +67,10 @@ const PlainTextEmailBodyEditor: React.FC<PlainTextEmailBodyEditorProps> = ({
           <Typography variant="body2" className="mb-1 block font-medium text-gray-700">
             Heading
           </Typography>
-          <Input
+          <PlaceholderProtectedField
             value={parsed.heading}
             disabled={disabled}
-            onChange={(e) => onChange(rebuildEmailBody(htmlBody, { heading: e.target.value }))}
+            onChange={(next) => onChange(rebuildEmailBody(htmlBody, { heading: next }))}
           />
         </div>
       )}
@@ -77,16 +78,17 @@ const PlainTextEmailBodyEditor: React.FC<PlainTextEmailBodyEditorProps> = ({
       {parsed.paragraphs.map((paragraph, position) => (
         <div key={paragraph.index}>
           <Typography variant="body2" className="mb-1 block font-medium text-gray-700">
-            {parsed.paragraphs.length > 1 ? `Message — line ${position + 1}` : 'Message'}
+            {parsed.paragraphs.length > 1 ? `Message, line ${position + 1}` : 'Message'}
           </Typography>
-          <TextArea
+          <PlaceholderProtectedField
+            as="textarea"
             value={paragraph.text}
             disabled={disabled}
             autoSize={{ minRows: 2 }}
-            onChange={(e) =>
+            onChange={(next) =>
               onChange(
                 rebuildEmailBody(htmlBody, {
-                  paragraphs: [{ index: paragraph.index, text: e.target.value }],
+                  paragraphs: [{ index: paragraph.index, text: next }],
                 })
               )
             }
@@ -99,10 +101,10 @@ const PlainTextEmailBodyEditor: React.FC<PlainTextEmailBodyEditorProps> = ({
           <Typography variant="body2" className="mb-1 block font-medium text-gray-700">
             Button text
           </Typography>
-          <Input
+          <PlaceholderProtectedField
             value={parsed.ctaLabel}
             disabled={disabled}
-            onChange={(e) => onChange(rebuildEmailBody(htmlBody, { ctaLabel: e.target.value }))}
+            onChange={(next) => onChange(rebuildEmailBody(htmlBody, { ctaLabel: next }))}
           />
           <p className="mt-1 text-xs text-gray-400">
             Where the button links to is set automatically and isn&apos;t editable here.
@@ -115,11 +117,12 @@ const PlainTextEmailBodyEditor: React.FC<PlainTextEmailBodyEditorProps> = ({
           <Typography variant="body2" className="mb-1 block font-medium text-gray-700">
             Footnote
           </Typography>
-          <TextArea
+          <PlaceholderProtectedField
+            as="textarea"
             value={parsed.footnote}
             disabled={disabled}
             autoSize={{ minRows: 2 }}
-            onChange={(e) => onChange(rebuildEmailBody(htmlBody, { footnote: e.target.value }))}
+            onChange={(next) => onChange(rebuildEmailBody(htmlBody, { footnote: next }))}
           />
         </div>
       )}

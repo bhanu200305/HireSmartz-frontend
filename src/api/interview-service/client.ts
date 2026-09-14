@@ -71,6 +71,15 @@ export interface CreateBookingRequest {
   sequence_no: number;
   interview_type: InterviewType;
   interviewer_id?: string | null;
+  /** PANEL only — the explicit roster for this booking. The backend already
+   * accepts this (`create_booking.py`'s `required_interviewer_ids = data.
+   * interviewer_ids or ([data.interviewer_id] if ... )`); it just had no
+   * field here to send it through. Leaving both `interviewer_id` and this
+   * null falls back to interview-service auto-composing the panel from
+   * whichever calendar-connected interviewers happen to be in the pool —
+   * confirmed with the service owner that no real caller relies on that path
+   * today, so always send an explicit roster for a PANEL booking. */
+  interviewer_ids?: string[] | null;
   attempt_of?: string | null;
   immediate: boolean;
   candidate_phone_number?: string | null;

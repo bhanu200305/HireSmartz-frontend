@@ -133,8 +133,8 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
             />
             {rolesForbidden && (
               <p className="text-xs text-red-500">
-                You don&apos;t have permission to view platform roles, so none can be picked here —
-                ask an admin to grant role-read access.
+                You don&apos;t have permission to view platform roles, so none can be picked here.
+                Ask an admin to grant role-read access.
               </p>
             )}
             {canCreateRole && (

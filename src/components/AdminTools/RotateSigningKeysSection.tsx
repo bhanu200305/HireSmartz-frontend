@@ -48,7 +48,7 @@ const RotateSigningKeysSection = () => {
       <p className="mb-4 text-sm text-gray-500">
         Issues a new key and switches every future token to it. The previous public key stays in
         JWKS for the retirement grace period, so sessions already issued keep working until it
-        expires naturally — this doesn&apos;t force a fleet-wide logout.
+        expires naturally. This doesn&apos;t force a fleet-wide logout.
       </p>
 
       {!isConfirming && (
@@ -69,7 +69,7 @@ const RotateSigningKeysSection = () => {
             <MdErrorOutline className="mt-0.5 shrink-0 text-lg text-red-500" />
             <p className="text-sm text-red-800">
               This re-keys every token the entire fleet verifies against. No customer account should
-              ever need this — confirm you mean to rotate it now.
+              ever need this. Confirm you mean to rotate it now.
             </p>
           </div>
           <div className="mt-3 flex gap-2">

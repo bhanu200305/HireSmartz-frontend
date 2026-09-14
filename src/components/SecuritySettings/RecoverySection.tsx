@@ -30,7 +30,7 @@ const SetRecoveryEmailForm = ({ onPending }: { onPending: (email: string) => voi
     } catch (err) {
       const code = getAuthErrorCode(err);
       if (code === 'recovery_email_matches_primary') {
-        setEmailError('This is already your primary email — use a different address.');
+        setEmailError('This is already your primary email; use a different address.');
         return;
       }
       showToast({
@@ -44,7 +44,7 @@ const SetRecoveryEmailForm = ({ onPending }: { onPending: (email: string) => voi
     <div className="flex flex-col gap-3">
       <p className="text-sm text-gray-500">
         A recovery email is your last resort if you ever lose access to both your primary email and
-        your two-factor method — it must be confirmed before it can be used.
+        your two-factor method; it must be confirmed before it can be used.
       </p>
       <div>
         <Input
@@ -178,7 +178,7 @@ const VerifiedRecoveryEmail = ({ maskedEmail }: { maskedEmail: string }) => {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-medium text-gray-900">{maskedEmail}</p>
-          <p className="text-xs text-gray-500">Confirmed — usable for full account recovery.</p>
+          <p className="text-xs text-gray-500">Confirmed, usable for full account recovery.</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge status="success">Verified</Badge>

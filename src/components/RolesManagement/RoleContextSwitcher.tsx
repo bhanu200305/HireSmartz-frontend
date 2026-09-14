@@ -43,7 +43,7 @@ const RoleContextSwitcher: React.FC<RoleContextSwitcherProps> = ({ context, onCh
             mode === 'owner' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500'
           }`}
         >
-          CareerForce Pro (CFP staff)
+          Careerforce Pro (CFP staff)
         </button>
         <button
           type="button"

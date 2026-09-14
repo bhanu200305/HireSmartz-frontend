@@ -559,7 +559,7 @@ const Login = () => {
           <div className="mb-7 flex flex-col items-center">
             <img
               src="/cfpLogo.svg"
-              alt="CareerForce Pro"
+              alt="Careerforce Pro"
               className="h-10 w-auto object-contain cursor-pointer"
               onClick={() => navigate('/')}
             />
@@ -578,7 +578,7 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="login-tab-fade flex flex-col gap-4">
               <div className="text-center">
                 <h2 className="text-xl font-semibold text-gray-900">Welcome back</h2>
-                <p className="mt-1 text-sm text-gray-500">Log in to continue to careerforce pro</p>
+                <p className="mt-1 text-sm text-gray-500">Log in to continue to Careerforce Pro</p>
               </div>
 
               <Input

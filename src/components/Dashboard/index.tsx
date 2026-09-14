@@ -111,7 +111,7 @@ const Dashboard = () => {
             Dashboard
           </h1>
           <p className="mt-1 text-xs text-neutral-500 sm:text-sm">
-            {greeting}. Here&apos;s what&apos;s happening across careerforce pro today.
+            {greeting}. Here&apos;s what&apos;s happening across Careerforce Pro today.
           </p>
         </div>
 

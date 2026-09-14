@@ -141,7 +141,7 @@ const JobTitlesTab: React.FC = () => {
       showToast({
         message: getOrgErrorMessage(
           err,
-          'Failed to remove job title — a company may still use it.'
+          'Failed to remove job title; a company may still use it.'
         ),
         type: 'error',
       });
@@ -181,7 +181,7 @@ const JobTitlesTab: React.FC = () => {
       sorter: (a: JobTitleRow, b: JobTitleRow) =>
         (a.description ?? '').localeCompare(b.description ?? ''),
       render: (_: unknown, jobTitle: JobTitleRow) => (
-        <span className="text-gray-500 text-sm">{jobTitle.description || '—'}</span>
+        <span className="text-gray-500 text-sm">{jobTitle.description || '-'}</span>
       ),
     },
     {

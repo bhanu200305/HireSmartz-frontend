@@ -73,7 +73,7 @@ const RolesManagement: React.FC = () => {
         // DIFFERENT per-location permissions here (recall: two Mohali
         // offices both showing "Mohali" made it impossible to tell which one
         // was being edited). Matches the convention RoleLocationPicker uses.
-        name: `${office.city} — ${office.address_line_1}`,
+        name: `${office.city}, ${office.address_line_1}`,
       })),
     [offices]
   );
@@ -193,7 +193,7 @@ const RolesManagement: React.FC = () => {
               ) : (
                 <div className="py-8 flex items-center justify-center text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
                   <p className="text-sm text-gray-500">
-                    No custom roles yet — create one with the button above.
+                    No custom roles yet. Create one with the button above.
                   </p>
                 </div>
               )}

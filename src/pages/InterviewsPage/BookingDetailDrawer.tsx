@@ -46,7 +46,7 @@ const DANGER_BTN =
 const TERMINAL: BookingStatus[] = ['completed', 'cancelled', 'no_show', 'failed'];
 
 const fmt = (iso: string | null): string =>
-  iso && dayjs(iso).isValid() ? dayjs(iso).format('DD MMM YYYY, h:mm A') : '—';
+  iso && dayjs(iso).isValid() ? dayjs(iso).format('DD MMM YYYY, h:mm A') : '-';
 
 type PendingAction = 'cancel' | 'skip' | 'status' | 'substitute' | null;
 
@@ -265,9 +265,9 @@ export const BookingDetailDrawer = ({
               </Row>
               <Row label="Scheduled">{fmt(booking.start_time)}</Row>
               <Row label="Ends">{fmt(booking.end_time)}</Row>
-              <Row label="Timezone">{booking.attendee_timezone || '—'}</Row>
+              <Row label="Timezone">{booking.attendee_timezone || '-'}</Row>
               {booking.rescheduled_from_booking_id && (
-                <Row label="Rescheduled">Yes — moved from an earlier slot</Row>
+                <Row label="Rescheduled">Yes, moved from an earlier slot</Row>
               )}
               {booking.cancellation_reason && (
                 <Row label="Cancellation reason">{booking.cancellation_reason}</Row>

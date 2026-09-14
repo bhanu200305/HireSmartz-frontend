@@ -27,7 +27,7 @@ const PlatformMetrics: React.FC = () => {
             <div>
               <h2 className="text-xl font-semibold leading-tight">Platform Metrics</h2>
               <Typography variant="caption" className="text-neutral-400">
-                Customers, adoption and growth — platform-wide
+                Customers, adoption and growth, platform-wide
               </Typography>
             </div>
           </div>

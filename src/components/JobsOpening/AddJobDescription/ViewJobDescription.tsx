@@ -350,7 +350,7 @@ const ViewJobDescription = () => {
             <h1 className="text-2xl font-bold p-4 -mx-6 -mt-6 rounded-t-lg text-center text-white bg-primary">
               <img
                 src="/white-logo.svg"
-                alt="CareerForce Pro"
+                alt="Careerforce Pro"
                 className="mx-auto h-7 w-auto object-contain"
               />
             </h1>

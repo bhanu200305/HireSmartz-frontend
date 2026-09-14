@@ -42,7 +42,7 @@ const CompanyMetrics: React.FC = () => {
             <div>
               <h2 className="text-xl font-semibold leading-tight">Company Metrics</h2>
               <Typography variant="caption" className="text-neutral-400">
-                Team, hiring and job openings — this company only
+                Team, hiring and job openings for this company only
               </Typography>
             </div>
           </div>

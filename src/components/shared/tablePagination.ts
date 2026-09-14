@@ -14,5 +14,5 @@ export const paginationConfig = (totalLabel = 'items'): TableProps<object>['pagi
   pageSize: 10,
   showSizeChanger: true,
   pageSizeOptions: ['10', '25', '50', '100'],
-  showTotal: (total, range) => `${range[0]}–${range[1]} of ${total} ${totalLabel}`,
+  showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} ${totalLabel}`,
 });

@@ -4,7 +4,14 @@ import { useSelector } from 'react-redux';
 import { MdOutlineArrowBack } from 'react-icons/md';
 import { Select } from 'antd';
 import MainLayout from '../../../layouts/MainLayout';
-import { Button, Input, PhoneNumberField, Typography, showToast } from '../../shared';
+import {
+  Button,
+  Input,
+  NameTitleSelect,
+  PhoneNumberField,
+  Typography,
+  showToast,
+} from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { RootState } from '../../../redux/provider/store';
@@ -213,11 +220,11 @@ const EditOrgUser = () => {
               <label htmlFor="edit-user-title" className="text-sm text-gray-600">
                 Title
               </label>
-              <Input
+              <NameTitleSelect
                 id="edit-user-title"
-                placeholder="Title"
-                className="mt-1"
-                {...field('title')}
+                className="w-full mt-1"
+                value={form.title}
+                onChange={(value) => setForm((prev) => ({ ...prev, title: value ?? '' }))}
               />
             </div>
             <div>
@@ -254,7 +261,7 @@ const EditOrgUser = () => {
             Assign a role
           </Typography>
           <p className="text-xs text-gray-500 mt-1 mb-4">
-            This grants a real RBAC role via a separate action from the fields above —
+            This grants a real RBAC role via a separate action from the fields above.
             &quot;Title&quot; is just a label, not a permission. Adds a role in addition to whatever
             this person already holds; there&apos;s no way yet to view or remove an existing
             assignment from here.
@@ -274,14 +281,14 @@ const EditOrgUser = () => {
               <p className="text-sm text-gray-600">Location</p>
               <Select
                 className="w-full mt-1"
-                placeholder="Location (optional — applies everywhere if blank)"
+                placeholder="Location (optional, applies everywhere if blank)"
                 allowClear
                 value={assignLocationId}
                 onChange={(value) => setAssignLocationId(value ?? undefined)}
                 options={(offices ?? []).map((office) => ({
                   // City alone isn't unique — two offices in the same city
                   // read identically otherwise.
-                  label: `${office.city} — ${office.address_line_1}`,
+                  label: `${office.city}, ${office.address_line_1}`,
                   value: office.office_id,
                 }))}
               />

@@ -254,24 +254,24 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
 
           <ul className="list-disc ml-7 space-y-2">
             <li>
-              <strong>Resume Score – 20%</strong>
+              <strong>Resume Score: 20%</strong>
               <ul className="list-disc ml-7 mt-2 space-y-1">
-                <li>Skills Match (40%) – Required skills from job description</li>
-                <li>Experience Match (30%) – Relevant roles & years</li>
-                <li>Qualifications (20%) – Education & certifications</li>
-                <li>Keyword Presence (10%) – Job-specific terms</li>
+                <li>Skills Match (40%): Required skills from job description</li>
+                <li>Experience Match (30%): Relevant roles & years</li>
+                <li>Qualifications (20%): Education & certifications</li>
+                <li>Keyword Presence (10%): Job-specific terms</li>
               </ul>
             </li>
 
             <li>
-              <strong>AI Audio Screening Score – 20%</strong>
+              <strong>AI Audio Screening Score: 20%</strong>
               <p className="ml-2">
                 Derived from candidate’s performance in the AI Audio Screening round.
               </p>
             </li>
 
             <li>
-              <strong>AI Video Interview Score(s) – 60%</strong>
+              <strong>AI Video Interview Score(s): 60%</strong>
               <p className="ml-2">
                 Calculated as the <strong>simple average</strong> of all AI Video Interview round
                 scores.
@@ -306,11 +306,11 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
 
           <ul className="list-disc ml-7 space-y-2">
             <li>
-              <strong>Video Interview Round(s)</strong> – Ratings for candidate performance in one
-              or more video interview rounds.
+              <strong>Video Interview Round(s):</strong> Ratings for candidate performance in one or
+              more video interview rounds.
             </li>
             <li>
-              <strong>In-Person Interview Round(s)</strong> – Ratings provided during physical
+              <strong>In-Person Interview Round(s):</strong> Ratings provided during physical
               interview rounds.
             </li>
           </ul>

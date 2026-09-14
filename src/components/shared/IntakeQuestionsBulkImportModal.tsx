@@ -109,7 +109,7 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
     try {
       const result = await onUpload(pickedFile);
       showToast({
-        message: `Replaced ${targetLabel}'s question list — now has ${result.created.length} question${
+        message: `Replaced ${targetLabel}'s question list, now has ${result.created.length} question${
           result.created.length === 1 ? '' : 's'
         }.`,
         type: 'success',
@@ -146,7 +146,7 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
       destroyOnClose
     >
       <p className="text-sm text-gray-500 mb-4">
-        Uploading a file <strong>replaces</strong> {targetLabel}&apos;s entire question list — it
+        Uploading a file <strong>replaces</strong> {targetLabel}&apos;s entire question list; it
         does not add to it.
       </p>
 
@@ -198,7 +198,7 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
             <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               <div className="flex items-center gap-1.5 font-medium mb-1.5">
                 <MdErrorOutline />
-                This file couldn&apos;t be imported — nothing was changed:
+                This file couldn&apos;t be imported; nothing was changed:
               </div>
               <ul className="list-disc list-inside space-y-0.5">
                 {rowErrors.map((rowError, index) => (

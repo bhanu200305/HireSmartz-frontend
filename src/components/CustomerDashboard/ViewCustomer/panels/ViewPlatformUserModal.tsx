@@ -2,7 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Select } from 'antd';
 import { MdClose, MdEdit } from 'react-icons/md';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
-import { Badge, Button, Input, PhoneNumberField, Typography, showToast } from '../../../shared';
+import {
+  Badge,
+  Button,
+  Input,
+  NameTitleSelect,
+  PhoneNumberField,
+  Typography,
+  showToast,
+} from '../../../shared';
 import ConfirmationModal from '../../../shared/ui/ConfirmationModal';
 import type { OrgUser } from '../../../../api/organization-service/Users/users';
 import { useListPlatformTenantOfficesQuery } from '../../../../api/organization-service/Platform/offices';
@@ -195,7 +203,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
   const officeLabel = (officeId: string | null) => {
     if (!officeId) return 'Applies everywhere';
     const office = offices?.find((o) => o.office_id === officeId);
-    return office ? `${office.city} — ${office.address_line_1}` : 'Unknown location';
+    return office ? `${office.city}, ${office.address_line_1}` : 'Unknown location';
   };
   const roleName = (id: string) => roles.find((r) => r.id === id)?.roleName ?? 'Unknown role';
 
@@ -411,7 +419,13 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
               <Input placeholder="Email" defaultValue={editForm.email} onBlur={handleEmailBlur} />
               <Input placeholder="First name *" {...field('first_name')} />
               <Input placeholder="Last name" {...field('last_name')} />
-              <Input placeholder="Title" {...field('title')} />
+              <NameTitleSelect
+                className="w-full"
+                value={editForm.title}
+                onChange={(value) =>
+                  setEditForm((prev) => (prev ? { ...prev, title: value ?? '' } : prev))
+                }
+              />
               <PhoneNumberField
                 countryCode={editForm.country_code}
                 onCountryCodeChange={(value) =>
@@ -570,7 +584,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
             Attached locations
           </Typography>
           <p className="text-xs text-gray-500 mb-3">
-            Offices this person is attached to — this is what powers the location switcher on their
+            Offices this person is attached to. This is what powers the location switcher on their
             OWN dashboard. Granting a role at an office (above) attaches them here automatically;
             use this to fix or extend that by hand.
           </p>

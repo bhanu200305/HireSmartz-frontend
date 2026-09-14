@@ -138,7 +138,7 @@ const ScoringCriteriaPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       <div className="flex items-center gap-2 mb-1">
         <h2 className="text-2xl font-semibold text-gray-800">Scoring Weight Distribution</h2>
         {isLocked && (
-          <Tooltip title="This company is locked to the platform default — it can't set its own weights.">
+          <Tooltip title="This company is locked to the platform default; it can't set its own weights.">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold px-2.5 py-1">
               <MdLock size={13} /> Locked
             </span>
