@@ -62,6 +62,12 @@ export interface BookingView {
    * label. */
   call_intent: string | null;
   call_intent_reason: string | null;
+  /** Added 2026-09-15 — when THIS booking row was created. For a
+   * reschedule re-attempt (created via requestCallReschedule), this is
+   * "when the reschedule was requested", distinct from `start_time`
+   * ("when the candidate picked the new call to happen", still null until
+   * they do). */
+  created_at: string | null;
 }
 
 export interface CreateBookingRequest {

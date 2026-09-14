@@ -6,6 +6,7 @@ import { LuMail, LuPencil, LuSquarePen, LuThumbsDown, LuThumbsUp } from 'react-i
 import { IoChatbubbleEllipses } from 'react-icons/io5';
 import { CommonCard, Button, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
+import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { NotesPillTrigger } from '../Notes/NotesPillTrigger';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { useGetJobQuestionsQuery } from '../../../api/job-service/JobOpening/jobQuestions';
@@ -221,6 +222,11 @@ const CandidateDetails = () => {
   const [requestCallReschedule, { isLoading: isRequestingReschedule }] =
     useRequestCallRescheduleMutation();
   const [getCalendarConnectUrl] = useLazyGetCalendarConnectUrlQuery();
+  // Confirmation gate before requesting a reschedule — the candidate's
+  // resume-consistency score is recalculated from whatever call actually
+  // ends up happening, so a recruiter needs to know the current score (if
+  // any) is about to be replaced before they commit to a new call.
+  const [isRescheduleConfirmOpen, setIsRescheduleConfirmOpen] = useState(false);
 
   // Offline hiring-panel recording: `POST /bookings/{id}/recording/upload`
   // — the candidate visited in person, so there's no LiveKit session to
@@ -315,6 +321,8 @@ const CandidateDetails = () => {
         message: getCandidateErrorMessage(e, 'Could not request a reschedule'),
         type: 'error',
       });
+    } finally {
+      setIsRescheduleConfirmOpen(false);
     }
   };
 
@@ -929,7 +937,7 @@ const CandidateDetails = () => {
                           <Button
                             className="mt-3 rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
                             disabled={isRequestingReschedule}
-                            onClick={() => void handleRequestCallReschedule()}
+                            onClick={() => setIsRescheduleConfirmOpen(true)}
                           >
                             {isRequestingReschedule
                               ? 'Sending…'
@@ -952,26 +960,42 @@ const CandidateDetails = () => {
                           Reschedule History
                         </div>
                         <div className="mt-3 flex flex-col gap-3">
-                          {[...(bookingHistory ?? [])].reverse().map((attempt, index) => (
-                            <div
-                              key={attempt.id}
-                              className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0"
-                            >
-                              <div>
-                                <div className="text-sm font-semibold text-gray-900">
-                                  {index === 0
-                                    ? 'Current attempt'
-                                    : `Attempt ${bookingHistory!.length - index}`}
+                          {[...(bookingHistory ?? [])].reverse().map((attempt, index) => {
+                            // Positional, not a real field — `BookingView`
+                            // doesn't expose `attempt_of`. `bookingHistory`
+                            // is oldest-first before this reverse(), so the
+                            // LAST entry after reversing is always the
+                            // original (never itself a reschedule).
+                            const isOriginal = index === (bookingHistory?.length ?? 1) - 1;
+                            const actionTime = formatDateTime(attempt.created_at);
+                            return (
+                              <div
+                                key={attempt.id}
+                                className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                              >
+                                <div>
+                                  <div className="text-sm font-semibold text-gray-900">
+                                    {index === 0
+                                      ? 'Current attempt'
+                                      : `Attempt ${bookingHistory!.length - index}`}
+                                  </div>
+                                  {actionTime && (
+                                    <div className="text-xs text-gray-500">
+                                      {isOriginal ? 'Created' : 'Rescheduled'} {actionTime}
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-gray-400">
+                                    {formatDateTime(attempt.start_time)
+                                      ? `Scheduled for ${formatDateTime(attempt.start_time)}`
+                                      : 'Not yet scheduled'}
+                                  </div>
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  {formatDateTime(attempt.start_time) ?? 'Not yet scheduled'}
-                                </div>
+                                <span className="shrink-0 text-xs font-semibold text-primary-600">
+                                  {formatCallIntent(attempt.call_intent)}
+                                </span>
                               </div>
-                              <span className="shrink-0 text-xs font-semibold text-primary-600">
-                                {formatCallIntent(attempt.call_intent)}
-                              </span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     </CommonCard>
@@ -1500,6 +1524,25 @@ const CandidateDetails = () => {
           onClose={() => setIsResumeViewerOpen(false)}
           candidateId={candidateId}
           candidateName={candidateDisplayName(candidate)}
+        />
+      )}
+      {isRescheduleConfirmOpen && (
+        <ConfirmationModal
+          onClose={() => setIsRescheduleConfirmOpen(false)}
+          onConfirm={() => void handleRequestCallReschedule()}
+          title={
+            // Resume-consistency scoring is Intake Call (AUDIO) specific —
+            // Audio Screening/AI Video rounds don't have one, so this
+            // clause would be misleading there.
+            selectedRoundIsIntakeCall && candidate?.consistency_score != null
+              ? `Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, the resume-consistency score will be recalculated from it and will overwrite the current score (${candidate.consistency_score} / 10).`
+              : selectedRoundIsIntakeCall
+                ? 'Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, a resume-consistency score will be calculated from it.'
+                : 'Requesting a reschedule will email the candidate a new link, valid for 24 hours.'
+          }
+          confirmText="REQUEST RESCHEDULE"
+          cancelText="CANCEL"
+          isLoading={isRequestingReschedule}
         />
       )}
       {scoreModalFor && candidateId && (
