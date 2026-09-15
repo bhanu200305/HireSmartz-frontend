@@ -624,6 +624,14 @@ export const interviewApi = createApi({
     joinSession: build.query<SessionTokenView, string>({
       query: (token) => bookingLink({ url: `/sessions/join/${token}` }),
     }),
+    // The candidate's join screen calls this before ever requesting a
+    // session token — interview-service now refuses to mint a candidate
+    // LiveKit token until consent has been recorded for this booking (see
+    // MintSessionTokenUseCase / RecordRecordingConsentUseCase on the
+    // backend). Same token-in-path shape as joinSession itself.
+    recordRecordingConsent: build.mutation<null, string>({
+      query: (token) => bookingLink({ url: `/sessions/consent/${token}`, method: 'POST' }),
+    }),
     joinSessionAsInterviewer: build.query<SessionTokenView, string>({
       query: (token) => bookingLink({ url: `/sessions/join-as-interviewer/${token}` }),
     }),
@@ -700,6 +708,7 @@ export const {
   useSubmitWithdrawalMutation,
   useGetRecordingQuery,
   useJoinSessionQuery,
+  useRecordRecordingConsentMutation,
   useJoinSessionAsInterviewerQuery,
   useCreateInAppSessionTokenMutation,
   useGetSessionStateQuery,

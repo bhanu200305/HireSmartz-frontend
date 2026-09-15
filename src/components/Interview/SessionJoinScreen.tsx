@@ -6,6 +6,7 @@ import '@livekit/components-styles';
 import { Loader } from '../shared/ui/loader';
 import {
   useJoinSessionQuery,
+  useRecordRecordingConsentMutation,
   useJoinSessionAsInterviewerQuery,
   getInterviewErrorAction,
   type InterviewApiError,
@@ -43,9 +44,17 @@ type JoinRole = 'candidate' | 'interviewer';
  */
 const EARLY_JOIN_POLL_MS = 5_000;
 
-const useSessionToken = (joinAs: JoinRole, token: string, pollWhileEarly: boolean) => {
+const useSessionToken = (
+  joinAs: JoinRole,
+  token: string,
+  pollWhileEarly: boolean,
+  hasConsented: boolean
+) => {
   const candidate = useJoinSessionQuery(token, {
-    skip: !token || joinAs !== 'candidate',
+    // interview-service refuses to mint a candidate token until consent has
+    // been recorded — don't even request one until the candidate has agreed
+    // on the screen below, so the room never silently starts before that.
+    skip: !token || joinAs !== 'candidate' || !hasConsented,
     pollingInterval: pollWhileEarly ? EARLY_JOIN_POLL_MS : 0,
   });
   const interviewer = useJoinSessionAsInterviewerQuery(token, {
@@ -53,6 +62,61 @@ const useSessionToken = (joinAs: JoinRole, token: string, pollWhileEarly: boolea
     pollingInterval: pollWhileEarly ? EARLY_JOIN_POLL_MS : 0,
   });
   return joinAs === 'candidate' ? candidate : interviewer;
+};
+
+/** Shown to the candidate only, once, before this screen ever requests a
+ * LiveKit token — interview-service enforces this server-side too
+ * (MintSessionTokenUseCase), this is just the UI half of that gate. Not
+ * shown to the interviewer: they're the company's own agent, not the
+ * person whose consent to being recorded is the actual legal question. */
+const RecordingConsentScreen = ({ onAgree }: { onAgree: () => void }) => {
+  const [recordConsent, { isLoading, error }] = useRecordRecordingConsentMutation();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token') ?? '';
+
+  const handleAgree = async () => {
+    try {
+      await recordConsent(token).unwrap();
+      onAgree();
+    } catch {
+      // error state below already renders from the mutation's own `error`
+    }
+  };
+
+  // Same 410 = dead-link case the token-request states elsewhere on this
+  // screen already distinguish — without this, an expired join link would
+  // show a generic "please try again" that just 410s forever on retry,
+  // never telling the candidate the actual link itself is the problem.
+  const apiError = error as InterviewApiError | undefined;
+  const isExpiredLink = apiError ? getInterviewErrorAction(apiError) === 'expired-link' : false;
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-neutral-950 px-6 text-center">
+      <h1 className="text-lg font-semibold text-white">This interview will be recorded</h1>
+      <p className="max-w-md text-sm text-neutral-400">
+        Video and audio from this session are recorded and a transcript is generated so the hiring
+        team can review your interview. By continuing, you agree to being recorded for this purpose.
+      </p>
+      {isExpiredLink ? (
+        <p className="max-w-md text-sm text-red-400">
+          This interview link has expired. Check your email for a fresh link closer to your
+          interview&apos;s scheduled time.
+        </p>
+      ) : (
+        error && (
+          <p className="text-sm text-red-400">Could not record your response — please try again.</p>
+        )
+      )}
+      <button
+        type="button"
+        disabled={isLoading || !token || isExpiredLink}
+        onClick={() => void handleAgree()}
+        className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-neutral-950 disabled:opacity-50"
+      >
+        {isLoading ? 'Please wait…' : 'I agree, continue to my interview'}
+      </button>
+    </div>
+  );
 };
 
 const CenteredMessage = ({
@@ -156,7 +220,16 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
   // for the retry. See useSessionToken's own docstring.
   const [pollWhileEarly, setPollWhileEarly] = useState(false);
 
-  const { data, isLoading, isError, error } = useSessionToken(joinAs, token, pollWhileEarly);
+  // Interviewer never needs this screen — see RecordingConsentScreen's own
+  // docstring on why the gate is candidate-only.
+  const [hasConsented, setHasConsented] = useState(joinAs !== 'candidate');
+
+  const { data, isLoading, isError, error } = useSessionToken(
+    joinAs,
+    token,
+    pollWhileEarly,
+    hasConsented
+  );
 
   const session = data as SessionTokenView | undefined;
   const apiError = error as InterviewApiError | undefined;
@@ -198,6 +271,10 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
         detail="Open the link from your interview email; it needs to include the token."
       />
     );
+  }
+
+  if (!hasConsented) {
+    return <RecordingConsentScreen onAgree={() => setHasConsented(true)} />;
   }
 
   if (errorAction === 'not-yet-started') {
