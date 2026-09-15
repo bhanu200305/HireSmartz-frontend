@@ -63,6 +63,24 @@ const cardTooltipStyle = {
   boxShadow: '0 8px 24px -12px rgba(16,30,54,.18)',
 };
 
+// Axis titles, not just tick values — `insideLeft`/`insideBottom` keep them
+// inside the plot area (rather than past it, where `ChartCard`'s
+// `overflow-hidden` would clip them the same way the bare tick labels used
+// to before the Y-axis `width` was widened here to make room).
+const axisTitleStyle = { fontSize: 10, fill: '#8593ac' };
+const yAxisLabel = (value: string) => ({
+  value,
+  angle: -90,
+  position: 'insideLeft' as const,
+  style: { ...axisTitleStyle, textAnchor: 'middle' as const },
+});
+const xAxisLabel = (value: string) => ({
+  value,
+  position: 'insideBottom' as const,
+  offset: -2,
+  style: axisTitleStyle,
+});
+
 type GrowthAdoptionChartsProps = {
   /** 'compact' renders just the one headline chart (Customer growth trend)
    * at a shorter height — for the Dashboard carousel's preview slide, which
@@ -163,20 +181,26 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       available={growthTrendData.length > 0}
     >
       <ResponsiveContainer width="100%" height={chartHeight}>
-        <LineChart data={growthTrendData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+        <LineChart
+          data={growthTrendData}
+          margin={{ top: 8, right: 12, left: -16, bottom: variant === 'compact' ? 0 : 14 }}
+        >
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
           <XAxis
             dataKey="period"
             tick={{ fontSize: 11, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
+            height={variant === 'compact' ? undefined : 30}
+            label={variant === 'compact' ? undefined : xAxisLabel('Month')}
           />
           <YAxis
             allowDecimals={false}
             tick={{ fontSize: 11, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
-            width={36}
+            width={48}
+            label={yAxisLabel('New tenants')}
           />
           <Tooltip contentStyle={cardTooltipStyle} />
           <Line
@@ -233,7 +257,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
         unavailableLabel="Unavailable: authentication-service didn't answer."
       >
         <ResponsiveContainer width="100%" height={chartHeight}>
-          <AreaChart data={adoptionTrendData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+          <AreaChart data={adoptionTrendData} margin={{ top: 8, right: 12, left: -16, bottom: 14 }}>
             <defs>
               <linearGradient id="adoptionFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={COLOR_SUCCESS} stopOpacity={0.35} />
@@ -246,13 +270,16 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
+              height={30}
+              label={xAxisLabel('Month')}
             />
             <YAxis
               allowDecimals={false}
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
-              width={36}
+              width={48}
+              label={yAxisLabel('Active users')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Area
@@ -275,20 +302,23 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
         unavailableLabel="Unavailable: authentication-service didn't answer."
       >
         <ResponsiveContainer width="100%" height={chartHeight}>
-          <BarChart data={authHealthData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+          <BarChart data={authHealthData} margin={{ top: 8, right: 12, left: -16, bottom: 14 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="period"
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
+              height={30}
+              label={xAxisLabel('Month')}
             />
             <YAxis
               allowDecimals={false}
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
-              width={36}
+              width={48}
+              label={yAxisLabel('Logins')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Legend
@@ -338,7 +368,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
           <BarChart
             data={deviceUsageData}
             layout="vertical"
-            margin={{ top: 8, right: 24, left: 8, bottom: 0 }}
+            margin={{ top: 8, right: 24, left: 8, bottom: 14 }}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef1f7" />
             <XAxis
@@ -347,14 +377,17 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
+              height={30}
+              label={xAxisLabel('Sessions')}
             />
             <YAxis
               type="category"
               dataKey="name"
-              width={100}
+              width={118}
               tick={{ fontSize: 11.5, fill: '#4c5c78' }}
               axisLine={false}
               tickLine={false}
+              label={yAxisLabel('Device')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Bar dataKey="Sessions" fill={COLOR_ACCENT} radius={[0, 6, 6, 0]} maxBarSize={22} />

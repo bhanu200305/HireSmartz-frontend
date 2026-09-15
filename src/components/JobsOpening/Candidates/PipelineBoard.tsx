@@ -299,7 +299,7 @@ const PipelineBoard = ({
                   <span className="text-xs font-semibold text-primary-600">
                     {roundScore?.recruiter_score != null
                       ? `Score: ${roundScoreValue} / 5`
-                      : `Score: ${roundScoreValue} / 100 · AI score`}
+                      : `Score: ${roundScoreValue} / 10 · AI score`}
                   </span>
                 )}
                 {hasRecordings && (
