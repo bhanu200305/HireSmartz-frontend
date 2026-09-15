@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Checkbox } from 'antd';
-import { Button, showToast } from '../../../shared';
+import { Badge, Button, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Loader } from '../../../shared/ui/loader';
 import {
@@ -8,6 +8,16 @@ import {
   useSetPanelInterviewersMutation,
 } from '../../../../api/candidate-service/Candidates/interviewRounds';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
+
+// Why a person is in the list — `roles` carries one or both of these raw
+// values (added 2026-09-15 once org-service's directory started unioning
+// the job's hiring managers into what used to be interviewer-role-only).
+const ROLE_LABELS: Record<string, string> = {
+  interviewer: 'Interviewer',
+  hiring_manager: 'Hiring Manager',
+};
+const roleLabel = (role: string): string =>
+  ROLE_LABELS[role] ?? role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 // New — `GET /candidates/{id}/eligible-interviewers` +
 // `PUT /candidates/{id}/interview-rounds/{round_id}/interviewers`
@@ -135,10 +145,17 @@ const PanelInterviewersModal = ({
                 />
                 <label
                   htmlFor={`panel-interviewer-${interviewer.id}`}
-                  className="min-w-0 cursor-pointer"
+                  className="min-w-0 flex-1 cursor-pointer"
                 >
-                  <div className="truncate text-sm font-medium text-gray-900">
-                    {interviewer.display_name}
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-medium text-gray-900">
+                      {interviewer.display_name}
+                    </span>
+                    {interviewer.roles.map((role) => (
+                      <Badge key={role} status="neutral" className="shrink-0">
+                        {roleLabel(role)}
+                      </Badge>
+                    ))}
                   </div>
                   <div className="truncate text-xs text-gray-500">{interviewer.email}</div>
                 </label>

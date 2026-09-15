@@ -78,11 +78,14 @@ export type CandidateInterviewRoundView = {
 /** One row of org-service's live interviewer directory, as returned to the
  * PANEL round interviewer picker. `office_id` is `null` when the
  * interviewer has no office set — treat that as "cannot be placed on-site"
- * in any same-office filter, not "matches everywhere". */
+ * in any same-office filter, not "matches everywhere". `roles` is why this
+ * person is eligible — `["interviewer"]`, `["hiring_manager"]`, or both —
+ * so the picker can show the reason alongside each name. */
 export type InterviewerView = {
   id: string;
   display_name: string;
   email: string;
+  roles: string[];
   office_id: string | null;
 };
 
