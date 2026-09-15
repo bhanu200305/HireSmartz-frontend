@@ -1,12 +1,8 @@
 import { useState } from 'react';
 import dayjs from 'dayjs';
-import { Badge, Button, showToast, type BadgeStatus } from '../../shared';
-import {
-  useSendRoundInviteMutation,
-  type CandidateInterviewRoundView,
-} from '../../../api/candidate-service/Candidates/interviewRounds';
+import { Badge, type BadgeStatus } from '../../shared';
+import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
-import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import {
   bucketForStatus,
   isIntakeCallRound,
@@ -101,7 +97,6 @@ const PipelineBoard = ({
     roundName: string;
     currentInterviewerIds: string[];
   } | null>(null);
-  const [sendRoundInvite, { isLoading: isSendingInvite }] = useSendRoundInviteMutation();
   if (rounds.length === 0) {
     return <p className="text-sm text-gray-500">No round plan yet.</p>;
   }
@@ -124,12 +119,12 @@ const PipelineBoard = ({
   const hasFailure = displayBuckets.includes('failed') || overdueFlags.some(Boolean);
   const allDone = displayBuckets.every((b) => b === 'done');
 
-  // The round ADVANCE would actually complete next / SEND INVITE would
-  // actually announce — NOT just "the first card whose status reads
-  // pending": an instant-call candidate with no resume yet has a resume
-  // card sitting there with status `to_be_scheduled` same as a real
-  // pending round, but it's inert (`due_at === null`) and neither action
-  // can touch it. See `roundProgress.ts`'s own docstring.
+  // The round ADVANCE would actually complete next — NOT just "the first
+  // card whose status reads pending": an instant-call candidate with no
+  // resume yet has a resume card sitting there with status
+  // `to_be_scheduled` same as a real pending round, but it's inert
+  // (`due_at === null`) and that action can't touch it. See
+  // `roundProgress.ts`'s own docstring.
   const currentRound = resolveCurrentRound(rounds);
   let activeIndex = currentRound ? rounds.findIndex((r) => r.id === currentRound.id) : -1;
   // A scored resume stage shows as Completed, so the real "current" work is
@@ -141,24 +136,6 @@ const PipelineBoard = ({
   const nextWhen = nextRound
     ? (formatWhen(nextRound.scheduled_at) ?? formatWhen(nextRound.due_at))
     : null;
-  // Send Invite only ever applies to a real interview round —
-  // send_round_invite.py refuses the resume stage (ResumeStageHasNoInviteError).
-  const nextIsInterviewRound = nextRound?.stage_type === 'interview';
-  const nextRoundAlreadyBooked = !!nextRound?.interview_booking_id;
-
-  const handleSendInvite = async () => {
-    try {
-      const result = await sendRoundInvite(candidateId).unwrap();
-      showToast({
-        message: result.invite_sent
-          ? `Invite sent for ${result.round.round_name}.`
-          : 'Invite already sent moments ago; not sent again.',
-        type: result.invite_sent ? 'success' : 'info',
-      });
-    } catch (e) {
-      showToast({ message: getCandidateErrorMessage(e, 'Could not send invite'), type: 'error' });
-    }
-  };
 
   const scoreValues = [resumeScore, ...scores.map((s) => s.recruiter_score ?? s.score)].filter(
     (v): v is number => v !== null && v !== undefined
@@ -397,19 +374,6 @@ const PipelineBoard = ({
             {nextRound ? roundLabel(nextRound) : 'None, pipeline complete'}
             {nextWhen && <span className="ml-1 font-normal text-neutral-500">· {nextWhen}</span>}
           </div>
-          {nextIsInterviewRound && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                onClick={() => void handleSendInvite()}
-                disabled={isSendingInvite || nextRoundAlreadyBooked}
-                title={nextRoundAlreadyBooked ? 'This round already has a booking' : undefined}
-                className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSendingInvite ? 'Sending…' : 'SEND INVITE'}
-              </Button>
-            </div>
-          )}
         </div>
         <div>
           <div className="text-xs text-neutral-400">Rounds completed</div>
