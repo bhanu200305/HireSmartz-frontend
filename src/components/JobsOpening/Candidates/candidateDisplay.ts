@@ -46,8 +46,8 @@ export type CandidateStatusColor = { bg: string; text: string; dot: string };
  * — that vocabulary is shared by every status pill across the whole app,
  * and this palette is specific to the candidate funnel, so it renders as a
  * plain span with its own classes rather than through `Badge`. Unknown
- * codes (a status added later without an update here) fall back to the
- * same neutral gray `withdrawn` uses, not an error state. */
+ * codes (a status added later without an update here) fall back to
+ * `UNKNOWN_STATUS_COLOR`, a neutral gray, not an error state. */
 const CANDIDATE_STATUS_COLOR: Record<string, CandidateStatusColor> = {
   applied: { bg: 'bg-neutral-100', text: 'text-neutral-600', dot: 'bg-neutral-400' },
   resume_under_review: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500' },
@@ -59,7 +59,9 @@ const CANDIDATE_STATUS_COLOR: Record<string, CandidateStatusColor> = {
   advanced: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
   selected: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
   rejected: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
-  withdrawn: { bg: 'bg-neutral-100', text: 'text-neutral-500', dot: 'bg-neutral-400' },
+  // Distinct from `applied`'s neutral gray — both used to be the same gray,
+  // making a withdrawn candidate indistinguishable from a fresh applicant.
+  withdrawn: { bg: 'bg-pink-50', text: 'text-pink-700', dot: 'bg-pink-500' },
 };
 
 const NOT_SCREENED_COLOR: CandidateStatusColor = {
@@ -68,12 +70,18 @@ const NOT_SCREENED_COLOR: CandidateStatusColor = {
   dot: 'bg-amber-500',
 };
 
+const UNKNOWN_STATUS_COLOR: CandidateStatusColor = {
+  bg: 'bg-neutral-100',
+  text: 'text-neutral-600',
+  dot: 'bg-neutral-400',
+};
+
 export const candidateStatusColor = (
   statusCode: string | null | undefined
 ): CandidateStatusColor => {
   const code = (statusCode ?? '').toLowerCase();
   if (!code) return NOT_SCREENED_COLOR;
-  return CANDIDATE_STATUS_COLOR[code] ?? CANDIDATE_STATUS_COLOR.withdrawn;
+  return CANDIDATE_STATUS_COLOR[code] ?? UNKNOWN_STATUS_COLOR;
 };
 
 /** Plain-English tooltip copy per funnel status, written for a recruiter —
