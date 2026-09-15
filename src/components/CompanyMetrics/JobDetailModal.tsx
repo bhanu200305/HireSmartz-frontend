@@ -96,7 +96,13 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
   ];
 
   return (
-    <AntdCommonModal open onClose={onClose} title={jobTitle} subtitle={job.job_profile_code}>
+    <AntdCommonModal
+      open
+      onClose={onClose}
+      title={jobTitle}
+      subtitle={job.job_profile_code}
+      modalProps={{ width: 820 }}
+    >
       <div className="flex flex-col gap-4">
         <StatCardRow cards={statusCards} columns={4} />
 
@@ -130,20 +136,36 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
             available={resumeScoreData.some((band) => band.Candidates > 0)}
           >
             <ResponsiveContainer width="100%" height={190}>
-              <BarChart data={resumeScoreData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+              <BarChart
+                data={resumeScoreData}
+                margin={{ top: 8, right: 12, left: -16, bottom: 14 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
                 <XAxis
                   dataKey="name"
                   tick={{ fontSize: 11, fill: '#8593ac' }}
                   axisLine={false}
                   tickLine={false}
+                  height={30}
+                  label={{
+                    value: 'Score band',
+                    position: 'insideBottom',
+                    offset: -2,
+                    style: { fontSize: 10, fill: '#8593ac' },
+                  }}
                 />
                 <YAxis
                   allowDecimals={false}
                   tick={{ fontSize: 11, fill: '#8593ac' }}
                   axisLine={false}
                   tickLine={false}
-                  width={36}
+                  width={48}
+                  label={{
+                    value: 'Candidates',
+                    angle: -90,
+                    position: 'insideLeft',
+                    style: { fontSize: 10, fill: '#8593ac', textAnchor: 'middle' },
+                  }}
                 />
                 <Tooltip
                   contentStyle={{

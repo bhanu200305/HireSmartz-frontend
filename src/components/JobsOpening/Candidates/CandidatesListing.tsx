@@ -466,42 +466,6 @@ const CandidatesListing = () => {
                                 </span>
                               </Link>
                             </div>
-                            {expandedId === candidate.id && (
-                              <div className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-1.5 rounded-lg bg-neutral-50 p-3 text-xs sm:grid-cols-2">
-                                <p className="truncate">
-                                  <span className="font-semibold text-neutral-500">
-                                    Qualification:{' '}
-                                  </span>
-                                  <span className="text-neutral-700">
-                                    {candidate.qualification || 'N/A'}
-                                  </span>
-                                </p>
-                                <p className="truncate">
-                                  <span className="font-semibold text-neutral-500">Email: </span>
-                                  <span className="text-neutral-700">
-                                    {candidate.email_id || 'N/A'}
-                                  </span>
-                                </p>
-                                <p className="truncate">
-                                  <span className="font-semibold text-neutral-500">Phone: </span>
-                                  <span className="text-neutral-700">
-                                    {candidate.contact_no || 'N/A'}
-                                  </span>
-                                </p>
-                                <p className="truncate">
-                                  <span className="font-semibold text-neutral-500">Location: </span>
-                                  <span className="text-neutral-700">
-                                    {candidate.address || 'N/A'}
-                                  </span>
-                                </p>
-                                <p className="truncate">
-                                  <span className="font-semibold text-neutral-500">Source: </span>
-                                  <span className="text-neutral-700">
-                                    {candidate.source || 'N/A'}
-                                  </span>
-                                </p>
-                              </div>
-                            )}
                           </Col>
                           <Col span={3} className="min-w-0 overflow-hidden">
                             <Link
@@ -582,6 +546,38 @@ const CandidatesListing = () => {
                             </div>
                           </Col>
                         </Row>
+                        {expandedId === candidate.id && (
+                          <div className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-1.5 rounded-lg bg-neutral-50 p-3 text-xs sm:grid-cols-3 lg:grid-cols-5">
+                            <p className="truncate">
+                              <span className="font-semibold text-neutral-500">
+                                Qualification:{' '}
+                              </span>
+                              <span className="text-neutral-700">
+                                {candidate.qualification || 'N/A'}
+                              </span>
+                            </p>
+                            <p className="truncate">
+                              <span className="font-semibold text-neutral-500">Email: </span>
+                              <span className="text-neutral-700">
+                                {candidate.email_id || 'N/A'}
+                              </span>
+                            </p>
+                            <p className="truncate">
+                              <span className="font-semibold text-neutral-500">Phone: </span>
+                              <span className="text-neutral-700">
+                                {candidate.contact_no || 'N/A'}
+                              </span>
+                            </p>
+                            <p className="truncate">
+                              <span className="font-semibold text-neutral-500">Location: </span>
+                              <span className="text-neutral-700">{candidate.address || 'N/A'}</span>
+                            </p>
+                            <p className="truncate">
+                              <span className="font-semibold text-neutral-500">Source: </span>
+                              <span className="text-neutral-700">{candidate.source || 'N/A'}</span>
+                            </p>
+                          </div>
+                        )}
                       </CommonCard>
                     </div>
                   </div>

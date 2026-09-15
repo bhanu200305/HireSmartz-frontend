@@ -4,7 +4,6 @@ import { persistStore, persistReducer, PersistConfig } from 'redux-persist';
 import rootReducer from '../reducers';
 import api from '../../api';
 import { interviewApi } from '../../api/interview-service/client';
-import { interviewFeedbackApi } from '../../api/interview-service/InterviewFeedback/index';
 import { publicApplyApi } from '../../api/candidate-service/PublicApply/index';
 import { candidateApi } from '../../api/candidate-service/candidateApi';
 import { authApi } from '../../api/authentication-service/authApi';
@@ -26,7 +25,6 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
 const middleware: Middleware[] = [
   api.middleware,
   interviewApi.middleware,
-  interviewFeedbackApi.middleware,
   publicApplyApi.middleware,
   candidateApi.middleware,
   authApi.middleware,

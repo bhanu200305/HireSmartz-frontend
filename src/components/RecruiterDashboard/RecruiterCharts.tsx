@@ -54,6 +54,24 @@ const cardTooltipStyle = {
   boxShadow: '0 8px 24px -12px rgba(16,30,54,.18)',
 };
 
+// Axis titles, not just tick values — see GrowthAdoptionCharts.tsx's own
+// comment on this same pattern (widened Y-axis `width` to fit the title
+// without reintroducing the left-edge clipping `ChartCard`'s
+// `overflow-hidden` causes when an axis element overflows the card).
+const axisTitleStyle = { fontSize: 10, fill: '#8593ac' };
+const yAxisLabel = (value: string) => ({
+  value,
+  angle: -90,
+  position: 'insideLeft' as const,
+  style: { ...axisTitleStyle, textAnchor: 'middle' as const },
+});
+const xAxisLabel = (value: string) => ({
+  value,
+  position: 'insideBottom' as const,
+  offset: -2,
+  style: axisTitleStyle,
+});
+
 const CHART_HEIGHT = 190;
 
 /**
@@ -125,7 +143,7 @@ const RecruiterCharts: React.FC = () => {
         available={appsOverTimeData.length > 0}
       >
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <LineChart data={appsOverTimeData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+          <LineChart data={appsOverTimeData} margin={{ top: 8, right: 12, left: -16, bottom: 14 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="date"
@@ -133,13 +151,16 @@ const RecruiterCharts: React.FC = () => {
               axisLine={false}
               tickLine={false}
               minTickGap={24}
+              height={30}
+              label={xAxisLabel('Date')}
             />
             <YAxis
               allowDecimals={false}
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
-              width={36}
+              width={48}
+              label={yAxisLabel('Applications')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Line
@@ -175,7 +196,7 @@ const RecruiterCharts: React.FC = () => {
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
           <BarChart
             data={interviewsByStatusAndTypeData}
-            margin={{ top: 8, right: 12, left: -16, bottom: 0 }}
+            margin={{ top: 8, right: 12, left: -16, bottom: 14 }}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
@@ -183,13 +204,16 @@ const RecruiterCharts: React.FC = () => {
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
+              height={30}
+              label={xAxisLabel('Status')}
             />
             <YAxis
               allowDecimals={false}
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
-              width={36}
+              width={48}
+              label={yAxisLabel('Interviews')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -216,20 +240,23 @@ const RecruiterCharts: React.FC = () => {
         span={2}
       >
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <BarChart data={resumeScoreData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+          <BarChart data={resumeScoreData} margin={{ top: 8, right: 12, left: -16, bottom: 14 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="name"
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
+              height={30}
+              label={xAxisLabel('Score band')}
             />
             <YAxis
               allowDecimals={false}
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
-              width={36}
+              width={48}
+              label={yAxisLabel('Candidates')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Bar dataKey="Candidates" fill={COLOR_ACCENT} radius={[6, 6, 0, 0]} maxBarSize={40} />

@@ -392,14 +392,6 @@ const Interview: React.FC = () => {
           response.bookingId ||
           (response as any).interviewBookingId;
 
-        console.log('[initializeInterview] Resolved bookingId details:', {
-          decodedBookingId: bookingId,
-          decodedInterviewBookingId: (decoded as any).interviewBookingId,
-          responseBookingId: response.bookingId,
-          responseInterviewBookingId: (response as any).interviewBookingId,
-          finalResolved: tokenBookingId,
-        });
-
         if (tokenBookingId !== undefined && tokenBookingId !== null) {
           sessionStorage.setItem('livekit_booking_id', String(tokenBookingId));
         }
@@ -514,15 +506,6 @@ const Interview: React.FC = () => {
       const willPromptFeedback =
         isFeedbackFeatureEnabled && endedBy === 'recruiter' && isInterviewer && resolvedBookingId;
 
-      console.log('[handleLeaveInterview] Details:', {
-        endedBy,
-        isInterviewer,
-        resolvedBookingId,
-        willPromptFeedback,
-        stateToken: state.token,
-        decodedInterviewToken,
-      });
-
       if (!willPromptFeedback) {
         // Clear session data since we won't show feedback flow
         clearSessionStorage();
@@ -571,13 +554,6 @@ const Interview: React.FC = () => {
       (decodedInterviewToken as any)?.booking_id ||
       sessionStorage.getItem('livekit_booking_id');
 
-    console.log('[handleEndInterview] Initial details:', {
-      resolvedBookingId,
-      stateToken: state.token,
-      decodedInterviewToken,
-      sessionStorageBookingId: sessionStorage.getItem('livekit_booking_id'),
-    });
-
     try {
       // Stop recording if active
       if (state.recording) {
@@ -593,11 +569,9 @@ const Interview: React.FC = () => {
       }
 
       // End interview for all participants (drop the call)
-      console.log('[handleEndInterview] Calling endInterviewForAll...');
       const response = await endInterviewForAll({
         interviewToken,
       }).unwrap();
-      console.log('[handleEndInterview] endInterviewForAll response:', response);
 
       // Show success message with booking details
       showToast({
@@ -672,7 +646,6 @@ const Interview: React.FC = () => {
     const jobId = decodedInterviewToken?.jobId;
     const candId = decodedInterviewToken?.candidateId;
     const roundId = decodedInterviewToken?.interviewRoundId;
-    console.log('[handleFeedbackFullSelect] details:', { jobId, candId, roundId });
     if (jobId && candId) {
       const url = `/jobs/view/${jobId}/candidates/${candId}/details?tab=3${roundId ? `&interviewRoundId=${roundId}` : ''}`;
       window.open(url, '_blank');

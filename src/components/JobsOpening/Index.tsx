@@ -788,7 +788,6 @@ const JobsOpening = () => {
           : await uploadSingleJd(filesToUpload[0]).unwrap();
 
       const responseBatchId = extractBatchId(response);
-      console.log('JD Upload Response:', response, 'Extracted Batch ID:', responseBatchId);
 
       if (responseBatchId) {
         setJdBatchId(responseBatchId);
