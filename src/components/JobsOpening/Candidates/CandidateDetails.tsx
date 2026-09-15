@@ -1377,6 +1377,14 @@ const CandidateDetails = () => {
                                 </td>
                                 <td className="px-2 py-3 text-gray-700">
                                   {scoreText ?? statusText}
+                                  {roundScore?.section_scores &&
+                                    roundScore.section_scores.length > 0 && (
+                                      <div className="mt-0.5 text-[11px] text-gray-400">
+                                        {roundScore.section_scores
+                                          .map((s) => `${s.key}: ${s.score}/10`)
+                                          .join(' · ')}
+                                      </div>
+                                    )}
                                 </td>
                                 <td className="px-2 py-3">
                                   {outcomeLabel ? (

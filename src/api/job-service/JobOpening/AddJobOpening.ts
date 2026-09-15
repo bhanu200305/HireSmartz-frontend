@@ -67,6 +67,7 @@ const extendedApi = jobApi.injectEndpoints({
         { type: 'JobOpeningById', id: jobOpeningId },
         { type: 'JobDetails', id: jobOpeningId },
         { type: 'WizardState', id: jobOpeningId },
+        'JobStats',
       ],
     }),
 

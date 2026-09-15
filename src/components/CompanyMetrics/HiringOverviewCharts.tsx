@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import {
   ResponsiveContainer,
   LineChart,
@@ -10,8 +11,18 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { ChartCard, DonutStat, HiringPipeline } from '../shared';
+import { ChartCard, DonutStat, HiringPipeline, ScrollableBarChart } from '../shared';
+import { RootState } from '../../redux/provider/store';
 import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
+import {
+  useGetJobCountsByDepartmentQuery,
+  useGetJobCountsByLocationQuery,
+} from '../../api/job-service/JobOpenings/jobOpenings';
+import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
+import {
+  useListTenantOfficesQuery,
+  officeDisplayName,
+} from '../../api/organization-service/Tenants/offices';
 import {
   useGetHiringFunnelQuery,
   useGetApplicationsOverTimeQuery,
@@ -37,6 +48,10 @@ const capitalize = (value: string): string =>
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+
+// Truncates for the axis; full text kept as `fullName` for the tooltip.
+const truncateAxisLabel = (value: string, maxLength = 10): string =>
+  value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 
 const formatDay = (isoDate: string): string =>
   new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -80,7 +95,21 @@ type HiringOverviewChartsProps = {
  * pattern on the stat-card row above this.
  */
 const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = 'full' }) => {
+  const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
   const { data: jobStats, isLoading: isJobStatsLoading } = useGetJobStatsQuery();
+  const { data: jobsByDepartment, isLoading: isJobsByDepartmentLoading } =
+    useGetJobCountsByDepartmentQuery();
+  const { data: jobsByLocation, isLoading: isJobsByLocationLoading } =
+    useGetJobCountsByLocationQuery();
+  // Resolves the opaque department_id/job_location_id ids to display names.
+  const { data: departments, isLoading: isDepartmentsLoading } = useListTenantDepartmentsQuery(
+    tenantId ?? '',
+    { skip: !tenantId }
+  );
+  const { data: offices, isLoading: isOfficesLoading } = useListTenantOfficesQuery(
+    { tenantId: tenantId ?? '' },
+    { skip: !tenantId }
+  );
   const { data: funnel, isLoading: isFunnelLoading } = useGetHiringFunnelQuery();
   const { data: appsOverTime, isLoading: isAppsLoading } = useGetApplicationsOverTimeQuery({
     days: 30,
@@ -116,6 +145,30 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       { name: 'Draft', value: jobStats.draft_count, color: COLOR_WARNING },
     ].filter((slice) => slice.value > 0);
   }, [jobStats]);
+
+  const jobsByDepartmentData = useMemo(() => {
+    if (!jobsByDepartment) return [];
+    const nameById = new Map((departments ?? []).map((d) => [d.org_department_id, d.name]));
+    return jobsByDepartment.departments
+      .map((row) => {
+        const fullName = row.department_id
+          ? (nameById.get(row.department_id) ?? 'Unknown')
+          : 'Unassigned';
+        return { name: truncateAxisLabel(fullName), fullName, Jobs: row.count };
+      })
+      .sort((a, b) => b.Jobs - a.Jobs);
+  }, [jobsByDepartment, departments]);
+
+  const jobsByLocationData = useMemo(() => {
+    if (!jobsByLocation) return [];
+    const nameById = new Map((offices ?? []).map((o) => [o.office_id, officeDisplayName(o)]));
+    return jobsByLocation.locations
+      .map((row) => {
+        const fullName = nameById.get(row.job_location_id) ?? 'Unknown';
+        return { name: truncateAxisLabel(fullName), fullName, Jobs: row.count };
+      })
+      .sort((a, b) => b.Jobs - a.Jobs);
+  }, [jobsByLocation, offices]);
 
   const interviewStatusData = useMemo(
     () =>
@@ -197,6 +250,38 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
         available={Boolean(jobStats) && jobStats!.total_count > 0}
       >
         <DonutStat data={jobsByStatusData} centerLabel="Jobs" />
+      </ChartCard>
+
+      <ChartCard
+        title="Jobs by department"
+        subtitle="Open, closed and draft job openings, grouped by department"
+        typeTag="Bar"
+        isLoading={isJobsByDepartmentLoading || isDepartmentsLoading}
+        available={jobsByDepartmentData.length > 0}
+      >
+        <ScrollableBarChart
+          data={jobsByDepartmentData}
+          dataKey="Jobs"
+          color={COLOR_PRIMARY}
+          height={chartHeight}
+          tooltipStyle={cardTooltipStyle}
+        />
+      </ChartCard>
+
+      <ChartCard
+        title="Jobs by location"
+        subtitle="Open, closed and draft job openings, grouped by office"
+        typeTag="Bar"
+        isLoading={isJobsByLocationLoading || isOfficesLoading}
+        available={jobsByLocationData.length > 0}
+      >
+        <ScrollableBarChart
+          data={jobsByLocationData}
+          dataKey="Jobs"
+          color={COLOR_ACCENT}
+          height={chartHeight}
+          tooltipStyle={cardTooltipStyle}
+        />
       </ChartCard>
 
       <ChartCard

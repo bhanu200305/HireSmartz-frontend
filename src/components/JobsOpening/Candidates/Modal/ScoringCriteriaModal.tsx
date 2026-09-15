@@ -1,6 +1,5 @@
 import React from 'react';
 import { Modal } from 'antd';
-import { useLocation } from 'react-router-dom';
 
 type ScoringCriteriaModalProps = {
   visible: boolean;
@@ -39,9 +38,6 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
   subtitle,
   matchMetrics,
 }) => {
-  const location = useLocation();
-  const isJobFieldsConfigRoute = location.pathname === '/job-fields-configuration';
-
   const METRIC_DESCRIPTION_MAP: Record<ResumeMetricLabel, string> = {
     [RESUME_METRIC_LABELS.SKILLS_MATCH]:
       'Evaluates resumes based on exact matches to the required skills listed in the job description.',
@@ -99,65 +95,6 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
     [RESUME_METRIC_LABELS.QUALIFICATIONS]: '+10 points per matching degree or certification',
     [RESUME_METRIC_LABELS.KEYWORD_PRESENCE]: '+2 points per job description-specific term',
   };
-
-  const renderJobFieldsConfigContent = () => (
-    <div className="-mx-6 h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
-      <h2 className="text-2xl font-semibold text-center mb-8">
-        {title || 'File Upload Instructions'}
-      </h2>
-
-      {/* <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">File Format</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm">
-          <p>
-            Only <strong>.xls</strong> or <strong>.xlsx</strong> formats are accepted.
-          </p>
-        </div>
-      </section> */}
-
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">Data Entry Rules</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm">
-          <p className="pb-2">The Excel sheet must contain exactly two columns:</p>
-          <ul className="list-disc ml-7 space-y-2">
-            <li>
-              <strong>Column A:</strong> Name.
-            </li>
-            <li>
-              <strong>Column B:</strong> Mapping Status (case-sensitive, no extra spaces).
-            </li>
-          </ul>
-          <div className="mt-4">
-            <p className="font-semibold mb-2">In Column B (Mapping Status):</p>
-            <ul className="list-disc ml-7 space-y-2">
-              <li>
-                Only <strong>True</strong> or <strong>False</strong> values are accepted.
-              </li>
-              <li>
-                Values are case-insensitive, but should not contain any spaces (e.g., true, false,
-                TRUE, FALSE are valid).
-              </li>
-              <li>Ensure there are no leading or trailing spaces in any cell.</li>
-              <li>Do not leave empty rows between data records.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">General Instructions</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm">
-          <ul className="list-disc ml-7 space-y-2">
-            <li>Do not apply merged cells, filters, or formulas in any cell.</li>
-            <li>Avoid special characters, emojis, or extra spaces.</li>
-            <li>Ensure that there are no hidden rows or columns.</li>
-            <li>File should contain only one sheet (Sheet1 or as named).</li>
-            <li>Do not include any images, comments, or notes in the file.</li>
-          </ul>
-        </div>
-      </section>
-    </div>
-  );
 
   const renderDefaultContent = () => (
     <div className="-mx-6 h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
@@ -468,7 +405,6 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
     if (title === 'AI_FINAL_FEEDBACK') return renderAIFinalFeedbackContent();
     if (title === 'INTERVIEWER_FINAL_FEEDBACK') return renderInterviewerFinalFeedbackContent();
     if (title === 'INTERVIEW_SCORING') return renderInterviewScoringContent();
-    if (isJobFieldsConfigRoute) return renderJobFieldsConfigContent();
     return renderDefaultContent();
   };
 

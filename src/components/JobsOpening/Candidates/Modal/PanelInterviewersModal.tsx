@@ -147,7 +147,7 @@ const PanelInterviewersModal = ({
                   htmlFor={`panel-interviewer-${interviewer.id}`}
                   className="min-w-0 flex-1 cursor-pointer"
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span className="truncate text-sm font-medium text-gray-900">
                       {interviewer.display_name}
                     </span>

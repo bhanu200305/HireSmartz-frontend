@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactElement } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Spin } from 'antd';
 import {
@@ -9,6 +9,7 @@ import {
   LaptopOutlined,
   FieldTimeOutlined,
   ReadOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
@@ -29,9 +30,14 @@ const formatLocation = (
 // responsibilities/requirements/other_requirements are AI-extracted, one point per line.
 // jd is raw text extracted from the uploaded PDF/DOCX, so its line breaks are mostly
 // hard-wraps rather than paragraph breaks and can carry stray control characters.
+// eslint-disable-next-line no-control-regex -- matching control chars is the point, not a mistake
 const CONTROL_CHAR = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 const BULLET_PREFIX = /^[•*-]\s*/;
 const HEADING_PREFIX = /^#{1,6}\s*/;
+// Strips literal Markdown emphasis (`**bold**`) from AI-generated JD text.
+const MARKDOWN_EMPHASIS = /\*+/g;
+// A bold bullet line ending in a colon is a section label, not a bullet.
+const SECTION_LABEL = /^[A-Z][A-Za-z0-9 /&-]{1,40}:$/;
 
 // Merges hard-wrapped lines into paragraphs; strips Markdown heading/bullet syntax.
 type JdLine = { kind: 'heading' | 'bullet' | 'text'; text: string };
@@ -62,8 +68,17 @@ const JdBlock = ({ text, jobTitle }: { text: string | null; jobTitle: string | n
       continue;
     }
     const isBullet = CONTROL_CHAR.test(raw) || BULLET_PREFIX.test(raw);
-    const line = raw.replace(CONTROL_CHAR, '').replace(BULLET_PREFIX, '').trim();
+    const line = raw
+      .replace(CONTROL_CHAR, '')
+      .replace(BULLET_PREFIX, '')
+      .replace(MARKDOWN_EMPHASIS, '')
+      .trim();
     if (!line) continue;
+    if (isBullet && SECTION_LABEL.test(line)) {
+      flushCurrent();
+      lines.push({ kind: 'heading', text: line.replace(/:$/, '') });
+      continue;
+    }
     if (isBullet) {
       flushCurrent();
       lines.push({ kind: 'bullet', text: line });
@@ -128,6 +143,25 @@ export const CareersJobDetailPage = () => {
   const primaryLocation = job?.locations?.[0] ? formatLocation(job.locations[0]) : null;
   const postedAgo = job ? formatPostedAgo(job.job_open_date) : null;
 
+  const overviewItems = job
+    ? [
+        primaryLocation && { icon: <EnvironmentOutlined />, label: primaryLocation },
+        experience && { icon: <CalendarOutlined />, label: experience },
+        job.job_type_name && { icon: <ScheduleOutlined />, label: job.job_type_name },
+        job.job_mode_name && { icon: <LaptopOutlined />, label: job.job_mode_name },
+        job.shift_name && { icon: <FieldTimeOutlined />, label: job.shift_name },
+        job.education_preference_name && {
+          icon: <ReadOutlined />,
+          label: job.education_preference_name,
+        },
+        postedAgo && { icon: <ClockCircleOutlined />, label: postedAgo },
+      ].filter((item): item is { icon: ReactElement; label: string } => Boolean(item))
+    : [];
+
+  // skill_type is only ever "required"/"optional" — no "preferred" value.
+  const requiredSkills = job?.skills.filter((s) => s.skill_type.toLowerCase() === 'required') ?? [];
+  const optionalSkills = job?.skills.filter((s) => s.skill_type.toLowerCase() !== 'required') ?? [];
+
   const handleApply = () => {
     // Routes through the apply-method choice (resume vs. talk-now) instead
     // of straight to the resume form — see CareersApplyChoicePage.
@@ -170,71 +204,70 @@ export const CareersJobDetailPage = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               {job.job_title ?? job.job_profile_code}
             </h1>
-            <p className="text-sm text-gray-400 mb-3">{job.job_profile_code}</p>
+            <p className="text-sm text-gray-400 mb-4">{job.job_profile_code}</p>
 
-            <div className="flex flex-col gap-1.5 mb-4">
-              {primaryLocation && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <EnvironmentOutlined />
-                  <span>{primaryLocation}</span>
+            <div className="flex flex-col gap-4 mb-5">
+              {(overviewItems.length > 0 || salary) && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-5">
+                  {salary && (
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-accent-50 px-3.5 py-1.5 text-sm font-bold text-primary-700 mb-4">
+                      <DollarOutlined />
+                      <span>{salary}</span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                    {overviewItems.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2.5">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600 text-sm">
+                          {item.icon}
+                        </span>
+                        <span className="text-sm text-gray-700">{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              {experience && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <CalendarOutlined />
-                  <span>{experience}</span>
-                </div>
-              )}
-              {job.job_type_name && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <ScheduleOutlined />
-                  <span>{job.job_type_name}</span>
-                </div>
-              )}
-              {job.job_mode_name && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <LaptopOutlined />
-                  <span>{job.job_mode_name}</span>
-                </div>
-              )}
-              {job.shift_name && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <FieldTimeOutlined />
-                  <span>{job.shift_name}</span>
-                </div>
-              )}
-              {job.education_preference_name && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <ReadOutlined />
-                  <span>{job.education_preference_name}</span>
-                </div>
-              )}
-              {postedAgo && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <ClockCircleOutlined />
-                  <span>{postedAgo}</span>
-                </div>
-              )}
-            </div>
 
-            <div className="flex flex-wrap gap-2 mb-6">
-              {salary && (
-                <span className="px-3 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-600 bg-white">
-                  {salary}
-                </span>
+              {job.skills.length > 0 && (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-5">
+                  <h2 className="text-base font-bold text-gray-900 mb-3">Skills</h2>
+                  {requiredSkills.length > 0 && (
+                    <div className="mb-3 last:mb-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                        Required
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {requiredSkills.map((skill) => (
+                          <span
+                            key={skill.skill_label}
+                            className="px-3 py-1.5 rounded-lg bg-primary-50 text-sm font-medium text-primary-700"
+                          >
+                            {skill.skill_label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {optionalSkills.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                        Optional
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {optionalSkills.map((skill) => (
+                          <span
+                            key={skill.skill_label}
+                            className="px-3 py-1.5 rounded-lg bg-accent-50 text-sm font-medium text-accent-600"
+                          >
+                            {skill.skill_label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
-              {job.skills.map((skill) => (
-                <span
-                  key={skill.skill_label}
-                  className="px-3 py-1 rounded-full border border-gray-200 text-xs font-medium text-gray-600 bg-white"
-                >
-                  {skill.skill_label}
-                  {skill.skill_type.toLowerCase() === 'required' ? '' : ' (preferred)'}
-                </span>
-              ))}
-            </div>
 
-            <div className="flex flex-col gap-4">
               <JdBlock text={job.jd} jobTitle={job.job_title} />
             </div>
           </>

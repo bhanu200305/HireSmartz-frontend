@@ -43,6 +43,29 @@ import {
 } from '../../shared/utils/auth/devAuthBypass';
 import { devUserStore, InvitedUser } from '../../shared/utils/dev/devUserStore';
 import { devRoleStore } from '../../shared/utils/dev/devRoleStore';
+import { api } from '../../api';
+import { interviewApi } from '../../api/interview-service/client';
+import { publicApplyApi } from '../../api/candidate-service/PublicApply';
+import { candidateApi } from '../../api/candidate-service/candidateApi';
+import { orgApi } from '../../api/organization-service/orgApi';
+import { notifApi } from '../../api/notification-service/notifApi';
+import { jobApi } from '../../api/job-service/jobApi';
+import { aiApi } from '../../api/ai-service/aiApi';
+import { authApi } from '../../api/authentication-service/authApi';
+
+// Resets every RTK Query slice's cache — avoids a cross-tenant data flash
+// on login when the previous session's cache is still in memory.
+const resetAllApiCaches = (dispatch: ReturnType<typeof useDispatch>) => {
+  dispatch(api.util.resetApiState());
+  dispatch(jobApi.util.resetApiState());
+  dispatch(orgApi.util.resetApiState());
+  dispatch(candidateApi.util.resetApiState());
+  dispatch(interviewApi.util.resetApiState());
+  dispatch(publicApplyApi.util.resetApiState());
+  dispatch(notifApi.util.resetApiState());
+  dispatch(aiApi.util.resetApiState());
+  dispatch(authApi.util.resetApiState());
+};
 
 const loginSchema = z.object({
   email: z
@@ -241,6 +264,7 @@ const Login = () => {
       removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS);
     }
 
+    resetAllApiCaches(dispatch);
     dispatch(loginStore(payload));
     showToast({ message: 'Login successful (demo mode)', type: 'success' });
 
@@ -290,6 +314,7 @@ const Login = () => {
       removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS);
     }
 
+    resetAllApiCaches(dispatch);
     dispatch(
       loginStore({
         token,
@@ -409,6 +434,7 @@ const Login = () => {
       }
     }
 
+    resetAllApiCaches(dispatch);
     dispatch(
       loginStore({
         token,

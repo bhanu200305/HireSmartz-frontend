@@ -24,6 +24,8 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
         url: `/job-openings/${jobOpeningId}/intake-call-questions`,
         method: 'GET',
       }),
+      // Read-only today, but tagged for consistency with the other catalogues.
+      providesTags: (_r, _e, jobOpeningId) => [{ type: 'JobAudioQuestions', id: jobOpeningId }],
     }),
 
     saveJobQuestions: build.mutation<

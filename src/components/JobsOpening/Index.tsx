@@ -7,7 +7,6 @@ import {
   MoreOutlined,
   PlusOutlined,
   QrcodeOutlined,
-  SettingOutlined,
   UploadOutlined,
   UpOutlined,
 } from '@ant-design/icons';
@@ -742,10 +741,6 @@ const JobsOpening = () => {
     setShowCreateJobModal(true);
   };
 
-  const handleJobConfiguration = () => {
-    navigate('/job-fields-configuration');
-  };
-
   const resetJdUploadState = () => {
     setJdFiles([]);
     setUploadedJobOpeningId(null);
@@ -1023,16 +1018,6 @@ const JobsOpening = () => {
               </div>
             )}
             <div className="flex space-x-4 items-center">
-              {hasFeatureAccess('job_configuration', 'view', role, authorities) && (
-                <Tooltip title="Job Configuration" placement="top">
-                  <Button
-                    onClick={handleJobConfiguration}
-                    className="flex items-center justify-center p-2 hover:bg-gray-100 rounded-full h-10 w-10"
-                  >
-                    <SettingOutlined className="text-2xl" />
-                  </Button>
-                </Tooltip>
-              )}
               <Tooltip title="QR Management" placement="top">
                 <Button
                   onClick={() => setQrModalOpen(true)}
