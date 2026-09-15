@@ -96,7 +96,13 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
   ];
 
   return (
-    <AntdCommonModal open onClose={onClose} title={jobTitle} subtitle={job.job_profile_code}>
+    <AntdCommonModal
+      open
+      onClose={onClose}
+      title={jobTitle}
+      subtitle={job.job_profile_code}
+      modalProps={{ width: 820 }}
+    >
       <div className="flex flex-col gap-4">
         <StatCardRow cards={statusCards} columns={4} />
 

@@ -188,7 +188,7 @@ const StatCard = ({
   return (
     <div
       className={clsx(
-        'group relative overflow-hidden bg-white flex flex-col gap-2 h-full',
+        'group relative overflow-hidden bg-white flex flex-col justify-center gap-2 h-full',
         'transition-all duration-200 ease-out hover:-translate-y-0.5',
         tall
           ? clsx(
