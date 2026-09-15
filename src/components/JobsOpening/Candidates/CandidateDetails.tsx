@@ -20,7 +20,6 @@ import {
   useListEligibleInterviewersQuery,
   useSetPanelInterviewersMutation,
 } from '../../../api/candidate-service/Candidates/interviewRounds';
-import { useGetCandidateStatusHistoryQuery } from '../../../api/candidate-service/Candidates/status';
 import {
   useListCandidateInterviewScoresQuery,
   useDeleteResumeReviewMutation,
@@ -55,7 +54,6 @@ import { roundLabel, formatRoundStatus, formatCallIntent } from './roundDisplay'
 import {
   resolveCurrentRound,
   isRoundConcluded,
-  isInstantCallFlow,
   isAiVideoRound,
   isAudioScreeningRound,
   isIntakeCallRound,
@@ -159,17 +157,14 @@ const CandidateDetails = () => {
   const { data: rawRounds = [] } = useListCandidateInterviewRoundsQuery(candidateId ?? '', {
     skip: !candidateId,
   });
-  const { data: statusHistoryData } = useGetCandidateStatusHistoryQuery(
-    { candidateId: candidateId ?? '', limit: 100 },
-    { skip: !candidateId }
-  );
   // The instant-call flow (Intake Call first, resume within 24h) and the
-  // resume-first flow get the SAME round order from the backend today — it
-  // orders the resume stage by the job plan's single Resume Round position,
-  // which can't differ per candidate. Reorder client-side so an instant-call
-  // candidate's pipeline reads Intake Call → Resume Review. See BACKEND_GAPS.md.
-  const instantCallFlow = isInstantCallFlow(statusHistoryData?.items);
-  const rounds = orderRoundsForFlow(rawRounds, instantCallFlow);
+  // resume-first flow get the SAME plan-level round order from the backend —
+  // it places the resume stage at the job plan's single Resume Round
+  // position, which can't differ per candidate. Reorder client-side, driven
+  // by the resume stage's own `follows_intake_call` flag (candidate-service
+  // migration 0023 — the per-candidate fact for this), so an instant-call
+  // candidate's pipeline reads Intake Call → Resume Review.
+  const rounds = orderRoundsForFlow(rawRounds);
   const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId ?? '', {
     skip: !candidateId,
   });
@@ -638,13 +633,17 @@ const CandidateDetails = () => {
                     ? 'text-green-700'
                     : statusUpper.includes('reject')
                       ? 'text-red-700'
-                      : 'text-brand-700'
+                      : statusUpper === 'withdrawn'
+                        ? 'text-orange-700'
+                        : 'text-brand-700'
                 }`}
               >
                 {statusUpper === 'selected' ? (
                   <LuThumbsUp size={16} />
                 ) : statusUpper.includes('reject') ? (
                   <LuThumbsDown size={16} />
+                ) : statusUpper === 'withdrawn' ? (
+                  <span className="w-2 h-2 rounded-full bg-orange-500 shadow-lg shadow-orange-400" />
                 ) : (
                   <span className="w-2 h-2 rounded-full bg-brand-500 shadow-lg shadow-brand-400" />
                 )}
