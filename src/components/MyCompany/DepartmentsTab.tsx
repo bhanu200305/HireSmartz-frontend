@@ -56,7 +56,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   // show identically in this table's "Office" column.
   const officeName = (id: string | null) => {
     const office = offices?.find((o) => o.office_id === id);
-    return office ? `${office.city} — ${office.address_line_1}` : '-';
+    return office ? `${office.city}, ${office.address_line_1}` : '-';
   };
 
   const filteredDepartments = useMemo(() => {
@@ -205,7 +205,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             value={officeId}
             onChange={(value) => setOfficeId(value)}
             options={(offices || []).map((o) => ({
-              label: `${o.city} — ${o.address_line_1}`,
+              label: `${o.city}, ${o.address_line_1}`,
               value: o.office_id,
             }))}
           />
@@ -230,7 +230,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
       {departmentToDelete && (
         <ConfirmationModal
-          title={`Delete "${departmentToDelete.name}"? This isn't checked against active job postings or candidates yet — make sure nothing depends on it.`}
+          title={`Delete "${departmentToDelete.name}"? This isn't checked against active job postings or candidates yet, so make sure nothing depends on it.`}
           confirmText="DELETE"
           onConfirm={handleDelete}
           onClose={() => setDepartmentToDelete(null)}

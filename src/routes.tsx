@@ -4,7 +4,6 @@ import { Outlet, Route } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import { Loader } from './components/shared/ui/loader';
-import { LogOutPage } from './pages';
 // import MainLayout from './layouts/MainLayout.jsx';
 
 const lazyImport = <T extends React.ComponentType<any>>(
@@ -27,7 +26,6 @@ const lazyImport = <T extends React.ComponentType<any>>(
 const AddCustomers = lazy(() => import('./pages/AddCustomerPage'));
 const AddInterviewRoundPage = lazy(() => import('./pages/AddInterviewRound'));
 const AddJobDescriptionPage = lazy(() => import('./pages/AddJobDescription'));
-const AddNewQuestionPage = lazyImport(() => import('./pages/AIQuestions'), 'AddNewQuestionPage');
 const AddOrganisationUserPage = lazyImport(
   () => import('./pages/AddOrganisationUserPage'),
   'AddOrganisationUserPage'
@@ -50,7 +48,6 @@ const CustomersPage = lazy(() => import('./pages/CustomerPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const BookDemoPage = lazy(() => import('./pages/BookDemoPage'));
 const EditAiJobDescriptionPage = lazy(() => import('./pages/EditAiJobDescriptionPage'));
-const EditAiQuestionPage = lazyImport(() => import('./pages/AIQuestions'), 'EditAiQuestionPage');
 const EditDetailedInterviewRoundPage = lazy(() => import('./pages/EditDetailedInterviewPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
@@ -65,6 +62,7 @@ const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
 const ActivityFeedPage = lazy(() => import('./pages/ActivityFeedPage'));
 const JobsOpeningPage = lazyImport(() => import('./pages/JobsOpening'), 'JobsOpeningPage');
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const LogOutPage = lazy(() => import('./pages/LogOutPage'));
 const OrganisationUserPage = lazy(() => import('./pages/OrganisationUserPage'));
 const RolesPage = lazy(() => import('./pages/RolesPage'));
 const SyncAtsPage = lazyImport(() => import('./pages/JobsOpening'), 'SyncAtsPage');

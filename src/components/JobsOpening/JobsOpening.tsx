@@ -7,7 +7,8 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import { useGetJobOpeningByIdQuery } from '../../api/job-service/JobOpening/GetJobOpeningById';
-import { isAssignedToJob } from '../../shared/utils/auth/getAccess';
+import { hasFeatureAccess, isAssignedToJob } from '../../shared/utils/auth/getAccess';
+import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import {
   setEditJobOpeningId,
   updateEditAiJobDescription,
@@ -84,24 +85,31 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
   );
 
   const { role, userId } = useSelector((state: RootState) => (state as any).LoginSlice);
+  const effectivePermissions = useEffectivePermissions();
 
-  // Guards every edit tab in one place.
+  // Guards every edit tab in one place. Two checks: the ROLE must be able to
+  // edit jobs at all (false for recruiter, who is view-only), and the USER
+  // must be assigned to this specific one — see EditJobDetail.tsx's
+  // canEditThisJob for the same pairing.
   useEffect(() => {
     if (!isEditMode || !jobData) return;
-    const assigned = isAssignedToJob(
-      {
-        hiringManagerIds: jobData.details.hiring_manager_ids,
-        recruiterIds: jobData.details.recruiter_ids,
-        createdById: jobData.details.created_by,
-      },
-      userId,
-      role
-    );
-    if (!assigned) {
+    const canEdit =
+      hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) &&
+      isAssignedToJob(
+        {
+          hiringManagerIds: jobData.details.hiring_manager_ids,
+          recruiterIds: jobData.details.recruiter_ids,
+          createdById: jobData.details.created_by,
+        },
+        userId,
+        role,
+        effectivePermissions
+      );
+    if (!canEdit) {
       showToast({ message: 'You are not assigned to this job.', type: 'error' });
       navigate('/jobs', { replace: true });
     }
-  }, [isEditMode, jobData, userId, role, navigate]);
+  }, [isEditMode, jobData, userId, role, effectivePermissions, navigate]);
 
   useEffect(() => {
     if (isEditMode && jobData && (!jobOpeningId || parsedJobId !== jobOpeningId)) {

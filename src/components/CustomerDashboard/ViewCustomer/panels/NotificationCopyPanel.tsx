@@ -53,9 +53,8 @@ const NotificationCopyPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => 
               Notification copy
             </Typography>
             <Typography variant="caption" className="block text-gray-500">
-              Every message CareerForce Pro can send on this company&apos;s behalf. Edit the ones
-              that need this tenant&apos;s own words — the rest use the platform&apos;s default
-              copy.
+              Every message Careerforce Pro can send on this company&apos;s behalf. Edit the ones
+              that need this tenant&apos;s own words; the rest use the platform&apos;s default copy.
             </Typography>
           </div>
           <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-500">

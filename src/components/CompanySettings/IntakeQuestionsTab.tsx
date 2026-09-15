@@ -1,21 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Select, Tooltip } from 'antd';
-import { MdDelete, MdOutlineAdd, MdOutlineQuestionAnswer } from 'react-icons/md';
-import { HiOutlineChatBubbleLeftRight } from 'react-icons/hi2';
-import { Badge, Button, showToast } from '../shared';
+import { Select } from 'antd';
+import { MdDelete, MdOutlineQuestionAnswer, MdOutlineUploadFile } from 'react-icons/md';
+import { Badge, Button, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import IntakeQuestionsBulkImportModal from '../shared/IntakeQuestionsBulkImportModal';
 import {
   useListPlatformInterviewQuestionsQuery,
   useCreatePlatformInterviewQuestionMutation,
   useUpdatePlatformInterviewQuestionMutation,
   useDeletePlatformInterviewQuestionMutation,
+  useLazyGetIntakeQuestionsTemplateQuery,
+  useBulkImportPlatformInterviewQuestionsMutation,
 } from '../../api/organization-service/Platform/interviewQuestions';
 import {
   useGetPlatformTenantJobQuestionsQuery,
   useCreatePlatformTenantJobQuestionMutation,
   useUpdatePlatformTenantJobQuestionMutation,
   useDeletePlatformTenantJobQuestionMutation,
+  useBulkImportPlatformTenantJobQuestionsMutation,
 } from '../../api/organization-service/Platform/tenantJobQuestions';
 import { useListResumeTemplateFieldsQuery } from '../../api/organization-service/resumeTemplateFields';
 import type { InterviewQuestion } from '../../api/organization-service/Tenants/interviewQuestions';
@@ -25,16 +28,6 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 const MAX_QUESTIONS = 8;
 
 type Draft = { text: string; fieldId: string };
-
-// Grows a question's textarea to fit its full text, no scrollbar, instead
-// of clipping longer questions to a fixed one-line box. Called on mount
-// (via the ref callback, so an already-long value is sized correctly right
-// away) and on every keystroke.
-const autoGrowTextarea = (el: HTMLTextAreaElement | null) => {
-  if (!el) return;
-  el.style.height = 'auto';
-  el.style.height = `${el.scrollHeight}px`;
-};
 
 /**
  * Super Admin's "Intake Questions" tab — GET/POST/PUT/DELETE
@@ -70,6 +63,16 @@ const IntakeQuestionsTab: React.FC = () => {
     () => fields.map((f) => ({ value: f.field_id, label: f.field_label })),
     [fields]
   );
+  // Resume-field display order (Introduction, Education, Experience, ...) —
+  // organization-service's own seed for `order_index` (migration 0051), not
+  // re-declared here so this can never drift from what's actually
+  // configured. A question whose field isn't in this map yet (fields still
+  // loading, or a legacy untagged row) sorts last rather than disappearing.
+  const fieldOrderById = useMemo(() => {
+    const map = new Map<string, number>();
+    fields.forEach((f) => map.set(f.field_id, f.order_index));
+    return map;
+  }, [fields]);
 
   const { data: platformData, isLoading: isPlatformLoading } =
     useListPlatformInterviewQuestionsQuery(undefined, { skip: !isPlatformDefault });
@@ -88,9 +91,25 @@ const IntakeQuestionsTab: React.FC = () => {
   const [deleteTenantQuestion] = useDeletePlatformTenantJobQuestionMutation();
   const isCreating = isPlatformDefault ? isCreatingPlatform : isCreatingTenant;
 
+  const [triggerGetTemplate] = useLazyGetIntakeQuestionsTemplateQuery();
+  const [bulkImportPlatform] = useBulkImportPlatformInterviewQuestionsMutation();
+  const [bulkImportTenant] = useBulkImportPlatformTenantJobQuestionsMutation();
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+
   const data = isPlatformDefault ? platformData : tenantData;
   const isLoading = isPlatformDefault ? isPlatformLoading : isTenantLoading;
-  const questions = useMemo(() => data?.questions ?? [], [data]);
+  // Always shown in resume-field order, never insertion order — a manually
+  // added question and a bulk-imported one must land in the same place on
+  // screen, same normalization MyCompany/InterviewQuestionsTab.tsx applies
+  // for the Company Admin view of this same data.
+  const questions = useMemo(() => {
+    const list = data?.questions ?? [];
+    const orderFor = (fieldId: string | null | undefined): number => {
+      if (!fieldId) return Number.MAX_SAFE_INTEGER;
+      return fieldOrderById.get(fieldId) ?? Number.MAX_SAFE_INTEGER;
+    };
+    return [...list].sort((a, b) => orderFor(a.field_id) - orderFor(b.field_id));
+  }, [data, fieldOrderById]);
 
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -251,24 +270,47 @@ const IntakeQuestionsTab: React.FC = () => {
             {questions.length}/{MAX_QUESTIONS}
           </Badge>
         )}
+        <Button
+          type="button"
+          onClick={() => setIsBulkImportOpen(true)}
+          className="flex items-center gap-1.5 border border-[var(--border)] bg-white text-gray-700 rounded-3xl px-3 py-1.5 text-sm hover:bg-gray-50"
+        >
+          <MdOutlineUploadFile />
+          Bulk import
+        </Button>
       </div>
+
+      <IntakeQuestionsBulkImportModal
+        open={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        currentCount={questions.length}
+        targetLabel={
+          isPlatformDefault ? 'the platform default' : (selectedCompanyLabel ?? 'this company')
+        }
+        extraWarning={
+          isPlatformDefault
+            ? 'This also removes every company’s own added questions, everywhere, not just the platform default. Every company will end up with exactly this file’s questions.'
+            : undefined
+        }
+        onDownloadTemplate={() => triggerGetTemplate().unwrap()}
+        onUpload={(file) =>
+          isPlatformDefault
+            ? bulkImportPlatform(file).unwrap()
+            : bulkImportTenant({ tenantId: selectedTenantId as string, file }).unwrap()
+        }
+      />
 
       {isLoading ? (
         <Loader />
       ) : (
-        <div className="max-w-3xl">
+        <>
           {questions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-1 py-8 text-center border border-dashed border-neutral-200 rounded-xl bg-neutral-50/50">
-              <HiOutlineChatBubbleLeftRight
-                className="text-neutral-300"
-                size={26}
-                strokeWidth={0.5}
-              />
-              <p className="text-sm font-medium text-gray-600 m-0">No intake questions yet.</p>
+            <div className="p-6 text-gray-500 text-center border border-dashed rounded-xl">
+              No intake questions yet.
             </div>
           ) : (
-            <div className="flex flex-col gap-1.5 mb-3">
-              {questions.map((question, index) => {
+            <div className="flex flex-col gap-3">
+              {questions.map((question) => {
                 const draft = drafts[question.question_id] ?? { text: '', fieldId: '' };
                 const isDirty =
                   draft.text.trim() !== question.question_text.trim() ||
@@ -280,31 +322,20 @@ const IntakeQuestionsTab: React.FC = () => {
                   draft.fieldId !== (question.field_id ?? '');
                 const isSaving = savingId === question.question_id;
                 return (
-                  <div
-                    key={question.question_id}
-                    className={`flex items-start gap-2 px-2.5 py-1.5 rounded-xl border bg-white transition-colors ${
-                      isDirty ? 'border-primary-300 bg-primary-50/30' : 'border-neutral-200'
-                    }`}
-                  >
-                    <span className="shrink-0 w-5 h-5 rounded-full bg-primary-50 text-primary-600 text-[11px] font-bold flex items-center justify-center mt-1">
-                      {index + 1}
-                    </span>
-                    <textarea
-                      ref={autoGrowTextarea}
+                  <div key={question.question_id} className="flex items-center gap-2">
+                    <Input
                       value={draft.text}
-                      onChange={(e) => {
+                      onChange={(e) =>
                         setDrafts((prev) => ({
                           ...prev,
                           [question.question_id]: { ...draft, text: e.target.value },
-                        }));
-                        autoGrowTextarea(e.target);
-                      }}
-                      rows={1}
-                      className="flex-1 min-w-0 resize-none overflow-hidden border border-transparent rounded-lg px-1.5 py-1 text-sm text-gray-800 leading-snug bg-transparent focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-100 focus:bg-white"
+                        }))
+                      }
+                      className="flex-1"
                     />
                     <Select
-                      size="small"
-                      className="w-40 shrink-0 mt-0.5"
+                      size="middle"
+                      className="w-44 shrink-0"
                       placeholder="Resume Field"
                       loading={isLoadingFields}
                       value={draft.fieldId || undefined}
@@ -316,25 +347,21 @@ const IntakeQuestionsTab: React.FC = () => {
                       }
                       options={fieldOptions}
                     />
-                    {(isDirty || isSaving) && (
-                      <Button
-                        className="shrink-0 rounded-full bg-primary-600 text-white px-3 py-1 text-xs whitespace-nowrap disabled:opacity-50 mt-0.5"
-                        onClick={() => handleSave(question)}
-                        disabled={isSaving}
-                      >
-                        {isSaving ? '…' : 'Save'}
-                      </Button>
-                    )}
-                    <Tooltip title="Remove">
-                      <button
-                        type="button"
-                        aria-label="Remove question"
-                        className="shrink-0 p-1 mt-0.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                        onClick={() => setQuestionToDelete(question)}
-                      >
-                        <MdDelete size={15} />
-                      </button>
-                    </Tooltip>
+                    <Button
+                      className="rounded-full border border-gray-300 px-4 py-1.5 whitespace-nowrap"
+                      onClick={() => handleSave(question)}
+                      disabled={!isDirty || isSaving}
+                    >
+                      {isSaving ? 'Saving…' : 'Save'}
+                    </Button>
+                    <button
+                      type="button"
+                      aria-label="Remove question"
+                      className="p-2 hover:bg-gray-100 rounded-full"
+                      onClick={() => setQuestionToDelete(question)}
+                    >
+                      <MdDelete className="text-red-500" />
+                    </button>
                   </div>
                 );
               })}
@@ -343,33 +370,17 @@ const IntakeQuestionsTab: React.FC = () => {
 
           {/* Add works for both the platform default and a specific
               company's own copy — each capped at MAX_QUESTIONS. */}
-          <div
-            className={`flex items-start gap-2 px-2.5 py-1.5 rounded-xl border border-dashed transition-colors ${
-              atCap ? 'border-neutral-200' : 'border-primary-200'
-            }`}
-          >
-            <span
-              className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-1 ${
-                atCap ? 'text-neutral-300' : 'text-primary-500'
-              }`}
-            >
-              <MdOutlineAdd size={14} />
-            </span>
-            <textarea
-              ref={autoGrowTextarea}
+          <div className="flex items-center gap-2 mt-3">
+            <Input
               value={newQuestionText}
-              onChange={(e) => {
-                setNewQuestionText(e.target.value);
-                autoGrowTextarea(e.target);
-              }}
+              onChange={(e) => setNewQuestionText(e.target.value)}
               placeholder={atCap ? `Maximum of ${MAX_QUESTIONS} reached` : 'Add a question…'}
               disabled={atCap}
-              rows={1}
-              className="flex-1 min-w-0 resize-none overflow-hidden border border-transparent rounded-lg px-1.5 py-1 text-sm text-gray-800 leading-snug bg-transparent focus:outline-none focus:border-primary-300 focus:ring-1 focus:ring-primary-100 focus:bg-white disabled:bg-transparent"
+              className="flex-1"
             />
             <Select
-              size="small"
-              className="w-40 shrink-0 mt-0.5"
+              size="middle"
+              className="w-44 shrink-0"
               placeholder="Resume Field"
               loading={isLoadingFields}
               value={newQuestionFieldId}
@@ -378,14 +389,14 @@ const IntakeQuestionsTab: React.FC = () => {
               disabled={atCap}
             />
             <Button
-              className="shrink-0 mt-0.5 rounded-full bg-primary-600 text-white px-3 py-1 text-xs whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-full border border-gray-300 px-4 py-1.5 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => void handleAdd()}
               disabled={!newQuestionText.trim() || !newQuestionFieldId || atCap || isCreating}
             >
-              {isCreating ? '…' : 'Add'}
+              {isCreating ? 'Adding…' : 'Add'}
             </Button>
           </div>
-        </div>
+        </>
       )}
 
       {questionToDelete && (

@@ -817,8 +817,6 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.INTERVIEW_QUESTIONS_VIEW,
       Authorities.INTERVIEW_QUESTIONS_EDIT,
       Authorities.JOB_OPENING_VIEW,
-      Authorities.JOB_OPENING_EDIT,
-      Authorities.JOB_OPENING_CREATE,
       Authorities.USER_VIEW,
     ],
     interviewer: [

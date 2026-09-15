@@ -47,7 +47,7 @@ const TemplateStep: React.FC<TemplateStepProps> = ({
 
       <div className="font-semibold text-sm text-gray-900">Start from a template</div>
       <p className="text-xs text-gray-500 mt-0.5 mb-3">
-        Pick the closest match — every permission below is yours to adjust on the next step.
+        Pick the closest match; every permission below is yours to adjust on the next step.
       </p>
 
       <div className="flex flex-col gap-2 mb-2">

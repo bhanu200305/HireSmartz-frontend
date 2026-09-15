@@ -42,14 +42,14 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
   {
     key: 'cfp_admin',
     scope: 'platform',
-    label: 'CFP Admin',
+    label: 'Admin',
     description: 'Manages client companies',
     permissions: ROLE_AUTHORITIES.owner.admin,
   },
   {
     key: 'cfp_support',
     scope: 'platform',
-    label: 'CFP Support',
+    label: 'Customer support',
     description: 'Read-only on a specific client, time-limited',
     permissions: [
       Authorities.DASHBOARD_VIEW,
@@ -76,7 +76,8 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
     key: 'recruiter',
     scope: 'tenant',
     label: 'Recruiter',
-    description: 'Creates jobs, uploads resumes, moves pipeline',
+    description:
+      'Uploads resumes and moves the pipeline on jobs they’re assigned to; cannot create or publish a job opening',
     permissions: ROLE_AUTHORITIES.organization.recruiter,
   },
   {
@@ -105,6 +106,18 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
 
 export const getRoleTemplate = (key: string): RoleTemplate | undefined =>
   ROLE_TEMPLATES.find((template) => template.key === key);
+
+/**
+ * The friendly label for a SYSTEM role's raw identifier (`cfp_admin` ->
+ * "Admin"). The backend's `RoleResponse.name`/`base_role_name` fields are
+ * literal identifiers, not display strings (see that response model's own
+ * docstring) — this is the one place that translates one to the other, so a
+ * new system role only needs its label added here, not at every render site.
+ * Falls back to the raw key for anything not in this list (a custom role's
+ * own name is never looked up here — that name is already exactly what a
+ * tenant admin typed in, not an identifier needing translation).
+ */
+export const systemRoleLabel = (key: string): string => getRoleTemplate(key)?.label ?? key;
 
 export const roleTemplatesForScope = (scope: RoleScope): RoleTemplate[] =>
   ROLE_TEMPLATES.filter((template) => template.scope === scope);

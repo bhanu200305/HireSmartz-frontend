@@ -148,7 +148,7 @@ export const DeviceCheckLobby = ({ onReady }: DeviceCheckLobbyProps) => {
       <div className="w-full max-w-md">
         <h1 className="mb-1 text-center text-xl font-semibold">Check your camera and mic</h1>
         <p className="mb-6 text-center text-sm text-neutral-400">
-          You&apos;ll be on camera for the whole interview — take a moment to make sure everything
+          You&apos;ll be on camera for the whole interview, so take a moment to make sure everything
           looks and sounds right.
         </p>
 

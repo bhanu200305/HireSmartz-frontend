@@ -36,6 +36,11 @@ export type DeleteInterviewQuestionArgs = {
   questionId: string;
 };
 
+export type BulkImportInterviewQuestionsResponse = {
+  created: InterviewQuestion[];
+  replaced_count: number;
+};
+
 /**
  * This tenant's own "Intake Questions" — its HR/interpersonal question set,
  * asked in a candidate's first-round intake call. A tenant with no
@@ -44,10 +49,11 @@ export type DeleteInterviewQuestionArgs = {
  * removing, or adding one here forks an independent copy that then stops
  * tracking further platform-side changes. Backed by organization-service's
  * `/v1/tenants/{tenant_id}/audio-questions` (renamed 2026-08-17 from
- * `interview-questions`, see internal_router.py) — there is no bulk
- * replace-the-set endpoint and no AI "suggest" endpoint on this contract,
- * but POST does exist to add a question back up to the same 8-question cap
- * the platform list is held to (e.g. refilling a slot a delete just freed).
+ * `interview-questions`, see internal_router.py). POST adds a question back
+ * up to the same 8-question cap the platform list is held to (e.g. refilling
+ * a slot a delete just freed); `bulk-import` (below) REPLACES the entire
+ * list instead — the one operation on this contract that isn't additive.
+ * Still no AI "suggest" endpoint.
  */
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
@@ -86,6 +92,38 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'InterviewQuestions', id: tenantId },
       ],
     }),
+    // Own-company template download — same generated file
+    // useLazyGetIntakeQuestionsTemplateQuery (Platform/interviewQuestions.ts)
+    // returns, but through this tenant-permission-gated route rather than
+    // the platform-only one, since a Company Admin holds no platform
+    // permission to call that one directly.
+    getInterviewQuestionsTemplate: build.query<Blob, string>({
+      query: (tenantId) => ({
+        url: `/v1/tenants/${tenantId}/audio-questions/template`,
+        method: 'GET',
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
+    // Replaces this tenant's ENTIRE effective list — never additive, and
+    // never touches the platform default or any other tenant. See
+    // BulkImportJobQuestionsUseCase on the backend.
+    bulkImportInterviewQuestions: build.mutation<
+      BulkImportInterviewQuestionsResponse,
+      { tenantId: string; file: File }
+    >({
+      query: ({ tenantId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/v1/tenants/${tenantId}/audio-questions/bulk-import`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'InterviewQuestions', id: tenantId },
+      ],
+    }),
   }),
 });
 
@@ -94,4 +132,6 @@ export const {
   useCreateInterviewQuestionMutation,
   useUpdateInterviewQuestionMutation,
   useDeleteInterviewQuestionMutation,
+  useLazyGetInterviewQuestionsTemplateQuery,
+  useBulkImportInterviewQuestionsMutation,
 } = extendedApi;

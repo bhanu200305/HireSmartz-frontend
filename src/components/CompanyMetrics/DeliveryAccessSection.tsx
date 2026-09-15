@@ -14,7 +14,7 @@ const formatDate = (isoDate: string | null): string =>
         day: 'numeric',
         year: 'numeric',
       })
-    : '—';
+    : '-';
 
 /**
  * 2.3 "Delivery & access" — Bounced/suppressed invite addresses and

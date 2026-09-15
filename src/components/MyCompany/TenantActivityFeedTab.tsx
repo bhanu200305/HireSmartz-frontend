@@ -150,7 +150,7 @@ const TenantActivityFeedTab: React.FC<{ tenantId: string; isMaster?: boolean }> 
         <CustomTable<ActivityRow>
           columns={columns}
           dataSource={dataSource}
-          emptyText="No activity yet — actions like inviting a teammate or updating a setting will show up here."
+          emptyText="No activity yet. Actions like inviting a teammate or updating a setting will show up here."
         />
       </div>
 

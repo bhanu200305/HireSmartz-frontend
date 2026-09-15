@@ -152,6 +152,25 @@ const extendedApi = candidateApi.injectEndpoints({
     getCandidateResumeDownload: build.query<ResumeDownloadView, string>({
       query: (candidateId) => `/candidates/${candidateId}/resume`,
     }),
+
+    // Recruiter/HM-triggered "Request Resume" — added 2026-09-14. Backend
+    // (candidate-service, NOT YET BUILT — see the interview-service handoff)
+    // is expected to mint and email a fresh resume-upload link on demand,
+    // the same email `CandidateResumeUploadRequested` already sends
+    // automatically today after a completed Intake Call. This is the
+    // explicit, recruiter-driven counterpart: once candidate-service stops
+    // auto-sending on every completed AUDIO booking (including reschedule
+    // re-attempts — the reported double-send bug), this button becomes the
+    // only way to (re-)request a resume. `POST /candidates/{id}/
+    // request-resume-upload`, no request body, `null` on success — mirrors
+    // `deleteResumeReview`'s shape immediately above.
+    requestResumeUpload: build.mutation<null, string>({
+      query: (candidateId) => ({
+        url: `/candidates/${candidateId}/request-resume-upload`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _error, candidateId) => [{ type: 'Candidate', id: candidateId }],
+    }),
   }),
   overrideExisting: false,
 });
@@ -164,4 +183,5 @@ export const {
   useDeleteRecruiterRoundScoreMutation,
   useGetCandidateResumeDownloadQuery,
   useLazyGetCandidateResumeDownloadQuery,
+  useRequestResumeUploadMutation,
 } = extendedApi;

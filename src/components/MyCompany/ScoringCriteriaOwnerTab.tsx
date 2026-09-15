@@ -2,9 +2,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Tooltip } from 'antd';
 import { MdLock } from 'react-icons/md';
-import { ScoringWeightCard, showToast } from '../shared';
+import { ScoringWeightCard, showToast, toOptionalWeight } from '../shared';
 import type { ScoringWeight } from '../shared';
 import { Loader } from '../shared/ui/loader';
+import { RESUME_CATEGORY_META, INTERVIEW_CATEGORY_META } from '../shared/scoringCategories';
 import {
   organizationScoringConfigApi,
   useGetOrganizationScoringCriteriaQuery,
@@ -27,6 +28,7 @@ const toWeights = (
     displayName: w.display_name,
     description: w.description,
     weightPercentage: Number(w.weight_pct),
+    defaultWeightPercentage: toOptionalWeight(w.default_weight_pct),
   }));
 
 const toOverrides = (weights: ScoringWeight[]): CategoryWeightOverride[] =>
@@ -132,7 +134,7 @@ const ScoringCriteriaOwnerTab: React.FC = () => {
       <div className="flex items-center gap-2 mb-1">
         <h2 className="text-2xl font-semibold text-gray-800">Scoring Weight Distribution</h2>
         {isLocked && (
-          <Tooltip title="Locked by CareerForcePro — contact support to change this.">
+          <Tooltip title="Locked by Careerforce Pro. Contact support to change this.">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold px-2.5 py-1">
               <MdLock size={13} /> Locked
             </span>
@@ -149,7 +151,7 @@ const ScoringCriteriaOwnerTab: React.FC = () => {
           subtitle="Applies to Resume Screening"
           infoText="Resume categories are always evaluated. All categories must total exactly 100%."
           weights={resumeWeights}
-          categoryMeta={{}}
+          categoryMeta={RESUME_CATEGORY_META}
           onSave={handleSaveResume}
           onReset={() => handleReset('resume')}
           isSaving={isSaving && savingSection === 'resume'}
@@ -162,7 +164,7 @@ const ScoringCriteriaOwnerTab: React.FC = () => {
           subtitle="Applies to AI Audio Screening and Video Interview"
           infoText="If a category is not covered in an interview, its weight is redistributed proportionally across the remaining categories."
           weights={interviewWeights}
-          categoryMeta={{}}
+          categoryMeta={INTERVIEW_CATEGORY_META}
           onSave={handleSaveInterview}
           onReset={() => handleReset('interview')}
           isSaving={isSaving && savingSection === 'interview'}

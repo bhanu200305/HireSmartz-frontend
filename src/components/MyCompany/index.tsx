@@ -149,7 +149,7 @@ const MyCompany: React.FC = () => {
       tabs: [
         canViewCompanyDetails && {
           key: '1',
-          label: 'Company Details',
+          label: 'General',
           children: <CompanyProfileTab tenantId={tenantId} />,
         },
         canViewLocations && {
@@ -168,10 +168,14 @@ const MyCompany: React.FC = () => {
       key: 'team',
       label: 'Team & Access',
       tabs: [
-        canViewTeam && { key: '5', label: 'Team', children: <TeamTab tenantId={tenantId} /> },
+        canViewTeam && {
+          key: '5',
+          label: 'Invitations',
+          children: <TeamTab tenantId={tenantId} />,
+        },
         canViewActivity && {
           key: '6',
-          label: 'Activity',
+          label: 'Activity Feed',
           children: <TenantActivityFeedTab tenantId={tenantId} />,
         },
       ].filter(Boolean) as TabsProps['items'],
@@ -237,7 +241,7 @@ const MyCompany: React.FC = () => {
       tabs: [
         canViewQrManagement && {
           key: '9',
-          label: 'QR Management',
+          label: 'QR Code',
           children: <QrManagementTab tenantId={tenantId} />,
         },
         canViewFeatureSettings && {

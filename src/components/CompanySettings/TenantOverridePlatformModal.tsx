@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import TextArea from 'antd/es/input/TextArea';
-import { Button, Input, showToast } from '../shared';
+import { Button, showToast } from '../shared';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import TemplatePreviewModal from '../shared/ui/TemplatePreviewModal';
+import PlaceholderProtectedField from '../shared/ui/PlaceholderProtectedField';
 import type { TemplateOverride } from '../../api/notification-service/TemplateSettings/index';
 import {
   usePreviewTenantTemplateAsPlatformMutation,
@@ -109,8 +109,8 @@ const TenantOverridePlatformModal: React.FC<TenantOverridePlatformModalProps> = 
       <AntdCommonModal
         open={override !== null}
         onClose={onClose}
-        title={`Edit on this tenant's behalf — ${override.notification_type}`}
-        subtitle="Support/override action. The tenant sees this as their own customisation."
+        title={`Edit on this tenant's behalf: ${override.notification_type}`}
+        subtitle="Support/override action. The tenant sees this as their own customization."
         modalProps={{ width: 720 }}
       >
         <div className="flex flex-col gap-4">
@@ -121,13 +121,14 @@ const TenantOverridePlatformModal: React.FC<TenantOverridePlatformModalProps> = 
           )}
           <div>
             <p className="mb-1 block text-sm font-medium text-gray-700">Subject</p>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <PlaceholderProtectedField value={subject} onChange={setSubject} />
           </div>
           <div>
             <p className="mb-1 block text-sm font-medium text-gray-700">Body (HTML)</p>
-            <TextArea
+            <PlaceholderProtectedField
+              as="textarea"
               value={htmlBody}
-              onChange={(e) => setHtmlBody(e.target.value)}
+              onChange={setHtmlBody}
               rows={14}
               className="font-mono text-xs"
             />
@@ -135,9 +136,10 @@ const TenantOverridePlatformModal: React.FC<TenantOverridePlatformModalProps> = 
           {hasSms && (
             <div>
               <p className="mb-1 block text-sm font-medium text-gray-700">SMS message</p>
-              <TextArea
+              <PlaceholderProtectedField
+                as="textarea"
                 value={smsMessage}
-                onChange={(e) => setSmsMessage(e.target.value)}
+                onChange={setSmsMessage}
                 rows={3}
               />
             </div>

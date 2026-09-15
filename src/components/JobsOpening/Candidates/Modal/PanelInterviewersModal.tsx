@@ -95,7 +95,7 @@ const PanelInterviewersModal = ({
         message:
           result.interviewer_ids.length > 0
             ? `${result.interviewer_ids.length} interviewer${result.interviewer_ids.length === 1 ? '' : 's'} set for this round.`
-            : 'Selection cleared — interview-service will auto-compose the panel.',
+            : 'Selection cleared; interview-service will auto-compose the panel.',
         type: 'success',
       });
       onClose();
@@ -178,7 +178,7 @@ const PanelInterviewersModal = ({
           ) : selected.size > 0 ? (
             `SAVE (${selected.size})`
           ) : (
-            'SAVE — CLEAR SELECTION'
+            'SAVE (CLEAR SELECTION)'
           )}
         </Button>
       </div>

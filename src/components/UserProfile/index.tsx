@@ -495,8 +495,8 @@ const UserProfile = () => {
                       </span>
                     </div>
                     <p className="text-sm text-[var(--gray-500)] mt-2 max-w-sm">
-                      Keep your details up to date — this is what your team sees across
-                      CareerForce&nbsp;Pro.
+                      Keep your details up to date, since this is what your team sees across
+                      Careerforce&nbsp;Pro.
                     </p>
                   </div>
 

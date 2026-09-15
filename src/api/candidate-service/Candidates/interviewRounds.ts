@@ -15,13 +15,17 @@ import candidateApi from '../candidateApi';
  * sorted by each row's real `sequence`; the resume stage is placed at the
  * job plan's Resume Round position (no longer unconditionally first). That
  * position is PLAN-level, so it can't differ between two candidates on the
- * same opening who applied through the two different intake flows —
- * `roundProgress.ts`'s `orderRoundsForFlow` reorders the resume stage per
- * candidate on the client until the backend does it (see BACKEND_GAPS.md).
- * Real rounds have `stage_type: "interview"`;
- * `round_name`/`sequence`/`duration_minutes` are sourced LIVE from
- * job-service on every read — never stored locally, so don't cache these
- * past the query's own lifetime.
+ * same opening who applied through the two different intake flows — a
+ * resume-first candidate and an instant-call candidate on the SAME job get
+ * the same plan-level slot for the resume stage. `follows_intake_call`
+ * below is the per-candidate fact that actually distinguishes them;
+ * `roundProgress.ts`'s `orderRoundsForFlow` reorders the resume stage after
+ * the Intake Call round on the client whenever it's set, so the pipeline
+ * reads in the order things actually happened for that candidate. Real
+ * rounds have `stage_type: "interview"`; `round_name`/`sequence`/
+ * `duration_minutes` are sourced LIVE from job-service on every read —
+ * never stored locally, so don't cache these past the query's own
+ * lifetime.
  *
  * Matches `candidate_dto.CandidateInterviewRoundView` field-for-field
  * (verified 2026-09-02 against the real Pydantic model) — `id`,
@@ -73,6 +77,18 @@ export type CandidateInterviewRoundView = {
   candidate_feedback_rating: number | null;
   candidate_feedback_text: string | null;
   candidate_feedback_submitted_at: string | null;
+  /** Only meaningful on the resume-stage row (always `false` on every
+   * interview row). `true` when this candidate applied via the
+   * instant-call path — Intake Call first, resume attached only once the
+   * call finished — so the resume stage should render AFTER the Intake
+   * Call round; `false` when the resume was already on file at apply time
+   * (every other apply path) and there's no call to wait on. Fixed at
+   * creation, never changes — the one reliable per-candidate signal for
+   * this ordering fact, since `sequence` alone is a plan-level position
+   * shared by every candidate on the job. Added 2026-09-10 (candidate-service
+   * migration 0023) specifically to replace the frontend's old heuristic of
+   * inferring the flow from `awaiting_resume_upload` in the status history. */
+  follows_intake_call: boolean;
 };
 
 /** One row of org-service's live interviewer directory, as returned to the

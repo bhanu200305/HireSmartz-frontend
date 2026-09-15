@@ -48,6 +48,24 @@ const cardTooltipStyle = {
   boxShadow: '0 8px 24px -12px rgba(16,30,54,.18)',
 };
 
+// Axis titles, not just tick values — see GrowthAdoptionCharts.tsx's own
+// comment on this same pattern (widened Y-axis `width` to fit the title
+// without reintroducing the left-edge clipping `ChartCard`'s
+// `overflow-hidden` causes when an axis element overflows the card).
+const axisTitleStyle = { fontSize: 10, fill: '#8593ac' };
+const yAxisLabel = (value: string) => ({
+  value,
+  angle: -90,
+  position: 'insideLeft' as const,
+  style: { ...axisTitleStyle, textAnchor: 'middle' as const },
+});
+const xAxisLabel = (value: string) => ({
+  value,
+  position: 'insideBottom' as const,
+  offset: -2,
+  style: axisTitleStyle,
+});
+
 type HiringOverviewChartsProps = {
   /** 'compact' renders just the one headline chart (Applications over time)
    * at a shorter height — for the Dashboard carousel's preview slide. 'full'
@@ -127,7 +145,10 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       available={appsOverTimeData.length > 0}
     >
       <ResponsiveContainer width="100%" height={chartHeight}>
-        <LineChart data={appsOverTimeData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+        <LineChart
+          data={appsOverTimeData}
+          margin={{ top: 8, right: 12, left: -16, bottom: variant === 'compact' ? 0 : 14 }}
+        >
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
           <XAxis
             dataKey="date"
@@ -135,13 +156,16 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
             axisLine={false}
             tickLine={false}
             minTickGap={24}
+            height={variant === 'compact' ? undefined : 30}
+            label={variant === 'compact' ? undefined : xAxisLabel('Date')}
           />
           <YAxis
             allowDecimals={false}
             tick={{ fontSize: 11, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
-            width={36}
+            width={48}
+            label={yAxisLabel('Applications')}
           />
           <Tooltip contentStyle={cardTooltipStyle} />
           <Line
@@ -188,26 +212,32 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
 
       <ChartCard
         title="Interviews by status"
-        subtitle="Round counts across every open job — not yet split by Audio Round / AI Interview / Panel Interview"
+        subtitle="Round counts across every open job, not yet split by Audio Round / AI Interview / Panel Interview"
         typeTag="Bar"
         isLoading={isInterviewsLoading}
         available={interviewStatusData.length > 0}
       >
         <ResponsiveContainer width="100%" height={chartHeight}>
-          <BarChart data={interviewStatusData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+          <BarChart
+            data={interviewStatusData}
+            margin={{ top: 8, right: 12, left: -16, bottom: 14 }}
+          >
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="name"
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
+              height={30}
+              label={xAxisLabel('Status')}
             />
             <YAxis
               allowDecimals={false}
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
-              width={36}
+              width={48}
+              label={yAxisLabel('Interviews')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Bar dataKey="Interviews" fill={COLOR_PRIMARY} radius={[6, 6, 0, 0]} maxBarSize={40} />
@@ -223,20 +253,23 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
         available={resumeScoreData.some((band) => band.Candidates > 0)}
       >
         <ResponsiveContainer width="100%" height={chartHeight}>
-          <BarChart data={resumeScoreData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+          <BarChart data={resumeScoreData} margin={{ top: 8, right: 12, left: -16, bottom: 14 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="name"
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
+              height={30}
+              label={xAxisLabel('Score band')}
             />
             <YAxis
               allowDecimals={false}
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
-              width={36}
+              width={48}
+              label={yAxisLabel('Candidates')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Bar dataKey="Candidates" fill={COLOR_ACCENT} radius={[6, 6, 0, 0]} maxBarSize={40} />

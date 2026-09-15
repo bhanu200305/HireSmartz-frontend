@@ -213,8 +213,8 @@ const InviteTeamMemberForm = ({
           />
           {rolesForbidden && (
             <p className="mt-1 text-xs text-red-500">
-              You don&apos;t have permission to view roles, so none can be picked here — ask an
-              admin to grant role-read access.
+              You don&apos;t have permission to view roles, so none can be picked here. Ask an admin
+              to grant role-read access.
             </p>
           )}
           {canCreateRole && (

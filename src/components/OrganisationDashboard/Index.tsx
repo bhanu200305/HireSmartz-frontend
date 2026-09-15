@@ -22,6 +22,8 @@ import {
   useReactivateUserMutation,
   useListUsersQuery,
 } from '../../api/organization-service/Users/users';
+import { useListRolesQuery } from '../../api/organization-service/Roles/roles';
+import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 const PAGE_SIZE = 20;
@@ -61,6 +63,7 @@ const OrganisationUserTable = () => {
   const navigate = useNavigate();
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
   const [includeInactive, setIncludeInactive] = useState<'active' | 'all'>('active');
+  const [roleFilter, setRoleFilter] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(0);
   const [searchText, setSearchText] = useState('');
   const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
@@ -70,10 +73,34 @@ const OrganisationUserTable = () => {
 
   const { data, isLoading, error } = useListUsersQuery(
     isSearching
-      ? { includeInactive: includeInactive === 'all', limit: SEARCH_PAGE_SIZE, offset: 0 }
-      : { includeInactive: includeInactive === 'all', limit: PAGE_SIZE, offset: page * PAGE_SIZE },
+      ? {
+          includeInactive: includeInactive === 'all',
+          role: roleFilter,
+          limit: SEARCH_PAGE_SIZE,
+          offset: 0,
+        }
+      : {
+          includeInactive: includeInactive === 'all',
+          role: roleFilter,
+          limit: PAGE_SIZE,
+          offset: page * PAGE_SIZE,
+        },
     { skip: !tenantId }
   );
+
+  // This tenant's own role catalog, for the filter's options — the `role`
+  // query param above has to match a role name exactly (organization-service
+  // does `MasterRoleModel.role == name`, see ListUsersUseCase's docstring on
+  // how a base role like "recruiter" also pulls in any tenant-custom role
+  // derived from it), so the dropdown is built from the real catalog rather
+  // than a hardcoded list of the 8 system roles.
+  const { data: rolesData } = useListRolesQuery(
+    { scope: 'tenant', isMaster: false },
+    { skip: !tenantId }
+  );
+  const roleOptions = (rolesData || [])
+    .map((role) => ({ label: systemRoleLabel(role.name), value: role.name }))
+    .sort((a, b) => a.label.localeCompare(b.label));
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivateUserMutation();
   const [reactivateUser, { isLoading: isReactivating }] = useReactivateUserMutation();
 
@@ -144,6 +171,32 @@ const OrganisationUserTable = () => {
           {user.email}
         </span>
       ),
+    },
+    {
+      title: 'Role',
+      key: 'role',
+      render: (_: unknown, user: UserRow) => {
+        // Comma-joined raw role names (organization-service can join more
+        // than one live assignment, e.g. a tenant-wide role plus an
+        // office-specific one — see ListUsersUseCase's role_names_by_user
+        // comment); each one gets its own badge rather than one long string.
+        const roleNames = (user.role || '')
+          .split(',')
+          .map((name) => name.trim())
+          .filter(Boolean);
+        if (roleNames.length === 0) {
+          return <span className="text-sm text-gray-400">-</span>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {roleNames.map((name) => (
+              <Badge key={name} status="neutral" dot={false}>
+                {systemRoleLabel(name)}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
     },
     {
       title: 'Phone',
@@ -231,6 +284,21 @@ const OrganisationUserTable = () => {
                 { label: 'Active only', value: 'active' },
                 { label: 'Include deactivated', value: 'all' },
               ]}
+            />
+          </div>
+          <div className="cfp-dropdown-trigger w-44">
+            <FilterSelectIcon />
+            <Select
+              value={roleFilter}
+              onChange={(value) => {
+                setRoleFilter(value);
+                setPage(0);
+              }}
+              className="w-full custom-select"
+              variant="borderless"
+              placeholder="All roles"
+              allowClear
+              options={roleOptions}
             />
           </div>
           {/* Extra gap ahead of Add User specifically — it's the row's one

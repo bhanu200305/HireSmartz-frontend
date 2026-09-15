@@ -1,11 +1,11 @@
 import React from 'react';
 import {
-  useListShiftsQuery,
-  useCreateShiftMutation,
-  useUpdateShiftMutation,
-  useDeleteShiftMutation,
-} from '../../../api/job-service/JobOpening/catalogs';
-import type { OrganizationShift } from '../../../api/job-service/types';
+  useGetOrganizationShiftsQuery,
+  useCreateOrganizationShiftMutation,
+  useUpdateOrganizationShiftMutation,
+  useDeleteOrganizationShiftMutation,
+  type OrganizationShift,
+} from '../../../api/job-service/Shifts/shifts';
 import PlatformCatalogTab from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
 
@@ -42,17 +42,17 @@ const computeDurationMinutes = (startTime: string, endTime: string): number | nu
  * `duration_minutes` is derived from start/end time rather than entered
  * directly, to keep it from disagreeing with the times actually saved. */
 const TenantShiftsTab: React.FC = () => {
-  const { data, isLoading } = useListShiftsQuery();
-  const [create] = useCreateShiftMutation();
-  const [update] = useUpdateShiftMutation();
-  const [remove] = useDeleteShiftMutation();
+  const { data, isLoading } = useGetOrganizationShiftsQuery();
+  const [create] = useCreateOrganizationShiftMutation();
+  const [update] = useUpdateOrganizationShiftMutation();
+  const [remove] = useDeleteOrganizationShiftMutation();
 
   return (
     <PlatformCatalogTab<OrganizationShift, FormValues>
       title="Your company's configured shifts."
       itemNounSingular="Shift"
       itemNounPlural="Shifts"
-      items={data}
+      items={data?.shifts}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.shift_name}
@@ -62,12 +62,12 @@ const TenantShiftsTab: React.FC = () => {
         {
           title: 'Time',
           key: 'time',
-          render: (_, item) => `${item.start_time} – ${item.end_time}`,
+          render: (_, item) => `${item.start_time} to ${item.end_time}`,
         },
         {
           title: 'Duration',
           key: 'duration_minutes',
-          render: (_, item) => (item.duration_minutes ? `${item.duration_minutes} min` : '—'),
+          render: (_, item) => (item.duration_minutes ? `${item.duration_minutes} min` : '-'),
         },
       ]}
       fields={fields}
@@ -84,7 +84,7 @@ const TenantShiftsTab: React.FC = () => {
           shift_description: values.description,
           start_time: values.start_time.trim(),
           end_time: values.end_time.trim(),
-          duration_minutes: computeDurationMinutes(values.start_time, values.end_time),
+          duration_minutes: computeDurationMinutes(values.start_time, values.end_time) ?? undefined,
         }).unwrap()
       }
       onUpdate={(id, values) =>
@@ -94,7 +94,7 @@ const TenantShiftsTab: React.FC = () => {
           shift_description: values.description,
           start_time: values.start_time.trim(),
           end_time: values.end_time.trim(),
-          duration_minutes: computeDurationMinutes(values.start_time, values.end_time),
+          duration_minutes: computeDurationMinutes(values.start_time, values.end_time) ?? undefined,
         }).unwrap()
       }
       onDelete={(item) => remove(item.id).unwrap()}

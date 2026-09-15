@@ -48,9 +48,14 @@ import { capitalizeWordsAdvanced, validateDraft } from '../../../shared/utils/me
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
 import {
   useCreateOrganizationSkillMutation,
+  useUpdateOrganizationSkillMutation,
+  useDeleteOrganizationSkillMutation,
   useCreateJobTypeMutation,
   useUpdateJobTypeMutation,
   useDeleteJobTypeMutation,
+  useCreateJobModeMutation,
+  useUpdateJobModeMutation,
+  useDeleteJobModeMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import {
   useCreateEducationPreferenceMutation,
@@ -60,6 +65,8 @@ import {
 import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { hasFeatureAccess, isAssignedToJob } from '../../../shared/utils/auth/getAccess';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
 import {
   officeDisplayName,
   useListTenantOfficesQuery,
@@ -89,10 +96,24 @@ import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
+import {
+  useGetOrganizationShiftsQuery,
+  useCreateOrganizationShiftMutation,
+  useUpdateOrganizationShiftMutation,
+  useDeleteOrganizationShiftMutation,
+} from '../../../api/job-service/Shifts/shifts';
+import ShiftFormModal, { computeShiftDurationMinutes } from '../ShiftFormModal';
 
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
 const { Option } = Select;
+
+// openDate/closeDate hold ISO from the backend until touched, then 'DD-MM-YYYY'
+// once the picker rewrites them - parse leniently to handle both shapes.
+const parseFormDate = (value: string) => {
+  const strict = dayjs(value, 'DD-MM-YYYY', true);
+  return strict.isValid() ? strict : dayjs(value);
+};
 
 // Field order for scroll-to-first-error on failed submit.
 const JOB_DETAILS_FIELD_ORDER = [
@@ -142,11 +163,11 @@ const EditJobDetail = () => {
     }),
     shallowEqual
   );
-  const { loginToken, role } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
-  // POST /skills requires organization:update, which only company_admin
-  // (and platform roles) hold — hide the add-option affordance for roles
-  // that would just get a 403.
-  const canAddSkill = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
+  const { role, userId } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  const effectivePermissions = useEffectivePermissions();
+  // hiring_manager/recruiter can only pick an existing catalogue entry,
+  // never add/edit/delete one from this form.
+  const canManageCatalogueEntries = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
   const tenantId = useSessionTenantId();
   const [, setSelectedLocationIdForUsers] = useState<string | undefined>(undefined);
 
@@ -154,17 +175,15 @@ const EditJobDetail = () => {
     { tenantId: tenantId ?? '' },
     { skip: !tenantId }
   );
-  const { data: orgDepartments = [], isFetching: orgDepartmentsLoading } =
-    useListTenantDepartmentsQuery(tenantId ?? '', { skip: !tenantId });
+  const {
+    data: orgDepartments = [],
+    isFetching: orgDepartmentsLoading,
+    refetch: refetchDepartments,
+  } = useListTenantDepartmentsQuery(tenantId ?? '', { skip: !tenantId });
   const [addTenantDepartment] = useAddTenantDepartmentMutation();
   const [updateTenantDepartment] = useUpdateTenantDepartmentMutation();
   const [deleteTenantDepartment] = useDeleteTenantDepartmentMutation();
-  // The real culture-intro backend (organization-service's
-  // `/v1/tenants/{tenant_id}/culture-intro`) — this used to read
-  // `cultureIntroText` off the legacy `/orguserservice/companies/findById`
-  // response instead, a field that endpoint never actually returns, so the
-  // toggle below was permanently disabled regardless of whether the tenant
-  // had really set one up in My Company -> Culture Intro.
+  // organization-service's real culture-intro backend.
   const { data: tenantCultureIntro } = useGetTenantCultureIntroQuery(tenantId ?? '', {
     skip: !tenantId,
   });
@@ -183,15 +202,22 @@ const EditJobDetail = () => {
     loading: jobTypesLoading,
     refetch: refetchJobTypes,
   } = useJobOpeningDropdown('JOB_TYPE', 'edit', parsedJobId);
-  const { jobOpeningDropdown: jobModes, loading: jobModesLoading } = useJobOpeningDropdown(
-    'JOB_MODE',
-    'edit',
-    parsedJobId
-  );
-  const { jobOpeningDropdown: shiftOptions, loading: shiftsLoading } = useJobOpeningDropdown(
-    'SHIFT',
-    'edit',
-    parsedJobId
+  const {
+    jobOpeningDropdown: jobModes,
+    loading: jobModesLoading,
+    refetch: refetchJobModes,
+  } = useJobOpeningDropdown('JOB_MODE', 'edit', parsedJobId);
+  // Raw shift objects — needed to prefill start/end time when editing.
+  const { data: organizationShiftsData, isFetching: shiftsLoading } =
+    useGetOrganizationShiftsQuery();
+  const organizationShifts = organizationShiftsData?.shifts ?? [];
+  const shiftOptions = useMemo(
+    () =>
+      organizationShifts.map((item) => ({
+        id: item.id,
+        name: `${item.shift_name} (${item.start_time.slice(0, 5)} - ${item.end_time.slice(0, 5)})`,
+      })),
+    [organizationShifts]
   );
   const { jobOpeningDropdown: exemptionStatus, loading: exemptionLoading } = useJobOpeningDropdown(
     'EXEMPTION_STATUS',
@@ -212,11 +238,15 @@ const EditJobDetail = () => {
     jobOpeningDropdown: mandatorySkills,
     loading: mandatorySkillsLoading,
     searchSkills: searchMandatorySkills,
+    totalSkillsCount: totalMandatorySkillsCount,
+    refetch: refetchMandatorySkills,
   } = useJobOpeningDropdown('MANDATORY_SKILLS', 'edit', parsedJobId);
   const {
     jobOpeningDropdown: optionalSkills,
     loading: optionalSkillsLoading,
     searchSkills: searchOptionalSkills,
+    totalSkillsCount: totalOptionalSkillsCount,
+    refetch: refetchOptionalSkills,
   } = useJobOpeningDropdown('OPTIONAL_SKILLS', 'edit', parsedJobId);
   const { jobOpeningDropdown: hiringManagers, loading: hiringManagerLoading } =
     useJobOpeningDropdown('HIRING_MANAGER', 'edit', parsedJobId);
@@ -228,6 +258,15 @@ const EditJobDetail = () => {
 
   const [updateJobType] = useUpdateJobTypeMutation();
   const [deleteJobType] = useDeleteJobTypeMutation();
+  const [updateJobMode] = useUpdateJobModeMutation();
+  const [deleteJobMode] = useDeleteJobModeMutation();
+  const [createOrganizationShift] = useCreateOrganizationShiftMutation();
+  const [updateOrganizationShift] = useUpdateOrganizationShiftMutation();
+  const [deleteOrganizationShift] = useDeleteOrganizationShiftMutation();
+  const [shiftModalMode, setShiftModalMode] = useState<'add' | 'edit' | null>(null);
+  const [isSavingShift, setIsSavingShift] = useState(false);
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
+  const [shiftAddPrefillName, setShiftAddPrefillName] = useState('');
   const [updateEducationPreference] = useUpdateEducationPreferenceMutation();
   const [deleteEducationPreference] = useDeleteEducationPreferenceMutation();
 
@@ -255,7 +294,10 @@ const EditJobDetail = () => {
 
   const [updateJobOpening, { isLoading: isUpdatingDraft }] = useUpdateJobOpeningMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
+  const [updateOrganizationSkill] = useUpdateOrganizationSkillMutation();
+  const [deleteOrganizationSkill] = useDeleteOrganizationSkillMutation();
   const [createJobType] = useCreateJobTypeMutation();
+  const [createJobMode] = useCreateJobModeMutation();
   const [createEducationPreference] = useCreateEducationPreferenceMutation();
   const [triggerGetJobDescriptionById] = useLazyGetJobDescriptionByIdQuery();
   const { data: jdDetailsForSync } = useGetJobDescriptionByIdQuery(
@@ -274,6 +316,28 @@ const EditJobDetail = () => {
     { jobOpeningId: parsedJobId },
     { skip: !parsedJobId, refetchOnMountOrArgChange: true }
   );
+
+  // True while jobData hasn't loaded yet, so this never blocks Save early.
+  // Two checks, not one: hasFeatureAccess covers the ROLE ("can this role
+  // ever edit a job it's assigned to" — false for recruiter, who is
+  // view-only now), isAssignedToJob covers the SPECIFIC job ("is this one of
+  // the jobs this person is assigned to"). Recruiter reaching this page
+  // directly (e.g. a stale URL) for a job they ARE assigned to must still be
+  // blocked — job-service's own permission check would reject the save
+  // anyway, but this keeps the form from looking editable in the meantime.
+  const canEditThisJob = !jobData
+    ? true
+    : hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) &&
+      isAssignedToJob(
+        {
+          hiringManagerIds: jobData.details?.hiring_manager_ids,
+          recruiterIds: jobData.details?.recruiter_ids,
+          createdById: jobData.details?.created_by,
+        },
+        userId,
+        role,
+        effectivePermissions
+      );
 
   const {
     handleSubmit,
@@ -959,6 +1023,7 @@ const EditJobDetail = () => {
       | 'jobTitle'
       | 'department'
       | 'jobType'
+      | 'jobMode'
       | 'educationPreference'
       | 'mandatorySkills'
       | 'optionalSkills'
@@ -971,6 +1036,7 @@ const EditJobDetail = () => {
       department: 'DEPARTMENT',
       location: 'OFFICE_LOCATION',
       jobType: 'JOB_TYPE',
+      jobMode: 'JOB_MODE',
       educationPreference: 'EDUCATION_PREFERENCE',
       mandatorySkills: 'MANDATORY_SKILLS',
       optionalSkills: 'OPTIONAL_SKILLS',
@@ -992,6 +1058,9 @@ const EditJobDetail = () => {
         break;
       case 'jobType':
         setValue('jobType', [], { shouldValidate: false });
+        break;
+      case 'jobMode':
+        setValue('jobMode', [], { shouldValidate: false });
         break;
       case 'educationPreference':
         setValue('educationPreference', [], { shouldValidate: false });
@@ -1024,13 +1093,16 @@ const EditJobDetail = () => {
           department_name: formattedValue,
         }).unwrap();
 
+        // Refetch before setValue so the new option exists in `orgDepartments`;
+        // otherwise the label briefly renders as a raw uuid.
+        await refetchDepartments();
+
+        setValue('department', [createdDepartment.org_department_id], { shouldValidate: true });
+        setValue('jobTitle', [], { shouldValidate: true });
         showToast({
           message: 'Department added successfully',
           type: 'success',
         });
-
-        setValue('department', [createdDepartment.org_department_id], { shouldValidate: true });
-        setValue('jobTitle', [], { shouldValidate: true });
         return;
       }
 
@@ -1093,9 +1165,11 @@ const EditJobDetail = () => {
         const created = await createEducationPreference({
           education_preference_name: formattedValue,
         }).unwrap();
-        showToast({ message: 'Education preference added', type: 'success' });
+        // Refetch before setValue so the new option exists in `options`; otherwise
+        // the label briefly renders as a raw uuid.
+        await refetchEducationPreference?.();
         setValue('educationPreference', [created.id], { shouldValidate: true });
-        refetchEducationPreference?.();
+        showToast({ message: 'Education preference added', type: 'success' });
         return;
       }
 
@@ -1105,12 +1179,28 @@ const EditJobDetail = () => {
           (skill) => skill.name.toLowerCase() === normalizedValue
         );
         if (existingSkill) {
+          // The picker's filter only hides skills already on the other list from
+          // selection, not from a typed exact-name match - block that case explicitly.
+          const otherType = addType === 'mandatorySkills' ? 'optionalSkills' : 'mandatorySkills';
+          const otherSkillIds = (watch(otherType) || []).map(String);
+          if (otherSkillIds.includes(String(existingSkill.id))) {
+            showToast({
+              message: `"${existingSkill.name}" is already selected as ${
+                otherType === 'mandatorySkills' ? 'a required' : 'an optional'
+              } skill.`,
+              type: 'error',
+            });
+            return;
+          }
           setValue(addType, [...currentSkillIds, existingSkill.id], { shouldValidate: true });
           return;
         }
         const createdSkill = await createOrganizationSkill({ skill: formattedValue }).unwrap();
-        showToast({ message: 'Skill added successfully', type: 'success' });
+        // Refetch before setValue so the new option exists in `options`; otherwise
+        // the label briefly renders as a raw uuid.
+        await (addType === 'mandatorySkills' ? refetchMandatorySkills() : refetchOptionalSkills());
         setValue(addType, [...currentSkillIds, createdSkill.skill_id], { shouldValidate: true });
+        showToast({ message: 'Skill added successfully', type: 'success' });
         return;
       }
 
@@ -1123,9 +1213,24 @@ const EditJobDetail = () => {
           return;
         }
         const createdJobType = await createJobType({ job_type_name: formattedValue }).unwrap();
-        showToast({ message: 'Job type added successfully', type: 'success' });
+        await refetchJobTypes?.();
         setValue('jobType', [createdJobType.id], { shouldValidate: true });
-        refetchJobTypes?.();
+        showToast({ message: 'Job type added successfully', type: 'success' });
+        return;
+      }
+
+      if (addType === 'jobMode') {
+        const existingJobMode = jobModes.find(
+          (item) => item.name.toLowerCase() === normalizedValue
+        );
+        if (existingJobMode) {
+          setValue('jobMode', [existingJobMode.id], { shouldValidate: true });
+          return;
+        }
+        const createdJobMode = await createJobMode({ job_mode_name: formattedValue }).unwrap();
+        await refetchJobModes?.();
+        setValue('jobMode', [createdJobMode.id], { shouldValidate: true });
+        showToast({ message: 'Job mode added successfully', type: 'success' });
         return;
       }
     } catch (err) {
@@ -1228,12 +1333,38 @@ const EditJobDetail = () => {
         await updateJobType({
           jobTypeId: String(id),
           job_type_name: capitalizeWordsAdvanced(newName),
+          // Not collected by this rename-only dialog — preserve whatever's
+          // already stored rather than wiping it (PUT replaces).
+          job_type_description: jobTypes.find((item) => String(item.id) === String(id))
+            ?.description,
         }).unwrap();
         showToast({ message: 'Job type updated successfully', type: 'success' });
         refetchJobTypes?.();
       } catch (err) {
         showToast({
           message: getJobErrorMessage(err, 'Something went wrong while updating job type.'),
+          type: 'error',
+        });
+      }
+
+      return;
+    }
+
+    if (type === 'jobMode') {
+      try {
+        await updateJobMode({
+          jobModeId: String(id),
+          job_mode_name: capitalizeWordsAdvanced(newName),
+          // Not collected by this rename-only dialog — preserve whatever's
+          // already stored rather than wiping it (PUT replaces).
+          job_mode_description: jobModes.find((item) => String(item.id) === String(id))
+            ?.description,
+        }).unwrap();
+        showToast({ message: 'Job mode updated successfully', type: 'success' });
+        refetchJobModes?.();
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Something went wrong while updating job mode.'),
           type: 'error',
         });
       }
@@ -1263,11 +1394,23 @@ const EditJobDetail = () => {
       return;
     }
 
-    // No update endpoint exists for a tenant's own skill-catalog entries.
-    showToast({
-      message: 'Skills cannot be renamed from this screen.',
-      type: 'error',
-    });
+    if (type === 'mandatorySkills' || type === 'optionalSkills') {
+      // The dropdown only shows the edit icon for this organization's own
+      // skills (isEditable) - a platform-shared one never reaches here.
+      try {
+        await updateOrganizationSkill({
+          skillId: String(id),
+          skill: capitalizeWordsAdvanced(newName),
+        }).unwrap();
+        showToast({ message: 'Skill updated successfully', type: 'success' });
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Something went wrong while updating the skill.'),
+          type: 'error',
+        });
+      }
+      return;
+    }
   };
 
   const handleDeleteOption = async (id: string | number, type: string) => {
@@ -1369,6 +1512,22 @@ const EditJobDetail = () => {
       return;
     }
 
+    if (type === 'jobMode') {
+      try {
+        await deleteJobMode(String(id)).unwrap();
+        showToast({ message: 'Job mode removed successfully', type: 'success' });
+        clearIfSelected();
+        refetchJobModes?.();
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Something went wrong while removing job mode.'),
+          type: 'error',
+        });
+      }
+
+      return;
+    }
+
     if (type === 'educationPreference') {
       try {
         await deleteEducationPreference(String(id)).unwrap();
@@ -1388,11 +1547,93 @@ const EditJobDetail = () => {
       return;
     }
 
-    // No delete endpoint exists for a tenant's own skill-catalog entries.
-    showToast({
-      message: 'Skills cannot be removed from this screen.',
-      type: 'error',
-    });
+    if (type === 'mandatorySkills' || type === 'optionalSkills') {
+      // The dropdown only shows the delete icon for this organization's own
+      // skills (isEditable) - a platform-shared one never reaches here.
+      try {
+        await deleteOrganizationSkill({ skillId: String(id) }).unwrap();
+        showToast({ message: 'Skill removed successfully', type: 'success' });
+        clearIfSelected();
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Something went wrong while removing the skill.'),
+          type: 'error',
+        });
+      }
+      return;
+    }
+  };
+
+  const shiftBeingEdited = organizationShifts.find(
+    (item) => String(item.id) === String(editingShiftId)
+  );
+
+  const handleSaveShift = async (values: {
+    name: string;
+    start_time: string;
+    end_time: string;
+  }) => {
+    setIsSavingShift(true);
+    try {
+      const duration_minutes = computeShiftDurationMinutes(values.start_time, values.end_time);
+      if (shiftModalMode === 'edit' && shiftBeingEdited) {
+        await updateOrganizationShift({
+          shiftId: shiftBeingEdited.id,
+          shift_name: values.name.trim(),
+          // Not collected by this quick modal — preserve whatever Org
+          // Settings already has rather than wiping it (PUT replaces).
+          shift_description: shiftBeingEdited.shift_description,
+          start_time: values.start_time,
+          end_time: values.end_time,
+          duration_minutes: duration_minutes ?? undefined,
+        }).unwrap();
+        showToast({ message: 'Shift updated successfully', type: 'success' });
+      } else {
+        const created = await createOrganizationShift({
+          shift_name: values.name.trim(),
+          start_time: values.start_time,
+          end_time: values.end_time,
+          duration_minutes: duration_minutes ?? undefined,
+        }).unwrap();
+        setValue('shift', [created.id], { shouldValidate: true });
+        showToast({ message: 'Shift added successfully', type: 'success' });
+      }
+      setShiftModalMode(null);
+      setEditingShiftId(null);
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Something went wrong while saving the shift.'),
+        type: 'error',
+      });
+    } finally {
+      setIsSavingShift(false);
+    }
+  };
+
+  const handleDeleteShift = async (id: string | number) => {
+    try {
+      await deleteOrganizationShift(String(id)).unwrap();
+      if (String(watch('shift')?.[0]) === String(id)) {
+        setValue('shift', [], { shouldValidate: true });
+      }
+      showToast({ message: 'Shift removed successfully', type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Something went wrong while removing the shift.'),
+        type: 'error',
+      });
+    }
+  };
+
+  const handleEditShiftOption = (id: string | number) => {
+    setEditingShiftId(String(id));
+    setShiftModalMode('edit');
+  };
+
+  const handleAddShiftOption = (value: string) => {
+    setShiftAddPrefillName(value);
+    setEditingShiftId(null);
+    setShiftModalMode('add');
   };
 
   const handleJobTitleChange = async (value: number | string | undefined) => {
@@ -1709,13 +1950,17 @@ const EditJobDetail = () => {
                   loading={orgDepartmentsLoading || isAddingToDropdown === 'department'}
                   placeholder="Select Department"
                   label="Department"
-                  onAddOption={(value) => handleAddOption(value, 'department')}
+                  onAddOption={
+                    canManageCatalogueEntries
+                      ? (value) => handleAddOption(value, 'department')
+                      : undefined
+                  }
                   type="department"
                   error={errors.department?.message}
-                  enableEditDelete
-                  onEditOption={handleEditOption}
-                  onDeleteOption={handleDeleteOption}
-                  onReuseOption={handleReuseOption}
+                  enableEditDelete={canManageCatalogueEntries}
+                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
+                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                  onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
                 />
               </div>
             </Form.Item>
@@ -1746,13 +1991,17 @@ const EditJobDetail = () => {
                       : 'Select Job Title'
                   }
                   label="Job Title"
-                  onAddOption={(value) => handleAddOption(value, 'jobTitle')}
+                  onAddOption={
+                    canManageCatalogueEntries
+                      ? (value) => handleAddOption(value, 'jobTitle')
+                      : undefined
+                  }
                   type="jobTitle"
                   error={errors.jobTitle?.message}
-                  enableEditDelete
-                  onEditOption={handleEditOption}
-                  onDeleteOption={handleDeleteOption}
-                  onReuseOption={handleReuseOption}
+                  enableEditDelete={canManageCatalogueEntries}
+                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
+                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                  onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
                 />
               </div>
             </Form.Item>
@@ -1775,13 +2024,17 @@ const EditJobDetail = () => {
                   loading={jobTypesLoading || isAddingToDropdown === 'jobType'}
                   placeholder="Select Job Type"
                   label="Job Type"
-                  onAddOption={(value) => handleAddOption(value, 'jobType')}
+                  onAddOption={
+                    canManageCatalogueEntries
+                      ? (value) => handleAddOption(value, 'jobType')
+                      : undefined
+                  }
                   type="jobType"
                   error={errors.jobType?.message}
-                  enableEditDelete
-                  onEditOption={handleEditOption}
-                  onDeleteOption={handleDeleteOption}
-                  onReuseOption={handleReuseOption}
+                  enableEditDelete={canManageCatalogueEntries}
+                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
+                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                  onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
                 />
               </div>
             </Form.Item>
@@ -1800,11 +2053,20 @@ const EditJobDetail = () => {
                     setValue('jobMode', value ? [value] : [], { shouldValidate: true });
                   }}
                   options={jobModes}
-                  loading={jobModesLoading}
+                  loading={jobModesLoading || isAddingToDropdown === 'jobMode'}
                   placeholder="Select Job Mode"
                   label="Job Mode"
+                  onAddOption={
+                    canManageCatalogueEntries
+                      ? (value) => handleAddOption(value, 'jobMode')
+                      : undefined
+                  }
                   type="jobMode"
-                  enableEditDelete={false}
+                  error={errors.jobMode?.message}
+                  enableEditDelete={canManageCatalogueEntries}
+                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
+                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                  onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
                 />
               </div>
             </Form.Item>
@@ -1820,12 +2082,42 @@ const EditJobDetail = () => {
                 placeholder="Select Shift"
                 label="Shift"
                 type="shift"
-                enableEditDelete={false}
+                enableEditDelete={canManageCatalogueEntries}
+                onAddOption={
+                  canManageCatalogueEntries ? (value) => handleAddShiftOption(value) : undefined
+                }
+                onEditOption={
+                  canManageCatalogueEntries ? (id) => handleEditShiftOption(id) : undefined
+                }
+                onDeleteOption={
+                  canManageCatalogueEntries ? (id) => handleDeleteShift(id) : undefined
+                }
               />
               {errors.shift && (
                 <p className="text-red-500 text-sm mt-1">{errors.shift?.message as string}</p>
               )}
             </Form.Item>
+            <ShiftFormModal
+              open={shiftModalMode !== null}
+              mode={shiftModalMode ?? 'add'}
+              initialValues={
+                shiftModalMode === 'edit' && shiftBeingEdited
+                  ? {
+                      name: shiftBeingEdited.shift_name,
+                      start_time: shiftBeingEdited.start_time.slice(0, 5),
+                      end_time: shiftBeingEdited.end_time.slice(0, 5),
+                    }
+                  : shiftModalMode === 'add'
+                    ? { name: shiftAddPrefillName, start_time: '', end_time: '' }
+                    : undefined
+              }
+              isSaving={isSavingShift}
+              onClose={() => {
+                setShiftModalMode(null);
+                setEditingShiftId(null);
+              }}
+              onSubmit={handleSaveShift}
+            />
             <Form.Item label={<span>Communication Language</span>}>
               <Controller
                 name="languages"
@@ -2182,7 +2474,7 @@ const EditJobDetail = () => {
                   >
                     <DatePicker
                       {...field}
-                      value={field.value ? dayjs(field.value, 'DD-MM-YYYY') : null}
+                      value={field.value ? parseFormDate(field.value) : null}
                       onChange={(date) => {
                         const formattedDate = date ? date.format('DD-MM-YYYY') : '';
                         setValue('openDate', formattedDate, { shouldValidate: true });
@@ -2242,7 +2534,7 @@ const EditJobDetail = () => {
                   <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">
                     <DatePicker
                       {...field}
-                      value={field.value ? dayjs(field.value, 'DD-MM-YYYY') : null}
+                      value={field.value ? parseFormDate(field.value) : null}
                       onChange={(date) => {
                         const formattedDate = date ? date.format('DD-MM-YYYY') : '';
                         setValue('closeDate', formattedDate, { shouldValidate: true });
@@ -2537,19 +2829,22 @@ const EditJobDetail = () => {
                   placeholder="Select Required Skills"
                   label="Required Skills"
                   onAddOption={
-                    canAddSkill ? (value) => handleAddOption(value, 'mandatorySkills') : undefined
+                    canManageCatalogueEntries
+                      ? (value) => handleAddOption(value, 'mandatorySkills')
+                      : undefined
                   }
                   onSearchChange={searchMandatorySkills}
                   type="mandatorySkills"
                   error={errors.mandatorySkills?.message}
+                  // isEditable hides icons on platform-shared skills; canManageCatalogueEntries hides
+                  // them for roles without organization:update, which the API would 403 anyway.
                   enableEditDelete
-                  onEditOption={handleEditOption}
-                  onDeleteOption={handleDeleteOption}
-                  onReuseOption={handleReuseOption}
+                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
+                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
                   maxTagCount={0}
                   maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
                     <span>
-                      {omittedValues.length} of {mandatorySkills?.length || 20} skills selected
+                      {omittedValues.length} of {totalMandatorySkillsCount} skills selected
                     </span>
                   )}
                 />
@@ -2617,19 +2912,20 @@ const EditJobDetail = () => {
                   placeholder="Select Optional Skills"
                   label="Optional Skills"
                   onAddOption={
-                    canAddSkill ? (value) => handleAddOption(value, 'optionalSkills') : undefined
+                    canManageCatalogueEntries
+                      ? (value) => handleAddOption(value, 'optionalSkills')
+                      : undefined
                   }
                   onSearchChange={searchOptionalSkills}
                   type="optionalSkills"
                   error={errors.optionalSkills?.message as string | undefined}
                   enableEditDelete
-                  onEditOption={handleEditOption}
-                  onDeleteOption={handleDeleteOption}
-                  onReuseOption={handleReuseOption}
+                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
+                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
                   maxTagCount={0}
                   maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
                     <span>
-                      {omittedValues.length} of {optionalSkills?.length || 20} skills selected
+                      {omittedValues.length} of {totalOptionalSkillsCount} skills selected
                     </span>
                   )}
                 />
@@ -2702,13 +2998,17 @@ const EditJobDetail = () => {
                   }
                   placeholder="Select Education Preference"
                   label="Education Preference"
-                  onAddOption={(value) => handleAddOption(value, 'educationPreference')}
+                  onAddOption={
+                    canManageCatalogueEntries
+                      ? (value) => handleAddOption(value, 'educationPreference')
+                      : undefined
+                  }
                   type="educationPreference"
                   error={errors.educationPreference?.message}
-                  enableEditDelete
-                  onEditOption={handleEditOption}
-                  onDeleteOption={handleDeleteOption}
-                  onReuseOption={handleReuseOption}
+                  enableEditDelete={canManageCatalogueEntries}
+                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
+                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                  onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
                 />
               </div>
             </Form.Item>
@@ -2769,13 +3069,18 @@ const EditJobDetail = () => {
             </Form.Item>
           </div>
         </div>
+        {!canEditThisJob && (
+          <p className="text-center text-red-500 text-sm mt-4">
+            You don't have permission to edit this job.
+          </p>
+        )}
         <div className="flex items-center justify-center mt-6 gap-6">
           {isDraft && (
             <Button
               type="button"
               className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
               onClick={() => onSaveDraft(watch())}
-              disabled={isUpdatingDraft}
+              disabled={isUpdatingDraft || !canEditThisJob}
             >
               SAVE AS DRAFT
             </Button>
@@ -2790,7 +3095,7 @@ const EditJobDetail = () => {
               });
               scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
             })}
-            disabled={isFetchingJobData}
+            disabled={isFetchingJobData || !canEditThisJob}
           >
             SAVE & NEXT
           </Button>

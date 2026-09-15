@@ -19,6 +19,7 @@ import {
   useGlobalSearchQuery,
 } from '../../../api/search-service/Dashboard/GlobalSearch';
 import { RootState } from '../../../redux/provider/store';
+import { useRovingFocus } from '../../../hooks/useRovingFocus';
 
 const SEARCH_RESULT_WIDTH = 700;
 const SEARCH_RESULT_MAX_HEIGHT = 700;
@@ -48,6 +49,8 @@ interface SearchSection {
   withBottomBorder: boolean;
   onViewAll: () => void;
   renderItem: (item: SearchResult) => React.ReactNode;
+  /** Resolves an item's detail path — same resolver `renderItem`'s `<Link>` uses, reused here so ArrowDown/Enter navigates to exactly the same place a click would. */
+  getDetailPath: (item: SearchResult) => string;
 }
 
 interface ResultSectionProps {
@@ -59,6 +62,9 @@ interface ResultSectionProps {
   onViewAll: () => void;
   renderItem: (item: SearchResult) => React.ReactNode;
   withBottomBorder?: boolean;
+  /** Flat roving-focus index of this section's first item, or null when none of this section's items are focused. Lets each item compare `focusedFlatIndex === sectionStartIndex + itemIndex` without threading a global index prop through every render call. */
+  focusedFlatIndex: number | null;
+  sectionStartIndex: number;
 }
 
 interface SearchNavigationConfig {
@@ -83,6 +89,15 @@ interface GlobalSearchProps {
   isInputFocused: boolean;
   onSearchTrigger?: (query: string) => void;
   navigationConfig?: Partial<SearchNavigationConfig>;
+  /**
+   * Header.tsx owns the `<input>` that ArrowUp/ArrowDown/Enter/Escape
+   * actually fire on, but this component owns `navigate` and every
+   * section's detail-path resolver — so instead of threading the flattened
+   * result list up to Header, Header hands this component a setter and
+   * GlobalSearch calls it once (in a `useEffect`) with the keydown handler
+   * Header should forward the search input's `onKeyDown` to.
+   */
+  registerKeyHandler?: (handler: (e: React.KeyboardEvent) => void) => void;
 }
 
 // A USER result's `extraJson.userType` says which of three things it is
@@ -133,6 +148,8 @@ const ResultSection: React.FC<ResultSectionProps> = ({
   onViewAll,
   renderItem,
   withBottomBorder = false,
+  focusedFlatIndex,
+  sectionStartIndex,
 }) => {
   if (!show) return null;
 
@@ -186,28 +203,35 @@ const ResultSection: React.FC<ResultSectionProps> = ({
         style={{ marginTop: 10 }}
         dataSource={items}
         split={false}
-        renderItem={(item) => (
-          <div
-            key={item.docId || item.id}
-            className="group"
-            style={{
-              padding: '10px 12px',
-              margin: '0 -12px 4px',
-              borderRadius: 10,
-              cursor: 'default',
-              transition: 'background-color 0.15s ease',
-              borderBottom: withBottomBorder ? undefined : 'none',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f8f9fb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            {renderItem(item)}
-          </div>
-        )}
+        renderItem={(item, index) => {
+          const isKeyboardFocused = focusedFlatIndex === sectionStartIndex + index;
+          return (
+            <div
+              key={item.docId || item.id}
+              className="group"
+              style={{
+                padding: '10px 12px',
+                margin: '0 -12px 4px',
+                borderRadius: 10,
+                cursor: 'default',
+                transition: 'background-color 0.15s ease',
+                borderBottom: withBottomBorder ? undefined : 'none',
+                backgroundColor: isKeyboardFocused ? '#f8f9fb' : undefined,
+                boxShadow: isKeyboardFocused ? 'inset 0 0 0 1px #c7d2fe' : undefined,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f8f9fb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = isKeyboardFocused
+                  ? '#f8f9fb'
+                  : 'transparent';
+              }}
+            >
+              {renderItem(item)}
+            </div>
+          );
+        }}
       />
     </div>
   );
@@ -411,6 +435,7 @@ export default function GlobalSearch({
   isInputFocused,
   onSearchTrigger,
   navigationConfig,
+  registerKeyHandler,
 }: GlobalSearchProps): React.ReactElement {
   const navigate = useNavigate();
   const currentUserId = useSelector((state: RootState) => state.LoginSlice.userId);
@@ -577,6 +602,7 @@ export default function GlobalSearch({
             getCandidateDetailPath={routes.getCandidateDetailPath}
           />
         ),
+        getDetailPath: routes.getCandidateDetailPath,
       },
       {
         key: 'jobs',
@@ -589,6 +615,7 @@ export default function GlobalSearch({
         renderItem: (item) => (
           <JobResultItem item={item} onClose={onClose} getJobDetailPath={routes.getJobDetailPath} />
         ),
+        getDetailPath: routes.getJobDetailPath,
       },
       {
         key: 'users',
@@ -604,6 +631,7 @@ export default function GlobalSearch({
             getUserDetailPath={routes.getUserDetailPath}
           />
         ),
+        getDetailPath: routes.getUserDetailPath,
       },
       {
         key: 'companies',
@@ -622,6 +650,7 @@ export default function GlobalSearch({
             getCompanyDetailPath={routes.getCompanyDetailPath}
           />
         ),
+        getDetailPath: routes.getCompanyDetailPath,
       },
     ],
     [
@@ -640,6 +669,51 @@ export default function GlobalSearch({
   const hasResults = sections.some((section) => section.show);
   const showSearchInput = (!query.query || query.query.trim() === '') && isInputFocused;
   const showResults = query.query && query.query.trim() !== '';
+
+  // One flat, keyboard-navigable list across every visible section, in the
+  // same order they render — so ArrowDown/ArrowUp moves through Candidates,
+  // then Jobs, then Users, then Companies, same as a sighted user tabbing
+  // down the page would expect.
+  const flatNavigableItems = useMemo(
+    () =>
+      sections
+        .filter((section) => section.show)
+        .flatMap((section) => section.items.map((item) => ({ item, section }))),
+    [sections]
+  );
+
+  // Where each visible section's items start within `flatNavigableItems`,
+  // so `ResultSection` can compare its own item index against the single
+  // global `focusedIndex` without every item needing its own lookup.
+  const sectionStartIndices = useMemo(() => {
+    const starts = new Map<string, number>();
+    let running = 0;
+    for (const section of sections) {
+      if (!section.show) continue;
+      starts.set(section.key, running);
+      running += section.items.length;
+    }
+    return starts;
+  }, [sections]);
+
+  const navigateToItem = useCallback(
+    (entry: { item: SearchResult; section: SearchSection }) => {
+      navigate(entry.section.getDetailPath(entry.item));
+      onClose(false);
+    },
+    [navigate, onClose]
+  );
+
+  const { focusedIndex, handleKeyDown } = useRovingFocus({
+    items: flatNavigableItems,
+    isActive: Boolean(showResults),
+    onSelect: navigateToItem,
+    onEscape: () => onClose(false),
+  });
+
+  useEffect(() => {
+    registerKeyHandler?.(handleKeyDown);
+  }, [registerKeyHandler, handleKeyDown]);
 
   return (
     <div
@@ -742,6 +816,8 @@ export default function GlobalSearch({
                 onViewAll={section.onViewAll}
                 renderItem={section.renderItem}
                 withBottomBorder={section.withBottomBorder}
+                focusedFlatIndex={focusedIndex}
+                sectionStartIndex={sectionStartIndices.get(section.key) ?? 0}
               />
               {section.show && sections.slice(index + 1).some((s) => s.show) && (
                 <Divider style={{ margin: '4px 0 16px', borderColor: '#f0f1f4' }} />

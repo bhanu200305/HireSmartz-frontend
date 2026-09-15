@@ -11,10 +11,12 @@ import {
   LuSquarePen,
   LuThumbsDown,
   LuThumbsUp,
+  LuUsers,
 } from 'react-icons/lu';
+import { TbBriefcase2 } from 'react-icons/tb';
 import { IoArrowRedoOutline } from 'react-icons/io5';
 import { MdClose, MdOutlineRemoveRedEye } from 'react-icons/md';
-import { CommonCard, Button, showToast } from '../../shared';
+import { CommonCard, Button, Badge, showToast } from '../../shared';
 import MasterPagination from '../../shared/ui/MasterPagination';
 import { Search } from '../../shared/ui/search';
 import { Loader } from '../../shared/ui/loader';
@@ -27,7 +29,7 @@ import { useListTenantDepartmentsQuery } from '../../../api/organization-service
 import { useListTenantJobTitlesQuery } from '../../../api/organization-service/Tenants/jobTitles';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
-import { hasFeatureAccess } from '../../../shared/utils/auth/getAccess';
+import { hasFeatureAccess, isAssignedToJob } from '../../../shared/utils/auth/getAccess';
 import { asJobId } from '../../../api/job-service/jobId';
 import {
   useListCandidatesQuery,
@@ -37,7 +39,6 @@ import {
 import { useListCandidateStatusesQuery } from '../../../api/candidate-service/Master/master';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
-import UploadCvModal from './Modal/UploadCvModal';
 import AddCandidateModal from './Modal/AddCandidateModal';
 import BulkSendSmsModal from './Modal/BulkSendSmsModal';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
@@ -47,7 +48,12 @@ import ChangeCandidateStatusModal, {
 } from './Modal/ChangeCandidateStatusModal';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
-import { candidateDisplayName } from './candidateDisplay';
+import {
+  candidateDisplayName,
+  candidateInitials,
+  candidateStatusColor,
+  candidateStatusTooltip,
+} from './candidateDisplay';
 
 // Candidate list is job-scoped; there is no cross-job list route.
 // `resume_score` of null means "not scored yet", not an error.
@@ -61,7 +67,7 @@ const buildCurrentSortKey = (sortBy: string, sortOrder: 'asc' | 'desc') =>
 
 const CandidatesListing = () => {
   const navigate = useNavigate();
-  const { role, callerKind } = useSelector((state: any) => state.LoginSlice, shallowEqual);
+  const { role, callerKind, userId } = useSelector((state: any) => state.LoginSlice, shallowEqual);
   const tenantId = useSessionTenantId();
   const effectivePermissions = useEffectivePermissions();
   const { id } = useParams<{ id: string }>();
@@ -76,7 +82,6 @@ const CandidatesListing = () => {
 
   const [selected, setSelected] = useState<SelectedMap>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddCandidateModalOpen, setIsAddCandidateModalOpen] = useState(false);
   const [isJobNotesPanelOpen, setIsJobNotesPanelOpen] = useState(false);
   const [notesCandidate, setNotesCandidate] = useState<{ id: string; name: string } | null>(null);
@@ -94,6 +99,19 @@ const CandidatesListing = () => {
   );
 
   const canViewJobNotes = hasFeatureAccess('job_opening', 'view', role, effectivePermissions);
+  // Reading notes needs only view access; writing needs job assignment.
+  const canWriteJobNotes = !jobOpeningData
+    ? true
+    : isAssignedToJob(
+        {
+          hiringManagerIds: jobOpeningData.details?.hiring_manager_ids,
+          recruiterIds: jobOpeningData.details?.recruiter_ids,
+          createdById: jobOpeningData.details?.created_by,
+        },
+        userId,
+        role,
+        effectivePermissions
+      );
   const canManageCandidates =
     hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) ||
     hasFeatureAccess('job_opening', 'create', role, effectivePermissions);
@@ -149,7 +167,6 @@ const CandidatesListing = () => {
     () => new Map(statuses.map((s) => [s.code, s.label])),
     [statuses]
   );
-
   const candidates = data?.items ?? [];
   const selectedIds = Object.keys(selected).filter((cid) => selected[cid]);
   const selectedCount = selectedIds.length;
@@ -232,27 +249,37 @@ const CandidatesListing = () => {
       </div>
 
       <div className="flex justify-end items-center mb-2">
-        <div className="flex-1 bg-white px-6 py-4 shadow-sm">
+        <div className="flex-1 rounded-2xl bg-white px-6 py-5 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-            <div className="flex flex-col gap-1 text-sm">
-              <div className="flex items-center gap-2">
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary">
+                <TbBriefcase2 size={22} />
+              </span>
+              <div className="flex flex-col gap-1.5">
                 <Link to={`/jobs/view/${parsedJobId}/details`}>
-                  <span className="font-bold text-xl heading-font text-primary underline cursor-pointer hover:opacity-80 transition-opacity capitalize">
+                  <span className="font-bold text-xl heading-font text-neutral-900 hover:text-primary hover:underline transition-colors capitalize">
                     {jobTitleName}
                   </span>
                 </Link>
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="font-bold">Job ID:</p>
-                <span className="text-gray-500">{jobProfileCode || 'N/A'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="font-bold">Department:</p>
-                <span className="text-gray-500">{departmentName}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="font-bold">Job Type:</p>
-                <span className="text-gray-500">{jobTypeName}</span>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-full bg-neutral-100 px-3 py-1 font-semibold text-neutral-600">
+                    {jobProfileCode || 'N/A'}
+                  </span>
+                  {departmentName && (
+                    <span className="rounded-full bg-info-bg px-3 py-1 font-semibold text-info-text">
+                      {departmentName}
+                    </span>
+                  )}
+                  {jobTypeName && (
+                    <span className="rounded-full bg-neutral-100 px-3 py-1 font-semibold text-neutral-600">
+                      {jobTypeName}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1 rounded-full bg-primary-50 px-3 py-1 font-semibold text-primary-700">
+                    <LuUsers size={13} /> {data?.total ?? 0} candidate
+                    {(data?.total ?? 0) === 1 ? '' : 's'}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -285,30 +312,6 @@ const CandidatesListing = () => {
                     <Tooltip
                       title={
                         isDraft
-                          ? 'Cannot upload resumes to draft job openings'
-                          : isClosed
-                            ? 'Cannot upload resumes to closed job openings'
-                            : ''
-                      }
-                    >
-                      <span>
-                        <Button
-                          className="text-white bg-primary rounded-full px-4 py-2"
-                          onClick={() =>
-                            !isDraft && !isClosed ? setIsUploadModalOpen(true) : null
-                          }
-                          disabled={isDraft || isClosed}
-                        >
-                          UPLOAD RESUME
-                        </Button>
-                      </span>
-                    </Tooltip>
-                  )}
-
-                  {canManageCandidates && (
-                    <Tooltip
-                      title={
-                        isDraft
                           ? 'Cannot add candidates to draft job openings'
                           : isClosed
                             ? 'Cannot add candidates to closed job openings'
@@ -317,7 +320,7 @@ const CandidatesListing = () => {
                     >
                       <span>
                         <Button
-                          className="rounded-full border border-primary-200 bg-primary-50 px-4 py-2 text-primary-700 font-semibold"
+                          className="text-white bg-primary rounded-full px-4 py-2 font-semibold"
                           onClick={() =>
                             !isDraft && !isClosed ? setIsAddCandidateModalOpen(true) : null
                           }
@@ -342,11 +345,18 @@ const CandidatesListing = () => {
       </div>
 
       <div className="w-full">
-        {/* overflow-x-auto + min-w keeps columns readable on narrow viewports. */}
+        {/* overflow-x-auto + min-w keeps columns readable on narrow viewports.
+            980px (up from 760px) — the old width was too tight for two-word
+            sortable headers ("RESUME SCORE", "APPLIED DATE") plus their sort
+            arrows to fit without spilling into the next column; horizontal
+            scroll (overflow-x-auto) already covers anything narrower. */}
         <div className="overflow-x-auto">
-          <div className="min-w-[760px]">
-            <div className="w-full p-2">
-              <Row gutter={[16, 16]} className="font-bold p-4 bg-[#FFFFFF] shadow heading-font">
+          <div className="min-w-[980px]">
+            <div className="w-full pb-2">
+              <Row
+                gutter={[16, 16]}
+                className="rounded-xl border border-neutral-100 bg-white p-4 text-xs font-bold uppercase tracking-wide text-neutral-500 shadow-sm heading-font"
+              >
                 <Col span={1}>
                   <Checkbox
                     className="custom-checkbox roboto-font"
@@ -360,9 +370,18 @@ const CandidatesListing = () => {
                   sortKey="name"
                   currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
                   onSort={handleSort}
-                  span={5}
+                  span={3}
                 >
-                  CANDIDATE DETAILS
+                  FIRST NAME
+                </COL>
+                <COL
+                  sortable
+                  sortKey="name"
+                  currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                  onSort={handleSort}
+                  span={3}
+                >
+                  LAST NAME
                 </COL>
                 <COL
                   sortable
@@ -382,7 +401,7 @@ const CandidatesListing = () => {
                 >
                   APPLIED DATE
                 </COL>
-                <COL span={4}>
+                <COL span={6}>
                   <span>STATUS</span>
                 </COL>
                 <COL span={2}>
@@ -400,17 +419,17 @@ const CandidatesListing = () => {
                 </p>
               ) : candidates.length > 0 ? (
                 candidates.map((candidate) => (
-                  <div key={candidate.id} className="mb-1">
+                  <div key={candidate.id} className="mb-3">
                     <div
                       className={clsx(
                         selected[candidate.id] && 'selected-candidate-highlight',
-                        'hover:shadow-md'
+                        'transition-shadow hover:shadow-md'
                       )}
                       style={{
                         border: selected[candidate.id]
                           ? '2px solid var(--primary)'
                           : '2px solid transparent',
-                        borderRadius: 8,
+                        borderRadius: 12,
                         transition: 'all 0.3s ease',
                       }}
                     >
@@ -423,88 +442,86 @@ const CandidatesListing = () => {
                               onChange={() => toggleSelect(candidate.id)}
                             />
                           </Col>
-                          <Col span={5} className="min-w-0 overflow-hidden">
+                          <Col span={3} className="min-w-0 overflow-hidden">
                             <div
-                              className="flex items-center min-w-0 max-w-full cursor-pointer roboto-font"
+                              className="flex items-center gap-2.5 min-w-0 max-w-full cursor-pointer roboto-font"
                               onClick={() =>
                                 setExpandedId((prev) =>
                                   prev === candidate.id ? null : candidate.id
                                 )
                               }
                             >
+                              <span
+                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${candidateStatusColor(candidate.status_code).dot}`}
+                              >
+                                {candidateInitials(candidate)}
+                              </span>
                               <Link
                                 to={buildDetailsPath(candidate.id)}
                                 className="block min-w-0 flex-1 overflow-hidden text-[var(--primary)]"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <span className="block min-w-0 truncate whitespace-nowrap font-semibold underline text-[var(--primary)] leading-5">
-                                  {candidateDisplayName(candidate)}
+                                  {candidate.first_name || 'N/A'}
                                 </span>
                               </Link>
                             </div>
-                            {expandedId === candidate.id && (
-                              <div className="mt-1">
-                                <p>
-                                  <span className="font-medium roboto-font">Qualification: </span>
-                                  <span className="roboto-font">
-                                    {candidate.qualification || 'N/A'}
-                                  </span>
-                                </p>
-                                <p>
-                                  <span className="font-medium roboto-font">Email: </span>
-                                  <span className="roboto-font">{candidate.email_id || 'N/A'}</span>
-                                </p>
-                                <p>
-                                  <span className="font-medium roboto-font">Phone Number: </span>
-                                  <span className="roboto-font">
-                                    {candidate.contact_no || 'N/A'}
-                                  </span>
-                                </p>
-                                <p>
-                                  <span className="font-medium roboto-font">Location: </span>
-                                  <span className="roboto-font">{candidate.address || 'N/A'}</span>
-                                </p>
-                                <p>
-                                  <span className="font-medium roboto-font">Source: </span>
-                                  <span className="roboto-font">{candidate.source || 'N/A'}</span>
-                                </p>
-                              </div>
+                          </Col>
+                          <Col span={3} className="min-w-0 overflow-hidden">
+                            <Link
+                              to={buildDetailsPath(candidate.id)}
+                              className="block min-w-0 truncate whitespace-nowrap text-sm text-neutral-700 roboto-font"
+                            >
+                              {candidate.last_name || 'N/A'}
+                            </Link>
+                          </Col>
+                          <Col span={4}>
+                            {candidate.resume_score === null ? (
+                              <span className="text-sm text-neutral-400">—</span>
+                            ) : (
+                              <Badge
+                                dot={false}
+                                status={
+                                  candidate.resume_score >= 70
+                                    ? 'success'
+                                    : candidate.resume_score >= 40
+                                      ? 'warning'
+                                      : 'danger'
+                                }
+                              >
+                                {candidate.resume_score}
+                              </Badge>
                             )}
                           </Col>
                           <Col span={4}>
-                            <p className="roboto-font">
-                              {candidate.resume_score === null ? '—' : candidate.resume_score}
-                            </p>
-                          </Col>
-                          <Col span={4}>
-                            <p className="roboto-font">
+                            <p className="text-sm text-neutral-600 roboto-font">
                               {dayjs(candidate.applied_date).isValid()
                                 ? dayjs(candidate.applied_date).format('MMM DD, YYYY')
                                 : 'N/A'}
                             </p>
                           </Col>
-                          <Col span={4}>
-                            <Link
-                              to={buildDetailsPath(candidate.id)}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <p
-                                className={
-                                  !candidate.status_code
-                                    ? 'cursor-pointer font-semibold'
-                                    : undefined
-                                }
-                                style={{
-                                  color: !candidate.status_code
-                                    ? 'var(--warning-solid)'
-                                    : undefined,
-                                }}
+                          <Col span={6}>
+                            <Tooltip title={candidateStatusTooltip(candidate.status_code)}>
+                              <Link
+                                to={buildDetailsPath(candidate.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-block"
                               >
-                                {candidate.status_label ||
-                                  statusLabelByCode.get(candidate.status_code ?? '') ||
-                                  'Not yet screened'}
-                              </p>
-                            </Link>
+                                {(() => {
+                                  const color = candidateStatusColor(candidate.status_code);
+                                  return (
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${color.bg} ${color.text}`}
+                                    >
+                                      <span className={`h-1.5 w-1.5 rounded-full ${color.dot}`} />
+                                      {candidate.status_label ||
+                                        statusLabelByCode.get(candidate.status_code ?? '') ||
+                                        'Not yet screened'}
+                                    </span>
+                                  );
+                                })()}
+                              </Link>
+                            </Tooltip>
                           </Col>
                           <Col span={2} className="flex items-center justify-center">
                             <div className={actionIconRowClass}>
@@ -529,12 +546,54 @@ const CandidatesListing = () => {
                             </div>
                           </Col>
                         </Row>
+                        {expandedId === candidate.id && (
+                          <div className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-1.5 rounded-lg bg-neutral-50 p-3 text-xs sm:grid-cols-3 lg:grid-cols-5">
+                            <p className="truncate">
+                              <span className="font-semibold text-neutral-500">
+                                Qualification:{' '}
+                              </span>
+                              <span className="text-neutral-700">
+                                {candidate.qualification || 'N/A'}
+                              </span>
+                            </p>
+                            <p className="truncate">
+                              <span className="font-semibold text-neutral-500">Email: </span>
+                              <span className="text-neutral-700">
+                                {candidate.email_id || 'N/A'}
+                              </span>
+                            </p>
+                            <p className="truncate">
+                              <span className="font-semibold text-neutral-500">Phone: </span>
+                              <span className="text-neutral-700">
+                                {candidate.contact_no || 'N/A'}
+                              </span>
+                            </p>
+                            <p className="truncate">
+                              <span className="font-semibold text-neutral-500">Location: </span>
+                              <span className="text-neutral-700">{candidate.address || 'N/A'}</span>
+                            </p>
+                            <p className="truncate">
+                              <span className="font-semibold text-neutral-500">Source: </span>
+                              <span className="text-neutral-700">{candidate.source || 'N/A'}</span>
+                            </p>
+                          </div>
+                        )}
                       </CommonCard>
                     </div>
                   </div>
                 ))
               ) : (
-                <p>No candidates found for this job opening.</p>
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-neutral-200 bg-white py-14 text-center">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
+                    <LuUsers size={22} />
+                  </span>
+                  <p className="text-sm font-semibold text-neutral-600">
+                    No candidates found for this job opening.
+                  </p>
+                  <p className="text-xs text-neutral-400">
+                    Try adjusting your search or filters, or add a candidate above.
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -654,6 +713,7 @@ const CandidatesListing = () => {
         onClose={() => setIsJobNotesPanelOpen(false)}
         jobTitle={jobTitleName}
         jobOpeningId={parsedJobId}
+        canWrite={canWriteJobNotes}
       />
       <CandidateRecruiterNotesPanel
         open={Boolean(notesCandidate)}
@@ -661,14 +721,10 @@ const CandidatesListing = () => {
         title={`Candidate Notes - ${notesCandidate?.name || ''}`.trim()}
         candidateId={notesCandidate?.id}
       />
-      <UploadCvModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        onCompleted={refetch}
-      />
       <AddCandidateModal
         open={isAddCandidateModalOpen}
         onClose={() => setIsAddCandidateModalOpen(false)}
+        onBulkImportCompleted={refetch}
       />
     </div>
   );

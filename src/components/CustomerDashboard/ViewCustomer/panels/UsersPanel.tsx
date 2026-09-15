@@ -14,6 +14,7 @@ import {
   Button,
   CustomTable,
   Input,
+  NameTitleSelect,
   PhoneNumberField,
   Select,
   Typography,
@@ -354,7 +355,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const handleResendInvite = async (invitationId: string) => {
     try {
       await resendInvite({ tenantId, invitationId }).unwrap();
-      showToast({ message: 'Invitation resent — expiry pushed out 48 hours.', type: 'success' });
+      showToast({ message: 'Invitation resent, expiry pushed out 48 hours.', type: 'success' });
     } catch (err) {
       showToast({
         message: getOrgErrorMessage(err, 'Failed to resend invitation.'),
@@ -400,7 +401,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         ) : (
           <div>
             <div className="font-semibold text-gray-900">{row.invited_email}</div>
-            <div className="text-xs text-gray-400">Invited — not yet accepted</div>
+            <div className="text-xs text-gray-400">Invited, not yet accepted</div>
           </div>
         ),
     },
@@ -414,7 +415,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         ),
       render: (_: unknown, row: TableRow) => (
         <span className="text-gray-600 text-sm">
-          {row.kind === 'user' ? row.title || '—' : '—'}
+          {row.kind === 'user' ? row.title || '-' : '-'}
         </span>
       ),
     },
@@ -591,13 +592,16 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
       <AntdCommonModal open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add user">
         <div className="flex flex-col gap-4">
-          <Input placeholder="Email *" type="email" {...field('email')} />
           <div className="grid grid-cols-2 gap-4">
             <Input placeholder="First name *" {...field('first_name')} />
             <Input placeholder="Last name" {...field('last_name')} />
           </div>
+          <Input placeholder="Email *" type="email" {...field('email')} />
           <div className="grid grid-cols-2 gap-4">
-            <Input placeholder="Title" {...field('title')} />
+            <NameTitleSelect
+              value={form.title}
+              onChange={(value) => setForm((prev) => ({ ...prev, title: value ?? '' }))}
+            />
             <PhoneNumberField
               countryCode={form.country_code}
               onCountryCodeChange={(value) => setForm((prev) => ({ ...prev, country_code: value }))}
@@ -622,7 +626,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             onRoleChange={(value) => setForm((prev) => ({ ...prev, role_id: value }))}
             locationIds={form.location_ids}
             onLocationIdsChange={(value) => setForm((prev) => ({ ...prev, location_ids: value }))}
-            rolePlaceholder="Role (optional — can be assigned later)"
+            rolePlaceholder="Role (optional, can be assigned later)"
             tenantId={tenantId}
             onCreateRole={createRole}
           />

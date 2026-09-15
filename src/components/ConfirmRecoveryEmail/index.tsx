@@ -85,7 +85,7 @@ const ConfirmRecoveryEmail = () => {
         <h2 className="text-xl font-semibold text-gray-900">This link isn&apos;t valid</h2>
         <p className="text-sm text-gray-500">
           {errorMessage ||
-            'Confirmation links expire — set a recovery email again to get a new one.'}
+            'Confirmation links expire; set a recovery email again to get a new one.'}
         </p>
         <Link to="/login" className="mt-2 text-sm text-primary hover:underline">
           Back to login

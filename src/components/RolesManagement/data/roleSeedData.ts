@@ -15,7 +15,7 @@ const PLATFORM_SYSTEM_ROLES: Role[] = [
   },
   {
     id: '2',
-    roleName: 'CFP Admin',
+    roleName: 'Admin',
     scope: 'platform',
     isSystemRole: true,
     permissions: templatePermissions('cfp_admin'),
@@ -23,7 +23,7 @@ const PLATFORM_SYSTEM_ROLES: Role[] = [
   },
   {
     id: '3',
-    roleName: 'CFP Support',
+    roleName: 'Customer support',
     scope: 'platform',
     isSystemRole: true,
     permissions: templatePermissions('cfp_support'),

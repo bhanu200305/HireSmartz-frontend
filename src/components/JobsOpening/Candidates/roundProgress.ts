@@ -1,7 +1,7 @@
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 
-// Shared between PipelineBoard.tsx (visual pipeline + Send Invite gating)
-// and CandidateDetails.tsx (the ADVANCE button's disabled state) — one
+// Shared between PipelineBoard.tsx (visual pipeline) and
+// CandidateDetails.tsx (the ADVANCE button's disabled state) — one
 // definition of "what round is this candidate really on" and "is that
 // round's real-world outcome already known", so the two can never disagree
 // about either. Also the one place the resume/intake-call ordering and the
@@ -51,38 +51,41 @@ export const isResumeStageRound = (round: CandidateInterviewRoundView): boolean 
 export const isIntakeCallRound = (round: CandidateInterviewRoundView): boolean =>
   round.stage_type === 'interview' && round.round_type === 'AUDIO';
 
-/** True when this candidate came through the instant-call flow — the Intake
- * Call was placed FIRST and the resume was uploaded within 24h afterwards —
- * rather than the resume-first flow. Detected from the funnel history:
- * `awaiting_resume_upload` is stamped ONLY on the instant-call path
- * (candidate-service `interview_intake_call_finished.py`, Path A), so its
- * presence anywhere in the history is a reliable marker.
- *
- * WHY THE FRONTEND HAS TO DECIDE THIS
- * `GET /candidates/{id}/interview-rounds` orders the synthetic resume stage
- * by the job PLAN's single Resume Round position, which is one value per job
- * and cannot differ between two candidates on the same opening. So two
- * candidates who applied to the same job through the two different flows get
- * the same pipeline order from the backend today. See BACKEND_GAPS.md — once
- * candidate-service orders the resume stage per candidate, `orderRoundsForFlow`
- * below becomes a no-op and both can be removed. */
-export const isInstantCallFlow = (statusHistory: { status_code: string }[] | undefined): boolean =>
-  (statusHistory ?? []).some((entry) => entry.status_code === 'awaiting_resume_upload');
+/** The Audio Screening round — same reasoning as `isIntakeCallRound`
+ * above. Added 2026-09-13 alongside the call-intent feature, which covers
+ * both this and the Intake Call. */
+export const isAudioScreeningRound = (round: CandidateInterviewRoundView): boolean =>
+  round.stage_type === 'interview' && round.round_type === 'AUDIO_SCREENING';
+
+/** The AI Video round — same reasoning as `isIntakeCallRound` above.
+ * Added 2026-09-14: the call-intent/reschedule-request feature extended
+ * to cover this round type too, alongside Audio Screening and the Intake
+ * Call. */
+export const isAiVideoRound = (round: CandidateInterviewRoundView): boolean =>
+  round.stage_type === 'interview' && round.round_type === 'AI_VIDEO';
 
 /** Moves the resume stage to sit immediately AFTER the Intake Call round for
  * instant-call-flow candidates, so the pipeline reads in the order things
- * actually happened for them (call, then resume). Idempotent: a no-op when
- * `instantCallFlow` is false, when either row is missing, or when the resume
- * stage is already positioned after the Intake Call (e.g. once the backend
- * starts ordering this itself). Never reorders anything but those two rows. */
+ * actually happened for them (call, then resume). Driven entirely by the
+ * resume stage's own `follows_intake_call` (candidate-service migration
+ * 0023) — the one per-candidate fact for this, since `sequence` is a
+ * plan-level position shared by every candidate on the job and can't tell
+ * a resume-first candidate apart from an instant-call one on the same
+ * opening. Used to be inferred client-side from `awaiting_resume_upload`
+ * turning up in the status history; that heuristic is gone now that the
+ * backend reports the fact directly.
+ *
+ * Idempotent: a no-op when the resume stage doesn't have
+ * `follows_intake_call` set, when either row is missing, or when the resume
+ * stage is already positioned after the Intake Call. Never reorders
+ * anything but those two rows. */
 export const orderRoundsForFlow = (
-  rounds: CandidateInterviewRoundView[],
-  instantCallFlow: boolean
+  rounds: CandidateInterviewRoundView[]
 ): CandidateInterviewRoundView[] => {
-  if (!instantCallFlow) return rounds;
   const resumeIdx = rounds.findIndex(isResumeStageRound);
+  if (resumeIdx === -1 || !rounds[resumeIdx].follows_intake_call) return rounds;
   const intakeIdx = rounds.findIndex(isIntakeCallRound);
-  if (resumeIdx === -1 || intakeIdx === -1 || resumeIdx > intakeIdx) return rounds;
+  if (intakeIdx === -1 || resumeIdx > intakeIdx) return rounds;
   const reordered = [...rounds];
   const [resume] = reordered.splice(resumeIdx, 1);
   // `intakeIdx` is now the Intake Call round's own new index (it shifted down

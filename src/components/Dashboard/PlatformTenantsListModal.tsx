@@ -70,7 +70,7 @@ const PlatformTenantsListModal: React.FC<{ onClose: () => void }> = ({ onClose }
       dataIndex: 'admin_email',
       key: 'admin_email',
       render: (_: unknown, tenant: TenantRow) => (
-        <span className="text-neutral-600">{tenant.admin_email || '—'}</span>
+        <span className="text-neutral-600">{tenant.admin_email || '-'}</span>
       ),
     },
     {
@@ -110,6 +110,8 @@ const PlatformTenantsListModal: React.FC<{ onClose: () => void }> = ({ onClose }
                 onClick: () => setSelectedTenant(tenant),
                 className: 'cursor-pointer',
               })}
+              enableKeyboardNav
+              onRowEnter={(tenant) => setSelectedTenant(tenant)}
               emptyText={
                 <div className="py-10 text-center text-sm text-neutral-400">No companies yet.</div>
               }

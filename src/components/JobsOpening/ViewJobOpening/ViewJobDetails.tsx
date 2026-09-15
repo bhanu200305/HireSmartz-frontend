@@ -93,13 +93,7 @@ const ViewJobDetails = () => {
     { tenantId: tenantId ?? '', departmentId: String(jobDepartmentId) },
     { skip: !tenantId || !jobDepartmentId }
   );
-  // The real culture-intro backend (organization-service's
-  // `/v1/tenants/{tenant_id}/culture-intro`) — this used to read
-  // `cultureIntroText` off the legacy `/orguserservice/companies/findById`
-  // response instead, a field that endpoint never actually returns, so the
-  // info tooltip below always claimed "no company culture information
-  // provided" even when the tenant had really set one up in My Company ->
-  // Culture Intro.
+  // organization-service's real culture-intro backend.
   const { data: tenantCultureIntro } = useGetTenantCultureIntroQuery(tenantId ?? '', {
     skip: !tenantId,
   });

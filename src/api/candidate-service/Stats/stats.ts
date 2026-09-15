@@ -40,6 +40,12 @@ export type FunnelStage = {
 export type HiringFunnelView = { stages: FunnelStage[] };
 
 export type InterviewStatusCount = {
+  //: "AUDIO" | "AVATAR" | "VIDEO" — rounds that don't classify into one of
+  //: these three (e.g. Identity Verification) are excluded by the backend,
+  //: not given a 4th bucket. Added 2026-09-15 alongside the Hiring
+  //: Manager/Recruiter KPI additions — "Interviews by Status & Type" needs
+  //: the type split for its grouped bar, not just status.
+  round_type: string;
   status: string;
   count: number;
 };
@@ -47,6 +53,55 @@ export type InterviewStatusCount = {
 export type InterviewsByStatusView = { counts: InterviewStatusCount[] };
 
 export type CompletedInterviewsView = { total: number };
+
+/** `job_opening_id`/`average` per job — a job with no scored candidates yet
+ * is simply absent, not present with a `0`/`null` average. */
+export type AverageResumeScoreByJobItem = { job_opening_id: string; average: number };
+export type AverageResumeScoreByJobView = { jobs: AverageResumeScoreByJobItem[] };
+
+/** A job with no candidate currently SCHEDULED for a Panel round is simply
+ * absent from `jobs`, not present with a `0`. */
+export type PanelInterviewsScheduledByJobItem = { job_opening_id: string; count: number };
+export type PanelInterviewsScheduledByJobView = {
+  jobs: PanelInterviewsScheduledByJobItem[];
+};
+
+export type CandidatesInReviewView = { total: number };
+
+export type PendingDecisionsView = { total: number };
+
+/** A location with zero SELECTED candidates is simply absent, not present
+ * with a `0`. */
+export type SelectedCandidatesByLocationItem = { location: string; count: number };
+export type SelectedCandidatesByLocationView = {
+  locations: SelectedCandidatesByLocationItem[];
+};
+
+/** One row of "Qualified candidate pool" or "Pending decisions" — job name
+ * and candidate display name are resolved client-side (job-service /
+ * org-service data), same as everywhere else in this app. */
+export type CandidatePoolItem = {
+  candidate_id: string;
+  job_opening_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  location: string | null;
+  resume_score: number | null;
+  interview_score: number | null;
+  stage: string;
+  status_code: string | null;
+  status_label: string | null;
+  applied_date: string | null;
+};
+
+export type CandidatePoolListView = {
+  items: CandidatePoolItem[];
+  limit: number;
+  offset: number;
+  total: number;
+};
+
+export type CandidatePoolListParams = CandidateStatsParams & { limit?: number; offset?: number };
 
 /** `band` is always one of these five fixed strings — not a free-form range. */
 export type ResumeScoreBand = '0-2' | '2-4' | '4-6' | '6-8' | '8-10';
@@ -131,6 +186,81 @@ const extendedApi = candidateApi.injectEndpoints({
       }),
       providesTags: ['CandidateStats'],
     }),
+
+    // -- Hiring Manager / Recruiter KPI additions (2026-09-15) -------------
+
+    getAverageResumeScoreByJob: build.query<
+      AverageResumeScoreByJobView,
+      CandidateStatsParams | void
+    >({
+      query: (params) => ({
+        url: '/candidates/stats/average-resume-score-by-job',
+        params: { job_opening_id: params?.jobOpeningId },
+      }),
+      providesTags: ['CandidateStats'],
+    }),
+
+    getPanelInterviewsScheduledByJob: build.query<
+      PanelInterviewsScheduledByJobView,
+      CandidateStatsParams | void
+    >({
+      query: (params) => ({
+        url: '/candidates/stats/panel-interviews-scheduled-by-job',
+        params: { job_opening_id: params?.jobOpeningId },
+      }),
+      providesTags: ['CandidateStats'],
+    }),
+
+    getCandidatesInReview: build.query<CandidatesInReviewView, CandidateStatsParams | void>({
+      query: (params) => ({
+        url: '/candidates/stats/candidates-in-review',
+        params: { job_opening_id: params?.jobOpeningId },
+      }),
+      providesTags: ['CandidateStats'],
+    }),
+
+    getPendingDecisions: build.query<PendingDecisionsView, CandidateStatsParams | void>({
+      query: (params) => ({
+        url: '/candidates/stats/pending-decisions',
+        params: { job_opening_id: params?.jobOpeningId },
+      }),
+      providesTags: ['CandidateStats'],
+    }),
+
+    getSelectedCandidatesByLocation: build.query<
+      SelectedCandidatesByLocationView,
+      CandidateStatsParams | void
+    >({
+      query: (params) => ({
+        url: '/candidates/stats/selected-candidates-by-location',
+        params: { job_opening_id: params?.jobOpeningId },
+      }),
+      providesTags: ['CandidateStats'],
+    }),
+
+    getQualifiedCandidatePool: build.query<CandidatePoolListView, CandidatePoolListParams | void>({
+      query: (params) => ({
+        url: '/candidates/stats/qualified-candidate-pool',
+        params: {
+          job_opening_id: params?.jobOpeningId,
+          limit: params?.limit,
+          offset: params?.offset,
+        },
+      }),
+      providesTags: ['CandidateStats'],
+    }),
+
+    getPendingDecisionsList: build.query<CandidatePoolListView, CandidatePoolListParams | void>({
+      query: (params) => ({
+        url: '/candidates/stats/pending-decisions-list',
+        params: {
+          job_opening_id: params?.jobOpeningId,
+          limit: params?.limit,
+          offset: params?.offset,
+        },
+      }),
+      providesTags: ['CandidateStats'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -143,4 +273,11 @@ export const {
   useGetCompletedInterviewsQuery,
   useGetResumeScoreDistributionQuery,
   useGetAverageResumeScoreQuery,
+  useGetAverageResumeScoreByJobQuery,
+  useGetPanelInterviewsScheduledByJobQuery,
+  useGetCandidatesInReviewQuery,
+  useGetPendingDecisionsQuery,
+  useGetSelectedCandidatesByLocationQuery,
+  useGetQualifiedCandidatePoolQuery,
+  useGetPendingDecisionsListQuery,
 } = extendedApi;

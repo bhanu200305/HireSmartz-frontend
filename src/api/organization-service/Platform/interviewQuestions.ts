@@ -18,6 +18,11 @@ export type UpdateInterviewQuestionArgs = {
   field_id: string;
 };
 
+export type BulkImportQuestionsResponse = {
+  created: InterviewQuestion[];
+  replaced_count: number;
+};
+
 /**
  * GET/POST /v1/platform/interview-questions, PUT/DELETE
  * /v1/platform/interview-questions/{question_id} — the Super Admin's
@@ -66,6 +71,32 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['InterviewQuestions', 'PlatformAudit'],
     }),
+    // Raw bytes, not a presigned-URL redirect like the roster template —
+    // this one is generated fresh by org-service on every call (see
+    // intake_questions_workbook.py's module docstring for why it's never
+    // cached), so there's no S3 object to point at.
+    getIntakeQuestionsTemplate: build.query<Blob, void>({
+      query: () => ({
+        url: '/v1/platform/interview-questions/template',
+        method: 'GET',
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
+    // Replaces, never adds to — see BulkImportInterviewQuestionsUseCase's
+    // own docstring on the backend. All-or-nothing: a 422 here means
+    // nothing was touched.
+    bulkImportPlatformInterviewQuestions: build.mutation<BulkImportQuestionsResponse, File>({
+      query: (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: '/v1/platform/interview-questions/bulk-import',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['InterviewQuestions', 'PlatformAudit'],
+    }),
   }),
 });
 
@@ -74,4 +105,6 @@ export const {
   useCreatePlatformInterviewQuestionMutation,
   useUpdatePlatformInterviewQuestionMutation,
   useDeletePlatformInterviewQuestionMutation,
+  useLazyGetIntakeQuestionsTemplateQuery,
+  useBulkImportPlatformInterviewQuestionsMutation,
 } = extendedApi;

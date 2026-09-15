@@ -27,10 +27,20 @@ import {
   useLazyValidateForPublishQuery,
   usePublishJobMutation,
 } from '../../../api/job-service/JobOpening/CloseJob';
-import { jobOpeningByIdApi } from '../../../api/job-service/JobOpening/GetJobOpeningById';
+import {
+  jobOpeningByIdApi,
+  useGetJobOpeningByIdQuery,
+} from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import type { QuestionRequest, QuestionResponse } from '../../../api/job-service/types';
 import { asJobId } from '../../../api/job-service/jobId';
-import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { Authorities } from '../../../constants/authorities.constant';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
+import { isAssignedToJob } from '../../../shared/utils/auth/getAccess';
+import {
+  getJobErrorCode,
+  getJobErrorDetails,
+  getJobErrorMessage,
+} from '../../../shared/utils/auth/jobError.helpers';
 
 import UploadAndGenerateHeader, { type ImportWarningItem } from './UploadAndGenerateHeader';
 import InlineQuestionInput from './InlineQuestionInput';
@@ -64,6 +74,21 @@ const describeFailedChecks = (checks: string[], roundsMissingQuestions: string[]
     })
     .join('; ');
 
+/** Applies the same per-check translation to a publish-call error, not
+ * just the pre-check. Falls back to the backend's own message otherwise. */
+const describePublishError = (err: unknown, fallback: string): string => {
+  if (getJobErrorCode(err) === 'PUBLISH_VALIDATION_FAILED') {
+    const details = getJobErrorDetails(err);
+    const failedChecks = (details?.failed_checks as string[] | undefined) ?? [];
+    const roundsMissingQuestions =
+      (details?.rounds_missing_questions as string[] | undefined) ?? [];
+    if (failedChecks.length > 0) {
+      return `Cannot publish yet: ${describeFailedChecks(failedChecks, roundsMissingQuestions)}`;
+    }
+  }
+  return getJobErrorMessage(err, fallback);
+};
+
 const AiQuestionsSetup = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -72,6 +97,12 @@ const AiQuestionsSetup = () => {
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
   // Fallback source for the job id in edit mode, tried after reduxJobOpeningId below.
   const editJobOpeningId = useSelector((state: RootState) => state.EditJobSlice.jobOpeningId);
+  const { role, userId } = useSelector((state: RootState) => state.LoginSlice);
+
+  // Publish shares the backend's job:approve permission with "close" (see
+  // Authorities.JOB_OPENING_CLOSE) — no dedicated publish authority exists.
+  const effectivePermissions = useEffectivePermissions();
+  const canPublish = effectivePermissions.includes(Authorities.JOB_OPENING_CLOSE);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
@@ -101,6 +132,24 @@ const AiQuestionsSetup = () => {
     () => asJobId(id) || asJobId(reduxJobOpeningId) || asJobId(editJobOpeningId),
     [id, reduxJobOpeningId, editJobOpeningId]
   );
+
+  // True while the job hasn't loaded yet, so this never hides Publish early.
+  const { data: activeJobOpening } = useGetJobOpeningByIdQuery(
+    { jobOpeningId: activeJobOpeningId ?? '' },
+    { skip: !activeJobOpeningId }
+  );
+  const isAssignedToThisJob = !activeJobOpening
+    ? true
+    : isAssignedToJob(
+        {
+          hiringManagerIds: activeJobOpening.details?.hiring_manager_ids,
+          recruiterIds: activeJobOpening.details?.recruiter_ids,
+          createdById: activeJobOpening.details?.created_by,
+        },
+        userId,
+        role,
+        effectivePermissions
+      );
 
   // Editing an already-published job skips publish and just saves; editing
   // an unpublished draft still goes through validate-then-publish below.
@@ -507,7 +556,7 @@ const AiQuestionsSetup = () => {
       navigate(isEditRoute ? `/jobs/view/${id}/details` : '/jobs');
     } catch (err) {
       showToast({
-        message: getJobErrorMessage(err, 'Failed to publish job opening'),
+        message: describePublishError(err, 'Failed to publish job opening'),
         type: 'error',
       });
     }
@@ -714,19 +763,21 @@ const AiQuestionsSetup = () => {
           hasExistingQuestions={visibleQuestions.length > 0}
           scoringSectionOptions={scoringSectionOptions}
         />
-        <div className="mt-6 flex justify-center">
-          <Button
-            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => void handlePublishOrFinish()}
-            disabled={isPublishing || !activeJobOpeningId}
-          >
-            {isPublishing
-              ? 'PUBLISHING…'
-              : isEditingAlreadyPublishedJob
-                ? 'SAVE & FINISH'
-                : '✓ PUBLISH JOB OPENING'}
-          </Button>
-        </div>
+        {(isEditingAlreadyPublishedJob || (canPublish && isAssignedToThisJob)) && (
+          <div className="mt-6 flex justify-center">
+            <Button
+              className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => void handlePublishOrFinish()}
+              disabled={isPublishing || !activeJobOpeningId}
+            >
+              {isPublishing
+                ? 'PUBLISHING…'
+                : isEditingAlreadyPublishedJob
+                  ? 'SAVE & FINISH'
+                  : '✓ PUBLISH JOB OPENING'}
+            </Button>
+          </div>
+        )}
         <Outlet />
       </div>
     </>

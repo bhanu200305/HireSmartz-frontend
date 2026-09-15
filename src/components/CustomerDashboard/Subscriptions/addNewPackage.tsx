@@ -76,7 +76,7 @@ const AddNewPackage = () => {
 
             <Form layout="vertical">
               <div className="grid grid-cols-2 gap-x-4">
-                <Form.Item label="Voice Agent Usage – Calling Minutes">
+                <Form.Item label="Voice Agent Usage: Calling Minutes">
                   <Input
                     {...register('companyName')}
                     placeholder="No. of minutes"

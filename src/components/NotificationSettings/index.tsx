@@ -16,12 +16,12 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   security: {
     label: 'Security alerts',
     description:
-      'Password resets, sign-in device alerts, two-factor changes. Required — protects your account.',
+      'Password resets, sign-in device alerts, two-factor changes. Required: protects your account.',
   },
   transactional: {
     label: 'Account actions',
     description:
-      'Confirmations of actions you (or an admin) took. Required — completes the flow that produced it.',
+      'Confirmations of actions you (or an admin) took. Required: completes the flow that produced it.',
   },
   onboarding: {
     label: 'Onboarding & invitations',
@@ -29,7 +29,7 @@ const CATEGORY_META: Record<string, { label: string; description: string }> = {
   },
   activity: {
     label: 'Product activity',
-    description: 'Everything else — informational only.',
+    description: 'Everything else: informational only.',
   },
 };
 
@@ -148,7 +148,7 @@ const NotificationSettings = () => {
                           <div className="flex items-center gap-2">
                             <Typography variant="body1">{channelLabel(item.channel)}</Typography>
                             {!item.is_editable && (
-                              <Tooltip title="Required — cannot be turned off.">
+                              <Tooltip title="Required, cannot be turned off.">
                                 <MdLock className="text-gray-400" size={14} />
                               </Tooltip>
                             )}

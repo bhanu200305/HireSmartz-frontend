@@ -2,9 +2,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Select, Switch, Tooltip } from 'antd';
 import { MdLock } from 'react-icons/md';
-import { ScoringWeightCard, showToast } from '../shared';
+import { ScoringWeightCard, showToast, toOptionalWeight } from '../shared';
 import type { ScoringWeight } from '../shared';
 import { Loader } from '../shared/ui/loader';
+import { RESUME_CATEGORY_META, INTERVIEW_CATEGORY_META } from '../shared/scoringCategories';
 import {
   masterScoringCategoriesApi,
   useListMasterScoringCategoriesQuery,
@@ -38,6 +39,7 @@ const toMasterWeights = (categories: MasterScoringCategory[] | undefined): Scori
     displayName: c.display_name,
     description: c.description,
     weightPercentage: Number(c.default_weight_pct),
+    defaultWeightPercentage: toOptionalWeight(c.default_weight_pct),
   }));
 
 const toTenantWeights = (
@@ -49,6 +51,7 @@ const toTenantWeights = (
     displayName: w.display_name,
     description: w.description,
     weightPercentage: Number(w.weight_pct),
+    defaultWeightPercentage: toOptionalWeight(w.default_weight_pct),
   }));
 
 const toOverrides = (weights: ScoringWeight[]): CategoryWeightOverride[] =>
@@ -187,7 +190,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
       showToast({
         message: nextLocked
           ? 'Company locked to its current weights.'
-          : 'Company unlocked — it can set its own weights again.',
+          : 'Company unlocked; it can set its own weights again.',
         type: 'success',
       });
     } catch (err) {
@@ -201,7 +204,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
   const handleReset = async (section: 'resume' | 'interview') => {
     if (isPlatformDefault) {
       showToast({
-        message: 'This is the platform default — there is nothing to reset it to.',
+        message: 'This is the platform default; there is nothing to reset it to.',
         type: 'info',
       });
       return;
@@ -259,7 +262,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
           }
         />
         {!isPlatformDefault && !isLoading && (
-          <Tooltip title="Locked means this company can't edit its own weights — only Super Admin can change them here.">
+          <Tooltip title="Locked means this company can't edit its own weights; only Super Admin can change them here.">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold px-2.5 py-1">
               <MdLock size={13} />
               Locked
@@ -283,7 +286,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
             subtitle="Applies to Resume Screening"
             infoText="Resume categories are always evaluated. All categories must total exactly 100%."
             weights={resumeWeights}
-            categoryMeta={{}}
+            categoryMeta={RESUME_CATEGORY_META}
             onSave={(weights) => savePanel(weights, 'Resume', 'RESUME', 'resume')}
             onReset={() => handleReset('resume')}
             isSaving={isSaving && savingSection === 'resume'}
@@ -296,7 +299,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
             subtitle="Applies to AI Audio Screening and Video Interview"
             infoText="If a category is not covered in an interview, its weight is redistributed proportionally across the remaining categories."
             weights={interviewWeights}
-            categoryMeta={{}}
+            categoryMeta={INTERVIEW_CATEGORY_META}
             onSave={(weights) => savePanel(weights, 'Interview', 'INTERVIEW', 'interview')}
             onReset={() => handleReset('interview')}
             isSaving={isSaving && savingSection === 'interview'}

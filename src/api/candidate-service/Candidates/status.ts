@@ -61,8 +61,8 @@ export type BulkChangeCandidateStatusRequest = {
  * An unknown slug falls back to a generic line at the call site. */
 export const BULK_STATUS_FAILURE_LABELS: Record<string, string> = {
   candidate_not_found: 'Candidate not found',
-  candidate_on_last_round: "On last round — use 'Selected' instead",
-  round_not_yet_scored: 'Current round has no score yet — it must be scored before advancing',
+  candidate_on_last_round: "On last round, use 'Selected' instead",
+  round_not_yet_scored: 'Current round has no score yet; it must be scored before advancing',
   candidate_in_final_status: 'Already in a final status',
   job_opening_not_found: "This candidate's job opening no longer exists",
 };

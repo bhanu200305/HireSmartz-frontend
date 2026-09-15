@@ -15,7 +15,8 @@ import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import './header.css';
 import { Search, showToast } from '../shared';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { KeyboardEvent } from 'react';
 import GlobalSearch, {
   getDefaultUserDetailPath,
   isCfpStaffResult,
@@ -94,6 +95,16 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
   const persistedGlobalQuery = useSelector((state: RootState) => state.globalSearchSlice.query);
   const persistedCategoryValue = useSelector(
     (state: RootState) => state.globalSearchSlice.selectedCategoryValue
+  );
+  const searchFocusRequestId = useSelector(
+    (state: RootState) => state.globalSearchSlice.focusRequestId
+  );
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  // Set by GlobalSearch (via `registerKeyHandler`) once it has its roving-
+  // focus keydown handler ready — kept in a ref rather than state so the
+  // Search input's onKeyDown prop identity doesn't churn on every keystroke.
+  const globalSearchKeyHandlerRef = useRef<((e: KeyboardEvent<HTMLInputElement>) => void) | null>(
+    null
   );
   const [searchQuery, setSearchQuery] = useState(persistedGlobalQuery || '');
   const [selectedValue, setSelectedValue] = useState<string | null>(persistedCategoryValue || null);
@@ -212,6 +223,36 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
   useEffect(() => {
     setSelectedValue(persistedCategoryValue || null);
   }, [persistedCategoryValue]);
+
+  // Ctrl/Cmd+K is registered once, globally, in App.tsx (no per-page wiring
+  // needed) — it dispatches `requestGlobalSearchFocus`, which just bumps
+  // this counter. Only act when the counter actually moved past what this
+  // Header instance last saw — comparing values, not a "have I run before"
+  // boolean, because React 18 StrictMode double-invokes effects in dev
+  // (mount, cleanup, mount again) without resetting refs in between; a
+  // boolean flag flips to "already ran" on the first of those two
+  // invocations and wrongly lets the second one through, auto-opening
+  // search on every single dev-mode mount. Seeding the ref with the
+  // CURRENT value up front means both StrictMode invocations compare equal
+  // and no-op, exactly like a real mount should.
+  const lastProcessedFocusRequestId = useRef(searchFocusRequestId);
+  useEffect(() => {
+    if (searchFocusRequestId === lastProcessedFocusRequestId.current) return;
+    lastProcessedFocusRequestId.current = searchFocusRequestId;
+    searchInputRef.current?.focus();
+    setIsSearchFocused(true);
+  }, [searchFocusRequestId]);
+
+  const registerGlobalSearchKeyHandler = useCallback(
+    (handler: (e: React.KeyboardEvent) => void) => {
+      globalSearchKeyHandlerRef.current = handler;
+    },
+    []
+  );
+
+  const handleSearchInputKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+    globalSearchKeyHandlerRef.current?.(e);
+  }, []);
 
   useEffect(() => {
     if (persistedCategoryValue) {
@@ -621,12 +662,14 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                   isInputFocused={isSearchFocused}
                   onSearchTrigger={handleSearchChange}
                   navigationConfig={globalSearchNavigationConfig}
+                  registerKeyHandler={registerGlobalSearchKeyHandler}
                 />
               </div>
             )}
           >
             <div className="w-[180px] sm:w-[250px] lg:w-[350px]">
               <Search
+                ref={searchInputRef}
                 appname="Search"
                 placeholder="Search..."
                 allowClear
@@ -638,6 +681,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                 onBlur={() => {
                   setTimeout(() => setIsSearchFocused(false), 200);
                 }}
+                onKeyDown={handleSearchInputKeyDown}
               />
             </div>
           </Dropdown>

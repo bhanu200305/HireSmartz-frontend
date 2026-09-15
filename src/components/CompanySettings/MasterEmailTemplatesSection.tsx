@@ -56,7 +56,7 @@ const EditMasterTemplateModal: React.FC<{
     <AntdCommonModal
       open={template !== null}
       onClose={onClose}
-      title={`Edit platform default — ${humanizeType(template.notification_type)}`}
+      title={`Edit platform default: ${humanizeType(template.notification_type)}`}
       subtitle="Changes what every tenant without their own override receives. Test-rendered before saving."
       modalProps={{ width: 720 }}
     >

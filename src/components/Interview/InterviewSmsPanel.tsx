@@ -109,14 +109,12 @@ const InterviewSmsPanel = ({
 
     client.connect(token, () => {
       const topic = `/topic/sms/company/${companyId}/candidate/${candidateId}`;
-      client.subscribe(topic, (body) => {
-        console.log('[WebSocket SMS] received message:', body);
+      client.subscribe(topic, () => {
         void refetch();
       });
 
       const companyTopic = `/topic/sms/company/${companyId}`;
       client.subscribe(companyTopic, (body) => {
-        console.log('[WebSocket SMS] received company-wide message:', body);
         if (body?.candidateId === candidateId) {
           void refetch();
         }

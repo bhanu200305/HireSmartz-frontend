@@ -40,6 +40,7 @@ import {
 import MasterPagination from '../shared/ui/MasterPagination';
 import { setJobOpeningFilters } from '../../redux/slices/jobOpeningFilterSlice';
 import { Col, Dropdown, Modal, Row, Select, MenuProps, Tooltip } from 'antd';
+import clsx from 'clsx';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { DateTimePayload, Jobs, SortDirection } from '../../types';
 import DateTimeRangePicker from '../shared/ui/datePicker';
@@ -51,6 +52,7 @@ import {
 } from '../../api/job-service/JobOpening/GetJobOpeningById';
 import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
+import { useRovingFocus } from '../../hooks/useRovingFocus';
 import { useListUsersQuery } from '../../api/organization-service/Users/users';
 import { useListJobTypesQuery } from '../../api/job-service/JobOpening/catalogs';
 import { showToast } from '../shared';
@@ -70,6 +72,7 @@ import {
 import useEventSource from '../../hooks/useEventSource';
 import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
+import { Authorities } from '../../constants/authorities.constant';
 
 const { Option } = Select;
 
@@ -149,7 +152,11 @@ const JobsOpening = () => {
     inProgressCount: 0,
     invitationSentCount: 0,
   });
-  const [jobNotesFor, setJobNotesFor] = useState<{ id: string; title: string } | null>(null);
+  const [jobNotesFor, setJobNotesFor] = useState<{
+    id: string;
+    title: string;
+    canWrite: boolean;
+  } | null>(null);
 
   const [qrModalOpen, setQrModalOpen] = useState<boolean>(false);
   const [showCreateJobModal, setShowCreateJobModal] = useState<boolean>(false);
@@ -162,8 +169,11 @@ const JobsOpening = () => {
   const [jdUploadError, setJdUploadError] = useState<string>('');
   const [isJdUploading, setIsJdUploading] = useState<boolean>(false);
   const [isJdCompleted, setIsJdCompleted] = useState<boolean>(false);
-  const [, setIsJdPartialFailure] = useState<boolean>(false);
-  const [, setIsJdFailed] = useState<boolean>(false);
+  const [isJdPartialFailure, setIsJdPartialFailure] = useState<boolean>(false);
+  const [isJdFailed, setIsJdFailed] = useState<boolean>(false);
+  const [jdFailedItems, setJdFailedItems] = useState<{ filename: string; error: string | null }[]>(
+    []
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // GET, not a mutation: the backend generates the tenant's one QR on first call
   // and re-resolves it after. Fetched only once the modal is open, on a real UUID tenantId.
@@ -230,6 +240,19 @@ const JobsOpening = () => {
     refetchOnMountOrArgChange: true,
   });
   const { data: jobStats } = useGetJobStatsQuery(undefined, { skip: !hasTenantContext });
+  // JOB_OPENING_CREATE is granted only to hiring_manager and company_admin
+  // (never recruiter) — the same reliable, permission-based signal already
+  // used elsewhere in this file, rather than role.name, whose JWT claim
+  // isn't always populated. backend's assigned_to_me is a no-op for any
+  // other role anyway. See getJobStats.
+  const canFilterToMyJobs = authorities.includes(Authorities.JOB_OPENING_CREATE);
+  // Defaults to org-wide, matching their existing view before this toggle
+  // existed — "my jobs" is an opt-in, not the default.
+  const [showMyJobsOnly, setShowMyJobsOnly] = useState(false);
+  const { data: myJobStats } = useGetJobStatsQuery(
+    { assignedToMe: true },
+    { skip: !hasTenantContext || !canFilterToMyJobs }
+  );
   const { data: orgDepartments = [] } = useListTenantDepartmentsQuery(tenantId ?? '', {
     skip: !hasTenantContext,
   });
@@ -271,33 +294,46 @@ const JobsOpening = () => {
     }));
   }, [data?.data, orgDepartments, jobTypes, titleMap, orgUsers]);
 
+  // ArrowUp/ArrowDown moves focus between listed job rows below, Enter opens
+  // the focused job — the same destination the title `<Link>` on each row
+  // already navigates to.
+  const { focusedIndex: focusedJobIndex, handleKeyDown: handleJobListKeyDown } = useRovingFocus({
+    items: listedJobs,
+    isActive: true,
+    onSelect: (job) => navigate(`/jobs/view/${job.jobOpeningId}/candidates?page=1&size=10`),
+  });
+
+  // canFilterToMyJobs toggles which stats feed the cards below (mine vs
+  // org-wide); everyone else always sees org-wide, same as before.
+  const statsForCards = canFilterToMyJobs && showMyJobsOnly ? myJobStats : jobStats;
+
   // Clicking a card reuses the same filter states as the status dropdown below.
   const jobStatCards: StatCardData[] = [
     {
       icon: <MdOutlineWorkOutline />,
       label: 'Open Roles',
-      value: jobStats?.published_count,
+      value: statsForCards?.published_count,
       variant: 'blue',
       onClick: () => handleStatusChange('ACTIVE'),
     },
     {
       icon: <MdOutlineEditNote />,
       label: 'Drafts',
-      value: jobStats?.draft_count,
+      value: statsForCards?.draft_count,
       variant: 'orange',
       onClick: () => handleStatusChange('Draft'),
     },
     {
       icon: <MdOutlineCancel />,
       label: 'Closed',
-      value: jobStats?.closed_count,
+      value: statsForCards?.closed_count,
       variant: 'neutral',
       onClick: () => handleStatusChange('Closed'),
     },
     {
       icon: <MdOutlineCheckCircle />,
       label: 'Total Job Openings',
-      value: jobStats?.total_count,
+      value: statsForCards?.total_count,
       variant: 'green',
       onClick: () => handleStatusChange('All'),
     },
@@ -403,63 +439,71 @@ const JobsOpening = () => {
         return;
       }
 
-      const eventData = payload as {
-        status?: string;
-        message?: string;
-        detail?: string;
-        processed?: number;
-        total?: number;
-        currentFile?: string | null;
-        progress?: number;
-        percentage?: number;
-        progressPercentage?: number;
-        eventName?: string;
+      // Matches JdUploadBatchSummaryResponse (job-service's api/responses.py) -
+      // the stream sends only these raw counts, never a status/progress field.
+      const summary = payload as {
+        batch_id?: string;
+        total_files?: number;
+        processing_count?: number;
+        succeeded_count?: number;
+        failed_count?: number;
+        items?: { filename: string; status: string; error: string | null }[];
       };
 
-      const processedCount = Number(eventData.processed);
-      const totalCount = Number(eventData.total);
-      const hasStepProgress =
-        Number.isFinite(processedCount) && Number.isFinite(totalCount) && totalCount > 0;
-
-      const rawProgress = hasStepProgress
-        ? (processedCount / totalCount) * 100
-        : (eventData.progressPercentage ?? eventData.progress ?? eventData.percentage ?? 0);
-      const normalizedProgress = Number(rawProgress);
-
-      if (Number.isFinite(normalizedProgress)) {
-        const safeProgress = Math.max(0, Math.min(100, normalizedProgress));
-        setJdProgress(safeProgress);
+      const totalFiles = Number(summary.total_files);
+      const processingCount = Number(summary.processing_count) || 0;
+      const succeededCount = Number(summary.succeeded_count) || 0;
+      const failedCount = Number(summary.failed_count) || 0;
+      if (!Number.isFinite(totalFiles) || totalFiles <= 0) {
+        return;
       }
+      const doneCount = succeededCount + failedCount;
 
-      if (eventData.currentFile && String(eventData.currentFile).trim()) {
-        setJdProgressMessage(`Processing ${eventData.currentFile}...`);
-      } else if (eventData.detail) {
-        setJdProgressMessage(eventData.detail);
-      } else if (eventData.message) {
-        setJdProgressMessage(eventData.message);
-      }
+      setJdProgress(Math.max(0, Math.min(100, (doneCount / totalFiles) * 100)));
 
-      const status = String(eventData.status || eventData.eventName || '').toUpperCase();
-      const isCompletedStatus = status.includes('BATCH_COMPLETED') || status === 'COMPLETED';
+      const currentItem = summary.items?.find((item) => item.status === 'processing');
+      setJdProgressMessage(
+        currentItem
+          ? `Processing ${currentItem.filename}...`
+          : `Processed ${doneCount} of ${totalFiles} file(s)...`
+      );
 
-      if (!isCompletedStatus) {
+      const isBatchComplete = processingCount === 0 && doneCount >= totalFiles;
+      if (!isBatchComplete) {
         return;
       }
 
-      const summaryText = 'Batch completed. Please review uploaded jobs.';
+      const failedItems = (summary.items ?? [])
+        .filter((item) => item.status === 'failed')
+        .map((item) => ({ filename: item.filename, error: item.error }));
 
       setIsJdUploading(false);
       setIsJdCompleted(true);
       setJdBatchId(null);
       setJdProgress(100);
-      setJdProgressMessage(summaryText);
+      setJdFailedItems(failedItems);
 
-      setIsJdPartialFailure(false);
-      setIsJdFailed(false);
-      showToast({
-        type: 'success',
-        message: 'JD uploaded successfully.',
-      });
+      if (failedCount === 0) {
+        setIsJdPartialFailure(false);
+        setIsJdFailed(false);
+        setJdProgressMessage('Batch completed. Please review uploaded jobs.');
+        showToast({ type: 'success', message: 'JD uploaded successfully.' });
+      } else if (succeededCount === 0) {
+        setIsJdFailed(true);
+        setIsJdPartialFailure(false);
+        setJdProgressMessage('All files failed to process.');
+        showToast({ type: 'error', message: 'All files failed to process.' });
+      } else {
+        setIsJdPartialFailure(true);
+        setIsJdFailed(false);
+        setJdProgressMessage(
+          `${succeededCount} of ${totalFiles} file(s) processed - ${failedCount} failed.`
+        );
+        showToast({
+          type: 'warning',
+          message: `${succeededCount} of ${totalFiles} job(s) created - ${failedCount} file(s) failed.`,
+        });
+      }
       refetch();
     },
     onAbort: () => {
@@ -713,6 +757,7 @@ const JobsOpening = () => {
     setIsJdCompleted(false);
     setIsJdPartialFailure(false);
     setIsJdFailed(false);
+    setJdFailedItems([]);
   };
 
   const isValidJdFile = (file: File): boolean => {
@@ -731,6 +776,7 @@ const JobsOpening = () => {
     setIsJdCompleted(false);
     setIsJdPartialFailure(false);
     setIsJdFailed(false);
+    setJdFailedItems([]);
     setJdUploadError('');
     setJdProgress(10);
     setJdProgressMessage('Uploading file(s)...');
@@ -742,7 +788,6 @@ const JobsOpening = () => {
           : await uploadSingleJd(filesToUpload[0]).unwrap();
 
       const responseBatchId = extractBatchId(response);
-      console.log('JD Upload Response:', response, 'Extracted Batch ID:', responseBatchId);
 
       if (responseBatchId) {
         setJdBatchId(responseBatchId);
@@ -872,6 +917,7 @@ const JobsOpening = () => {
           setJobNotesFor({
             id: record.jobOpeningId,
             title: record.jobTitleName ?? '',
+            canWrite: isAssignedToJob(record, userId, role, authorities),
           }),
       },
       !record.isClosed && {
@@ -921,9 +967,13 @@ const JobsOpening = () => {
     ].filter((item) => {
       if (!item) return false;
       // Every action but View requires assignment.
-      if (item.key !== 'view' && !isAssignedToJob(record, userId, role)) return false;
+      if (item.key !== 'view' && !isAssignedToJob(record, userId, role, authorities)) return false;
       if (item.key === 'notes') {
         return hasFeatureAccess('job_opening', 'view', role, authorities);
+      }
+      // "Duplicate" has no dedicated backend authority - it shares job:write with "create".
+      if (item.key === 'duplicate') {
+        return hasFeatureAccess('job_opening', 'create', role, authorities);
       }
       if (hasFeatureAccess('job_opening', item.key as any, role, authorities)) return true;
       return false;
@@ -1066,6 +1116,34 @@ const JobsOpening = () => {
           </div>
           {jobStats && (
             <div className="px-2 mb-2">
+              {canFilterToMyJobs && (
+                <div className="mb-3 inline-flex rounded-full border border-neutral-200 bg-neutral-100 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowMyJobsOnly(false)}
+                    className={clsx(
+                      'cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                      !showMyJobsOnly
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-neutral-500 hover:text-neutral-700'
+                    )}
+                  >
+                    All jobs
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowMyJobsOnly(true)}
+                    className={clsx(
+                      'cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                      showMyJobsOnly
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-neutral-500 hover:text-neutral-700'
+                    )}
+                  >
+                    My jobs
+                  </button>
+                </div>
+              )}
               <StatCardRow cards={jobStatCards} columns={4} />
             </div>
           )}
@@ -1135,15 +1213,21 @@ const JobsOpening = () => {
                     ACTIONS
                   </Col>
                 </Row>
-                <div className="divide-y divide-neutral-100">
-                  {listedJobs.map((jobs) => (
+                <div className="divide-y divide-neutral-100" onKeyDown={handleJobListKeyDown}>
+                  {listedJobs.map((jobs, jobIndex) => (
                     <div
                       key={jobs.jobOpeningId}
-                      className="px-2 py-3 hover:bg-neutral-50 transition-colors"
+                      tabIndex={0}
+                      role="link"
+                      className={`px-2 py-3 hover:bg-neutral-50 transition-colors focus:outline-none ${
+                        focusedJobIndex === jobIndex
+                          ? 'bg-primary-50 ring-1 ring-inset ring-primary-200'
+                          : ''
+                      }`}
                     >
                       <Row gutter={[16, 16]} align="middle">
                         <Col span={5}>
-                          <div className="flex items-center">
+                          <div className="flex items-center flex-wrap gap-1.5">
                             <Link
                               to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
                               className="font-semibold text-primary underline hover:text-primary roboto-font"
@@ -1153,7 +1237,7 @@ const JobsOpening = () => {
                               </span>
                             </Link>
                             <span
-                              className="ml-2 cursor-pointer"
+                              className="ml-1 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleCollapse(jobs.jobOpeningId.toString());
@@ -1332,6 +1416,7 @@ const JobsOpening = () => {
           }}
           jobTitle={jobNotesFor?.title}
           jobOpeningId={jobNotesFor?.id}
+          canWrite={jobNotesFor?.canWrite ?? true}
         />
 
         <input
@@ -1489,9 +1574,7 @@ const JobsOpening = () => {
 
                 {jdFiles.length > 1 && (
                   <>
-                    <p className="text-xs text-primary">
-                      {`Progress: ${Math.round(jdProgress)}% of 100% completed`}
-                    </p>
+                    <p className="text-xs text-primary">{`${Math.round(jdProgress)}% complete`}</p>
                     <div className="h-1 w-full bg-gray-200 rounded">
                       <div
                         className="h-1 bg-success rounded transition-all duration-300"
@@ -1505,11 +1588,37 @@ const JobsOpening = () => {
 
             {jdUploadError && <p className="text-sm text-red-500 mt-4">{jdUploadError}</p>}
 
-            {isJdCompleted && jdFiles.length > 0 && (
+            {(isJdFailed || isJdPartialFailure) && jdFailedItems.length > 0 && (
+              <div
+                className={`mt-4 rounded-lg p-4 border ${
+                  isJdFailed ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'
+                }`}
+              >
+                <p className={`text-sm mb-2 ${isJdFailed ? 'text-red-800' : 'text-yellow-800'}`}>
+                  {isJdFailed
+                    ? 'None of the files could be processed:'
+                    : 'These file(s) could not be processed:'}
+                </p>
+                <ul className="text-xs space-y-1 list-disc list-inside">
+                  {jdFailedItems.map((item) => (
+                    <li
+                      key={item.filename}
+                      className={isJdFailed ? 'text-red-700' : 'text-yellow-700'}
+                    >
+                      {item.filename}
+                      {item.error ? ` - ${item.error}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {isJdCompleted && !isJdFailed && jdFiles.length > 0 && (
               <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-sm text-green-800 mb-4">
-                  All uploaded jobs have been created as Draft jobs. You can review and publish them
-                  from the Job Openings page.
+                  {isJdPartialFailure
+                    ? 'The rest of the uploaded jobs have been created as Draft jobs. You can review and publish them from the Job Openings page.'
+                    : 'All uploaded jobs have been created as Draft jobs. You can review and publish them from the Job Openings page.'}
                 </p>
                 {jdFiles.length === 1 ? (
                   <Button

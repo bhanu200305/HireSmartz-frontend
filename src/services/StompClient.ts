@@ -102,7 +102,6 @@ export class StompClient {
   private scheduleReconnect(token?: string, onConnected?: () => void) {
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     this.reconnectTimeout = setTimeout(() => {
-      console.log('Attempting to reconnect STOMP WebSocket...');
       this.connect(token, onConnected);
     }, 5000);
   }

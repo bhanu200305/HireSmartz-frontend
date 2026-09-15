@@ -85,7 +85,7 @@ const RoleLocationPicker: React.FC<RoleLocationPickerProps> = ({
     // (seen live: "Sector 83-A, Netsmartz Towers" and "Netsmartz Square,
     // Sector-67", both Mohali) needs the address to tell them apart. Matches
     // the convention DepartmentsPanel already uses.
-    return office ? `${office.city} — ${office.address_line_1}` : 'Unknown location';
+    return office ? `${office.city}, ${office.address_line_1}` : 'Unknown location';
   };
 
   // The tab shown defaults to the first selected location, and follows it
@@ -142,7 +142,7 @@ const RoleLocationPicker: React.FC<RoleLocationPickerProps> = ({
         />
         <Select
           mode="multiple"
-          placeholder="Location(s) (optional — applies everywhere if blank)"
+          placeholder="Location(s) (optional, applies everywhere if blank)"
           allowClear
           value={locationIds}
           onChange={(value) => onLocationIdsChange(value ?? [])}

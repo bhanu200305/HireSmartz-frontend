@@ -119,7 +119,7 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       key: 'city',
       sorter: (a: OfficeRow, b: OfficeRow) => a.city.localeCompare(b.city),
       render: (_: unknown, office: OfficeRow) => (
-        <span className="text-gray-600 text-sm">{office.city || '—'}</span>
+        <span className="text-gray-600 text-sm">{office.city || '-'}</span>
       ),
     },
     {
@@ -128,7 +128,7 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       key: 'state',
       sorter: (a: OfficeRow, b: OfficeRow) => (a.state ?? '').localeCompare(b.state ?? ''),
       render: (_: unknown, office: OfficeRow) => (
-        <span className="text-gray-600 text-sm">{office.state || '—'}</span>
+        <span className="text-gray-600 text-sm">{office.state || '-'}</span>
       ),
     },
     {
@@ -147,7 +147,7 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       dataIndex: 'zip_code',
       key: 'zip_code',
       render: (_: unknown, office: OfficeRow) => (
-        <span className="text-gray-500 text-sm font-mono">{office.zip_code || '—'}</span>
+        <span className="text-gray-500 text-sm font-mono">{office.zip_code || '-'}</span>
       ),
     },
     {
