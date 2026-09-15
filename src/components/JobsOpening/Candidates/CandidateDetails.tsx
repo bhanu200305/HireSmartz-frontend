@@ -227,6 +227,12 @@ const CandidateDetails = () => {
   // ends up happening, so a recruiter needs to know the current score (if
   // any) is about to be replaced before they commit to a new call.
   const [isRescheduleConfirmOpen, setIsRescheduleConfirmOpen] = useState(false);
+  // Which round the confirm modal/mutation actually act on — deliberately
+  // separate from `selectedRound`. The Call Outcome card's own button sets
+  // this to `selectedRound` (same round already open), but PipelineBoard's
+  // per-card "Request reschedule" button needs to trigger the exact same
+  // flow WITHOUT first navigating into that round's drill-down view.
+  const [rescheduleRound, setRescheduleRound] = useState<CandidateInterviewRoundView | null>(null);
 
   // Offline hiring-panel recording: `POST /bookings/{id}/recording/upload`
   // — the candidate visited in person, so there's no LiveKit session to
@@ -308,9 +314,9 @@ const CandidateDetails = () => {
   };
 
   const handleRequestCallReschedule = async () => {
-    if (!selectedRound?.interview_booking_id) return;
+    if (!rescheduleRound?.interview_booking_id) return;
     try {
-      await requestCallReschedule(selectedRound.interview_booking_id).unwrap();
+      await requestCallReschedule(rescheduleRound.interview_booking_id).unwrap();
       showToast({
         message:
           'Reschedule requested — the candidate has been emailed a new link, valid for 24 hours.',
@@ -323,6 +329,7 @@ const CandidateDetails = () => {
       });
     } finally {
       setIsRescheduleConfirmOpen(false);
+      setRescheduleRound(null);
     }
   };
 
@@ -743,6 +750,10 @@ const CandidateDetails = () => {
             onRoundClick={(round) => {
               setSelectedRound(round);
             }}
+            onRequestReschedule={(round) => {
+              setRescheduleRound(round);
+              setIsRescheduleConfirmOpen(true);
+            }}
           />
         </div>
       )}
@@ -937,7 +948,10 @@ const CandidateDetails = () => {
                           <Button
                             className="mt-3 rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
                             disabled={isRequestingReschedule}
-                            onClick={() => setIsRescheduleConfirmOpen(true)}
+                            onClick={() => {
+                              setRescheduleRound(selectedRound);
+                              setIsRescheduleConfirmOpen(true);
+                            }}
                           >
                             {isRequestingReschedule
                               ? 'Sending…'
@@ -1528,15 +1542,22 @@ const CandidateDetails = () => {
       )}
       {isRescheduleConfirmOpen && (
         <ConfirmationModal
-          onClose={() => setIsRescheduleConfirmOpen(false)}
+          onClose={() => {
+            setIsRescheduleConfirmOpen(false);
+            setRescheduleRound(null);
+          }}
           onConfirm={() => void handleRequestCallReschedule()}
           title={
             // Resume-consistency scoring is Intake Call (AUDIO) specific —
             // Audio Screening/AI Video rounds don't have one, so this
-            // clause would be misleading there.
-            selectedRoundIsIntakeCall && candidate?.consistency_score != null
+            // clause would be misleading there. Driven by `rescheduleRound`,
+            // not `selectedRound` — this modal can open straight from a
+            // PipelineBoard card, before any round is "selected".
+            rescheduleRound &&
+            isIntakeCallRound(rescheduleRound) &&
+            candidate?.consistency_score != null
               ? `Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, the resume-consistency score will be recalculated from it and will overwrite the current score (${candidate.consistency_score} / 10).`
-              : selectedRoundIsIntakeCall
+              : rescheduleRound && isIntakeCallRound(rescheduleRound)
                 ? 'Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, a resume-consistency score will be calculated from it.'
                 : 'Requesting a reschedule will email the candidate a new link, valid for 24 hours.'
           }

@@ -6,9 +6,12 @@ import {
   type CandidateInterviewRoundView,
 } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
+import { useGetBookingQuery } from '../../../api/interview-service/client';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import {
   bucketForStatus,
+  isAiVideoRound,
+  isAudioScreeningRound,
   isIntakeCallRound,
   isOverdue,
   isRoundConcluded,
@@ -60,6 +63,191 @@ const BUCKET_META: Record<
 const formatWhen = (value: string | null) =>
   value && dayjs(value).isValid() ? dayjs(value).format('MMM D, h:mm A') : null;
 
+type RoundCardProps = {
+  round: CandidateInterviewRoundView;
+  index: number;
+  bucket: RoundBucket;
+  overdue: boolean;
+  isActive: boolean;
+  isResumeScored: boolean;
+  isInterviewRound: boolean;
+  hasRecordings: boolean;
+  canManageInterviewers: boolean;
+  roundScore: CandidateInterviewScoreView | undefined;
+  roundScoreValue: number | undefined;
+  resumeScore: number | null;
+  consistencyScore: number | null;
+  when: string | null;
+  clickable: boolean;
+  onActivate: () => void;
+  onOpenArtifacts: () => void;
+  onOpenInterviewers: () => void;
+  onRequestReschedule?: () => void;
+};
+
+// Split out from PipelineBoard's own render loop so it can call a hook of
+// its own (`useGetBookingQuery`, below) — one query per card, each keyed on
+// that round's own booking id, instead of a variable number of hook calls
+// inside a single `.map()` (a Rules-of-Hooks violation the old inline
+// version never had to worry about, since it never needed per-round data
+// this component's own props didn't already carry).
+const RoundCard = ({
+  round,
+  index,
+  bucket,
+  overdue,
+  isActive,
+  isResumeScored,
+  isInterviewRound,
+  hasRecordings,
+  canManageInterviewers,
+  roundScore,
+  roundScoreValue,
+  resumeScore,
+  consistencyScore,
+  when,
+  clickable,
+  onActivate,
+  onOpenArtifacts,
+  onOpenInterviewers,
+  onRequestReschedule,
+}: RoundCardProps) => {
+  // A voice-call round's real outcome (`call_intent`) lives on its booking
+  // (interview-service), not this round's own coarse `status`
+  // (candidate-service) — fetched here so a technical failure can be
+  // surfaced on the card itself, not only inside the Call Outcome
+  // drill-down. Skipped for PANEL/resume rounds (no call_intent concept
+  // there) and any round with no booking yet.
+  const isVoiceCallRound =
+    isIntakeCallRound(round) || isAudioScreeningRound(round) || isAiVideoRound(round);
+  const { data: booking } = useGetBookingQuery(round.interview_booking_id ?? '', {
+    skip: !round.interview_booking_id || !isVoiceCallRound,
+  });
+  const technicalFailure = booking?.call_intent === 'technical_failure';
+  // Borrows the 'failed' bucket's danger styling, same as `overdue` already
+  // did — a technical failure is exactly as actionable as a real failure,
+  // it's just sourced from the booking's call_intent rather than this
+  // round's own status.
+  const visuallyFailed = overdue || technicalFailure;
+  const meta = visuallyFailed ? BUCKET_META.failed : BUCKET_META[bucket];
+  // Same eligibility interview-service's own request-reschedule endpoint
+  // enforces (AUDIO/AUDIO_SCREENING/AI_VIDEO, call already concluded) —
+  // never offered somewhere the backend would just reject it.
+  const canRequestReschedule =
+    isVoiceCallRound && booking?.call_intent != null && Boolean(onRequestReschedule);
+
+  return (
+    <div
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? onActivate : undefined}
+      onKeyDown={
+        clickable
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onActivate();
+              }
+            }
+          : undefined
+      }
+      className={`w-56 shrink-0 rounded-xl border border-neutral-200 border-t-4 bg-white shadow-xs ${meta.border} ${
+        isActive ? 'ring-2 ring-warning/40' : ''
+      } ${clickable ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30' : ''}`}
+    >
+      <div className="flex items-center gap-2 px-3.5 pt-3">
+        <span
+          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${meta.stepBg} ${meta.stepText}`}
+        >
+          {visuallyFailed ? '!' : bucket === 'done' ? '✓' : index + 1}
+        </span>
+        <span className="truncate text-sm font-semibold text-neutral-900" title={roundLabel(round)}>
+          {roundLabel(round)}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1.5 px-3.5 pb-3.5 pt-2.5">
+        <Badge status={meta.badgeStatus} className="w-fit">
+          {overdue
+            ? 'Overdue'
+            : technicalFailure
+              ? 'Technical Failure'
+              : isResumeScored
+                ? 'Completed'
+                : formatRoundStatus(round.status)}
+        </Badge>
+        {overdue && (
+          <span className="text-xs text-danger">
+            No update since the scheduled time; may not have gone through.
+          </span>
+        )}
+        {!overdue && technicalFailure && (
+          <span className="text-xs text-danger">The call ended due to a technical issue.</span>
+        )}
+        {when && <span className="text-xs text-neutral-500">{when}</span>}
+        {round.duration_minutes != null && (
+          <span className="text-xs text-neutral-400">{round.duration_minutes} min</span>
+        )}
+        {round.stage_type === 'resume' && resumeScore !== null && (
+          <span className="text-xs font-semibold text-primary-600">Score: {resumeScore}</span>
+        )}
+        {isIntakeCallRound(round) && consistencyScore !== null && (
+          <span className="text-xs font-semibold text-primary-600">
+            Consistency: {consistencyScore} / 10
+          </span>
+        )}
+        {isInterviewRound && !isIntakeCallRound(round) && roundScoreValue != null && (
+          <span className="text-xs font-semibold text-primary-600">
+            {roundScore?.recruiter_score != null
+              ? `Score: ${roundScoreValue} / 5`
+              : `Score: ${roundScoreValue} / 100 · AI score`}
+          </span>
+        )}
+        {hasRecordings && (
+          <button
+            type="button"
+            className="w-fit text-xs font-medium text-primary-600 hover:underline"
+            onClick={(event) => {
+              // Independent of the card's own click (which now opens the
+              // round-detail drill-down) — stop it from also firing
+              // onActivate.
+              event.stopPropagation();
+              onOpenArtifacts();
+            }}
+          >
+            View recording &amp; transcript ›
+          </button>
+        )}
+        {canManageInterviewers && (
+          <button
+            type="button"
+            className="w-fit text-xs font-medium text-primary-600 hover:underline"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenInterviewers();
+            }}
+          >
+            {round.interviewer_ids.length > 0
+              ? `Interviewers (${round.interviewer_ids.length}) ›`
+              : 'Set interviewers ›'}
+          </button>
+        )}
+        {canRequestReschedule && (
+          <button
+            type="button"
+            className="w-fit text-xs font-medium text-danger hover:underline"
+            onClick={(event) => {
+              event.stopPropagation();
+              onRequestReschedule?.();
+            }}
+          >
+            Request reschedule ›
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 type PipelineBoardProps = {
   rounds: CandidateInterviewRoundView[];
   scores: CandidateInterviewScoreView[];
@@ -73,6 +261,12 @@ type PipelineBoardProps = {
   consistencyScore: number | null;
   candidateId: string;
   onRoundClick?: (round: CandidateInterviewRoundView) => void;
+  // Wired to the same `RequestCallRescheduleUseCase` flow the Call Outcome
+  // drill-down already offers — this just gives it a second entry point
+  // directly on the card, so a failed/concluded round doesn't require
+  // clicking in first. Omitted entirely (not just gated on eligibility)
+  // when the caller doesn't support it.
+  onRequestReschedule?: (round: CandidateInterviewRoundView) => void;
 };
 
 const PipelineBoard = ({
@@ -82,6 +276,7 @@ const PipelineBoard = ({
   consistencyScore,
   candidateId,
   onRoundClick,
+  onRequestReschedule,
 }: PipelineBoardProps) => {
   const [artifactsModalFor, setArtifactsModalFor] = useState<{
     roundId: string;
@@ -182,11 +377,6 @@ const PipelineBoard = ({
         {rounds.map((round, index) => {
           const bucket = displayBuckets[index];
           const overdue = overdueFlags[index];
-          // Borrows the 'failed' bucket's danger styling — an overdue round
-          // is exactly as actionable as a real failure, it's just inferred
-          // from timing rather than reported by the backend (see
-          // `isOverdue`'s docstring).
-          const meta = overdue ? BUCKET_META.failed : BUCKET_META[bucket];
           const when = formatWhen(round.scheduled_at) ?? formatWhen(round.due_at);
           const isActive = index === activeIndex;
           // The resume stage's raw status never flips off
@@ -233,142 +423,55 @@ const PipelineBoard = ({
             ? scores.find((s) => s.candidate_interview_round_id === round.id)
             : undefined;
           const roundScoreValue = roundScore?.recruiter_score ?? roundScore?.score;
+          const clickable = Boolean(onRoundClick || hasRecordings);
+          const openArtifacts = () =>
+            setArtifactsModalFor({
+              roundId: round.id,
+              roundName: roundLabel(round),
+              roundType: round.round_type,
+              feedback: {
+                candidate_feedback_rating: round.candidate_feedback_rating,
+                candidate_feedback_text: round.candidate_feedback_text,
+                candidate_feedback_submitted_at: round.candidate_feedback_submitted_at,
+              },
+            });
           return (
-            <div
+            <RoundCard
               key={round.id ?? `resume-${index}`}
-              role={onRoundClick || hasRecordings ? 'button' : undefined}
-              tabIndex={onRoundClick || hasRecordings ? 0 : undefined}
-              onClick={() => {
+              round={round}
+              index={index}
+              bucket={bucket}
+              overdue={overdue}
+              isActive={isActive}
+              isResumeScored={isResumeScored}
+              isInterviewRound={isInterviewRound}
+              hasRecordings={hasRecordings}
+              canManageInterviewers={canManageInterviewers}
+              roundScore={roundScore}
+              roundScoreValue={roundScoreValue}
+              resumeScore={resumeScore}
+              consistencyScore={consistencyScore}
+              when={when}
+              clickable={clickable}
+              onActivate={() => {
                 if (onRoundClick) {
                   onRoundClick(round);
                 } else if (hasRecordings) {
-                  setArtifactsModalFor({
-                    roundId: round.id,
-                    roundName: roundLabel(round),
-                    roundType: round.round_type,
-                    feedback: {
-                      candidate_feedback_rating: round.candidate_feedback_rating,
-                      candidate_feedback_text: round.candidate_feedback_text,
-                      candidate_feedback_submitted_at: round.candidate_feedback_submitted_at,
-                    },
-                  });
+                  openArtifacts();
                 }
               }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  if (onRoundClick) {
-                    event.preventDefault();
-                    onRoundClick(round);
-                  } else if (hasRecordings) {
-                    event.preventDefault();
-                    setArtifactsModalFor({
-                      roundId: round.id,
-                      roundName: roundLabel(round),
-                      roundType: round.round_type,
-                      feedback: {
-                        candidate_feedback_rating: round.candidate_feedback_rating,
-                        candidate_feedback_text: round.candidate_feedback_text,
-                        candidate_feedback_submitted_at: round.candidate_feedback_submitted_at,
-                      },
-                    });
-                  }
-                }
-              }}
-              className={`w-56 shrink-0 rounded-xl border border-neutral-200 border-t-4 bg-white shadow-xs ${meta.border} ${
-                isActive ? 'ring-2 ring-warning/40' : ''
-              } ${onRoundClick || hasRecordings ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30' : ''}`}
-            >
-              <div className="flex items-center gap-2 px-3.5 pt-3">
-                <span
-                  className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${meta.stepBg} ${meta.stepText}`}
-                >
-                  {overdue ? '!' : bucket === 'done' ? '✓' : index + 1}
-                </span>
-                <span
-                  className="truncate text-sm font-semibold text-neutral-900"
-                  title={roundLabel(round)}
-                >
-                  {roundLabel(round)}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1.5 px-3.5 pb-3.5 pt-2.5">
-                <Badge status={meta.badgeStatus} className="w-fit">
-                  {overdue
-                    ? 'Overdue'
-                    : isResumeScored
-                      ? 'Completed'
-                      : formatRoundStatus(round.status)}
-                </Badge>
-                {overdue && (
-                  <span className="text-xs text-danger">
-                    No update since the scheduled time; may not have gone through.
-                  </span>
-                )}
-                {when && <span className="text-xs text-neutral-500">{when}</span>}
-                {round.duration_minutes != null && (
-                  <span className="text-xs text-neutral-400">{round.duration_minutes} min</span>
-                )}
-                {round.stage_type === 'resume' && resumeScore !== null && (
-                  <span className="text-xs font-semibold text-primary-600">
-                    Score: {resumeScore}
-                  </span>
-                )}
-                {isIntakeCallRound(round) && consistencyScore !== null && (
-                  <span className="text-xs font-semibold text-primary-600">
-                    Consistency: {consistencyScore} / 10
-                  </span>
-                )}
-                {isInterviewRound && !isIntakeCallRound(round) && roundScoreValue != null && (
-                  <span className="text-xs font-semibold text-primary-600">
-                    {roundScore?.recruiter_score != null
-                      ? `Score: ${roundScoreValue} / 5`
-                      : `Score: ${roundScoreValue} / 100 · AI score`}
-                  </span>
-                )}
-                {hasRecordings && (
-                  <button
-                    type="button"
-                    className="w-fit text-xs font-medium text-primary-600 hover:underline"
-                    onClick={(event) => {
-                      // Independent of the card's own click (which now opens
-                      // the round-detail drill-down) — stop it from also
-                      // firing onRoundClick.
-                      event.stopPropagation();
-                      setArtifactsModalFor({
-                        roundId: round.id,
-                        roundName: roundLabel(round),
-                        roundType: round.round_type,
-                        feedback: {
-                          candidate_feedback_rating: round.candidate_feedback_rating,
-                          candidate_feedback_text: round.candidate_feedback_text,
-                          candidate_feedback_submitted_at: round.candidate_feedback_submitted_at,
-                        },
-                      });
-                    }}
-                  >
-                    View recording &amp; transcript ›
-                  </button>
-                )}
-                {canManageInterviewers && (
-                  <button
-                    type="button"
-                    className="w-fit text-xs font-medium text-primary-600 hover:underline"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setInterviewersModalFor({
-                        roundId: round.id,
-                        roundName: roundLabel(round),
-                        currentInterviewerIds: round.interviewer_ids,
-                      });
-                    }}
-                  >
-                    {round.interviewer_ids.length > 0
-                      ? `Interviewers (${round.interviewer_ids.length}) ›`
-                      : 'Set interviewers ›'}
-                  </button>
-                )}
-              </div>
-            </div>
+              onOpenArtifacts={openArtifacts}
+              onOpenInterviewers={() =>
+                setInterviewersModalFor({
+                  roundId: round.id,
+                  roundName: roundLabel(round),
+                  currentInterviewerIds: round.interviewer_ids,
+                })
+              }
+              onRequestReschedule={
+                onRequestReschedule ? () => onRequestReschedule(round) : undefined
+              }
+            />
           );
         })}
       </div>
