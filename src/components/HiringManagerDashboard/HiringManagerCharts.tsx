@@ -21,6 +21,47 @@ const cardTooltipStyle = {
 
 const CHART_HEIGHT = 190;
 
+// Job titles are shown at full length in nothing else on this dashboard —
+// rotated (`angle={-20}`) so more fit before overlapping, but with no cap a
+// long one still overflows the card's left edge and gets clipped by
+// `ChartCard`'s `overflow-hidden`. Truncating just the axis tick (not the
+// underlying `job` field) keeps the full name in the tooltip on hover —
+// Recharts' `tickFormatter` only touches the rendered tick text, never the
+// `<Tooltip>`'s own label. The cap itself scales with how many bars are on
+// screen: with only 1-2 jobs there's plenty of width per label (a title
+// like "Senior Software Engineer" should read in full), but once several
+// jobs share the same row width, longer labels start overlapping each
+// other rather than the card edge, so the cap tightens.
+const axisLabelCharsFor = (barCount: number): number => {
+  if (barCount <= 2) return 32;
+  if (barCount <= 4) return 20;
+  return 14;
+};
+const truncateAxisLabel =
+  (barCount: number) =>
+  (value: string): string => {
+    const max = axisLabelCharsFor(barCount);
+    return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+  };
+
+// Axis titles, not just tick values — see GrowthAdoptionCharts.tsx's own
+// comment on this same pattern (widened Y-axis `width` to fit the title
+// without reintroducing the left-edge clipping `ChartCard`'s
+// `overflow-hidden` causes when an axis element overflows the card).
+const axisTitleStyle = { fontSize: 10, fill: '#8593ac' };
+const yAxisLabel = (value: string) => ({
+  value,
+  angle: -90,
+  position: 'insideLeft' as const,
+  style: { ...axisTitleStyle, textAnchor: 'middle' as const },
+});
+const xAxisLabel = (value: string) => ({
+  value,
+  position: 'insideBottom' as const,
+  offset: -2,
+  style: axisTitleStyle,
+});
+
 /**
  * Hiring Manager KPI dashboard charts — Panel interviews scheduled per job
  * (bar) / Avg AI score per job (bar) / Hiring by location (horizontal
@@ -85,14 +126,17 @@ const HiringManagerCharts: React.FC = () => {
               interval={0}
               angle={-20}
               textAnchor="end"
-              height={50}
+              height={78}
+              tickFormatter={truncateAxisLabel(panelData.length)}
+              label={xAxisLabel('Job')}
             />
             <YAxis
               allowDecimals={false}
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
-              width={36}
+              width={48}
+              label={yAxisLabel('Scheduled')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Bar dataKey="Scheduled" fill={COLOR_PRIMARY} radius={[6, 6, 0, 0]} maxBarSize={40} />
@@ -118,14 +162,18 @@ const HiringManagerCharts: React.FC = () => {
               interval={0}
               angle={-20}
               textAnchor="end"
-              height={50}
+              height={78}
+              tickFormatter={truncateAxisLabel(avgScoreData.length)}
+              label={xAxisLabel('Job')}
             />
             <YAxis
               domain={[0, 10]}
+              allowDecimals={false}
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
-              width={28}
+              width={48}
+              label={yAxisLabel('Avg score')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Bar dataKey="Avg AI score" fill={COLOR_ACCENT} radius={[6, 6, 0, 0]} maxBarSize={40} />
@@ -145,7 +193,7 @@ const HiringManagerCharts: React.FC = () => {
           <BarChart
             data={locationData}
             layout="vertical"
-            margin={{ top: 8, right: 24, left: 8, bottom: 0 }}
+            margin={{ top: 8, right: 24, left: 8, bottom: 14 }}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef1f7" />
             <XAxis
@@ -154,6 +202,8 @@ const HiringManagerCharts: React.FC = () => {
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
+              height={30}
+              label={xAxisLabel('Selected candidates')}
             />
             <YAxis
               type="category"
@@ -161,7 +211,8 @@ const HiringManagerCharts: React.FC = () => {
               tick={{ fontSize: 11, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
-              width={110}
+              width={128}
+              label={yAxisLabel('Location')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
             <Bar dataKey="Selected" fill={COLOR_SUCCESS} radius={[0, 6, 6, 0]} maxBarSize={22} />

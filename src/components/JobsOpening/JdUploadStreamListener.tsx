@@ -40,8 +40,6 @@ const JdUploadStreamListener = () => {
   const batchId = sessionStorage.getItem(JD_UPLOAD_BATCH_STORAGE_KEY);
 
   const handleProgress = (data: JdUploadProgressData) => {
-    console.log('JD Upload Progress:', data);
-
     // Store batch ID for recovery across navigations
     if (data.batchId) {
       sessionStorage.setItem(JD_UPLOAD_BATCH_STORAGE_KEY, data.batchId);
@@ -59,8 +57,6 @@ const JdUploadStreamListener = () => {
   };
 
   const handleNotification = (data: JdUploadNotificationData) => {
-    console.log('JD Upload Notification:', data);
-
     const toastType = data.severity || 'info';
     const message = data.message || data.title || 'JD Upload notification';
 
@@ -71,8 +67,6 @@ const JdUploadStreamListener = () => {
   };
 
   const handleComplete = (data: JdUploadProgressData) => {
-    console.log('JD Upload Completed:', data);
-
     // Clear batch ID from sessionStorage on completion
     sessionStorage.removeItem(JD_UPLOAD_BATCH_STORAGE_KEY);
 
