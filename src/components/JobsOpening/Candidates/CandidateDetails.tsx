@@ -313,7 +313,7 @@ const CandidateDetails = () => {
       await requestCallReschedule(selectedRound.interview_booking_id).unwrap();
       showToast({
         message:
-          'Reschedule requested. The candidate has been emailed a new link, valid for 24 hours.',
+          'Reschedule requested — the candidate has been emailed a new link, valid for 24 hours.',
         type: 'success',
       });
     } catch (e) {
