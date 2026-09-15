@@ -37,6 +37,16 @@ type PanelInterviewersModalProps = {
   currentInterviewerIds: string[];
 };
 
+// Role slugs come straight from org-service ("interviewer", a tenant's own
+// derived role name, or the fixed "hiring_manager" tag) — title-cased for
+// display, no fixed vocabulary assumed since a tenant can have its own
+// interviewer-role names.
+const roleLabel = (role: string) =>
+  role
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
 const PanelInterviewersModal = ({
   open,
   onClose,
@@ -137,8 +147,18 @@ const PanelInterviewersModal = ({
                   htmlFor={`panel-interviewer-${interviewer.id}`}
                   className="min-w-0 cursor-pointer"
                 >
-                  <div className="truncate text-sm font-medium text-gray-900">
-                    {interviewer.display_name}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="truncate text-sm font-medium text-gray-900">
+                      {interviewer.display_name}
+                    </span>
+                    {interviewer.roles.map((role) => (
+                      <span
+                        key={role}
+                        className="shrink-0 rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-700"
+                      >
+                        {roleLabel(role)}
+                      </span>
+                    ))}
                   </div>
                   <div className="truncate text-xs text-gray-500">{interviewer.email}</div>
                 </label>
