@@ -66,10 +66,6 @@ const LogOutPage = lazy(() => import('./pages/LogOutPage'));
 const OrganisationUserPage = lazy(() => import('./pages/OrganisationUserPage'));
 const RolesPage = lazy(() => import('./pages/RolesPage'));
 const SyncAtsPage = lazyImport(() => import('./pages/JobsOpening'), 'SyncAtsPage');
-const JobConfigurationPage = lazyImport(
-  () => import('./pages/JobsOpening'),
-  'JobConfigurationPage'
-);
 const UpdateInterviewRoundPage = lazy(() => import('./pages/UpdateInterviewRoundPage'));
 const ViewCompanyPage = lazy(() => import('./pages/ViewCompanyPage'));
 const ViewDetailJdPage = lazyImport(() => import('./pages/ViewDetailJdPage'), 'ViewDetailJdPage');
@@ -800,11 +796,6 @@ export const Routes: RouteType[] = [
     name: 'AiCallBooking',
     path: '/ai-call-booking',
     component: AiCallBookingPage,
-  },
-  {
-    name: 'jobFieldsConfiguration',
-    path: '/job-fields-configuration',
-    component: JobConfigurationPage,
   },
   {
     name: 'searchCandidateListing',

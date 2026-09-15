@@ -10,6 +10,8 @@ export { default as FunnelBars } from './ui/FunnelBars';
 export type { FunnelStageBar } from './ui/FunnelBars';
 export { default as HiringPipeline } from './ui/HiringPipeline';
 export type { PipelineStage } from './ui/HiringPipeline';
+export { default as ScrollableBarChart } from './ui/ScrollableBarChart';
+export type { ScrollableBarChartDatum } from './ui/ScrollableBarChart';
 export { default as LiveBadge } from './ui/LiveBadge';
 export { Badge } from './ui/badge';
 export type { BadgeStatus } from './ui/badge';

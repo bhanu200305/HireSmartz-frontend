@@ -34,7 +34,11 @@ const extendedApi = jobApi.injectEndpoints({
         message: 'Job closed successfully.',
         data: response,
       }),
-      invalidatesTags: [{ type: 'JobOpenings', id: 'LIST' }, 'JobStats'],
+      invalidatesTags: (_r, _e, { jobId }) => [
+        { type: 'JobOpenings', id: 'LIST' },
+        { type: 'JobDetails', id: jobId },
+        'JobStats',
+      ],
     }),
 
     reopenJob: build.mutation<CloseJobResponse, string>({
@@ -42,7 +46,11 @@ const extendedApi = jobApi.injectEndpoints({
         url: `/job-openings/${jobId}/reopen`,
         method: 'POST',
       }),
-      invalidatesTags: [{ type: 'JobOpenings', id: 'LIST' }, 'JobStats'],
+      invalidatesTags: (_r, _e, jobId) => [
+        { type: 'JobOpenings', id: 'LIST' },
+        { type: 'JobDetails', id: jobId },
+        'JobStats',
+      ],
     }),
 
     publishJob: build.mutation<
@@ -56,6 +64,7 @@ const extendedApi = jobApi.injectEndpoints({
       invalidatesTags: (_r, _e, jobId) => [
         { type: 'JobOpenings', id: 'LIST' },
         { type: 'JobOpeningById', id: jobId },
+        { type: 'JobDetails', id: jobId },
         { type: 'WizardState', id: jobId },
         'JobStats',
       ],

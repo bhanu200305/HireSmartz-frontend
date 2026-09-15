@@ -89,6 +89,9 @@ const candidateNotesApi = api.injectEndpoints({
         method: 'GET',
       }),
       transformResponse: (response: unknown) => mapApiNotesResponseToItems(response),
+      providesTags: (_result, _error, candidateId) => [
+        { type: 'CandidateNotes', id: `candidate-${candidateId}` },
+      ],
     }),
     getRoundNotes: build.query<CandidateNoteItem[], number | string>({
       query: (bookingId) => ({
@@ -96,6 +99,9 @@ const candidateNotesApi = api.injectEndpoints({
         method: 'GET',
       }),
       transformResponse: (response: unknown) => mapApiNotesResponseToItems(response),
+      providesTags: (_result, _error, bookingId) => [
+        { type: 'CandidateNotes', id: `round-${bookingId}` },
+      ],
     }),
   }),
   overrideExisting: true,

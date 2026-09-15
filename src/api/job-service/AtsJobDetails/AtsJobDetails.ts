@@ -86,6 +86,8 @@ const extendedApi = jobApi.injectEndpoints({
           name: String(c.ats_provider ?? ''),
         })),
       }),
+      // Same URL as Ats/ats.ts's getAtsConfig — same tag, stays in sync.
+      providesTags: ['AtsConfig'],
     }),
   }),
   overrideExisting: true,

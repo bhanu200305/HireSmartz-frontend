@@ -38,6 +38,7 @@ const CACHE_TAG_TYPES = [
   'TenantDepartments',
   'ImportBatch',
   'Roles',
+  'CandidateNotes',
 ];
 
 const isPasswordChangeInvalidationError = (message: string): boolean => {
