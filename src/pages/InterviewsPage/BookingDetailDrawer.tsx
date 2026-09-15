@@ -97,6 +97,10 @@ export const BookingDetailDrawer = ({
 
   const isPanel = booking?.interview_type === 'panel';
   const isVideo = booking?.interview_type === 'ai_video' || isPanel;
+  // Only an offline PANEL round has no LiveKit egress to auto-record it —
+  // online PANEL/AI_VIDEO get their recording automatically, so manually
+  // attaching one there would just create a second, conflicting artifact.
+  const isOfflinePanel = isPanel && booking?.round_snapshot?.delivery_mode === 'offline';
   const { data: interviewers } = useGetInterviewersQuery(undefined, {
     skip: !open || !isPanel || !canUpdate,
   });
@@ -501,7 +505,7 @@ export const BookingDetailDrawer = ({
                 ) : (
                   <p className="text-sm text-neutral-400">No recordings attached yet.</p>
                 )}
-                {canFollowUp && (
+                {canFollowUp && isOfflinePanel && (
                   <div className="mt-2 flex flex-col gap-2">
                     <div className="flex gap-2">
                       <input

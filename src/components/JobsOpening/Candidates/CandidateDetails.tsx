@@ -1150,32 +1150,40 @@ const CandidateDetails = () => {
                             CONNECT CALENDAR
                           </Button>
                         )}
-                        {isPanelRound && selectedRound.interview_booking_id && (
-                          <>
-                            <input
-                              ref={audioFileInputRef}
-                              type="file"
-                              accept="audio/*"
-                              className="hidden"
-                              onChange={(e) => void handleAudioFileSelected(e)}
-                            />
-                            <Button
-                              className={`rounded-full px-5 py-2 text-sm font-semibold ${
-                                hasRecording
-                                  ? 'border border-green-200 bg-green-50 text-green-700'
-                                  : 'border border-primary-300 bg-white text-primary-700'
-                              }`}
-                              disabled={isUploadingAudio || hasRecording}
-                              onClick={() => audioFileInputRef.current?.click()}
-                            >
-                              {isUploadingAudio
-                                ? 'UPLOADING…'
-                                : hasRecording
-                                  ? 'RECORDING UPLOADED'
-                                  : 'UPLOAD AUDIO'}
-                            </Button>
-                          </>
-                        )}
+                        {/* Ideally offline-PANEL only — an online PANEL round
+                            already gets its recording automatically via
+                            LiveKit egress. Gated on round_type alone for now:
+                            candidate-service's CandidateInterviewRoundView
+                            doesn't expose delivery_mode (interview-service's
+                            own booking.round_snapshot field) today, so this
+                            screen has no way to tell online from offline. */}
+                        {selectedRound.round_type === 'PANEL' &&
+                          selectedRound.interview_booking_id && (
+                            <>
+                              <input
+                                ref={audioFileInputRef}
+                                type="file"
+                                accept="audio/*"
+                                className="hidden"
+                                onChange={(e) => void handleAudioFileSelected(e)}
+                              />
+                              <Button
+                                className={`rounded-full px-5 py-2 text-sm font-semibold ${
+                                  hasRecording
+                                    ? 'border border-green-200 bg-green-50 text-green-700'
+                                    : 'border border-primary-300 bg-white text-primary-700'
+                                }`}
+                                disabled={isUploadingAudio || hasRecording}
+                                onClick={() => audioFileInputRef.current?.click()}
+                              >
+                                {isUploadingAudio
+                                  ? 'UPLOADING…'
+                                  : hasRecording
+                                    ? 'RECORDING UPLOADED'
+                                    : 'UPLOAD AUDIO'}
+                              </Button>
+                            </>
+                          )}
                       </div>
                     </div>
                   </CommonCard>
