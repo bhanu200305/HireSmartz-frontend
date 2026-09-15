@@ -525,15 +525,17 @@ const CandidateDetails = () => {
       };
     }
     // Scores are on two different scales depending on who produced them —
-    // a recruiter's manual review is 0-5, the AI round score is 0-100 (see
-    // RecruiterRoundScoreModal) — so the bar height must divide by the
-    // scale that's actually present, not a fixed /5, or every AI-scored
-    // round renders maxed out regardless of its real value.
+    // a recruiter's manual review is 0-5, the AI round score is 0-10 as of
+    // 2026-09-14 (score_interview_round.py's scale unification — matches
+    // resume/consistency scoring above, was 0-100 before) — so the bar
+    // height must scale by whichever is actually present, not a fixed /5,
+    // or every AI-scored round renders maxed out regardless of its real
+    // value.
     const pct =
       roundScore?.recruiter_score != null
         ? Math.max(0, Math.min(100, (roundScore.recruiter_score / 5) * 100))
         : roundScore?.score != null
-          ? Math.max(0, Math.min(100, roundScore.score))
+          ? Math.max(0, Math.min(100, roundScore.score * 10))
           : 0;
     return {
       roundScore,
@@ -543,7 +545,7 @@ const CandidateDetails = () => {
         roundScore?.recruiter_score != null
           ? `${roundScore.recruiter_score} / 5`
           : roundScore?.score != null
-            ? `${roundScore.score} / 100 · AI score`
+            ? `${roundScore.score} / 10 · AI score`
             : null,
       statusText: formatRoundStatus(round.status),
       outcomeLabel: roundScore
