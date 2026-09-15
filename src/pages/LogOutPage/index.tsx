@@ -21,6 +21,14 @@ import { showToast } from '../../components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
 import { api } from '../../api';
+import { interviewApi } from '../../api/interview-service/client';
+import { publicApplyApi } from '../../api/candidate-service/PublicApply';
+import { candidateApi } from '../../api/candidate-service/candidateApi';
+import { authApi } from '../../api/authentication-service/authApi';
+import { orgApi } from '../../api/organization-service/orgApi';
+import { notifApi } from '../../api/notification-service/notifApi';
+import { jobApi } from '../../api/job-service/jobApi';
+import { aiApi } from '../../api/ai-service/aiApi';
 
 const LogOutPage = () => {
   const dispatch = useDispatch();
@@ -44,7 +52,17 @@ const LogOutPage = () => {
     await persistor.flush();
 
     localStorage.removeItem('persist:root');
+    // Resets every RTK Query slice, not just the base one — avoids a
+    // cross-tenant cache flash on the next login.
     dispatch(api.util.resetApiState());
+    dispatch(jobApi.util.resetApiState());
+    dispatch(orgApi.util.resetApiState());
+    dispatch(candidateApi.util.resetApiState());
+    dispatch(interviewApi.util.resetApiState());
+    dispatch(publicApplyApi.util.resetApiState());
+    dispatch(authApi.util.resetApiState());
+    dispatch(notifApi.util.resetApiState());
+    dispatch(aiApi.util.resetApiState());
     dispatch(resetJobOpeningFilters());
     dispatch(resetOrgUserFilters());
     dispatch(resetCompanyFilters());

@@ -3071,7 +3071,7 @@ const EditJobDetail = () => {
         </div>
         {!canEditThisJob && (
           <p className="text-center text-red-500 text-sm mt-4">
-            You don't have permission to edit this job.
+            You don&apos;t have permission to edit this job.
           </p>
         )}
         <div className="flex items-center justify-center mt-6 gap-6">

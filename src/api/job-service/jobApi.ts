@@ -118,6 +118,7 @@ export const jobApi = createApi({
     // create/update/delete already branch platform-vs-tenant by URL) rather
     // than a separate tag, since both write the one list either screen reads.
     'PlatformJobModes',
+    'PlatformEducationPreferences',
     'PlatformShiftTypes',
     'PlatformClosureReasons',
     'PlatformInterviewRoundTypes',

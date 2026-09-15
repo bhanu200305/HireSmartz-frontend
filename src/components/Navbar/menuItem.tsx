@@ -135,7 +135,6 @@ const MenuItems = [
       '/view-job-description',
       '/view-job-opening',
       '/interviewer-startinterview',
-      '/job-fields-configuration',
     ],
     requiredAuthority: Authorities.JOB_OPENING_VIEW,
   },

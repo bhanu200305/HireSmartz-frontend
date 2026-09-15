@@ -6,6 +6,7 @@ import ShiftTypesTab from './JobCatalogs/ShiftTypesTab';
 import PlatformJobTypesTab from './JobCatalogs/PlatformJobTypesTab';
 import JobModesTab from './JobCatalogs/JobModesTab';
 import LanguagesTab from './JobCatalogs/LanguagesTab';
+import EducationPreferencesTab from './JobCatalogs/EducationPreferencesTab';
 import SkillCategoriesTab from './JobCatalogs/SkillCategoriesTab';
 import SkillTypesTab from './JobCatalogs/SkillTypesTab';
 import SkillsTab from './JobCatalogs/SkillsTab';
@@ -59,6 +60,11 @@ const JobCatalogsTab: React.FC = () => {
           key: 'languages',
           label: 'Languages',
           children: <LanguagesTab />,
+        },
+        {
+          key: 'education-preferences',
+          label: 'Education Preferences',
+          children: <EducationPreferencesTab />,
         },
         {
           key: 'skill-categories',

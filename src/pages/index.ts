@@ -5,7 +5,7 @@ export { default as ForgotPasswordPage } from './ForgotPasswordPage/index';
 export { default as CustomersPage } from './CustomerPage';
 export { default as AddCustomers } from './AddCustomerPage';
 export { default as ViewCompanyPage } from './ViewCompanyPage';
-export { JobsOpeningPage, SyncAtsPage, JobConfigurationPage } from './JobsOpening';
+export { JobsOpeningPage, SyncAtsPage } from './JobsOpening';
 export { default as AddJobDescriptionPage } from './AddJobDescription';
 export { default as AddInterviewRoundPage } from './AddInterviewRound';
 export { default as ViewJobDescriptionPage } from './ViewJobDescriptionPage';
