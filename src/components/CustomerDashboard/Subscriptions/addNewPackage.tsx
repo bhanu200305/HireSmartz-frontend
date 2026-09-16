@@ -145,10 +145,10 @@ const AddNewPackage = () => {
                   {/* <p className="text-red-500 text-sm">{errors.addressLine1?.message}</p> */}
                 </Form.Item>
 
-                <Form.Item label="White Labelling">
+                <Form.Item label="White Labeling">
                   <Input
                     {...register('addressLine2')}
-                    placeholder="Select platform cuztomiation"
+                    placeholder="Select platform customization"
                     className="bg-white w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
                   />
                   {/* <p className="text-red-500 text-sm">{errors.addressLine2?.message}</p> */}

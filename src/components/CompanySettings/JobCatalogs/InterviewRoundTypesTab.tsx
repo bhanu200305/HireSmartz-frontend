@@ -67,7 +67,7 @@ const InterviewRoundTypesTab: React.FC = () => {
 
   return (
     <PlatformCatalogTab<PlatformInterviewRoundType, FormValues>
-      title="Platform-wide interview-round-type catalogue."
+      title="Platform-wide interview-round-type catalog."
       itemNounSingular="Round type"
       itemNounPlural="Round types"
       items={data}

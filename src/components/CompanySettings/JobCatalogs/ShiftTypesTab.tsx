@@ -52,7 +52,7 @@ const ShiftTypesTab: React.FC = () => {
 
   return (
     <PlatformCatalogTab<PlatformShiftType, FormValues>
-      title="Platform-wide shift-type catalogue."
+      title="Platform-wide shift-type catalog."
       itemNounSingular="Shift type"
       itemNounPlural="Shift types"
       items={data}

@@ -1329,7 +1329,7 @@ const JobDetails = () => {
       const orgJobTitleId = resolveOrgJobTitleId(id);
       if (!orgJobTitleId || !tenantId) {
         showToast({
-          message: 'This title is from the platform catalogue and cannot be renamed here.',
+          message: 'This title is from the platform catalog and cannot be renamed here.',
           type: 'error',
         });
         return;
@@ -1488,7 +1488,7 @@ const JobDetails = () => {
       const orgJobTitleId = resolveOrgJobTitleId(id);
       if (!orgJobTitleId || !tenantId) {
         showToast({
-          message: 'This title is from the platform catalogue and cannot be removed here.',
+          message: 'This title is from the platform catalog and cannot be removed here.',
           type: 'error',
         });
         return;

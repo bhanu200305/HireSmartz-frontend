@@ -32,7 +32,7 @@ const ClosureReasonsTab: React.FC = () => {
 
   return (
     <PlatformCatalogTab<PlatformClosureReason, FormValues>
-      title="Platform-wide job-closure reason catalogue."
+      title="Platform-wide job-closure reason catalog."
       itemNounSingular="Closure reason"
       itemNounPlural="Closure reasons"
       items={data}

@@ -26,7 +26,7 @@ const LanguagesTab: React.FC = () => {
 
   return (
     <PlatformCatalogTab<PlatformLanguage, FormValues>
-      title="Platform-wide language catalogue."
+      title="Platform-wide language catalog."
       itemNounSingular="Language"
       itemNounPlural="Languages"
       items={data}

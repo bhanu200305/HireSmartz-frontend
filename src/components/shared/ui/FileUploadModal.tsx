@@ -159,7 +159,7 @@ const FileUploadModal = ({
   const handleClose = () => {
     if (files.length > 0) {
       showToast({
-        message: 'Upload cancelled. Files have been cleared.',
+        message: 'Upload canceled. Files have been cleared.',
         type: 'info',
       });
     }

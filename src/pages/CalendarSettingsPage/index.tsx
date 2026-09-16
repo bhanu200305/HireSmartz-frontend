@@ -179,7 +179,7 @@ const CalendarSettingsPage = () => {
             showIcon
             closable
             onClose={dismissBanner}
-            message="Connection cancelled"
+            message="Connection canceled"
             description="You can connect your calendar whenever you're ready."
           />
         )}

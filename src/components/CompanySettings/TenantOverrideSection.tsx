@@ -84,7 +84,7 @@ const TenantOverrideSection: React.FC = () => {
                       status={override.is_customised ? 'info' : 'neutral'}
                       className="absolute right-3 top-3"
                     >
-                      {override.is_customised ? 'Customised' : 'Default'}
+                      {override.is_customised ? 'Customized' : 'Default'}
                     </Badge>
                     <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-600 to-accent-500 text-white shadow-sm">
                       <MdOutlineDescription size={15} />

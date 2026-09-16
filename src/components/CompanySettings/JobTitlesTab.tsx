@@ -217,7 +217,7 @@ const JobTitlesTab: React.FC = () => {
     <div>
       <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
         <div>
-          <Typography variant="body2">Platform-wide job-title catalogue.</Typography>
+          <Typography variant="body2">Platform-wide job-title catalog.</Typography>
           <span className="text-xs font-medium text-gray-400">
             {dataSource.length} {dataSource.length === 1 ? 'job title' : 'job titles'}
             {searchText.trim() && ` of ${jobTitles?.length ?? 0}`}

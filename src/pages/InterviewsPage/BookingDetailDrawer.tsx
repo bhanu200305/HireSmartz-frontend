@@ -205,7 +205,7 @@ export const BookingDetailDrawer = ({
     try {
       if (pending === 'cancel') {
         await cancelBooking({ bookingId: id, reason: reason.trim() || null }).unwrap();
-        showToast({ message: 'Interview cancelled.', type: 'success' });
+        showToast({ message: 'Interview canceled.', type: 'success' });
       } else if (pending === 'skip') {
         await skipBooking({ bookingId: id, reason: reason.trim() || null }).unwrap();
         showToast({ message: 'Round skipped.', type: 'success' });

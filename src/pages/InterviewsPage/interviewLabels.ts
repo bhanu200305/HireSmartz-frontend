@@ -11,7 +11,7 @@ export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   draft: 'Draft',
   scheduled: 'Scheduled',
   completed: 'Completed',
-  cancelled: 'Cancelled',
+  cancelled: 'Canceled',
   no_show: 'No-show',
   failed: 'Failed',
   rescheduled: 'Rescheduled',

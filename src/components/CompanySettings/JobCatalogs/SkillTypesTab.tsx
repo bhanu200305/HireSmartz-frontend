@@ -24,7 +24,7 @@ const SkillTypesTab: React.FC = () => {
 
   return (
     <PlatformCatalogTab<PlatformSkillType, FormValues>
-      title="Platform-wide skill-type catalogue."
+      title="Platform-wide skill-type catalog."
       itemNounSingular="Skill type"
       itemNounPlural="Skill types"
       items={data}

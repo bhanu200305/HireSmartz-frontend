@@ -188,9 +188,9 @@ const PushTemplatesTab: React.FC = () => {
         width={480}
       >
         <div className="text-center">
-          <h3 className="mb-3 text-xl font-semibold text-gray-900">Customised Copy Will Be Lost</h3>
+          <h3 className="mb-3 text-xl font-semibold text-gray-900">Customized Copy Will Be Lost</h3>
           <p className="mb-4 text-sm text-gray-600">
-            The companies below have customised email wording that will be overwritten with the
+            The companies below have customized email wording that will be overwritten with the
             platform default:
           </p>
           <div className="mb-4 max-h-40 space-y-1 overflow-y-auto text-left">

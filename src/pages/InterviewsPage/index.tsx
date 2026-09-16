@@ -128,7 +128,7 @@ export const InterviewsPage = () => {
           <div>
             <h1 className="text-xl font-bold text-neutral-900">Interviews</h1>
             <p className="text-sm text-neutral-500">
-              Every scheduled, completed, and cancelled interview across your jobs.
+              Every scheduled, completed, and canceled interview across your jobs.
             </p>
           </div>
         </div>

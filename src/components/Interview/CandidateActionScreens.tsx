@@ -237,7 +237,7 @@ export const WithdrawalPage = () => {
         <h1 className="text-center text-lg font-semibold text-gray-900">You’ve withdrawn</h1>
         <p className="mt-2 text-center text-sm text-gray-500">
           We’ve let {org} know you’re no longer interested in this role. Any scheduled interviews
-          will be cancelled.
+          will be canceled.
         </p>
       </Shell>
     );

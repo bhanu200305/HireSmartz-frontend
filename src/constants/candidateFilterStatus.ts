@@ -12,7 +12,7 @@ export const GROUPED_INTERNAL_STATUS_OPTIONS = [
     label: 'AI Audio Screening',
     value: 'AI',
     children: [
-      { label: 'Cancelled', value: 'AI Audio Screening-Cancelled' },
+      { label: 'Canceled', value: 'AI Audio Screening-Cancelled' },
       { label: 'Completed', value: 'AI Audio Screening-Completed' },
       { label: 'In Progress', value: 'AI Audio Screening-In Progress' },
       { label: 'Invitation Sent', value: 'AI Audio Screening-Invitation Sent' },
@@ -27,7 +27,7 @@ export const GROUPED_INTERNAL_STATUS_OPTIONS = [
     label: 'Video Interview',
     value: 'VIDEO',
     children: [
-      { label: 'Cancelled', value: 'Video Interview-Cancelled' },
+      { label: 'Canceled', value: 'Video Interview-Cancelled' },
       { label: 'Completed', value: 'Video Interview-Completed' },
       { label: 'In Progress', value: 'Video Interview-In Progress' },
       { label: 'Invitation Sent', value: 'Video Interview-Invitation Sent' },
@@ -41,7 +41,7 @@ export const GROUPED_INTERNAL_STATUS_OPTIONS = [
     label: 'In-Person Interview',
     value: 'IN_PERSON',
     children: [
-      { label: 'Cancelled', value: 'In-person Interview-Cancelled' },
+      { label: 'Canceled', value: 'In-person Interview-Cancelled' },
       { label: 'Completed', value: 'In-person Interview-Completed' },
       { label: 'Invitation Sent', value: 'In-person Interview-Invitation Sent' },
       { label: 'No Show', value: 'In-person Interview-No Show' },

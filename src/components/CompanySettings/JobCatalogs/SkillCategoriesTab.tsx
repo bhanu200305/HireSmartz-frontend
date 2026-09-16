@@ -25,7 +25,7 @@ const SkillCategoriesTab: React.FC = () => {
 
   return (
     <PlatformCatalogTab<PlatformSkillCategory, FormValues>
-      title="Platform-wide skill-category catalogue."
+      title="Platform-wide skill-category catalog."
       itemNounSingular="Skill category"
       itemNounPlural="Skill categories"
       items={data}

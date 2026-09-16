@@ -247,7 +247,7 @@ const EmailLayoutSection: React.FC = () => {
               />
             </CollapsibleSection>
 
-            <CollapsibleSection title="Brand colours" defaultOpen>
+            <CollapsibleSection title="Brand colors" defaultOpen>
               <EmailThemeColorFields
                 theme={theme}
                 fallback={CORPORATE_DEFAULTS}

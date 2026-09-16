@@ -91,7 +91,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         </ChartCard>
         <ChartCard
           title="Interviews by Status & Type"
-          subtitle="Scheduled / Completed / Cancelled, by Audio Round, AI Interview & Panel Interview"
+          subtitle="Scheduled / Completed / Canceled, by Audio Round, AI Interview & Panel Interview"
           typeTag="Grouped bar"
           available={false}
           unavailableLabel={COMING_SOON}

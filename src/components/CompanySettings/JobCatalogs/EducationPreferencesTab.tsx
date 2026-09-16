@@ -25,7 +25,7 @@ const EducationPreferencesTab: React.FC = () => {
 
   return (
     <PlatformCatalogTab<PlatformEducationPreference, FormValues>
-      title="Platform-wide education-preference catalogue."
+      title="Platform-wide education-preference catalog."
       itemNounSingular="Education preference"
       itemNounPlural="Education preferences"
       items={data}

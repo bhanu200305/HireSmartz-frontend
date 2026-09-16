@@ -56,7 +56,7 @@ const NotificationTemplatesTab: React.FC = () => {
           <MdOutlineNotifications size={18} />
         </span>
         <div>
-          <p className="text-sm font-semibold text-gray-900">System notification catalogue</p>
+          <p className="text-sm font-semibold text-gray-900">System notification catalog</p>
           <p className="text-xs text-gray-500">
             Platform defaults and per-tenant overrides for account, security and product emails
             &amp; SMS.

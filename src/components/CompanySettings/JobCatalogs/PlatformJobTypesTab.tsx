@@ -25,7 +25,7 @@ const PlatformJobTypesTab: React.FC = () => {
 
   return (
     <PlatformCatalogTab<OrganizationJobType, FormValues>
-      title="Platform-wide job-type catalogue."
+      title="Platform-wide job-type catalog."
       itemNounSingular="Job type"
       itemNounPlural="Job types"
       items={data}

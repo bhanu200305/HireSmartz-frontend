@@ -100,7 +100,7 @@ const NotificationCopyPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => 
                       </Badge>
                     )}
                     <Badge status={override.is_customised ? 'info' : 'neutral'}>
-                      {override.is_customised ? 'Customised' : 'Default'}
+                      {override.is_customised ? 'Customized' : 'Default'}
                     </Badge>
                   </div>
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-600 to-accent-500 text-white shadow-sm">

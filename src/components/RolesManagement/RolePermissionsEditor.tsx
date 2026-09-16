@@ -122,7 +122,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
         <div className="font-semibold text-sm text-gray-900">Permissions by location</div>
         <p className="text-xs text-gray-500 mt-0.5 mb-3">
           &quot;Default&quot; is the baseline every location uses unless you give it its own set
-          below. Pick a location to customise it.
+          below. Pick a location to customize it.
         </p>
 
         <div className="flex items-center gap-1.5 flex-wrap border-b border-gray-100 pb-3">
@@ -202,7 +202,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
             onClick={() => addOverride(activeLocation.id)}
             className="text-xs font-semibold text-primary-600 border border-primary-200 rounded-lg px-3 py-2 hover:bg-primary-50 cursor-pointer"
           >
-            + Customise permissions for {activeLocation.name}
+            + Customize permissions for {activeLocation.name}
           </button>
         </div>
       )}
