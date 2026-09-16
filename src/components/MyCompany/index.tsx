@@ -23,7 +23,7 @@ import TenantShiftsTab from './JobSettings/TenantShiftsTab';
 import TenantJobModesTab from './JobSettings/TenantJobModesTab';
 import TenantClosureReasonsTab from './JobSettings/TenantClosureReasonsTab';
 import TenantEducationPreferencesTab from './JobSettings/TenantEducationPreferencesTab';
-import TenantAtsIntegrationTab from './JobSettings/TenantAtsIntegrationTab';
+// import TenantAtsIntegrationTab from './JobSettings/TenantAtsIntegrationTab'; // hidden for now
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
@@ -231,11 +231,12 @@ const MyCompany: React.FC = () => {
           label: 'Education Preferences',
           children: <TenantEducationPreferencesTab />,
         },
-        canViewJobSettings && {
-          key: '18',
-          label: 'ATS Integration',
-          children: <TenantAtsIntegrationTab />,
-        },
+        // Hidden for now - ATS integration isn't being rolled out yet.
+        // canViewJobSettings && {
+        //   key: '18',
+        //   label: 'ATS Integration',
+        //   children: <TenantAtsIntegrationTab />,
+        // },
       ].filter(Boolean) as TabsProps['items'],
     },
     {

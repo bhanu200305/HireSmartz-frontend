@@ -234,11 +234,6 @@ const JobsOpening = () => {
     (state: RootState) => state.globalSearchSlice.selectedCategoryField
   );
   const hasTenantContext = Boolean(tenantId);
-  const { data, isLoading, refetch } = useGetJobOpeningsQuery(filters, {
-    skip: !hasTenantContext,
-    refetchOnMountOrArgChange: true,
-  });
-  const { data: jobStats } = useGetJobStatsQuery(undefined, { skip: !hasTenantContext });
   // JOB_OPENING_CREATE is granted only to hiring_manager and company_admin
   // (never recruiter) — the same reliable, permission-based signal already
   // used elsewhere in this file, rather than role.name, whose JWT claim
@@ -248,6 +243,15 @@ const JobsOpening = () => {
   // Defaults to org-wide, matching their existing view before this toggle
   // existed — "my jobs" is an opt-in, not the default.
   const [showMyJobsOnly, setShowMyJobsOnly] = useState(false);
+  const isMyJobsFilterActive = canFilterToMyJobs && showMyJobsOnly;
+  const { data, isLoading, refetch } = useGetJobOpeningsQuery(
+    { ...filters, assignedToMe: isMyJobsFilterActive },
+    {
+      skip: !hasTenantContext,
+      refetchOnMountOrArgChange: true,
+    }
+  );
+  const { data: jobStats } = useGetJobStatsQuery(undefined, { skip: !hasTenantContext });
   const { data: myJobStats } = useGetJobStatsQuery(
     { assignedToMe: true },
     { skip: !hasTenantContext || !canFilterToMyJobs }
@@ -302,9 +306,9 @@ const JobsOpening = () => {
     onSelect: (job) => navigate(`/jobs/view/${job.jobOpeningId}/candidates?page=1&size=10`),
   });
 
-  // canFilterToMyJobs toggles which stats feed the cards below (mine vs
-  // org-wide); everyone else always sees org-wide, same as before.
-  const statsForCards = canFilterToMyJobs && showMyJobsOnly ? myJobStats : jobStats;
+  // The toggle scopes both the stat cards and the job list query above
+  // (isMyJobsFilterActive); everyone else always sees org-wide, same as before.
+  const statsForCards = isMyJobsFilterActive ? myJobStats : jobStats;
 
   // Clicking a card reuses the same filter states as the status dropdown below.
   const jobStatCards: StatCardData[] = [
@@ -915,16 +919,17 @@ const JobsOpening = () => {
             canWrite: isAssignedToJob(record, userId, role, authorities),
           }),
       },
-      !record.isClosed && {
-        key: 'edit',
-        label: 'Edit',
-        onClick: () =>
-          navigate(`/jobs/edit/${record.jobOpeningId}/details`, {
-            state: {
-              interviewedCandidateCount: record?.interviewedCandidateCount ?? 0,
-            },
-          }),
-      },
+      !record.isClosed &&
+        isAssignedToJob(record, userId, role, authorities) && {
+          key: 'edit',
+          label: 'Edit',
+          onClick: () =>
+            navigate(`/jobs/edit/${record.jobOpeningId}/details`, {
+              state: {
+                interviewedCandidateCount: record?.interviewedCandidateCount ?? 0,
+              },
+            }),
+        },
       !record.isDraft && {
         key: 'duplicate',
         label: 'Duplicate',
@@ -973,6 +978,19 @@ const JobsOpening = () => {
       if (hasFeatureAccess('job_opening', item.key as any, role, authorities)) return true;
       return false;
     });
+
+    // No action survives the filters above - e.g. a draft made by someone
+    // else, which has no "View" action and blocks everything else on
+    // assignment. A dropdown with nothing in it just looks broken, so show
+    // a disabled, greyed-out trigger instead of a click that opens nothing.
+    if (items.length === 0) {
+      return (
+        <MoreOutlined
+          style={{ cursor: 'not-allowed', fontSize: '20px', color: '#d1d5db' }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      );
+    }
 
     return (
       <Dropdown

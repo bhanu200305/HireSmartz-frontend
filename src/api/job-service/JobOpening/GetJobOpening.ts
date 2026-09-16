@@ -17,6 +17,7 @@ type ListJobOpeningsArgs = Partial<JobFilterRequest> & {
   sortBy?: string;
   sortDir?: string;
   globalSearchRequestDto?: { text: string; field: string };
+  assignedToMe?: boolean;
 };
 
 // Defaults to 'published' when no filter flag is set at all - a new caller
@@ -56,6 +57,7 @@ const extendedApi = jobApi.injectEndpoints({
             ...(args.endDateTime ? { open_date_to: args.endDateTime } : {}),
             ...(args.sortBy ? { sort_by: args.sortBy } : {}),
             ...(args.sortDir ? { sort_dir: String(args.sortDir).toLowerCase() } : {}),
+            ...(args.assignedToMe ? { assigned_to_me: true } : {}),
           },
         };
       },

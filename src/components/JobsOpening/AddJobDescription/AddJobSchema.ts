@@ -203,10 +203,10 @@ export const jobDetailsSchema = z
     mandatorySkills: z
       .array(catalogId)
       .min(1, 'At least one required skill is required.')
-      .max(15, 'You can select up to 15 required skills.'),
+      .max(30, 'You can select up to 30 required skills.'),
     optionalSkills: z
       .array(catalogId)
-      .max(15, 'You can select up to 15 optional skills.')
+      .max(30, 'You can select up to 30 optional skills.')
       .optional(),
     responsibilities: z.string().nonempty('Responsibilities is required.'),
     otherRequirements: z
@@ -305,9 +305,9 @@ export const jobDescriptionSchema = z.object({
   languages: z.array(catalogId).optional(),
   mandatorySkills: z
     .array(catalogId)
-    .max(15, 'You can select up to 15 required skills.')
+    .max(30, 'You can select up to 30 required skills.')
     .optional(),
-  optionalSkills: z.array(catalogId).max(15, 'You can select up to 15 optional skills.').optional(),
+  optionalSkills: z.array(catalogId).max(30, 'You can select up to 30 optional skills.').optional(),
   responsibilities: z.string().optional(),
   otherRequirements: z
     .string()
