@@ -9,9 +9,6 @@ import type {
   SuggestedSkillsResponse,
 } from './types';
 
-// Duplicate endpoints of names already defined elsewhere (AddJobOpening.ts,
-// JobOpeningNotes.ts, etc.) were removed from here — dead, never-invalidated
-// cache tags with zero real callers.
 const extendedApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
     // -- suggested skills --------------------------------------------------
@@ -24,15 +21,10 @@ const extendedApi = jobApi.injectEndpoints({
     }),
 
     // -- listing / stats / counts --------------------------------------------
-    // Renamed from `getJobOpenings` (was colliding with GetJobOpening.ts's
-    // endpoint of the same name, which returns a different, transformed
-    // response shape — `{data, total, totalElements}` there vs this one's
-    // untransformed `{items, total}`). Consumers of *this* implementation
-    // (CompanyMetrics/JobOpeningsListModal.tsx, OpenJobsSection.tsx) still
-    // need the `{items}` shape, so rather than deleting it and risking a
-    // shape mismatch, it's kept under a name that can't collide — same
-    // implementation, same behavior, just no longer fighting over the same
-    // registration key.
+    // Untransformed `{items, total}` shape, distinct from GetJobOpening.ts's
+    // `getJobOpenings` (`{data, total, totalElements}`) — consumers
+    // (CompanyMetrics/JobOpeningsListModal.tsx, OpenJobsSection.tsx) need
+    // this one's raw shape.
     getJobOpeningsListLegacy: build.query<JobListResponse, JobListArgs | void>({
       query: (params) => ({ url: '/job-openings', params: params ?? undefined }),
       providesTags: (result) =>

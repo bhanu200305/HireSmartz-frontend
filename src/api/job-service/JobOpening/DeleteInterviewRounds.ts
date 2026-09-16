@@ -31,7 +31,6 @@ export const interviewRoundApi = jobApi.injectEndpoints({
       ],
     }),
   }),
-  overrideExisting: true,
 });
 
 export const { useDeleteInterviewRoundMutation } = interviewRoundApi;

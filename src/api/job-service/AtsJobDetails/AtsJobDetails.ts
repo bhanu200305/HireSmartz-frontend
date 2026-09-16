@@ -73,29 +73,8 @@ const extendedApi = jobApi.injectEndpoints({
       },
       keepUnusedDataFor: 0,
     }),
-
-    getAllAtsNamesByCompanyId: build.query<
-      { success: boolean; data: Array<{ id: string; name: string }> },
-      void
-    >({
-      query: () => ({ url: '/ats/config', method: 'GET' }),
-      transformResponse: (response: { connections: Array<Record<string, unknown>> }) => ({
-        success: true,
-        data: (response.connections ?? []).map((c) => ({
-          id: String(c.ats_provider ?? ''),
-          name: String(c.ats_provider ?? ''),
-        })),
-      }),
-      // Same URL as Ats/ats.ts's getAtsConfig — same tag, stays in sync.
-      providesTags: ['AtsConfig'],
-    }),
   }),
-  overrideExisting: true,
 });
 
-export const {
-  useGetAtsDropdownsValuesQuery,
-  useLazyGetAtsJobByIdQuery,
-  useGetAtsJobByIdQuery,
-  useGetAllAtsNamesByCompanyIdQuery,
-} = extendedApi;
+export const { useGetAtsDropdownsValuesQuery, useLazyGetAtsJobByIdQuery, useGetAtsJobByIdQuery } =
+  extendedApi;

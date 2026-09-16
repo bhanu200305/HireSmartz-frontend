@@ -1212,7 +1212,10 @@ const EditJobDetail = () => {
           setValue('jobType', [existingJobType.id], { shouldValidate: true });
           return;
         }
-        const createdJobType = await createJobType({ job_type_name: formattedValue }).unwrap();
+        const createdJobType = await createJobType({
+          job_type_name: formattedValue,
+          isMaster: false,
+        }).unwrap();
         await refetchJobTypes?.();
         setValue('jobType', [createdJobType.id], { shouldValidate: true });
         showToast({ message: 'Job type added successfully', type: 'success' });
@@ -1337,6 +1340,7 @@ const EditJobDetail = () => {
           // already stored rather than wiping it (PUT replaces).
           job_type_description: jobTypes.find((item) => String(item.id) === String(id))
             ?.description,
+          isMaster: false,
         }).unwrap();
         showToast({ message: 'Job type updated successfully', type: 'success' });
         refetchJobTypes?.();
@@ -1498,7 +1502,7 @@ const EditJobDetail = () => {
 
     if (type === 'jobType') {
       try {
-        await deleteJobType({ jobTypeId: String(id) }).unwrap();
+        await deleteJobType({ jobTypeId: String(id), isMaster: false }).unwrap();
         showToast({ message: 'Job type removed successfully', type: 'success' });
         clearIfSelected();
         refetchJobTypes?.();

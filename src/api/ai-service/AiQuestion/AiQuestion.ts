@@ -103,7 +103,7 @@ const jobPromptsApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
     getTopFivePrompt: build.query<TopFivePromptResponse, void>({
       query: () => ({
-        url: `/ai/prompts/top-five/by-user`,
+        url: `/job-ai/prompts/top-five/by-user`,
         method: 'GET',
       }),
       transformResponse: (response: {

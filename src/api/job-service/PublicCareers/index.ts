@@ -135,5 +135,9 @@ const extendedApi = jobApi.injectEndpoints({
   }),
 });
 
-export const { useListPublicJobsQuery, useGetPublicJobQuery, useGetPublicBrandingQuery } =
-  extendedApi;
+export const {
+  useListPublicJobsQuery,
+  useLazyListPublicJobsQuery,
+  useGetPublicJobQuery,
+  useGetPublicBrandingQuery,
+} = extendedApi;

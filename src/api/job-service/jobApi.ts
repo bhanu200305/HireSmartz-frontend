@@ -126,8 +126,8 @@ export const jobApi = createApi({
     'PlatformSkillCategories',
     'PlatformSkillTypes',
     'PlatformSkills',
-    // Older tags still referenced by pre-existing job-service endpoint files
-    // (api/job-service/JobOpenings, JobTypes, Master, Shifts, Batches, etc.).
+    // Tags used by api/job-service/JobOpenings, JobTypes, Master, Shifts,
+    // Batches, and similar endpoint files.
     'Jobs',
     'JobSuggestedSkills',
     'JobScoringCriteria',

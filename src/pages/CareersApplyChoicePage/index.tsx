@@ -38,7 +38,7 @@ export const CareersApplyChoicePage = () => {
           </svg>
         </button>
         {logoUrl ? (
-          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-14 object-contain" />
+          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-9 object-contain" />
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}

@@ -50,6 +50,7 @@ const TenantJobTypesTab: React.FC = () => {
         create({
           job_type_name: values.name.trim(),
           job_type_description: values.description.trim() || undefined,
+          isMaster: false,
         }).unwrap()
       }
       onUpdate={(id, values) =>
@@ -57,9 +58,10 @@ const TenantJobTypesTab: React.FC = () => {
           jobTypeId: id,
           job_type_name: values.name.trim(),
           job_type_description: values.description.trim() || undefined,
+          isMaster: false,
         }).unwrap()
       }
-      onDelete={(item) => remove({ jobTypeId: item.id }).unwrap()}
+      onDelete={(item) => remove({ jobTypeId: item.id, isMaster: false }).unwrap()}
     />
   );
 };

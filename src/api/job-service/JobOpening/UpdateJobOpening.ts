@@ -12,8 +12,6 @@ type UpdateJobOpeningArgs = {
 
 const extendedApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
-    // Alias also exported from AddJobOpening — overrideExisting lets either
-    // import path work without colliding at inject time.
     updateJobOpeningDetails: build.mutation<JobDetailsResponse, UpdateJobOpeningArgs>({
       query: ({ jobOpeningId, body }) => ({
         url: `/job-openings/${jobOpeningId}/details`,
@@ -28,7 +26,6 @@ const extendedApi = jobApi.injectEndpoints({
       ],
     }),
   }),
-  overrideExisting: true,
 });
 
 // Re-export the primary update hook from AddJobOpening so existing

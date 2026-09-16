@@ -63,10 +63,9 @@ const cardTooltipStyle = {
   boxShadow: '0 8px 24px -12px rgba(16,30,54,.18)',
 };
 
-// Axis titles, not just tick values — see GrowthAdoptionCharts.tsx's own
-// comment on this same pattern (widened Y-axis `width` to fit the title
-// without reintroducing the left-edge clipping `ChartCard`'s
-// `overflow-hidden` causes when an axis element overflows the card).
+// Axis titles, not just tick values. Y-axis `width` must stay wide enough
+// to fit the title, or it clips against ChartCard's `overflow-hidden` —
+// same pattern as GrowthAdoptionCharts.tsx.
 const axisTitleStyle = { fontSize: 10, fill: '#8593ac' };
 const yAxisLabel = (value: string) => ({
   value,

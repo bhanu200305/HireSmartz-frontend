@@ -1,9 +1,17 @@
 import { jobApi } from '../jobApi';
 import type { ImportAtsJobRequest, ImportAtsJobResponse } from '../types';
 
+export type AtsConnection = {
+  org_ats_config_id: string;
+  ats_provider: string;
+  status: string;
+  tenant_identifier: string | null;
+  last_synced_at: string | null;
+};
+
 const extendedApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
-    getAtsConfig: build.query<{ connections: Array<Record<string, unknown>> }, void>({
+    getAtsConfig: build.query<{ connections: AtsConnection[] }, void>({
       query: () => ({ url: '/ats/config', method: 'GET' }),
       providesTags: ['AtsConfig'],
     }),
@@ -30,7 +38,7 @@ const extendedApi = jobApi.injectEndpoints({
     }),
 
     connectAts: build.mutation<
-      Record<string, unknown>,
+      { redirect_url: string },
       { ats_provider: string; tenant_identifier: string }
     >({
       query: (body) => ({

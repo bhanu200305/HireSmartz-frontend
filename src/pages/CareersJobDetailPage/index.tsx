@@ -1,6 +1,6 @@
 import { useEffect, type ReactElement } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Spin } from 'antd';
+import { Spin, Result, Button } from 'antd';
 import {
   EnvironmentOutlined,
   CalendarOutlined,
@@ -133,7 +133,11 @@ export const CareersJobDetailPage = () => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
-  const { data: job, isLoading } = useGetPublicJobQuery(
+  const {
+    data: job,
+    isLoading,
+    isError,
+  } = useGetPublicJobQuery(
     { organizationId: organizationId ?? '', jobId: jobId ?? '' },
     { skip: !organizationId || !jobId }
   );
@@ -188,14 +192,25 @@ export const CareersJobDetailPage = () => {
           </svg>
         </button>
         {brandingLoading ? null : logoUrl ? (
-          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-14 object-contain" />
+          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-9 object-contain" />
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}
       </header>
 
       <main className="w-full max-w-3xl mx-auto px-4 md:px-8 py-6">
-        {isLoading || !job ? (
+        {isError ? (
+          <Result
+            status="404"
+            title="Job not found"
+            subTitle="This job posting may have been closed or the link is incorrect."
+            extra={
+              <Button type="primary" onClick={() => navigate(`/careers/${organizationId}`)}>
+                Back to open roles
+              </Button>
+            }
+          />
+        ) : isLoading || !job ? (
           <div className="flex justify-center items-center min-h-[70vh]">
             <Spin size="large" />
           </div>

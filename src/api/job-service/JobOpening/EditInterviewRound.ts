@@ -44,10 +44,10 @@ const extendedApi = jobApi.injectEndpoints({
       }),
       invalidatesTags: (_r, _e, { jobOpeningId }) => [
         { type: 'InterviewSequence', id: jobOpeningId },
+        { type: 'JobOpeningById', id: jobOpeningId },
       ],
     }),
   }),
-  overrideExisting: true,
 });
 
 export const { useEditInterviewRoundMutation, useReorderInterviewRoundsMutation } = extendedApi;

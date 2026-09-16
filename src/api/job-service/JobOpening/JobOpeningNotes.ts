@@ -2,15 +2,12 @@ import { jobApi } from '../jobApi';
 import { mapApiNotesResponseToItems } from './notesResponseMappers';
 import type { CandidateNoteItem } from '../../../components/JobsOpening/Notes/notesTypes';
 import type { JobNoteResponse } from '../types';
-import api from '../..';
 
 type CreateJobNoteRequest = {
   jobOpeningId?: string;
   noteText: string;
   parentType?: string;
   parentId?: string | number;
-  invalidateCandidateId?: number;
-  invalidateRoundBookingId?: number;
   invalidateJobId?: string | number;
 };
 
@@ -18,16 +15,12 @@ type UpdateJobNoteRequest = {
   jobOpeningId?: string;
   noteId: string;
   noteText: string;
-  invalidateCandidateId?: number;
-  invalidateRoundBookingId?: number;
   invalidateJobId?: string | number;
 };
 
 type DeleteJobNoteRequest = {
   jobOpeningId?: string;
   noteId: string;
-  invalidateCandidateId?: number;
-  invalidateRoundBookingId?: number;
   invalidateJobId?: string | number;
 };
 
@@ -77,41 +70,9 @@ const jobNotesApi = jobApi.injectEndpoints({
   }),
 });
 
-// Candidate / round notes are NOT on job-service — they belong to
-// candidate-service (out of this integration's scope). Left on the shared
-// legacy `api` so existing candidate screens keep compiling; those calls
-// will 404 until candidate-service is wired the same way.
-const candidateNotesApi = api.injectEndpoints({
-  endpoints: (build) => ({
-    getCandidateNotesAll: build.query<CandidateNoteItem[], number | string>({
-      query: (candidateId) => ({
-        url: `/job-opening/notes/candidate/${candidateId}/all`,
-        method: 'GET',
-      }),
-      transformResponse: (response: unknown) => mapApiNotesResponseToItems(response),
-      providesTags: (_result, _error, candidateId) => [
-        { type: 'CandidateNotes', id: `candidate-${candidateId}` },
-      ],
-    }),
-    getRoundNotes: build.query<CandidateNoteItem[], number | string>({
-      query: (bookingId) => ({
-        url: `/job-opening/notes/round/${bookingId}`,
-        method: 'GET',
-      }),
-      transformResponse: (response: unknown) => mapApiNotesResponseToItems(response),
-      providesTags: (_result, _error, bookingId) => [
-        { type: 'CandidateNotes', id: `round-${bookingId}` },
-      ],
-    }),
-  }),
-  overrideExisting: true,
-});
-
 export const {
   useGetJobOpeningNotesQuery,
   useCreateJobOpeningNoteMutation,
   useUpdateJobOpeningNoteMutation,
   useDeleteJobOpeningNoteMutation,
 } = jobNotesApi;
-
-export const { useGetCandidateNotesAllQuery, useGetRoundNotesQuery } = candidateNotesApi;

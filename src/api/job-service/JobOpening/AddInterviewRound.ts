@@ -36,7 +36,6 @@ const extendedApi = jobApi.injectEndpoints({
       ],
     }),
   }),
-  overrideExisting: true,
 });
 
 export const { useSaveInterviewRoundMutation } = extendedApi;

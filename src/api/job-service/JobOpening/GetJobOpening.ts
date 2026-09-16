@@ -19,6 +19,9 @@ type ListJobOpeningsArgs = Partial<JobFilterRequest> & {
   globalSearchRequestDto?: { text: string; field: string };
 };
 
+// Defaults to 'published' when no filter flag is set at all - a new caller
+// wanting every status must pass isAll: true explicitly, or it silently
+// only sees published jobs.
 const resolveListStatus = (args: ListJobOpeningsArgs): JobListStatus | undefined => {
   if (args.isAll) return undefined;
   if (args.isDraft) return 'draft';

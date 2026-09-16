@@ -384,26 +384,10 @@ const AiQuestionsSetup = () => {
           })
         ),
       ]);
+      // No same-shape response to upsert here (unlike persistQuestions
+      // above) - wait for the real refetch before returning.
+      await refetchQuestions();
       showToast({ message: 'Questions uploaded successfully', type: 'success' });
-      // Write the import response's full question bank into the cache
-      // directly so the update lands even if the refetch below is late.
-      dispatch(
-        jobQuestionsApi.util.updateQueryData('getJobQuestions', activeJobOpeningId, (draft) => {
-          const byRound = new Map<string, QuestionResponse[]>();
-          for (const question of res.questions ?? []) {
-            const bucket = byRound.get(question.interview_round_id);
-            if (bucket) bucket.push(question);
-            else byRound.set(question.interview_round_id, [question]);
-          }
-          // res.questions is the complete post-import bank, so a round
-          // missing from byRound now has zero questions.
-          draft.rounds = draft.rounds.map((round) => ({
-            ...round,
-            questions: byRound.get(round.round_instance_id) ?? [],
-          }));
-        })
-      );
-      refetchQuestions();
     } catch (err) {
       showToast({
         message: getJobErrorMessage(err, 'Error uploading file'),

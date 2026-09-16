@@ -23,20 +23,19 @@ const toJobTypeOption = (
 
 export type ListJobTypesArgs = {
   /** Super Admin tokens have no tenant_id, so they must read the platform
-   * catalogue (/platform/master-job-types) instead of /job-types. */
-  isMaster?: boolean;
+   * catalogue (/platform/master-job-types) instead of /job-types. Required,
+   * not optional - an omitted flag silently reads the wrong tenant's data
+   * instead of erroring, so every caller must decide explicitly. */
+  isMaster: boolean;
 };
 
 type JobTypeListRow = OrganizationJobType & Partial<MasterJobType>;
 
 const catalogsApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
-    listJobTypes: build.query<OrganizationJobType[], ListJobTypesArgs | void>({
-      query: (arg) => ({
-        url:
-          arg && typeof arg === 'object' && arg.isMaster
-            ? '/platform/master-job-types'
-            : '/job-types',
+    listJobTypes: build.query<OrganizationJobType[], ListJobTypesArgs>({
+      query: ({ isMaster }) => ({
+        url: isMaster ? '/platform/master-job-types' : '/job-types',
         method: 'GET',
       }),
       transformResponse: (response: { job_types?: JobTypeListRow[] }) =>
@@ -48,10 +47,10 @@ const catalogsApi = jobApi.injectEndpoints({
       providesTags: ['JobTypes'],
     }),
 
-    // Same isMaster split as listJobTypes above.
+    // Same isMaster split as listJobTypes above - required for the same reason.
     createJobType: build.mutation<
       OrganizationJobType,
-      { job_type_name: string; job_type_description?: string | null; isMaster?: boolean }
+      { job_type_name: string; job_type_description?: string | null; isMaster: boolean }
     >({
       query: ({ isMaster, ...body }) => ({
         url: isMaster ? '/platform/master-job-types' : '/job-types',
@@ -69,7 +68,7 @@ const catalogsApi = jobApi.injectEndpoints({
         jobTypeId: string;
         job_type_name: string;
         job_type_description?: string | null;
-        isMaster?: boolean;
+        isMaster: boolean;
       }
     >({
       query: ({ jobTypeId, isMaster, ...body }) => ({
@@ -82,7 +81,7 @@ const catalogsApi = jobApi.injectEndpoints({
       invalidatesTags: ['JobTypes'],
     }),
 
-    deleteJobType: build.mutation<void, { jobTypeId: string; isMaster?: boolean }>({
+    deleteJobType: build.mutation<void, { jobTypeId: string; isMaster: boolean }>({
       query: ({ jobTypeId, isMaster }) => ({
         url: isMaster ? `/platform/master-job-types/${jobTypeId}` : `/job-types/${jobTypeId}`,
         method: 'DELETE',

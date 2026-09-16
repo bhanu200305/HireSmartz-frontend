@@ -12,6 +12,9 @@ type RegenerateJobDescriptionResponse = {
   success: boolean;
   data: {
     id: string;
+    // Always '' - both /jd/regenerate and /jd/enhance only trigger the
+    // async job (jd_status: GENERATING/PROCESSING), they never return JD
+    // text. The real content only ever arrives via GET /jd/status polling.
     jobDescription: string;
     createdAt?: string;
   };
@@ -56,6 +59,7 @@ const extendedApi = jobApi.injectEndpoints({
             : await baseQuery({
                 url: `/job-openings/${jobOpeningId}/jd/enhance`,
                 method: 'POST',
+                body: {},
               });
 
         if (result.error) {

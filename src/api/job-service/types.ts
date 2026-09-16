@@ -94,7 +94,6 @@ export type JobLocationResponse = {
 export type JobSkillResponse = {
   skill_id: string;
   skill_label: string;
-  category: string;
   skill_type: string;
   source: string;
 };

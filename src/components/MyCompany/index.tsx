@@ -23,6 +23,7 @@ import TenantShiftsTab from './JobSettings/TenantShiftsTab';
 import TenantJobModesTab from './JobSettings/TenantJobModesTab';
 import TenantClosureReasonsTab from './JobSettings/TenantClosureReasonsTab';
 import TenantEducationPreferencesTab from './JobSettings/TenantEducationPreferencesTab';
+import TenantAtsIntegrationTab from './JobSettings/TenantAtsIntegrationTab';
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
@@ -70,8 +71,8 @@ const MyCompany: React.FC = () => {
   // COMPANY_SETTINGS_EDIT ('organization:update'), not COMPANY_SETTINGS_VIEW
   // ('organization:read') — read is a broad permission Recruiter/Hiring
   // Manager also legitimately hold, so these admin-only tabs need the
-  // still-admin-exclusive update permission instead. See MyCompanyPage's
-  // own gate, fixed the same way.
+  // still-admin-exclusive update permission instead. Same gate as
+  // MyCompanyPage's own.
   const canViewCompanyDetails = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const canViewLocations = useHasAccess(Authorities.LOCATION_VIEW);
   const canViewDepartments = useHasAccess(Authorities.DEPARTMENT_VIEW);
@@ -86,10 +87,10 @@ const MyCompany: React.FC = () => {
   const canViewEmailTemplates = useHasAccess(Authorities.EMAIL_TEMPLATE_VIEW);
   // QR Management has no dedicated catalog permission — job-workflow-adjacent,
   // so it shares JOB_OPENING_VIEW. Job Settings (job types/shifts/education
-  // preferences feeding the Job Details form) is the same kind of
-  // job-workflow-adjacent catalogue.
+  // preferences) is gated on COMPANY_SETTINGS_VIEW ('organization:read')
+  // instead — that's what job-service's own catalogue GET routes require.
   const canViewQrManagement = useHasAccess(Authorities.JOB_OPENING_VIEW);
-  const canViewJobSettings = useHasAccess(Authorities.JOB_OPENING_VIEW);
+  const canViewJobSettings = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
 
   const handleTabChange = (key: string) => {
     setSearchParams({ tab: key });
@@ -201,13 +202,10 @@ const MyCompany: React.FC = () => {
           label: 'Scoring Criteria',
           children: <ScoringCriteriaOwnerTab />,
         },
-        // Former "Job Settings" tab's own 5 sub-tabs, promoted to direct
-        // leaves here instead of sitting one level deeper behind a "Job
-        // Settings" tab — same job-workflow catalogues (job types/shifts/
-        // job modes/closure reasons/education preferences feeding the Job
-        // Details/Close Job steps), just flattened so Hiring Configuration
-        // doesn't nest a third tab level for only this one entry. New keys
-        // (13-17), not reusing the old '11' — nothing deep-links to it.
+        // Job-workflow catalogues (job types/shifts/job modes/closure
+        // reasons/education preferences) feeding the Job Details/Close Job
+        // steps, flattened as direct leaves rather than nested one level
+        // deeper behind their own "Job Settings" tab.
         canViewJobSettings && {
           key: '13',
           label: 'Job Types',
@@ -232,6 +230,11 @@ const MyCompany: React.FC = () => {
           key: '17',
           label: 'Education Preferences',
           children: <TenantEducationPreferencesTab />,
+        },
+        canViewJobSettings && {
+          key: '18',
+          label: 'ATS Integration',
+          children: <TenantAtsIntegrationTab />,
         },
       ].filter(Boolean) as TabsProps['items'],
     },

@@ -14,19 +14,10 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 
 // candidate-service's own recruiter-notes CRUD
 // (api/candidate-service/Candidates/notes.ts, `/candidates/{id}/notes`) —
-// candidate-service owns this data now (PROJECT_UNDERSTANDING.md §4's
-// `CandidateRecruiterNote`), not job-service's generic notes system that
-// the legacy `Notes/CandidateNotesPanel.tsx` reads from. Named differently
-// and kept as a SEPARATE file rather than rewriting that one in place —
-// `CandidateNotesPanel` is still used by `CandidateDetails.tsx` /
-// `InterviewSummary/InterviewRounds.tsx`, both still on the legacy
-// numeric-id API (a later phase's work); swapping its data source here
-// would break those two with a type (string vs. number candidateId) they
-// aren't ready for yet.
+// candidate-service owns this data (PROJECT_UNDERSTANDING.md §4's
+// `CandidateRecruiterNote`).
 //
-// Reuses the same generic, presentational `NotesSidePanel` shell — visual
-// design intentionally identical to the legacy panel, only the data layer
-// underneath changed.
+// Reuses the generic, presentational `NotesSidePanel` shell.
 
 type CandidateRecruiterNotesPanelProps = {
   open: boolean;

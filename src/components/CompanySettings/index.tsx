@@ -45,22 +45,18 @@ const CompanySettings: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  // Grouped into 3 topic tabs instead of 9 flat ones in one
-  // horizontally-scrolling row — same two-level pattern as My Company's own
-  // Company Settings page (MyCompany/index.tsx). Purely a navigation
-  // regrouping: leaf `key`s are unchanged, so any existing `?tab=<n>` link
-  // still resolves the same leaf, now nested one level under its group.
-  //  - Master Data: the catalog entities (industries, departments, job
-  //    titles, department<->job-title assignment, job catalogs) this screen
-  //    was originally built to manage.
-  //  - Hiring Defaults: the platform-wide defaults a tenant inherits until
-  //    it customizes its own — scoring weights, intake questions, culture
+  // Grouped into 3 topic tabs, same two-level pattern as My Company's own
+  // Company Settings page (MyCompany/index.tsx). Leaf `key`s are stable
+  // across groups, so an existing `?tab=<n>` link still resolves correctly.
+  //  - Master Data: catalog entities (industries, departments, job titles,
+  //    department<->job-title assignment, job catalogs).
+  //  - Hiring Defaults: platform-wide defaults a tenant inherits until it
+  //    customizes its own — scoring weights, intake questions, culture
   //    intro (see PlatformScoringDefaultsTab / IntakeQuestionsTab /
   //    CultureIntroTab's own doc comments for the inheritance mechanics).
-  //  - Notification Settings: kept as its own top-level entry rather than
-  //    folded into either group above — it's already a 2-sub-tab group of
-  //    its own (Notification Templates, SMS Templates), not a leaf that
-  //    belongs under Master Data or Hiring Defaults.
+  //  - Notification Settings: its own top-level entry, not folded into
+  //    either group — it's already a 2-sub-tab group of its own
+  //    (Notification Templates, SMS Templates).
   const groups = React.useMemo<{ key: string; label: string; tabs: TabsProps['items'] }[]>(
     () => [
       {

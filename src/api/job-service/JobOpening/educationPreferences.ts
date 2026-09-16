@@ -5,6 +5,7 @@ import { jobApi } from '../jobApi';
 export type OrganizationEducationPreference = {
   id: string;
   education_preference_name: string;
+  education_preference_description: string | null;
 };
 
 const educationPreferencesApi = jobApi.injectEndpoints({
@@ -18,7 +19,7 @@ const educationPreferencesApi = jobApi.injectEndpoints({
 
     createEducationPreference: build.mutation<
       OrganizationEducationPreference,
-      { education_preference_name: string }
+      { education_preference_name: string; education_preference_description?: string | null }
     >({
       query: (body) => ({ url: '/education-preferences', method: 'POST', body }),
       invalidatesTags: ['EducationPreferences'],
@@ -26,12 +27,16 @@ const educationPreferencesApi = jobApi.injectEndpoints({
 
     updateEducationPreference: build.mutation<
       OrganizationEducationPreference,
-      { preferenceId: string; education_preference_name: string }
+      {
+        preferenceId: string;
+        education_preference_name: string;
+        education_preference_description?: string | null;
+      }
     >({
-      query: ({ preferenceId, education_preference_name }) => ({
+      query: ({ preferenceId, education_preference_name, education_preference_description }) => ({
         url: `/education-preferences/${preferenceId}`,
         method: 'PUT',
-        body: { education_preference_name },
+        body: { education_preference_name, education_preference_description },
       }),
       invalidatesTags: ['EducationPreferences'],
     }),

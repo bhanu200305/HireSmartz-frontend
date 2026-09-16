@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Select, Input } from 'antd';
+import { Select, Input, Result } from 'antd';
 import {
   EnvironmentOutlined,
   CalendarOutlined,
@@ -10,7 +10,10 @@ import {
   ScheduleOutlined,
   LaptopOutlined,
 } from '@ant-design/icons';
-import { useListPublicJobsQuery } from '../../api/job-service/PublicCareers/index';
+import {
+  useListPublicJobsQuery,
+  useLazyListPublicJobsQuery,
+} from '../../api/job-service/PublicCareers/index';
 import type { PublicJobListing } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
@@ -26,12 +29,13 @@ const { Option, OptGroup } = Select;
 // search or facet params (see api/job-service/PublicCareers/index.ts's own
 // docstring: "this client doesn't invent params the API can't answer").
 // Location/experience/salary/date-posted/search filtering below is
-// therefore done entirely client-side, over one big fetch capped at the
-// backend's own MAX_PAGE_SIZE (public_router.py) rather than the 20-a-page
-// default — large enough to cover a typical org's whole open-roles list in
-// one call, so filtering and the "page X of Y" control below stay honest
-// (both work off the exact same loaded array, never disagreeing with a
-// server-side count). A card list of 20 is still what's shown at once.
+// therefore done entirely client-side, over every open role fetched in
+// chunks of the backend's own MAX_PAGE_SIZE (public_router.py) rather than
+// the 20-a-page default — one chunk covers a typical org, and the effect
+// below keeps pulling further chunks for an org with more than that many
+// open roles, so filtering and the "page X of Y" control stay honest
+// against the true total rather than silently truncating. A card list of
+// 20 is still what's shown at once.
 const FETCH_SIZE = 200;
 const CARDS_PER_PAGE = 20;
 
@@ -356,12 +360,42 @@ export const CareersListingPage = () => {
     data: jobsData,
     isLoading,
     isFetching,
+    isError,
   } = useListPublicJobsQuery(
     { organizationId: organizationId ?? '', page: 1, pageSize: FETCH_SIZE },
     { skip: !organizationId }
   );
 
-  const allJobs = jobsData?.items ?? [];
+  // First chunk covers a typical org, but an org with more than
+  // FETCH_SIZE open roles has more pages beyond it — keep pulling further
+  // chunks until `total` is fully loaded, rather than silently truncating.
+  const [extraJobs, setExtraJobs] = useState<PublicJobListing[]>([]);
+  const [isLoadingMoreJobs, setIsLoadingMoreJobs] = useState(false);
+  const [triggerListPublicJobs] = useLazyListPublicJobsQuery();
+
+  useEffect(() => {
+    setExtraJobs([]);
+  }, [organizationId]);
+
+  const firstChunkCount = jobsData?.items.length ?? 0;
+  const loadedCount = firstChunkCount + extraJobs.length;
+
+  useEffect(() => {
+    if (!organizationId || !jobsData || isLoadingMoreJobs) return;
+    if (loadedCount >= jobsData.total) return;
+
+    setIsLoadingMoreJobs(true);
+    const nextPage = Math.floor(loadedCount / FETCH_SIZE) + 1;
+    triggerListPublicJobs({ organizationId, page: nextPage, pageSize: FETCH_SIZE })
+      .unwrap()
+      .then((result) => setExtraJobs((prev) => [...prev, ...result.items]))
+      .finally(() => setIsLoadingMoreJobs(false));
+  }, [organizationId, jobsData, loadedCount, isLoadingMoreJobs, triggerListPublicJobs]);
+
+  const allJobs = useMemo(
+    () => (jobsData ? [...jobsData.items, ...extraJobs] : []),
+    [jobsData, extraJobs]
+  );
 
   const locationOptions = useMemo(
     () =>
@@ -484,7 +518,7 @@ export const CareersListingPage = () => {
           internal branding lookup). Falls back to the plain "CFP" mark. */}
       <header className="bg-gray-900 shadow-md text-white px-4 h-12 flex items-center justify-center relative shrink-0">
         {brandingLoading ? null : logoUrl ? (
-          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-14 object-contain" />
+          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-9 object-contain" />
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}
@@ -647,8 +681,7 @@ export const CareersListingPage = () => {
 
             {jobsData && jobsData.total > allJobs.length && (
               <p className="text-xs text-gray-400 mt-3">
-                Showing the first {allJobs.length} of {jobsData.total} roles. Narrow your search to
-                find a specific one.
+                Loading {allJobs.length} of {jobsData.total} roles…
               </p>
             )}
           </div>
@@ -669,7 +702,13 @@ export const CareersListingPage = () => {
           </div>
         )}
 
-        {isLoading ? (
+        {isError ? (
+          <Result
+            status="error"
+            title="Couldn't load open roles"
+            subTitle="Please try again in a moment."
+          />
+        ) : isLoading ? (
           <div className="flex flex-col gap-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <JobCardSkeleton key={i} />
