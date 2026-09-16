@@ -142,6 +142,14 @@ const MenuItems = [
     // Gated on the same 'interview:read' permission interview-service's own
     // GET /bookings endpoint enforces (require_permission("interview:read"))
     // — so the nav item and the API it calls agree on who can see it.
+    //
+    // Tenant-only, same as "Company"/"Company Metrics"/"Tenant Audit Log"
+    // above and for the same reason: a Master Super Admin's "every
+    // permission" static fallback (ROLE_AUTHORITIES.owner.masterSuperAdmin)
+    // includes INTERVIEW_QUESTIONS_VIEW too (nothing excludes it there),
+    // but GET /bookings itself requires a tenant user — a platform caller
+    // landing on this tab got nothing but "this endpoint requires a tenant
+    // user". See Sidebar's own tenantId guard for this entry.
     name: 'Interviews',
     icon: <BsCalendar4Event size={18} />,
     path: ['/interviews'],

@@ -113,14 +113,17 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (
       item.name === 'Company' ||
       item.name === 'Company Metrics' ||
-      item.name === 'Tenant Audit Log'
+      item.name === 'Tenant Audit Log' ||
+      item.name === 'Interviews'
     ) {
       // Mirror image of "Companies" above: a platform caller's static
-      // permission set happens to include COMPANY_SETTINGS_EDIT too, but
-      // `/my-company`, `/company-metrics` and `/activityFeed` all redirect
-      // anyone with no tenant of their own straight back to `/` (or fetch
-      // against `tenantId ?? ''`, same dead end) — a dead link for them.
-      // Tenant-only.
+      // permission set happens to include COMPANY_SETTINGS_EDIT (and, for
+      // "Interviews", INTERVIEW_QUESTIONS_VIEW) too, but `/my-company`,
+      // `/company-metrics`, `/activityFeed` and `/interviews` all either
+      // redirect anyone with no tenant of their own straight back to `/`,
+      // fetch against `tenantId ?? ''` (same dead end), or — `/interviews`'s
+      // own case — hit an interview-service endpoint that outright requires
+      // a tenant user. Tenant-only.
       //
       // Matched by "Tenant Audit Log", not "Audit Log" — the platform
       // Audit Log entry below (a different item, displayed with the exact
