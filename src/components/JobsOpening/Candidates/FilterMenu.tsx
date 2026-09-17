@@ -6,7 +6,7 @@ import {
 import { FilterSelectIcon } from '../../shared/ui/FilterSelectIcon';
 
 // Rewritten against candidate-service's real master data
-// (`GET /master/candidate-statuses`, `GET /master/application-sources`) —
+// (`GET /candidate-master/candidate-statuses`, `GET /candidate-master/application-sources`) —
 // the legacy version filtered by a fictional internal/external status split
 // and a round-type (AI/VIDEO/IN_PERSON) tree that has no equivalent on the
 // real backend (candidate-service tracks one flat `status_code`, sourced

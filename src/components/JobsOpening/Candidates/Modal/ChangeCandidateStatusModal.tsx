@@ -62,7 +62,7 @@ const MODE_LABEL: Record<ChangeCandidateStatusMode, string> = {
 };
 
 // PROJECT_UNDERSTANDING.md §4's documented seeded `master_candidate_status`
-// codes — matched against whatever `GET /master/candidate-statuses`
+// codes — matched against whatever `GET /candidate-master/candidate-statuses`
 // actually returns rather than trusted blindly, since that endpoint is the
 // real source of truth and can grow.
 const REJECT_CODE = 'rejected';

@@ -10,7 +10,7 @@ import { getNotifErrorMessage } from '../../shared/utils/auth/notifError.helpers
 
 /**
  * Bulk-revert several companies' email-copy customisations back to the
- * platform default in one action — `POST /v1/platform/template-settings/
+ * platform default in one action — `POST /v1/notification-platform/template-settings/
  * tenants/push`. Real backend, real tenant search (same browsable-without-
  * typing pattern `TenantOverrideSection` uses) — replaces the original
  * version of this tab, which called a legacy endpoint that no longer exists

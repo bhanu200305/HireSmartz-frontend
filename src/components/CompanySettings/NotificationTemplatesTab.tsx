@@ -25,7 +25,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
 
 /**
  * Super Admin's notification-service template management —
- * `/v1/platform/template-settings/*`. "SMS Templates" (the sibling tab on
+ * `/v1/notification-platform/template-settings/*`. "SMS Templates" (the sibling tab on
  * this page) manages a different, unrelated feature — candidate-facing
  * per-interview-round SMS copy, its own separate backend — left untouched.
  *
@@ -40,7 +40,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
  *
  * Used to also have a "Company theme" section here — search a company, edit
  * their 16 brand colours. Removed as a genuine duplicate: the exact same
- * action, against the exact same `/v1/platform/template-settings/tenants/
+ * action, against the exact same `/v1/notification-platform/template-settings/tenants/
  * {id}/layout` endpoint, is already reachable from Companies → (a company)
  * → Email Templates — and that version is more complete (it also shows the
  * company's banner alongside the colours, which this one never could,

@@ -84,7 +84,7 @@ const EditMasterSmsTemplateModal: React.FC<{
 };
 
 /**
- * `GET/PUT /v1/platform/template-settings/master-sms-templates(/{type})` —
+ * `GET/PUT /v1/notification-platform/template-settings/master-sms-templates(/{type})` —
  * the platform-wide SMS default every tenant falls back to. A tenant may
  * still override an individual type's SMS wording for themselves (see
  * `TenantOverrideSection`'s edit modal, or MyCompany's own "Notification

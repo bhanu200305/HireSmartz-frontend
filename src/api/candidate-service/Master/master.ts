@@ -1,7 +1,9 @@
 import candidateApi from '../candidateApi';
 
 // Master Data — API_CONTRACT.md's "Master Data" section
-// (`/api/v1/master`). Fetch these rather than hardcoding status/source
+// (`/api/v1/candidate-master` — not the generic `/master`, which collides
+// with job-service's own master-catalogue routes behind staging's shared
+// API gateway). Fetch these rather than hardcoding status/source
 // codes client-side — `master_candidate_status` in particular is the
 // source of truth and can grow (FRONTEND_INTEGRATION_DETAILS.md §4.6).
 // Reference list of the 11 seeded codes today, funnel order
@@ -38,11 +40,11 @@ export type ApplicationSourceView = {
 const extendedApi = candidateApi.injectEndpoints({
   endpoints: (build) => ({
     listCandidateStatuses: build.query<CandidateStatusView[], void>({
-      query: () => '/master/candidate-statuses',
+      query: () => '/candidate-master/candidate-statuses',
       providesTags: ['MasterCandidateStatuses'],
     }),
     listApplicationSources: build.query<ApplicationSourceView[], void>({
-      query: () => '/master/application-sources',
+      query: () => '/candidate-master/application-sources',
       providesTags: ['MasterApplicationSources'],
     }),
   }),

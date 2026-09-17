@@ -38,7 +38,7 @@ const CORPORATE_DEFAULTS: Required<EmailThemeColors> = {
 
 /**
  * Super Admin editing a SPECIFIC tenant's 16 brand colours on their behalf —
- * `GET/PUT /v1/platform/template-settings/tenants/{tenant_id}/layout`.
+ * `GET/PUT /v1/notification-platform/template-settings/tenants/{tenant_id}/layout`.
  * Colours only: uploading a banner FILE is tenant self-service only (the
  * organization-service upload route is `require_own_tenant`-guarded, same
  * as the company logo upload it mirrors) — a Super Admin can restyle a
