@@ -4,3 +4,8 @@ allowBuilds:
   core-js: true
   esbuild: true
   unrs-resolver: true
+
+overrides:
+  '@nylas/identity>react': ^19.0.0
+  '@ant-design/icons': ^6.0.2
+  pdfjs-dist: 3.11.174
