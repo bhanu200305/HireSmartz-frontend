@@ -160,30 +160,30 @@ The backend is a microservices monorepo, so the frontend targets each service by
 
 ### Backend service endpoints
 
-| Variable                            | Description                          |
-| ------------------------------------ | ------------------------------------- |
-| `VITE_BACKEND_ENDPOINT`             | Fallback/shared backend base URL      |
-| `VITE_BACKEND_PREFIX`               | API path prefix (e.g. `/api/v1`)      |
-| `VITE_AUTH_SERVICE_ENDPOINT`        | authentication-service base URL       |
-| `VITE_ORG_SERVICE_ENDPOINT`         | organization-service base URL         |
-| `VITE_JOB_SERVICE_ENDPOINT`         | job-service base URL                  |
-| `VITE_CANDIDATE_SERVICE_ENDPOINT`   | candidate-service base URL            |
-| `VITE_INTERVIEW_SERVICE_ENDPOINT`   | interview-service base URL            |
-| `VITE_NOTIFICATION_SERVICE_ENDPOINT`| notification-service base URL         |
-| `VITE_AI_SERVICE_ENDPOINT`          | ai-service base URL                   |
+| Variable                             | Description                      |
+| ------------------------------------ | -------------------------------- |
+| `VITE_BACKEND_ENDPOINT`              | Fallback/shared backend base URL |
+| `VITE_BACKEND_PREFIX`                | API path prefix (e.g. `/api/v1`) |
+| `VITE_AUTH_SERVICE_ENDPOINT`         | authentication-service base URL  |
+| `VITE_ORG_SERVICE_ENDPOINT`          | organization-service base URL    |
+| `VITE_JOB_SERVICE_ENDPOINT`          | job-service base URL             |
+| `VITE_CANDIDATE_SERVICE_ENDPOINT`    | candidate-service base URL       |
+| `VITE_INTERVIEW_SERVICE_ENDPOINT`    | interview-service base URL       |
+| `VITE_NOTIFICATION_SERVICE_ENDPOINT` | notification-service base URL    |
+| `VITE_AI_SERVICE_ENDPOINT`           | ai-service base URL              |
 
 Each API module under `src/api/` is wired to its own service's endpoint — see [Project Structure](#project-structure). Pointing the wrong var at the wrong port is a common source of confusing 401s (see [Troubleshooting](#troubleshooting)).
 
 ### Other variables
 
-| Variable                       | Description                                            |
-| ------------------------------- | -------------------------------------------------------- |
-| `VITE_NYLAS_CLIENT_ID`          | Nylas calendar integration client id                     |
-| `VITE_RECAPTCHA_SITE_KEY`       | reCAPTCHA site key                                        |
+| Variable                          | Description                                             |
+| --------------------------------- | ------------------------------------------------------- |
+| `VITE_NYLAS_CLIENT_ID`            | Nylas calendar integration client id                    |
+| `VITE_RECAPTCHA_SITE_KEY`         | reCAPTCHA site key                                      |
 | `VITE_INTERVIEW_FEEDBACK_FEATURE` | Feature flag                                            |
-| `VITE_VIDEO_CONSENT_FEATURE`    | Feature flag                                              |
-| `VITE_NYLAS_FEATURE`            | Feature flag                                               |
-| `VITE_BYPASS_AUTH`              | Dev-only auth bypass — never set this outside local dev   |
+| `VITE_VIDEO_CONSENT_FEATURE`      | Feature flag                                            |
+| `VITE_NYLAS_FEATURE`              | Feature flag                                            |
+| `VITE_BYPASS_AUTH`                | Dev-only auth bypass — never set this outside local dev |
 
 `VITE_AGORA_APP_ID`/`VITE_TEMP_TOKEN`/`VITE_CHANNEL_NAME` still appear in `.env.example` but are dead — no Agora SDK code remains in `src/` (LiveKit fully replaced it). LiveKit connection details come from `interview-service` per interview, not from a static `VITE_LIVEKIT_*` var.
 
@@ -199,19 +199,19 @@ Each API module under `src/api/` is wired to its own service's endpoint — see 
 
 ### Available Scripts
 
-| Script | Command | What it does |
-| --- | --- | --- |
-| `npm run dev` | `vite` | Starts the Vite dev server with HMR at `http://localhost:5173` |
-| `npm run build` | `tsc -b && vite build` | Type-checks, then builds to `dist/` |
-| `npm run preview` | `vite preview` | Serves the production build locally |
-| `npm run lint` | `eslint .` | Lints the whole project |
-| `npm test` | `vitest run` | Runs the test suite once |
-| `npm run test:watch` | `vitest` | Runs tests in watch mode |
-| `npm run test:coverage` | `vitest run --coverage` | Runs tests with coverage (v8 provider) |
-| `npm run format` | `prettier --write .` | Formats the whole project |
-| `npm run format:check` | `prettier --check .` | Checks formatting without writing |
-| `npm run format:src` | `prettier --write src/` | Formats only `src/` |
-| `npm run format:fix-all` | `prettier --write . && eslint . --fix` | Formats, then auto-fixes lint issues |
+| Script                   | Command                                | What it does                                                   |
+| ------------------------ | -------------------------------------- | -------------------------------------------------------------- |
+| `npm run dev`            | `vite`                                 | Starts the Vite dev server with HMR at `http://localhost:5173` |
+| `npm run build`          | `tsc -b && vite build`                 | Type-checks, then builds to `dist/`                            |
+| `npm run preview`        | `vite preview`                         | Serves the production build locally                            |
+| `npm run lint`           | `eslint .`                             | Lints the whole project                                        |
+| `npm test`               | `vitest run`                           | Runs the test suite once                                       |
+| `npm run test:watch`     | `vitest`                               | Runs tests in watch mode                                       |
+| `npm run test:coverage`  | `vitest run --coverage`                | Runs tests with coverage (v8 provider)                         |
+| `npm run format`         | `prettier --write .`                   | Formats the whole project                                      |
+| `npm run format:check`   | `prettier --check .`                   | Checks formatting without writing                              |
+| `npm run format:src`     | `prettier --write src/`                | Formats only `src/`                                            |
+| `npm run format:fix-all` | `prettier --write . && eslint . --fix` | Formats, then auto-fixes lint issues                           |
 
 ### Development Workflow
 
@@ -684,13 +684,13 @@ lsof -ti:5173 | xargs kill -9
 
 Deeper docs live in [`docs/`](docs/):
 
-| File | What it covers |
-| --- | --- |
-| [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | Architecture, strict code patterns, naming conventions, API/Redux/form patterns, testing strategy, and common workflows. |
-| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Color, typography, spacing, and component design tokens reverse-engineered from the Figma redesign reference. |
-| [STRUCTURE_MAPPING.md](docs/STRUCTURE_MAPPING.md) | Why `src/api/` is organized by backend microservice boundary, and what moved where. |
-| [ORGANIZATION_SERVICE_INTEGRATION.md](docs/ORGANIZATION_SERVICE_INTEGRATION.md) | Change log of wiring the frontend to the real `organization-service` backend (phases, bug fixes, known backend gaps). |
-| [CANDIDATE_SERVICE_INTEGRATION.md](docs/CANDIDATE_SERVICE_INTEGRATION.md) | Change log of wiring the frontend to the real `candidate-service` backend (phases, bug fixes, known backend gaps). |
+| File                                                                            | What it covers                                                                                                           |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)                                   | Architecture, strict code patterns, naming conventions, API/Redux/form patterns, testing strategy, and common workflows. |
+| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)                                       | Color, typography, spacing, and component design tokens reverse-engineered from the Figma redesign reference.            |
+| [STRUCTURE_MAPPING.md](docs/STRUCTURE_MAPPING.md)                               | Why `src/api/` is organized by backend microservice boundary, and what moved where.                                      |
+| [ORGANIZATION_SERVICE_INTEGRATION.md](docs/ORGANIZATION_SERVICE_INTEGRATION.md) | Change log of wiring the frontend to the real `organization-service` backend (phases, bug fixes, known backend gaps).    |
+| [CANDIDATE_SERVICE_INTEGRATION.md](docs/CANDIDATE_SERVICE_INTEGRATION.md)       | Change log of wiring the frontend to the real `candidate-service` backend (phases, bug fixes, known backend gaps).       |
 
 Not in `docs/`, on purpose — moving these would break tooling that reads them from a fixed location:
 

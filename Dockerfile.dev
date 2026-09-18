@@ -1,14 +1,17 @@
-FROM oven/bun:1 AS base
+FROM node:22-alpine AS base
 WORKDIR /usr/src/app
+RUN corepack enable
 
 FROM base AS dependencies
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile
 
 FROM base AS dev
 COPY --from=dependencies /usr/src/app/node_modules ./node_modules
 COPY . .
 
-ENV BUN_ENV=development
-EXPOSE 3000 9229
-CMD ["bun", "--hot", "--inspect", "run", "dev"]
+ENV NODE_ENV=development
+EXPOSE 5173
+# --host so Vite listens on all interfaces inside the container, not just
+# localhost - otherwise it's unreachable from outside the container.
+CMD ["pnpm", "run", "dev", "--", "--host", "0.0.0.0"]

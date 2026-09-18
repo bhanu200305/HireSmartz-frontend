@@ -1,14 +1,21 @@
-FROM oven/bun:1 AS base
+FROM node:22-alpine AS base
 WORKDIR /usr/src/app
+# Pins pnpm to the exact version in package.json's "packageManager" field -
+# corepack fetches and caches it on first use, same version every build.
+RUN corepack enable
 
 FROM base AS dependencies
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+# pnpm-workspace.yaml holds the `overrides` block the lockfile was resolved
+# against (see its own comments) and .npmrc holds build-allowlist settings -
+# omitting either makes pnpm see a different effective config than what
+# generated the lockfile, and --frozen-lockfile refuses to proceed.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile
 
 FROM base AS build
 COPY --from=dependencies /usr/src/app/node_modules ./node_modules
 COPY . .
-RUN bun run build
+RUN pnpm run build
 
 FROM node:22-alpine AS production
 WORKDIR /app

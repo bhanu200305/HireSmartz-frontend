@@ -29,4 +29,3 @@ declare module 'html-to-draftjs' {
   function htmlToDraft(html: string): HTMLToDraftJSResult;
   export = htmlToDraft;
 }
-
