@@ -120,10 +120,5 @@
     "vite": "^6.1.0",
     "vite-plugin-eslint": "^1.8.1",
     "vitest": "^3.0.7"
-  },
-  "pnpm": {
-    "overrides": {
-      "@nylas/identity>react": "^19.0.0"
-    }
   }
 }
