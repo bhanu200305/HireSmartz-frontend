@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import { LuUsersRound } from 'react-icons/lu';
 import { PlusOutlined } from '@ant-design/icons';
-import { MdSearch } from 'react-icons/md';
+import { MdSearch, MdOutlineFileUpload, MdOutlineRefresh, MdOutlineBlock } from 'react-icons/md';
 import { Select, Switch, Tooltip } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -13,6 +13,7 @@ import MasterPagination from '../shared/ui/MasterPagination';
 import { Badge } from '../shared/ui/badge';
 import CustomTable from '../shared/ui/table';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import BulkImport from '../MyCompany/Team/BulkImport';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 import { RootState } from '../../redux/provider/store';
@@ -23,6 +24,12 @@ import {
   useListUsersQuery,
 } from '../../api/organization-service/Users/users';
 import { useListRolesQuery } from '../../api/organization-service/Roles/roles';
+import {
+  InvitationSummary,
+  useListTenantInvitationsQuery,
+  useResendTenantInvitationMutation,
+  useRevokeTenantInvitationMutation,
+} from '../../api/organization-service/Tenants/teamInvitations';
 import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
@@ -67,6 +74,7 @@ const OrganisationUserTable = () => {
   const [page, setPage] = useState(0);
   const [searchText, setSearchText] = useState('');
   const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const canArchive = useHasAccess(Authorities.USER_ARCHIVE);
 
   const isSearching = searchText.trim().length > 0;
@@ -104,6 +112,46 @@ const OrganisationUserTable = () => {
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivateUserMutation();
   const [reactivateUser, { isLoading: isReactivating }] = useReactivateUserMutation();
 
+  // Bulk import (and a single invite) only ever creates an `Invite` row —
+  // never a `users` row — until the invited person actually accepts, so
+  // useListUsersQuery above alone would make an import look like it did
+  // nothing. Fetched here purely to surface still-pending ones as visible
+  // rows, same reasoning as UsersPanel.tsx's identical Super-Admin-side
+  // table — `invalidatesTags: ['TenantInvitations']` on the bulk-import
+  // confirm mutation already refetches this the moment an import succeeds.
+  const { data: invitationsData } = useListTenantInvitationsQuery(
+    { tenantId: tenantId ?? '', limit: 100 },
+    { skip: !tenantId }
+  );
+  const [resendInvite, { isLoading: isResendingInvite }] = useResendTenantInvitationMutation();
+  const [revokeInvite, { isLoading: isRevokingInvite }] = useRevokeTenantInvitationMutation();
+
+  const handleResendInvite = async (invitationId: string) => {
+    if (!tenantId) return;
+    try {
+      await resendInvite({ tenantId, invitationId }).unwrap();
+      showToast({ message: 'Invitation resent, expiry pushed out 48 hours.', type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to resend invitation.'),
+        type: 'error',
+      });
+    }
+  };
+
+  const handleRevokeInvite = async (invitationId: string) => {
+    if (!tenantId) return;
+    try {
+      await revokeInvite({ tenantId, invitationId }).unwrap();
+      showToast({ message: 'Invitation revoked.', type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to revoke invitation.'),
+        type: 'error',
+      });
+    }
+  };
+
   useEffect(() => {
     if (error) {
       showToast({ message: getOrgErrorMessage(error, 'Failed to load users.'), type: 'error' });
@@ -136,51 +184,112 @@ const OrganisationUserTable = () => {
   };
 
   const users = data?.items || [];
-  type UserRow = (typeof users)[number] & { key: string };
+  type UserRow = (typeof users)[number] & { key: string; kind: 'user' };
+
+  // A bulk-imported (or "Add user"-invited) person before they accept — an
+  // `Invite` row, not a `User` row (organization-service keeps these as
+  // entirely separate tables). Shown in the SAME table as real users, with a
+  // "Pending" status, until accepted — at which point their invite's status
+  // flips to "accepted" (so it drops out of this filter) and their real User
+  // row appears via `users` above instead. Same shape UsersPanel.tsx already
+  // established for the Super-Admin-side mirror of this table.
+  type PendingRow = {
+    key: string;
+    kind: 'pending';
+    invitation_id: string;
+    invited_email: string;
+    role: string;
+    expires_at: string;
+  };
+
+  type TableRow = UserRow | PendingRow;
+
+  // Only "pending" — "accepted" is already a real row in `users` above
+  // (would double-list the same person), and "expired"/"revoked" are no
+  // longer actionable, so surfacing them here would just be noise.
+  const pendingInvitations = useMemo(
+    () => (invitationsData?.invitations ?? []).filter((inv) => inv.status === 'pending'),
+    [invitationsData]
+  );
+
+  const rows: TableRow[] = useMemo(() => {
+    const userRows: UserRow[] = users.map((user) => ({
+      ...user,
+      key: user.user_id,
+      kind: 'user',
+    }));
+    const pendingRows: PendingRow[] = pendingInvitations.map((invitation: InvitationSummary) => ({
+      key: `invite-${invitation.invitation_id}`,
+      kind: 'pending',
+      invitation_id: invitation.invitation_id,
+      invited_email: invitation.invited_email,
+      role: invitation.role,
+      expires_at: invitation.expires_at,
+    }));
+    return [...userRows, ...pendingRows];
+  }, [users, pendingInvitations]);
 
   const filteredUsers = useMemo(() => {
     const q = searchText.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (user) => user.full_name.toLowerCase().includes(q) || user.email.toLowerCase().includes(q)
+    if (!q) return rows;
+    return rows.filter((row) =>
+      row.kind === 'user'
+        ? row.full_name.toLowerCase().includes(q) || row.email.toLowerCase().includes(q)
+        : row.invited_email.toLowerCase().includes(q) || row.role.toLowerCase().includes(q)
     );
-  }, [users, searchText]);
+  }, [rows, searchText]);
 
-  const dataSource: UserRow[] = filteredUsers.map((user) => ({ ...user, key: user.user_id }));
+  const dataSource: TableRow[] = filteredUsers;
 
-  const columns: TableProps<UserRow>['columns'] = [
+  const columns: TableProps<TableRow>['columns'] = [
     {
       title: 'Name',
-      dataIndex: 'full_name',
       key: 'full_name',
-      render: (_: unknown, user: UserRow) => (
-        <Link
-          to={`/view-organisation-user?orgUserId=${user.user_id}`}
-          className="font-semibold text-primary-600 hover:underline"
-        >
-          {user.full_name}
-        </Link>
-      ),
+      render: (_: unknown, row: TableRow) =>
+        row.kind === 'user' ? (
+          <Link
+            to={`/view-organisation-user?orgUserId=${row.user_id}`}
+            className="font-semibold text-primary-600 hover:underline"
+          >
+            {row.full_name}
+          </Link>
+        ) : (
+          <div>
+            <div className="font-semibold text-gray-900">{row.invited_email}</div>
+            <div className="text-xs text-gray-400">Invited, not yet accepted</div>
+          </div>
+        ),
     },
     {
       title: 'Email',
-      dataIndex: 'email',
       key: 'email',
-      render: (_: unknown, user: UserRow) => (
-        <span className="text-sm text-gray-600 truncate" title={user.email}>
-          {user.email}
-        </span>
-      ),
+      render: (_: unknown, row: TableRow) =>
+        row.kind === 'user' ? (
+          <span className="text-sm text-gray-600 truncate" title={row.email}>
+            {row.email}
+          </span>
+        ) : (
+          <span className="text-sm text-gray-300">-</span>
+        ),
     },
     {
       title: 'Role',
       key: 'role',
-      render: (_: unknown, user: UserRow) => {
+      render: (_: unknown, row: TableRow) => {
+        if (row.kind === 'pending') {
+          return row.role ? (
+            <Badge status="neutral" dot={false}>
+              {systemRoleLabel(row.role)}
+            </Badge>
+          ) : (
+            <span className="text-sm text-gray-400">-</span>
+          );
+        }
         // Comma-joined raw role names (organization-service can join more
         // than one live assignment, e.g. a tenant-wide role plus an
         // office-specific one — see ListUsersUseCase's role_names_by_user
         // comment); each one gets its own badge rather than one long string.
-        const roleNames = (user.role || '')
+        const roleNames = (row.role || '')
           .split(',')
           .map((name) => name.trim())
           .filter(Boolean);
@@ -201,53 +310,85 @@ const OrganisationUserTable = () => {
     {
       title: 'Phone',
       key: 'phone',
-      render: (_: unknown, user: UserRow) => (
-        <span className="text-sm text-gray-600">
-          {user.phone_no ? `${user.country_code || ''}${user.phone_no}` : '-'}
-        </span>
-      ),
+      render: (_: unknown, row: TableRow) =>
+        row.kind === 'pending' ? (
+          <span className="text-sm text-gray-300">-</span>
+        ) : (
+          <span className="text-sm text-gray-600">
+            {row.phone_no ? `${row.country_code || ''}${row.phone_no}` : '-'}
+          </span>
+        ),
     },
     {
       title: 'Status',
       key: 'status',
-      render: (_: unknown, user: UserRow) => (
-        <div className="flex items-center gap-2.5">
-          <Tooltip
-            title={
-              !canArchive
-                ? "You don't have permission to change a user's status."
-                : user.is_active
-                  ? 'Deactivate this user'
-                  : 'Reactivate this user'
-            }
-          >
-            <Switch
-              size="small"
-              checked={user.is_active}
-              disabled={!canArchive || isReactivating}
-              onChange={() =>
-                user.is_active ? setUserToDeactivate(user) : void handleReactivate(user)
+      render: (_: unknown, row: TableRow) =>
+        row.kind === 'pending' ? (
+          <Badge status="warning">Pending</Badge>
+        ) : (
+          <div className="flex items-center gap-2.5">
+            <Tooltip
+              title={
+                !canArchive
+                  ? "You don't have permission to change a user's status."
+                  : row.is_active
+                    ? 'Deactivate this user'
+                    : 'Reactivate this user'
               }
-            />
-          </Tooltip>
-          <Badge status={user.is_active ? 'success' : 'neutral'}>
-            {user.is_active ? 'Active' : 'Deactivated'}
-          </Badge>
-        </div>
-      ),
+            >
+              <Switch
+                size="small"
+                checked={row.is_active}
+                disabled={!canArchive || isReactivating}
+                onChange={() =>
+                  row.is_active ? setUserToDeactivate(row) : void handleReactivate(row)
+                }
+              />
+            </Tooltip>
+            <Badge status={row.is_active ? 'success' : 'neutral'}>
+              {row.is_active ? 'Active' : 'Deactivated'}
+            </Badge>
+          </div>
+        ),
     },
     {
       title: 'Actions',
       key: 'actions',
       align: 'right',
-      render: (_: unknown, user: UserRow) => (
-        <Link
-          to={`/edit-organisation-user?orgUserId=${user.user_id}`}
-          className="text-sm font-semibold text-primary-600 hover:underline"
-        >
-          Edit
-        </Link>
-      ),
+      render: (_: unknown, row: TableRow) =>
+        row.kind === 'pending' ? (
+          <div className="flex gap-1 justify-end">
+            <Tooltip title="Resend invitation">
+              <button
+                type="button"
+                aria-label="Resend invitation"
+                className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50"
+                disabled={isResendingInvite}
+                onClick={() => void handleResendInvite(row.invitation_id)}
+              >
+                <MdOutlineRefresh />
+              </button>
+            </Tooltip>
+            <Tooltip title="Revoke invitation">
+              <button
+                type="button"
+                aria-label="Revoke invitation"
+                className="p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                disabled={isRevokingInvite}
+                onClick={() => void handleRevokeInvite(row.invitation_id)}
+              >
+                <MdOutlineBlock />
+              </button>
+            </Tooltip>
+          </div>
+        ) : (
+          <Link
+            to={`/edit-organisation-user?orgUserId=${row.user_id}`}
+            className="text-sm font-semibold text-primary-600 hover:underline"
+          >
+            Edit
+          </Link>
+        ),
     },
   ];
 
@@ -301,12 +442,19 @@ const OrganisationUserTable = () => {
               options={roleOptions}
             />
           </div>
-          {/* Extra gap ahead of Add User specifically — it's the row's one
-              destructive-adjacent action-button among filter controls, and
-              sat too close to the dropdown beside it. */}
+          {/* Extra gap ahead of Import Team/Add User — they're the row's
+              action-buttons among filter controls, and sat too close to the
+              dropdown beside it. */}
+          <Button
+            appname="import team"
+            className="border border-gray-300 rounded-full px-4 py-2 flex items-center gap-1.5 text-sm font-semibold hover:bg-gray-50 transition-colors cfp-hover-lift ml-2"
+            onClick={() => setIsBulkImportOpen(true)}
+          >
+            <MdOutlineFileUpload className="text-sm" /> <span>Import Team</span>
+          </Button>
           <Button
             appname="add user"
-            className="text-white bg-primary-600 rounded-full px-5 py-2 flex items-center gap-1.5 text-sm font-semibold cfp-hover-lift ml-2"
+            className="text-white bg-primary-600 rounded-full px-5 py-2 flex items-center gap-1.5 text-sm font-semibold cfp-hover-lift"
             onClick={() => navigate('/add-organisation-users')}
           >
             <PlusOutlined className="text-sm" /> <span>ADD USER</span>
@@ -315,7 +463,7 @@ const OrganisationUserTable = () => {
       </div>
 
       <div className="w-full border border-neutral-200 rounded-xl overflow-hidden bg-white mt-3">
-        <CustomTable<UserRow>
+        <CustomTable<TableRow>
           columns={columns}
           dataSource={dataSource}
           emptyText={
@@ -353,6 +501,14 @@ const OrganisationUserTable = () => {
           isLoading={isDeactivating}
           onConfirm={handleDeactivate}
           onClose={() => setUserToDeactivate(null)}
+        />
+      )}
+
+      {tenantId && (
+        <BulkImport
+          open={isBulkImportOpen}
+          tenantId={tenantId}
+          onClose={() => setIsBulkImportOpen(false)}
         />
       )}
     </div>

@@ -29,7 +29,7 @@ import QuestionImportTemplateTab from './JobCatalogs/QuestionImportTemplateTab';
 const JobCatalogsTab: React.FC = () => {
   return (
     <Tabs
-      className="job-catalogs-tabs"
+      className="job-catalogs-tabs many-tabs"
       items={[
         {
           key: 'interview-rounds',
