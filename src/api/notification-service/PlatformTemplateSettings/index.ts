@@ -72,7 +72,10 @@ export interface SaveMasterSmsTemplateRequest {
 const platformTemplateSettingsApi = notifApi.injectEndpoints({
   endpoints: (build) => ({
     listMasterTemplates: build.query<MasterTemplateListView, void>({
-      query: () => ({ url: '/v1/notification-platform/template-settings/master-templates', method: 'GET' }),
+      query: () => ({
+        url: '/v1/notification-platform/template-settings/master-templates',
+        method: 'GET',
+      }),
       providesTags: ['PlatformMasterTemplates'],
     }),
     saveMasterTemplate: build.mutation<
