@@ -1707,16 +1707,11 @@ const {
 
 ### Key Architecture Files
 
-- **Router**: [src/routes.tsx](src/routes.tsx)
-- **Redux Store**: [src/redux/provider/store.ts](src/redux/provider/store.ts)
-- **API Setup**: [src/api/index.ts](src/api/index.ts)
-- **Auth Service**: [src/services/AuthService.ts](src/services/AuthService.ts)
-- **App Entry**: [src/App.tsx](src/App.tsx)
-
-### Refactoring Checklist (Phase 1 & 2)
-
-- [Phase 1 Test Checklist](.github/prompts/TEST-CHECKLIST-PHASE1.md)
-- [Phase 2 Implementation Plan](.github/prompts/plan-phase2-MockDataRemovalAndOptimization.prompt.md)
+- **Router**: [src/routes.tsx](../src/routes.tsx)
+- **Redux Store**: [src/redux/provider/store.ts](../src/redux/provider/store.ts)
+- **API Setup**: [src/api/index.ts](../src/api/index.ts)
+- **Auth Service**: [src/services/AuthService.ts](../src/services/AuthService.ts)
+- **App Entry**: [src/App.tsx](../src/App.tsx)
 
 ---
 

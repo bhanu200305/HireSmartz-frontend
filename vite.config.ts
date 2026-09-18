@@ -11,6 +11,13 @@ export default defineConfig({
     dir: 'tests',
     // Some modules touch `window` at import time.
     environment: 'jsdom',
+    setupFiles: ['./tests/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.d.ts', 'src/main.tsx'],
+    },
   },
   build: {
     // Raise warning threshold slightly to avoid noise from known large vendor chunks (e.g. antd)
