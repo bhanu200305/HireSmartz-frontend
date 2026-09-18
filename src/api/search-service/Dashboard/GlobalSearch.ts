@@ -1,4 +1,12 @@
-import { api } from '../../index';
+// organization-service's own client, not the generic `api` this file used
+// before — needed now that the backend router moved to `/v1/global-search/*`
+// (2026-09-18, for consistency with every other route on this service):
+// that prefix puts responses through `ResponseEnvelopeMiddleware`, and
+// `orgApi` is the client that already unwraps that envelope, the same way
+// every other organization-service caller in this app already does. The
+// generic `api` has no such unwrapping, which silently broke every result
+// here (real 200s, empty-looking data) until this switch.
+import { orgApi } from '../../organization-service/orgApi';
 
 export type RecentSearchItem = {
   id: string | number;
@@ -86,11 +94,11 @@ export type CategoriesResponse = {
   }>;
 };
 
-const extendedApi = api.injectEndpoints({
+const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     getRecentSearches: build.query<RecentSearchResponse, string | void>({
       query: () => ({
-        url: '/global-search/search/recent',
+        url: '/v1/global-search/search/recent',
         method: 'GET',
       }),
     }),
@@ -107,7 +115,7 @@ const extendedApi = api.injectEndpoints({
         }
 
         return {
-          url: '/global-search/search',
+          url: '/v1/global-search/search',
           method: 'GET',
           params,
         };
@@ -115,7 +123,7 @@ const extendedApi = api.injectEndpoints({
     }),
     getCategories: build.query<CategoriesResponse, void>({
       query: () => ({
-        url: '/global-search/modules',
+        url: '/v1/global-search/modules',
         method: 'GET',
       }),
     }),
