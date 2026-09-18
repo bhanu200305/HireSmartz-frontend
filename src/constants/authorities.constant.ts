@@ -642,6 +642,14 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
           // already assumed Super Admin doesn't hold it) and showing a "Job
           // Openings" nav item that led nowhere useful for a platform caller.
           Authorities.JOB_OPENING_VIEW,
+          // Same reasoning as JOB_OPENING_VIEW above: interview-service's
+          // bookings/interviews surface is a tenant's own hiring pipeline
+          // (candidate-service scopes every query to the caller's own
+          // tenant), with no platform-level equivalent — a Super Admin
+          // landing on /interviews via this permission sees an empty or
+          // meaningless screen, not a real platform feature. Previously left
+          // in by the same "every authority" omission JOB_OPENING_VIEW had.
+          Authorities.INTERVIEW_QUESTIONS_VIEW,
         ].includes(code)
     ),
     // Real backend name: cfp_admin. Verbatim from the live database.
