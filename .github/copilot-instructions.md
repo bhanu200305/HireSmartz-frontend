@@ -326,7 +326,7 @@ VITE_ENV=development
 
 ## Critical Files to Understand
 
-- [DEVELOPER_GUIDE.md](../DEVELOPER_GUIDE.md) - Comprehensive developer patterns and conventions
+- [DEVELOPER_GUIDE.md](../docs/DEVELOPER_GUIDE.md) - Comprehensive developer patterns and conventions
 - [src/routes.tsx](../src/routes.tsx) - Route definitions and lazy loading strategy
 - [src/redux/provider/store.ts](../src/redux/provider/store.ts) - Redux store with persistence
 - [src/services/AuthService.ts](../src/services/AuthService.ts) - Token refresh logic
@@ -367,4 +367,4 @@ VITE_ENV=development
 
 **Last updated**: June 14, 2026 | Maintain this file as architecture evolves.
 
-For comprehensive developer patterns, coding standards, and detailed examples, refer to [DEVELOPER_GUIDE.md](../DEVELOPER_GUIDE.md).
+For comprehensive developer patterns, coding standards, and detailed examples, refer to [DEVELOPER_GUIDE.md](../docs/DEVELOPER_GUIDE.md).

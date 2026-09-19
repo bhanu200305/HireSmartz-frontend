@@ -24,7 +24,7 @@ const humanizeType = (value: string): string =>
  * Same card-grid layout as MyCompany/NotificationCopyTab.tsx's tenant
  * self-service version (search box, SMS badge on the ~8 types that have
  * one) — this one uses the platform-mounted per-tenant override endpoints
- * (GET/PUT/DELETE .../platform/template-settings/tenants/{id}/overrides)
+ * (GET/PUT/DELETE .../notification-platform/template-settings/tenants/{id}/overrides)
  * instead, since a Super Admin is editing on the tenant's behalf.
  */
 const NotificationCopyPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {

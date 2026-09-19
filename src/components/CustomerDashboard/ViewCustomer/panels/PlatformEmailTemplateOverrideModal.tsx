@@ -28,7 +28,7 @@ const humanizeType = (value: string): string =>
 /**
  * Super Admin's mirror of MyCompany/EmailTemplateOverrideModal.tsx — edits a
  * SPECIFIC tenant's override on their behalf
- * (PUT/DELETE /v1/platform/template-settings/tenants/{tenant_id}/overrides/{type}),
+ * (PUT/DELETE /v1/notification-platform/template-settings/tenants/{tenant_id}/overrides/{type}),
  * same test-render-on-save contract, plus the platform-scoped preview
  * (`POST .../tenants/{tenant_id}/preview`) `TenantThemeSection` in this same
  * folder already relies on for the theme tab.

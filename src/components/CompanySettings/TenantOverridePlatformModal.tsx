@@ -19,7 +19,7 @@ type TenantOverridePlatformModalProps = {
 
 /**
  * Edit or revert ONE tenant's override on their behalf —
- * `PUT/DELETE /v1/platform/template-settings/tenants/{tenant_id}/overrides/{type}`.
+ * `PUT/DELETE /v1/notification-platform/template-settings/tenants/{tenant_id}/overrides/{type}`.
  * Same support/impersonation capability organization-service's old flat-table
  * CRUD used to have, rebuilt against the schema that's actually live.
  */

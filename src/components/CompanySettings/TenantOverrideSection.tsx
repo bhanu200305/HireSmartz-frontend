@@ -17,7 +17,7 @@ const humanizeType = (value: string): string =>
 /**
  * Support/override action: look up one tenant and edit or revert their
  * notification template on their behalf —
- * `/v1/platform/template-settings/tenants/{tenant_id}/overrides`.
+ * `/v1/notification-platform/template-settings/tenants/{tenant_id}/overrides`.
  */
 const TenantOverrideSection: React.FC = () => {
   const [search, setSearch] = useState('');

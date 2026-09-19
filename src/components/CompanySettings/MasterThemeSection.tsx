@@ -96,7 +96,7 @@ const PACKS: { key: string; label: string; defaults: Required<EmailThemeColors> 
 
 /**
  * Platform defaults for the three theme packs —
- * `GET/PUT /v1/platform/template-settings/master-layout/{layout_name}`.
+ * `GET/PUT /v1/notification-platform/template-settings/master-layout/{layout_name}`.
  * Editing one changes what EVERY tenant on that pack sees, unless they've
  * saved their own theme (`organization_email_layout` wins when set — see
  * `doc_template_resolution.py`). Chrome (header/footer/CSS) isn't exposed

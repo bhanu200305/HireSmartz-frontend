@@ -8,7 +8,7 @@ import type {
 } from '../TemplateSettings/index';
 
 /**
- * Super Admin's template management — `/v1/platform/template-settings/*`,
+ * Super Admin's template management — `/v1/notification-platform/template-settings/*`,
  * `platform:read`/`platform:update` gated. Matches
  * app/modules/templates/api/{requests,responses}.py's
  * MasterTemplateView/MasterSmsTemplateView/DocOverrideView field-for-field.
@@ -72,7 +72,10 @@ export interface SaveMasterSmsTemplateRequest {
 const platformTemplateSettingsApi = notifApi.injectEndpoints({
   endpoints: (build) => ({
     listMasterTemplates: build.query<MasterTemplateListView, void>({
-      query: () => ({ url: '/v1/platform/template-settings/master-templates', method: 'GET' }),
+      query: () => ({
+        url: '/v1/notification-platform/template-settings/master-templates',
+        method: 'GET',
+      }),
       providesTags: ['PlatformMasterTemplates'],
     }),
     saveMasterTemplate: build.mutation<
@@ -80,7 +83,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       { notificationType: string; body: SaveMasterTemplateRequest }
     >({
       query: ({ notificationType, body }) => ({
-        url: `/v1/platform/template-settings/master-templates/${notificationType}`,
+        url: `/v1/notification-platform/template-settings/master-templates/${notificationType}`,
         method: 'PUT',
         body,
       }),
@@ -88,7 +91,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
     }),
     listMasterSmsTemplates: build.query<MasterSmsTemplateListView, void>({
       query: () => ({
-        url: '/v1/platform/template-settings/master-sms-templates',
+        url: '/v1/notification-platform/template-settings/master-sms-templates',
         method: 'GET',
       }),
       providesTags: ['PlatformMasterSmsTemplates'],
@@ -98,7 +101,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       { notificationType: string; body: SaveMasterSmsTemplateRequest }
     >({
       query: ({ notificationType, body }) => ({
-        url: `/v1/platform/template-settings/master-sms-templates/${notificationType}`,
+        url: `/v1/notification-platform/template-settings/master-sms-templates/${notificationType}`,
         method: 'PUT',
         body,
       }),
@@ -106,7 +109,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
     }),
     listTenantOverrides: build.query<{ overrides: TemplateOverride[] }, string>({
       query: (tenantId) => ({
-        url: `/v1/platform/template-settings/tenants/${tenantId}/overrides`,
+        url: `/v1/notification-platform/template-settings/tenants/${tenantId}/overrides`,
         method: 'GET',
       }),
       providesTags: ['PlatformTenantOverrides'],
@@ -127,7 +130,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       }
     >({
       query: ({ tenantId, notificationType, body }) => ({
-        url: `/v1/platform/template-settings/tenants/${tenantId}/overrides/${notificationType}`,
+        url: `/v1/notification-platform/template-settings/tenants/${tenantId}/overrides/${notificationType}`,
         method: 'PUT',
         body,
       }),
@@ -138,20 +141,20 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       { tenantId: string; notificationType: string }
     >({
       query: ({ tenantId, notificationType }) => ({
-        url: `/v1/platform/template-settings/tenants/${tenantId}/overrides/${notificationType}`,
+        url: `/v1/notification-platform/template-settings/tenants/${tenantId}/overrides/${notificationType}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['PlatformTenantOverrides'],
     }),
 
     // -- a pack's platform-default chrome + 16 brand colours ----------------
-    // `GET/PUT /v1/platform/template-settings/master-layout/{layout_name}` —
+    // `GET/PUT /v1/notification-platform/template-settings/master-layout/{layout_name}` —
     // `layout_name` is one of the three fixed packs ("Corporate", "Modern",
     // "Minimal"; see TemplatePack.layout_name). Editing this changes what
     // every tenant on that pack sees UNLESS they've saved their own theme.
     getMasterLayout: build.query<TemplateLayout, string>({
       query: (layoutName) => ({
-        url: `/v1/platform/template-settings/master-layout/${layoutName}`,
+        url: `/v1/notification-platform/template-settings/master-layout/${layoutName}`,
         method: 'GET',
       }),
       providesTags: (_result, _error, layoutName) => [
@@ -163,7 +166,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       { layoutName: string; body: SaveLayoutRequest }
     >({
       query: ({ layoutName, body }) => ({
-        url: `/v1/platform/template-settings/master-layout/${layoutName}`,
+        url: `/v1/notification-platform/template-settings/master-layout/${layoutName}`,
         method: 'PUT',
         body,
       }),
@@ -174,7 +177,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
 
     // -- one specific tenant's own chrome + 16 brand colours, edited on
     // their behalf -----------------------------------------------------------
-    // `GET/PUT /v1/platform/template-settings/tenants/{tenant_id}/layout` —
+    // `GET/PUT /v1/notification-platform/template-settings/tenants/{tenant_id}/layout` —
     // no banner upload here: uploading a file to storage is still tenant
     // self-service only (`POST /{tenant_id}/email-banner/upload-url` on
     // organization-service requires `require_own_tenant`, same as the logo
@@ -182,7 +185,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
     // not swap their banner image.
     getTenantLayout: build.query<TemplateLayout, string>({
       query: (tenantId) => ({
-        url: `/v1/platform/template-settings/tenants/${tenantId}/layout`,
+        url: `/v1/notification-platform/template-settings/tenants/${tenantId}/layout`,
         method: 'GET',
       }),
       providesTags: (_result, _error, tenantId) => [{ type: 'PlatformTenantLayout', id: tenantId }],
@@ -192,7 +195,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       { tenantId: string; body: SaveLayoutRequest }
     >({
       query: ({ tenantId, body }) => ({
-        url: `/v1/platform/template-settings/tenants/${tenantId}/layout`,
+        url: `/v1/notification-platform/template-settings/tenants/${tenantId}/layout`,
         method: 'PUT',
         body,
       }),
@@ -201,7 +204,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       ],
     }),
 
-    // `POST /v1/platform/template-settings/preview` — the third point on the
+    // `POST /v1/notification-platform/template-settings/preview` — the third point on the
     // same preview axis: no tenant at all, just a pack's platform-default
     // theme. `pack_key` is required here (unlike the tenant-scoped siblings)
     // since there's no tenant's "current pack" to fall back to.
@@ -210,20 +213,20 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       { notificationType: string; packKey: string; channel?: 'email' | 'sms' }
     >({
       query: ({ notificationType, packKey, channel }) => ({
-        url: '/v1/platform/template-settings/preview',
+        url: '/v1/notification-platform/template-settings/preview',
         method: 'POST',
         body: { notification_type: notificationType, pack_key: packKey, channel },
       }),
     }),
 
-    // `POST /v1/platform/template-settings/tenants/push` — bulk-revert every
+    // `POST /v1/notification-platform/template-settings/tenants/push` — bulk-revert every
     // tenant-editable email type for several tenants at once, back to the
     // platform default. Two-step: call with performChanges=false first to
     // find out which tenants hold customisations that would be lost, then
     // again with performChanges=true (and confirmed=true if any were found).
     pushTemplatesToTenants: build.mutation<PushTemplatesToTenantsView, PushTemplatesToTenantsArgs>({
       query: ({ tenantIds, performChanges, confirmed }) => ({
-        url: '/v1/platform/template-settings/tenants/push',
+        url: '/v1/notification-platform/template-settings/tenants/push',
         method: 'POST',
         body: {
           tenant_ids: tenantIds,
@@ -234,7 +237,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       invalidatesTags: ['PlatformTenantOverrides'],
     }),
 
-    // `POST /v1/platform/template-settings/tenants/{tenant_id}/preview` —
+    // `POST /v1/notification-platform/template-settings/tenants/{tenant_id}/preview` —
     // sibling to the tenant's own `/template-settings/preview`, binding the
     // tenant explicitly from the path since a platform operator has none of
     // their own. Same doc-template-first rendering, so this reflects that
@@ -244,7 +247,7 @@ const platformTemplateSettingsApi = notifApi.injectEndpoints({
       { tenantId: string; body: PreviewTemplateRequest }
     >({
       query: ({ tenantId, body }) => ({
-        url: `/v1/platform/template-settings/tenants/${tenantId}/preview`,
+        url: `/v1/notification-platform/template-settings/tenants/${tenantId}/preview`,
         method: 'POST',
         body,
       }),

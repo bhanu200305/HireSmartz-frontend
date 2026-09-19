@@ -84,7 +84,7 @@ const MetaTile: React.FC<{
  *
  * Every tab below reads/writes real, already-mounted
  * /v1/platform/tenants/{tenant_id}/... routes (organization-service) or
- * /v1/platform/template-settings/tenants/{tenant_id}/... (notification-
+ * /v1/notification-platform/template-settings/tenants/{tenant_id}/... (notification-
  * service) — see the panels/ directory. Activity Feed, Interview Questions
  * and SMS Templates are deliberately left out of this pass: their
  * platform-route equivalents (if any) haven't been verified, and SMS has no

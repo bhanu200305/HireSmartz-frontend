@@ -14,7 +14,7 @@ import SmsTemplatesTab from './SmsTemplatesTab';
  * `NotificationTemplatesTab` component this screen already had (name
  * unchanged, on purpose — see below). It covers Email defaults, Theme
  * defaults, Company theme, SMS defaults, Tenant overrides, and Bulk revert,
- * all real, against `/v1/platform/template-settings/*` — that's what
+ * all real, against `/v1/notification-platform/template-settings/*` — that's what
  * answers the recurring "why is there no Email Templates in Company
  * Settings" question, this tab always covered it. See that component's own
  * doc comment for why an actual "Email Templates" tab that predated it was

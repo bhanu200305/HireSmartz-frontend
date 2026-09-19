@@ -92,7 +92,7 @@ const EditMasterTemplateModal: React.FC<{
 };
 
 /**
- * `GET/PUT /v1/platform/template-settings/master-templates(/{type})` —
+ * `GET/PUT /v1/notification-platform/template-settings/master-templates(/{type})` —
  * the platform default every tenant without their own override falls back
  * to. Higher-stakes than a tenant override: a broken master breaks mail for
  * every tenant that has never customised that event.

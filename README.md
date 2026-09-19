@@ -14,13 +14,14 @@ A modern hiring platform built with React 19 and TypeScript, enabling real-time 
 - [Key Concepts](#key-concepts)
 - [Testing](#testing)
 - [Troubleshooting](#troubleshooting)
+- [Documentation](#documentation)
 - [Contributing](#contributing)
 
 ---
 
 ## 📱 Project Overview
 
-**CareerForcePro** is a comprehensive hiring and recruitment platform designed to streamline the interview process for organizations, hiring managers, recruiters, and candidates.
+**CareerForcePro** is a comprehensive hiring and recruitment platform designed to streamline the interview process for organizations, hiring managers, recruiters, and candidates. The frontend talks to a backend microservices monorepo — each domain (auth, org, jobs, candidates, interviews, notifications, AI) is its own service, and `src/api/` mirrors that boundary (see [Project Structure](#project-structure)).
 
 ### 🎯 Target Users
 
@@ -32,7 +33,7 @@ A modern hiring platform built with React 19 and TypeScript, enabling real-time 
 ### ✨ Key Features
 
 - **AI-Powered Questions** - Automatically generate interview questions based on job descriptions
-- **Real-Time Video Interviews** - Conduct live interviews with video, audio, and screen sharing
+- **Real-Time Video Interviews** - Conduct live interviews with video, audio, and screen sharing via LiveKit
 - **ATS Integration** - Sync job openings with external ATS systems
 - **Bulk Candidate Management** - Import, filter, and manage large candidate databases
 - **Smart Candidate Filtering** - Search and filter candidates by multiple criteria
@@ -49,14 +50,14 @@ A modern hiring platform built with React 19 and TypeScript, enabling real-time 
 
 - **React 19** - Latest React with concurrent features
 - **TypeScript** - Full type safety with strict mode enabled
-- **Vite** - Fast build tool with React SWC compiler
+- **Vite 6** - Fast build tool with React SWC compiler
 - **React Router v7** - Client-side routing with lazy loading and Suspense
 
 ### State Management & Data
 
 - **Redux Toolkit** - State management with Immer for immutable updates
 - **RTK Query** - Built-in data fetching and caching on top of Redux
-- **redux-persist** - Selective state persistence (LoginSlice persisted)
+- **redux-persist** - Selective state persistence (`LoginSlice`, `JobSlice`, `EditJobSlice` persisted)
 
 ### Styling & UI
 
@@ -66,8 +67,7 @@ A modern hiring platform built with React 19 and TypeScript, enabling real-time 
 
 ### Real-Time Communication
 
-- **LiveKit SDK** - Video/audio communication and real-time features (migration in progress)
-- **WebSocket** - Real-time interview state synchronization
+- **LiveKit** (`livekit-client`, `@livekit/components-react`) - Video/audio interviews and screen sharing. The earlier Agora implementation has been fully retired — see `useLiveKit` under [Key Concepts](#key-concepts).
 
 ### Content & Validation
 
@@ -79,13 +79,19 @@ A modern hiring platform built with React 19 and TypeScript, enabling real-time 
 
 - **Axios** - HTTP client for API requests
 - **dayjs** - Date manipulation and formatting
-- **Lodash** - Utility functions for common operations
+- **lodash-es** - Utility functions for common operations
 - **React Icons** - Icon library
 - **React Toastify** - Toast notifications
 - **Recharts** - Data visualization and charts
 - **React PDF Viewer** - PDF document viewing
 - **FFmpeg.wasm** - Client-side video processing (optional)
 - **Crypto-JS** - Client-side encryption utilities
+
+### Tooling
+
+- **ESLint 9 + Prettier** - Linting and formatting (`npm run lint`, `npm run format`)
+- **Husky** - Git hooks (installed automatically via the `prepare` script)
+- **Vitest** - Unit/component testing, jsdom environment, coverage via `@vitest/coverage-v8`
 
 ---
 
@@ -99,8 +105,8 @@ A modern hiring platform built with React 19 and TypeScript, enabling real-time 
 
 ### External Services (Optional for Development)
 
-- **Backend API** - Running CareerForcePro backend service
-- **LiveKit Server** - For video interview functionality
+- **Backend services** - The relevant microservices running locally (see [Environment Variables](#environment-variables)) or a shared dev environment
+- **LiveKit Server** - For video interview functionality (connection details are issued per-interview by `interview-service`, not configured statically here)
 - **ATS Provider** - For ATS integration (Workable, iCIMS, etc.)
 
 ### Development Environment
@@ -116,42 +122,27 @@ A modern hiring platform built with React 19 and TypeScript, enabling real-time 
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/netsmartz/careerforcepro-web.git
-cd careerforcepro-web
+git clone https://github.com/Netsmartz-IT-Solutions/CFPro_frontend.git
+cd CFPro_frontend
 ```
 
 ### 2. Install Dependencies
 
 ```bash
 npm install
-# or
-yarn install
 ```
+
+This also runs `husky` (via the `prepare` script) to install git hooks.
 
 ### 3. Environment Configuration
 
-Create a `.env` file in the root directory:
+Create a `.env.local` file in the root directory (Vite reads `.env.local` at dev-server startup only — restart `npm run dev` after changing it):
 
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-Edit `.env` with your configuration:
-
-```bash
-# Backend API Configuration
-VITE_BACKEND_ENDPOINT=http://localhost:3000
-VITE_BACKEND_PREFIX=/api/v1
-VITE_ENV=development
-
-# Optional: LiveKit Configuration (for video interviews)
-VITE_LIVEKIT_URL=https://your-livekit-server.com
-VITE_LIVEKIT_API_KEY=your-api-key
-VITE_LIVEKIT_API_SECRET=your-api-secret
-
-# Optional: Analytics or Monitoring
-# VITE_SENTRY_DSN=your-sentry-dsn
-```
+Edit `.env.local` with your configuration — see [Environment Variables](#environment-variables) for the full list; at minimum you'll want the per-service endpoint URLs pointed at whichever backend services you're running locally.
 
 ### 4. Start Development Server
 
@@ -165,27 +156,42 @@ The application will be available at `http://localhost:5173`
 
 ## 🔐 Environment Variables
 
-### Required Variables
+The backend is a microservices monorepo, so the frontend targets each service by its own base URL rather than one shared backend endpoint. See `.env.example` for the authoritative, up-to-date list.
 
-| Variable                | Description          | Example                                |
-| ----------------------- | -------------------- | -------------------------------------- |
-| `VITE_BACKEND_ENDPOINT` | Backend API base URL | `http://localhost:3000`                |
-| `VITE_BACKEND_PREFIX`   | API path prefix      | `/api/v1`                              |
-| `VITE_ENV`              | Environment name     | `development`, `staging`, `production` |
+### Backend service endpoints
 
-### Optional Variables
+| Variable                             | Description                      |
+| ------------------------------------ | -------------------------------- |
+| `VITE_BACKEND_ENDPOINT`              | Fallback/shared backend base URL |
+| `VITE_BACKEND_PREFIX`                | API path prefix (e.g. `/api/v1`) |
+| `VITE_AUTH_SERVICE_ENDPOINT`         | authentication-service base URL  |
+| `VITE_ORG_SERVICE_ENDPOINT`          | organization-service base URL    |
+| `VITE_JOB_SERVICE_ENDPOINT`          | job-service base URL             |
+| `VITE_CANDIDATE_SERVICE_ENDPOINT`    | candidate-service base URL       |
+| `VITE_INTERVIEW_SERVICE_ENDPOINT`    | interview-service base URL       |
+| `VITE_NOTIFICATION_SERVICE_ENDPOINT` | notification-service base URL    |
+| `VITE_AI_SERVICE_ENDPOINT`           | ai-service base URL              |
 
-| Variable                  | Description        | Required For     |
-| ------------------------- | ------------------ | ---------------- |
-| `VITE_LIVEKIT_URL`        | LiveKit server URL | Video interviews |
-| `VITE_LIVEKIT_API_KEY`    | LiveKit API key    | Token generation |
-| `VITE_LIVEKIT_API_SECRET` | LiveKit API secret | Token generation |
+Each API module under `src/api/` is wired to its own service's endpoint — see [Project Structure](#project-structure). Pointing the wrong var at the wrong port is a common source of confusing 401s (see [Troubleshooting](#troubleshooting)).
+
+### Other variables
+
+| Variable                          | Description                                             |
+| --------------------------------- | ------------------------------------------------------- |
+| `VITE_NYLAS_CLIENT_ID`            | Nylas calendar integration client id                    |
+| `VITE_RECAPTCHA_SITE_KEY`         | reCAPTCHA site key                                      |
+| `VITE_INTERVIEW_FEEDBACK_FEATURE` | Feature flag                                            |
+| `VITE_VIDEO_CONSENT_FEATURE`      | Feature flag                                            |
+| `VITE_NYLAS_FEATURE`              | Feature flag                                            |
+| `VITE_BYPASS_AUTH`                | Dev-only auth bypass — never set this outside local dev |
+
+`VITE_AGORA_APP_ID`/`VITE_TEMP_TOKEN`/`VITE_CHANNEL_NAME` still appear in `.env.example` but are dead — no Agora SDK code remains in `src/` (LiveKit fully replaced it). LiveKit connection details come from `interview-service` per interview, not from a static `VITE_LIVEKIT_*` var.
 
 ### Development Tips
 
 - Use `.env.local` for personal overrides (not committed to git)
-- Never commit `.env` with production credentials
-- Reference `.env.example` for all available variables
+- Vite only reads `.env.local` at dev-server **startup** — changing it requires a restart, not just a save
+- Reference `.env.example` for the full, current variable list
 
 ---
 
@@ -193,45 +199,28 @@ The application will be available at `http://localhost:5173`
 
 ### Available Scripts
 
-#### Start Development Server
-
-```bash
-npm run dev
-```
-
-Starts Vite dev server with hot module replacement.  
-Access at: `http://localhost:5173`
-
-#### Build for Production
-
-```bash
-npm run build
-```
-
-TypeScript type check + Vite build.  
-Output: `dist/` directory ready for deployment.
-
-#### Preview Production Build
-
-```bash
-npm run preview
-```
-
-Serve production build locally to verify before deployment.
-
-#### Lint Code
-
-```bash
-npm run lint
-```
-
-Run ESLint with Prettier integration to check code quality.
+| Script                   | Command                                | What it does                                                   |
+| ------------------------ | -------------------------------------- | -------------------------------------------------------------- |
+| `npm run dev`            | `vite`                                 | Starts the Vite dev server with HMR at `http://localhost:5173` |
+| `npm run build`          | `tsc -b && vite build`                 | Type-checks, then builds to `dist/`                            |
+| `npm run preview`        | `vite preview`                         | Serves the production build locally                            |
+| `npm run lint`           | `eslint .`                             | Lints the whole project                                        |
+| `npm test`               | `vitest run`                           | Runs the test suite once                                       |
+| `npm run test:watch`     | `vitest`                               | Runs tests in watch mode                                       |
+| `npm run test:coverage`  | `vitest run --coverage`                | Runs tests with coverage (v8 provider)                         |
+| `npm run format`         | `prettier --write .`                   | Formats the whole project                                      |
+| `npm run format:check`   | `prettier --check .`                   | Checks formatting without writing                              |
+| `npm run format:src`     | `prettier --write src/`                | Formats only `src/`                                            |
+| `npm run format:fix-all` | `prettier --write . && eslint . --fix` | Formats, then auto-fixes lint issues                           |
 
 ### Development Workflow
 
-1. Create feature branch from `main`
+Branches flow `feature/* → dev → staging → production` (there is no `main` branch).
+
+1. Create feature branch from `dev`
 
    ```bash
+   git checkout dev
    git checkout -b feature/your-feature-name
    ```
 
@@ -242,13 +231,14 @@ Run ESLint with Prettier integration to check code quality.
    git commit -m "feat: add awesome feature"
    ```
 
-3. Run linter before pushing
+3. Run linter and formatter before pushing
 
    ```bash
    npm run lint
+   npm run format:check
    ```
 
-4. Push and create pull request
+4. Push and open a pull request against `dev`
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -258,83 +248,62 @@ Run ESLint with Prettier integration to check code quality.
 ## 📁 Project Structure
 
 ```
-careerforcepro-web/
+CFPro_frontend/
 ├── src/
-│   ├── api/                 # RTK Query endpoints organized by feature
-│   │   ├── Login/
-│   │   ├── JobOpening/
-│   │   ├── Candidates/
-│   │   ├── User/
+│   ├── api/                 # RTK Query endpoints, organized by BACKEND MICROSERVICE
+│   │   ├── authentication-service/
+│   │   ├── organization-service/
+│   │   ├── job-service/
+│   │   ├── candidate-service/
+│   │   ├── interview-service/
+│   │   ├── notification-service/
+│   │   ├── ai-service/
+│   │   ├── ...                    # remaining service folders
 │   │   └── index.ts         # Base query configuration with auth
 │   │
 │   ├── components/          # Reusable React components (feature-based)
 │   │   ├── Dashboard/
 │   │   ├── JobsOpening/
 │   │   ├── Candidates/
-│   │   ├── Interview/
-│   │   ├── shared/          # Shared components and UI utilities
+│   │   ├── Interview/       # LiveKit interview UI (InterviewLiveKit.tsx, VideoGridLiveKit.tsx)
+│   │   ├── InterviewUser/
 │   │   └── ...
 │   │
-│   ├── pages/               # Page components (lazy-loaded in routes.tsx)
-│   │   ├── LoginPage/
-│   │   ├── Dashboard/
-│   │   ├── JobsOpening/
-│   │   └── ...
+│   ├── pages/                # Page components (lazy-loaded in routes.tsx)
+│   ├── layouts/               # Layout wrappers for page sections
+│   ├── redux/                 # Redux store, slices, and reducers
+│   │   ├── provider/          # Store configuration with redux-persist
+│   │   ├── slices/            # Feature-specific state slices
+│   │   └── reducers/          # Root reducer
 │   │
-│   ├── layouts/             # Layout wrappers for page sections
-│   │   ├── MainLayout.tsx
-│   │   ├── AuthLayout.tsx
-│   │   ├── AddUserLayout.tsx
-│   │   └── JobDetailsLayout.tsx
-│   │
-│   ├── redux/               # Redux store, slices, and reducers
-│   │   ├── provider/        # Store configuration with redux-persist
-│   │   ├── slices/          # Feature-specific state slices
-│   │   └── reducers/        # Root reducer
-│   │
-│   ├── services/            # Business logic and external integrations
-│   │   ├── AuthService.ts   # Token refresh, login verification
+│   ├── services/              # Business logic and external integrations
+│   │   ├── AuthService.ts     # Token refresh, login verification
 │   │   ├── SessionService.ts
 │   │   └── WebsocketService.ts
 │   │
-│   ├── hooks/               # Custom React hooks
-│   │   ├── useAgora.tsx     # Video interview management (being migrated)
-│   │   ├── useAPI.tsx       # Deprecated - use RTK Query instead
-│   │   ├── useHasAccess.tsx # Role-based access control
+│   ├── hooks/                 # Custom React hooks
+│   │   ├── useLiveKit.tsx     # Video interview state (replaces the old useAgora)
+│   │   ├── useHasAccess.tsx   # Role-based access control
 │   │   └── ...
 │   │
-│   ├── helpers/             # Utility functions and helpers
-│   │   ├── localstorage.helpers.ts
-│   │   ├── axios.client.ts
-│   │   ├── agora.client.ts
-│   │   ├── feedback.helpers.ts
-│   │   └── index.ts         # Business logic helpers
-│   │
-│   ├── constants/           # Application constants and enums
-│   │   ├── authorities.constant.ts
-│   │   ├── statusConstant.ts
-│   │   ├── webAPI.ts        # API paths and localStorage keys
-│   │   └── ...
-│   │
-│   ├── types/               # TypeScript type definitions
-│   │   └── *.d.ts
-│   │
-│   ├── assets/              # Static assets (images, SVGs, etc.)
-│   ├── config/              # Configuration files
-│   ├── theme/               # Theme configuration
-│   ├── routes.tsx           # Route definitions with lazy loading
-│   ├── App.tsx              # Root app component
-│   ├── main.tsx             # Entry point
-│   └── index.css            # Global styles
+│   ├── helpers/                # Utility functions and helpers
+│   ├── constants/               # Application constants and enums
+│   ├── types/                    # TypeScript type definitions
+│   ├── shared/                    # Shared components/utilities (top-level, distinct from components/shared)
+│   ├── data/                       # Static/reference data
+│   ├── assets/                      # Static assets (images, SVGs, etc.)
+│   ├── config/                       # Configuration files
+│   ├── theme/                         # Theme configuration
+│   ├── routes.tsx                      # Route definitions with lazy loading
+│   ├── App.tsx                          # Root app component
+│   └── main.tsx                          # Entry point
 │
 ├── public/                  # Static files served as-is
-├── tests/                   # Test files (Vitest)
-├── .github/                 # GitHub configuration
-│   ├── copilot-instructions.md
-│   ├── prompts/
-│   └── TEST-CHECKLIST-PHASE1.md
+├── tests/                   # Test files (Vitest, jsdom) — components/, helpers/, redux/, shared/, setup.ts
+├── docs/                    # Architecture, design system, and integration docs — see Documentation below
+├── .github/                 # GitHub configuration (copilot-instructions.md, prompts/)
 │
-├── vite.config.ts           # Vite configuration
+├── vite.config.ts           # Vite + Vitest configuration
 ├── tsconfig.json            # TypeScript configuration
 ├── tailwind.config.ts       # Tailwind CSS configuration
 ├── eslint.config.js         # ESLint configuration
@@ -346,13 +315,13 @@ careerforcepro-web/
 
 #### `/api`
 
-Contains RTK Query endpoint definitions organized by feature. Each API folder has an `index.ts` that exports auto-generated hooks.
+Contains RTK Query endpoint definitions, one folder per backend microservice (`job-service/`, `candidate-service/`, etc. — see [STRUCTURE_MAPPING.md](docs/STRUCTURE_MAPPING.md) for the full rationale). Each folder has an `index.ts` (or per-feature files) exporting auto-generated hooks, base-querying that service's own `VITE_*_SERVICE_ENDPOINT`.
 
 ```typescript
-// src/api/JobOpening/index.ts
+// src/api/job-service/jobOpeningApi.ts (illustrative)
 const jobOpeningApi = createApi({
   reducerPath: 'jobOpeningApi',
-  baseQuery: fetchBaseQuery({ baseUrl: BASE_URL, prepareHeaders: ... }),
+  baseQuery: fetchBaseQuery({ baseUrl: JOB_SERVICE_BASE_URL, prepareHeaders: ... }),
   endpoints: (builder) => ({
     getJobOpenings: builder.query(...),
     createJobOpening: builder.mutation(...)
@@ -363,12 +332,14 @@ export const { useGetJobOpeningsQuery, useCreateJobOpeningMutation } = jobOpenin
 
 #### `/redux`
 
-Redux Toolkit slices for state management. Only `LoginSlice` is persisted via redux-persist.
+Redux Toolkit slices for state management. `redux-persist`'s whitelist currently covers `LoginSlice`, `JobSlice`, and `EditJobSlice`.
 
 ```typescript
 // Usage in components
-const dispatch = useAppDispatch();
-dispatch(loginStore({ token, authorities, role }));
+import { useDispatch } from 'react-redux';
+
+const dispatch = useDispatch();
+dispatch(loginStore({ token, authorities, role, rememberMe }));
 ```
 
 #### `/services`
@@ -377,13 +348,10 @@ Business logic services separate from components.
 
 ```typescript
 // src/services/AuthService.ts
-export const handleRefreshToken = async () => { ... }
-export const verifyTokenLogin = async (token, dispatch) => { ... }
+export const handleRefreshToken = async () => { ... } // 401 -> silent refresh + retry
+// src/api/authentication-service/Login/login.ts
+export const { useLoginMutation } = extendedApi;
 ```
-
-#### `/helpers` & `/utils`
-
-Utility functions grouped by purpose. Being consolidated in Phase 1.
 
 ---
 
@@ -393,7 +361,7 @@ Utility functions grouped by purpose. Being consolidated in Phase 1.
 
 **Token Flow:**
 
-1. User logs in → Backend returns `accessToken` + `refreshToken`
+1. User logs in → `authentication-service` returns `accessToken` + `refreshToken`
 2. Tokens stored in localStorage with keys: `cfp_atoken`, `cfp_rtoken`, `cfp_itoken`, `cfp_user`
 3. All API requests include `Authorization: Bearer ${token}` header (except login/forgot-password)
 4. When 401 error occurs → `handleRefreshToken()` auto-refreshes and retries request
@@ -413,26 +381,24 @@ if (!verifyAuthToken()) {
 **Store Structure:**
 
 ```typescript
-// Only LoginSlice is persisted to localStorage
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['LoginSlice'], // ← Only this slice persists
+  whitelist: ['LoginSlice', 'JobSlice', 'EditJobSlice'], // ← only these persist
 };
 ```
 
 **Using State:**
 
 ```typescript
-import { useSelector } from 'react-redux';
-import { useAppDispatch } from './hooks';
+import { useDispatch, useSelector } from 'react-redux';
 
 const MyComponent = () => {
-  const dispatch = useAppDispatch();
+  const dispatch = useDispatch();
   const { token, authorities } = useSelector((state) => state.LoginSlice);
 
   // Dispatch action
-  dispatch(jobOpeningFilterSlice.actions.setFilter(filterData));
+  dispatch(jobOpeningFilterSlice.actions.setJobOpeningFilters(filterData));
 };
 ```
 
@@ -441,10 +407,10 @@ const MyComponent = () => {
 **Create API Endpoint:**
 
 ```typescript
-// src/api/JobOpening/index.ts
+// src/api/job-service/jobOpeningApi.ts
 const jobOpeningApi = createApi({
   reducerPath: 'jobOpeningApi',
-  baseQuery: fetchBaseQuery({ baseUrl: BASE_URL, prepareHeaders: ... }),
+  baseQuery: fetchBaseQuery({ baseUrl: JOB_SERVICE_BASE_URL, prepareHeaders: ... }),
   tagTypes: ['JobOpening'],
   endpoints: (builder) => ({
     getJobOpenings: builder.query({
@@ -508,17 +474,17 @@ Use `react-hook-form` with Zod validation:
 ```typescript
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { jobCreationSchema } from './schemas'
+import { jobDetailsSchema } from './components/JobsOpening/AddJobDescription/AddJobSchema'
 
 const MyForm = () => {
   const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(jobCreationSchema)
+    resolver: zodResolver(jobDetailsSchema)
   })
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <input {...register('title')} />
-      {errors.title && <span>{errors.title.message}</span>}
+      <input {...register('jobProfileCode')} />
+      {errors.jobProfileCode && <span>{errors.jobProfileCode.message}</span>}
     </form>
   )
 }
@@ -527,11 +493,11 @@ const MyForm = () => {
 ### Role-Based Access Control
 
 ```typescript
-import { useHasAccess } from './hooks'
-import { AUTHORITIES } from './constants/authorities.constant'
+import useHasAccess from '../../hooks/useHasAccess'
+import { Authorities } from '../../constants/authorities.constant'
 
 const AdminFeature = () => {
-  const hasAccess = useHasAccess([AUTHORITIES.OWNER, AUTHORITIES.ORGANIZATION_ADMIN])
+  const hasAccess = useHasAccess(Authorities.ROLE_CREATE)
 
   if (!hasAccess) {
     return <div>Access Denied</div>
@@ -541,35 +507,27 @@ const AdminFeature = () => {
 }
 ```
 
-### Video Interview Integration
+### Video Interview Integration (LiveKit)
 
-**Note:** Being migrated from Agora to LiveKit. Current implementation uses Agora SDK.
+The Agora implementation has been fully retired — `useLiveKit` is the only video-interview hook now:
 
 ```typescript
-import { useAgora } from './hooks'
+import { useLiveKit } from './hooks/useLiveKit';
 
 const InterviewComponent = () => {
   const {
-    localTracks,
-    remoteUsers,
-    join,
-    leave,
-    toggleMute,
-    toggleVideo,
-    startScreenShare,
-    stopScreenShare
-  } = useAgora(client, {
-    appId: process.env.VITE_AGORA_APP_ID,
-    channel: 'interview-123',
-    token: agoraToken,
-    rtmToken: agoraRtmToken,
-    uid: userId,
-    role: 'interviewer',
-    name: userName,
-    joined: false
-  })
+    localParticipant,
+    remoteParticipants,
+    connectionState,
+    mediaState,
+    isConnected,
+    toggleMic,
+    toggleCam,
+    toggleScreenShare,
+    error,
+  } = useLiveKit();
 
-  // Cleanup on unmount
+  // Rendered inside a LiveKit <LiveKitRoom> context (see InterviewLiveKit.tsx)
   return (
     <div>
       {/* Video UI */}
@@ -584,21 +542,24 @@ const InterviewComponent = () => {
 
 ### Test Framework
 
-- **Vitest** - Fast unit test framework compatible with Jest API
-- **Tests Location** - `tests/` directory with `.test.ts` suffix
+- **Vitest** (jsdom environment) - configured directly in `vite.config.ts`'s `test` block, no separate `vitest.config.ts`
+- **Tests Location** - top-level `tests/` directory (`components/`, `helpers/`, `redux/`, `shared/`, `setup.ts`), not colocated with source
+- **Coverage** - `@vitest/coverage-v8`, text + HTML reporters
 
 ### Run Tests
 
 ```bash
-npm test
+npm test              # run once
+npm run test:watch    # watch mode
+npm run test:coverage # with coverage
 ```
 
 ### Write Tests
 
 ```typescript
-// tests/utils.test.ts
+// tests/helpers/validatePhoneNumber.test.ts
 import { describe, it, expect } from 'vitest';
-import { validatePhoneNumber } from '../src/helpers';
+import { validatePhoneNumber } from '../../src/helpers';
 
 describe('validatePhoneNumber', () => {
   it('should validate correct phone formats', () => {
@@ -626,7 +587,7 @@ describe('validatePhoneNumber', () => {
    console.log(localStorage.getItem('cfp_atoken'));
    ```
 2. Verify token hasn't expired
-3. Check backend endpoint is correct in `.env`
+3. Check the relevant `VITE_*_SERVICE_ENDPOINT` is correct in `.env.local`, and that you restarted `npm run dev` after changing it
 4. Verify `Authorization` header is sent with requests
 
 #### "Account Inactive" Error
@@ -677,9 +638,9 @@ lsof -ti:5173 | xargs kill -9
 #### Video Connection Fails
 
 1. Check internet connection
-2. Verify Agora/LiveKit credentials in `.env`
+2. Confirm `interview-service` (which issues LiveKit connection details per interview) is reachable at `VITE_INTERVIEW_SERVICE_ENDPOINT`
 3. Check browser permissions for camera/microphone
-4. Try different browser (Chrome, Firefox recommended)
+4. Try a different browser (Chrome, Firefox recommended)
 
 #### Screen Share Not Working
 
@@ -691,16 +652,15 @@ lsof -ti:5173 | xargs kill -9
 
 #### "Cannot reach backend" Error
 
-1. Verify backend service is running
-2. Check `VITE_BACKEND_ENDPOINT` in `.env`
+1. Verify the relevant backend service is running
+2. Check the matching `VITE_*_SERVICE_ENDPOINT` in `.env.local`
 3. Check network connectivity
-4. Try with ngrok if behind proxy (add header: `ngrok-skip-browser-warning: true`)
+4. Try with ngrok if behind a proxy (add header: `ngrok-skip-browser-warning: true`)
 
 #### CORS Errors
 
 1. Backend should include proper CORS headers
-2. Verify backend allows requests from frontend URL
-3. Check `VITE_ENV` matches backend configuration
+2. Verify backend allows requests from the frontend's actual origin (`http://localhost:5173`)
 
 ### Performance Issues
 
@@ -714,9 +674,29 @@ lsof -ti:5173 | xargs kill -9
 #### Memory Leaks
 
 1. Check DevTools Memory tab
-2. Verify WebSocket connections are closed on unmount
+2. Verify LiveKit/WebSocket connections are closed on unmount
 3. Ensure event listeners are cleaned up
 4. Check no circular references in Redux
+
+---
+
+## 📚 Documentation
+
+Deeper docs live in [`docs/`](docs/):
+
+| File                                                                            | What it covers                                                                                                           |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)                                   | Architecture, strict code patterns, naming conventions, API/Redux/form patterns, testing strategy, and common workflows. |
+| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)                                       | Color, typography, spacing, and component design tokens reverse-engineered from the Figma redesign reference.            |
+| [STRUCTURE_MAPPING.md](docs/STRUCTURE_MAPPING.md)                               | Why `src/api/` is organized by backend microservice boundary, and what moved where.                                      |
+| [ORGANIZATION_SERVICE_INTEGRATION.md](docs/ORGANIZATION_SERVICE_INTEGRATION.md) | Change log of wiring the frontend to the real `organization-service` backend (phases, bug fixes, known backend gaps).    |
+| [CANDIDATE_SERVICE_INTEGRATION.md](docs/CANDIDATE_SERVICE_INTEGRATION.md)       | Change log of wiring the frontend to the real `candidate-service` backend (phases, bug fixes, known backend gaps).       |
+
+Not in `docs/`, on purpose — moving these would break tooling that reads them from a fixed location:
+
+- [`.github/copilot-instructions.md`](.github/copilot-instructions.md) — read directly by GitHub Copilot.
+- [`.agents/rules/`](.agents/rules/) — read directly by AI agent tooling.
+- [`public/data/geo/SOURCE.md`](public/data/geo/SOURCE.md) — license/source notes kept next to the geo data files it documents.
 
 ---
 
@@ -725,7 +705,7 @@ lsof -ti:5173 | xargs kill -9
 ### Code Style
 
 - **TypeScript** - All code must be typed (no `any` unless unavoidable)
-- **ESLint + Prettier** - Run `npm run lint` before committing
+- **ESLint + Prettier** - Run `npm run lint` and `npm run format:check` before committing
 - **Naming Conventions:**
   - Components: PascalCase (`UserProfile.tsx`)
   - Utilities: camelCase (`validatePhoneNumber.ts`)
@@ -733,6 +713,8 @@ lsof -ti:5173 | xargs kill -9
   - Hooks: Start with `use` prefix (`useHasAccess.tsx`)
 
 ### Branch Naming
+
+Base new branches off `dev`, not `main` (this repo has no `main` branch — see [Development Workflow](#development-workflow)).
 
 - Feature: `feature/description`
 - Bug fix: `fix/description`
@@ -755,14 +737,14 @@ test: add tests for phone validation
 
 ### Pull Request Process
 
-1. Create feature branch from `main`
+1. Create feature branch from `dev`
 2. Make changes and commit regularly
-3. Run `npm run lint` and fix any issues
-4. Run `npm run build` to verify production build
-5. Push to GitHub and create Pull Request
-6. Describe changes clearly in PR description
+3. Run `npm run lint` and `npm run format:check`, fix any issues
+4. Run `npm run build` to verify the production build
+5. Push to GitHub and open a Pull Request against `dev`
+6. Describe changes clearly in the PR description
 7. Reference related issues (#123)
-8. Request review from team
+8. Request review from the team
 9. Address review feedback
 10. Merge once approved
 
@@ -785,7 +767,7 @@ test: add tests for phone validation
 For issues or questions:
 
 1. Check existing GitHub issues
-2. Review this README and code comments
+2. Review this README, [`docs/`](#documentation), and code comments
 3. Check `.github/copilot-instructions.md` for architecture details
 4. Contact team lead or maintainer
 
@@ -793,10 +775,8 @@ For issues or questions:
 
 ## 📄 License
 
-[Add license information if applicable]
+Not yet decided — no license file exists in this repository.
 
 ---
 
-**Last Updated:** January 27, 2026  
-**Version:** 0.1.0 (Pre-Release)  
 **Maintained By:** CareerForcePro Team
