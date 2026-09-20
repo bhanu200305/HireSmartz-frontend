@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - staging-branch
-  
   workflow_dispatch:
 
 jobs:
@@ -24,7 +23,7 @@ jobs:
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GH_TOKEN }}
-          tag_prefix: "frontend-"
+          tag_prefix: "frontend-staging-"
           release_branches: staging-branch
           dry_run: false
 
@@ -51,19 +50,18 @@ jobs:
       - name: Build & Push Docker Image
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          ECR_REPOSITORY: cfp/frontend
+          ECR_REPOSITORY: cfp/frontend-service
           IMAGE_TAG: frontend-${{ needs.calculate-tag.outputs.tag }}
         run: |
           IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "Building image: $IMAGE_URI"
-          
+
           docker build -t $IMAGE_URI \
-            -f services/frontend/Dockerfile \
-            --target runtime .
+            -f Dockerfile .
 
           echo "Pushing image to ECR..."
           docker push $IMAGE_URI
-          
+
           echo "IMAGE_FULL_NAME=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Setup Kubectl
@@ -84,9 +82,9 @@ jobs:
           echo "Deploying to namespace: $NAMESPACE"
           echo "Image: $IMAGE_FULL_NAME"
 
-          kubectl set image deployment/frontend \
-            frontend=$IMAGE_FULL_NAME \
+          kubectl set image deployment/frontend-service \
+            frontend-service=$IMAGE_FULL_NAME \
             -n $NAMESPACE
 
           echo "Waiting for rollout to complete..."
-          kubectl rollout status deployment/frontend -n $NAMESPACE --timeout=180s
+          kubectl rollout status deployment/frontend-service -n $NAMESPACE --timeout=180s
