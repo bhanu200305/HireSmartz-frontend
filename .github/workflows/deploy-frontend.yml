@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - staging-branch
-    paths:
-      - "services/frontend/**"
+  
   workflow_dispatch:
 
 jobs:
