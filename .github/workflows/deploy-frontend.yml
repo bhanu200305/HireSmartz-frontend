@@ -25,7 +25,7 @@ jobs:
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           tag_prefix: "frontend-staging-"
-          release_branches: staging
+          release_branches: staging-branch
           dry_run: false
 
   build-and-deploy:
