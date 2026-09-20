@@ -80,13 +80,12 @@ jobs:
       - name: Deploy to Staging Kubernetes Cluster
         run: |
           NAMESPACE="careerforcestaging"
-
           echo "Deploying to namespace: $NAMESPACE"
           echo "Image: $IMAGE_FULL_NAME"
 
-          kubectl set image deployment/frontend-service \
-            frontend-service=$IMAGE_FULL_NAME \
-            -n $NAMESPACE
+          kubectl set image deployment/careerforce-frontend \
+          careerforce-frontend=$IMAGE_FULL_NAME \
+          -n $NAMESPACE
 
           echo "Waiting for rollout to complete..."
-          kubectl rollout status deployment/frontend-service -n $NAMESPACE --timeout=180s
+          kubectl rollout status deployment/careerforce-frontend -n $NAMESPACE --timeout=180s
