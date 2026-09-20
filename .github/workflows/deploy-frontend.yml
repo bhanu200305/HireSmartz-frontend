@@ -60,6 +60,10 @@ jobs:
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d -i > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
+      - name: Apply ConfigMap to Staging
+        run: |
+          kubectl apply -f custom-stg/configmap-stg.yaml -n careerforcestaging
+
       - name: Fetch ConfigMap & Build Docker Image
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
@@ -71,24 +75,26 @@ jobs:
           IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "Building image: $IMAGE_URI"
 
-          # Fetch values directly from the Kubernetes ConfigMap
-          VITE_BACKEND_ENDPOINT=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_BACKEND_ENDPOINT}')
-          VITE_BACKEND_PREFIX=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_BACKEND_PREFIX}')
-          VITE_AUTH_SERVICE_ENDPOINT=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_AUTH_SERVICE_ENDPOINT}')
-          VITE_ORG_SERVICE_ENDPOINT=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_ORG_SERVICE_ENDPOINT}')
-          VITE_NOTIFICATION_SERVICE_ENDPOINT=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_NOTIFICATION_SERVICE_ENDPOINT}')
-          VITE_JOB_SERVICE_ENDPOINT=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_JOB_SERVICE_ENDPOINT}')
-          VITE_AI_SERVICE_ENDPOINT=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_AI_SERVICE_ENDPOINT}')
-          VITE_CANDIDATE_SERVICE_ENDPOINT=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_CANDIDATE_SERVICE_ENDPOINT}')
-          VITE_INTERVIEW_SERVICE_ENDPOINT=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_INTERVIEW_SERVICE_ENDPOINT}')
-          VITE_RECAPTCHA_SITE_KEY=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_RECAPTCHA_SITE_KEY}')
-          VITE_BYPASS_AUTH=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_BYPASS_AUTH}')
-          VITE_NYLAS_CLIENT_ID=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_NYLAS_CLIENT_ID}')
-          VITE_INTERVIEW_FEEDBACK_FEATURE=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_INTERVIEW_FEEDBACK_FEATURE}')
-          VITE_VIDEO_CONSENT_FEATURE=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_VIDEO_CONSENT_FEATURE}')
-          VITE_NYLAS_FEATURE=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_NYLAS_FEATURE}')
+          get_cm() {
+            kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath="{.data.$1}" 2>/dev/null || true
+          }
 
-          # Pass ConfigMap values as --build-arg parameters to docker build
+          VITE_BACKEND_ENDPOINT=$(get_cm VITE_BACKEND_ENDPOINT)
+          VITE_BACKEND_PREFIX=$(get_cm VITE_BACKEND_PREFIX)
+          VITE_AUTH_SERVICE_ENDPOINT=$(get_cm VITE_AUTH_SERVICE_ENDPOINT)
+          VITE_ORG_SERVICE_ENDPOINT=$(get_cm VITE_ORG_SERVICE_ENDPOINT)
+          VITE_NOTIFICATION_SERVICE_ENDPOINT=$(get_cm VITE_NOTIFICATION_SERVICE_ENDPOINT)
+          VITE_JOB_SERVICE_ENDPOINT=$(get_cm VITE_JOB_SERVICE_ENDPOINT)
+          VITE_AI_SERVICE_ENDPOINT=$(get_cm VITE_AI_SERVICE_ENDPOINT)
+          VITE_CANDIDATE_SERVICE_ENDPOINT=$(get_cm VITE_CANDIDATE_SERVICE_ENDPOINT)
+          VITE_INTERVIEW_SERVICE_ENDPOINT=$(get_cm VITE_INTERVIEW_SERVICE_ENDPOINT)
+          VITE_RECAPTCHA_SITE_KEY=$(get_cm VITE_RECAPTCHA_SITE_KEY)
+          VITE_BYPASS_AUTH=$(get_cm VITE_BYPASS_AUTH)
+          VITE_NYLAS_CLIENT_ID=$(get_cm VITE_NYLAS_CLIENT_ID)
+          VITE_INTERVIEW_FEEDBACK_FEATURE=$(get_cm VITE_INTERVIEW_FEEDBACK_FEATURE)
+          VITE_VIDEO_CONSENT_FEATURE=$(get_cm VITE_VIDEO_CONSENT_FEATURE)
+          VITE_NYLAS_FEATURE=$(get_cm VITE_NYLAS_FEATURE)
+
           docker build \
             --build-arg VITE_BACKEND_ENDPOINT="$VITE_BACKEND_ENDPOINT" \
             --build-arg VITE_BACKEND_PREFIX="$VITE_BACKEND_PREFIX" \
@@ -99,7 +105,7 @@ jobs:
             --build-arg VITE_AI_SERVICE_ENDPOINT="$VITE_AI_SERVICE_ENDPOINT" \
             --build-arg VITE_CANDIDATE_SERVICE_ENDPOINT="$VITE_CANDIDATE_SERVICE_ENDPOINT" \
             --build-arg VITE_INTERVIEW_SERVICE_ENDPOINT="$VITE_INTERVIEW_SERVICE_ENDPOINT" \
-            --build-arg VITE_RECAPTCHA_SITE_KEY="$VITE_RECAPTCHA_SITE_KEY" \
+            --build-arg VITE_RECAPTCHAS_SITE_KEY="$VITE_RECAPTCHA_SITE_KEY" \
             --build-arg VITE_BYPASS_AUTH="$VITE_BYPASS_AUTH" \
             --build-arg VITE_NYLAS_CLIENT_ID="$VITE_NYLAS_CLIENT_ID" \
             --build-arg VITE_INTERVIEW_FEEDBACK_FEATURE="$VITE_INTERVIEW_FEEDBACK_FEATURE" \
@@ -110,6 +116,8 @@ jobs:
 
           echo "Pushing image to ECR..."
           docker push $IMAGE_URI
+          docker tag $IMAGE_URI "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
           echo "IMAGE_FULL_NAME=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Deploy to Staging Kubernetes Cluster
@@ -119,10 +127,4 @@ jobs:
           echo "Image: $IMAGE_FULL_NAME"
 
           kubectl set image deployment/careerforce-frontend careerforce-frontend=$IMAGE_FULL_NAME -n $NAMESPACE
-
-          echo "Waiting for rollout to complete..."
           kubectl rollout status deployment/careerforce-frontend -n $NAMESPACE --timeout=180s
-
-          if kubectl get deployment carrerforce-frontend -n $NAMESPACE > /dev/null 2>&1; then
-            kubectl rollout status deployment/carrerforce-frontend -n $NAMESPACE --timeout=180s
-          fi
