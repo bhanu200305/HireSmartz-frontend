@@ -60,11 +60,7 @@ jobs:
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d -i > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
-      - name: Apply ConfigMap to Staging
-        run: |
-          kubectl apply -f custom-stg/configmap-stg.yaml -n careerforcestaging
-
-      - name: Fetch ConfigMap & Build Docker Image
+      - name: Fetch ConfigMap from EKS & Build Docker Image
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           ECR_REPOSITORY: cfp/frontend-service
@@ -95,6 +91,9 @@ jobs:
           VITE_VIDEO_CONSENT_FEATURE=$(get_cm VITE_VIDEO_CONSENT_FEATURE)
           VITE_NYLAS_FEATURE=$(get_cm VITE_NYLAS_FEATURE)
 
+          # Debug: print what EKS actually returned for auth endpoint
+          echo "DEBUG VITE_AUTH_SERVICE_ENDPOINT: '$VITE_AUTH_SERVICE_ENDPOINT'"
+
           docker build \
             --build-arg VITE_BACKEND_ENDPOINT="$VITE_BACKEND_ENDPOINT" \
             --build-arg VITE_BACKEND_PREFIX="$VITE_BACKEND_PREFIX" \
@@ -105,7 +104,7 @@ jobs:
             --build-arg VITE_AI_SERVICE_ENDPOINT="$VITE_AI_SERVICE_ENDPOINT" \
             --build-arg VITE_CANDIDATE_SERVICE_ENDPOINT="$VITE_CANDIDATE_SERVICE_ENDPOINT" \
             --build-arg VITE_INTERVIEW_SERVICE_ENDPOINT="$VITE_INTERVIEW_SERVICE_ENDPOINT" \
-            --build-arg VITE_RECAPTCHAS_SITE_KEY="$VITE_RECAPTCHA_SITE_KEY" \
+            --build-arg VITE_RECAPTCHA_SITE_KEY="$VITE_RECAPTCHA_SITE_KEY" \
             --build-arg VITE_BYPASS_AUTH="$VITE_BYPASS_AUTH" \
             --build-arg VITE_NYLAS_CLIENT_ID="$VITE_NYLAS_CLIENT_ID" \
             --build-arg VITE_INTERVIEW_FEEDBACK_FEATURE="$VITE_INTERVIEW_FEEDBACK_FEATURE" \
