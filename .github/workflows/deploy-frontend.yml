@@ -3,7 +3,7 @@ name: Deploy Frontend (Staging)
 on:
   push:
     branches:
-      - staging
+      - staging-branch
     paths:
       - "services/frontend/**"
   workflow_dispatch:
