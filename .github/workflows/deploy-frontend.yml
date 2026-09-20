@@ -71,7 +71,7 @@ jobs:
           IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "Building image: $IMAGE_URI"
 
-          # 1. Fetch values directly from the Kubernetes ConfigMap
+          # Fetch values directly from the Kubernetes ConfigMap
           VITE_BACKEND_ENDPOINT=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_BACKEND_ENDPOINT}')
           VITE_BACKEND_PREFIX=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_BACKEND_PREFIX}')
           VITE_AUTH_SERVICE_ENDPOINT=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_AUTH_SERVICE_ENDPOINT}')
@@ -88,7 +88,7 @@ jobs:
           VITE_VIDEO_CONSENT_FEATURE=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_VIDEO_CONSENT_FEATURE}')
           VITE_NYLAS_FEATURE=$(kubectl get configmap $CONFIGMAP_NAME -n $NAMESPACE -o jsonpath='{.data.VITE_NYLAS_FEATURE}')
 
-          # 2. Pass ConfigMap values as --build-arg parameters to docker build
+          # Pass ConfigMap values as --build-arg parameters to docker build
           docker build \
             --build-arg VITE_BACKEND_ENDPOINT="$VITE_BACKEND_ENDPOINT" \
             --build-arg VITE_BACKEND_PREFIX="$VITE_BACKEND_PREFIX" \
@@ -118,9 +118,11 @@ jobs:
           echo "Deploying to namespace: $NAMESPACE"
           echo "Image: $IMAGE_FULL_NAME"
 
-          kubectl set image deployment/careerforce-frontend \
-            careerforce-frontend=$IMAGE_FULL_NAME \
-            -n $NAMESPACE
+          kubectl set image deployment/careerforce-frontend careerforce-frontend=$IMAGE_FULL_NAME -n $NAMESPACE
 
           echo "Waiting for rollout to complete..."
           kubectl rollout status deployment/careerforce-frontend -n $NAMESPACE --timeout=180s
+
+          if kubectl get deployment carrerforce-frontend -n $NAMESPACE > /dev/null 2>&1; then
+            kubectl rollout status deployment/carrerforce-frontend -n $NAMESPACE --timeout=180s
+          fi
