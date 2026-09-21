@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Textarea, showToast } from '../../shared';
-import {
-  useEnhanceJdMutation,
-  useGetJdStatusQuery,
-} from '../../../api/job-service/JobOpening/JdUpload';
+import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
+import { useJdStatusPolling } from '../../../hooks/useJdStatusPolling';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 
 interface FillWithAiWidgetProps {
@@ -14,8 +12,6 @@ interface FillWithAiWidgetProps {
 // (services/job-service/app/modules/jobs/api/requests.py) — no minimum
 // there, so none enforced here either beyond "typed something".
 const INSTRUCTION_MAX_LENGTH = 2000;
-
-const JD_STATUS_POLL_TIMEOUT_MS = 90_000;
 
 /**
  * Floating "fill with AI" affordance for the Job Details create wizard —
@@ -31,33 +27,9 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [promptText, setPromptText] = useState('');
   const [enhanceJd, { isLoading: isSubmitting }] = useEnhanceJdMutation();
-  // Stops polling once a terminal status is seen for this job id.
-  const [jdStatusIsTerminal, setJdStatusIsTerminal] = useState(false);
-  const { data: jdStatus } = useGetJdStatusQuery(jobOpeningId, {
-    skip: !jobOpeningId,
-    pollingInterval: jdStatusIsTerminal ? 0 : 1000,
-  });
-  useEffect(() => {
-    setJdStatusIsTerminal(false);
-  }, [jobOpeningId]);
-  useEffect(() => {
-    if (jdStatus?.status === 'READY' || jdStatus?.status === 'FAILED') {
-      setJdStatusIsTerminal(true);
-    }
-  }, [jdStatus?.status]);
-  // Safety net if a terminal status never arrives.
-  useEffect(() => {
-    if (jdStatusIsTerminal) return;
-    const timeoutId = setTimeout(() => {
-      setJdStatusIsTerminal(true);
-      showToast({
-        message: "Still generating - refresh in a moment if it doesn't appear shortly.",
-        type: 'warning',
-      });
-    }, JD_STATUS_POLL_TIMEOUT_MS);
-    return () => clearTimeout(timeoutId);
-  }, [jdStatusIsTerminal, jobOpeningId]);
-  const isGenerating = jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING';
+  const { data: jdStatus, timedOut: jdStatusTimedOut } = useJdStatusPolling(jobOpeningId);
+  const isGenerating =
+    !jdStatusTimedOut && (jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING');
   // JobDescriptionPanel's FAILED handling doesn't mount here, so show our own
   // toast; track per-job id so switching jobs doesn't suppress a new failure.
   const failedToastShownForJobRef = useRef<string | null>(null);
@@ -81,8 +53,6 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
     const trimmed = promptText.trim();
     if (!trimmed) return;
     try {
-      // Re-arms JD status polling.
-      setJdStatusIsTerminal(false);
       await enhanceJd({ jobOpeningId, instruction: trimmed }).unwrap();
       showToast({
         message: 'Generating your job description with AI…',

@@ -21,10 +21,8 @@ import {
   useGetJobDescriptionByIdQuery,
 } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import { useRegenerateJobDescriptionMutation } from '../../../api/job-service/JobOpening/RegenerateJd';
-import {
-  useEnhanceJdMutation,
-  useGetJdStatusQuery,
-} from '../../../api/job-service/JobOpening/JdUpload';
+import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
+import { useJdStatusPolling } from '../../../hooks/useJdStatusPolling';
 import {
   haveDescriptionInputsChanged,
   diffAiOwnedFields,
@@ -135,8 +133,6 @@ const JOB_DETAILS_FIELD_ORDER = [
   'educationPreference',
   'responsibilities',
 ];
-
-const JD_STATUS_POLL_TIMEOUT_MS = 90_000;
 
 const EditJobDetail = () => {
   const dispatch = useDispatch();
@@ -358,32 +354,7 @@ const EditJobDetail = () => {
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
   // Tracks which job id the READY fallback has already run for.
   const appliedAiFillJobIdRef = useRef<string | null>(null);
-  // Stops polling once a terminal status is seen for this job id.
-  const [jdStatusForHydrationIsTerminal, setJdStatusForHydrationIsTerminal] = useState(false);
-  const { data: jdStatusForHydration } = useGetJdStatusQuery(parsedJobId ?? '', {
-    skip: !parsedJobId,
-    pollingInterval: jdStatusForHydrationIsTerminal ? 0 : 1000,
-  });
-  useEffect(() => {
-    setJdStatusForHydrationIsTerminal(false);
-  }, [parsedJobId]);
-  useEffect(() => {
-    if (jdStatusForHydration?.status === 'READY' || jdStatusForHydration?.status === 'FAILED') {
-      setJdStatusForHydrationIsTerminal(true);
-    }
-  }, [jdStatusForHydration?.status]);
-  // Safety net if a terminal status never arrives.
-  useEffect(() => {
-    if (jdStatusForHydrationIsTerminal) return;
-    const timeoutId = setTimeout(() => {
-      setJdStatusForHydrationIsTerminal(true);
-      showToast({
-        message: "Still generating - refresh in a moment if it doesn't appear shortly.",
-        type: 'warning',
-      });
-    }, JD_STATUS_POLL_TIMEOUT_MS);
-    return () => clearTimeout(timeoutId);
-  }, [jdStatusForHydrationIsTerminal, parsedJobId]);
+  const { data: jdStatusForHydration } = useJdStatusPolling(parsedJobId ?? undefined);
 
   const [initialFormValues, setInitialFormValues] = useState<any>(null);
 
@@ -1853,8 +1824,6 @@ const EditJobDetail = () => {
         haveDescriptionInputsChanged(descriptionInputs, jdBeforeSave)
       ) {
         try {
-          // Re-arms JD status polling.
-          setJdStatusForHydrationIsTerminal(false);
           await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
           showToast({
             message: 'Job details changed - regenerating the AI description to match…',
