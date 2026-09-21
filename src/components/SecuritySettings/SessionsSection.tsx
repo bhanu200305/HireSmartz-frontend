@@ -98,9 +98,9 @@ const SessionRow = ({
   );
 };
 
-/** The /api/v1/sessions surface: every device currently signed in, and the
- * "log out everywhere else" bulk action (docs/API_CONTRACT.md §7, §5
- * "POST /logout-all"). */
+/** The /api/v1/auth/sessions surface: every device currently signed in, and the
+ * "log out everywhere else" bulk action (docs/authentication_service/API_CONTRACT.md
+ * §7, §5 "POST /logout-all"). */
 const SessionsSection = () => {
   const { data, isLoading, isError } = useGetSessionsQuery();
   const [logoutAll, { isLoading: isLoggingOutAll }] = useLogoutAllMutation();

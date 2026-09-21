@@ -7,7 +7,7 @@ import SessionsSection from './SessionsSection';
 
 /**
  * Account security home: two-factor methods (/api/v1/mfa) and active
- * sessions (/api/v1/sessions) — the two authenticated, self-service surfaces
+ * sessions (/api/v1/auth/sessions) — the two authenticated, self-service surfaces
  * authentication-service exposes beyond login/password. Reached from
  * UserProfile ("Security" link).
  */
