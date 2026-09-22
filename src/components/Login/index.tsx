@@ -1,7 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { Button, Input, showToast } from '..';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { Checkbox } from 'antd';
 import {
   useLoginMutation,
@@ -148,7 +147,6 @@ const Login = () => {
     {
       email: '',
       password: '',
-      showPassword: false,
       errors: {} as FormErrors,
       rememberMe: Boolean(getLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME)) === true,
       isFormValid: false,
@@ -162,7 +160,7 @@ const Login = () => {
       return '';
     }
   };
-  const { email, password, showPassword, errors, rememberMe, isFormValid } = localState;
+  const { email, password, errors, rememberMe, isFormValid } = localState;
   const [login, { isLoading }] = useLoginMutation();
   const [fetchUserDashboard] = useLazyGetUserDashboardQuery();
 
@@ -625,7 +623,7 @@ const Login = () => {
               />
 
               <Input
-                type={showPassword ? 'text' : 'password'}
+                type="password"
                 noAutoCapitalize
                 onChange={onHandleChange}
                 onKeyDown={handleKeyDown}
@@ -635,15 +633,6 @@ const Login = () => {
                 placeholder="Password"
                 error={errors.password}
                 className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
-                suffix={
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                    onClick={() => setLocalState({ showPassword: !showPassword })}
-                  >
-                    {showPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
-                }
               />
 
               <div className="-mt-1 flex items-center justify-between">

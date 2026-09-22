@@ -139,7 +139,7 @@ const EditInterviewRound = () => {
       {/* Modal Overlay */}
       {isEditing && <Loader />}
       <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
-        <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[500px] relative">
+        <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[500px] max-w-[92vw] relative">
           <h2 className="text-lg font-semibold text-center mb-6">Update Interview Round</h2>
           <Form form={form} layout="vertical" onFinish={handleSubmit(onSubmit)}>
             <Form.Item

@@ -5,7 +5,7 @@ import {
   MdOutlineGroups,
   MdOutlineWifiTethering,
 } from 'react-icons/md';
-import { StatCardRow } from '../shared';
+import { StatCardRow, StatDetailModal } from '../shared';
 import type { StatCardData } from '../shared';
 import {
   useGetGrowthMetricsQuery,
@@ -24,14 +24,18 @@ import PlatformTenantsListModal from '../Dashboard/PlatformTenantsListModal';
  * "Total customers" is the one card with a real paginated list behind it
  * today (`GET /v1/platform/tenants`, the same call the "CFP Company" card
  * and the full `/company` page use) — clicking it opens
- * `PlatformTenantsListModal`. The other three stay display-only until their
- * own list endpoints exist (see the KPI backend request list).
+ * `PlatformTenantsListModal`. The other three don't have their own list
+ * endpoints yet (see the KPI backend request list), so they open
+ * `StatDetailModal` instead — the number plus what it counts.
  */
 const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = ({
   columns = 4,
   tall,
 }) => {
   const [showCustomers, setShowCustomers] = useState(false);
+  const [activeDetail, setActiveDetail] = useState<'newCustomers' | 'mau' | 'sessions' | null>(
+    null
+  );
   const { data: growth, isLoading: isGrowthLoading } = useGetGrowthMetricsQuery();
   // Monthly Active Users — successful sign-ins, distinct users, 30-day window.
   const { data: logins, isLoading: isLoginsLoading } = useGetLoginMetricsQuery({
@@ -54,6 +58,7 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
       variant: 'green',
       label: 'New customers this month',
       value: isLoading ? undefined : growth?.new_customers_this_month?.toLocaleString(),
+      onClick: () => setActiveDetail('newCustomers'),
     },
     {
       icon: <MdOutlineGroups />,
@@ -64,6 +69,7 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
         : logins?.available
           ? logins.distinct_users.toLocaleString()
           : null,
+      onClick: () => setActiveDetail('mau'),
     },
     {
       icon: <MdOutlineWifiTethering />,
@@ -74,6 +80,7 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
         : sessions?.available
           ? sessions.active_sessions.toLocaleString()
           : null,
+      onClick: () => setActiveDetail('sessions'),
     },
   ];
 
@@ -81,6 +88,38 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
     <>
       <StatCardRow cards={cards} columns={columns} tall={tall} />
       {showCustomers && <PlatformTenantsListModal onClose={() => setShowCustomers(false)} />}
+      {activeDetail === 'newCustomers' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlinePersonAddAlt />}
+          variant="green"
+          label="New customers this month"
+          value={growth?.new_customers_this_month?.toLocaleString()}
+          description="Customer organizations that joined the platform so far this calendar month."
+          viewAllHref="/company"
+          viewAllLabel="View all customers"
+        />
+      )}
+      {activeDetail === 'mau' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineGroups />}
+          variant="orange"
+          label="Monthly active users"
+          value={logins?.available ? logins.distinct_users.toLocaleString() : null}
+          description="Distinct users who successfully signed in at least once over the last 30 days."
+        />
+      )}
+      {activeDetail === 'sessions' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineWifiTethering />}
+          variant="neutral"
+          label="Active sessions"
+          value={sessions?.available ? sessions.active_sessions.toLocaleString() : null}
+          description="Sessions currently active across the platform right now."
+        />
+      )}
     </>
   );
 };

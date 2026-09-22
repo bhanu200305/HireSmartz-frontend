@@ -209,244 +209,259 @@ const SearchCandidateListing = () => {
             </div>
           </div>
 
-          <div className="w-full p-2 justify-start">
-            <Row
-              gutter={[16, 16]}
-              className="font-bold py-2 px-2 bg-[#FAFAFA] border border-[var(--border)] heading-font"
-            >
-              <COL span={6} className="px-4 py-2 border-[var(--border)]">
-                CANDIDATE DETAILS
-              </COL>
-              <Col span={4} className="px-4 py-2 border-[var(--border)]">
-                RESUME SCORE
-              </Col>
-              <Col span={4} className="px-4 py-2">
-                APPLIED JOB OPENING
-              </Col>
-              <Col span={4} className="px-4 py-2 border-[var(--border)]">
-                STATUS
-              </Col>
-              <Col span={4} className="px-4 py-2 border-[var(--border)]">
-                SOURCE
-              </Col>
-            </Row>
-          </div>
-
-          <div className="w-full">
-            {paginatedCandidates.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500">
-                  {candidates.length === 0
-                    ? 'No candidates found from global search'
-                    : 'No candidates match your search criteria'}
-                </p>
+          {/* overflow-x-auto + min-w keeps columns readable on narrow viewports,
+              same pattern as CandidatesListing.tsx — header and rows share one
+              scroll container so they stay column-aligned while scrolling. */}
+          <div className="overflow-x-auto">
+            <div className="min-w-[900px]">
+              <div className="w-full p-2 justify-start">
+                <Row
+                  gutter={[16, 16]}
+                  className="font-bold py-2 px-2 bg-[#FAFAFA] border border-[var(--border)] heading-font"
+                >
+                  <COL span={6} className="px-4 py-2 border-[var(--border)]">
+                    CANDIDATE DETAILS
+                  </COL>
+                  <Col span={4} className="px-4 py-2 border-[var(--border)]">
+                    RESUME SCORE
+                  </Col>
+                  <Col span={4} className="px-4 py-2">
+                    APPLIED JOB OPENING
+                  </Col>
+                  <Col span={4} className="px-4 py-2 border-[var(--border)]">
+                    STATUS
+                  </Col>
+                  <Col span={4} className="px-4 py-2 border-[var(--border)]">
+                    SOURCE
+                  </Col>
+                </Row>
               </div>
-            ) : (
-              paginatedCandidates.map((candidate) => {
-                const atsScore = candidate.originalData.extraJson.ats_score;
-                const jobTitle = candidate.originalData.extraJson.job_title;
-                const currentJobTitle = candidate.originalData.extraJson.current_job_title;
-                const interviewExternalStatus =
-                  candidate.originalData.extraJson.interview_external_status;
-                const interviewStatus = candidate.originalData.extraJson.interview_status;
-                const resumeExtracted = candidate.originalData.extraJson.is_resume_extracted;
 
-                return (
-                  <div key={candidate.id} className="mb-2">
-                    <CommonCard>
-                      <Row gutter={[16, 16]} align="middle">
-                        <Col span={6}>
-                          <div className="flex items-center">
-                            <div
-                              className="cursor-pointer flex items-center"
-                              onClick={() => toggleCollapse(candidate.id)}
-                            >
-                              <Link
-                                to={`/jobs/view/${candidate.job_opening_id}/candidates/${candidate.id}/details`}
-                                className="font-semibold underline text-primary hover:text-primary roboto-font"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <p className="font-semibold text-primary underline roboto-font">
+              <div className="w-full">
+                {paginatedCandidates.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">
+                      {candidates.length === 0
+                        ? 'No candidates found from global search'
+                        : 'No candidates match your search criteria'}
+                    </p>
+                  </div>
+                ) : (
+                  paginatedCandidates.map((candidate) => {
+                    const atsScore = candidate.originalData.extraJson.ats_score;
+                    const jobTitle = candidate.originalData.extraJson.job_title;
+                    const currentJobTitle = candidate.originalData.extraJson.current_job_title;
+                    const interviewExternalStatus =
+                      candidate.originalData.extraJson.interview_external_status;
+                    const interviewStatus = candidate.originalData.extraJson.interview_status;
+                    const resumeExtracted = candidate.originalData.extraJson.is_resume_extracted;
+
+                    return (
+                      <div key={candidate.id} className="mb-2">
+                        <CommonCard>
+                          <Row gutter={[16, 16]} align="middle">
+                            <Col span={6}>
+                              <div className="flex items-center">
+                                <div
+                                  className="cursor-pointer flex items-center"
+                                  onClick={() => toggleCollapse(candidate.id)}
+                                >
+                                  <Link
+                                    to={`/jobs/view/${candidate.job_opening_id}/candidates/${candidate.id}/details`}
+                                    className="font-semibold underline text-primary hover:text-primary roboto-font"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <p className="font-semibold text-primary underline roboto-font">
+                                      {renderHighlightedField(
+                                        candidate.firstName,
+                                        'firstName',
+                                        highlightFilters
+                                      )}{' '}
+                                      {renderHighlightedField(
+                                        candidate.lastName,
+                                        'lastName',
+                                        highlightFilters
+                                      )}
+                                    </p>
+                                  </Link>
+                                  <span className="mr-2">
+                                    {collapsedCandidates.includes(candidate.id) ? (
+                                      <UpOutlined />
+                                    ) : (
+                                      <DownOutlined />
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {collapsedCandidates.includes(candidate.id) && (
+                                <div className="mt-3 bg-gray-50 rounded-md">
+                                  {currentJobTitle ? (
+                                    <div className="flex items-center gap-2 roboto-font">
+                                      <span className="font-medium min-w-[70px]">Job Title:</span>
+                                      <p className="roboto-font">
+                                        {renderHighlightedField(
+                                          currentJobTitle,
+                                          'current_job_title',
+                                          highlightFilters
+                                        )}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <span>N/A</span>
+                                  )}
+                                  <div className="flex items-center gap-2 roboto-font">
+                                    <span className="font-medium min-w-[70px]">
+                                      Qualification:{' '}
+                                    </span>
+                                    {candidate.education ? (
+                                      <span>
+                                        {renderHighlightedField(
+                                          candidate.education,
+                                          'education',
+                                          highlightFilters
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span>N/A</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 roboto-font">
+                                    <span className="font-medium min-w-[70px]">Email:</span>
+                                    {candidate.emailId ? (
+                                      <span>
+                                        {renderHighlightedField(
+                                          candidate.emailId,
+                                          'emailId',
+                                          highlightFilters
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span>N/A</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 roboto-font">
+                                    <span className="font-medium min-w-[70px]">Phone:</span>
+                                    {candidate.phoneNumber ? (
+                                      <span>
+                                        {renderHighlightedField(
+                                          `${candidate.countryCode}${formatPhoneNumber(candidate.phoneNumber)}`,
+                                          'phoneNumber',
+                                          highlightFilters
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span>N/A</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 roboto-font">
+                                    <span className="font-medium min-w-[70px]">Location: </span>
+                                    {candidate.address ? (
+                                      <span>
+                                        {renderHighlightedField(
+                                          candidate.address,
+                                          'address',
+                                          highlightFilters
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span>N/A</span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </Col>
+                            <Col span={4}>
+                              {atsScore !== undefined && atsScore !== null ? (
+                                <p className="roboto-font">
                                   {renderHighlightedField(
-                                    candidate.firstName,
-                                    'firstName',
-                                    highlightFilters
-                                  )}{' '}
-                                  {renderHighlightedField(
-                                    candidate.lastName,
-                                    'lastName',
+                                    String(atsScore),
+                                    'ats_score',
                                     highlightFilters
                                   )}
                                 </p>
-                              </Link>
-                              <span className="mr-2">
-                                {collapsedCandidates.includes(candidate.id) ? (
-                                  <UpOutlined />
-                                ) : (
-                                  <DownOutlined />
-                                )}
-                              </span>
-                            </div>
-                          </div>
-
-                          {collapsedCandidates.includes(candidate.id) && (
-                            <div className="mt-3 bg-gray-50 rounded-md">
-                              {currentJobTitle ? (
-                                <div className="flex items-center gap-2 roboto-font">
-                                  <span className="font-medium min-w-[70px]">Job Title:</span>
-                                  <p className="roboto-font">
-                                    {renderHighlightedField(
-                                      currentJobTitle,
-                                      'current_job_title',
-                                      highlightFilters
-                                    )}
-                                  </p>
-                                </div>
                               ) : (
                                 <span>N/A</span>
                               )}
-                              <div className="flex items-center gap-2 roboto-font">
-                                <span className="font-medium min-w-[70px]">Qualification: </span>
-                                {candidate.education ? (
-                                  <span>
-                                    {renderHighlightedField(
-                                      candidate.education,
-                                      'education',
-                                      highlightFilters
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span>N/A</span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 roboto-font">
-                                <span className="font-medium min-w-[70px]">Email:</span>
-                                {candidate.emailId ? (
-                                  <span>
-                                    {renderHighlightedField(
-                                      candidate.emailId,
-                                      'emailId',
-                                      highlightFilters
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span>N/A</span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 roboto-font">
-                                <span className="font-medium min-w-[70px]">Phone:</span>
-                                {candidate.phoneNumber ? (
-                                  <span>
-                                    {renderHighlightedField(
-                                      `${candidate.countryCode}${formatPhoneNumber(candidate.phoneNumber)}`,
-                                      'phoneNumber',
-                                      highlightFilters
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span>N/A</span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 roboto-font">
-                                <span className="font-medium min-w-[70px]">Location: </span>
-                                {candidate.address ? (
-                                  <span>
-                                    {renderHighlightedField(
-                                      candidate.address,
-                                      'address',
-                                      highlightFilters
-                                    )}
-                                  </span>
-                                ) : (
-                                  <span>N/A</span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </Col>
-                        <Col span={4}>
-                          {atsScore !== undefined && atsScore !== null ? (
-                            <p className="roboto-font">
-                              {renderHighlightedField(
-                                String(atsScore),
-                                'ats_score',
-                                highlightFilters
-                              )}
-                            </p>
-                          ) : (
-                            <span>N/A</span>
-                          )}
-                        </Col>
-                        <Col span={4}>
-                          {jobTitle ? (
-                            <p className="roboto-font">
-                              {renderHighlightedField(jobTitle, 'job_title', highlightFilters)}
-                            </p>
-                          ) : (
-                            <span>N/A</span>
-                          )}
-                        </Col>
-                        <Col span={4}>
-                          {resumeExtracted ? (
-                            <>
-                              <Link
-                                to={{
-                                  pathname: `/jobs/view/${candidate.job_opening_id}/candidates/${candidate.id}/details`,
-                                }}
-                                state={{ activeTab: '3', atsScore: candidate?.atsScore }}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <p
-                                  className={
-                                    !interviewExternalStatus
-                                      ? 'cursor-pointer font-semibold'
-                                      : undefined
-                                  }
-                                  style={{
-                                    color: !interviewExternalStatus ? '#FFCC00' : undefined,
-                                  }}
-                                >
-                                  {renderHighlightedField(
-                                    formatStatus(interviewExternalStatus) || 'N/A',
-                                    'interview_external_status',
-                                    highlightFilters
-                                  )}
+                            </Col>
+                            <Col span={4}>
+                              {jobTitle ? (
+                                <p className="roboto-font">
+                                  {renderHighlightedField(jobTitle, 'job_title', highlightFilters)}
                                 </p>
-                              </Link>
-                              {interviewStatus &&
-                                (!['FINAL_ROUND_SHORTLISTED', 'SELECTED', 'NOT_SELECTED'].includes(
-                                  interviewStatus.toUpperCase()
-                                ) ||
-                                  candidate.isClosed) && (
-                                  <p>
-                                    {renderHighlightedField(
-                                      interviewStatus || 'N/A',
-                                      '',
-                                      highlightFilters
+                              ) : (
+                                <span>N/A</span>
+                              )}
+                            </Col>
+                            <Col span={4}>
+                              {resumeExtracted ? (
+                                <>
+                                  <Link
+                                    to={{
+                                      pathname: `/jobs/view/${candidate.job_opening_id}/candidates/${candidate.id}/details`,
+                                    }}
+                                    state={{ activeTab: '3', atsScore: candidate?.atsScore }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <p
+                                      className={
+                                        !interviewExternalStatus
+                                          ? 'cursor-pointer font-semibold'
+                                          : undefined
+                                      }
+                                      style={{
+                                        color: !interviewExternalStatus ? '#FFCC00' : undefined,
+                                      }}
+                                    >
+                                      {renderHighlightedField(
+                                        formatStatus(interviewExternalStatus) || 'N/A',
+                                        'interview_external_status',
+                                        highlightFilters
+                                      )}
+                                    </p>
+                                  </Link>
+                                  {interviewStatus &&
+                                    (![
+                                      'FINAL_ROUND_SHORTLISTED',
+                                      'SELECTED',
+                                      'NOT_SELECTED',
+                                    ].includes(interviewStatus.toUpperCase()) ||
+                                      candidate.isClosed) && (
+                                      <p>
+                                        {renderHighlightedField(
+                                          interviewStatus || 'N/A',
+                                          '',
+                                          highlightFilters
+                                        )}
+                                      </p>
                                     )}
-                                  </p>
+                                </>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <Spin size="small" />
+                                  <span className="text-gray-600">
+                                    Resume Extraction is in Progress
+                                  </span>
+                                </div>
+                              )}
+                            </Col>
+                            <Col span={4}>
+                              <p className="roboto-font">
+                                {renderHighlightedField(
+                                  candidate.source,
+                                  'source',
+                                  highlightFilters
                                 )}
-                            </>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <Spin size="small" />
-                              <span className="text-gray-600">
-                                Resume Extraction is in Progress
-                              </span>
-                            </div>
-                          )}
-                        </Col>
-                        <Col span={4}>
-                          <p className="roboto-font">
-                            {renderHighlightedField(candidate.source, 'source', highlightFilters)}
-                          </p>
-                        </Col>
-                      </Row>
-                    </CommonCard>
-                  </div>
-                );
-              })
-            )}
+                              </p>
+                            </Col>
+                          </Row>
+                        </CommonCard>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
 
           {filteredCandidates.length > 0 && (

@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   MdOutlineGroups,
   MdOutlineWorkOutline,
   MdOutlineDescription,
   MdOutlineEventAvailable,
 } from 'react-icons/md';
-import { StatCardRow, ChartCard } from '../../../shared';
+import { StatCardRow, ChartCard, StatDetailModal } from '../../../shared';
 import type { StatCardData } from '../../../shared';
 import { useGetPlatformTenantDashboardQuery } from '../../../../api/organization-service/Platform/tenants';
 
@@ -26,6 +26,9 @@ const COMING_SOON = 'Coming soon: needs a platform-scoped job-service/candidate-
  */
 const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useGetPlatformTenantDashboardQuery(tenantId);
+  const [activeDetail, setActiveDetail] = useState<
+    'users' | 'jobs' | 'applications' | 'interviews' | null
+  >(null);
 
   const cards: StatCardData[] = [
     {
@@ -33,12 +36,14 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       variant: 'neutral',
       label: 'Active users',
       value: isLoading ? undefined : data?.team_size?.toLocaleString(),
+      onClick: () => setActiveDetail('users'),
     },
     {
       icon: <MdOutlineWorkOutline />,
       variant: 'blue',
       label: 'Open jobs',
       value: isLoading ? undefined : (data?.open_job_count?.toLocaleString() ?? null),
+      onClick: () => setActiveDetail('jobs'),
     },
     {
       icon: <MdOutlineDescription />,
@@ -46,6 +51,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       label: 'Total applications',
       value: null,
       footer: <p className="text-[11px] text-neutral-400">{COMING_SOON}</p>,
+      onClick: () => setActiveDetail('applications'),
     },
     {
       icon: <MdOutlineEventAvailable />,
@@ -53,12 +59,55 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       label: 'Completed interviews',
       value: null,
       footer: <p className="text-[11px] text-neutral-400">{COMING_SOON}</p>,
+      onClick: () => setActiveDetail('interviews'),
     },
   ];
 
   return (
     <div className="p-4">
       <StatCardRow cards={cards} columns={4} className="mb-4" />
+      {activeDetail === 'users' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineGroups />}
+          variant="neutral"
+          label="Active users"
+          value={data?.team_size?.toLocaleString()}
+          description="Team members currently active in this organization."
+        />
+      )}
+      {activeDetail === 'jobs' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineWorkOutline />}
+          variant="blue"
+          label="Open jobs"
+          value={data?.open_job_count?.toLocaleString() ?? null}
+          description="Job openings this organization currently has published."
+        />
+      )}
+      {activeDetail === 'applications' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineDescription />}
+          variant="green"
+          label="Total applications"
+          value={null}
+          description="Total candidate applications received by this organization."
+          footer={COMING_SOON}
+        />
+      )}
+      {activeDetail === 'interviews' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineEventAvailable />}
+          variant="orange"
+          label="Completed interviews"
+          value={null}
+          description="Interviews completed by this organization across all rounds."
+          footer={COMING_SOON}
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         <ChartCard

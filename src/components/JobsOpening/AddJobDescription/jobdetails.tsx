@@ -1945,7 +1945,7 @@ const JobDetails = () => {
                 <div className="w-full">
                   <span className="text-lg font-semibold">Job Info</span>
                 </div>
-                <div className="grid grid-cols-3 gap-x-4 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
                   <Form.Item
                     label={
                       <span>
@@ -2221,7 +2221,7 @@ const JobDetails = () => {
                 <div className="w-full">
                   <span className="text-lg font-semibold">Location</span>
                 </div>
-                <div className="grid grid-cols-3 gap-x-4 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
                   <Form.Item
                     label={
                       <span>
@@ -2259,7 +2259,7 @@ const JobDetails = () => {
                 </div>
                 {selectedOfficeLocationId && (
                   <>
-                    <div className="grid grid-cols-3 gap-x-4 mt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
                       <Form.Item label={<span>Address Line 1</span>}>
                         <Input
                           value={selectedLocationDetails?.address_line_1 ?? ''}
@@ -2282,7 +2282,7 @@ const JobDetails = () => {
                         />
                       </Form.Item>
                     </div>
-                    <div className="grid grid-cols-3 gap-x-4 mt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
                       <Form.Item label={<span>City</span>}>
                         <Input
                           value={selectedLocationDetails?.city ?? ''}
@@ -2329,7 +2329,7 @@ const JobDetails = () => {
                 <div className="w-full">
                   <span className="text-lg font-semibold">Hiring Panel</span>
                 </div>
-                <div className="grid grid-cols-3 gap-x-4 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
                   {' '}
                   <Form.Item
                     label={
@@ -2479,7 +2479,7 @@ const JobDetails = () => {
                     </div>
                   </Form.Item>
                 </div>
-                <div className="grid grid-cols-3 gap-x-4 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
                   <Form.Item
                     label={
                       <span>
@@ -2594,7 +2594,7 @@ const JobDetails = () => {
                 <div className="w-full">
                   <span className="text-lg font-semibold">Salary Status</span>
                 </div>
-                <div className="grid grid-cols-3 gap-x-4 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
                   <Form.Item
                     label={
                       <span>
@@ -2710,7 +2710,7 @@ const JobDetails = () => {
                 <div className="w-full">
                   <span className="text-lg font-semibold">Job Skills</span>
                 </div>
-                <div className="form-grid-equal-labels grid grid-cols-3 gap-x-4 mt-4">
+                <div className="form-grid-equal-labels grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-4">
                   <Form.Item label={<span>Referral Bonus (in USD)</span>}>
                     <Controller
                       name="referralBonus"
@@ -2824,7 +2824,7 @@ const JobDetails = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-x-4 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
                   <Form.Item
                     label={
                       <span>
@@ -2998,7 +2998,7 @@ const JobDetails = () => {
                   </Form.Item>
                 </div>
 
-                <div className="grid grid-cols-2 gap-x-4 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
                   <Form.Item
                     label={
                       <span>

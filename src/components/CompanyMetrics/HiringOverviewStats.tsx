@@ -6,7 +6,7 @@ import {
   MdOutlineEventAvailable,
   MdOutlineGroups,
 } from 'react-icons/md';
-import { StatCardRow } from '../shared';
+import { StatCardRow, StatDetailModal } from '../shared';
 import type { StatCardData } from '../shared';
 import { RootState } from '../../redux/provider/store';
 import { useGetTenantDashboardQuery } from '../../api/organization-service/Tenants/profile';
@@ -27,10 +27,10 @@ import { Authorities } from '../../constants/authorities.constant';
  *
  * "Active job openings" is the one card with a real list behind it today
  * (`GET /job-openings?status=published`, already paginated server-side) —
- * clicking it opens `JobOpeningsListModal`. The other three stay
- * display-only until their own paginated list endpoints exist; adding a
- * card's popup is meant to be exactly this — an `onClick` plus a modal —
- * not a change to the card grid itself.
+ * clicking it opens `JobOpeningsListModal`. The other three don't have a
+ * paginated list endpoint yet, so they open `StatDetailModal` instead — the
+ * number plus what it counts, with a real hyperlink through to the closest
+ * existing full-list page.
  */
 const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = ({
   columns = 4,
@@ -38,6 +38,9 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
 }) => {
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
   const [showJobOpenings, setShowJobOpenings] = useState(false);
+  const [activeDetail, setActiveDetail] = useState<
+    'applications' | 'interviews' | 'team' | null
+  >(null);
 
   // Each card needs its OWN permission check, resolved against whichever
   // location is currently active (see useEffectivePermissions) — the four
@@ -83,6 +86,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
             variant: 'green' as const,
             label: 'Total applications',
             value: isApplicationsLoading ? undefined : totalApplications?.total?.toLocaleString(),
+            onClick: () => setActiveDetail('applications'),
           },
         ]
       : []),
@@ -98,6 +102,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
                 Breakdown by Audio / AI / Panel: coming soon
               </p>
             ),
+            onClick: () => setActiveDetail('interviews'),
           },
         ]
       : []),
@@ -108,6 +113,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
             variant: 'neutral' as const,
             label: 'Active team members',
             value: isTeamLoading ? undefined : tenantDashboard?.team_size?.toLocaleString(),
+            onClick: () => setActiveDetail('team'),
           },
         ]
       : []),
@@ -117,6 +123,43 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
     <>
       <StatCardRow cards={cards} columns={columns} tall={tall} />
       {showJobOpenings && <JobOpeningsListModal onClose={() => setShowJobOpenings(false)} />}
+      {activeDetail === 'applications' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineDescription />}
+          variant="green"
+          label="Total applications"
+          value={totalApplications?.total?.toLocaleString()}
+          description="Total candidate applications received across all of your job openings."
+          viewAllHref="/candidates"
+          viewAllLabel="View all candidates"
+        />
+      )}
+      {activeDetail === 'interviews' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineEventAvailable />}
+          variant="orange"
+          label="Completed interviews"
+          value={completedInterviews?.total?.toLocaleString()}
+          description="Interviews that have been completed across all rounds and formats."
+          footer="Breakdown by Audio / AI / Panel: coming soon"
+          viewAllHref="/interviews"
+          viewAllLabel="View interviews"
+        />
+      )}
+      {activeDetail === 'team' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineGroups />}
+          variant="neutral"
+          label="Active team members"
+          value={tenantDashboard?.team_size?.toLocaleString()}
+          description="Team members currently active in your organization."
+          viewAllHref="/organisation-users"
+          viewAllLabel="View team members"
+        />
+      )}
     </>
   );
 };

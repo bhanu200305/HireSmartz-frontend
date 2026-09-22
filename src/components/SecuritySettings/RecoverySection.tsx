@@ -62,6 +62,7 @@ const SetRecoveryEmailForm = ({ onPending }: { onPending: (email: string) => voi
       </div>
       <Input
         type="password"
+        autoComplete="current-password"
         noAutoCapitalize
         value={password}
         onChange={(e) => setPassword(e.target.value)}
@@ -125,6 +126,7 @@ const PendingConfirmation = ({
       <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row">
         <Input
           type="password"
+          autoComplete="current-password"
           noAutoCapitalize
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -196,6 +198,7 @@ const VerifiedRecoveryEmail = ({ maskedEmail }: { maskedEmail: string }) => {
         <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row">
           <Input
             type="password"
+            autoComplete="current-password"
             noAutoCapitalize
             value={password}
             onChange={(e) => setPassword(e.target.value)}

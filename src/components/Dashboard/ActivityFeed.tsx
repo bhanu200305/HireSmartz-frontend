@@ -246,7 +246,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
           </div>
         </div>
 
-        <div className="flex flex-row justify-between items-center">
+        <div className="flex flex-row flex-wrap justify-between items-center gap-y-2">
           <Tabs
             activeKey={activeTab}
             onChange={setActiveTab}
@@ -278,7 +278,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
                 style={{ width: 150, fontSize: 14 }}
               />
             </div>
-            <div style={{ width: 350 }}>
+            <div className="w-full sm:w-[350px]">
               <Search
                 appname="candidate"
                 placeholder="Search Activity..."

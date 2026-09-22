@@ -7,7 +7,6 @@
 
 import React, { useEffect } from 'react';
 import {
-  GridLayout,
   ParticipantTile,
   FocusLayoutContainer,
   FocusLayout,
@@ -17,6 +16,7 @@ import {
   useTracks,
   RoomAudioRenderer,
   LayoutContextProvider,
+  type TrackReference,
   type TrackReferenceOrPlaceholder,
 } from '@livekit/components-react';
 import { Track } from 'livekit-client';
@@ -25,6 +25,8 @@ import type { LiveKitTokenResponse } from '../../types/LiveKit';
 import { useSpotlight } from './shared/useSpotlight';
 import { PinButton } from './shared/PinButton';
 import { SpotlightStage, type SpotlightSide } from './shared/SpotlightStage';
+import { SoundwaveTile } from './soundwave/SoundwaveTile';
+import { TileLabel } from './shared/TileLabel';
 
 interface VideoGridProps {
   token: LiveKitTokenResponse;
@@ -35,36 +37,36 @@ interface VideoGridProps {
 // PIN/SPOTLIGHT — added alongside chat/settings/background (see
 // InterviewRoomLayout.tsx's own module comment for the shared reasoning).
 //
-// GridLayout clones one static `children` template per track internally —
-// it has no per-tile render hook, so there's no way to attach a `PinButton`
-// (with its own per-participant `onClick` closure) to each auto-generated
-// tile. Switched the default (no screenshare) case to explicit `.map()`
-// rendering instead, same approach `InterviewRoomLayout.tsx` (the other
-// interview flow) already uses — keeps both visually/architecturally
-// consistent, and only the plain-grid case needed to change: the
-// screenshare `FocusLayoutContainer`/`CarouselLayout`/`FocusLayout` path
-// below is untouched, since pin is deliberately suppressed while someone is
-// sharing their screen (screenshare already has its own "what's focused"
-// answer).
+// PER-PARTICIPANT RENDERING IS TRACK-DRIVEN, NOT ROUND-TYPE-DRIVEN — same
+// reasoning as InterviewRoomLayout.tsx's own module comment: a remote
+// participant with a subscribed camera track gets a real `ParticipantTile`;
+// one with audio only (today, always the AI_VIDEO agent — ai-service's own
+// agent never publishes video, see SoundwaveTile's own module comment) gets
+// `SoundwaveTile` instead. This used to be built from `useTracks([{source:
+// Camera, withPlaceholder: true}])` alone, which — for a participant that
+// will NEVER publish a camera, not just one with it toggled off — rendered
+// LiveKit's own bare "camera off" placeholder box instead: easy to miss
+// even in the full grid, and easy to mistake for "gone entirely" once
+// shrunk into the small spotlight PIP corner. GridLayout also clones one
+// static `children` template per track internally — it has no per-tile
+// render hook, so there was no way to substitute `SoundwaveTile` for the
+// AI's tile there either. Both the plain grid and the pinned/spotlight
+// stage now build their tiles from the same explicit `.map()`, so the
+// AI's presence looks identical (and unmistakable) in either state — it
+// never disappears or degrades to a blank box when the other side is
+// pinned/maximized.
 const VideoGridInner: React.FC = () => {
-  // Return values unused here; kept the hook calls themselves (rather than
-  // deleting them) since LiveKit context hooks like these commonly have
-  // subscription side effects independent of their return value.
-  useLocalParticipant();
-  useRemoteParticipants();
+  const { localParticipant, cameraTrack: localCameraPublication } = useLocalParticipant();
+  const remoteParticipants = useRemoteParticipants();
   const { isPinned, togglePin, pinnedTrackRef, unpin } = useSpotlight();
 
-  // Ensure withPlaceholder is true for the camera so local user tile renders immediately
-  const tracks = useTracks(
-    [
-      { source: Track.Source.Camera, withPlaceholder: true },
-      { source: Track.Source.ScreenShare, withPlaceholder: false },
-    ],
-    { onlySubscribed: false }
+  const cameraTrackRefs = useTracks([Track.Source.Camera], { onlySubscribed: true });
+  const micTrackRefs = useTracks([Track.Source.Microphone], { onlySubscribed: true });
+  const screenShareTrackRefs = useTracks(
+    [{ source: Track.Source.ScreenShare, withPlaceholder: false }],
+    { onlySubscribed: true }
   );
-
-  const screenShareTrack = tracks.find((t) => t.source === Track.Source.ScreenShare);
-  const cameraTracks = tracks.filter((t) => t.source !== Track.Source.ScreenShare);
+  const screenShareTrack = screenShareTrackRefs[0];
 
   // Screenshare owns "what's focused" while active — clear any spotlight
   // pin so returning from a share doesn't leave a stale one behind.
@@ -74,25 +76,71 @@ const VideoGridInner: React.FC = () => {
     // themselves (stable across renders, but not worth depending on).
   }, [!!screenShareTrack]);
 
-  const sides: SpotlightSide[] = cameraTracks.map((trackRef) => ({
-    key: `${trackRef.participant.identity}-${trackRef.source}`,
+  const localCameraTrackRef: TrackReference | undefined = localCameraPublication
+    ? {
+        participant: localParticipant,
+        publication: localCameraPublication,
+        source: Track.Source.Camera,
+      }
+    : undefined;
+
+  const localSide: SpotlightSide & { identity: string; source: Track.Source } = {
+    key: `${localParticipant.identity}-${Track.Source.Camera}`,
+    identity: localParticipant.identity,
+    source: Track.Source.Camera,
     node: (
       <div className="relative h-full w-full">
-        <ParticipantTile trackRef={trackRef} className="h-full w-full" />
+        <ParticipantTile trackRef={localCameraTrackRef} className="h-full w-full" />
         <PinButton
-          pinned={isPinned(trackRef.participant.identity, trackRef.source)}
-          onClick={() => togglePin(trackRef)}
+          pinned={isPinned(localParticipant.identity, Track.Source.Camera)}
+          onClick={() =>
+            localCameraTrackRef
+              ? togglePin(localCameraTrackRef)
+              : togglePin({ participant: localParticipant, source: Track.Source.Camera })
+          }
           className="absolute right-3 top-3 z-10"
         />
       </div>
     ),
-  }));
+  };
 
-  const pinnedIndex = cameraTracks.findIndex(
-    (t) =>
-      pinnedTrackRef &&
-      t.participant.identity === pinnedTrackRef.participant.identity &&
-      t.source === pinnedTrackRef.source
+  const remoteSides: (SpotlightSide & { identity: string; source: Track.Source })[] =
+    remoteParticipants.map((participant) => {
+      const cameraRef = cameraTrackRefs.find(
+        (ref) => ref.participant.identity === participant.identity
+      );
+      const micRef = micTrackRefs.find((ref) => ref.participant.identity === participant.identity);
+      const pinRef: TrackReferenceOrPlaceholder | undefined = cameraRef ?? micRef;
+      const source = cameraRef ? Track.Source.Camera : Track.Source.Microphone;
+      return {
+        key: `${participant.identity}-${source}`,
+        identity: participant.identity,
+        source,
+        node: (
+          <div className="relative h-full w-full">
+            {cameraRef ? (
+              <ParticipantTile trackRef={cameraRef} className="h-full w-full" />
+            ) : (
+              <>
+                <SoundwaveTile audioTrackRef={micRef} label="" className="h-full w-full" />
+                <TileLabel>Interviewer</TileLabel>
+              </>
+            )}
+            {pinRef && (
+              <PinButton
+                pinned={isPinned(participant.identity, source)}
+                onClick={() => togglePin(pinRef)}
+                className="absolute right-3 top-3 z-10"
+              />
+            )}
+          </div>
+        ),
+      };
+    });
+
+  const allSides = [localSide, ...remoteSides];
+  const pinnedSide = allSides.find(
+    (side) => pinnedTrackRef && isPinned(side.identity, side.source)
   );
 
   return (
@@ -100,22 +148,26 @@ const VideoGridInner: React.FC = () => {
       <div className="video-grid-container w-full h-full absolute inset-0">
         {screenShareTrack ? (
           <FocusLayoutContainer>
-            <CarouselLayout tracks={cameraTracks}>
+            <CarouselLayout tracks={cameraTrackRefs}>
               <ParticipantTile />
             </CarouselLayout>
             <FocusLayout trackRef={screenShareTrack as TrackReferenceOrPlaceholder} />
           </FocusLayoutContainer>
-        ) : pinnedIndex !== -1 ? (
+        ) : pinnedSide ? (
           <div className="h-full w-full p-3">
             <SpotlightStage
-              main={sides[pinnedIndex]}
-              others={sides.filter((_, i) => i !== pinnedIndex)}
+              main={pinnedSide}
+              others={allSides.filter((s) => s.key !== pinnedSide.key)}
             />
           </div>
         ) : (
-          <GridLayout tracks={tracks}>
-            <ParticipantTile />
-          </GridLayout>
+          <div className="grid h-full w-full grid-cols-1 gap-3 p-3 sm:grid-cols-2">
+            {allSides.map((side) => (
+              <div key={side.key} className="min-h-[220px]">
+                {side.node}
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

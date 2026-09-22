@@ -579,10 +579,10 @@ const CandidateDetails = () => {
         </div>
 
         <div className="flex-1 bg-white px-6 py-4 shadow-sm rounded-xl">
-          <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-200">
             <h2 className="text-2xl font-bold">{candidateDisplayName(candidate)}</h2>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <Tooltip title="Edit candidate details">
                 <span className="inline-flex">
                   <button
@@ -1204,7 +1204,7 @@ const CandidateDetails = () => {
                     {candidate?.resume_rating ? 'EDIT REVIEW' : 'ADD REVIEW'}
                   </Button>
                 </div>
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <div>
                     <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
                       AI Score

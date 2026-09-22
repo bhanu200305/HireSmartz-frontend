@@ -179,7 +179,7 @@ const AddNewRound = () => {
       {/* Modal Overlay */}
       {isLoading && <Loader />}
       <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
-        <div className="bg-white p-0 rounded-2xl shadow-xl w-[500px] relative overflow-hidden">
+        <div className="bg-white p-0 rounded-2xl shadow-xl w-[500px] max-w-[92vw] relative overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
             <h2 className="text-base font-bold text-neutral-900 font-display">
               Add New Interview Round
@@ -308,7 +308,7 @@ const AddNewRound = () => {
                         buttonStyle="solid"
                         className="w-full"
                       >
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {selectedRoundType.available_variants!.map((variant) => (
                             <Radio.Button
                               key={variant}

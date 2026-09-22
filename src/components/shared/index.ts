@@ -3,6 +3,7 @@ export { PeekDeck } from './ui/PeekDeck';
 export type { PeekDeckPanel } from './ui/PeekDeck';
 export { StatCardRow } from './ui/StatCardRow';
 export type { StatCardData, StatCardDelta, StatCardVariant } from './ui/StatCardRow';
+export { default as StatDetailModal } from './ui/StatDetailModal';
 export { default as ChartCard } from './ui/ChartCard';
 export { default as DonutStat } from './ui/DonutStat';
 export type { DonutSlice } from './ui/DonutStat';

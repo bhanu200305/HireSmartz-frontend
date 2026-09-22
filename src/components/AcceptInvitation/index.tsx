@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FaEye, FaEyeSlash, FaCheckCircle } from 'react-icons/fa';
+import { FaCheckCircle } from 'react-icons/fa';
 import {
   MdLockOutline,
   MdErrorOutline,
@@ -261,8 +261,6 @@ const formatRole = (role: string): string => ROLE_LABELS[role] ?? role;
 const AcceptInvitation = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
   // Set only for EXTERNAL_SERVICE_ERROR on submit — everything else on this
   // path stays a toast. Cleared on every new submit attempt.
@@ -636,7 +634,8 @@ const AcceptInvitation = () => {
                 render={({ field }) => (
                   <Input
                     {...field}
-                    type={showPassword ? 'text' : 'password'}
+                    type="password"
+                    autoComplete="new-password"
                     noAutoCapitalize
                     placeholder="Password*"
                     prefix={
@@ -645,15 +644,6 @@ const AcceptInvitation = () => {
                       </div>
                     }
                     className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                    suffix={
-                      <button
-                        type="button"
-                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <FaEye /> : <FaEyeSlash />}
-                      </button>
-                    }
                     onChange={(e) => {
                       field.onChange(e);
                       trigger('confirmPassword');
@@ -675,7 +665,8 @@ const AcceptInvitation = () => {
                 render={({ field }) => (
                   <Input
                     {...field}
-                    type={showConfirmPassword ? 'text' : 'password'}
+                    type="password"
+                    autoComplete="new-password"
                     noAutoCapitalize
                     placeholder="Confirm password*"
                     prefix={
@@ -684,15 +675,6 @@ const AcceptInvitation = () => {
                       </div>
                     }
                     className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                    suffix={
-                      <button
-                        type="button"
-                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      >
-                        {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
-                      </button>
-                    }
                   />
                 )}
               />
