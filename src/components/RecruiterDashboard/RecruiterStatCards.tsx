@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MdOutlineDescription, MdOutlineWorkOutline } from 'react-icons/md';
-import { StatCardRow } from '../shared';
+import { StatCardRow, StatDetailModal } from '../shared';
 import type { StatCardData } from '../shared';
 import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import { useGetTotalApplicationsQuery } from '../../api/candidate-service/Stats/stats';
@@ -18,6 +18,7 @@ import { Authorities } from '../../constants/authorities.constant';
 const RecruiterStatCards: React.FC = () => {
   const canViewJobs = useHasAccess(Authorities.JOB_OPENING_VIEW);
   const canViewCandidates = useHasAccess(Authorities.CANDIDATE_VIEW);
+  const [activeDetail, setActiveDetail] = useState<'applications' | 'jobs' | null>(null);
 
   const { data: jobStats, isLoading: isJobStatsLoading } = useGetJobStatsQuery(undefined, {
     skip: !canViewJobs,
@@ -33,6 +34,7 @@ const RecruiterStatCards: React.FC = () => {
             variant: 'green' as const,
             label: 'Total applications',
             value: isApplicationsLoading ? undefined : totalApplications?.total?.toLocaleString(),
+            onClick: () => setActiveDetail('applications'),
           },
         ]
       : []),
@@ -43,12 +45,41 @@ const RecruiterStatCards: React.FC = () => {
             variant: 'blue' as const,
             label: 'Active job openings (my open jobs)',
             value: isJobStatsLoading ? undefined : jobStats?.published_count?.toLocaleString(),
+            onClick: () => setActiveDetail('jobs'),
           },
         ]
       : []),
   ];
 
-  return <StatCardRow cards={cards} columns={2} />;
+  return (
+    <>
+      <StatCardRow cards={cards} columns={2} />
+      {activeDetail === 'applications' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineDescription />}
+          variant="green"
+          label="Total applications"
+          value={totalApplications?.total?.toLocaleString()}
+          description="Total candidate applications received across your job openings."
+          viewAllHref="/candidates"
+          viewAllLabel="View all candidates"
+        />
+      )}
+      {activeDetail === 'jobs' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineWorkOutline />}
+          variant="blue"
+          label="Active job openings"
+          value={jobStats?.published_count?.toLocaleString()}
+          description="Published job openings assigned to, or created by, you."
+          viewAllHref="/jobs"
+          viewAllLabel="View all jobs"
+        />
+      )}
+    </>
+  );
 };
 
 export default RecruiterStatCards;

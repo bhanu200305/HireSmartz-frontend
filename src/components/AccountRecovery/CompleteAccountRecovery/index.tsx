@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { FaEye, FaEyeSlash, FaCheckCircle } from 'react-icons/fa';
+import { FaCheckCircle } from 'react-icons/fa';
 import { MdErrorOutline, MdLockOutline } from 'react-icons/md';
 import { AuthPageShell, Button, Input, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
@@ -29,8 +29,6 @@ const CompleteAccountRecovery = () => {
   const [searchParams] = useSearchParams();
   const token = pathToken || searchParams.get('token');
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [tokenIsDead, setTokenIsDead] = useState(false);
 
@@ -116,7 +114,8 @@ const CompleteAccountRecovery = () => {
             render={({ field }) => (
               <Input
                 {...field}
-                type={showPassword ? 'text' : 'password'}
+                type="password"
+                autoComplete="new-password"
                 noAutoCapitalize
                 placeholder="New password*"
                 prefix={
@@ -125,15 +124,6 @@ const CompleteAccountRecovery = () => {
                   </div>
                 }
                 className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                suffix={
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
-                }
                 onChange={(e) => {
                   field.onChange(e);
                   trigger('confirmNewPassword');
@@ -155,7 +145,8 @@ const CompleteAccountRecovery = () => {
             render={({ field }) => (
               <Input
                 {...field}
-                type={showConfirmPassword ? 'text' : 'password'}
+                type="password"
+                autoComplete="new-password"
                 noAutoCapitalize
                 placeholder="Confirm new password*"
                 prefix={
@@ -164,15 +155,6 @@ const CompleteAccountRecovery = () => {
                   </div>
                 }
                 className="w-full !normal-case px-4 py-2 bg-white border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                suffix={
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
-                }
               />
             )}
           />

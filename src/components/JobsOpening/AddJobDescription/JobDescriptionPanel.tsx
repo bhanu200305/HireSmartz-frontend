@@ -473,9 +473,9 @@ const JobDescriptionPanel = ({
         </div>
       ) : (
         <>
-          <div className="flex items-start justify-between w-full">
-            <div className="w-[76%]">{promptInputField}</div>
-            <div className="flex flex-col items-center justify-start w-[22%]">
+          <div className="flex flex-col sm:flex-row items-start justify-between w-full gap-3">
+            <div className="w-full sm:w-[76%]">{promptInputField}</div>
+            <div className="flex flex-col items-center justify-start w-full sm:w-[22%]">
               <Tooltip title="Uses the last generated JD as a reference along with your prompt.">
                 <span className="inline-block w-full">
                   <Button

@@ -208,15 +208,13 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
               Set as default
             </button>
           )}
-          {method.is_enabled && (
-            <button
-              type="button"
-              onClick={() => setIsRemoving((v) => !v)}
-              className="text-xs text-red-600 hover:underline cursor-pointer"
-            >
-              Remove
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setIsRemoving((v) => !v)}
+            className="text-xs text-red-600 hover:underline cursor-pointer"
+          >
+            Remove
+          </button>
         </div>
       </div>
 
@@ -224,6 +222,7 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
         <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row">
           <Input
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Confirm your current password"

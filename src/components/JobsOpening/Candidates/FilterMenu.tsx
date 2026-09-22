@@ -31,8 +31,8 @@ const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
 
   return (
     <div className="py-2">
-      <div className="flex gap-3 items-center">
-        <div className="cfp-dropdown-trigger min-w-[200px]">
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="cfp-dropdown-trigger w-full sm:w-auto sm:min-w-[200px]">
           <FilterSelectIcon />
           <Select
             placeholder="Status"
@@ -47,7 +47,7 @@ const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
             options={statuses.map((s) => ({ label: s.label, value: s.code }))}
           />
         </div>
-        <div className="cfp-dropdown-trigger min-w-[200px]">
+        <div className="cfp-dropdown-trigger w-full sm:w-auto sm:min-w-[200px]">
           <FilterSelectIcon />
           <Select
             placeholder="Source"

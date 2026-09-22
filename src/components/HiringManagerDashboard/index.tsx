@@ -29,7 +29,7 @@ const HiringManagerDashboard: React.FC = () => {
 
   return (
     <MainLayout>
-      <div className="w-full p-8 pt-12">
+      <div className="w-full px-5 py-4 pt-8 sm:px-8 sm:py-5 sm:pt-12">
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="flex items-center space-x-2">
             <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   MdOutlineGroups,
   MdOutlineWorkOutline,
@@ -6,7 +6,7 @@ import {
   MdOutlineEventAvailable,
 } from 'react-icons/md';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
-import { StatCardRow, ChartCard } from '../shared';
+import { StatCardRow, ChartCard, StatDetailModal } from '../shared';
 import type { StatCardData } from '../shared';
 import { Badge } from '../shared/ui/badge';
 import {
@@ -53,6 +53,9 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
   onClose,
 }) => {
   const { data, isLoading } = useGetPlatformTenantDashboardQuery(tenant.tenant_id);
+  const [activeDetail, setActiveDetail] = useState<
+    'users' | 'jobs' | 'applications' | 'interviews' | null
+  >(null);
 
   const cards: StatCardData[] = [
     {
@@ -60,12 +63,14 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
       variant: 'neutral',
       label: 'Active users',
       value: isLoading ? undefined : data?.team_size?.toLocaleString(),
+      onClick: () => setActiveDetail('users'),
     },
     {
       icon: <MdOutlineWorkOutline />,
       variant: 'blue',
       label: 'Open jobs',
       value: isLoading ? undefined : (data?.open_job_count?.toLocaleString() ?? null),
+      onClick: () => setActiveDetail('jobs'),
     },
     {
       icon: <MdOutlineDescription />,
@@ -73,6 +78,7 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
       label: 'Total applications',
       value: null,
       footer: <p className="text-[11px] text-neutral-400">{COMING_SOON}</p>,
+      onClick: () => setActiveDetail('applications'),
     },
     {
       icon: <MdOutlineEventAvailable />,
@@ -80,6 +86,7 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
       label: 'Completed interviews',
       value: null,
       footer: <p className="text-[11px] text-neutral-400">{COMING_SOON}</p>,
+      onClick: () => setActiveDetail('interviews'),
     },
   ];
 
@@ -185,6 +192,48 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
           </ChartCard>
         </div>
       </div>
+      {activeDetail === 'users' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineGroups />}
+          variant="neutral"
+          label="Active users"
+          value={data?.team_size?.toLocaleString()}
+          description={`Team members currently active at ${tenant.company_name}.`}
+        />
+      )}
+      {activeDetail === 'jobs' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineWorkOutline />}
+          variant="blue"
+          label="Open jobs"
+          value={data?.open_job_count?.toLocaleString() ?? null}
+          description={`Job openings ${tenant.company_name} currently has published.`}
+        />
+      )}
+      {activeDetail === 'applications' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineDescription />}
+          variant="green"
+          label="Total applications"
+          value={null}
+          description={`Total candidate applications received by ${tenant.company_name}.`}
+          footer={COMING_SOON}
+        />
+      )}
+      {activeDetail === 'interviews' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineEventAvailable />}
+          variant="orange"
+          label="Completed interviews"
+          value={null}
+          description={`Interviews completed by ${tenant.company_name} across all rounds.`}
+          footer={COMING_SOON}
+        />
+      )}
     </AntdCommonModal>
   );
 };

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MdOutlineWorkOutline, MdOutlineRateReview, MdOutlinePendingActions } from 'react-icons/md';
-import { StatCardRow } from '../shared';
+import { StatCardRow, StatDetailModal } from '../shared';
 import type { StatCardData } from '../shared';
 import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import {
@@ -22,6 +22,7 @@ import { Authorities } from '../../constants/authorities.constant';
 const HiringManagerStatCards: React.FC = () => {
   const canViewJobs = useHasAccess(Authorities.JOB_OPENING_VIEW);
   const canViewCandidates = useHasAccess(Authorities.CANDIDATE_VIEW);
+  const [activeDetail, setActiveDetail] = useState<'jobs' | 'review' | 'pending' | null>(null);
 
   const { data: jobStats, isLoading: isJobStatsLoading } = useGetJobStatsQuery(
     { assignedToMe: true },
@@ -44,6 +45,7 @@ const HiringManagerStatCards: React.FC = () => {
             variant: 'blue' as const,
             label: 'My open jobs',
             value: isJobStatsLoading ? undefined : jobStats?.published_count?.toLocaleString(),
+            onClick: () => setActiveDetail('jobs'),
           },
         ]
       : []),
@@ -59,6 +61,7 @@ const HiringManagerStatCards: React.FC = () => {
                 Scheduled for, or already given, a panel interview
               </p>
             ),
+            onClick: () => setActiveDetail('review'),
           },
           {
             icon: <MdOutlinePendingActions />,
@@ -70,12 +73,53 @@ const HiringManagerStatCards: React.FC = () => {
                 Interviewed, awaiting selection or rejection
               </p>
             ),
+            onClick: () => setActiveDetail('pending'),
           },
         ]
       : []),
   ];
 
-  return <StatCardRow cards={cards} columns={3} />;
+  return (
+    <>
+      <StatCardRow cards={cards} columns={3} />
+      {activeDetail === 'jobs' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineWorkOutline />}
+          variant="blue"
+          label="My open jobs"
+          value={jobStats?.published_count?.toLocaleString()}
+          description="Published job openings assigned to, or created by, you."
+          viewAllHref="/jobs"
+          viewAllLabel="View all jobs"
+        />
+      )}
+      {activeDetail === 'review' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlineRateReview />}
+          variant="orange"
+          label="Candidates in review"
+          value={candidatesInReview?.total?.toLocaleString()}
+          description="Candidates scheduled for, or already given, a panel interview on one of your jobs."
+          viewAllHref="/candidates"
+          viewAllLabel="View candidates"
+        />
+      )}
+      {activeDetail === 'pending' && (
+        <StatDetailModal
+          onClose={() => setActiveDetail(null)}
+          icon={<MdOutlinePendingActions />}
+          variant="neutral"
+          label="Pending Decision"
+          value={pendingDecisions?.total?.toLocaleString()}
+          description="Candidates who have been interviewed and are awaiting a selection or rejection decision."
+          viewAllHref="/candidates"
+          viewAllLabel="View candidates"
+        />
+      )}
+    </>
+  );
 };
 
 export default HiringManagerStatCards;

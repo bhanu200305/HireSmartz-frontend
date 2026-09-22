@@ -424,7 +424,7 @@ const JobDescription = () => {
   return (
     <Form layout="vertical" onFinish={handleSubmit(onSubmit)}>
       {(isLoading || isUpdating) && <Loader />}
-      <div className="grid grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <Form.Item label={<span>Required Skills</span>}>
           <div className="space-y-3">
             <div
@@ -578,7 +578,7 @@ const JobDescription = () => {
         </Form.Item>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <Form.Item label={<span>Responsibilities</span>}>
           <Controller
             name="responsibilities"

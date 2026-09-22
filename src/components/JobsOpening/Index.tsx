@@ -1010,9 +1010,9 @@ const JobsOpening = () => {
   return (
     <div>
       <MainLayout>
-        <div className="jobs-list-page w-full p-8 justify-start pt-16">
+        <div className="jobs-list-page w-full p-4 sm:p-8 justify-start pt-8 sm:pt-16">
           {(isLoading || isDuplicating) && <Loader />}
-          <div className="flex space-x-4 justify-between p-2">
+          <div className="flex flex-wrap gap-4 justify-between p-2">
             {isFromGlobalSearch && filters.text ? (
               <div className="flex flex-col space-y-2">
                 <div className="flex items-center space-x-2">
@@ -1035,7 +1035,7 @@ const JobsOpening = () => {
                 </div>
               </div>
             )}
-            <div className="flex space-x-4 items-center">
+            <div className="flex flex-wrap gap-4 items-center">
               <Tooltip title="QR Management" placement="top">
                 <Button
                   onClick={() => setQrModalOpen(true)}
@@ -1056,7 +1056,7 @@ const JobsOpening = () => {
                 onApply={handleDateTimeChange}
                 onReset={handleReset}
               />
-              <div className="cfp-dropdown-trigger w-40 shrink-0">
+              <div className="cfp-dropdown-trigger w-full sm:w-40 shrink-0">
                 <FilterSelectIcon />
                 <Select
                   placeholder="Status"
@@ -1086,7 +1086,7 @@ const JobsOpening = () => {
                   <Option value="Closed">Closed</Option>
                 </Select>
               </div>
-              <div className="cfp-dropdown-trigger w-48 shrink-0">
+              <div className="cfp-dropdown-trigger w-full sm:w-48 shrink-0">
                 <FilterSelectIcon />
                 <Select
                   placeholder="All Locations"

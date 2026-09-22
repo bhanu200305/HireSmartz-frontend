@@ -543,7 +543,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             {searchText.trim() && ` (${dataSource.length} shown)`}
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="w-52">
             <Input
               prefix={<MdSearch className="text-gray-400" />}
@@ -592,12 +592,12 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
       <AntdCommonModal open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add user">
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input placeholder="First name *" {...field('first_name')} />
             <Input placeholder="Last name" {...field('last_name')} />
           </div>
           <Input placeholder="Email *" type="email" {...field('email')} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <NameTitleSelect
               value={form.title}
               onChange={(value) => setForm((prev) => ({ ...prev, title: value ?? '' }))}

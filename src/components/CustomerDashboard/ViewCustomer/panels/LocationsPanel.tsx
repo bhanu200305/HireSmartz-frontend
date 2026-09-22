@@ -192,7 +192,7 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             {searchText.trim() && ` of ${offices?.length ?? 0}`}
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="w-52">
             <Input
               prefix={<MdSearch className="text-gray-400" />}

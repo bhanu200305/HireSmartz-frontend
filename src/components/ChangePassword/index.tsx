@@ -17,8 +17,6 @@ import {
   isImpersonationActive,
 } from '../../shared/utils/auth/localstorage.helpers';
 import { getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
-import { useState } from 'react';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import { TbLockCheck } from 'react-icons/tb';
@@ -27,9 +25,6 @@ const ChangePassword = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const location = useLocation();
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [changePassword, { isLoading }] = useChangePasswordMutation();
 
@@ -144,7 +139,8 @@ const ChangePassword = () => {
                     render={({ field }) => (
                       <Input
                         {...field}
-                        type={showCurrentPassword ? 'text' : 'password'}
+                        type="password"
+                        autoComplete="current-password"
                         noAutoCapitalize
                         placeholder={autoLogin ? 'Temporary Password*' : 'Current Password*'}
                         prefix={
@@ -160,13 +156,6 @@ const ChangePassword = () => {
                       />
                     )}
                   />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-4 flex items-center text-brand-900 cursor-pointer"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  >
-                    {showCurrentPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
                 </div>
                 {errors.currentPassword && (
                   <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
@@ -189,7 +178,8 @@ const ChangePassword = () => {
                     render={({ field }) => (
                       <Input
                         {...field}
-                        type={showNewPassword ? 'text' : 'password'}
+                        type="password"
+                        autoComplete="new-password"
                         noAutoCapitalize
                         placeholder="New Password*"
                         prefix={
@@ -206,13 +196,6 @@ const ChangePassword = () => {
                       />
                     )}
                   />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-4 flex items-center text-brand-900 cursor-pointer"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                  >
-                    {showNewPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
                 </div>
                 {errors.newPassword && (
                   <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
@@ -235,7 +218,8 @@ const ChangePassword = () => {
                     render={({ field }) => (
                       <Input
                         {...field}
-                        type={showConfirmPassword ? 'text' : 'password'}
+                        type="password"
+                        autoComplete="new-password"
                         noAutoCapitalize
                         placeholder="Confirm New Password*"
                         prefix={
@@ -252,13 +236,6 @@ const ChangePassword = () => {
                       />
                     )}
                   />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-4 flex items-center text-brand-900 cursor-pointer"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
-                  </button>
                 </div>
                 {errors.confirmNewPassword && (
                   <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">

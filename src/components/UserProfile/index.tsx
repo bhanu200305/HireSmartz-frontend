@@ -30,6 +30,7 @@ import {
   useUpdateOwnUserProfileMutation,
   useUploadOwnAvatarMutation,
   useClearOwnAvatarMutation,
+  useListUsersQuery,
 } from '../../api/organization-service/Users/users';
 import {
   useGetOwnPlatformProfileQuery,
@@ -57,6 +58,7 @@ const UserProfile = () => {
   // docstring), so there's no reason to even attempt that query for them.
   const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
   const isPlatformCaller = callerKind === 'platform';
+  const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
 
   // Self-service calendar connection — every organization user, any role
   // (interview-service's `/calendar/*` routes are identity-scoped). A
@@ -77,6 +79,19 @@ const UserProfile = () => {
   } = useGetOwnPlatformProfileQuery(undefined, { skip: !isPlatformCaller });
   const isLoading = isPlatformCaller ? isPlatformLoading : isTenantLoading;
   const profileLoaded = isPlatformCaller ? isPlatformProfileLoaded : isTenantProfileLoaded;
+
+  // GET /v1/users/me never populates `role` (see OrgUser's own docstring —
+  // only the list endpoint does), so the signed-in tenant user's real role
+  // name has to be resolved the same way ViewOrganisationUser and
+  // EditOrganisationUser already resolve any other user's role: pull the
+  // tenant's user list and find this user's own row in it.
+  const { data: tenantUsersList } = useListUsersQuery(
+    { includeInactive: true, limit: 200 },
+    { skip: isPlatformCaller || !tenantId }
+  );
+  const ownRoleName = tenantUsersList?.items.find(
+    (u) => u.user_id === tenantProfileData?.user_id
+  )?.role;
 
   const [updateTenantProfile, { isLoading: isUpdatingTenant }] = useUpdateOwnUserProfileMutation();
   const [updatePlatformProfile, { isLoading: isUpdatingPlatform }] =
@@ -174,14 +189,14 @@ const UserProfile = () => {
         pinCode: '',
         profilePicture: '',
         profilePictureType: '',
-        roleName: '',
+        roleName: ownRoleName || '',
         companyName: '',
       });
       setImagePreview(tenantProfileData.avatar_url || '');
       setImageChanged(false);
       setIsProfileDeleted(false);
     }
-  }, [isPlatformCaller, tenantProfileData, platformProfileData, reset]);
+  }, [isPlatformCaller, tenantProfileData, platformProfileData, ownRoleName, reset]);
 
   // Whichever profile actually loaded — used instead of picking
   // tenantProfileData/platformProfileData ad hoc at each call site below.
@@ -353,7 +368,8 @@ const UserProfile = () => {
   };
 
   const displayName = [watch('firstName'), watch('lastName')].filter(Boolean).join(' ');
-  const roleLabel = isPlatformCaller ? watch('roleName') || 'Platform Admin' : 'Team Member';
+  const roleLabel =
+    watch('roleName') || (isPlatformCaller ? 'Platform Admin' : 'Team Member');
 
   return (
     <>
