@@ -1,6 +1,10 @@
 import { authApi, noContentResponseHandler } from '../authApi';
 
-// /api/v1/sessions — both authenticated. See docs/API_CONTRACT.md §7.
+// /api/v1/auth/sessions — both authenticated. See docs/authentication_service/API_CONTRACT.md §7.
+// Renamed from bare /sessions (2026-09-19) — that path collided byte-for-byte
+// with interview-service's own, unrelated /api/v1/sessions/* (LiveKit room
+// tokens), an unresolvable ALB routing collision. Grouped under /auth/* to
+// match every other self-service router in that service.
 
 export type SessionStatus = 'active' | 'logged_out' | 'expired' | 'revoked' | 'locked';
 
@@ -27,7 +31,7 @@ export type SessionListResponse = {
 const extendedApi = authApi.injectEndpoints({
   endpoints: (build) => ({
     getSessions: build.query<SessionListResponse, void>({
-      query: () => ({ url: '/sessions', method: 'GET' }),
+      query: () => ({ url: '/auth/sessions', method: 'GET' }),
       providesTags: ['Sessions'],
     }),
     /**
@@ -38,7 +42,7 @@ const extendedApi = authApi.injectEndpoints({
      */
     revokeSession: build.mutation<undefined, string>({
       query: (sessionId) => ({
-        url: `/sessions/${sessionId}`,
+        url: `/auth/sessions/${sessionId}`,
         method: 'DELETE',
         responseHandler: noContentResponseHandler,
       }),

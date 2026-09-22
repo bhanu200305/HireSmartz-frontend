@@ -8,10 +8,8 @@ import {
 } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import ReactMarkdown from 'react-markdown';
 import { Loader } from '../../shared/ui/loader';
-import {
-  useGetJdStatusQuery,
-  useEnhanceJdMutation,
-} from '../../../api/job-service/JobOpening/JdUpload';
+import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
+import { useJdStatusPolling } from '../../../hooks/useJdStatusPolling';
 import { useForm } from 'react-hook-form';
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -28,8 +26,6 @@ import { useGetTopFivePromptQuery } from '../../../api/ai-service/AiQuestion/AiQ
 import { asJobId } from '../../../api/job-service/jobId';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import { useGetTenantProfileQuery } from '../../../api/organization-service/Tenants/profile';
-
-const JD_STATUS_POLL_TIMEOUT_MS = 90_000;
 
 interface JobDescriptionPanelProps {
   /** UUID of the job — JD hangs off the job, not a separate entity. */
@@ -93,32 +89,9 @@ const JobDescriptionPanel = ({
   } = useGetJobDescriptionByIdQuery({ jobOpeningId }, { skip: !jobOpeningId });
   // Whether Job Details has real saved content (title + department); gates Generate/Refine/Regenerate.
   const hasSavedDetails = response?.hasSavedDetails ?? false;
-  // Stops polling once a terminal status is seen for this job id.
-  const [jdStatusIsTerminal, setJdStatusIsTerminal] = useState(false);
-  const { data: jdStatus } = useGetJdStatusQuery(jobOpeningId, {
-    skip: !jobOpeningId,
-    pollingInterval: jdStatusIsTerminal ? 0 : 1000,
+  const { data: jdStatus, timedOut: jdStatusTimedOut } = useJdStatusPolling(jobOpeningId, {
+    notifyOnTimeout: true,
   });
-  useEffect(() => {
-    setJdStatusIsTerminal(false);
-  }, [jobOpeningId]);
-  useEffect(() => {
-    if (jdStatus?.status === 'READY' || jdStatus?.status === 'FAILED') {
-      setJdStatusIsTerminal(true);
-    }
-  }, [jdStatus?.status]);
-  // Safety net if a terminal status never arrives.
-  useEffect(() => {
-    if (jdStatusIsTerminal) return;
-    const timeoutId = setTimeout(() => {
-      setJdStatusIsTerminal(true);
-      showToast({
-        message: "Still generating - refresh in a moment if it doesn't appear shortly.",
-        type: 'warning',
-      });
-    }, JD_STATUS_POLL_TIMEOUT_MS);
-    return () => clearTimeout(timeoutId);
-  }, [jdStatusIsTerminal, jobOpeningId]);
   const [updateJobDescription, { isLoading: isUpdating }] = useUpdateJobDescriptionMutation();
   const [enhanceJd, { isLoading: isGenerating }] = useEnhanceJdMutation();
 
@@ -204,8 +177,6 @@ const JobDescriptionPanel = ({
   const handleGenerate = async (refineInstructions?: string, regenerate = false) => {
     if (!jobOpeningId) return;
     try {
-      // Re-arms JD status polling.
-      setJdStatusIsTerminal(false);
       await enhanceJd({ jobOpeningId, instruction: refineInstructions, regenerate }).unwrap();
       showToast({ message: 'Generating your AI job description…', type: 'success' });
       failedToastShownForJobRef.current = null;
@@ -462,8 +433,8 @@ const JobDescriptionPanel = ({
     <div className="w-full">
       {(isLoading ||
         isGenerating ||
-        jdStatus?.status === 'GENERATING' ||
-        jdStatus?.status === 'PROCESSING') && <Loader />}
+        (!jdStatusTimedOut &&
+          (jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING'))) && <Loader />}
 
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">✨</span>

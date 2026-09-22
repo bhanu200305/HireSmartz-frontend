@@ -68,10 +68,8 @@ import {
   type TenantJobTitle,
 } from '../../../api/organization-service/Tenants/jobTitles';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
-import {
-  useEnhanceJdMutation,
-  useGetJdStatusQuery,
-} from '../../../api/job-service/JobOpening/JdUpload';
+import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
+import { useJdStatusPolling } from '../../../hooks/useJdStatusPolling';
 import { useGetSuggestedSkillsQuery } from '../../../api/job-service/JobOpenings/jobOpenings';
 import {
   useCreateOrganizationSkillMutation,
@@ -162,8 +160,6 @@ const JOB_DETAILS_FIELD_ORDER = [
   'responsibilities',
 ];
 
-const JD_STATUS_POLL_TIMEOUT_MS = 90_000;
-
 const JobDetails = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -234,32 +230,7 @@ const JobDetails = () => {
   const hasSavedDetails = jdDetailsForGate?.hasSavedDetails ?? false;
   // Polls jd/status to catch a GENERATING/PROCESSING -> READY transition
   // and apply AI-written fields once ready — see the effect below.
-  // Stops polling once a terminal status is seen for this job id.
-  const [jdStatusForHydrationIsTerminal, setJdStatusForHydrationIsTerminal] = useState(false);
-  const { data: jdStatusForHydration } = useGetJdStatusQuery(resolvedJobId, {
-    skip: !resolvedJobId,
-    pollingInterval: jdStatusForHydrationIsTerminal ? 0 : 1000,
-  });
-  useEffect(() => {
-    setJdStatusForHydrationIsTerminal(false);
-  }, [resolvedJobId]);
-  useEffect(() => {
-    if (jdStatusForHydration?.status === 'READY' || jdStatusForHydration?.status === 'FAILED') {
-      setJdStatusForHydrationIsTerminal(true);
-    }
-  }, [jdStatusForHydration?.status]);
-  // Safety net if a terminal status never arrives.
-  useEffect(() => {
-    if (jdStatusForHydrationIsTerminal) return;
-    const timeoutId = setTimeout(() => {
-      setJdStatusForHydrationIsTerminal(true);
-      showToast({
-        message: "Still generating - refresh in a moment if it doesn't appear shortly.",
-        type: 'warning',
-      });
-    }, JD_STATUS_POLL_TIMEOUT_MS);
-    return () => clearTimeout(timeoutId);
-  }, [jdStatusForHydrationIsTerminal, resolvedJobId]);
+  const { data: jdStatusForHydration } = useJdStatusPolling(resolvedJobId);
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
   // Tracks which job id the "already READY on first observation" fallback
   // has run for, so it fires at most once per job.
@@ -1832,8 +1803,6 @@ const JobDetails = () => {
       });
 
       if (savedId && generateAiJd) {
-        // Re-arms JD status polling.
-        setJdStatusForHydrationIsTerminal(false);
         enhanceJd(savedId)
           .unwrap()
           .catch((enhanceError) => {
@@ -1941,8 +1910,6 @@ const JobDetails = () => {
         haveDescriptionInputsChanged(descriptionInputs, jdBeforeSave)
       ) {
         try {
-          // Re-arms JD status polling.
-          setJdStatusForHydrationIsTerminal(false);
           await enhanceJd({ jobOpeningId: savedId, regenerate: true }).unwrap();
           showToast({
             message: 'Job details changed - regenerating the AI description to match…',
