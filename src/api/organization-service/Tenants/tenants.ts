@@ -51,6 +51,13 @@ export type SuspendTenantResponse = {
   status: 'suspended' | string;
 };
 
+export type CheckAdminEmailAvailabilityResponse = {
+  // false means some other company, at any status (draft included), already
+  // has this admin_email — see organization-service's
+  // CheckAdminEmailAvailabilityUseCase.
+  available: boolean;
+};
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     createTenant: build.mutation<CreateTenantResponse, CreateTenantRequest>({
@@ -80,8 +87,21 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['Tenant'],
     }),
+    // Lazy on purpose — the Create Company form triggers this itself
+    // (debounced, on blur/change), it must NOT auto-fetch on mount the way
+    // a plain useQuery would with no argument yet to check.
+    checkAdminEmailAvailability: build.query<CheckAdminEmailAvailabilityResponse, string>({
+      query: (email) => ({
+        url: '/v1/tenants/check-email',
+        params: { email },
+      }),
+    }),
   }),
 });
 
-export const { useCreateTenantMutation, useConfirmTenantMutation, useSuspendTenantMutation } =
-  extendedApi;
+export const {
+  useCreateTenantMutation,
+  useConfirmTenantMutation,
+  useSuspendTenantMutation,
+  useLazyCheckAdminEmailAvailabilityQuery,
+} = extendedApi;

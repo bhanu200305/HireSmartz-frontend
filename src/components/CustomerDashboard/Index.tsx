@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FaCity } from 'react-icons/fa';
-import { PlusOutlined } from '@ant-design/icons';
-import { Select } from 'antd';
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { Popconfirm, Select } from 'antd';
 import type { TableProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
@@ -11,7 +11,10 @@ import { Loader } from '../shared/ui/loader';
 import { Badge, BadgeStatus } from '../shared/ui/badge';
 import CustomTable from '../shared/ui/table';
 import MasterPagination from '../shared/ui/MasterPagination';
-import { useListPlatformTenantsQuery } from '../../api/organization-service/Platform/tenants';
+import {
+  useDeleteTenantMutation,
+  useListPlatformTenantsQuery,
+} from '../../api/organization-service/Platform/tenants';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 const PAGE_SIZE = 20;
@@ -32,7 +35,11 @@ const STATUS_BADGE: Record<string, BadgeStatus> = {
  */
 const CustomerTable = () => {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<string | undefined>(undefined);
+  // Defaults to Active — with hundreds of companies now on the platform,
+  // drafts (which every "Add Company" leaves behind, confirmed or not)
+  // would otherwise swamp the list Super Admin actually cares about day to
+  // day. 'all' is still one click away via the Status filter.
+  const [status, setStatus] = useState<string | undefined>('active');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
 
@@ -42,6 +49,19 @@ const CustomerTable = () => {
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   });
+  const [deleteTenant, { isLoading: isDeleting }] = useDeleteTenantMutation();
+
+  const handleDelete = async (tenantId: string) => {
+    try {
+      await deleteTenant({ tenantId }).unwrap();
+      showToast({ message: 'Draft company deleted.', type: 'success' });
+    } catch (err: unknown) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to delete this draft company.'),
+        type: 'error',
+      });
+    }
+  };
 
   // Toasting belongs in an effect, not the render body — calling it directly
   // during render triggers React's "Cannot update a component while
@@ -100,6 +120,37 @@ const CustomerTable = () => {
           {tenant.created_at ? new Date(tenant.created_at).toLocaleDateString() : '-'}
         </span>
       ),
+    },
+    {
+      title: '',
+      key: 'actions',
+      // Draft-only — the backend refuses anything else (409
+      // TENANT_NOT_DELETABLE) anyway, so a non-draft row simply shows
+      // nothing here rather than a button that would always fail.
+      render: (_: unknown, tenant: TenantRow) =>
+        tenant.status === 'draft' ? (
+          // stopPropagation on the wrapping span, not the Button itself —
+          // the shared Button's onClick type takes no event argument, but
+          // the row's own onRow.onClick still needs blocking so a delete
+          // click doesn't also navigate to /view-company underneath it.
+          <span onClick={(e) => e.stopPropagation()}>
+            <Popconfirm
+              title="Delete this draft company?"
+              description="This cannot be undone."
+              okText="Delete"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => void handleDelete(tenant.tenant_id)}
+            >
+              <Button
+                appname="delete draft company"
+                disabled={isDeleting}
+                className="!border-none !bg-transparent !shadow-none text-red-600"
+              >
+                <DeleteOutlined />
+              </Button>
+            </Popconfirm>
+          </span>
+        ) : null,
     },
   ];
 

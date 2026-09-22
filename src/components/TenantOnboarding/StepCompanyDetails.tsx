@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Select } from 'antd';
 import { useForm } from 'react-hook-form';
 import { useLocation } from 'react-router-dom';
@@ -10,9 +11,18 @@ import { sanitizeInput } from '../../shared/utils/validation/input.helpers';
 import { restrictPhoneDigitsForCountry } from '../../shared/utils/validation/phoneValidation';
 import { cleanPhoneNumber, makeFirstLetterUpperCase } from '../../shared/utils/methods';
 import { useListIndustriesQuery } from '../../api/organization-service/Platform/industries';
-import { useCreateTenantMutation } from '../../api/organization-service/Tenants/tenants';
+import {
+  useCreateTenantMutation,
+  useLazyCheckAdminEmailAvailabilityQuery,
+} from '../../api/organization-service/Tenants/tenants';
 import { tenantDetailsSchema, type TenantDetailsFormValues } from './TenantOnboardingSchema';
 import type { TenantDraft } from './index';
+
+// How long to wait after the operator stops typing before asking the
+// server — same "don't fire on every keystroke" reasoning as any live
+// search box. 409 on submit is still the real enforcement; this is purely
+// an earlier heads-up.
+const EMAIL_CHECK_DEBOUNCE_MS = 400;
 
 // Shape GuestOrganizations/index.tsx hands over via router state when a
 // Super Admin clicks "Approve" on a Book a Demo lead. Deliberately narrow —
@@ -55,6 +65,10 @@ type StepCompanyDetailsProps = {
 const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProps) => {
   const [createTenant, { isLoading }] = useCreateTenantMutation();
   const { data: industries, isLoading: loadingIndustries } = useListIndustriesQuery();
+  const [checkAdminEmailAvailability, { isFetching: isCheckingEmail }] =
+    useLazyCheckAdminEmailAvailabilityQuery();
+  const [emailTakenMessage, setEmailTakenMessage] = useState<string | null>(null);
+  const emailCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const location = useLocation();
   const fromGuestOrg = (location.state as { fromGuestOrg?: GuestOrgPrefill } | null)?.fromGuestOrg;
@@ -81,6 +95,45 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
     });
 
   const { errors, isValid } = formState;
+  const adminEmailValue = watch('adminEmail');
+
+  // Live check: ask the server once the operator pauses typing, but only
+  // once the field is already a syntactically plausible email — no point
+  // checking something the zod schema will reject on its own, and it
+  // avoids firing on every partial keystroke.
+  useEffect(() => {
+    if (emailCheckTimer.current) {
+      clearTimeout(emailCheckTimer.current);
+    }
+
+    if (!adminEmailValue || errors.adminEmail) {
+      setEmailTakenMessage(null);
+      return undefined;
+    }
+
+    emailCheckTimer.current = setTimeout(() => {
+      checkAdminEmailAvailability(adminEmailValue)
+        .unwrap()
+        .then((result) => {
+          setEmailTakenMessage(
+            result.available ? null : 'This email is already registered to another company.'
+          );
+        })
+        .catch(() => {
+          // A failed availability check should never block typing or
+          // submitting — the 409 on actual submit is still the real
+          // enforcement either way, this is only an earlier heads-up.
+          setEmailTakenMessage(null);
+        });
+    }, EMAIL_CHECK_DEBOUNCE_MS);
+
+    return () => {
+      if (emailCheckTimer.current) {
+        clearTimeout(emailCheckTimer.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminEmailValue, errors.adminEmail]);
 
   const onSubmit = async (data: TenantDetailsFormValues) => {
     try {
@@ -194,8 +247,11 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
             }}
             placeholder="founder@acme.com"
             className="bg-white w-full px-4 py-2 mt-1 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-            error={errors.adminEmail?.message}
+            error={errors.adminEmail?.message ?? emailTakenMessage ?? undefined}
           />
+          {isCheckingEmail && !errors.adminEmail && (
+            <p className="text-gray-400 text-xs px-2 py-1">Checking availability…</p>
+          )}
         </div>
 
         <div className="sm:col-span-2">
@@ -262,7 +318,7 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
       <Button
         type="submit"
         appname="create tenant"
-        disabled={!isValid || isLoading}
+        disabled={!isValid || isLoading || Boolean(emailTakenMessage)}
         className="w-full mt-6 text-white bg-[var(--color-primary)] rounded-3xl py-3 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading ? 'Scraping website…' : 'Create Tenant & Scrape Profile'}
