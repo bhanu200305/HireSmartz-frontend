@@ -23,9 +23,12 @@ export const getPlatformErrorBody = (err: unknown): PlatformApiErrorBody | undef
 
 /**
  * Backend error messages are lowercase, log-style, not styled for a toast.
- * Capitalizes, normalizes dashes, and ensures a trailing period.
+ * Capitalizes, normalizes dashes, and ensures a trailing period. Exported so
+ * a service-specific wrapper (e.g. authError.helpers.ts's
+ * `password_policy_violation` handling) can apply the same styling to text
+ * it builds from `details` rather than from `message` directly.
  */
-const toToastCase = (message: string): string => {
+export const toToastCase = (message: string): string => {
   const withoutDashes = message.replace(/\s*[—–]\s*/g, ' - ');
   const capitalized = withoutDashes.charAt(0).toUpperCase() + withoutDashes.slice(1);
   return /[.!?]$/.test(capitalized) ? capitalized : `${capitalized}.`;

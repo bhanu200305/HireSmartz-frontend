@@ -187,7 +187,8 @@ describe('passwordValidation', () => {
   });
 
   it('accepts a password meeting every requirement', () => {
-    expect(schema.safeParse('Valid1!Pass').success).toBe(true);
+    // 12+ characters — matches authentication-service's MIN_PASSWORD_LENGTH.
+    expect(schema.safeParse('Valid1!Password').success).toBe(true);
   });
 });
 

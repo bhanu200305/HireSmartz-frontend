@@ -3,17 +3,18 @@ import { resetPasswordSchema } from '../../../src/components/ResetPassword/Reset
 
 describe('resetPasswordSchema', () => {
   it('accepts matching, strong passwords', () => {
+    // 12+ characters — matches authentication-service's MIN_PASSWORD_LENGTH.
     const result = resetPasswordSchema.safeParse({
-      newPassword: 'NewPass1!',
-      confirmNewPassword: 'NewPass1!',
+      newPassword: 'NewPassword1!',
+      confirmNewPassword: 'NewPassword1!',
     });
     expect(result.success).toBe(true);
   });
 
   it('rejects mismatched passwords', () => {
     const result = resetPasswordSchema.safeParse({
-      newPassword: 'NewPass1!',
-      confirmNewPassword: 'Different1!',
+      newPassword: 'NewPassword1!',
+      confirmNewPassword: 'Different1!Longer',
     });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -33,7 +34,7 @@ describe('resetPasswordSchema', () => {
 
   it('rejects an empty confirmation', () => {
     const result = resetPasswordSchema.safeParse({
-      newPassword: 'NewPass1!',
+      newPassword: 'NewPassword1!',
       confirmNewPassword: '',
     });
     expect(result.success).toBe(false);

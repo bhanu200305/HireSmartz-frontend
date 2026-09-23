@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { passwordSchema } from '../../../src/components/ChangePassword/ChangePasswordSchema';
 
+// 12+ characters — matches authentication-service's MIN_PASSWORD_LENGTH.
 const basePayload = {
-  currentPassword: 'OldPass1!',
-  newPassword: 'NewPass1!',
-  confirmNewPassword: 'NewPass1!',
+  currentPassword: 'OldPassword1!',
+  newPassword: 'NewPassword1!',
+  confirmNewPassword: 'NewPassword1!',
 };
 
 describe('passwordSchema', () => {
@@ -33,7 +34,7 @@ describe('passwordSchema', () => {
   it('rejects a confirmation that does not match the new password', () => {
     const result = passwordSchema(false).safeParse({
       ...basePayload,
-      confirmNewPassword: 'Different1!',
+      confirmNewPassword: 'Different1!Longer',
     });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -46,8 +47,8 @@ describe('passwordSchema', () => {
   it('rejects a new password identical to the current password', () => {
     const result = passwordSchema(false).safeParse({
       ...basePayload,
-      newPassword: 'OldPass1!',
-      confirmNewPassword: 'OldPass1!',
+      newPassword: 'OldPassword1!',
+      confirmNewPassword: 'OldPassword1!',
     });
     expect(result.success).toBe(false);
     if (!result.success) {

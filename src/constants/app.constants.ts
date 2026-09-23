@@ -124,12 +124,22 @@ export const MIN_PHONE_LENGTH = 10;
 export const MAX_PHONE_LENGTH = 15;
 
 /**
- * Minimum password length for security
+ * Minimum password length for security.
+ *
+ * Must match authentication-service's MIN_PASSWORD_LENGTH
+ * (app/modules/auth/domain/services/password_policy.py) — the backend is
+ * the source of truth here. This constant existed before but was unused;
+ * shared/utils/validation/input.helpers.ts's passwordValidation() had its
+ * own hardcoded `8`, which was what actually let a too-short password pass
+ * the frontend and get rejected by the API with a 422 the user had no
+ * warning about. Import this constant rather than re-hardcoding the number
+ * anywhere else this needs to be checked or displayed.
  */
-export const MIN_PASSWORD_LENGTH = 8;
+export const MIN_PASSWORD_LENGTH = 12;
 
 /**
- * Maximum password length
+ * Maximum password length. Matches authentication-service's
+ * MAX_PASSWORD_LENGTH in the same file.
  */
 export const MAX_PASSWORD_LENGTH = 128;
 

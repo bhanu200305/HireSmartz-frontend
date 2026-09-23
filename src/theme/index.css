@@ -98,3 +98,14 @@ input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+/* Edge/IE renders its own built-in show/hide "eye" icon on every
+   type="password" input — a browser feature, not something this app's
+   Input component ever rendered, so there was nothing in our own code to
+   remove it from. It still lets anyone reveal a typed password (e.g. in
+   the Change Password / Reset Password / Accept Invitation forms), which
+   defeats the point of masking it in the first place. */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}

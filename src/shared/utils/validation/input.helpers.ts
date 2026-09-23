@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { NameValidationOptions } from '../../../types';
-import { FORM_EMAIL_REGEX } from '../../../constants/app.constants';
+import {
+  FORM_EMAIL_REGEX,
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+} from '../../../constants/app.constants';
 
 // Phone-number entry is handled per-country by
 // `shared/utils/validation/phoneValidation.ts` (`restrictPhoneDigits` for
@@ -187,12 +191,22 @@ export const passwordValidation = () => {
 
     const requirements = [
       {
-        check: value.length >= 8,
-        message: 'Password must be at least 8 characters.',
+        // MIN_PASSWORD_LENGTH/MAX_PASSWORD_LENGTH (app.constants.ts) must
+        // match authentication-service's MIN_PASSWORD_LENGTH/
+        // MAX_PASSWORD_LENGTH (app/modules/auth/domain/services/
+        // password_policy.py) — the backend is the source of truth. Reading
+        // the constant here, instead of a hardcoded number, is what stops
+        // this check and its message from drifting out of sync with each
+        // other OR with the backend again — that drift (a stale `8` here
+        // while the backend already required 12) is exactly what let a
+        // password pass this form and then get rejected by the API with a
+        // 422 the user had no warning about.
+        check: value.length >= MIN_PASSWORD_LENGTH,
+        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
       },
       {
-        check: value.length <= 128,
-        message: 'Password must be at most 128 characters.',
+        check: value.length <= MAX_PASSWORD_LENGTH,
+        message: `Password must be at most ${MAX_PASSWORD_LENGTH} characters.`,
       },
       {
         check: /[A-Z]/.test(value),
