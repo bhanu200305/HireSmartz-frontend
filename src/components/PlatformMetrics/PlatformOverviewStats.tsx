@@ -21,17 +21,26 @@ import PlatformTenantsListModal from '../Dashboard/PlatformTenantsListModal';
  * slow/unavailable dependency never blocks the rest — same reasoning
  * `PlatformMetrics` already documents for its tile grid.
  *
- * "Total customers" is the one card with a real paginated list behind it
- * today (`GET /v1/platform/tenants`, the same call the "CFP Company" card
- * and the full `/company` page use) — clicking it opens
- * `PlatformTenantsListModal`. The other three stay display-only until their
- * own list endpoints exist (see the KPI backend request list).
+ * "Total customers" and "New customers this month" both have a real
+ * paginated list behind them (`GET /v1/platform/tenants`, the same call the
+ * "CFP Company" card and the full `/company` page use) — clicking either
+ * opens `PlatformTenantsListModal`, the second time with `created_after` set
+ * to the start of the current UTC month, the same boundary
+ * `GetGrowthMetricsUseCase` itself uses to compute the number on the card.
+ * The other two stay display-only until their own list endpoints exist (see
+ * the KPI backend request list).
  */
+const startOfCurrentUtcMonth = (): string => {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+};
+
 const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = ({
   columns = 4,
   tall,
 }) => {
   const [showCustomers, setShowCustomers] = useState(false);
+  const [showNewCustomers, setShowNewCustomers] = useState(false);
   const { data: growth, isLoading: isGrowthLoading } = useGetGrowthMetricsQuery();
   // Monthly Active Users — successful sign-ins, distinct users, 30-day window.
   const { data: logins, isLoading: isLoginsLoading } = useGetLoginMetricsQuery({
@@ -54,6 +63,7 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
       variant: 'green',
       label: 'New customers this month',
       value: isLoading ? undefined : growth?.new_customers_this_month?.toLocaleString(),
+      onClick: () => setShowNewCustomers(true),
     },
     {
       icon: <MdOutlineGroups />,
@@ -81,6 +91,13 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
     <>
       <StatCardRow cards={cards} columns={columns} tall={tall} />
       {showCustomers && <PlatformTenantsListModal onClose={() => setShowCustomers(false)} />}
+      {showNewCustomers && (
+        <PlatformTenantsListModal
+          title="New customers this month"
+          createdAfter={startOfCurrentUtcMonth()}
+          onClose={() => setShowNewCustomers(false)}
+        />
+      )}
     </>
   );
 };

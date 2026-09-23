@@ -43,10 +43,11 @@ const COMING_SOON = 'Coming soon: needs a platform-scoped job-service/candidate-
  * this renders the same content this app already has for it —
  * `MetricsPanel.tsx`'s stat cards and "coming soon" chart grid — as a modal
  * instead, so it opens instantly over the dashboard rather than away from
- * it. Same real-vs-coming-soon split as that panel: Active users and Open
- * jobs come from `GET /v1/platform/tenants/{tenant_id}/dashboard`, which is
- * real; everything below it needs a cross-tenant job-service/candidate-
- * service read no platform-scoped endpoint exists for yet.
+ * it. Same real-vs-coming-soon split as that panel: Active users, Open
+ * jobs, Total applications and Completed interviews all come from
+ * `GET /v1/platform/tenants/{tenant_id}/dashboard`, which is real; the chart
+ * grid below still needs a cross-tenant read no platform-scoped endpoint
+ * exists for yet.
  */
 const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: () => void }> = ({
   tenant,
@@ -71,15 +72,13 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
       icon: <MdOutlineDescription />,
       variant: 'green',
       label: 'Total applications',
-      value: null,
-      footer: <p className="text-[11px] text-neutral-400">{COMING_SOON}</p>,
+      value: isLoading ? undefined : (data?.total_applications?.toLocaleString() ?? null),
     },
     {
       icon: <MdOutlineEventAvailable />,
       variant: 'orange',
       label: 'Completed interviews',
-      value: null,
-      footer: <p className="text-[11px] text-neutral-400">{COMING_SOON}</p>,
+      value: isLoading ? undefined : (data?.completed_interviews?.toLocaleString() ?? null),
     },
   ];
 
