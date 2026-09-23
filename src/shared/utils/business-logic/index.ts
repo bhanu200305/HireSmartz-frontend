@@ -209,6 +209,36 @@ const isLikelyAiJdHeading = (line: string): boolean => {
   return capitalizedWords.length / words.length >= 0.7;
 };
 
+// A heading for a section the AI sometimes leaks into the JD text itself
+// (duplicating the separate suggested_skills/vacancies fields) — e.g. a
+// raw skills JSON array dumped straight into the rendered description.
+const AI_JD_LEAKED_SECTION_HEADING_RE =
+  /^(?:#{1,6}\s*|\*\*)\s*(?:suggested\s+skills|required\s+skills|optional\s+skills|vacancies|number\s+of\s+openings)\s*:?\s*\*{0,2}\s*$/i;
+
+const isAnyAiJdHeadingLine = (line: string): boolean =>
+  AI_JD_MARKDOWN_HEADING_RE.test(line) ||
+  AI_JD_WHOLE_LINE_BOLD_RE.test(line) ||
+  isLikelyAiJdHeading(line);
+
+/** Drops a leaked section (heading + everything up to the next heading)
+ * before the rest of this formatter can reformat it into real-looking prose. */
+const stripLeakedAiJdSections = (text: string): string => {
+  let skipping = false;
+  const kept = text.split('\n').filter((rawLine) => {
+    const line = rawLine.trim();
+    if (AI_JD_LEAKED_SECTION_HEADING_RE.test(line)) {
+      skipping = true;
+      return false;
+    }
+    if (skipping) {
+      if (line === '' || !isAnyAiJdHeadingLine(line)) return false;
+      skipping = false;
+    }
+    return true;
+  });
+  return kept.join('\n');
+};
+
 /**
  * Formats a job description's raw text into markdown, for both AI-authored
  * text (job.jd.generate/enhance — usually already fairly clean, sometimes
@@ -229,9 +259,11 @@ const isLikelyAiJdHeading = (line: string): boolean => {
 export const formatAiJobDescription = (text: string): string => {
   if (!text || typeof text !== 'string') return '';
 
+  const withoutLeakedSections = stripLeakedAiJdSections(text);
+
   // Strip whitespace right inside "**" pairs — CommonMark won't render bold
   // otherwise (e.g. "**Position Overview: **" stays literal).
-  let normalizedText = text.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
+  let normalizedText = withoutLeakedSections.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
 
   // A closing "**" glued to the next word can fail to render as bold —
   // space out every second "**" (the closing one) when it's glued.
@@ -390,6 +422,15 @@ export const formatAiJobDescription = (text: string): string => {
 
   return result;
 };
+
+/** Backend quality-gate messages ("model used **bold** on...") always start
+ * with "model " — internal wording, not something a recruiter can act on. */
+const AI_JD_INTERNAL_ERROR_MESSAGE_RE = /^model\s/i;
+
+export const jdGenerationFailureMessage = (errorMessage: string | null | undefined): string =>
+  errorMessage && !AI_JD_INTERNAL_ERROR_MESSAGE_RE.test(errorMessage)
+    ? errorMessage
+    : 'Something went wrong while generating the job description. Please try again.';
 
 export const formatMarkdownResponse = (response: string) => {
   return response

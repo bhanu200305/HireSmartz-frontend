@@ -18,7 +18,10 @@ import { updateEditJobDetails } from '../../../redux/slices/editJobOpeningSlice'
 import { RootState } from '../../../redux/provider/store';
 import TurndownService from 'turndown';
 import { RichTextEditor } from '../../shared/ui/RichTextEditor';
-import { formatAiJobDescription } from '../../../shared/utils/business-logic';
+import {
+  formatAiJobDescription,
+  jdGenerationFailureMessage,
+} from '../../../shared/utils/business-logic';
 import { diffAiOwnedFields, mergeNewAiSkills } from '../../../shared/utils/jdSync';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { makeFirstLetterUpperCase } from '../../../shared/utils/methods';
@@ -119,7 +122,7 @@ const JobDescriptionPanel = ({
     } else if (currentStatus === 'FAILED' && failedToastShownForJobRef.current !== jobOpeningId) {
       failedToastShownForJobRef.current = jobOpeningId;
       showToast({
-        message: jdStatus?.error_message || 'Failed to generate the job description.',
+        message: jdGenerationFailureMessage(jdStatus?.error_message),
         type: 'error',
       });
     }
