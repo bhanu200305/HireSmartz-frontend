@@ -111,7 +111,7 @@ const RecordingConsentScreen = ({ onAgree }: { onAgree: () => void }) => {
         type="button"
         disabled={isLoading || !token || isExpiredLink}
         onClick={() => void handleAgree()}
-        className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-neutral-950 disabled:opacity-50"
+        className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-neutral-950 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         {isLoading ? 'Please wait…' : 'I agree, continue to my interview'}
       </button>

@@ -147,7 +147,7 @@ const DashboardCarousel = ({ slides, initialIndex = 0, className }: DashboardCar
           aria-label="Previous slide"
           onClick={goPrev}
           disabled={activeIndex === 0}
-          className={clsx(arrowButtonClass, 'left-1 sm:left-2')}
+          className={clsx(arrowButtonClass, 'left-1 sm:left-2', 'cursor-pointer')}
         >
           <LeftOutlined />
         </button>
@@ -157,7 +157,7 @@ const DashboardCarousel = ({ slides, initialIndex = 0, className }: DashboardCar
           aria-label="Next slide"
           onClick={goNext}
           disabled={activeIndex === count - 1}
-          className={clsx(arrowButtonClass, 'right-1 sm:right-2')}
+          className={clsx(arrowButtonClass, 'right-1 sm:right-2', 'cursor-pointer')}
         >
           <RightOutlined />
         </button>

@@ -51,7 +51,7 @@ export const CareersApplySuccessPage = () => {
           <button
             type="button"
             onClick={() => navigate(`/careers/${organizationId}`)}
-            className="rounded-full border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="rounded-full border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
           >
             Browse more roles
           </button>

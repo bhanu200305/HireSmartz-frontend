@@ -202,7 +202,7 @@ const ViewOrgUser = () => {
                       aria-label={`Detach ${office.city}, ${office.address_line_1}`}
                       disabled={isDetaching}
                       onClick={() => handleDetachLocation(office.office_id)}
-                      className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50"
+                      className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                       <MdClose size={14} />
                     </button>

@@ -236,8 +236,16 @@ const Sidebar: React.FC<SidebarProps> = ({
         </p>
       )}
 
-      {/* Nav items */}
-      <nav className="flex-1 px-3 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
+      {/* Nav items — overflow-y-auto so a short browser window (or a role
+          with a long menu) scrolls the item list internally rather than
+          pushing the "Welcome"/role footer below off-screen. Left at the
+          browser's own scrollbar by default, that's a big, unstyled native
+          scrollbar with arrow buttons sitting right at the sidebar/content
+          boundary — jarring against everything else in the app, which
+          already gets the same `.thin-scrollbar` treatment (index.css) for
+          exactly this failure mode elsewhere (see AntdCommonModal bodies,
+          Company Settings' tab strips). */}
+      <nav className="thin-scrollbar flex-1 px-3 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
         {accessibleMenuItems.map((item) => {
           const isActive = isItemActive(item.path);
           // Display-only relabel, this item's underlying `name` (used above

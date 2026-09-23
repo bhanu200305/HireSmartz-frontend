@@ -487,7 +487,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               <button
                 type="button"
                 aria-label="Resend invitation"
-                className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50"
+                className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 disabled={isResendingInvite}
                 onClick={() => handleResendInvite(row.invitation_id)}
               >
@@ -496,7 +496,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               <button
                 type="button"
                 aria-label="Revoke invitation"
-                className="p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                className="p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 disabled={isRevokingInvite}
                 onClick={() => handleRevokeInvite(row.invitation_id)}
               >
@@ -518,7 +518,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           <button
             type="button"
             aria-label="Reactivate user"
-            className="p-2 hover:bg-green-50 rounded-full cursor-pointer transition-colors disabled:opacity-50"
+            className="p-2 hover:bg-green-50 rounded-full disabled:cursor-not-allowed cursor-pointer transition-colors disabled:opacity-50"
             disabled={isReactivating}
             onClick={() => handleReactivate(row)}
           >

@@ -38,9 +38,9 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
 }) => {
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
   const [showJobOpenings, setShowJobOpenings] = useState(false);
-  const [activeDetail, setActiveDetail] = useState<
-    'applications' | 'interviews' | 'team' | null
-  >(null);
+  const [activeDetail, setActiveDetail] = useState<'applications' | 'interviews' | 'team' | null>(
+    null
+  );
 
   // Each card needs its OWN permission check, resolved against whichever
   // location is currently active (see useEffectivePermissions) — the four

@@ -30,7 +30,12 @@ export type TenantDetailsFormValues = z.infer<typeof tenantDetailsSchema>;
 
 export const tenantProfileSchema = z.object({
   name: z.string().nonempty('Company name is required.'),
-  description: z.string().max(600, 'Keep the description under 600 characters.').optional(),
+  // Matches ai-service's own hard cap on the scraped description
+  // (_MAX_DESCRIPTION_CHARS in scrape_organization_website.py) — this used
+  // to be stricter (600) than what the backend could actually hand back
+  // (up to 1000), which meant a perfectly valid AI-scraped description
+  // could get rejected here just for being confirmed as-is.
+  description: z.string().max(1000, 'Keep the description under 1000 characters.').optional(),
   logoUrl: z.string().optional().or(z.literal('')),
   colors: z.array(z.string()).optional().default([]),
 });

@@ -96,7 +96,7 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
               <span className="flex-1 text-xs text-gray-600 truncate">{publicUrl}</span>
               <button
                 onClick={handleCopyLink}
-                className="shrink-0 text-gray-500 hover:text-gray-800 transition-colors"
+                className="shrink-0 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
                 aria-label="Copy link"
               >
                 {copied ? <CheckOutlined className="text-green-500" /> : <CopyOutlined />}

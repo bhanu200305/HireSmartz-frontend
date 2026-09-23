@@ -49,6 +49,7 @@ import {
 } from '../../constants/file.constants';
 import { get } from 'lodash-es';
 import { Loader } from '../shared/ui/loader';
+import ProfilePictureCropModal from './ProfilePictureCropModal';
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -115,6 +116,14 @@ const UserProfile = () => {
   const [imageChanged, setImageChanged] = useState(false);
   const [isProfileDeleted, setIsProfileDeleted] = useState(false);
   const uploadRef = React.useRef<any>(null);
+
+  // The crop step sits between "file picked" and "uploaded" — cropSrc/
+  // pendingFileMeta hold the freshly-picked file just long enough for the
+  // modal to produce a cropped blob; nothing here survives past confirm/
+  // cancel, so it doesn't need to be part of the form state.
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState('');
+  const [pendingFileName, setPendingFileName] = useState('');
   const {
     trigger,
     control,
@@ -237,23 +246,43 @@ const UserProfile = () => {
       });
     }
   };
-  const handleFileUpload = async (file: File) => {
+  // Picking a file no longer uploads it straight away — it opens the crop
+  // modal first (handleCropConfirm below does the actual upload once the
+  // user applies their adjustment), so this only ever needs to validate and
+  // hand off to that modal. Always returns LIST_IGNORE: antd's own upload
+  // list/behavior is never used, cropping owns the rest of the flow.
+  const handleFileUpload = (file: File) => {
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      showToast({ message: LOGO_FILE_TYPE_ERROR_MESSAGE, type: 'error' });
+      return Upload.LIST_IGNORE;
+    }
+
+    if (file.size > MAX_LOGO_FILE_SIZE_BYTES) {
+      showToast({ message: LOGO_FILE_SIZE_ERROR_MESSAGE, type: 'error' });
+      return Upload.LIST_IGNORE;
+    }
+
+    setCropImageSrc(URL.createObjectURL(file));
+    setPendingFileName(file.name);
+    setIsCropModalOpen(true);
+    return Upload.LIST_IGNORE;
+  };
+
+  const handleCropCancel = () => {
+    if (cropImageSrc) URL.revokeObjectURL(cropImageSrc);
+    setCropImageSrc('');
+    setPendingFileName('');
+    setIsCropModalOpen(false);
+  };
+
+  const handleCropConfirm = async (croppedBlob: Blob) => {
+    const croppedFile = new File([croppedBlob], pendingFileName || 'profile-picture.jpg', {
+      type: croppedBlob.type,
+    });
+    const previewURL = URL.createObjectURL(croppedFile);
+    setImagePreview(previewURL);
+
     try {
-      // Validate file type
-      if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
-        showToast({ message: LOGO_FILE_TYPE_ERROR_MESSAGE, type: 'error' });
-        return Upload.LIST_IGNORE;
-      }
-
-      // Validate file size (must not exceed 5 MB)
-      if (file.size > MAX_LOGO_FILE_SIZE_BYTES) {
-        showToast({ message: LOGO_FILE_SIZE_ERROR_MESSAGE, type: 'error' });
-        return Upload.LIST_IGNORE;
-      }
-
-      const previewURL = URL.createObjectURL(file);
-      setImagePreview(previewURL);
-
       // Uploaded immediately (not deferred to Save, unlike every other
       // field on this form) so the storage_key exists before the PATCH
       // below needs it — organization-service has no single
@@ -263,9 +292,9 @@ const UserProfile = () => {
       // the resulting `avatar` field actually lands on the profile once
       // "Update user" is pressed, same "Save changes to apply" contract the
       // rest of this form already promises.
-      const { storage_key } = await uploadAvatar(file).unwrap();
+      const { storage_key } = await uploadAvatar(croppedFile).unwrap();
       setValue('profilePicture', storage_key);
-      setValue('profilePictureType', file.name);
+      setValue('profilePictureType', croppedFile.name);
       setImageChanged(true);
       setIsProfileDeleted(false);
 
@@ -279,8 +308,12 @@ const UserProfile = () => {
         message: get(error, 'data.message', 'Error uploading image.'),
         type: 'error',
       });
+    } finally {
+      if (cropImageSrc) URL.revokeObjectURL(cropImageSrc);
+      setCropImageSrc('');
+      setPendingFileName('');
+      setIsCropModalOpen(false);
     }
-    return false;
   };
 
   // const { data: countries, loading: loadingCountries } = useLocationDropdown(
@@ -368,8 +401,7 @@ const UserProfile = () => {
   };
 
   const displayName = [watch('firstName'), watch('lastName')].filter(Boolean).join(' ');
-  const roleLabel =
-    watch('roleName') || (isPlatformCaller ? 'Platform Admin' : 'Team Member');
+  const roleLabel = watch('roleName') || (isPlatformCaller ? 'Platform Admin' : 'Team Member');
 
   return (
     <>
@@ -452,7 +484,7 @@ const UserProfile = () => {
                             className="hidden"
                             accept="image/png, image/jpeg, image/jpg"
                           >
-                            <button ref={uploadRef} className="hidden"></button>
+                            <button ref={uploadRef} className="hidden cursor-pointer"></button>
                           </Upload>
                           <div
                             className={`absolute inset-0 flex items-center justify-center gap-3 bg-[var(--gray-900)]/45 backdrop-blur-[1px] transition-opacity duration-200 ${
@@ -858,6 +890,13 @@ const UserProfile = () => {
           </div>
         </div>
       </MainLayout>
+      <ProfilePictureCropModal
+        open={isCropModalOpen}
+        imageSrc={cropImageSrc}
+        onCancel={handleCropCancel}
+        onConfirm={handleCropConfirm}
+        isSaving={isUploadingAvatar}
+      />
     </>
   );
 };

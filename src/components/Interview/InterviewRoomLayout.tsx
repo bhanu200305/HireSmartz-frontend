@@ -254,7 +254,7 @@ const InterviewRoomLayoutInner = () => {
             setIsChatOpen((v) => !v);
             setIsSettingsOpen(false);
           }}
-          className="relative rounded-full border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
+          className="relative rounded-full border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 cursor-pointer"
           aria-pressed={isChatOpen}
         >
           <MdChatBubbleOutline size={18} />
@@ -270,7 +270,7 @@ const InterviewRoomLayoutInner = () => {
             setIsSettingsOpen((v) => !v);
             setIsChatOpen(false);
           }}
-          className="rounded-full border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
+          className="rounded-full border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 cursor-pointer"
           aria-pressed={isSettingsOpen}
           aria-label="Settings"
         >

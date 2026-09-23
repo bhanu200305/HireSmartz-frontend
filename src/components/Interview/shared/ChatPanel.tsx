@@ -41,7 +41,7 @@ export const ChatPanel = ({ open, onClose, className, embedded = false }: ChatPa
           type="button"
           onClick={onClose}
           aria-label="Close chat"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white cursor-pointer"
         >
           <MdClose size={18} />
         </button>

@@ -155,7 +155,7 @@ export const CareersIntakeCallSchedulePage = () => {
             <button
               type="button"
               onClick={() => navigate(`/careers/${organizationId}`)}
-              className="mt-8 rounded-full border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="mt-8 rounded-full border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
             >
               Browse more roles
             </button>
@@ -292,7 +292,7 @@ export const CareersIntakeCallSchedulePage = () => {
                       type="button"
                       onClick={() => void handleBook()}
                       disabled={isBooking}
-                      className="w-full py-3 rounded-full bg-(--primary) text-white font-semibold text-sm hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                      className="w-full py-3 rounded-full bg-(--primary) text-white font-semibold text-sm hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {isBooking ? <Loader /> : 'Confirm Call'}
                     </button>
@@ -302,7 +302,7 @@ export const CareersIntakeCallSchedulePage = () => {
                         setSelectedSlot(null);
                         setBookingError(null);
                       }}
-                      className="w-full py-3 rounded-full border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition"
+                      className="w-full py-3 rounded-full border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition cursor-pointer"
                     >
                       Back
                     </button>

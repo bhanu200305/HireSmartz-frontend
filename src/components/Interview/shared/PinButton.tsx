@@ -21,7 +21,7 @@ export const PinButton = ({ pinned, onClick, className }: PinButtonProps) => (
     aria-pressed={pinned}
     aria-label={pinned ? 'Unpin this tile' : 'Pin this tile'}
     title={pinned ? 'Unpin' : 'Pin'}
-    className={`pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border text-xs transition-colors ${
+    className={`pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border text-xs transition-colors cursor-pointer ${
       pinned
         ? 'border-primary-400 bg-primary-500/90 text-white'
         : 'border-white/20 bg-black/50 text-white/80 hover:bg-black/70'

@@ -16,6 +16,7 @@ import {
 } from '../../api/authentication-service/Mfa/management';
 import type { MfaMethodType } from '../../api/authentication-service/Login/login';
 import { getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
+import { maskDeliveryHint } from '../../shared/utils/formatting/maskDeliveryHint';
 
 const METHOD_LABELS: Record<MfaMethodType, string> = {
   totp: 'Authenticator app',
@@ -105,8 +106,9 @@ const ConfirmEnrolment = ({
         </>
       ) : (
         <p className="text-sm text-gray-600">
-          A code was sent{enrolment.delivery_hint ? ` to ${enrolment.delivery_hint}` : ''}. Enter it
-          below to finish.
+          A code was sent
+          {enrolment.delivery_hint ? ` to ${maskDeliveryHint(enrolment.delivery_hint)}` : ''}. Enter
+          it below to finish.
         </p>
       )}
 
@@ -192,7 +194,7 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
         <div>
           <p className="font-medium text-gray-900">{METHOD_LABELS[method.method_type]}</p>
           {method.masked_destination && (
-            <p className="text-xs text-gray-500">{method.masked_destination}</p>
+            <p className="text-xs text-gray-500">{maskDeliveryHint(method.masked_destination)}</p>
           )}
         </div>
         <div className="flex items-center gap-2">

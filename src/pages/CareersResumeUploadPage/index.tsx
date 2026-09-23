@@ -207,7 +207,7 @@ export const CareersResumeUploadPage = () => {
                         setResume(null);
                         setFileError(null);
                       }}
-                      className="text-gray-400 hover:text-red-400 transition-colors shrink-0"
+                      className="text-gray-400 hover:text-red-400 transition-colors shrink-0 cursor-pointer"
                       aria-label="Remove file"
                     >
                       <DeleteOutlined />
@@ -249,7 +249,7 @@ export const CareersResumeUploadPage = () => {
                 type="button"
                 onClick={() => void handleSubmit()}
                 disabled={isSubmitting || !recaptchaSiteKey}
-                className="w-full bg-black text-white font-bold tracking-widest text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all disabled:opacity-60"
+                className="w-full bg-black text-white font-bold tracking-widest text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isSubmitting ? 'SUBMITTING…' : 'SUBMIT RESUME'}
               </button>

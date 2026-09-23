@@ -65,6 +65,10 @@ export type UpdatePlatformEntitlementsArgs = {
   locked_flags?: string[];
 };
 
+export type DeleteTenantResponse = {
+  status: 'deleted' | string;
+};
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     listPlatformTenants: build.query<ListPlatformTenantsResponse, ListPlatformTenantsArgs | void>({
@@ -109,6 +113,17 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'PlatformTenants', id: tenantId },
       ],
     }),
+    // DRAFT-only, enforced server-side (409 TENANT_NOT_DELETABLE otherwise)
+    // — see organization-service's DeleteTenantUseCase. Soft delete, so the
+    // row just stops appearing in the list below, same as any other status
+    // filter would already hide it.
+    deleteTenant: build.mutation<DeleteTenantResponse, { tenantId: string }>({
+      query: ({ tenantId }) => ({
+        url: `/v1/platform/tenants/${tenantId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['PlatformTenants'],
+    }),
   }),
 });
 
@@ -118,4 +133,5 @@ export const {
   useGetPlatformTenantDashboardQuery,
   useGetPlatformTenantEntitlementsQuery,
   useUpdatePlatformTenantEntitlementsMutation,
+  useDeleteTenantMutation,
 } = extendedApi;

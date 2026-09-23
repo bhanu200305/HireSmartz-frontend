@@ -240,7 +240,7 @@ const InterviewSmsPanel = ({
         <button
           type="button"
           onClick={onClose}
-          className="ml-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-700 hover:bg-gray-200"
+          className="ml-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-700 hover:bg-gray-200 cursor-pointer"
           aria-label="Close SMS panel"
         >
           <IoClose size={20} />

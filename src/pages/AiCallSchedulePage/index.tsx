@@ -707,7 +707,7 @@ const AiCallSchedulePage = () => {
                   <button
                     onClick={handleBookSlot}
                     disabled={isBooking}
-                    className="w-full py-3 rounded-full bg-(--primary) text-white font-semibold text-sm hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-full bg-(--primary) text-white font-semibold text-sm hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {isBooking ? <Loader /> : t.confirmButton}
                   </button>
@@ -716,7 +716,7 @@ const AiCallSchedulePage = () => {
                       setSelectedSlot(null);
                       setBookingError(null);
                     }}
-                    className="w-full py-3 rounded-full border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition"
+                    className="w-full py-3 rounded-full border border-gray-200 text-gray-600 text-sm hover:bg-gray-50 transition cursor-pointer"
                   >
                     {t.back}
                   </button>
@@ -762,7 +762,7 @@ const AiCallSchedulePage = () => {
                     <button
                       onClick={handleCallNow}
                       disabled={callNowState.isLoading}
-                      className="w-full py-2.5 rounded-full border border-(--primary) text-(--primary) text-sm font-semibold hover:bg-(--primary)/5 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                      className="w-full py-2.5 rounded-full border border-(--primary) text-(--primary) text-sm font-semibold hover:bg-(--primary)/5 transition disabled:opacity-60 flex items-center justify-center gap-2 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {callNowState.isLoading ? t.callNowConfirm : t.callNowButton}
                     </button>
@@ -782,7 +782,7 @@ const AiCallSchedulePage = () => {
                 setTzDropdownOpen((o) => !o);
                 setLangDropdownOpen(false);
               }}
-              className="flex items-center gap-1 hover:text-gray-700 transition"
+              className="flex items-center gap-1 hover:text-gray-700 transition cursor-pointer"
             >
               <span></span>
               <span className="max-w-36 truncate">{selectedTzLabel}</span>
@@ -828,7 +828,9 @@ const AiCallSchedulePage = () => {
                         onClick={() => handleTimezoneSelect(tz.id)}
                         className={clsx(
                           'w-full flex items-center justify-between px-4 py-2.5 text-xs hover:bg-gray-50 transition text-left',
-                          tz.id === selectedTimezone && 'bg-brand-50 text-(--primary) font-semibold'
+                          tz.id === selectedTimezone &&
+                            'bg-brand-50 text-(--primary) font-semibold',
+                          'cursor-pointer'
                         )}
                       >
                         <span>{tz.label}</span>
@@ -848,7 +850,7 @@ const AiCallSchedulePage = () => {
                 setLangDropdownOpen((o) => !o);
                 setTzDropdownOpen(false);
               }}
-              className="flex items-center gap-1 hover:text-gray-700 transition"
+              className="flex items-center gap-1 hover:text-gray-700 transition cursor-pointer"
             >
               <span>あa</span>
               <span>{lang === 'en' ? t.english : t.espanol}</span>
@@ -868,7 +870,8 @@ const AiCallSchedulePage = () => {
                     }}
                     className={clsx(
                       'w-full px-4 py-2.5 text-xs text-left hover:bg-gray-50 transition',
-                      lang === opt.value && 'bg-brand-50 text-(--primary) font-semibold'
+                      lang === opt.value && 'bg-brand-50 text-(--primary) font-semibold',
+                      'cursor-pointer'
                     )}
                   >
                     {opt.label}

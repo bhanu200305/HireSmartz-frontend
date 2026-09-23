@@ -46,7 +46,8 @@ export function NotesPillTrigger({
         pillBase,
         'gap-2',
         size === 'compact' ? 'px-2.5 py-1 text-xs' : 'px-4 py-2 text-sm',
-        className
+        className,
+        'cursor-pointer'
       )}
     >
       <LuSquarePen size={iconSize} strokeWidth={2} className="shrink-0" aria-hidden />
@@ -98,7 +99,7 @@ export function NotesIconPillTrigger({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={clsx(pillBase, 'items-center justify-center', dim, className)}
+      className={clsx(pillBase, 'items-center justify-center', dim, className, 'cursor-pointer')}
       aria-label={tooltip}
     >
       <LuSquarePen size={iconSz} strokeWidth={2} />

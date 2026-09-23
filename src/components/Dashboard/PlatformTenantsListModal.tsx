@@ -90,7 +90,7 @@ const PlatformTenantsListModal: React.FC<{ onClose: () => void }> = ({ onClose }
           <Select
             size="small"
             value={pageSize}
-            className="w-20"
+            className="w-24"
             options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
             onChange={(size) => {
               setPageSize(size);

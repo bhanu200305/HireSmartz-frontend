@@ -2186,7 +2186,7 @@ const JobDetails = () => {
                           <button
                             type="button"
                             aria-label="View company culture information"
-                            className="inline-flex items-center justify-center text-gray-500 hover:text-[var(--color-primary)]"
+                            className="inline-flex items-center justify-center text-gray-500 hover:text-[var(--color-primary)] cursor-pointer"
                           >
                             <InfoCircleOutlined />
                           </button>
@@ -2397,7 +2397,7 @@ const JobDetails = () => {
                                       shouldValidate: true,
                                     });
                                   }}
-                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
+                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
                                 >
                                   ×
                                 </button>
@@ -2467,7 +2467,7 @@ const JobDetails = () => {
                                       shouldValidate: true,
                                     });
                                   }}
-                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
+                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
                                 >
                                   ×
                                 </button>
@@ -2903,7 +2903,7 @@ const JobDetails = () => {
                                       shouldValidate: true,
                                     });
                                   }}
-                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
+                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
                                 >
                                   ×
                                 </button>
@@ -2985,7 +2985,7 @@ const JobDetails = () => {
                                       shouldValidate: true,
                                     });
                                   }}
-                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full"
+                                  className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
                                 >
                                   ×
                                 </button>

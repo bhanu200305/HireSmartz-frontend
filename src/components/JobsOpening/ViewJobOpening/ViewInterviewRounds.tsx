@@ -53,7 +53,10 @@ const ViewInterviewRound = () => {
                   </div>
 
                   <div className="flex items-center space-x-4 shrink-0">
-                    <button onClick={() => toggleRound(round.id.toString())}>
+                    <button
+                      className="cursor-pointer"
+                      onClick={() => toggleRound(round.id.toString())}
+                    >
                       {collapsedRounds.includes(round.id.toString()) ? (
                         <HiOutlinePlus className="cursor-pointer" />
                       ) : (

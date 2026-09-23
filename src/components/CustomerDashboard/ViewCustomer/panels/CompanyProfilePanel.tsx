@@ -231,7 +231,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 className="hidden"
                 accept="image/png, image/jpeg"
               >
-                <button ref={logoUploadRef} className="hidden"></button>
+                <button ref={logoUploadRef} className="hidden cursor-pointer"></button>
               </Upload>
             )}
             {isEditMode && isLogoHovered && !isUploadingLogo && (

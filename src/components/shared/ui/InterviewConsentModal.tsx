@@ -69,7 +69,7 @@ const InterviewConsentModal = ({
           <button
             type="button"
             onClick={onCancel}
-            className="min-w-30 rounded-lg border border-[#B8BDC4] bg-[#F2F2F2] px-5 py-2.5 text-xs font-semibold text-[#2D2D2D] transition hover:bg-[#E8EAED]"
+            className="min-w-30 rounded-lg border border-[#B8BDC4] bg-[#F2F2F2] px-5 py-2.5 text-xs font-semibold text-[#2D2D2D] transition hover:bg-[#E8EAED] cursor-pointer"
           >
             {cancelText}
           </button>

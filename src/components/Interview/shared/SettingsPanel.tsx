@@ -61,7 +61,7 @@ export const SettingsPanel = ({
           type="button"
           onClick={onClose}
           aria-label="Close settings"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white cursor-pointer"
         >
           <MdClose size={18} />
         </button>

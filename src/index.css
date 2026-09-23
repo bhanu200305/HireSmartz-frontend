@@ -552,12 +552,27 @@ select:focus {
    Same fix `.view-candidate-tabs` above already established for this exact
    AntD failure mode: turn AntD's own JS-driven overflow system off
    (nav-operations hidden, nav-list's transform neutralized — otherwise its
-   translateX fights a native scroll on the same element) and let
-   `nav-wrap` — the actual fixed-width viewport box, `nav-list` is just its
-   full-width content — scroll natively instead. Unlike that block this
-   keeps the ink-bar/active-tab underline (no `display:none` on it), since
-   these tab bars use the app-wide underline treatment right below, not
-   `.view-candidate-tabs`'s own bottom-border style. */
+   translateX fights a native scroll on the same element) and scroll
+   natively instead. Unlike that block this keeps the ink-bar/active-tab
+   underline (no `display:none` on it), since these tab bars use the
+   app-wide underline treatment right below, not `.view-candidate-tabs`'s
+   own bottom-border style.
+
+   The native scroll lives on `nav` itself, NOT on `nav-wrap` (rc-tabs'
+   normal scroll viewport) — confirmed in rc-tabs' own source
+   (TabNavList/index.js): every tab's onFocus handler — which fires on a
+   plain mouse click, focus follows click by default — unconditionally runs
+   `tabsWrapperRef.current.scrollLeft = 0` on that exact nav-wrap node,
+   deliberately undoing the browser's native scroll-into-view-on-focus
+   because rc-tabs normally positions tabs via nav-list's `transform`
+   instead of real scrolling. We rely on real scrolling here (translateX is
+   neutralized above), so that reset was fighting our own scroll on every
+   single click — reported as: click a tab that's off to the right, the row
+   snaps back to the start and the click doesn't register as a tab change.
+   `nav` is never touched by that handler, so scrolling there instead is
+   immune to it; `nav-wrap` is set back to `visible` so it stops clipping
+   nav-list's now-unbounded content, letting the overflow (and the scroll
+   fix) surface one level up instead. */
 .many-tabs .ant-tabs-nav-operations {
   display: none !important;
 }
@@ -565,8 +580,23 @@ select:focus {
   transform: none !important;
 }
 .many-tabs .ant-tabs-nav-wrap {
+  overflow: visible !important;
+}
+.many-tabs .ant-tabs-nav {
   overflow-x: auto !important;
   scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+  padding-bottom: 6px;
+}
+.many-tabs .ant-tabs-nav::-webkit-scrollbar {
+  height: 4px;
+}
+.many-tabs .ant-tabs-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.many-tabs .ant-tabs-nav::-webkit-scrollbar-thumb {
+  background-color: var(--gray-300);
+  border-radius: 999px;
 }
 .many-tabs .ant-tabs-tab-btn {
   white-space: nowrap !important;
