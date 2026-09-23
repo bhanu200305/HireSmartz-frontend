@@ -678,7 +678,8 @@ export const Routes: RouteType[] = [
           },
           {
             name: 'editInterviewRound',
-            path: 'edit-interview-round/:id',
+            // :roundId, not :id — avoids shadowing the parent job id param.
+            path: 'edit-interview-round/:roundId',
             component: UpdateInterviewRoundPage,
           },
         ],
