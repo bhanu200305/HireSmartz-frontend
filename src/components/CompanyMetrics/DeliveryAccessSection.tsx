@@ -40,8 +40,8 @@ const DeliveryAccessSection: React.FC = () => {
         available={Boolean(suppressed?.addresses.length)}
         unavailableLabel="No bounced or suppressed addresses."
       >
-        <div className="max-h-[190px] overflow-y-auto">
-          <table className="w-full text-left text-sm">
+        <div className="max-h-[190px] overflow-y-auto overflow-x-auto">
+          <table className="w-full min-w-[420px] text-left text-sm">
             <thead className="sticky top-0 bg-white">
               <tr className="text-neutral-400">
                 <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Email</th>
@@ -70,8 +70,8 @@ const DeliveryAccessSection: React.FC = () => {
         available={Boolean(offboarded?.members.length)}
         unavailableLabel="No recent offboarding."
       >
-        <div className="max-h-[190px] overflow-y-auto">
-          <table className="w-full text-left text-sm">
+        <div className="max-h-[190px] overflow-y-auto overflow-x-auto">
+          <table className="w-full min-w-[420px] text-left text-sm">
             <thead className="sticky top-0 bg-white">
               <tr className="text-neutral-400">
                 <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Member</th>

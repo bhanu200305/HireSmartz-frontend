@@ -16,6 +16,8 @@ import {
   useGetCompletedInterviewsQuery,
 } from '../../api/candidate-service/Stats/stats';
 import JobOpeningsListModal from './JobOpeningsListModal';
+import CandidatesListModal from '../shared/ui/CandidatesListModal';
+import TeamMembersListModal from '../shared/ui/TeamMembersListModal';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 
@@ -25,12 +27,15 @@ import { Authorities } from '../../constants/authorities.constant';
  * pattern as the Super Admin's `PlatformOverviewStats`: one query per card,
  * so a slow job-service or candidate-service call never blocks the others.
  *
- * "Active job openings" is the one card with a real list behind it today
- * (`GET /job-openings?status=published`, already paginated server-side) —
- * clicking it opens `JobOpeningsListModal`. The other three don't have a
- * paginated list endpoint yet, so they open `StatDetailModal` instead — the
- * number plus what it counts, with a real hyperlink through to the closest
- * existing full-list page.
+ * Three of the four cards have a real paginated list behind them:
+ * "Active job openings" (`JobOpeningsListModal`), "Total applications"
+ * (`CandidatesListModal`), "Active team members" (`TeamMembersListModal`) —
+ * all open in place instead of navigating away. "Completed interviews"
+ * still doesn't have a paginated list endpoint anywhere on the backend
+ * (candidate-service's `completed-interviews` is aggregate-only, and
+ * interview-service has no cross-tenant/list capability at all today), so
+ * it stays on `StatDetailModal` — the number plus what it counts — until
+ * one exists.
  */
 const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = ({
   columns = 4,
@@ -38,9 +43,9 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
 }) => {
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
   const [showJobOpenings, setShowJobOpenings] = useState(false);
-  const [activeDetail, setActiveDetail] = useState<'applications' | 'interviews' | 'team' | null>(
-    null
-  );
+  const [showApplications, setShowApplications] = useState(false);
+  const [showTeamMembers, setShowTeamMembers] = useState(false);
+  const [activeDetail, setActiveDetail] = useState<'interviews' | null>(null);
 
   // Each card needs its OWN permission check, resolved against whichever
   // location is currently active (see useEffectivePermissions) — the four
@@ -86,7 +91,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
             variant: 'green' as const,
             label: 'Total applications',
             value: isApplicationsLoading ? undefined : totalApplications?.total?.toLocaleString(),
-            onClick: () => setActiveDetail('applications'),
+            onClick: () => setShowApplications(true),
           },
         ]
       : []),
@@ -113,7 +118,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
             variant: 'neutral' as const,
             label: 'Active team members',
             value: isTeamLoading ? undefined : tenantDashboard?.team_size?.toLocaleString(),
-            onClick: () => setActiveDetail('team'),
+            onClick: () => setShowTeamMembers(true),
           },
         ]
       : []),
@@ -123,18 +128,8 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
     <>
       <StatCardRow cards={cards} columns={columns} tall={tall} />
       {showJobOpenings && <JobOpeningsListModal onClose={() => setShowJobOpenings(false)} />}
-      {activeDetail === 'applications' && (
-        <StatDetailModal
-          onClose={() => setActiveDetail(null)}
-          icon={<MdOutlineDescription />}
-          variant="green"
-          label="Total applications"
-          value={totalApplications?.total?.toLocaleString()}
-          description="Total candidate applications received across all of your job openings."
-          viewAllHref="/candidates"
-          viewAllLabel="View all candidates"
-        />
-      )}
+      {showApplications && <CandidatesListModal onClose={() => setShowApplications(false)} />}
+      {showTeamMembers && <TeamMembersListModal onClose={() => setShowTeamMembers(false)} />}
       {activeDetail === 'interviews' && (
         <StatDetailModal
           onClose={() => setActiveDetail(null)}
@@ -146,18 +141,6 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
           footer="Breakdown by Audio / AI / Panel: coming soon"
           viewAllHref="/interviews"
           viewAllLabel="View interviews"
-        />
-      )}
-      {activeDetail === 'team' && (
-        <StatDetailModal
-          onClose={() => setActiveDetail(null)}
-          icon={<MdOutlineGroups />}
-          variant="neutral"
-          label="Active team members"
-          value={tenantDashboard?.team_size?.toLocaleString()}
-          description="Team members currently active in your organization."
-          viewAllHref="/organisation-users"
-          viewAllLabel="View team members"
         />
       )}
     </>

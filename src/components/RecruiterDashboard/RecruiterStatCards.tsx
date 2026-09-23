@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { MdOutlineDescription, MdOutlineWorkOutline } from 'react-icons/md';
-import { StatCardRow, StatDetailModal } from '../shared';
+import { StatCardRow } from '../shared';
 import type { StatCardData } from '../shared';
 import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import { useGetTotalApplicationsQuery } from '../../api/candidate-service/Stats/stats';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
+import JobOpeningsListModal from '../CompanyMetrics/JobOpeningsListModal';
+import CandidatesListModal from '../shared/ui/CandidatesListModal';
 
 /**
  * Recruiter KPI dashboard — "Total applications" / "Active job openings (my
@@ -13,12 +15,16 @@ import { Authorities } from '../../constants/authorities.constant';
  * job-service's `_stats_assignment_scope` already scopes a `recruiter`
  * caller to their own tagged-or-created jobs unconditionally, the same way
  * `getJobStats` is called org-wide everywhere else in this app — the
- * server, not the client, decides the scope for this role.
+ * server, not the client, decides the scope for this role. Same reasoning
+ * applies to `JobOpeningsListModal` below (the exact list endpoint behind
+ * `getJobStats`'s count) — no `assignedToMe` prop needed here either, unlike
+ * `HiringManagerStatCards`'s use of the same modal.
  */
 const RecruiterStatCards: React.FC = () => {
   const canViewJobs = useHasAccess(Authorities.JOB_OPENING_VIEW);
   const canViewCandidates = useHasAccess(Authorities.CANDIDATE_VIEW);
-  const [activeDetail, setActiveDetail] = useState<'applications' | 'jobs' | null>(null);
+  const [showApplications, setShowApplications] = useState(false);
+  const [showJobs, setShowJobs] = useState(false);
 
   const { data: jobStats, isLoading: isJobStatsLoading } = useGetJobStatsQuery(undefined, {
     skip: !canViewJobs,
@@ -34,7 +40,7 @@ const RecruiterStatCards: React.FC = () => {
             variant: 'green' as const,
             label: 'Total applications',
             value: isApplicationsLoading ? undefined : totalApplications?.total?.toLocaleString(),
-            onClick: () => setActiveDetail('applications'),
+            onClick: () => setShowApplications(true),
           },
         ]
       : []),
@@ -45,7 +51,7 @@ const RecruiterStatCards: React.FC = () => {
             variant: 'blue' as const,
             label: 'Active job openings (my open jobs)',
             value: isJobStatsLoading ? undefined : jobStats?.published_count?.toLocaleString(),
-            onClick: () => setActiveDetail('jobs'),
+            onClick: () => setShowJobs(true),
           },
         ]
       : []),
@@ -54,29 +60,9 @@ const RecruiterStatCards: React.FC = () => {
   return (
     <>
       <StatCardRow cards={cards} columns={2} />
-      {activeDetail === 'applications' && (
-        <StatDetailModal
-          onClose={() => setActiveDetail(null)}
-          icon={<MdOutlineDescription />}
-          variant="green"
-          label="Total applications"
-          value={totalApplications?.total?.toLocaleString()}
-          description="Total candidate applications received across your job openings."
-          viewAllHref="/candidates"
-          viewAllLabel="View all candidates"
-        />
-      )}
-      {activeDetail === 'jobs' && (
-        <StatDetailModal
-          onClose={() => setActiveDetail(null)}
-          icon={<MdOutlineWorkOutline />}
-          variant="blue"
-          label="Active job openings"
-          value={jobStats?.published_count?.toLocaleString()}
-          description="Published job openings assigned to, or created by, you."
-          viewAllHref="/jobs"
-          viewAllLabel="View all jobs"
-        />
+      {showApplications && <CandidatesListModal onClose={() => setShowApplications(false)} />}
+      {showJobs && (
+        <JobOpeningsListModal title="Active job openings" onClose={() => setShowJobs(false)} />
       )}
     </>
   );

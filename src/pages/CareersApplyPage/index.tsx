@@ -13,7 +13,7 @@ import {
 import { useSubmitPublicApplicationMutation } from '../../api/candidate-service/PublicApply/index';
 import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
-import { PhoneNumberField } from '../../components/shared';
+import { PhoneNumberField, ResponsiveRecaptcha } from '../../components/shared';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
 import {
   isPhoneValidForCountry,
@@ -421,7 +421,7 @@ export const CareersApplyPage = () => {
               of crashing. VITE_RECAPTCHA_SITE_KEY is not set in any env file
               yet — see the earlier session note on this gap. */}
           {recaptchaSiteKey ? (
-            <ReCAPTCHA
+            <ResponsiveRecaptcha
               ref={recaptchaRef}
               sitekey={recaptchaSiteKey}
               onChange={(token) => {

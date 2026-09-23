@@ -14,6 +14,7 @@ import {
   type PlatformTenantSummary,
 } from '../../api/organization-service/Platform/tenants';
 import { TENANT_STATUS_BADGE, formatTenantStatusLabel } from './tenantDisplay.helpers';
+import TenantUsersListModal from './TenantUsersListModal';
 
 const initials = (name: string): string =>
   name
@@ -54,9 +55,10 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
   onClose,
 }) => {
   const { data, isLoading } = useGetPlatformTenantDashboardQuery(tenant.tenant_id);
-  const [activeDetail, setActiveDetail] = useState<
-    'users' | 'jobs' | 'applications' | 'interviews' | null
-  >(null);
+  const [showUsers, setShowUsers] = useState(false);
+  const [activeDetail, setActiveDetail] = useState<'jobs' | 'applications' | 'interviews' | null>(
+    null
+  );
 
   const cards: StatCardData[] = [
     {
@@ -64,7 +66,7 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
       variant: 'neutral',
       label: 'Active users',
       value: isLoading ? undefined : data?.team_size?.toLocaleString(),
-      onClick: () => setActiveDetail('users'),
+      onClick: () => setShowUsers(true),
     },
     {
       icon: <MdOutlineWorkOutline />,
@@ -191,21 +193,8 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
           </ChartCard>
         </div>
       </div>
-      {activeDetail === 'users' && (
-        <StatDetailModal
-          onClose={() => setActiveDetail(null)}
-          icon={<MdOutlineGroups />}
-          variant="neutral"
-          label="Active users"
-          value={data?.team_size?.toLocaleString()}
-          description={`Team members currently active at ${tenant.company_name}.`}
-          // This tenant's own "Users" tab on the full company page (key '8'
-          // in ViewCustomer/index.tsx) — a real route change, which is fine
-          // here: this modal (and whatever opened it) is left behind on
-          // navigation.
-          viewAllHref={`/view-company?companyId=${tenant.tenant_id}&tab=8`}
-          viewAllLabel="View team members"
-        />
+      {showUsers && (
+        <TenantUsersListModal tenantId={tenant.tenant_id} onClose={() => setShowUsers(false)} />
       )}
       {activeDetail === 'jobs' && (
         <StatDetailModal

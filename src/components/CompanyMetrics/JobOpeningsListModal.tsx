@@ -24,8 +24,19 @@ type JobRow = JobSummary & { key: string };
  *
  * Page size is a per-browser preference (`usePersistedPageSize`), not a
  * platform setting.
+ *
+ * Also doubles as the Hiring Manager's "My open jobs" card's popup —
+ * `assignedToMe` scopes to the caller's own tagged-or-created jobs (same
+ * flag `GET /job-openings/stats` already takes), and `title` swaps the
+ * heading, rather than building a second near-identical modal. A Recruiter
+ * caller needs neither: job-service auto-scopes them to their own jobs
+ * unconditionally regardless of this flag.
  */
-const JobOpeningsListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const JobOpeningsListModal: React.FC<{
+  onClose: () => void;
+  title?: string;
+  assignedToMe?: boolean;
+}> = ({ onClose, title = 'Active job openings', assignedToMe }) => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('active_job_openings_modal', 10);
   const [selectedJob, setSelectedJob] = useState<JobSummary | null>(null);
@@ -34,6 +45,7 @@ const JobOpeningsListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
     status: 'published',
     page: page + 1,
     page_size: pageSize,
+    ...(assignedToMe ? { assigned_to_me: true } : {}),
   });
 
   const jobs = data?.items ?? [];
@@ -81,7 +93,7 @@ const JobOpeningsListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   ];
 
   return (
-    <AntdCommonModal open onClose={onClose} title="Active job openings" modalProps={{ width: 820 }}>
+    <AntdCommonModal open onClose={onClose} title={title} modalProps={{ width: 820 }}>
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
           <span>Rows per page</span>

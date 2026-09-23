@@ -472,6 +472,10 @@ export type JobListArgs = {
   is_remote?: boolean;
   sort_by?: string;
   sort_dir?: 'asc' | 'desc';
+  /** Scopes to the caller's own tagged-or-created jobs — same
+   * `assigned_to_me` flag `GET /job-openings/stats` already takes
+   * (GetJobOpening.ts's `getJobStats`). Omit for org-wide. */
+  assigned_to_me?: boolean;
 };
 
 export type JobListResponse = {

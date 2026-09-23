@@ -7,6 +7,7 @@ import {
   useSubmitResumeUploadMutation,
 } from '../../api/candidate-service/PublicApply/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
+import { ResponsiveRecaptcha } from '../../components/shared';
 import {
   getCandidateErrorMessage,
   getCandidateErrorStatusCode,
@@ -220,7 +221,7 @@ export const CareersResumeUploadPage = () => {
               </div>
 
               {recaptchaSiteKey ? (
-                <ReCAPTCHA
+                <ResponsiveRecaptcha
                   ref={recaptchaRef}
                   sitekey={recaptchaSiteKey}
                   onChange={(value) => {

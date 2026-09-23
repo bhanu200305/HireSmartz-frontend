@@ -7,7 +7,7 @@ import { EnvironmentOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useStartIntakeCallMutation } from '../../api/candidate-service/PublicApply/index';
 import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
-import { PhoneNumberField } from '../../components/shared';
+import { PhoneNumberField, ResponsiveRecaptcha } from '../../components/shared';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
 import {
   isPhoneValidForCountry,
@@ -298,7 +298,7 @@ export const CareersInstantCallPage = () => {
           )}
 
           {recaptchaSiteKey ? (
-            <ReCAPTCHA
+            <ResponsiveRecaptcha
               ref={recaptchaRef}
               sitekey={recaptchaSiteKey}
               onChange={(token) => {

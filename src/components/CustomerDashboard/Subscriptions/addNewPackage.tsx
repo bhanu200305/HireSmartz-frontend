@@ -75,7 +75,7 @@ const AddNewPackage = () => {
             <p className="text-center text-gray-500 mb-6">Please enter the following details</p>
 
             <Form layout="vertical">
-              <div className="grid grid-cols-2 gap-x-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                 <Form.Item label="Voice Agent Usage: Calling Minutes">
                   <Input
                     {...register('companyName')}
@@ -95,7 +95,7 @@ const AddNewPackage = () => {
                 </Form.Item>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                 <Form.Item label="AI-Based CV Screening and Scoring Enabled">
                   <Input
                     {...register('firstNamePrimary')}
@@ -115,7 +115,7 @@ const AddNewPackage = () => {
                 </Form.Item>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                 <Form.Item label="Number of Job Postings">
                   <Input
                     {...register('firstNameSecondary')}
@@ -135,7 +135,7 @@ const AddNewPackage = () => {
                 </Form.Item>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                 <Form.Item label="Cloud Access and Storage Limit">
                   <Input
                     {...register('addressLine1')}

@@ -8,6 +8,7 @@ import {
 import { StatCardRow, ChartCard, StatDetailModal } from '../../../shared';
 import type { StatCardData } from '../../../shared';
 import { useGetPlatformTenantDashboardQuery } from '../../../../api/organization-service/Platform/tenants';
+import TenantUsersListModal from '../../../Dashboard/TenantUsersListModal';
 
 const COMING_SOON = 'Coming soon: needs a platform-scoped job-service/candidate-service endpoint.';
 
@@ -25,9 +26,10 @@ const COMING_SOON = 'Coming soon: needs a platform-scoped job-service/candidate-
  */
 const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useGetPlatformTenantDashboardQuery(tenantId);
-  const [activeDetail, setActiveDetail] = useState<
-    'users' | 'jobs' | 'applications' | 'interviews' | null
-  >(null);
+  const [showUsers, setShowUsers] = useState(false);
+  const [activeDetail, setActiveDetail] = useState<'jobs' | 'applications' | 'interviews' | null>(
+    null
+  );
 
   const cards: StatCardData[] = [
     {
@@ -35,7 +37,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       variant: 'neutral',
       label: 'Active users',
       value: isLoading ? undefined : data?.team_size?.toLocaleString(),
-      onClick: () => setActiveDetail('users'),
+      onClick: () => setShowUsers(true),
     },
     {
       icon: <MdOutlineWorkOutline />,
@@ -63,19 +65,8 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   return (
     <div className="p-4">
       <StatCardRow cards={cards} columns={4} className="mb-4" />
-      {activeDetail === 'users' && (
-        <StatDetailModal
-          onClose={() => setActiveDetail(null)}
-          icon={<MdOutlineGroups />}
-          variant="neutral"
-          label="Active users"
-          value={data?.team_size?.toLocaleString()}
-          description="Team members currently active in this organization."
-          // Same page's own "Users" tab (key '8' in ViewCustomer/index.tsx)
-          // — a real destination, unlike Open jobs below.
-          viewAllHref={`/view-company?companyId=${tenantId}&tab=8`}
-          viewAllLabel="View team members"
-        />
+      {showUsers && (
+        <TenantUsersListModal tenantId={tenantId} onClose={() => setShowUsers(false)} />
       )}
       {activeDetail === 'jobs' && (
         <StatDetailModal

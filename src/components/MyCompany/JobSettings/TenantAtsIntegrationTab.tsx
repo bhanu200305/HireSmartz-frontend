@@ -61,6 +61,13 @@ const TenantAtsIntegrationTab: React.FC = () => {
         loading={isLoading}
         dataSource={connections}
         pagination={false}
+        // Same "cap has no responsive width and no fallback" fix every
+        // other table in this app gets via the shared CustomTable
+        // component (src/components/shared/ui/table.tsx) — this one bypasses
+        // that wrapper (needs `rowKey`, which CustomTable doesn't expose),
+        // so it needs the same `scroll` prop applied directly instead of
+        // silently missing the fix.
+        scroll={{ x: 'max-content' }}
         columns={[
           { title: 'Provider', dataIndex: 'ats_provider', key: 'ats_provider' },
           {
