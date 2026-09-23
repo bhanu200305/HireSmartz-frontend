@@ -98,6 +98,16 @@ const CalendarSettingsPage = () => {
     }
   }, [bannerContradictsConnectedState]);
 
+  // The "Calendar connected" success banner was removed per product
+  // decision — the "Connected calendar" panel below already shows the
+  // now-connected state. Still clear the `?status=success` param so it
+  // doesn't linger in the URL with nothing left to dismiss it.
+  useEffect(() => {
+    if (oauthStatus === 'success') {
+      dismissBanner();
+    }
+  }, [oauthStatus]);
+
   if (!isAvailable) {
     return <Navigate to="/profile" replace />;
   }
@@ -163,16 +173,6 @@ const CalendarSettingsPage = () => {
           <h1 className="text-2xl font-semibold text-gray-900">Calendar</h1>
         </div>
 
-        {oauthStatus === 'success' && (
-          <Alert
-            type="success"
-            showIcon
-            closable
-            onClose={dismissBanner}
-            message="Calendar connected"
-            description="Interviews will now be scheduled around your real availability and added to your calendar automatically."
-          />
-        )}
         {oauthStatus === 'cancelled' && !bannerContradictsConnectedState && (
           <Alert
             type="warning"
