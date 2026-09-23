@@ -13,16 +13,15 @@ const COMING_SOON = 'Coming soon: needs a platform-scoped job-service/candidate-
 
 /**
  * 1.5 Tenants — the analytics popup for one company, Super Admin side.
- * Active users and Open jobs are real (`GET /v1/platform/tenants/{tenant_id}
- * /dashboard`, same summary org-service already exposes tenant-side, just
- * reachable for any tenant here). Everything else the dashboard-inventory
- * doc lists for this popup — Total applications, Applications over time,
- * Jobs by status, Hiring funnel, Interviews by Status & Type, Completed
- * interviews, AI score distribution — needs a cross-tenant read of
- * job-service/candidate-service that doesn't exist yet: both services scope
- * their stats endpoints to the caller's own tenant via RLS, with no
- * platform-proxied "read tenant X's stats" route the way tenants/job-stats
- * has. Shown honestly as "coming soon" rather than faked.
+ * Active users, Open jobs, Total applications and Completed interviews are
+ * all real now (`GET /v1/platform/tenants/{tenant_id}/dashboard`, same
+ * summary org-service already exposes tenant-side, just reachable for any
+ * tenant here — the latter two via a platform-scoped candidate-service
+ * route org-service proxies, same shape as `open_job_count`). Everything
+ * else the dashboard-inventory doc lists for this popup — Applications over
+ * time, Jobs by status, Hiring funnel, Interviews by Status & Type, AI score
+ * distribution — still needs its own cross-tenant read that doesn't exist
+ * yet. Shown honestly as "coming soon" rather than faked.
  */
 const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useGetPlatformTenantDashboardQuery(tenantId);
@@ -49,16 +48,14 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       icon: <MdOutlineDescription />,
       variant: 'green',
       label: 'Total applications',
-      value: null,
-      footer: <p className="text-[11px] text-neutral-400">{COMING_SOON}</p>,
+      value: isLoading ? undefined : (data?.total_applications?.toLocaleString() ?? null),
       onClick: () => setActiveDetail('applications'),
     },
     {
       icon: <MdOutlineEventAvailable />,
       variant: 'orange',
       label: 'Completed interviews',
-      value: null,
-      footer: <p className="text-[11px] text-neutral-400">{COMING_SOON}</p>,
+      value: isLoading ? undefined : (data?.completed_interviews?.toLocaleString() ?? null),
       onClick: () => setActiveDetail('interviews'),
     },
   ];
@@ -96,9 +93,8 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           icon={<MdOutlineDescription />}
           variant="green"
           label="Total applications"
-          value={null}
+          value={data?.total_applications?.toLocaleString() ?? null}
           description="Total candidate applications received by this organization."
-          footer={COMING_SOON}
         />
       )}
       {activeDetail === 'interviews' && (
@@ -107,9 +103,8 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           icon={<MdOutlineEventAvailable />}
           variant="orange"
           label="Completed interviews"
-          value={null}
+          value={data?.completed_interviews?.toLocaleString() ?? null}
           description="Interviews completed by this organization across all rounds."
-          footer={COMING_SOON}
         />
       )}
 

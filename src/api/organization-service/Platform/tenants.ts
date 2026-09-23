@@ -21,6 +21,11 @@ export type ListPlatformTenantsArgs = {
   industry_id?: string;
   signup_source?: string;
   q?: string;
+  // ISO 8601. Backs the "New customers this month" KPI card's drill-down —
+  // org-service's GET /v1/platform/tenants already accepts both (see
+  // platform_router.py), this was just never wired from the frontend.
+  created_after?: string;
+  created_before?: string;
   limit?: number;
   offset?: number;
 };
@@ -41,6 +46,11 @@ export type PlatformTenantDashboard = {
   pending_invite_count: number;
   /** `null` means job-service didn't answer — render "not available", never 0. */
   open_job_count: number | null;
+  /** `null` means candidate-service didn't answer — same "not available" rule
+   * as `open_job_count`. Always `null` together, never independently — both
+   * come from one proxied call (org-service's `CandidateServicePort`). */
+  total_applications: number | null;
+  completed_interviews: number | null;
 };
 
 export type PlatformEntitlements = {
@@ -79,6 +89,8 @@ const extendedApi = orgApi.injectEndpoints({
           ...(args?.industry_id ? { industry_id: args.industry_id } : {}),
           ...(args?.signup_source ? { signup_source: args.signup_source } : {}),
           ...(args?.q ? { q: args.q } : {}),
+          ...(args?.created_after ? { created_after: args.created_after } : {}),
+          ...(args?.created_before ? { created_before: args.created_before } : {}),
           limit: args?.limit ?? 50,
           offset: args?.offset ?? 0,
         },

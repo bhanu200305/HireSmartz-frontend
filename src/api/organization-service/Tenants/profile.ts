@@ -111,7 +111,11 @@ export type EntitlementsView = {
   locked_flags: string[];
 };
 
-// GET /v1/tenants/{tenant_id}/dashboard — TenantDashboardSummaryView.
+// GET /v1/tenants/{tenant_id}/dashboard — TenantDashboardSummaryView. Same
+// shape the Super Admin's mirror endpoint returns (see Platform/tenants.ts's
+// `PlatformTenantDashboard`) — `open_job_count`/`total_applications`/
+// `completed_interviews` are proxied from job-service/candidate-service, not
+// placeholders.
 export type TenantDashboardSummary = {
   team_size: number;
   pending_invite_count: number;
@@ -119,6 +123,11 @@ export type TenantDashboardSummary = {
   recent_activity: ActivityLogEntry[];
   /** `null` means job-service didn't answer — render "not available", never 0. */
   open_job_count: number | null;
+  /** `null` means candidate-service didn't answer — same "not available" rule
+   * as `open_job_count`. Always `null` together, never independently — both
+   * come from one proxied call (org-service's `CandidateServicePort`). */
+  total_applications: number | null;
+  completed_interviews: number | null;
 };
 
 export type ListTenantActivityArgs = {

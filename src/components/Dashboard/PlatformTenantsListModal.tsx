@@ -33,8 +33,17 @@ type TenantRow = PlatformTenantSummary & { key: string };
  *
  * Clicking a row opens the same `TenantAnalyticsModal` every other tenant
  * click-through in the app uses, stacked on top of this one.
+ *
+ * Also doubles as the "New customers this month" card's drill-down —
+ * `createdAfter` filters to tenants created on/after that instant (org-service
+ * already supports this on `GET /v1/platform/tenants`) and `title` swaps the
+ * heading, rather than building a second near-identical modal.
  */
-const PlatformTenantsListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const PlatformTenantsListModal: React.FC<{
+  onClose: () => void;
+  createdAfter?: string;
+  title?: string;
+}> = ({ onClose, createdAfter, title = 'Total customers' }) => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('platform_tenants_modal', 10);
   const [selectedTenant, setSelectedTenant] = useState<PlatformTenantSummary | null>(null);
@@ -42,6 +51,7 @@ const PlatformTenantsListModal: React.FC<{ onClose: () => void }> = ({ onClose }
   const { data, isLoading } = useListPlatformTenantsQuery({
     limit: pageSize,
     offset: page * pageSize,
+    created_after: createdAfter,
   });
 
   const tenants = data?.tenants ?? [];
@@ -83,7 +93,7 @@ const PlatformTenantsListModal: React.FC<{ onClose: () => void }> = ({ onClose }
   ];
 
   return (
-    <AntdCommonModal open onClose={onClose} title="Total customers" modalProps={{ width: 820 }}>
+    <AntdCommonModal open onClose={onClose} title={title} modalProps={{ width: 820 }}>
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
           <span>Rows per page</span>
