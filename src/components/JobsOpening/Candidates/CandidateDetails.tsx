@@ -94,7 +94,7 @@ import {
 type TabKey = 'assessment' | 'resume' | 'summary' | 'sms' | 'history';
 
 const candidateHeaderIconCircle =
-  'inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--primary)] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 disabled:opacity-40';
+  'inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--primary)] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40';
 
 const candidateDisplayName = (c?: CandidateView) =>
   `${c?.first_name ?? ''} ${c?.last_name ?? ''}`.trim() || 'N/A';
@@ -782,7 +782,7 @@ const CandidateDetails = () => {
             <div className="flex flex-col gap-4">
               <button
                 type="button"
-                className="self-start text-sm text-primary hover:underline"
+                className="self-start text-sm text-primary hover:underline cursor-pointer"
                 onClick={() => setSelectedRound(null)}
               >
                 ← Back to {candidateDisplayName(candidate)} Pipeline
@@ -869,7 +869,7 @@ const CandidateDetails = () => {
                           <button
                             type="button"
                             onClick={() => void handleDeleteResumeReview()}
-                            className="mt-2 block text-xs font-semibold text-red-500 hover:underline"
+                            className="mt-2 block text-xs font-semibold text-red-500 hover:underline cursor-pointer"
                           >
                             Remove review
                           </button>
@@ -1249,7 +1249,7 @@ const CandidateDetails = () => {
                         <button
                           type="button"
                           onClick={() => void handleDeleteResumeReview()}
-                          className="mt-2 text-xs font-semibold text-red-500 hover:underline"
+                          className="mt-2 text-xs font-semibold text-red-500 hover:underline cursor-pointer"
                         >
                           Remove review
                         </button>

@@ -71,12 +71,12 @@ describe('tenantProfileSchema', () => {
   it('rejects an overly long description', () => {
     const result = tenantProfileSchema.safeParse({
       name: 'Acme Inc',
-      description: 'x'.repeat(601),
+      description: 'x'.repeat(1001),
     });
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.flatten().fieldErrors.description?.[0]).toBe(
-        'Keep the description under 600 characters.'
+        'Keep the description under 1000 characters.'
       );
     }
   });

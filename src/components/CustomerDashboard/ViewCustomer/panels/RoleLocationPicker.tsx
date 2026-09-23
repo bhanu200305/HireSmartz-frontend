@@ -158,7 +158,7 @@ const RoleLocationPicker: React.FC<RoleLocationPickerProps> = ({
         <button
           type="button"
           onClick={() => setCreateRoleOpen(true)}
-          className="self-start inline-flex items-center gap-1 text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5 hover:bg-primary-50"
+          className="self-start inline-flex items-center gap-1 text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5 hover:bg-primary-50 cursor-pointer"
         >
           <FaPlus size={9} /> Custom Role
         </button>
@@ -177,7 +177,7 @@ const RoleLocationPicker: React.FC<RoleLocationPickerProps> = ({
                   key={id}
                   type="button"
                   onClick={() => setPreviewLocationId(id)}
-                  className={`text-[11px] font-medium rounded-full px-2.5 py-1 border ${
+                  className={`text-[11px] font-medium rounded-full px-2.5 py-1 border cursor-pointer ${
                     previewLocationId === id
                       ? 'bg-primary-600 text-white border-primary-600'
                       : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300'

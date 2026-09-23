@@ -116,7 +116,7 @@ const RecruiterRoundScoreModal = ({
             type="button"
             onClick={() => void handleRemove()}
             disabled={isLoading || isDeleting}
-            className="text-xs font-semibold text-red-500 hover:underline disabled:opacity-50"
+            className="text-xs font-semibold text-red-500 hover:underline disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isDeleting ? 'Removing…' : 'Remove score'}
           </button>

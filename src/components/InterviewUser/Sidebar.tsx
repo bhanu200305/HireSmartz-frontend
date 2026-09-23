@@ -19,7 +19,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, title, children, cla
         <h2 className="text-lg font-semibold tracking-wide text-white">{title}</h2>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors p-1"
+          className="text-gray-400 hover:text-white transition-colors p-1 cursor-pointer"
           aria-label="Close sidebar"
         >
           <FaTimes />

@@ -283,7 +283,7 @@ const ViewCustomer = () => {
                     className="hidden"
                     accept="image/png, image/jpeg"
                   >
-                    <button ref={logoUploadRef} className="hidden"></button>
+                    <button ref={logoUploadRef} className="hidden cursor-pointer"></button>
                   </Upload>
                   {isLogoHovered && !isUploadingLogo && (
                     <div

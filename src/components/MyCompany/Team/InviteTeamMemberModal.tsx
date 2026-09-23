@@ -221,7 +221,7 @@ const InviteTeamMemberForm = ({
             <button
               type="button"
               onClick={() => setIsCreateRoleOpen(true)}
-              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5 hover:bg-primary-50"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5 hover:bg-primary-50 cursor-pointer"
             >
               <FaPlus size={9} /> Custom Role
             </button>

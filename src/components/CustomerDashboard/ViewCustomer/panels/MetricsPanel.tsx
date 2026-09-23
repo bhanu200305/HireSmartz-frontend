@@ -74,6 +74,10 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           label="Active users"
           value={data?.team_size?.toLocaleString()}
           description="Team members currently active in this organization."
+          // Same page's own "Users" tab (key '8' in ViewCustomer/index.tsx)
+          // — a real destination, unlike Open jobs below.
+          viewAllHref={`/view-company?companyId=${tenantId}&tab=8`}
+          viewAllLabel="View team members"
         />
       )}
       {activeDetail === 'jobs' && (

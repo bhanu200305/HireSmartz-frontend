@@ -253,22 +253,15 @@ const MyCompany: React.FC = () => {
           label: 'Feature Settings',
           children: <EntitlementsTab tenantId={tenantId} />,
         },
-        // Not gated on canViewEmailTemplates itself — "SMS Templates" (one
-        // of this tab's 3 sub-tabs) never had a permission gate of its own
-        // before this consolidation, so hiding the whole tab behind
-        // EMAIL_TEMPLATE_VIEW would take that access away from anyone who
-        // held it without also holding EMAIL_TEMPLATE_VIEW. The gate
-        // applies per sub-tab instead — see NotificationSettingsTab's own
-        // canViewEmailTemplates prop.
-        {
+        // Gated on canViewEmailTemplates: since SMS Templates was removed
+        // (dead endpoint — see NotificationSettingsTab's own doc comment),
+        // both of this tab's remaining sub-tabs already require
+        // EMAIL_TEMPLATE_VIEW internally, so the whole entry would otherwise
+        // render as an empty section for anyone without it.
+        canViewEmailTemplates && {
           key: '10',
           label: 'Notification Settings',
-          children: (
-            <NotificationSettingsTab
-              tenantId={tenantId}
-              canViewEmailTemplates={canViewEmailTemplates}
-            />
-          ),
+          children: <NotificationSettingsTab canViewEmailTemplates={canViewEmailTemplates} />,
         },
       ].filter(Boolean) as TabsProps['items'],
     },

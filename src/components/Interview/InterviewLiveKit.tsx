@@ -1425,7 +1425,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowInstructionsBanner(false)}
-                  className="shrink-0 text-amber-200/70 transition-colors hover:text-white"
+                  className="shrink-0 text-amber-200/70 transition-colors hover:text-white cursor-pointer"
                   aria-label="Dismiss"
                 >
                   ✕
@@ -1454,7 +1454,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                 {showRecordingPopup && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute bottom-10 left-0 z-50 w-85 rounded-xl border border-gray-700 bg-gray-900/95 p-3.5 shadow-2xl text-gray-200 backdrop-blur-md text-left"
+                    className="absolute bottom-10 left-0 z-50 w-85 rounded-xl border border-gray-700 bg-gray-900/95 p-3.5 shadow-2xl text-gray-200 backdrop-blur-md text-left cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -1698,7 +1698,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
             <button
               type="button"
               onClick={() => setIsSmsPanelOpen((prev) => !prev)}
-              className="fixed bottom-6 right-6 z-69 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary-200 bg-primary-50 text-primary-600 shadow-lg transition-colors hover:bg-primary-100 cfp-hover-lift"
+              className="fixed bottom-6 right-6 z-69 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary-200 bg-primary-50 text-primary-600 shadow-lg transition-colors hover:bg-primary-100 cfp-hover-lift cursor-pointer"
               aria-label="Open SMS panel"
             >
               <FaRegCommentDots size={18} />
@@ -1795,7 +1795,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                   >
                     <button
                       onClick={() => toggleCategory(categoryName)}
-                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-700/50 text-gray-200 font-medium text-sm transition-colors"
+                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-700/50 text-gray-200 font-medium text-sm transition-colors cursor-pointer"
                     >
                       <span>{categoryName}</span>
                       <span className="text-xl leading-none text-gray-400 transition-all duration-200 select-none">

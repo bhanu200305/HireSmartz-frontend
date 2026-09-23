@@ -74,7 +74,7 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
           <h2 className="font-display text-lg font-semibold text-neutral-900">
             <button
               type="button"
-              className="transition-colors hover:text-primary"
+              className="transition-colors hover:text-primary cursor-pointer"
               onClick={() => navigate('/company')}
             >
               CFP Company
@@ -128,7 +128,7 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
                   <td className="py-3 px-3">
                     <button
                       type="button"
-                      className="font-semibold text-primary transition-colors hover:text-primary-700"
+                      className="font-semibold text-primary transition-colors hover:text-primary-700 cursor-pointer"
                       onClick={() => setSelectedTenant(tenant)}
                     >
                       {tenant.company_name}
@@ -169,7 +169,7 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
           <button
             type="button"
             onClick={() => navigate('/company')}
-            className="group flex items-center gap-1 text-xs font-semibold tracking-wide text-primary uppercase transition-colors hover:text-primary-700"
+            className="group flex items-center gap-1 text-xs font-semibold tracking-wide text-primary uppercase transition-colors hover:text-primary-700 cursor-pointer"
           >
             View all / filter
             <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">

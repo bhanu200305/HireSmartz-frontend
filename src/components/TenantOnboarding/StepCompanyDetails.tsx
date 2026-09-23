@@ -132,7 +132,6 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
         clearTimeout(emailCheckTimer.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminEmailValue, errors.adminEmail]);
 
   const onSubmit = async (data: TenantDetailsFormValues) => {

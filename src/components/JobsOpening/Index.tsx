@@ -1187,13 +1187,13 @@ const JobsOpening = () => {
                   </COL>
                   <Col
                     span={3}
-                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500 break-words"
                   >
                     INTERVIEWED
                   </Col>
                   <Col
                     span={3}
-                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500 break-words"
                   >
                     SELECTED
                   </Col>

@@ -248,7 +248,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => remove(item.id)}
-                className="flex items-center gap-1.5 bg-brand-50 text-brand-700 px-3 py-1.5 rounded-full text-sm font-medium border border-brand-100 transition-colors hover:bg-brand-100 focus:outline-none focus:ring-1 focus:ring-brand-400"
+                className="flex items-center gap-1.5 bg-brand-50 text-brand-700 px-3 py-1.5 rounded-full text-sm font-medium border border-brand-100 transition-colors hover:bg-brand-100 focus:outline-none focus:ring-1 focus:ring-brand-400 cursor-pointer"
                 aria-label={`Remove ${item.name}`}
               >
                 <span className="max-w-[150px] truncate">{item.name}</span>

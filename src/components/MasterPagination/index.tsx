@@ -38,7 +38,7 @@ const Pagination: FC<PaginationProps> = ({
       <div className="flex items-center space-x-2">
         {currentPage > 1 && (
           <button
-            className="w-10 h-10 flex items-center bg-white justify-center rounded-full border border-gray-400 text-gray-700 hover:bg-gray-200"
+            className="w-10 h-10 flex items-center bg-white justify-center rounded-full border border-gray-400 text-gray-700 hover:bg-gray-200 cursor-pointer"
             onClick={() => onPageChange(currentPage - 1)}
           >
             <LeftOutlined />
@@ -58,7 +58,7 @@ const Pagination: FC<PaginationProps> = ({
         </div>
         {totalPages > 1 && currentPage < totalPages && (
           <button
-            className="w-10 h-10 flex items-center justify-center bg-white rounded-full border border-gray-400 text-gray-700 hover:bg-gray-200"
+            className="w-10 h-10 flex items-center justify-center bg-white rounded-full border border-gray-400 text-gray-700 hover:bg-gray-200 cursor-pointer"
             onClick={() => onPageChange(currentPage + 1)}
           >
             <RightOutlined />

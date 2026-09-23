@@ -201,7 +201,7 @@ const RoundCard = ({
         {hasRecordings && (
           <button
             type="button"
-            className="w-fit text-xs font-medium text-primary-600 hover:underline"
+            className="w-fit text-xs font-medium text-primary-600 hover:underline cursor-pointer"
             onClick={(event) => {
               // Independent of the card's own click (which now opens the
               // round-detail drill-down) — stop it from also firing
@@ -216,7 +216,7 @@ const RoundCard = ({
         {canManageInterviewers && (
           <button
             type="button"
-            className="w-fit text-xs font-medium text-primary-600 hover:underline"
+            className="w-fit text-xs font-medium text-primary-600 hover:underline cursor-pointer"
             onClick={(event) => {
               event.stopPropagation();
               onOpenInterviewers();
@@ -230,7 +230,7 @@ const RoundCard = ({
         {canRequestReschedule && (
           <button
             type="button"
-            className="w-fit text-xs font-medium text-danger hover:underline"
+            className="w-fit text-xs font-medium text-danger hover:underline cursor-pointer"
             onClick={(event) => {
               event.stopPropagation();
               onRequestReschedule?.();

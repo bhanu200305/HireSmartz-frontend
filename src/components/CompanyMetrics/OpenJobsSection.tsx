@@ -66,7 +66,7 @@ const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
                     <td className="py-2">
                       <button
                         type="button"
-                        className="block font-semibold text-primary transition-colors hover:text-primary-700"
+                        className="block font-semibold text-primary transition-colors hover:text-primary-700 cursor-pointer"
                         onClick={() => setSelectedJob(job)}
                       >
                         {jobTitle(job)}

@@ -277,7 +277,7 @@ const AiCallBooking = () => {
                       <button
                         key={slot.id}
                         type="button"
-                        className={`h-12 px-4 rounded-xl font-medium transition 
+                        className={`h-12 px-4 rounded-xl font-medium transition cursor-pointer
                           ${
                             bookingData.selectedTime === slot.time
                               ? 'bg-primary text-white border-primary border'

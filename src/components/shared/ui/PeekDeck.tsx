@@ -103,7 +103,7 @@ export const PeekDeck = ({ panels, initialIndex = 0, className }: PeekDeckProps)
             aria-label="Previous panel"
             onClick={goPrev}
             disabled={activeIndex === 0}
-            className={clsx(arrowClass, '-left-2')}
+            className={clsx(arrowClass, '-left-2', 'cursor-pointer')}
           >
             <LeftOutlined />
           </button>
@@ -132,7 +132,7 @@ export const PeekDeck = ({ panels, initialIndex = 0, className }: PeekDeckProps)
             aria-label="Next panel"
             onClick={goNext}
             disabled={activeIndex === count - 1}
-            className={clsx(arrowClass, '-right-2')}
+            className={clsx(arrowClass, '-right-2', 'cursor-pointer')}
           >
             <RightOutlined />
           </button>
@@ -189,7 +189,7 @@ export const PeekDeck = ({ panels, initialIndex = 0, className }: PeekDeckProps)
             aria-label="Previous panel"
             onClick={goPrev}
             disabled={activeIndex === 0}
-            className={clsx(arrowClass, '-left-5')}
+            className={clsx(arrowClass, '-left-5', 'cursor-pointer')}
           >
             <LeftOutlined />
           </button>
@@ -199,7 +199,7 @@ export const PeekDeck = ({ panels, initialIndex = 0, className }: PeekDeckProps)
             aria-label="Next panel"
             onClick={goNext}
             disabled={activeIndex === count - 1}
-            className={clsx(arrowClass, '-right-5')}
+            className={clsx(arrowClass, '-right-5', 'cursor-pointer')}
           >
             <RightOutlined />
           </button>

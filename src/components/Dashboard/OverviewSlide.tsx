@@ -63,13 +63,23 @@ const OverviewSlide: React.FC<OverviewSlideProps> = ({
         className={clsx(
           'mt-[clamp(0.75rem,3cqh,1.5rem)]',
           fillHeight &&
-            'flex min-h-0 flex-1 items-center justify-center overflow-y-hidden [container-type:size]'
+            'thin-scrollbar flex min-h-0 flex-1 items-center justify-center overflow-y-auto [container-type:size]'
         )}
       >
         {/* `[container-type:size]` lets `StatCardRow`'s `tall` cards size
-            themselves in `cqh` off this box's real height. `overflow-y-
-            hidden` is a last-resort floor past which the grid clips
-            silently instead of scrolling or overlapping the header. */}
+            themselves in `cqh` off this box's real height — the clamp()
+            floors mean this fits without ever needing to scroll at any
+            viewport height/zoom level anyone actually tested. But browser
+            zoom (as opposed to a resized window) can still push the
+            *effective* CSS height below that floor — confirmed at 150%
+            zoom, where the whole stat-card grid silently disappeared
+            instead of just looking cramped. `overflow-y-hidden` here used
+            to be a "last-resort floor" for that case, clipping the grid to
+            fully invisible with no way to reach it. `overflow-y-auto`
+            keeps the exact same fit-without-scrolling behavior in the
+            normal case (nothing to scroll = no scrollbar shows) but turns
+            that one edge case into "still reachable via a small scroll"
+            instead of "gone". */}
         <div className="w-full max-w-2xl">{children}</div>
       </div>
 
@@ -77,7 +87,7 @@ const OverviewSlide: React.FC<OverviewSlideProps> = ({
         <button
           type="button"
           onClick={() => navigate(viewAllHref)}
-          className="group flex items-center gap-1 text-xs font-semibold tracking-wide text-primary uppercase transition-colors hover:text-primary-700"
+          className="group flex items-center gap-1 text-xs font-semibold tracking-wide text-primary uppercase transition-colors hover:text-primary-700 cursor-pointer"
         >
           View full report
           <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">

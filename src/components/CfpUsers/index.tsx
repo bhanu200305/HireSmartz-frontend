@@ -123,7 +123,7 @@ const CfpUsers: React.FC = () => {
           <button
             type="button"
             aria-label="Offboard"
-            className="p-2 hover:bg-danger-bg rounded-full transition-colors"
+            className="p-2 hover:bg-danger-bg rounded-full transition-colors cursor-pointer"
             onClick={() => setStaffToOffboard(member)}
           >
             <MdDelete className="text-red-500" />

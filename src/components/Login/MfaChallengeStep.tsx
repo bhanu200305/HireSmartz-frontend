@@ -13,6 +13,7 @@ import type {
   MfaRequiredResponse,
 } from '../../api/authentication-service/Login/login';
 import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
+import { maskDeliveryHint } from '../../shared/utils/formatting/maskDeliveryHint';
 
 const METHOD_LABELS: Record<string, string> = {
   totp: 'authenticator app',
@@ -22,7 +23,7 @@ const METHOD_LABELS: Record<string, string> = {
 
 const describeMethod = (methodType: string, maskedDestination: string | null): string => {
   const label = METHOD_LABELS[methodType] ?? methodType;
-  return maskedDestination ? `${label} (${maskedDestination})` : label;
+  return maskedDestination ? `${label} (${maskDeliveryHint(maskedDestination)})` : label;
 };
 
 /**

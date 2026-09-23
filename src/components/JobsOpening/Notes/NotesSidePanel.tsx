@@ -534,7 +534,7 @@ const NotesSidePanel = ({
                               >
                                 <button
                                   type="button"
-                                  className="shrink-0 p-1 rounded-md text-[#717171] hover:bg-black/[0.06]"
+                                  className="shrink-0 p-1 rounded-md text-[#717171] hover:bg-black/[0.06] cursor-pointer"
                                   aria-label="Note actions"
                                   onClick={(e) => e.stopPropagation()}
                                 >

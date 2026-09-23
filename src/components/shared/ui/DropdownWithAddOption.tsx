@@ -381,7 +381,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
                     <Tooltip title="Activate" {...actionTooltipProps}>
                       <button
                         type="button"
-                        className="p-1 hover:bg-gray-200 rounded text-green-600 transition-colors mr-2 flex-shrink-0"
+                        className="p-1 hover:bg-gray-200 rounded text-green-600 transition-colors mr-2 flex-shrink-0 cursor-pointer"
                         onClick={(e) => handleReuseClick(option, e)}
                         tabIndex={-1}
                       >

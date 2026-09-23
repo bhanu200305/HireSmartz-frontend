@@ -110,7 +110,7 @@ export const UploadAndGenerateHeader = ({
             </Typography>
             {onClearDetails && (
               <button
-                className="text-brand-500 hover:text-brand-800 text-xs font-semibold"
+                className="text-brand-500 hover:text-brand-800 text-xs font-semibold cursor-pointer"
                 onClick={onClearDetails}
               >
                 Clear Details [x]

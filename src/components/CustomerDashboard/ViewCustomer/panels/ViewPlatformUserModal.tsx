@@ -531,7 +531,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                       onClick={() =>
                         handleRevoke(assignment.assignment_id, roleName(assignment.role_id))
                       }
-                      className="p-1.5 rounded-full hover:bg-red-50 text-red-500 disabled:opacity-50"
+                      className="p-1.5 rounded-full hover:bg-red-50 text-red-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                       <MdClose size={14} />
                     </button>
@@ -608,7 +608,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                         aria-label={`Detach ${officeLabel(id)}`}
                         disabled={isDetachingLocation}
                         onClick={() => handleDetachLocation(id)}
-                        className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50"
+                        className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       >
                         <MdClose size={14} />
                       </button>

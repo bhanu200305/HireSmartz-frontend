@@ -151,7 +151,7 @@ export const CandidateFeedbackPage = () => {
             type="button"
             aria-label={`${n} star${n > 1 ? 's' : ''}`}
             onClick={() => setRating(n)}
-            className={`h-10 w-10 rounded-full text-lg ${
+            className={`h-10 w-10 rounded-full text-lg cursor-pointer ${
               n <= rating ? 'bg-amber-100 text-amber-500' : 'bg-gray-100 text-gray-300'
             }`}
           >
@@ -172,7 +172,7 @@ export const CandidateFeedbackPage = () => {
         type="button"
         disabled={!rating || !text.trim() || isSubmitting}
         onClick={onSubmit}
-        className="mt-4 w-full rounded-3xl bg-button py-2.5 text-sm font-medium text-white disabled:opacity-50"
+        className="mt-4 w-full rounded-3xl bg-button py-2.5 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         {isSubmitting ? 'Submitting…' : 'Submit feedback'}
       </button>
@@ -254,7 +254,7 @@ export const WithdrawalPage = () => {
         type="button"
         disabled={isSubmitting}
         onClick={onWithdraw}
-        className="mt-5 w-full rounded-3xl bg-danger-bg py-2.5 text-sm font-semibold text-danger-text disabled:opacity-50"
+        className="mt-5 w-full rounded-3xl bg-danger-bg py-2.5 text-sm font-semibold text-danger-text disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         {isSubmitting ? 'Processing…' : 'Withdraw from this process'}
       </button>

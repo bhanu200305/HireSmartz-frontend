@@ -278,7 +278,7 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
                   <button
                     type="button"
                     aria-label="Remove question"
-                    className="p-2 hover:bg-gray-100 rounded-full"
+                    className="p-2 hover:bg-gray-100 rounded-full cursor-pointer"
                     onClick={() => setQuestionToDelete(question)}
                   >
                     <MdDelete className="text-red-500" />

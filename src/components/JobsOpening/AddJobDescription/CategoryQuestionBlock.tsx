@@ -58,7 +58,7 @@ export const CategoryQuestionBlock = ({
         </div>
         {(catCheckedIds.length > 0 || questions.length > 0) && (
           <button
-            className="text-red-500 hover:text-red-700 text-sm font-semibold hover:underline"
+            className="text-red-500 hover:text-red-700 text-sm font-semibold hover:underline cursor-pointer"
             onClick={onDeleteCategory}
           >
             {catCheckedIds.length > 0 ? `Delete selected (${catCheckedIds.length})` : 'Delete all'}

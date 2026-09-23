@@ -90,8 +90,13 @@ const HiringManagerStatCards: React.FC = () => {
           label="My open jobs"
           value={jobStats?.published_count?.toLocaleString()}
           description="Published job openings assigned to, or created by, you."
-          viewAllHref="/jobs"
-          viewAllLabel="View all jobs"
+          // No viewAllHref: unlike a recruiter, job-service's list endpoint
+          // does NOT auto-scope a hiring_manager caller to their own jobs
+          // (routers.py's `_BROAD_VISIBILITY_ROLES` — they get broad
+          // visibility there by design), and /jobs has no URL-driven "my
+          // jobs only" filter (`showMyJobsOnly` is local component state,
+          // defaults off on every load) — so /jobs would show every job,
+          // not the scoped count this card displays.
         />
       )}
       {activeDetail === 'review' && (

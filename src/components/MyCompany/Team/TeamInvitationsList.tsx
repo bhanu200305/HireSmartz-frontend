@@ -95,7 +95,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 <button
                   type="button"
                   aria-label="Resend invitation"
-                  className="p-2 rounded-full text-primary-600 bg-primary-50 hover:bg-primary-100 transition-colors disabled:opacity-50"
+                  className="p-2 rounded-full text-primary-600 bg-primary-50 hover:bg-primary-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   disabled={isResending}
                   onClick={() => handleResend(invitation.invitation_id)}
                 >
@@ -104,7 +104,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 <button
                   type="button"
                   aria-label="Revoke invitation"
-                  className="p-2 rounded-full text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
+                  className="p-2 rounded-full text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   disabled={isRevoking}
                   onClick={() => handleRevoke(invitation.invitation_id)}
                 >

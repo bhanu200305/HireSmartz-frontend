@@ -1,4 +1,5 @@
 import { Avatar, Dropdown, Modal, Select } from 'antd';
+import clsx from 'clsx';
 import { DownOutlined, CheckOutlined } from '@ant-design/icons';
 import { MdMenu } from 'react-icons/md';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -624,7 +625,19 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
             otherwise the one item that can get pushed off the end — reachable
             by scrolling this row horizontally at those in-between desktop-ish
             widths. Nothing about what's IN the row changes. */}
-        <div className="header-controls-scroll flex flex-1 flex-wrap items-center justify-end gap-3 lg:flex-nowrap lg:gap-4 lg:overflow-x-auto">
+        <div
+          className={clsx(
+            'header-controls-scroll flex flex-1 flex-wrap items-center justify-end gap-3',
+            // On the self-profile page the trailing avatar/profile-menu
+            // block below is hidden entirely (see `isSelfProfilePage`) —
+            // nothing left in this row can ever get pushed off the end, so
+            // the scroll fallback has nothing to reveal and just left a
+            // dead scrollbar. Wrap there instead, same as below `lg`.
+            isSelfProfilePage
+              ? 'lg:flex-wrap lg:gap-4'
+              : 'lg:flex-nowrap lg:gap-4 lg:overflow-x-auto'
+          )}
+        >
           <Dropdown
             open={showGlobal}
             placement="bottomLeft"

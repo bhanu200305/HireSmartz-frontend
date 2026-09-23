@@ -311,7 +311,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           className="hidden"
           accept="image/png, image/jpeg"
         >
-          <button ref={logoUploadRef} className="hidden"></button>
+          <button ref={logoUploadRef} className="hidden cursor-pointer"></button>
         </Upload>
       )}
       {isEditMode && canEdit && isLogoHovered && !isUploadingLogo && (
@@ -452,7 +452,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             <button
               type="button"
               onClick={() => setScrapePreview(null)}
-              className="text-xs text-gray-500 hover:text-gray-700"
+              className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
             >
               Dismiss
             </button>
@@ -469,7 +469,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 <button
                   type="button"
                   onClick={() => applyScrapeField('logo_reference')}
-                  className="text-xs font-semibold text-primary-600 hover:underline shrink-0"
+                  className="text-xs font-semibold text-primary-600 hover:underline shrink-0 cursor-pointer"
                 >
                   Use this logo
                 </button>
@@ -483,7 +483,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 <button
                   type="button"
                   onClick={() => applyScrapeField('description')}
-                  className="text-xs font-semibold text-primary-600 hover:underline shrink-0"
+                  className="text-xs font-semibold text-primary-600 hover:underline shrink-0 cursor-pointer"
                 >
                   Use description
                 </button>
@@ -497,7 +497,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 <button
                   type="button"
                   onClick={() => applyScrapeField('culture_text')}
-                  className="text-xs font-semibold text-primary-600 hover:underline shrink-0"
+                  className="text-xs font-semibold text-primary-600 hover:underline shrink-0 cursor-pointer"
                 >
                   Use as culture intro
                 </button>

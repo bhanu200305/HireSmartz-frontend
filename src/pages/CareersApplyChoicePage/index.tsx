@@ -54,7 +54,7 @@ export const CareersApplyChoicePage = () => {
           <button
             type="button"
             onClick={() => navigate(`/careers/${organizationId}/jobs/${jobId}/apply`)}
-            className="text-left rounded-2xl border border-gray-200 bg-white p-6 hover:border-black transition-colors"
+            className="text-left rounded-2xl border border-gray-200 bg-white p-6 hover:border-black transition-colors cursor-pointer"
           >
             <div className="text-3xl mb-3">📄</div>
             <div className="font-bold text-gray-900 mb-1">Apply with Resume</div>
@@ -66,7 +66,7 @@ export const CareersApplyChoicePage = () => {
           <button
             type="button"
             onClick={() => navigate(`/careers/${organizationId}/jobs/${jobId}/apply/call`)}
-            className="text-left rounded-2xl border border-gray-200 bg-white p-6 hover:border-black transition-colors"
+            className="text-left rounded-2xl border border-gray-200 bg-white p-6 hover:border-black transition-colors cursor-pointer"
           >
             <div className="text-3xl mb-3">📞</div>
             <div className="font-bold text-gray-900 mb-1">Instant Call with Iris</div>

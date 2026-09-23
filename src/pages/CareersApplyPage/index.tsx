@@ -255,7 +255,7 @@ export const CareersApplyPage = () => {
                     setResume(null);
                     setFileError(null);
                   }}
-                  className="text-gray-400 hover:text-red-400 transition-colors shrink-0"
+                  className="text-gray-400 hover:text-red-400 transition-colors shrink-0 cursor-pointer"
                   aria-label="Remove file"
                 >
                   <DeleteOutlined />

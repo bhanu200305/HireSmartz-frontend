@@ -362,7 +362,7 @@ const OrganisationUserTable = () => {
               <button
                 type="button"
                 aria-label="Resend invitation"
-                className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50"
+                className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 disabled={isResendingInvite}
                 onClick={() => void handleResendInvite(row.invitation_id)}
               >
@@ -373,7 +373,7 @@ const OrganisationUserTable = () => {
               <button
                 type="button"
                 aria-label="Revoke invitation"
-                className="p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                className="p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 disabled={isRevokingInvite}
                 onClick={() => void handleRevokeInvite(row.invitation_id)}
               >

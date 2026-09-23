@@ -182,7 +182,7 @@ export const DeviceCheckLobby = ({ onReady }: DeviceCheckLobbyProps) => {
           <button
             type="button"
             onClick={handleMicToggle}
-            className={`flex h-11 w-11 items-center justify-center rounded-full border ${
+            className={`flex h-11 w-11 items-center justify-center rounded-full border cursor-pointer ${
               micEnabled
                 ? 'border-neutral-700 bg-neutral-800 hover:bg-neutral-700'
                 : 'border-red-600 bg-red-600 hover:bg-red-500'
@@ -195,7 +195,7 @@ export const DeviceCheckLobby = ({ onReady }: DeviceCheckLobbyProps) => {
           <button
             type="button"
             onClick={handleCameraToggle}
-            className={`flex h-11 w-11 items-center justify-center rounded-full border ${
+            className={`flex h-11 w-11 items-center justify-center rounded-full border cursor-pointer ${
               cameraEnabled
                 ? 'border-neutral-700 bg-neutral-800 hover:bg-neutral-700'
                 : 'border-red-600 bg-red-600 hover:bg-red-500'

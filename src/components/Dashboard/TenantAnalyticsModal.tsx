@@ -200,6 +200,12 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
           label="Active users"
           value={data?.team_size?.toLocaleString()}
           description={`Team members currently active at ${tenant.company_name}.`}
+          // This tenant's own "Users" tab on the full company page (key '8'
+          // in ViewCustomer/index.tsx) — a real route change, which is fine
+          // here: this modal (and whatever opened it) is left behind on
+          // navigation.
+          viewAllHref={`/view-company?companyId=${tenant.tenant_id}&tab=8`}
+          viewAllLabel="View team members"
         />
       )}
       {activeDetail === 'jobs' && (

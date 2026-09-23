@@ -64,7 +64,10 @@ export const Search = forwardRef<HTMLInputElement, SearchProps>(
             onKeyDown={onKeyDown}
           />
           {allowClear && searchValue && (
-            <button onClick={handleClear} className="ml-2 text-gray-500 focus:outline-none">
+            <button
+              onClick={handleClear}
+              className="ml-2 text-gray-500 focus:outline-none cursor-pointer"
+            >
               <MdClose className="text-lg" />
             </button>
           )}

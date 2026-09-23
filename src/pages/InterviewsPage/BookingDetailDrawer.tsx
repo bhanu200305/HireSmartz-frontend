@@ -326,7 +326,7 @@ export const BookingDetailDrawer = ({
 
             <button
               type="button"
-              className="mt-3 text-xs font-medium text-neutral-400 hover:text-neutral-600"
+              className="mt-3 text-xs font-medium text-neutral-400 hover:text-neutral-600 cursor-pointer"
               onClick={() => {
                 navigator.clipboard
                   ?.writeText(booking.id)

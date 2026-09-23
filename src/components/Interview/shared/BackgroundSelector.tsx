@@ -2,7 +2,7 @@ import { BACKGROUND_BLUR_LEVELS, BACKGROUND_IMAGE_PRESETS } from './interviewBac
 import { useVirtualBackground } from './useVirtualBackground';
 
 const swatchBase =
-  'flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 text-xs font-medium transition-colors';
+  'flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed';
 const swatchActive = 'border-primary-400 ring-2 ring-primary-400/50';
 const swatchInactive = 'border-white/15 hover:border-white/30';
 

@@ -391,7 +391,7 @@ const ViewJobDetails = () => {
                 <button
                   type="button"
                   aria-label="View company culture information"
-                  className="inline-flex items-center justify-center text-gray-500 hover:text-[var(--color-primary)]"
+                  className="inline-flex items-center justify-center text-gray-500 hover:text-[var(--color-primary)] cursor-pointer"
                 >
                   <InfoCircleOutlined />
                 </button>

@@ -159,7 +159,7 @@ export const InterviewsPage = () => {
           {(statusFilter || typeFilter) && (
             <button
               type="button"
-              className="text-sm font-medium text-brand-600 hover:text-brand-700"
+              className="text-sm font-medium text-brand-600 hover:text-brand-700 cursor-pointer"
               onClick={() => {
                 setStatusFilter(undefined);
                 setTypeFilter(undefined);
@@ -191,7 +191,7 @@ export const InterviewsPage = () => {
             </Button>
             <button
               type="button"
-              className="text-sm font-medium text-neutral-500 hover:text-neutral-700"
+              className="text-sm font-medium text-neutral-500 hover:text-neutral-700 cursor-pointer"
               onClick={() => setSelectedIds(new Set())}
             >
               Clear

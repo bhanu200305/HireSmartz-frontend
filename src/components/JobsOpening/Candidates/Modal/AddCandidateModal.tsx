@@ -200,7 +200,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
             type="button"
             onClick={() => setMode('resume')}
             disabled={isSubmitting}
-            className={`flex items-center justify-center gap-1.5 rounded-full py-1.5 text-sm font-semibold transition-colors ${
+            className={`flex items-center justify-center gap-1.5 rounded-full py-1.5 text-sm font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed ${
               mode === 'resume' ? 'bg-white text-primary shadow-sm' : 'text-gray-500'
             }`}
           >
@@ -210,7 +210,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
             type="button"
             onClick={() => setMode('bulk')}
             disabled={isSubmitting}
-            className={`flex items-center justify-center gap-1.5 rounded-full py-1.5 text-sm font-semibold transition-colors ${
+            className={`flex items-center justify-center gap-1.5 rounded-full py-1.5 text-sm font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed ${
               mode === 'bulk' ? 'bg-white text-primary shadow-sm' : 'text-gray-500'
             }`}
           >
