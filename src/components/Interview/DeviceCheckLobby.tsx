@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash } from 'react-icons/fa';
+import { requestFullscreen } from './shared/fullscreen';
 
 // Pre-join screen shown before connecting to the LiveKit room at all — for
 // every round type, no exceptions. Candidate always previews and can toggle
@@ -15,6 +16,10 @@ import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash } from 'react-ic
 
 export type DeviceCheckLobbyProps = {
   onReady: (choice: { micEnabled: boolean; cameraEnabled: boolean }) => void;
+  /** Candidate-only anti-cheating measure — see `useFullscreenLock`'s own
+   * docstring for why this has to fire here, synchronously inside this
+   * click handler, rather than after the room connects. */
+  lockFullscreen?: boolean;
 };
 
 type DeviceOption = { deviceId: string; label: string };
@@ -23,7 +28,7 @@ const stopStream = (stream: MediaStream | null) => {
   stream?.getTracks().forEach((track) => track.stop());
 };
 
-export const DeviceCheckLobby = ({ onReady }: DeviceCheckLobbyProps) => {
+export const DeviceCheckLobby = ({ onReady, lockFullscreen = false }: DeviceCheckLobbyProps) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -138,6 +143,9 @@ export const DeviceCheckLobby = ({ onReady }: DeviceCheckLobbyProps) => {
   };
 
   const handleJoin = () => {
+    // Must happen first and synchronously — this click is the only user
+    // gesture we get, and `requestFullscreen()` is refused outside one.
+    if (lockFullscreen) requestFullscreen();
     stopStream(streamRef.current);
     teardownLevelMeter();
     onReady({ micEnabled, cameraEnabled });

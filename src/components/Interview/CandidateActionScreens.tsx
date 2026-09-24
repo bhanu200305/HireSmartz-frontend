@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 
@@ -12,6 +12,7 @@ import {
   useGetRecordingQuery,
   getInterviewErrorAction,
   type InterviewApiError,
+  type InterviewErrorAction,
 } from '../../api/interview-service/client';
 import { interviewTypeLabel } from '../../pages/InterviewsPage/interviewLabels';
 
@@ -36,6 +37,22 @@ const linkErrorText = (error: InterviewApiError | undefined, fallback: string): 
     : error.message || fallback;
 };
 
+// AI_VIDEO/PANEL candidates arrive at the feedback page straight from
+// SessionJoinScreen's `onDisconnected`, reusing the same SESSION_PURPOSE
+// token — the round's booking is marked COMPLETED by LiveKit's own
+// `room_finished` webhook, which can genuinely still be in flight for a few
+// seconds after the candidate's browser itself disconnects. The very first
+// request in that window can come back as `FEEDBACK_NOT_AVAILABLE`
+// ('not-ready'), or — since the browser's network stack is often still
+// settling right after the WebRTC teardown — as a bare network failure or a
+// transient 500 (both classified 'toast'). Retrying only on 'not-ready' left
+// the other two shapes as a dead-end error screen that never resolved on its
+// own (only a manual reload, which just got lucky by retrying later once the
+// webhook had caught up). Treat both shapes as retryable for a bounded
+// window instead.
+const RETRYABLE_FEEDBACK_ERROR_ACTIONS = new Set<InterviewErrorAction>(['not-ready', 'toast']);
+const FEEDBACK_RETRY_WINDOW_MS = 20000;
+
 // ---------------------------------------------------------------------------
 // Candidate feedback  —  /feedback?token=
 // ---------------------------------------------------------------------------
@@ -43,31 +60,33 @@ export const CandidateFeedbackPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
-  // AI_VIDEO/PANEL candidates arrive here straight from SessionJoinScreen's
-  // `onDisconnected`, reusing the same SESSION_PURPOSE token — the round's
-  // booking is marked COMPLETED by LiveKit's own `room_finished` webhook,
-  // which can genuinely still be in flight for a few seconds after the
-  // candidate's browser itself disconnects. Rather than a dead-end error on
-  // that race, poll briefly while the backend reports FEEDBACK_NOT_AVAILABLE
-  // (`getInterviewErrorAction` -> 'not-ready').
-  const [isWaitingForCompletion, setIsWaitingForCompletion] = useState(false);
+  // Set (once) the moment a retryable error is first seen, and cleared once
+  // the fetch stops erroring. `withinRetryWindow` is derived from this state
+  // (set on a *previous* render) before the query hook is called below, so
+  // `pollingInterval` reacts to it correctly; the `isError`/`isRetryableError`
+  // check further down (using *this* render's fresh result) only decides
+  // whether to schedule the state update that will turn polling on/off from
+  // the next render on — see the "adjust state during rendering" pattern.
+  const [firstRetryableErrorAt, setFirstRetryableErrorAt] = useState<number | null>(null);
+  const withinRetryWindow =
+    firstRetryableErrorAt !== null && Date.now() - firstRetryableErrorAt < FEEDBACK_RETRY_WINDOW_MS;
 
   const { data, isLoading, isError, error } = useGetCandidateFeedbackLinkQuery(token, {
     skip: !token,
-    pollingInterval: isWaitingForCompletion ? 2000 : 0,
+    pollingInterval: withinRetryWindow ? 2000 : 0,
   });
 
-  useEffect(() => {
-    if (data) {
-      setIsWaitingForCompletion(false);
-      return;
-    }
-    if (isError) {
-      setIsWaitingForCompletion(
-        getInterviewErrorAction(error as InterviewApiError) === 'not-ready'
-      );
-    }
-  }, [data, isError, error]);
+  const errorAction = isError ? getInterviewErrorAction(error as InterviewApiError) : null;
+  const isRetryableError =
+    errorAction !== null && RETRYABLE_FEEDBACK_ERROR_ACTIONS.has(errorAction);
+
+  if (!isError && firstRetryableErrorAt !== null) {
+    setFirstRetryableErrorAt(null);
+  } else if (isError && isRetryableError && firstRetryableErrorAt === null) {
+    setFirstRetryableErrorAt(Date.now());
+  }
+
+  const isWaitingForCompletion = isError && isRetryableError && withinRetryWindow;
 
   const [submit, { isLoading: isSubmitting }] = useSubmitCandidateFeedbackMutation();
 

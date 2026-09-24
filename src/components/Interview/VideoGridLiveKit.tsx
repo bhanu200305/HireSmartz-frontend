@@ -123,7 +123,7 @@ const VideoGridInner: React.FC = () => {
             ) : (
               <>
                 <SoundwaveTile audioTrackRef={micRef} label="" className="h-full w-full" />
-                <TileLabel>Interviewer</TileLabel>
+                <TileLabel>{participant.name || participant.identity || 'Interviewer'}</TileLabel>
               </>
             )}
             {pinRef && (

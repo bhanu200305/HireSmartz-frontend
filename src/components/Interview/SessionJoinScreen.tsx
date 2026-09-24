@@ -306,7 +306,7 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
   }
 
   if (!deviceChoice) {
-    return <DeviceCheckLobby onReady={setDeviceChoice} />;
+    return <DeviceCheckLobby onReady={setDeviceChoice} lockFullscreen={joinAs === 'candidate'} />;
   }
 
   return (
@@ -334,7 +334,7 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
           }
         }}
       >
-        <InterviewRoomLayout />
+        <InterviewRoomLayout isInterviewer={joinAs === 'interviewer'} />
         <RoomAudioRenderer />
       </LiveKitRoom>
     </div>

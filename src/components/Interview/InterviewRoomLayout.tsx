@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ParticipantTile,
   DisconnectButton,
@@ -10,8 +10,8 @@ import {
   LayoutContextProvider,
   type TrackReference,
 } from '@livekit/components-react';
-import { Track } from 'livekit-client';
-import { MdChatBubbleOutline, MdOutlineSettings } from 'react-icons/md';
+import { Track, ParticipantEvent } from 'livekit-client';
+import { MdChatBubbleOutline, MdOutlineSettings, MdListAlt } from 'react-icons/md';
 import { SoundwaveTile } from './soundwave/SoundwaveTile';
 import { useSpotlight } from './shared/useSpotlight';
 import { PinButton } from './shared/PinButton';
@@ -19,6 +19,8 @@ import { TileLabel } from './shared/TileLabel';
 import { SpotlightStage, type SpotlightSide } from './shared/SpotlightStage';
 import { ChatPanel, useUnreadChatCount } from './shared/ChatPanel';
 import { SettingsPanel } from './shared/SettingsPanel';
+import { PanelQuestionsPanel, usePanelQuestions } from './shared/PanelQuestionsPanel';
+import { useFullscreenLock } from './shared/useFullscreenLock';
 
 // The custom room UI that replaces LiveKit's stock `<VideoConference />`
 // (what `SessionJoinScreen` used before this component existed — a generic
@@ -51,14 +53,45 @@ import { SettingsPanel } from './shared/SettingsPanel';
 // becomes real. Panel rounds can have 3+ human interviewers on the call —
 // `SpotlightStage` handles that by falling back to a filmstrip of small
 // tiles instead of a single PIP once there's more than one non-pinned side.
-const InterviewRoomLayoutInner = () => {
+const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean }) => {
   const { localParticipant, cameraTrack: localCameraPublication } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
   const { isPinned, togglePin } = useSpotlight();
 
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPanelQuestionsOpen, setIsPanelQuestionsOpen] = useState(false);
   const unreadChatCount = useUnreadChatCount(isChatOpen);
+  const panelQuestions = usePanelQuestions(isInterviewer);
+
+  // Anti-cheating measures, candidate side only — see the scope decision
+  // on this feature (interviewers keep full freedom to alt-tab/share).
+  const isCandidate = !isInterviewer;
+  const { isFullscreen, requestFullscreen } = useFullscreenLock(isCandidate);
+
+  // Defense-in-depth against a candidate publishing a screen-share track
+  // via devtools/console (there is no button for it in this UI to begin
+  // with). This alone isn't the real enforcement boundary — LiveKit's
+  // room-join token grants `canPublish: true` with no `canPublishSources`
+  // restriction today, so a screen-share publish currently *succeeds*
+  // server-side before this effect reacts and tears it back down. Actually
+  // blocking it requires interview-service to scope the candidate's token
+  // grant to camera+microphone only (flagged to pass on to backend).
+  useEffect(() => {
+    if (!isCandidate) return undefined;
+    const handleLocalTrackPublished = (publication: { source: Track.Source }) => {
+      if (
+        publication.source === Track.Source.ScreenShare ||
+        publication.source === Track.Source.ScreenShareAudio
+      ) {
+        void localParticipant.setScreenShareEnabled(false);
+      }
+    };
+    localParticipant.on(ParticipantEvent.LocalTrackPublished, handleLocalTrackPublished);
+    return () => {
+      localParticipant.off(ParticipantEvent.LocalTrackPublished, handleLocalTrackPublished);
+    };
+  }, [localParticipant, isCandidate]);
 
   const cameraTrackRefs = useTracks([Track.Source.Camera], { onlySubscribed: true });
   const micTrackRefs = useTracks([Track.Source.Microphone], { onlySubscribed: true });
@@ -121,7 +154,7 @@ const InterviewRoomLayoutInner = () => {
               ) : (
                 <>
                   <SoundwaveTile audioTrackRef={micRef} label="" className="h-full w-full" />
-                  <TileLabel>Interviewer</TileLabel>
+                  <TileLabel>{participant.name || participant.identity || 'Interviewer'}</TileLabel>
                 </>
               )}
               {pinRef && (
@@ -177,6 +210,15 @@ const InterviewRoomLayoutInner = () => {
         {isChatOpen && (
           <div className="absolute inset-y-3 right-3 z-30 w-full max-w-sm">
             <ChatPanel open={isChatOpen} onClose={() => setIsChatOpen(false)} />
+          </div>
+        )}
+        {isPanelQuestionsOpen && (
+          <div className="absolute inset-y-3 right-3 z-30 w-full max-w-sm">
+            <PanelQuestionsPanel
+              open={isPanelQuestionsOpen}
+              onClose={() => setIsPanelQuestionsOpen(false)}
+              panelQuestions={panelQuestions}
+            />
           </div>
         )}
         {isSettingsOpen && (
@@ -235,6 +277,24 @@ const InterviewRoomLayoutInner = () => {
             />
           </div>
         )}
+
+        {isCandidate && !isFullscreen && (
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-neutral-950/95 text-center px-6">
+            <p className="text-sm font-medium text-white">
+              This interview must stay in fullscreen.
+            </p>
+            <p className="max-w-sm text-xs text-neutral-400">
+              You exited fullscreen mode. Please return to continue your interview.
+            </p>
+            <button
+              type="button"
+              onClick={requestFullscreen}
+              className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-neutral-950 hover:opacity-90 cursor-pointer"
+            >
+              Return to fullscreen
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Room chrome — mic + camera toggle always both present for the
@@ -253,6 +313,7 @@ const InterviewRoomLayoutInner = () => {
           onClick={() => {
             setIsChatOpen((v) => !v);
             setIsSettingsOpen(false);
+            setIsPanelQuestionsOpen(false);
           }}
           className="relative rounded-full border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 cursor-pointer"
           aria-pressed={isChatOpen}
@@ -264,11 +325,27 @@ const InterviewRoomLayoutInner = () => {
             </span>
           )}
         </button>
+        {isInterviewer && (
+          <button
+            type="button"
+            onClick={() => {
+              setIsPanelQuestionsOpen((v) => !v);
+              setIsChatOpen(false);
+              setIsSettingsOpen(false);
+            }}
+            className="rounded-full border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 cursor-pointer"
+            aria-pressed={isPanelQuestionsOpen}
+            aria-label="Panel questions"
+          >
+            <MdListAlt size={18} />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {
             setIsSettingsOpen((v) => !v);
             setIsChatOpen(false);
+            setIsPanelQuestionsOpen(false);
           }}
           className="rounded-full border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 cursor-pointer"
           aria-pressed={isSettingsOpen}
@@ -284,9 +361,9 @@ const InterviewRoomLayoutInner = () => {
   );
 };
 
-export const InterviewRoomLayout = () => (
+export const InterviewRoomLayout = ({ isInterviewer = false }: { isInterviewer?: boolean }) => (
   <LayoutContextProvider>
-    <InterviewRoomLayoutInner />
+    <InterviewRoomLayoutInner isInterviewer={isInterviewer} />
   </LayoutContextProvider>
 );
 

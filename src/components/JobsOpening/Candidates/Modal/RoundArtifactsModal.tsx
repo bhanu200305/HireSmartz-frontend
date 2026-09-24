@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { IoStar, IoStarOutline, IoOpenOutline } from 'react-icons/io5';
-import { Badge, type BadgeStatus } from '../../../shared';
+import { Badge, InfoHint, type BadgeStatus } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Loader } from '../../../shared/ui/loader';
 import { CommonCard } from '../../../shared';
@@ -183,7 +183,14 @@ const RoundArtifactsModal = ({
       return <span className="shrink-0 text-xs text-gray-400">Not ready yet</span>;
     }
     if (artifact.kind === 'recording') {
-      return <RecordingPlayer url={artifact.url} isVideo={isVideoRound} />;
+      return (
+        <div className="flex flex-col gap-1.5">
+          <RecordingPlayer url={artifact.url} isVideo={isVideoRound} />
+          <div className="flex justify-end">
+            <InfoHint content="Wear earphones for the best quality" />
+          </div>
+        </div>
+      );
     }
     if (artifact.kind === 'transcript') {
       return <TranscriptViewer url={artifact.url} />;
