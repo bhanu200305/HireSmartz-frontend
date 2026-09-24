@@ -35,6 +35,10 @@ export type PlatformCatalogTabProps<TItem, TFormValues extends Record<string, un
   onUpdate: (id: string, values: TFormValues) => Promise<unknown>;
   onDelete?: (item: TItem) => Promise<unknown>;
   deleteConfirmTitle?: (item: TItem) => string;
+  /** Hides the "+ Add" button. Defaults true. */
+  allowCreate?: boolean;
+  /** Hides the row-level Edit action, independent of `onDelete`. Defaults true. */
+  allowEdit?: boolean;
 };
 
 function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>({
@@ -54,6 +58,8 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
   onUpdate,
   onDelete,
   deleteConfirmTitle,
+  allowCreate = true,
+  allowEdit = true,
 }: PlatformCatalogTabProps<TItem, TFormValues>) {
   const [modalState, setModalState] = useState<{ mode: 'add' | 'edit'; item?: TItem } | null>(null);
   const [form, setForm] = useState<TFormValues>(emptyForm);
@@ -127,30 +133,36 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
 
   if (isLoading) return <Loader />;
 
+  const showActions = allowEdit || !!onDelete;
+
   const allColumns: TableProps<TItem & { key: string }>['columns'] = [
     ...(columns ?? []),
-    onDelete && {
+    showActions && {
       title: 'Actions',
       key: 'actions',
       width: 100,
       render: (_: unknown, item: TItem & { key: string }) => (
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label={`Edit ${itemNounSingular.toLowerCase()}`}
-            className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
-            onClick={() => openEdit(item)}
-          >
-            <MdEdit className="text-gray-600" />
-          </button>
-          <button
-            type="button"
-            aria-label={`Delete ${itemNounSingular.toLowerCase()}`}
-            className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-            onClick={() => setItemToDelete(item)}
-          >
-            <MdDelete className="text-red-500" />
-          </button>
+          {allowEdit && (
+            <button
+              type="button"
+              aria-label={`Edit ${itemNounSingular.toLowerCase()}`}
+              className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+              onClick={() => openEdit(item)}
+            >
+              <MdEdit className="text-gray-600" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              aria-label={`Delete ${itemNounSingular.toLowerCase()}`}
+              className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+              onClick={() => setItemToDelete(item)}
+            >
+              <MdDelete className="text-red-500" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -176,12 +188,14 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
-          <Button
-            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
-            onClick={openAdd}
-          >
-            <MdOutlineAdd /> Add {itemNounSingular.toLowerCase()}
-          </Button>
+          {allowCreate && (
+            <Button
+              className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+              onClick={openAdd}
+            >
+              <MdOutlineAdd /> Add {itemNounSingular.toLowerCase()}
+            </Button>
+          )}
         </div>
       </div>
 
