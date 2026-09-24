@@ -68,6 +68,15 @@ const MfaChallengeStep = ({
     if (codeError) setCodeError('');
   };
 
+  // Auth-service's own spec for these codes — branch on `error_code`, never
+  // on message text, since the backend can reword the message without
+  // notice but the code is the contract. `mfa_session_expired` is the one
+  // code in this set that ISN'T live on the backend yet (checked
+  // 2026-09-24: authentication-service's `verify_mfa_token` still raises
+  // the old uniform `invalid_mfa_code` for an expired/invalid interim
+  // token, not a distinct code) — handled here anyway so this component
+  // starts working the moment the backend ships it, with no second
+  // frontend change needed.
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length < 4 || isBusy) return;
@@ -76,15 +85,34 @@ const MfaChallengeStep = ({
       const tokens = await mfaLoginVerify({ mfa_token: challenge.mfa_token, code }).unwrap();
       onVerified(tokens);
     } catch (err) {
-      if (getAuthErrorCode(err) === 'mfa_attempts_exceeded') {
+      const errorCode = getAuthErrorCode(err);
+
+      if (errorCode === 'mfa_session_expired') {
+        showToast({
+          message: 'Your sign-in expired, please log in again.',
+          type: 'error',
+        });
+        onBack();
+        return;
+      }
+      if (errorCode === 'mfa_attempts_exceeded') {
         setAttemptsExceeded(true);
         setCode('');
         return;
       }
-      // invalid_mfa_code / mfa_challenge_expired land here with the
-      // backend's own (deliberately uniform) message — never invented
-      // client-side, so the same wording used on the API side reaches the
-      // user unchanged.
+      if (errorCode === 'mfa_challenge_expired') {
+        setCodeError('Code expired.');
+        setCode('');
+        return;
+      }
+      if (errorCode === 'invalid_mfa_code') {
+        setCodeError('Incorrect code, try again.');
+        setCode('');
+        return;
+      }
+      // Anything else (a network error, a code this screen doesn't know
+      // about yet) falls back to the backend's own message rather than
+      // inventing one.
       setCodeError(getAuthErrorMessage(err, 'That code was not accepted. Please try again.'));
       setCode('');
     }
@@ -97,7 +125,11 @@ const MfaChallengeStep = ({
         mfa_token: challenge.mfa_token,
         mfa_method_id: mfaMethodId,
       }).unwrap();
+      // Replaces the stored token with the freshly-issued one — the old
+      // token no longer refers to a live challenge the instant this
+      // succeeds, per the backend's own contract.
       setChallenge(reissued);
+      setAttemptsExceeded(false);
       setCode('');
       setCodeError('');
       showToast({
@@ -105,6 +137,26 @@ const MfaChallengeStep = ({
         type: 'success',
       });
     } catch (err) {
+      const errorCode = getAuthErrorCode(err);
+
+      if (errorCode === 'mfa_session_expired') {
+        showToast({
+          message: 'Your sign-in expired, please log in again.',
+          type: 'error',
+        });
+        onBack();
+        return;
+      }
+      if (errorCode === 'mfa_rate_limited') {
+        // Explicitly no auto-retry — the lock clears itself server-side
+        // after 15 minutes, and retrying on a timer here would just spend
+        // the same budget the lock exists to protect.
+        showToast({
+          message: 'Too many codes requested. Please try again later.',
+          type: 'error',
+        });
+        return;
+      }
       showToast({
         message: getAuthErrorMessage(err, 'Could not send a new code. Please try again.'),
         type: 'error',
@@ -119,15 +171,25 @@ const MfaChallengeStep = ({
   if (attemptsExceeded) {
     return (
       <div className="login-tab-fade flex flex-col items-center gap-3 text-center">
+        {isBusy && <Loader />}
         <MdOutlineMailLock className="text-4xl text-red-500" />
         <h2 className="text-xl font-semibold text-gray-900">Too many attempts</h2>
         <p className="text-sm text-gray-500">
-          This code has been blocked for too many wrong attempts. If you no longer have access to
-          your two-factor method, you can recover your account instead.
+          This code has been blocked for too many wrong attempts. Request a new one, or recover your
+          account if you no longer have access to your two-factor method.
         </p>
+        <Button
+          type="button"
+          appname="resend mfa code after lockout"
+          onClick={() => void reissueChallenge(challenge.mfa_method_id)}
+          disabled={isBusy}
+          className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isReissuing ? 'Sending…' : 'Resend code'}
+        </Button>
         <Link
           to="/account-recovery"
-          className="mt-1 w-full rounded-3xl bg-button py-2.5 text-center font-medium text-white"
+          className="w-full rounded-3xl border border-[var(--border)] py-2.5 text-center font-medium text-gray-700"
         >
           Recover your account
         </Link>

@@ -1,5 +1,4 @@
 import { Avatar, Dropdown, Modal, Select } from 'antd';
-import clsx from 'clsx';
 import { DownOutlined, CheckOutlined } from '@ant-design/icons';
 import { MdMenu } from 'react-icons/md';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -533,15 +532,6 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
 
   const showGlobal = isSearchFocused && !dropdownOpen;
 
-  // On the self-service profile / change-password screens the sidebar is
-  // already hidden (see MainLayout's hideNavbarPaths) and the page itself is
-  // the user's own profile — the avatar + "Welcome <name>" dropdown up here
-  // (with its own mini profile + company card) just repeats what the page
-  // below already shows. Hide that one cluster on those routes; the rest of
-  // the header (search, categories, location, notifications) stays.
-  const SELF_PROFILE_PATHS = ['/profile', '/change-password'];
-  const isSelfProfilePage = SELF_PROFILE_PATHS.includes(location.pathname);
-
   const normalizeRoleIdentifier = (value?: string): string => {
     return (value || '').replace(/[\s_-]+/g, '').toLowerCase();
   };
@@ -625,19 +615,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
             otherwise the one item that can get pushed off the end — reachable
             by scrolling this row horizontally at those in-between desktop-ish
             widths. Nothing about what's IN the row changes. */}
-        <div
-          className={clsx(
-            'header-controls-scroll flex flex-1 flex-wrap items-center justify-end gap-3',
-            // On the self-profile page the trailing avatar/profile-menu
-            // block below is hidden entirely (see `isSelfProfilePage`) —
-            // nothing left in this row can ever get pushed off the end, so
-            // the scroll fallback has nothing to reveal and just left a
-            // dead scrollbar. Wrap there instead, same as below `lg`.
-            isSelfProfilePage
-              ? 'lg:flex-wrap lg:gap-4'
-              : 'lg:flex-nowrap lg:gap-4 lg:overflow-x-auto'
-          )}
-        >
+        <div className="header-controls-scroll flex flex-1 flex-wrap items-center justify-end gap-3 lg:flex-nowrap lg:gap-4 lg:overflow-x-auto">
           <Dropdown
             open={showGlobal}
             placement="bottomLeft"
@@ -731,7 +709,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
 
           <NotificationBell disabled={!canShowNotificationBell} />
 
-          {userData && !isSelfProfilePage && (
+          {userData && (
             <div className="flex items-center gap-2">
               <div onClick={handleProfileClick} className="cursor-pointer">
                 {userData?.profilePicture ? (

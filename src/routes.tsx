@@ -56,6 +56,7 @@ const ConfirmRecoveryEmailPage = lazy(() => import('./pages/ConfirmRecoveryEmail
 const StartAccountRecoveryPage = lazy(() => import('./pages/StartAccountRecoveryPage'));
 const CompleteAccountRecoveryPage = lazy(() => import('./pages/CompleteAccountRecoveryPage'));
 const SecuritySettingsPage = lazy(() => import('./pages/SecuritySettingsPage'));
+const ActiveSessionsPage = lazy(() => import('./pages/ActiveSessionsPage'));
 const NotificationSettingsPage = lazy(() => import('./pages/NotificationSettingsPage'));
 const AdminToolsPage = lazy(() => import('./pages/AdminToolsPage'));
 const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
@@ -249,6 +250,12 @@ export const Routes: RouteType[] = [
     name: 'SecuritySettings',
     path: '/settings/security',
     component: SecuritySettingsPage,
+    isPrivate: true,
+  },
+  {
+    name: 'ActiveSessions',
+    path: '/settings/sessions',
+    component: ActiveSessionsPage,
     isPrivate: true,
   },
   {

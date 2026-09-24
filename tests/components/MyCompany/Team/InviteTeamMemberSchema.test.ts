@@ -4,6 +4,7 @@ import { inviteTeamMemberSchema } from '../../../../src/components/MyCompany/Tea
 describe('inviteTeamMemberSchema', () => {
   it('accepts a minimal valid invite', () => {
     const result = inviteTeamMemberSchema.safeParse({
+      name: 'Jordan Lee',
       email: 'newhire@example.com',
       role: 'recruiter',
     });
@@ -12,6 +13,7 @@ describe('inviteTeamMemberSchema', () => {
 
   it('does not require a department or designation', () => {
     const result = inviteTeamMemberSchema.safeParse({
+      name: 'Jordan Lee',
       email: 'newhire@example.com',
       role: 'recruiter',
       departmentId: undefined,
@@ -21,15 +23,35 @@ describe('inviteTeamMemberSchema', () => {
   });
 
   it('rejects an invalid email', () => {
-    const result = inviteTeamMemberSchema.safeParse({ email: 'not-an-email', role: 'recruiter' });
+    const result = inviteTeamMemberSchema.safeParse({
+      name: 'Jordan Lee',
+      email: 'not-an-email',
+      role: 'recruiter',
+    });
     expect(result.success).toBe(false);
   });
 
   it('requires a role', () => {
-    const result = inviteTeamMemberSchema.safeParse({ email: 'newhire@example.com', role: '' });
+    const result = inviteTeamMemberSchema.safeParse({
+      name: 'Jordan Lee',
+      email: 'newhire@example.com',
+      role: '',
+    });
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.flatten().fieldErrors.role?.[0]).toBe('Role is required.');
+    }
+  });
+
+  it('requires a name', () => {
+    const result = inviteTeamMemberSchema.safeParse({
+      name: '',
+      email: 'newhire@example.com',
+      role: 'recruiter',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors.name?.[0]).toBe('Name is required.');
     }
   });
 });

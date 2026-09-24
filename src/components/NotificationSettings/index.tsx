@@ -100,7 +100,79 @@ const NotificationSettings = () => {
     }
   };
 
-  const grouped = data ? groupByCategory(data.items) : new Map<string, PreferenceItem[]>();
+  const categoryEntries = Array.from(
+    (data ? groupByCategory(data.items) : new Map<string, PreferenceItem[]>()).entries()
+  );
+  // Split so the section people can actually act on renders first, ahead of
+  // the required/locked ones — previously every section looked identical
+  // (same switch styling whether clickable or not), so the one editable
+  // category was easy to miss below several that only look interactive.
+  const editableEntries = categoryEntries.filter(([, items]) => items.some((i) => i.is_editable));
+  const lockedEntries = categoryEntries.filter(([, items]) => items.every((i) => !i.is_editable));
+
+  const renderCategory = ([category, items]: [string, PreferenceItem[]]) => {
+    const meta = categoryMeta(category);
+    const isEditableCategory = items.some((i) => i.is_editable);
+    return (
+      <section key={category} className="rounded-2xl border border-[var(--border)] bg-white p-6">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <Typography variant="h6" className="block">
+            {meta.label}
+          </Typography>
+          <span
+            className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
+            style={
+              isEditableCategory
+                ? { background: 'var(--primary-50)', color: 'var(--primary)' }
+                : { background: 'var(--gray-100)', color: 'var(--gray-500)' }
+            }
+          >
+            {isEditableCategory ? 'Customizable' : 'Always on'}
+          </span>
+        </div>
+        {meta.description && (
+          <Typography variant="caption" className="mb-3 block text-gray-500">
+            {meta.description}
+          </Typography>
+        )}
+        <div className="divide-y">
+          {items.map((item) => {
+            const key = `${item.category}:${item.channel}`;
+            return (
+              <div
+                key={key}
+                className={`flex items-center justify-between py-3 ${
+                  !item.is_editable ? 'opacity-60' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Typography
+                    variant="body1"
+                    className={!item.is_editable ? 'text-gray-500' : undefined}
+                  >
+                    {channelLabel(item.channel)}
+                  </Typography>
+                  {!item.is_editable && (
+                    <Tooltip title="Required, cannot be turned off — protects your account or completes a flow you started.">
+                      <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                        <MdLock size={12} />
+                        Locked
+                      </span>
+                    </Tooltip>
+                  )}
+                </div>
+                <Switch
+                  checked={item.is_enabled}
+                  disabled={!item.is_editable || pendingKey === key}
+                  onChange={(checked) => handleToggle(item, checked)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
+  };
 
   return (
     <MainLayout>
@@ -125,46 +197,22 @@ const NotificationSettings = () => {
 
         {!isLoading && !isError && (
           <div className="flex flex-col gap-4">
-            {Array.from(grouped.entries()).map(([category, items]) => {
-              const meta = categoryMeta(category);
-              return (
-                <section
-                  key={category}
-                  className="rounded-2xl border border-[var(--border)] bg-white p-6"
-                >
-                  <Typography variant="h6" className="mb-1 block">
-                    {meta.label}
+            <Typography variant="caption" className="text-gray-500">
+              {editableEntries.length > 0
+                ? 'Security and account-action alerts are always on to protect you — everything under “Customizable” below is yours to turn on or off.'
+                : 'Everything below is required to run and protect your account, so none of it can be turned off yet. Optional updates (like digests) will show up here as toggles once we add them.'}
+            </Typography>
+            {editableEntries.map(renderCategory)}
+            {lockedEntries.length > 0 && (
+              <div className="mt-2 flex flex-col gap-4">
+                {editableEntries.length > 0 && (
+                  <Typography variant="caption" className="text-gray-400">
+                    Always on
                   </Typography>
-                  {meta.description && (
-                    <Typography variant="caption" className="mb-3 block text-gray-500">
-                      {meta.description}
-                    </Typography>
-                  )}
-                  <div className="divide-y">
-                    {items.map((item) => {
-                      const key = `${item.category}:${item.channel}`;
-                      return (
-                        <div key={key} className="flex items-center justify-between py-3">
-                          <div className="flex items-center gap-2">
-                            <Typography variant="body1">{channelLabel(item.channel)}</Typography>
-                            {!item.is_editable && (
-                              <Tooltip title="Required, cannot be turned off.">
-                                <MdLock className="text-gray-400" size={14} />
-                              </Tooltip>
-                            )}
-                          </div>
-                          <Switch
-                            checked={item.is_enabled}
-                            disabled={!item.is_editable || pendingKey === key}
-                            onChange={(checked) => handleToggle(item, checked)}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              );
-            })}
+                )}
+                {lockedEntries.map(renderCategory)}
+              </div>
+            )}
           </div>
         )}
       </div>

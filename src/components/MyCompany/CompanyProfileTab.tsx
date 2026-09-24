@@ -10,7 +10,7 @@ import {
   MdPhone,
   MdAutorenew,
 } from 'react-icons/md';
-import { Button, Input, Typography, showToast } from '../shared';
+import { Button, Input, Textarea, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import { Badge, BadgeStatus } from '../shared/ui/badge';
 import {
@@ -58,6 +58,7 @@ type ProfileFormState = {
   website_url: string;
   culture_intro: string;
   company_size: string;
+  admin_contact: string;
 };
 
 const toFormState = (
@@ -69,6 +70,7 @@ const toFormState = (
   website_url: profile?.website_url || '',
   culture_intro: cultureIntro,
   company_size: profile?.company_size ? String(profile.company_size) : '',
+  admin_contact: profile?.admin_contact || '',
 });
 
 /**
@@ -97,6 +99,12 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [logoPreview, setLogoPreview] = useState('');
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  // Set once handleLogoUpload's upload call resolves, cleared once Save (or
+  // Cancel) resolves it. Uploading only stages a storage key server-side —
+  // see request_tenant_logo_upload.py, which never touches the tenant row —
+  // so this is what lets handleSave apply it, instead of the upload handler
+  // applying it itself the instant a file is picked.
+  const [pendingLogoStorageKey, setPendingLogoStorageKey] = useState<string | null>(null);
   const logoUploadRef = useRef<HTMLButtonElement>(null);
 
   // undefined while still loading (cultureIntroError also unset yet) — only
@@ -180,6 +188,9 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     if (!scrapePreview) return;
     if (field === 'logo_reference' && scrapePreview.logo_reference) {
       setLogoPreview(scrapePreview.logo_reference);
+      // A scraped logo replaces whatever a disk upload had staged — only
+      // one of the two should ever reach handleSave's payload.
+      setPendingLogoStorageKey(null);
     } else if (field === 'description' && scrapePreview.description) {
       setForm((prev) => ({ ...prev, description: scrapePreview.description! }));
     } else if (field === 'culture_text' && scrapePreview.culture_text) {
@@ -201,10 +212,13 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
+      // Upload only — stages a storage key, doesn't touch the tenant row.
+      // Applying it is handleSave's job, same as every other field here, so
+      // picking a logo and leaving without saving no longer changes
+      // anything (see pendingLogoStorageKey's own comment above).
       const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
-      await updateProfile({ tenantId, logo: storage_key }).unwrap();
-      showToast({ message: 'Company logo updated.', type: 'success' });
-      refetch();
+      setPendingLogoStorageKey(storage_key);
+      showToast({ message: 'Logo selected. Save changes to apply.', type: 'success' });
     } catch (err) {
       setLogoPreview(profile?.logo_url || '');
       showToast({ message: getOrgErrorMessage(err, 'Failed to upload logo.'), type: 'error' });
@@ -219,13 +233,16 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     return <div className="p-6 text-gray-500">Company profile is not available.</div>;
   }
 
-  const handleField = (field: keyof ProfileFormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  const handleField =
+    (field: keyof ProfileFormState) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
   const handleCancel = () => {
     setForm(toFormState(profile, cultureIntroValue ?? ''));
     setLogoPreview(profile?.logo_url || '');
     setScrapePreview(null);
+    setPendingLogoStorageKey(null);
     setIsEditMode(false);
   };
 
@@ -236,11 +253,16 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       return;
     }
     try {
-      // `logo` is only included here for a scraped-and-applied logo — a
-      // disk upload already persists immediately in handleLogoUpload, and
-      // `logoPreview` briefly holds an object-URL preview mid-upload that
-      // must never be sent to the backend as a real value.
+      // `logo` is included for either a staged disk upload
+      // (pendingLogoStorageKey, the common case — see handleLogoUpload) or
+      // a scraped-and-applied logo (`logoPreview` holds ai-service's
+      // logo_reference URL in that case). The two are mutually exclusive —
+      // applyScrapeField clears pendingLogoStorageKey when it sets one — so
+      // this never sends both. `logoPreview` alone is never trusted here
+      // when it's a `blob:` URL: that's only ever a local upload preview,
+      // never a real value to persist.
       const scrapedLogoApplied =
+        !pendingLogoStorageKey &&
         logoPreview &&
         logoPreview !== (profile?.logo_url || '') &&
         !logoPreview.startsWith('blob:');
@@ -250,7 +272,12 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         description: form.description,
         website_url: form.website_url,
         company_size: parsedSize,
-        ...(scrapedLogoApplied ? { logo: logoPreview } : {}),
+        admin_contact: form.admin_contact,
+        ...(pendingLogoStorageKey
+          ? { logo: pendingLogoStorageKey }
+          : scrapedLogoApplied
+            ? { logo: logoPreview }
+            : {}),
       }).unwrap();
       // A genuinely separate resource from the rest of the profile (its own
       // endpoint, its own permission gate) — see cultureIntro.ts. Skipped
@@ -264,6 +291,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         refetchCultureIntro();
       }
       setScrapePreview(null);
+      setPendingLogoStorageKey(null);
       showToast({ message: 'Company profile updated.', type: 'success' });
       setIsEditMode(false);
       refetch();
@@ -284,6 +312,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     { key: 'name', label: 'Company name', icon: <MdBusiness size={16} /> },
     { key: 'website_url', label: 'Website', icon: <MdLanguage size={16} /> },
     { key: 'company_size', label: 'Company size', icon: <MdGroups size={16} /> },
+    { key: 'admin_contact', label: 'Admin contact', icon: <MdPhone size={16} /> },
     {
       key: 'description',
       label: 'Description',
@@ -366,11 +395,13 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         {logoNode}
         <div className="flex-1 min-w-0 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-            <Typography variant="h4" className="font-semibold text-gray-900 truncate">
+            <Typography variant="h4" className="min-w-0 truncate font-semibold text-gray-900">
               {form.name || 'Untitled company'}
             </Typography>
             {profile.status && (
-              <Badge status={STATUS_BADGE[profile.status] || 'neutral'}>{profile.status}</Badge>
+              <Badge status={STATUS_BADGE[profile.status] || 'neutral'} className="shrink-0">
+                {profile.status}
+              </Badge>
             )}
           </div>
           {form.website_url && (
@@ -390,7 +421,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         {fields.map(({ key, label, icon, fullWidth }) => (
           <div
             key={key}
-            className={`p-4 rounded-xl border border-gray-100 bg-white ${fullWidth ? 'sm:col-span-2' : ''}`}
+            className={`min-w-0 p-4 rounded-xl border border-gray-100 bg-white ${fullWidth ? 'sm:col-span-2' : ''}`}
           >
             <div className="flex items-center gap-2 mb-2">
               <span className="w-7 h-7 shrink-0 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
@@ -402,12 +433,21 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             </div>
             {isEditMode ? (
               <div className={key === 'website_url' ? 'flex items-center gap-2' : ''}>
-                <Input
-                  value={form[key]}
-                  onChange={handleField(key)}
-                  placeholder={label}
-                  noAutoCapitalize={key === 'website_url'}
-                />
+                {fullWidth ? (
+                  <Textarea
+                    value={form[key]}
+                    onChange={handleField(key)}
+                    placeholder={label}
+                    rows={4}
+                  />
+                ) : (
+                  <Input
+                    value={form[key]}
+                    onChange={handleField(key)}
+                    placeholder={label}
+                    noAutoCapitalize={key === 'website_url'}
+                  />
+                )}
                 {key === 'website_url' && (
                   <button
                     type="button"
@@ -421,26 +461,12 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 )}
               </div>
             ) : (
-              <Typography variant="body1" className="text-gray-800 whitespace-pre-line">
+              <Typography variant="body1" className="whitespace-pre-line break-words text-gray-800">
                 {form[key] || '-'}
               </Typography>
             )}
           </div>
         ))}
-
-        <div className="p-4 rounded-xl border border-gray-100 bg-white">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="w-7 h-7 shrink-0 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
-              <MdPhone size={16} />
-            </span>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-              Admin contact
-            </p>
-          </div>
-          <Typography variant="body1" className="text-gray-800">
-            {profile.admin_contact || '-'}
-          </Typography>
-        </div>
       </div>
 
       {isEditMode && scrapePreview && (

@@ -319,6 +319,17 @@ const AcceptInvitation = () => {
   useEffect(() => {
     if (invitation) {
       setValue('isPlatformInvite', invitation.is_platform_invite, { shouldValidate: true });
+      // Same idea as contact_phone below: whoever created this invite may
+      // already have typed a name (e.g. the "Add user" flow). Backends that
+      // don't carry a name on the invite yet just omit these keys, so this
+      // is a harmless no-op until that ships — the fields stay blank exactly
+      // as they do today.
+      if (invitation.first_name) {
+        setValue('firstName', invitation.first_name, { shouldDirty: false, shouldValidate: true });
+      }
+      if (invitation.last_name) {
+        setValue('lastName', invitation.last_name, { shouldDirty: false });
+      }
       if (invitation.contact_phone) {
         const { countryCode: prefilledCountryCode, phoneNumber: prefilledPhoneNumber } = splitE164(
           invitation.contact_phone

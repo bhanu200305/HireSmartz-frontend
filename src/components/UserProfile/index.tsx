@@ -1,11 +1,13 @@
 import {
   MdBadge,
   MdCameraAlt,
+  MdClose,
   MdDelete,
   MdEdit,
   MdMailOutline,
   MdOutlineArrowBack,
   MdOutlineCalendarMonth,
+  MdOutlineDevices,
   MdOutlineFileUpload,
   MdOutlineNotifications,
   MdOutlineSecurity,
@@ -115,6 +117,11 @@ const UserProfile = () => {
   const [imagePreview, setImagePreview] = useState('');
   const [imageChanged, setImageChanged] = useState(false);
   const [isProfileDeleted, setIsProfileDeleted] = useState(false);
+  // Fields start locked/read-only; the corner pencil unlocks them. Email and
+  // Role stay locked regardless — they're not covered by this form at all
+  // (email is identity-bound, see its Form.Item below; role has no self-
+  // service edit path either).
+  const [isEditing, setIsEditing] = useState(false);
   const uploadRef = React.useRef<any>(null);
 
   // The crop step sits between "file picked" and "uploaded" — cropSrc/
@@ -246,6 +253,15 @@ const UserProfile = () => {
       });
     }
   };
+  // Discards any unsaved text-field edits and relocks the form. `reset()`
+  // with no args reverts to the values from the last explicit reset() call
+  // (the load effect above), not the form's original static defaultValues —
+  // exactly the "back to what's actually saved" behavior wanted here.
+  const handleCancelEdit = () => {
+    reset();
+    setIsEditing(false);
+  };
+
   // Picking a file no longer uploads it straight away — it opens the crop
   // modal first (handleCropConfirm below does the actual upload once the
   // user applies their adjustment), so this only ever needs to validate and
@@ -374,9 +390,10 @@ const UserProfile = () => {
         // when handleFileUpload actually produced a new storage_key this
         // session (never on every save, and never as an explicit `null`:
         // PATCH semantics can't clear it — see handleDeleteProfilePicture's
-        // own comment).
+        // own comment). `email` is deliberately never sent — it's a PATCH,
+        // so omitting it just leaves the saved address alone, matching the
+        // field now being locked in the UI (see its Form.Item below).
         await updateTenantProfile({
-          email: sanitizeInput(data.emailId),
           first_name: sanitizeInput(data.firstName),
           last_name: sanitizeInput(data.lastName),
           phone_no: cleanPhoneNumber(data.phoneNumber),
@@ -408,7 +425,7 @@ const UserProfile = () => {
       {(isLoading || isUpdating) && <Loader />}
       <MainLayout>
         <div
-          className="min-h-full pb-16 overflow-x-hidden"
+          className="min-h-full pb-8 overflow-x-hidden"
           style={{
             background:
               'linear-gradient(180deg, var(--surface-indigo) 0%, var(--surface-gray) 320px, var(--surface-gray) 100%)',
@@ -438,14 +455,21 @@ const UserProfile = () => {
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
                 >
                   <MdOutlineNotifications className="text-base" />
-                  <span>Notifications</span>
+                  <span>Notification settings</span>
                 </button>
                 <button
                   onClick={() => navigate('/settings/security')}
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
                 >
                   <MdOutlineSecurity className="text-base" />
-                  <span>Security &amp; sessions</span>
+                  <span>Security</span>
+                </button>
+                <button
+                  onClick={() => navigate('/settings/sessions')}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
+                >
+                  <MdOutlineDevices className="text-base" />
+                  <span>Active sessions</span>
                 </button>
               </div>
             </div>
@@ -453,12 +477,29 @@ const UserProfile = () => {
             {profileLoaded && (
               <Form layout="vertical">
                 <div
-                  className="mt-6 bg-white rounded-3xl border border-[var(--border)] overflow-hidden"
+                  className="relative mt-4 bg-white rounded-3xl border border-[var(--border)] overflow-hidden"
                   style={{ boxShadow: 'var(--elevation-md)' }}
                 >
+                  <button
+                    type="button"
+                    onClick={isEditing ? handleCancelEdit : () => setIsEditing(true)}
+                    className="absolute top-4 right-4 z-10 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
+                  >
+                    {isEditing ? (
+                      <>
+                        <MdClose className="text-base" />
+                        <span>Cancel</span>
+                      </>
+                    ) : (
+                      <>
+                        <MdEdit className="text-base" />
+                        <span>Edit</span>
+                      </>
+                    )}
+                  </button>
                   {/* Hero header — avatar, name, role chip */}
                   <div
-                    className="relative flex flex-col items-center text-center px-8 pt-12 pb-10"
+                    className="relative flex flex-col items-center text-center px-6 pt-8 pb-6"
                     style={{
                       background:
                         'linear-gradient(135deg, var(--surface-indigo) 0%, #ffffff 55%, var(--surface-cyan) 100%)',
@@ -467,7 +508,7 @@ const UserProfile = () => {
                     <Form.Item name="image" className="!mb-0">
                       {imagePreview ? (
                         <div
-                          className="relative w-28 h-28 sm:w-32 sm:h-32 mx-auto rounded-full overflow-hidden group ring-4 ring-white"
+                          className="relative w-24 h-24 sm:w-28 sm:h-28 mx-auto rounded-full overflow-hidden group ring-4 ring-white"
                           style={{ boxShadow: 'var(--elevation-md)' }}
                           onMouseEnter={() => setIsHovered(true)}
                           onMouseLeave={() => setIsHovered(false)}
@@ -523,7 +564,7 @@ const UserProfile = () => {
                           listType="picture"
                           maxCount={1}
                           accept="image/png, image/jpeg, image/jpg"
-                          className="!w-28 !h-28 sm:!w-32 sm:!h-32 !rounded-full !border-2 !border-dashed !border-[var(--primary-300)] !bg-white/70 flex flex-col items-center justify-center mx-auto hover:!border-[var(--primary)] transition-colors"
+                          className="!w-24 !h-24 sm:!w-28 sm:!h-28 !rounded-full !border-2 !border-dashed !border-[var(--primary-300)] !bg-white/70 flex flex-col items-center justify-center mx-auto hover:!border-[var(--primary)] transition-colors"
                         >
                           <MdOutlineFileUpload className="text-2xl text-[var(--primary)] mx-auto" />
                           <p className="text-[11px] leading-tight px-3 mt-1 text-[var(--gray-600)]">
@@ -533,24 +574,24 @@ const UserProfile = () => {
                       )}
                     </Form.Item>
 
-                    <h2 className="font-display text-xl sm:text-2xl font-bold text-[var(--gray-900)] mt-5">
+                    <h2 className="font-display text-lg sm:text-xl font-bold text-[var(--gray-900)] mt-3">
                       {displayName || 'Your Profile'}
                     </h2>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-2 mt-1.5">
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[var(--border)] text-xs font-semibold text-[var(--primary)] uppercase tracking-wide">
                         <MdOutlineVerified className="text-sm" />
                         {roleLabel}
                       </span>
                     </div>
-                    <p className="text-sm text-[var(--gray-500)] mt-2 max-w-sm">
+                    <p className="text-sm text-[var(--gray-500)] mt-1.5 max-w-sm">
                       Keep your details up to date, since this is what your team sees across
                       Careerforce&nbsp;Pro.
                     </p>
                   </div>
 
                   {/* Editable fields */}
-                  <div className="px-6 sm:px-10 py-8 border-t border-[var(--border)]">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                  <div className="px-6 sm:px-8 py-5 border-t border-[var(--border)]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0">
                       <Form.Item
                         label={
                           <span className="text-sm font-semibold text-[var(--gray-700)]">
@@ -558,9 +599,15 @@ const UserProfile = () => {
                           </span>
                         }
                         name="firstName"
-                        style={{ marginBottom: '18px' }}
+                        style={{ marginBottom: '12px' }}
                       >
-                        <div className="flex items-center gap-2.5 bg-[var(--surface-gray)] w-full px-4 border rounded-2xl border-[var(--border)] transition-colors focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]">
+                        <div
+                          className={`flex items-center gap-2.5 w-full px-4 border rounded-2xl border-[var(--border)] transition-colors ${
+                            isEditing
+                              ? 'bg-[var(--surface-gray)] focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]'
+                              : 'bg-[var(--gray-100)]'
+                          }`}
+                        >
                           <MdPersonOutline className="text-[var(--gray-400)] text-lg shrink-0" />
                           <Controller
                             name="firstName"
@@ -568,10 +615,11 @@ const UserProfile = () => {
                             render={({ field }) => (
                               <Input
                                 {...field}
+                                disabled={!isEditing}
                                 maxLength={100}
                                 type="text"
                                 placeholder="First Name"
-                                className="!bg-transparent w-full !border-0 !shadow-none !px-0 py-2.5 focus:!ring-0"
+                                className="!bg-transparent w-full !border-0 !shadow-none !px-0 py-2.5 focus:!ring-0 disabled:!text-[var(--gray-500)]"
                               />
                             )}
                           />
@@ -586,9 +634,15 @@ const UserProfile = () => {
                           </span>
                         }
                         name="lastName"
-                        style={{ marginBottom: '18px' }}
+                        style={{ marginBottom: '12px' }}
                       >
-                        <div className="flex items-center gap-2.5 bg-[var(--surface-gray)] w-full px-4 border rounded-2xl border-[var(--border)] transition-colors focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]">
+                        <div
+                          className={`flex items-center gap-2.5 w-full px-4 border rounded-2xl border-[var(--border)] transition-colors ${
+                            isEditing
+                              ? 'bg-[var(--surface-gray)] focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]'
+                              : 'bg-[var(--gray-100)]'
+                          }`}
+                        >
                           <MdPersonOutline className="text-[var(--gray-400)] text-lg shrink-0" />
                           <Controller
                             name="lastName"
@@ -596,10 +650,11 @@ const UserProfile = () => {
                             render={({ field }) => (
                               <Input
                                 {...field}
+                                disabled={!isEditing}
                                 type="text"
                                 maxLength={100}
                                 placeholder="Last Name"
-                                className="!bg-transparent w-full !border-0 !shadow-none !px-0 py-2.5 focus:!ring-0"
+                                className="!bg-transparent w-full !border-0 !shadow-none !px-0 py-2.5 focus:!ring-0 disabled:!text-[var(--gray-500)]"
                               />
                             )}
                           />
@@ -614,12 +669,19 @@ const UserProfile = () => {
                           </span>
                         }
                         name="phone"
-                        style={{ marginBottom: '18px' }}
+                        style={{ marginBottom: '12px' }}
                       >
-                        <div className="phone-input-wrapper flex items-center gap-1.5 bg-[var(--surface-gray)] w-full pl-4 pr-2 border rounded-2xl border-[var(--border)] transition-colors focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]">
+                        <div
+                          className={`phone-input-wrapper flex items-center gap-1.5 w-full pl-4 pr-2 border rounded-2xl border-[var(--border)] transition-colors ${
+                            isEditing
+                              ? 'bg-[var(--surface-gray)] focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]'
+                              : 'bg-[var(--gray-100)]'
+                          }`}
+                        >
                           <MdPhoneIphone className="text-[var(--gray-400)] text-lg shrink-0" />
                           <Select
                             value={watch('countryCode')}
+                            disabled={!isEditing}
                             onChange={(value) => {
                               setValue('countryCode', value, {
                                 shouldValidate: true,
@@ -650,6 +712,7 @@ const UserProfile = () => {
                           <div className="border-l-2 border-[var(--border)] h-6"></div>
                           <Input
                             type="tel"
+                            disabled={!isEditing}
                             placeholder="Phone number"
                             value={watch('phoneNumber')}
                             onChange={(e) => {
@@ -664,7 +727,7 @@ const UserProfile = () => {
                               trigger('phoneNumber');
                             }}
                             maxLength={15}
-                            className="!bg-transparent border-none focus:ring-0 focus:outline-none w-full !shadow-none py-2.5"
+                            className="!bg-transparent border-none focus:ring-0 focus:outline-none w-full !shadow-none py-2.5 disabled:!text-[var(--gray-500)]"
                           />
                         </div>
                         <p className="text-red-500 text-xs mt-1">{errors.countryCode?.message}</p>
@@ -678,15 +741,9 @@ const UserProfile = () => {
                           </span>
                         }
                         name="email"
-                        style={{ marginBottom: '18px' }}
+                        style={{ marginBottom: '12px' }}
                       >
-                        <div
-                          className={`flex items-center gap-2.5 w-full px-4 border rounded-2xl border-[var(--border)] transition-colors ${
-                            isPlatformCaller
-                              ? 'bg-[var(--gray-100)]'
-                              : 'bg-[var(--surface-gray)] focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]'
-                          }`}
-                        >
+                        <div className="flex items-center gap-2.5 w-full px-4 border rounded-2xl border-[var(--border)] bg-[var(--gray-100)]">
                           <MdMailOutline className="text-[var(--gray-400)] text-lg shrink-0" />
                           <Controller
                             name="emailId"
@@ -694,11 +751,17 @@ const UserProfile = () => {
                             render={({ field }) => (
                               <Input
                                 {...field}
-                                // Changing a platform account's login email isn't
-                                // part of this self-service surface — Membership
-                                // has no writable email field here (see
-                                // UpdateOwnPlatformProfileRequest).
-                                disabled={isPlatformCaller}
+                                // Email is identity-bound and never editable from
+                                // this self-service surface, for either caller
+                                // kind — always locked, even while isEditing,
+                                // same as Role below. (Platform's Membership row
+                                // has no writable email field at all; a tenant
+                                // user's email is technically writable on the
+                                // backend, but changing your own login identity
+                                // isn't something this form should let you do
+                                // silently — see handleUpdateProfile, which no
+                                // longer sends this field either.)
+                                disabled
                                 placeholder="Email Address"
                                 className="!bg-transparent w-full !border-0 !shadow-none !px-0 py-2.5 focus:!ring-0 disabled:!text-[var(--gray-500)]"
                                 onChange={(e) => {
@@ -721,7 +784,7 @@ const UserProfile = () => {
                           </span>
                         }
                         name="roleName"
-                        style={{ marginBottom: '18px' }}
+                        style={{ marginBottom: '12px' }}
                       >
                         <div className="flex items-center gap-2.5 bg-[var(--gray-100)] w-full px-4 border rounded-2xl border-[var(--border)]">
                           <MdBadge className="text-[var(--gray-400)] text-lg shrink-0" />

@@ -14,6 +14,7 @@ import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpen
 import {
   useGetTotalApplicationsQuery,
   useGetCompletedInterviewsQuery,
+  useGetInterviewsByStatusQuery,
 } from '../../api/candidate-service/Stats/stats';
 import JobOpeningsListModal from './JobOpeningsListModal';
 import CandidatesListModal from '../shared/ui/CandidatesListModal';
@@ -31,12 +32,28 @@ import { Authorities } from '../../constants/authorities.constant';
  * "Active job openings" (`JobOpeningsListModal`), "Total applications"
  * (`CandidatesListModal`), "Active team members" (`TeamMembersListModal`) —
  * all open in place instead of navigating away. "Completed interviews"
- * still doesn't have a paginated list endpoint anywhere on the backend
+ * still has no paginated list endpoint anywhere on the backend
  * (candidate-service's `completed-interviews` is aggregate-only, and
- * interview-service has no cross-tenant/list capability at all today), so
- * it stays on `StatDetailModal` — the number plus what it counts — until
- * one exists.
+ * interview-service has no cross-tenant/list capability at all today) — a
+ * recruiter still can't see WHICH candidates/rounds those are — so it stays
+ * on `StatDetailModal` rather than a real list modal. What that popup CAN
+ * show without any new backend work is the by-type breakdown
+ * (`interviews-by-status`, already used by Recruiter Dashboard's own
+ * charts) instead of the "coming soon" placeholder it used to show.
  */
+// interviews-by-status's fixed 3-bucket vocabulary (round_type_classification.py)
+// mapped to the product-facing labels this card's footer already promises —
+// "Audio" for the Intake/Audio-Screening rounds, "AI" for an AI-avatar-
+// conducted interview, "Panel" for a human-panel round (conducted over
+// video). Any round type that doesn't classify into one of these three
+// (e.g. Identity Verification) is excluded upstream, not given a 4th bucket.
+const ROUND_TYPE_LABELS: Record<string, string> = {
+  AUDIO: 'Audio',
+  AVATAR: 'AI',
+  VIDEO: 'Panel',
+};
+const ROUND_TYPE_ORDER = ['AUDIO', 'AVATAR', 'VIDEO'];
+
 const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = ({
   columns = 4,
   tall,
@@ -71,6 +88,23 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
     useGetTotalApplicationsQuery(undefined, { skip: !canViewCandidates });
   const { data: completedInterviews, isLoading: isInterviewsLoading } =
     useGetCompletedInterviewsQuery(undefined, { skip: !canViewInterviews });
+  // Real breakdown for the "Completed interviews" popup, built from an
+  // endpoint that already exists and is already used elsewhere (Recruiter
+  // Dashboard's "Interviews by Status & Type" chart) — no new backend work
+  // needed. Filtered to the 'completed' status only; see this file's own
+  // history for why that sums to the same total `completedInterviews.total`
+  // reports (both queries apply the same round/status filters for that one
+  // status value).
+  const { data: interviewsByStatus } = useGetInterviewsByStatusQuery(undefined, {
+    skip: !canViewInterviews,
+  });
+  const completedByType = ROUND_TYPE_ORDER.map((type) => ({
+    type,
+    label: ROUND_TYPE_LABELS[type],
+    count: (interviewsByStatus?.counts ?? [])
+      .filter((row) => row.status === 'completed' && row.round_type === type)
+      .reduce((sum, row) => sum + row.count, 0),
+  }));
 
   const cards: StatCardData[] = [
     ...(canViewJobs
@@ -104,7 +138,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
             value: isInterviewsLoading ? undefined : completedInterviews?.total?.toLocaleString(),
             footer: (
               <p className="text-[11px] text-neutral-400">
-                Breakdown by Audio / AI / Panel: coming soon
+                {completedByType.map((t) => `${t.label} ${t.count}`).join(' · ')}
               </p>
             ),
             onClick: () => setActiveDetail('interviews'),
@@ -138,7 +172,17 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
           label="Completed interviews"
           value={completedInterviews?.total?.toLocaleString()}
           description="Interviews that have been completed across all rounds and formats."
-          footer="Breakdown by Audio / AI / Panel: coming soon"
+          footer={
+            <div className="flex flex-col gap-1">
+              <p className="font-semibold text-neutral-500">Breakdown by type</p>
+              {completedByType.map((t) => (
+                <div key={t.type} className="flex items-center justify-between">
+                  <span>{t.label}</span>
+                  <span className="font-medium text-neutral-700">{t.count}</span>
+                </div>
+              ))}
+            </div>
+          }
           viewAllHref="/interviews"
           viewAllLabel="View interviews"
         />

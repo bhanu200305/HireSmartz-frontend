@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
 import MfaSection from './MfaSection';
 import RecoverySection from './RecoverySection';
-import SessionsSection from './SessionsSection';
 
 /**
- * Account security home: two-factor methods (/api/v1/mfa) and active
- * sessions (/api/v1/auth/sessions) — the two authenticated, self-service surfaces
+ * Account security home: two-factor methods and the recovery email
+ * (/api/v1/mfa) — the authenticated, self-service identity surfaces
  * authentication-service exposes beyond login/password. Reached from
- * UserProfile ("Security" link).
+ * UserProfile ("Security" link). Active sessions used to render here too;
+ * split into its own page/route (see components/ActiveSessions) so it reads
+ * as a separate concern rather than a third section on this one.
  */
 const SecuritySettings = () => {
   const navigate = useNavigate();
@@ -34,7 +35,6 @@ const SecuritySettings = () => {
 
         <MfaSection />
         <RecoverySection />
-        <SessionsSection />
       </div>
     </MainLayout>
   );
