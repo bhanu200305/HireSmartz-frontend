@@ -76,6 +76,13 @@ const OrganisationUserTable = () => {
   const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const canArchive = useHasAccess(Authorities.USER_ARCHIVE);
+  // Which row's Switch is mid-mutation, if any — `isDeactivating`/
+  // `isReactivating` below are per-HOOK, not per-row: without this, toggling
+  // one user disabled every OTHER row's switch too (deactivate's flag wasn't
+  // even wired into `disabled` at all, so it did nothing there; reactivate's
+  // was, so it disabled the whole table's switches at once, active and
+  // inactive rows alike, while any single reactivation was in flight).
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
 
   const isSearching = searchText.trim().length > 0;
 
@@ -110,7 +117,7 @@ const OrganisationUserTable = () => {
     .map((role) => ({ label: systemRoleLabel(role.name), value: role.name }))
     .sort((a, b) => a.label.localeCompare(b.label));
   const [deactivateUser, { isLoading: isDeactivating }] = useDeactivateUserMutation();
-  const [reactivateUser, { isLoading: isReactivating }] = useReactivateUserMutation();
+  const [reactivateUser] = useReactivateUserMutation();
 
   // Bulk import (and a single invite) only ever creates an `Invite` row —
   // never a `users` row — until the invited person actually accepts, so
@@ -160,6 +167,7 @@ const OrganisationUserTable = () => {
 
   const handleDeactivate = async () => {
     if (!userToDeactivate) return;
+    setPendingUserId(userToDeactivate.user_id);
     try {
       await deactivateUser(userToDeactivate.user_id).unwrap();
       showToast({ message: `${userToDeactivate.full_name} was deactivated.`, type: 'success' });
@@ -167,6 +175,7 @@ const OrganisationUserTable = () => {
       showToast({ message: getOrgErrorMessage(err, 'Failed to deactivate user.'), type: 'error' });
     } finally {
       setUserToDeactivate(null);
+      setPendingUserId(null);
     }
   };
 
@@ -175,11 +184,14 @@ const OrganisationUserTable = () => {
   // freed the user's email, so re-adding them via "Add user" 409s with
   // "already exists." This is the actual way back.
   const handleReactivate = async (user: OrgUser) => {
+    setPendingUserId(user.user_id);
     try {
       await reactivateUser(user.user_id).unwrap();
       showToast({ message: `${user.full_name} was reactivated.`, type: 'success' });
     } catch (err) {
       showToast({ message: getOrgErrorMessage(err, 'Failed to reactivate user.'), type: 'error' });
+    } finally {
+      setPendingUserId(null);
     }
   };
 
@@ -245,6 +257,10 @@ const OrganisationUserTable = () => {
     {
       title: 'Name',
       key: 'full_name',
+      sorter: (a: TableRow, b: TableRow) =>
+        (a.kind === 'user' ? a.full_name : a.invited_email).localeCompare(
+          b.kind === 'user' ? b.full_name : b.invited_email
+        ),
       render: (_: unknown, row: TableRow) =>
         row.kind === 'user' ? (
           <Link
@@ -263,6 +279,8 @@ const OrganisationUserTable = () => {
     {
       title: 'Email',
       key: 'email',
+      sorter: (a: TableRow, b: TableRow) =>
+        (a.kind === 'user' ? a.email : '').localeCompare(b.kind === 'user' ? b.email : ''),
       render: (_: unknown, row: TableRow) =>
         row.kind === 'user' ? (
           <span className="text-sm text-gray-600 truncate" title={row.email}>
@@ -275,6 +293,7 @@ const OrganisationUserTable = () => {
     {
       title: 'Role',
       key: 'role',
+      sorter: (a: TableRow, b: TableRow) => (a.role || '').localeCompare(b.role || ''),
       render: (_: unknown, row: TableRow) => {
         if (row.kind === 'pending') {
           return row.role ? (
@@ -310,6 +329,10 @@ const OrganisationUserTable = () => {
     {
       title: 'Phone',
       key: 'phone',
+      sorter: (a: TableRow, b: TableRow) =>
+        (a.kind === 'user' ? a.phone_no || '' : '').localeCompare(
+          b.kind === 'user' ? b.phone_no || '' : ''
+        ),
       render: (_: unknown, row: TableRow) =>
         row.kind === 'pending' ? (
           <span className="text-sm text-gray-300">-</span>
@@ -322,6 +345,9 @@ const OrganisationUserTable = () => {
     {
       title: 'Status',
       key: 'status',
+      sorter: (a: TableRow, b: TableRow) =>
+        Number(a.kind === 'user' ? a.is_active : false) -
+        Number(b.kind === 'user' ? b.is_active : false),
       render: (_: unknown, row: TableRow) =>
         row.kind === 'pending' ? (
           <Badge status="warning">Pending</Badge>
@@ -339,7 +365,7 @@ const OrganisationUserTable = () => {
               <Switch
                 size="small"
                 checked={row.is_active}
-                disabled={!canArchive || isReactivating}
+                disabled={!canArchive || pendingUserId === row.user_id}
                 onChange={() =>
                   row.is_active ? setUserToDeactivate(row) : void handleReactivate(row)
                 }

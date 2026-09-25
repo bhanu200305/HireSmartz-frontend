@@ -15,7 +15,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { LiveKitRoom, useRoomContext } from '@livekit/components-react';
+import { LiveKitRoom, useRoomContext, useRemoteParticipants } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { Track, type RoomOptions, type RoomConnectOptions } from 'livekit-client';
 
@@ -95,7 +95,7 @@ interface InterviewState {
     | null;
   interviewToken: string | null;
   hasEnded: boolean;
-  endedBy?: 'user' | 'recruiter';
+  endedBy?: 'user' | 'recruiter' | 'ai';
   interviewEndedByRecruiter: boolean;
   categorizedQuestions?: any;
   /** Tracks the post-interview feedback flow step. No server-side
@@ -468,7 +468,9 @@ const Interview: React.FC = () => {
 
   /**
    * Handle leave interview
-   * @param endedBy - Who ended the interview ('user' for manual leave, 'recruiter' for API end)
+   * @param endedBy - Who ended the interview ('user' for manual leave, 'recruiter' for
+   * API end, 'ai' for the AI interviewer disconnecting on an AI Video round — see
+   * InterviewContent's own remote-participant-count effect)
    *
    * NOTE: When the interviewer explicitly clicks "End Interview",
    * `handleEndInterview` sets `interviewEndingRef` to true. In that case this
@@ -477,7 +479,7 @@ const Interview: React.FC = () => {
    * lets `handleEndInterview` own the shouldPrompt check.
    */
   const handleLeaveInterview = useCallback(
-    async (endedBy: 'user' | 'recruiter' = 'user') => {
+    async (endedBy: 'user' | 'recruiter' | 'ai' = 'user') => {
       // If handleEndInterview is already managing the feedback flow,
       // just mark as ended and bail — no competing shouldPrompt call.
       if (interviewEndingRef.current) {
@@ -647,7 +649,11 @@ const Interview: React.FC = () => {
     const candId = decodedInterviewToken?.candidateId;
     const roundId = decodedInterviewToken?.interviewRoundId;
     if (jobId && candId) {
-      const url = `/jobs/view/${jobId}/candidates/${candId}/details?tab=3${roundId ? `&interviewRoundId=${roundId}` : ''}`;
+      // 'summary' = CandidateDetails.tsx's Interview Summary tab. Used to be
+      // the numeric `tab=3`, which that page silently stopped honoring once
+      // its tab strip was rewritten to string keys — every "Complete Full
+      // Feedback" click was landing on the unrelated Assessment tab instead.
+      const url = `/jobs/view/${jobId}/candidates/${candId}/details?tab=summary${roundId ? `&interviewRoundId=${roundId}` : ''}`;
       window.open(url, '_blank');
     }
     // Clear session data and dismiss prompt
@@ -840,7 +846,7 @@ interface InterviewContentProps {
   activeSidebar: SidebarKey;
   onStartRecording: () => void;
   onStopRecording: () => void;
-  onLeaveInterview: (endedBy?: 'user' | 'recruiter') => void;
+  onLeaveInterview: (endedBy?: 'user' | 'recruiter' | 'ai') => void;
   onEndInterview: () => void;
   onUpdateRecordingState: (isRecording: boolean) => void;
   interviewEndedByRecruiter: boolean;
@@ -892,6 +898,87 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
       setShowRecordingPopup(true);
     }
   }, [recording]);
+
+  /**
+   * AI Video rounds have no human interviewer to click "End Interview" —
+   * ai-service's own agent (LiveKit identity "Iris" by default; see
+   * ai_video_room_identity) just disconnects its own connection once the
+   * round's time is up (conduct_ai_video_interview.py's `finally`-guarded
+   * `_room_agent.disconnect()`); it never closes the room itself. Nothing
+   * previously reacted to that on the candidate side, so the candidate was
+   * left sitting alone in a still-live call indefinitely.
+   *
+   * Scoped to CANDIDATE tokens only — a human interviewer's own client
+   * already has its own explicit "End Interview" flow. A short grace
+   * period (rather than acting the instant the room is empty) absorbs a
+   * brief reconnect blip on a PANEL round's interviewer without
+   * prematurely ending the candidate's call; it's cancelled if anyone
+   * rejoins before it elapses.
+   */
+  const AI_ENDED_GRACE_SECONDS = 10;
+  const isCandidateToken = token.role === 'CANDIDATE';
+  const remoteParticipants = useRemoteParticipants();
+  const hadRemoteParticipantRef = React.useRef(false);
+  const aiEndTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [aiEndedNoticeVisible, setAiEndedNoticeVisible] = useState(false);
+  const [aiEndedCountdown, setAiEndedCountdown] = useState(AI_ENDED_GRACE_SECONDS);
+
+  useEffect(() => {
+    if (remoteParticipants.length > 0) {
+      hadRemoteParticipantRef.current = true;
+    }
+  }, [remoteParticipants.length]);
+
+  useEffect(() => {
+    if (!isCandidateToken) return;
+
+    if (remoteParticipants.length > 0) {
+      // Someone (re)joined inside the grace window — still a live call.
+      if (aiEndTimeoutRef.current) {
+        clearTimeout(aiEndTimeoutRef.current);
+        aiEndTimeoutRef.current = null;
+      }
+      setAiEndedNoticeVisible(false);
+      return;
+    }
+
+    // Only fire once the room has actually had someone in it (never on
+    // initial mount before Iris/the interviewer has even joined), and only
+    // once per emptying — `aiEndTimeoutRef` guards against re-arming on
+    // every re-render while the notice is already showing.
+    if (!hadRemoteParticipantRef.current || userManuallLeftRef.current || aiEndTimeoutRef.current) {
+      return;
+    }
+
+    setAiEndedNoticeVisible(true);
+    setAiEndedCountdown(AI_ENDED_GRACE_SECONDS);
+    aiEndTimeoutRef.current = setTimeout(() => {
+      onLeaveInterview('ai');
+    }, AI_ENDED_GRACE_SECONDS * 1000);
+  }, [remoteParticipants.length, isCandidateToken, onLeaveInterview]);
+
+  useEffect(() => {
+    if (!aiEndedNoticeVisible) return undefined;
+    const interval = setInterval(() => {
+      setAiEndedCountdown((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [aiEndedNoticeVisible]);
+
+  useEffect(
+    () => () => {
+      if (aiEndTimeoutRef.current) clearTimeout(aiEndTimeoutRef.current);
+    },
+    []
+  );
+
+  const handleLeaveNowAfterAiEnded = useCallback(() => {
+    if (aiEndTimeoutRef.current) {
+      clearTimeout(aiEndTimeoutRef.current);
+      aiEndTimeoutRef.current = null;
+    }
+    onLeaveInterview('ai');
+  }, [onLeaveInterview]);
 
   const [devices, setDevices] = useState<{
     audioDevices: DeviceInfo[];
@@ -1414,6 +1501,25 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
 
   return (
     <div className="flex h-screen w-screen bg-gray-900">
+      {aiEndedNoticeVisible && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="w-[95vw] max-w-[480px] flex flex-col items-center rounded-2xl bg-white px-10 py-10 text-center shadow-2xl animate-[fadeIn_0.2s_ease-out]">
+            <h2 className="mb-2 text-2xl font-bold text-gray-900">Your Interview Has Ended</h2>
+            <p className="mb-1 text-base text-gray-700">Thank you for participating.</p>
+            <p className="mb-6 text-sm text-gray-500">
+              This call will close automatically in {aiEndedCountdown}s, or you may leave now.
+            </p>
+            <Button
+              type="primary"
+              size="large"
+              className="rounded-lg bg-brand-600 hover:!bg-brand-700 border-none px-8 font-medium"
+              onClick={handleLeaveNowAfterAiEnded}
+            >
+              Leave Now
+            </Button>
+          </div>
+        </div>
+      )}
       {/* Main Video Grid */}
       <div className="flex-1 flex flex-col">
         {/* Video Grid */}

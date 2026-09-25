@@ -192,7 +192,6 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
     <ChartCard
       title="Applications over time"
       subtitle="Daily application volume, trailing 30 days"
-      typeTag="Line"
       isLoading={isAppsLoading}
       available={appsOverTimeData.length > 0}
     >
@@ -244,7 +243,6 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       <ChartCard
         title="Jobs by status"
         subtitle="Current mix of open, closed and draft job openings"
-        typeTag="Donut"
         isLoading={isJobStatsLoading}
         available={Boolean(jobStats) && jobStats!.total_count > 0}
       >
@@ -254,7 +252,6 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       <ChartCard
         title="Jobs by department"
         subtitle="Open, closed and draft job openings, grouped by department"
-        typeTag="Bar"
         isLoading={isJobsByDepartmentLoading || isDepartmentsLoading}
         available={jobsByDepartmentData.length > 0}
       >
@@ -270,7 +267,6 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       <ChartCard
         title="Jobs by location"
         subtitle="Open, closed and draft job openings, grouped by office"
-        typeTag="Bar"
         isLoading={isJobsByLocationLoading || isOfficesLoading}
         available={jobsByLocationData.length > 0}
       >
@@ -286,7 +282,6 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       <ChartCard
         title="Hiring funnel"
         subtitle="Candidate progression and drop-off by stage"
-        typeTag="Pipeline"
         isLoading={isFunnelLoading}
         available={funnelStages.length > 0}
         span={2}
@@ -297,7 +292,6 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       <ChartCard
         title="Interviews by status"
         subtitle="Round counts across every open job, not yet split by Audio Round / AI Interview / Panel Interview"
-        typeTag="Bar"
         isLoading={isInterviewsLoading}
         available={interviewStatusData.length > 0}
       >
@@ -332,7 +326,6 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       <ChartCard
         title="AI score distribution"
         subtitle="Candidates grouped by resume-score band"
-        typeTag="Bar"
         isLoading={isResumeScoreLoading}
         available={resumeScoreData.some((band) => band.Candidates > 0)}
       >

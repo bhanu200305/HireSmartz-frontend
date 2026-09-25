@@ -454,6 +454,14 @@ export const interviewApi = createApi({
         round_id: string;
         status_filter: BookingStatus;
         interview_type: InterviewType;
+        // Already supported server-side (`GET /bookings`'s own summary:
+        // "Filter bookings by candidate/job/round/status/interview_type/
+        // interviewer_id") — matches EITHER the booking's primary
+        // `interviewer_id` OR membership in a PANEL booking's interviewer
+        // roster (`sqlalchemy_interview_booking_repository.py`). Just never
+        // had a field here to send it through until the per-interviewer
+        // calendar needed it.
+        interviewer_id: string;
         limit: number;
         cursor: string;
       }>

@@ -15,6 +15,24 @@ export const isDocumentFullscreen = (): boolean => {
 };
 
 /**
+ * Whether entering fullscreen is even possible here — false on iOS Safari
+ * (it only ever exposes fullscreen for a `<video>` element via
+ * `webkitEnterFullscreen`, never for an arbitrary element like
+ * `document.documentElement`, so neither `requestFullscreen` nor
+ * `webkitRequestFullscreen` exists on it there) and in any other
+ * browser/embed that doesn't grant the Fullscreen API. `useFullscreenLock`
+ * uses this to skip enforcing the lock entirely on such platforms — without
+ * it, `requestFullscreen()` below silently no-ops forever, so the "return to
+ * fullscreen" prompt's own button could never actually succeed, permanently
+ * trapping the candidate behind a warning screen that can never clear
+ * instead of just not locking them in the first place.
+ */
+export const isFullscreenSupported = (): boolean => {
+  const el = document.documentElement as FullscreenishElement;
+  return !!(el.requestFullscreen || el.webkitRequestFullscreen);
+};
+
+/**
  * Must be called synchronously inside a real user gesture (a click
  * handler, before any `await`) — browsers silently refuse
  * `requestFullscreen()` otherwise. Fails silently rather than blocking the

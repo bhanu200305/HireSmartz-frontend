@@ -110,7 +110,6 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
           <ChartCard
             title="Candidate status breakdown"
             subtitle="Applied, Audio Round, AI Interview, Panel Interview, Selected, Rejected"
-            typeTag="Funnel"
             isLoading={isFunnelLoading}
             available={funnelStages.length > 0}
           >
@@ -120,7 +119,6 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
           <ChartCard
             title="Audio / AI / Panel interviews"
             subtitle="Interviews conducted for this job, by round type"
-            typeTag="Bar"
             available={false}
             unavailableLabel={COMING_SOON_ROUND_TYPE}
           >
@@ -130,7 +128,6 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
           <ChartCard
             title="AI score distribution"
             subtitle="Candidates grouped by resume-score band"
-            typeTag="Bar"
             span={2}
             isLoading={isScoreDistributionLoading}
             available={resumeScoreData.some((band) => band.Candidates > 0)}

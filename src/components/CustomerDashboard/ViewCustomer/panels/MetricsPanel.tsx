@@ -103,7 +103,6 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <ChartCard
           title="Applications over time"
           subtitle="Weekly application volume and recruitment activity"
-          typeTag="Line"
           available={false}
           unavailableLabel={COMING_SOON}
         >
@@ -112,7 +111,6 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <ChartCard
           title="Jobs by status"
           subtitle="Open, closed and draft jobs for this tenant"
-          typeTag="Donut"
           available={false}
           unavailableLabel={COMING_SOON}
         >
@@ -121,7 +119,6 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <ChartCard
           title="Hiring funnel"
           subtitle="Applied → Audio Round → AI Interview → Panel Interview → Selected / Rejected"
-          typeTag="Funnel"
           span={2}
           available={false}
           unavailableLabel={COMING_SOON}
@@ -131,7 +128,6 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <ChartCard
           title="Interviews by Status & Type"
           subtitle="Scheduled / Completed / Canceled, by Audio Round, AI Interview & Panel Interview"
-          typeTag="Grouped bar"
           available={false}
           unavailableLabel={COMING_SOON}
         >
@@ -140,7 +136,6 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <ChartCard
           title="AI score distribution"
           subtitle="Candidates grouped by resume-score band"
-          typeTag="Bar"
           available={false}
           unavailableLabel="Coming soon: no scoring-distribution endpoint yet."
         >

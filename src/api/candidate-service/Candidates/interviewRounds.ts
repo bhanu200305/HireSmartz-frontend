@@ -126,6 +126,13 @@ export type CandidateInterviewRoundArtifactView = {
   status: string;
   url: string | null;
   produced_at: string | null;
+  // Not sent by the real backend yet — candidate-service's artifact row
+  // only stores `candidate_interview_round_id`, not which booking/attempt
+  // produced it (see RoundArtifactsModal.tsx's own grouping-by-timestamp
+  // fallback for what happens without this). Typed optional now so
+  // RoundArtifactsModal.tsx picks it up for free, with zero frontend
+  // changes, the moment candidate-service starts sending it.
+  booking_id?: string | null;
 };
 
 export type AdvanceCandidateResultView = {

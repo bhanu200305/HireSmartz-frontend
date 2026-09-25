@@ -50,3 +50,27 @@
   background: var(--color-primary-50) !important;
   box-shadow: inset 0 0 0 1px var(--color-primary-200, #c7d2fe);
 }
+
+/* CustomTable's `scroll={{ x: 'max-content' }}` opens a horizontal scrollbar
+   on `.ant-table-content` whenever columns don't fit (narrow screens, or the
+   list-style pop-up modals like PlatformTenantsListModal/TenantUsersListModal
+   that constrain the table to a modal width). Left unstyled, that renders as
+   the browser's default scrollbar, which on Windows/Chrome draws a stark
+   dark/black bar+border across the bottom of every one of these tables. This
+   thins it out and colors it to match the rest of the app's scrollbars
+   (same treatment as `.thin-scrollbar` in index.css), for every CustomTable
+   call site at once. */
+.customTable .ant-table-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+}
+.customTable .ant-table-content::-webkit-scrollbar {
+  height: 6px;
+}
+.customTable .ant-table-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.customTable .ant-table-content::-webkit-scrollbar-thumb {
+  background-color: var(--gray-300);
+  border-radius: 999px;
+}

@@ -2,7 +2,7 @@ import React from 'react';
 import { FaCheckCircle } from 'react-icons/fa';
 
 interface InterviewEndedScreenProps {
-  endedBy?: 'user' | 'recruiter';
+  endedBy?: 'user' | 'recruiter' | 'ai';
 }
 
 /**
@@ -22,14 +22,20 @@ export const InterviewEndedScreen: React.FC<InterviewEndedScreenProps> = ({ ende
 
         {/* Title */}
         <h1 className="text-4xl font-bold text-white">
-          {endedBy === 'recruiter' ? 'Interview Ended' : 'You Left the Meeting'}
+          {endedBy === 'ai'
+            ? 'Your Interview Has Ended'
+            : endedBy === 'recruiter'
+              ? 'Interview Ended'
+              : 'You Left the Meeting'}
         </h1>
 
         {/* Message */}
         <p className="text-lg text-gray-300 max-w-md mx-auto">
-          {endedBy === 'recruiter'
-            ? 'The interviewer has ended the call. Thank you for your participation.'
-            : 'You have left the interview. Thank you for participating.'}
+          {endedBy === 'ai'
+            ? 'Your AI interview has ended. Thank you for participating — you may now leave this page.'
+            : endedBy === 'recruiter'
+              ? 'The interviewer has ended the call. Thank you for your participation.'
+              : 'You have left the interview. Thank you for participating.'}
         </p>
 
         {/* Subtext */}

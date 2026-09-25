@@ -33,7 +33,7 @@ const PendingDecisionsSection: React.FC = () => {
           <Typography variant="subtitle2" className="font-semibold text-neutral-900">
             Pending decisions
           </Typography>
-          <Typography variant="caption" className="text-neutral-400">
+          <Typography variant="caption" className="mt-0.5 block text-neutral-400">
             Interviewed, awaiting selection or rejection — click a name to decide
           </Typography>
         </div>

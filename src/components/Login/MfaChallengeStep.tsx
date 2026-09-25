@@ -55,6 +55,13 @@ const MfaChallengeStep = ({
   // replaces the retry UI with the one real path forward instead of leaving
   // a cleared field and no explanation.
   const [attemptsExceeded, setAttemptsExceeded] = useState(false);
+  // Progressive disclosure for "I can't complete this challenge at all" —
+  // distinct from `attemptsExceeded` (a backend-enforced lockout). This is
+  // the always-available way out: offer switching to another enrolled
+  // factor first, and only surface account recovery once the user has
+  // asked for it, so the code screen doesn't lead with a recovery link
+  // ahead of the far more common "just send it another way" case.
+  const [showRecoveryOptions, setShowRecoveryOptions] = useState(false);
 
   const [mfaLoginVerify, { isLoading: isVerifying }] = useMfaLoginVerifyMutation();
   const [mfaLoginChallenge, { isLoading: isReissuing }] = useMfaLoginChallengeMutation();
@@ -130,6 +137,7 @@ const MfaChallengeStep = ({
       // succeeds, per the backend's own contract.
       setChallenge(reissued);
       setAttemptsExceeded(false);
+      setShowRecoveryOptions(false);
       setCode('');
       setCodeError('');
       showToast({
@@ -243,17 +251,32 @@ const MfaChallengeStep = ({
           Resend code
         </button>
 
-        {otherMethods.map((method) => (
+        {!showRecoveryOptions ? (
           <button
-            key={method.mfa_method_id}
             type="button"
-            className="text-gray-500 hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => reissueChallenge(method.mfa_method_id)}
-            disabled={isBusy}
+            className="text-gray-400 hover:text-gray-600 hover:underline cursor-pointer"
+            onClick={() => setShowRecoveryOptions(true)}
           >
-            Send it via {describeMethod(method.method_type, method.masked_destination)} instead
+            Can&apos;t use your authenticator?
           </button>
-        ))}
+        ) : (
+          <>
+            {otherMethods.map((method) => (
+              <button
+                key={method.mfa_method_id}
+                type="button"
+                className="text-gray-500 hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => reissueChallenge(method.mfa_method_id)}
+                disabled={isBusy}
+              >
+                Send it via {describeMethod(method.method_type, method.masked_destination)} instead
+              </button>
+            ))}
+            <Link to="/account-recovery" className="text-gray-500 hover:underline">
+              Recover your account
+            </Link>
+          </>
+        )}
 
         <button
           type="button"

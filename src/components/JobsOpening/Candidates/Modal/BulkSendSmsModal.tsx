@@ -56,6 +56,12 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
   // is single-candidate only, same as email's — offer it only when exactly
   // one recipient is selected.
   const canPreview = candidates.length === 1;
+  // CandidateDetails.tsx (the single candidate's own page) always opens this
+  // with exactly one candidate — "Bulk SMS" and "1 Candidate Selected" read
+  // like a leftover multi-select when there was never anything to select.
+  // CandidatesListing.tsx's real multi-select bulk send keeps the bulk
+  // copy; this only changes for the single-candidate case.
+  const isSingleCandidate = candidates.length === 1;
 
   useEffect(() => {
     if (open) {
@@ -143,7 +149,11 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
 
   return (
     <Drawer
-      title={<span className="pr-8 text-base font-bold text-gray-900">Send SMS - Bulk SMS</span>}
+      title={
+        <span className="pr-8 text-base font-bold text-gray-900">
+          {isSingleCandidate ? 'Send SMS' : 'Send SMS - Bulk SMS'}
+        </span>
+      }
       placement="bottom"
       height="min(560px, 78dvh)"
       onClose={onClose}
@@ -203,7 +213,11 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
           <Input
             id="bulk-sms-recipients"
             readOnly
-            value={`${candidates.length} Candidate${candidates.length === 1 ? '' : 's'} Selected`}
+            value={
+              isSingleCandidate
+                ? candidateDisplayName(candidates[0])
+                : `${candidates.length} Candidates Selected`
+            }
             className="h-10 rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900"
           />
         </div>

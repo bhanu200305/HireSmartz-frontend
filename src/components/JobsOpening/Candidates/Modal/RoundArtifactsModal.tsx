@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Tabs } from 'antd';
 import dayjs from 'dayjs';
 import { IoStar, IoStarOutline, IoOpenOutline } from 'react-icons/io5';
 import { Badge, InfoHint, type BadgeStatus } from '../../../shared';
@@ -49,6 +50,73 @@ const artifactKindLabel = (kind: string) =>
     .replace(/[_-]+/g, ' ')
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Artifact';
+
+/**
+ * Groups a round's artifacts (recordings/transcripts) into one tab per
+ * reattempt — "Attempt 1", "Attempt 2", etc. — oldest first.
+ *
+ * Prefers `booking_id` (which attempt actually produced this artifact) once
+ * candidate-service sends it — see this file's own artifact-view import and
+ * the TODO on `CandidateInterviewRoundArtifactView.booking_id`. Until then,
+ * falls back to clustering by `produced_at`: a single attempt's recording
+ * and transcript land within the same call, seconds to a few minutes apart,
+ * while a reattempt happens a whole separate booking later — so a 30-minute
+ * gap between consecutive artifacts (sorted oldest first) is treated as an
+ * attempt boundary. Not-yet-produced rows (`produced_at: null`, still
+ * "reserved") have no timestamp to sort by, so they're assumed to belong to
+ * the most recent attempt and appended to the last group.
+ */
+const GROUP_GAP_THRESHOLD_MS = 30 * 60 * 1000;
+
+const groupArtifactsByAttempt = (
+  artifacts: CandidateInterviewRoundArtifactView[]
+): CandidateInterviewRoundArtifactView[][] => {
+  if (artifacts.length === 0) return [];
+
+  if (artifacts.some((a) => a.booking_id)) {
+    const byBooking = new Map<string, CandidateInterviewRoundArtifactView[]>();
+    const noBooking: CandidateInterviewRoundArtifactView[] = [];
+    for (const artifact of artifacts) {
+      if (!artifact.booking_id) {
+        noBooking.push(artifact);
+        continue;
+      }
+      const group = byBooking.get(artifact.booking_id) ?? [];
+      group.push(artifact);
+      byBooking.set(artifact.booking_id, group);
+    }
+    const earliestOf = (group: CandidateInterviewRoundArtifactView[]) =>
+      Math.min(...group.map((a) => (a.produced_at ? dayjs(a.produced_at).valueOf() : Infinity)));
+    const groups = [...byBooking.values()].sort((a, b) => earliestOf(a) - earliestOf(b));
+    // Legacy rows recorded before candidate-service sent `booking_id` — no
+    // attempt to attribute them to, so they trail as their own group rather
+    // than being silently dropped.
+    if (noBooking.length > 0) groups.push(noBooking);
+    return groups;
+  }
+
+  const sorted = [...artifacts].sort((a, b) => {
+    if (!a.produced_at) return 1;
+    if (!b.produced_at) return -1;
+    return dayjs(a.produced_at).valueOf() - dayjs(b.produced_at).valueOf();
+  });
+
+  const groups: CandidateInterviewRoundArtifactView[][] = [];
+  for (const artifact of sorted) {
+    const lastGroup = groups[groups.length - 1];
+    const lastArtifact = lastGroup?.[lastGroup.length - 1];
+    const gapMs =
+      artifact.produced_at && lastArtifact?.produced_at
+        ? dayjs(artifact.produced_at).valueOf() - dayjs(lastArtifact.produced_at).valueOf()
+        : 0;
+    if (lastGroup && (!artifact.produced_at || gapMs <= GROUP_GAP_THRESHOLD_MS)) {
+      lastGroup.push(artifact);
+    } else {
+      groups.push([artifact]);
+    }
+  }
+  return groups;
+};
 
 /** Small "open in a new tab" affordance sat next to an inline preview — the
  * escape hatch for someone who actually wants the raw file (to download it,
@@ -177,6 +245,7 @@ const RoundArtifactsModal = ({
     { skip: !open }
   );
   const isVideoRound = roundType === 'AI_VIDEO' || roundType === 'PANEL';
+  const attemptGroups = useMemo(() => groupArtifactsByAttempt(data ?? []), [data]);
 
   const renderArtifactBody = (artifact: CandidateInterviewRoundArtifactView) => {
     if (!artifact.url) {
@@ -209,6 +278,31 @@ const RoundArtifactsModal = ({
       </a>
     );
   };
+
+  const renderArtifactList = (artifacts: CandidateInterviewRoundArtifactView[]) => (
+    <div className="flex flex-col gap-4">
+      {artifacts.map((artifact) => (
+        <CommonCard key={artifact.id}>
+          <div className="flex flex-col gap-3 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">{artifactKindLabel(artifact.kind)}</span>
+                <Badge status={artifactStatusBadge(artifact.status)}>{artifact.status}</Badge>
+              </div>
+              {artifact.url &&
+                (artifact.kind === 'recording' || artifact.kind === 'transcript') && (
+                  <OpenInNewTabLink
+                    url={artifact.url}
+                    label={`Open ${artifactKindLabel(artifact.kind).toLowerCase()} in a new tab`}
+                  />
+                )}
+            </div>
+            {renderArtifactBody(artifact)}
+          </div>
+        </CommonCard>
+      ))}
+    </div>
+  );
 
   return (
     <AntdCommonModal
@@ -254,30 +348,14 @@ const RoundArtifactsModal = ({
       ) : !data || data.length === 0 ? (
         <p className="text-sm text-gray-500">No recordings or transcripts for this round yet.</p>
       ) : (
-        <div className="flex flex-col gap-4">
-          {data.map((artifact) => (
-            <CommonCard key={artifact.id}>
-              <div className="flex flex-col gap-3 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold">
-                      {artifactKindLabel(artifact.kind)}
-                    </span>
-                    <Badge status={artifactStatusBadge(artifact.status)}>{artifact.status}</Badge>
-                  </div>
-                  {artifact.url &&
-                    (artifact.kind === 'recording' || artifact.kind === 'transcript') && (
-                      <OpenInNewTabLink
-                        url={artifact.url}
-                        label={`Open ${artifactKindLabel(artifact.kind).toLowerCase()} in a new tab`}
-                      />
-                    )}
-                </div>
-                {renderArtifactBody(artifact)}
-              </div>
-            </CommonCard>
-          ))}
-        </div>
+        <Tabs
+          tabPosition="top"
+          items={attemptGroups.map((group, index) => ({
+            key: String(index),
+            label: `Attempt ${index + 1}`,
+            children: renderArtifactList(group),
+          }))}
+        />
       )}
     </AntdCommonModal>
   );

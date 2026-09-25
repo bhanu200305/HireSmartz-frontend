@@ -13,7 +13,7 @@ const HiringOverviewSlide: React.FC<{ fillHeight?: boolean }> = ({ fillHeight })
   <OverviewSlide
     icon={<MdOutlineInsights />}
     title="Hiring Overview"
-    subtitle="Job openings, applications and interviews for your company"
+    subtitle="Job Openings, applications and interviews for your company"
     viewAllHref="/company-metrics"
     fillHeight={fillHeight}
   >

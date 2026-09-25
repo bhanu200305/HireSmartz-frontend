@@ -134,11 +134,15 @@ export const BookingDetailDrawer = ({
   const [submitFeedback, feedbackState] = useSubmitFeedbackMutation();
   const [attachRecording, attachState] = useAttachRecordingMutation();
   const [uploadOfflineRecording, uploadState] = useUploadOfflineRecordingMutation();
-  const [nudgeCalendarConnect, { isLoading: isNudging }] =
-    useNudgeInterviewerCalendarConnectMutation();
+  const [nudgeCalendarConnect] = useNudgeInterviewerCalendarConnectMutation();
   const audioFileInputRef = useRef<HTMLInputElement>(null);
 
   const [pending, setPending] = useState<PendingAction>(null);
+  // Which interviewer's "Send reminder" is in flight, if any — nudging one
+  // must not disable/relabel every OTHER interviewer's button too (the
+  // mutation hook's own `isLoading` is shared across every row, not
+  // per-interviewer).
+  const [nudgingInterviewerId, setNudgingInterviewerId] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [targetStatus, setTargetStatus] = useState<BookingStatus>('completed');
   const [newInterviewerId, setNewInterviewerId] = useState<string | undefined>(undefined);
@@ -174,12 +178,15 @@ export const BookingDetailDrawer = ({
   };
 
   const sendCalendarReminder = async (interviewerId: string) => {
+    setNudgingInterviewerId(interviewerId);
     try {
       await nudgeCalendarConnect({ bookingId: id, interviewerId }).unwrap();
       showToast({ message: 'Reminder sent.', type: 'success' });
     } catch (e) {
       const err = e as InterviewApiError;
       showToast({ message: err?.message || 'Could not send reminder.', type: 'error' });
+    } finally {
+      setNudgingInterviewerId(null);
     }
   };
 
@@ -364,14 +371,22 @@ export const BookingDetailDrawer = ({
                         <Badge status={iv.calendar_connected ? 'success' : 'warning'} dot={false}>
                           {iv.calendar_connected ? 'Calendar connected' : 'No calendar'}
                         </Badge>
-                        {!iv.calendar_connected && (
+                        {/* interview:write, matching the backend route's own
+                            require_permission — canUpdate (interview:update)
+                            would be the wrong gate here, canFollowUp
+                            (interview:write) is the one that actually lines
+                            up, so a read-only viewer never sees a button
+                            that's only going to 403. */}
+                        {!iv.calendar_connected && canFollowUp && (
                           <button
                             type="button"
                             onClick={() => void sendCalendarReminder(iv.interviewer_id)}
-                            disabled={isNudging}
+                            disabled={nudgingInterviewerId === iv.interviewer_id}
                             className="text-xs font-medium text-primary-600 hover:underline disabled:opacity-50"
                           >
-                            {isNudging ? 'Sending…' : 'Send reminder'}
+                            {nudgingInterviewerId === iv.interviewer_id
+                              ? 'Sending…'
+                              : 'Send reminder'}
                           </button>
                         )}
                       </div>

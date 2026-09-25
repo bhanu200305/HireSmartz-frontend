@@ -320,7 +320,7 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
         disabled={!isValid || isLoading || Boolean(emailTakenMessage)}
         className="w-full mt-6 text-white bg-[var(--color-primary)] rounded-3xl py-3 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isLoading ? 'Scraping website…' : 'Create Tenant & Scrape Profile'}
+        {isLoading ? 'Scraping website…' : 'Create Tenant & Fetch Profile'}
       </Button>
     </form>
   );

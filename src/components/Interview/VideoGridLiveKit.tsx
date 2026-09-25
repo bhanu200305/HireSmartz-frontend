@@ -192,7 +192,20 @@ const VideoGridInner: React.FC<{ candidateName?: string }> = ({ candidateName })
             />
           </div>
         ) : (
-          <div className="grid h-full w-full grid-cols-1 gap-3 p-3 sm:grid-cols-2">
+          // `repeat(auto-fit, minmax(240px, 1fr))` instead of a fixed
+          // `grid-cols-1 sm:grid-cols-2` — the fixed 2-column cap only ever
+          // fit the common 1 interviewer + 1 candidate case; a panel round
+          // with 3+ interviewers just got crammed into (or clipped from) the
+          // same two columns. auto-fit recomputes the column count itself
+          // from however many tiles + however wide the container actually
+          // is, so it keeps working unchanged as more interviewers join —
+          // no per-count breakpoint list to maintain. `overflow-y-auto` is
+          // the fallback once a very large panel's tiles hit their 220px
+          // floor and no longer all fit — scroll, never clip.
+          <div
+            className="grid h-full w-full auto-rows-fr content-start gap-3 overflow-y-auto p-3"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}
+          >
             {allSides.map((side) => (
               <div key={side.key} className="min-h-[220px]">
                 {side.node}

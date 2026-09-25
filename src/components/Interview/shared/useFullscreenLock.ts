@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { exitFullscreen, isDocumentFullscreen, requestFullscreen } from './fullscreen';
+import {
+  exitFullscreen,
+  isDocumentFullscreen,
+  isFullscreenSupported,
+  requestFullscreen,
+} from './fullscreen';
 
 /**
  * Anti-cheating measure for the candidate side of an AI-video / hiring-panel
@@ -15,10 +20,18 @@ import { exitFullscreen, isDocumentFullscreen, requestFullscreen } from './fulls
  * decision on this feature: interviewers keep full freedom to alt-tab.
  */
 export function useFullscreenLock(enabled: boolean) {
+  // Never enforce on a platform that can't grant fullscreen at all — most
+  // notably iOS Safari (see isFullscreenSupported's own comment). Without
+  // this, `isFullscreen` can never become true there, so the "return to
+  // fullscreen" warning below would show permanently with a button that can
+  // never actually work, rather than just not locking the candidate in the
+  // first place.
+  const locked = enabled && isFullscreenSupported();
+
   const [isFullscreen, setIsFullscreen] = useState(() => isDocumentFullscreen());
 
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!locked) return undefined;
     const handleChange = () => setIsFullscreen(isDocumentFullscreen());
     document.addEventListener('fullscreenchange', handleChange);
     document.addEventListener('webkitfullscreenchange', handleChange);
@@ -26,17 +39,17 @@ export function useFullscreenLock(enabled: boolean) {
       document.removeEventListener('fullscreenchange', handleChange);
       document.removeEventListener('webkitfullscreenchange', handleChange);
     };
-  }, [enabled]);
+  }, [locked]);
 
   // Leaving the interview (this component unmounting) shouldn't leave the
   // browser stuck in fullscreen on whatever page comes next.
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!locked) return undefined;
     return () => exitFullscreen();
-  }, [enabled]);
+  }, [locked]);
 
   return {
-    isFullscreen: enabled ? isFullscreen : true,
+    isFullscreen: locked ? isFullscreen : true,
     requestFullscreen,
   };
 }

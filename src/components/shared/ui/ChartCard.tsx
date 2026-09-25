@@ -6,8 +6,6 @@ import { Loader } from './loader';
 type ChartCardProps = {
   title: string;
   subtitle?: string;
-  /** Small caption in the top-right corner, e.g. "Line", "Donut", "Bar". */
-  typeTag?: string;
   isLoading?: boolean;
   /** `false` renders the "not available" state instead of `children` — used
    * both for a genuinely down dependency (auth-service, etc.) and for a
@@ -31,7 +29,6 @@ type ChartCardProps = {
 const ChartCard: React.FC<ChartCardProps> = ({
   title,
   subtitle,
-  typeTag,
   isLoading,
   available = true,
   unavailableLabel = 'Not available yet.',
@@ -49,21 +46,14 @@ const ChartCard: React.FC<ChartCardProps> = ({
       className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary-50 via-white to-accent-50 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
       aria-hidden
     />
-    <div className="relative flex items-start justify-between gap-3">
-      <div>
-        <Typography variant="subtitle2" className="font-semibold text-neutral-900">
-          {title}
+    <div className="relative">
+      <Typography variant="subtitle2" className="font-semibold text-neutral-900">
+        {title}
+      </Typography>
+      {subtitle && (
+        <Typography variant="caption" className="mt-0.5 block text-neutral-400">
+          {subtitle}
         </Typography>
-        {subtitle && (
-          <Typography variant="caption" className="mt-0.5 block text-neutral-400">
-            {subtitle}
-          </Typography>
-        )}
-      </div>
-      {typeTag && (
-        <span className="shrink-0 rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-neutral-400">
-          {typeTag}
-        </span>
       )}
     </div>
 

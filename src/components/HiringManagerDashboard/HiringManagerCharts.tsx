@@ -111,7 +111,6 @@ const HiringManagerCharts: React.FC = () => {
       <ChartCard
         title="Panel Interview (scheduled) per job"
         subtitle="Candidates currently sitting at a scheduled Panel round, by job"
-        typeTag="Bar"
         isLoading={isLoadingJobCharts}
         available={panelData.length > 0}
       >
@@ -147,7 +146,6 @@ const HiringManagerCharts: React.FC = () => {
       <ChartCard
         title="Avg AI score (per job)"
         subtitle="Average resume score across scored candidates, by job"
-        typeTag="Bar"
         isLoading={isLoadingJobCharts}
         available={avgScoreData.length > 0}
       >
@@ -184,7 +182,6 @@ const HiringManagerCharts: React.FC = () => {
       <ChartCard
         title="Hiring by location"
         subtitle="Selected candidates, grouped by resume-derived location"
-        typeTag="Horizontal bar"
         isLoading={isLocationLoading}
         available={locationData.length > 0}
         span={2}

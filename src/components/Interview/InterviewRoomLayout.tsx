@@ -201,7 +201,18 @@ const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean })
             </div>
           </div>
         ) : (
-          <div className="grid h-full grid-cols-1 gap-3 sm:grid-cols-2">
+          // Same reasoning as VideoGridLiveKit.tsx's identical block: a
+          // fixed 2-column grid only ever fit 1 interviewer + 1 candidate.
+          // Panel rounds routinely have 3+ human interviewers on the call
+          // (see this file's own module comment) — `auto-fit` recomputes
+          // the column count from however many tiles are actually present,
+          // so it keeps accommodating them regardless of how many join,
+          // with `overflow-y-auto` as the fallback once tiles hit their
+          // 220px floor for a very large panel.
+          <div
+            className="grid h-full auto-rows-fr content-start gap-3 overflow-y-auto"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}
+          >
             <div className="min-h-[220px]">{localTile}</div>
             {remoteSides.map((side) => (
               <div key={side.key} className="min-h-[220px]">

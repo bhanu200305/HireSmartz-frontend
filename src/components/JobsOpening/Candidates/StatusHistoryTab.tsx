@@ -37,7 +37,13 @@ const StatusHistoryTab = ({ candidateId }: StatusHistoryTabProps) => {
 
   const items = data?.items ?? [];
   if (items.length === 0) {
-    return <p className="text-sm text-gray-500">No status changes recorded yet.</p>;
+    return (
+      <p className="text-sm text-gray-500">
+        No status changes recorded yet. This log only tracks changes to the candidate&apos;s overall
+        status (e.g. Rejected, Selected) — moving between interview rounds via Advance shows up on
+        the Pipeline above instead, not here.
+      </p>
+    );
   }
 
   return (

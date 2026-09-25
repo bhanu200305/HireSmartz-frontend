@@ -36,6 +36,7 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
     {
       title: 'Name',
       key: 'name',
+      sorter: (a: UserRow, b: UserRow) => a.full_name.localeCompare(b.full_name),
       render: (_: unknown, row: UserRow) => (
         <div>
           <span className="block font-semibold text-neutral-900">{row.full_name}</span>
@@ -47,15 +48,18 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
+      sorter: (a: UserRow, b: UserRow) => a.email.localeCompare(b.email),
     },
     {
       title: 'Role',
       key: 'role',
+      sorter: (a: UserRow, b: UserRow) => (a.role ?? '').localeCompare(b.role ?? ''),
       render: (_: unknown, row: UserRow) => <Badge status="info">{row.role ?? '-'}</Badge>,
     },
     {
       title: 'Phone',
       key: 'phone',
+      sorter: (a: UserRow, b: UserRow) => (a.phone_no ?? '').localeCompare(b.phone_no ?? ''),
       render: (_: unknown, row: UserRow) =>
         row.phone_no ? `${row.country_code ?? ''} ${row.phone_no}` : '-',
     },

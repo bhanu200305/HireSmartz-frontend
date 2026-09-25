@@ -214,6 +214,13 @@ const ForgotPassword = () => {
             <FaArrowLeft className="mr-2 inline-block" />
             Go back to Login
           </Link>
+
+          <Link
+            to="/account-recovery"
+            className="mt-2 text-center text-xs text-gray-400 hover:text-gray-600 hover:underline"
+          >
+            Can&apos;t access this email?
+          </Link>
         </form>
 
         {/* Copyright Section */}

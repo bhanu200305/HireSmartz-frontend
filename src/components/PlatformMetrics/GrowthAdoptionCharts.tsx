@@ -176,7 +176,6 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
     <ChartCard
       title="Customer growth trend"
       subtitle="Pace of customer acquisition over time"
-      typeTag="Line"
       isLoading={isGrowthLoading}
       available={growthTrendData.length > 0}
     >
@@ -227,7 +226,6 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       <ChartCard
         title="Organization status"
         subtitle="Active vs suspended vs pending tenant organizations"
-        typeTag="Donut"
         isLoading={isGrowthLoading}
         available={orgStatusData.length > 0}
       >
@@ -241,7 +239,6 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
             ? `Conversion through the sales pipeline · ${(leadConversion.conversion_rate * 100).toFixed(1)}% converted`
             : 'Conversion through the sales pipeline'
         }
-        typeTag="Funnel"
         isLoading={isLeadLoading}
         available={Boolean(leadConversion) && leadConversion!.total_leads > 0}
       >
@@ -251,7 +248,6 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       <ChartCard
         title="User adoption trend"
         subtitle="Unique users actively accessing CFP over time"
-        typeTag="Area"
         isLoading={isLoginsTrendLoading}
         available={Boolean(loginsTrend?.available) && adoptionTrendData.length > 0}
         unavailableLabel="Unavailable: authentication-service didn't answer."
@@ -296,7 +292,6 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       <ChartCard
         title="Authentication health"
         subtitle="Successful vs failed login attempts by month"
-        typeTag="Stacked column"
         isLoading={isLoginsTrendLoading}
         available={Boolean(loginsTrend?.available) && authHealthData.length > 0}
         unavailableLabel="Unavailable: authentication-service didn't answer."
@@ -347,7 +342,6 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       <ChartCard
         title="MFA success"
         subtitle="Successful vs unsuccessful MFA attempts"
-        typeTag="Donut"
         isLoading={isMfaLoading}
         available={Boolean(mfa?.available) && mfa!.total > 0}
         unavailableLabel="Unavailable: authentication-service didn't answer."
@@ -358,7 +352,6 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       <ChartCard
         title="Platform usage by device"
         subtitle="Active sessions broken down by device type"
-        typeTag="Horizontal bar"
         isLoading={isSessionsLoading}
         available={Boolean(sessions?.available) && deviceUsageData.length > 0}
         unavailableLabel="Unavailable: authentication-service didn't answer."

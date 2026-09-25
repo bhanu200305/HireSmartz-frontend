@@ -35,7 +35,6 @@ const DeliveryAccessSection: React.FC = () => {
       <ChartCard
         title="Bounced or suppressed invite addresses"
         subtitle="Invite emails that could not be delivered, or should no longer be emailed"
-        typeTag="List"
         isLoading={isSuppressedLoading}
         available={Boolean(suppressed?.addresses.length)}
         unavailableLabel="No bounced or suppressed addresses."
@@ -65,7 +64,6 @@ const DeliveryAccessSection: React.FC = () => {
       <ChartCard
         title="Recently offboarded members"
         subtitle="Members whose access was recently removed or deactivated"
-        typeTag="List"
         isLoading={isOffboardedLoading}
         available={Boolean(offboarded?.members.length)}
         unavailableLabel="No recent offboarding."

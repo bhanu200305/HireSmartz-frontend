@@ -1,8 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { Rate, Select, Tabs, Tooltip } from 'antd';
+import type { RootState } from '../../../redux/provider/store';
 import dayjs from 'dayjs';
-import { LuMail, LuPencil, LuSquarePen, LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
+import {
+  LuMail,
+  LuPencil,
+  LuSquarePen,
+  LuThumbsDown,
+  LuThumbsUp,
+  LuPhone,
+  LuMic,
+  LuVideo,
+  LuUsers,
+  LuFileText,
+} from 'react-icons/lu';
 import { IoChatbubbleEllipses } from 'react-icons/io5';
 import { CommonCard, Button, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
@@ -33,6 +46,7 @@ import {
   useGetBookingHistoryQuery,
   useRequestCallRescheduleMutation,
   useLazyGetCalendarConnectUrlQuery,
+  useGetCalendarGrantStatusQuery,
   useGetArtifactsQuery,
   useUploadOfflineRecordingMutation,
   CONCLUDED_BOOKING_STATUSES,
@@ -113,8 +127,23 @@ const CandidateDetails = () => {
     id: string;
   }>();
   const parsedJobId = asJobId(jobIdFromParams);
+  const [searchParams] = useSearchParams();
+  const userId = useSelector((state: RootState) => state.LoginSlice.userId);
 
-  const [activeTab, setActiveTab] = useState<TabKey>('assessment');
+  // Deep link from the post-interview "Complete Full Feedback" flow
+  // (InterviewLiveKit.tsx's handleFeedbackFullSelect, ?tab=summary) — lands
+  // the interviewer straight on Interview Summary instead of always
+  // defaulting to Assessment. Read once via useState's lazy initializer so
+  // the page never flashes the wrong tab before switching. `'3'` covers a
+  // legacy numeric value that predates this page's tab strip being rewritten
+  // to string keys (kept in case anything already-sent still links with it).
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    const tabParam = searchParams.get('tab');
+    const validTabs: TabKey[] = ['assessment', 'resume', 'summary', 'sms', 'history'];
+    if (tabParam && validTabs.includes(tabParam as TabKey)) return tabParam as TabKey;
+    if (tabParam === '3') return 'summary';
+    return 'assessment';
+  });
   const [statusModal, setStatusModal] = useState<ChangeCandidateStatusMode | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [isSmsOpen, setIsSmsOpen] = useState(false);
@@ -218,6 +247,60 @@ const CandidateDetails = () => {
   const [requestCallReschedule, { isLoading: isRequestingReschedule }] =
     useRequestCallRescheduleMutation();
   const [getCalendarConnectUrl] = useLazyGetCalendarConnectUrlQuery();
+  // "CONNECT CALENDAR" below is self-service — it always connects the
+  // CURRENT logged-in user's own calendar (getCalendarGrantStatus/
+  // getCalendarConnectUrl are both identity-scoped, no target-user param).
+  // That's only meaningful when this viewer is BOTH this job's hiring
+  // manager AND one of this round's assigned interviewers — otherwise
+  // "connect calendar" here wouldn't even be connecting the calendar that
+  // this round's scheduling actually depends on.
+  const isHiringManagerForJob = Boolean(
+    userId && jobOpeningData?.data?.hiringManagers?.some((id) => String(id) === String(userId))
+  );
+  const isInterviewerForJob = Boolean(
+    userId && selectedRound?.interviewer_ids?.some((id) => String(id) === String(userId))
+  );
+  const showsOwnConnectCalendarAction =
+    isPanelRound &&
+    !selectedRound?.interview_booking_id &&
+    isHiringManagerForJob &&
+    isInterviewerForJob;
+  const { data: calendarGrantStatus, refetch: refetchCalendarGrantStatus } =
+    useGetCalendarGrantStatusQuery(undefined, {
+      skip: !showsOwnConnectCalendarAction,
+    });
+
+  /**
+   * interview-service's OAuth callback always redirects the browser back to
+   * one fixed, globally-configured URL (`nylas_success_redirect_url` —
+   * settings.py) — it has no way to know this button was clicked from a
+   * specific candidate's page, so a normal full-page redirect stranded the
+   * recruiter on that generic screen with no way back to where they started.
+   *
+   * Runs the OAuth flow in a popup instead: this page never navigates away,
+   * so there's nowhere to "not return" from. Polls for the popup closing
+   * (Nylas's own page has no way to postMessage us — cross-origin) and
+   * refetches this user's grant status in place once it does. Falls back to
+   * the old full-page redirect only if the popup itself is blocked.
+   */
+  const handleConnectCalendar = () => {
+    void getCalendarConnectUrl().then(({ data }) => {
+      if (!data?.connect_url) return;
+      const popup = window.open(data.connect_url, 'nylas-connect-calendar', 'width=520,height=680');
+      if (!popup) {
+        // Popup blocked — fall back to the previous behavior rather than
+        // leaving the click with no effect at all.
+        window.location.assign(data.connect_url);
+        return;
+      }
+      const pollForClose = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(pollForClose);
+          void refetchCalendarGrantStatus();
+        }
+      }, 1000);
+    });
+  };
   // Confirmation gate before requesting a reschedule — the candidate's
   // resume-consistency score is recalculated from whatever call actually
   // ends up happening, so a recruiter needs to know the current score (if
@@ -788,14 +871,37 @@ const CandidateDetails = () => {
               >
                 ← Back to {candidateDisplayName(candidate)} Pipeline
               </button>
-              <div className="flex items-center justify-between border-b border-gray-200 pb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">{roundLabel(selectedRound)}</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {candidateDisplayName(candidate)} · {candidate?.email_id || 'No email on file'}
-                  </p>
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-5">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
+                    {isResumeStage ? (
+                      <LuFileText size={18} />
+                    ) : isPanelRound ? (
+                      <LuUsers size={18} />
+                    ) : isAiVideoRound(selectedRound) ? (
+                      <LuVideo size={18} />
+                    ) : (
+                      <LuMic size={18} />
+                    )}
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">{roundLabel(selectedRound)}</h3>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
+                      <span>{candidateDisplayName(candidate)}</span>
+                      <span className="flex items-center gap-1">
+                        <LuMail size={13} className="text-gray-400" />
+                        {candidate?.email_id || 'No email on file'}
+                      </span>
+                      {candidate?.contact_no && (
+                        <span className="flex items-center gap-1">
+                          <LuPhone size={13} className="text-gray-400" />
+                          {candidate.contact_no}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
+                <span className="shrink-0 rounded-full bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700">
                   {isResumeAwaitingAdvance
                     ? 'Score ready'
                     : formatRoundStatus(selectedBooking?.status ?? selectedRound.status)}
@@ -883,39 +989,6 @@ const CandidateDetails = () => {
                 </CommonCard>
               ) : (
                 <>
-                  <CommonCard>
-                    <div className="p-5 grid gap-5 sm:grid-cols-2">
-                      <div>
-                        <div className="text-xs font-semibold uppercase text-gray-400">
-                          Round details
-                        </div>
-                        <div className="mt-2 text-sm text-gray-700">
-                          Sequence {selectedRound.sequence ?? '-'} ·{' '}
-                          {selectedRound.duration_minutes ?? '-'} minutes
-                        </div>
-                        <div className="mt-2 text-sm text-gray-700">
-                          {selectedRound.scheduled_at
-                            ? `Scheduled ${formatDateTime(selectedRound.scheduled_at)}`
-                            : 'Not scheduled yet'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold uppercase text-gray-400">
-                          Submission details
-                        </div>
-                        <div className="mt-2 text-sm text-gray-700">
-                          Name: {candidateDisplayName(candidate)}
-                        </div>
-                        <div className="mt-2 text-sm text-gray-700">
-                          Email: {candidate?.email_id || '-'}
-                        </div>
-                        <div className="mt-2 text-sm text-gray-700">
-                          Phone: {candidate?.contact_no || '-'}
-                        </div>
-                      </div>
-                    </div>
-                  </CommonCard>
-
                   {selectedRoundIsVoiceCall && (
                     // What actually happened on the call — completed,
                     // asked to reschedule, said not interested, never
@@ -1139,18 +1212,20 @@ const CandidateDetails = () => {
                               ? 'INVITATION CREATED'
                               : 'CREATE BOOKING'}
                         </Button>
-                        {isPanelRound && (
-                          <Button
-                            className="rounded-full border border-primary-300 bg-white px-5 py-2 text-sm font-semibold text-primary-700"
-                            onClick={() => {
-                              void getCalendarConnectUrl().then(({ data }) => {
-                                if (data?.connect_url) window.location.assign(data.connect_url);
-                              });
-                            }}
-                          >
-                            CONNECT CALENDAR
-                          </Button>
-                        )}
+                        {isPanelRound &&
+                          (showsOwnConnectCalendarAction && calendarGrantStatus?.connected ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700">
+                              Calendar Connected
+                              {calendarGrantStatus.email ? `: ${calendarGrantStatus.email}` : ''}
+                            </span>
+                          ) : (
+                            <Button
+                              className="rounded-full border border-primary-300 bg-white px-5 py-2 text-sm font-semibold text-primary-700"
+                              onClick={handleConnectCalendar}
+                            >
+                              CONNECT CALENDAR
+                            </Button>
+                          ))}
                         {isPanelRound &&
                           selectedBooking != null &&
                           CONCLUDED_BOOKING_STATUSES.includes(selectedBooking.status) && (
@@ -1171,15 +1246,14 @@ const CandidateDetails = () => {
                               {isRequestingReschedule ? 'Sending…' : 'Request reschedule'}
                             </Button>
                           )}
-                        {/* Ideally offline-PANEL only — an online PANEL round
-                            already gets its recording automatically via
-                            LiveKit egress. Gated on round_type alone for now:
-                            candidate-service's CandidateInterviewRoundView
-                            doesn't expose delivery_mode (interview-service's
-                            own booking.round_snapshot field) today, so this
-                            screen has no way to tell online from offline. */}
+                        {/* Offline-PANEL only — an online PANEL round already
+                            gets its recording automatically via LiveKit
+                            egress, so manually attaching one there would just
+                            create a second, conflicting artifact. Mirrors
+                            BookingDetailDrawer.tsx's own `isOfflinePanel`. */}
                         {selectedRound.round_type === 'PANEL' &&
-                          selectedRound.interview_booking_id && (
+                          selectedRound.interview_booking_id &&
+                          selectedBooking?.round_snapshot?.delivery_mode === 'offline' && (
                             <>
                               <input
                                 ref={audioFileInputRef}

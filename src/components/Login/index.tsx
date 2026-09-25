@@ -654,13 +654,6 @@ const Login = () => {
                 </Link>
               </div>
 
-              <Link
-                to="/account-recovery"
-                className="-mt-2 text-center text-xs text-gray-400 hover:text-gray-600 hover:underline"
-              >
-                Lost access to your email and authenticator?
-              </Link>
-
               <Button
                 type="submit"
                 appname="test"

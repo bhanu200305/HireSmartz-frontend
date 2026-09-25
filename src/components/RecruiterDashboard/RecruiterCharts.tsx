@@ -138,7 +138,6 @@ const RecruiterCharts: React.FC = () => {
       <ChartCard
         title="Applications over time"
         subtitle="Daily application volume, trailing 30 days"
-        typeTag="Line"
         isLoading={isAppsLoading}
         available={appsOverTimeData.length > 0}
       >
@@ -178,7 +177,6 @@ const RecruiterCharts: React.FC = () => {
       <ChartCard
         title="Jobs by status"
         subtitle="Current mix of open, closed and draft job openings"
-        typeTag="Donut"
         isLoading={isJobStatsLoading}
         available={Boolean(jobStats) && jobStats!.total_count > 0}
       >
@@ -188,7 +186,6 @@ const RecruiterCharts: React.FC = () => {
       <ChartCard
         title="Interviews by Status & Type"
         subtitle="Interview round counts split by Audio / Avatar / Video"
-        typeTag="Grouped bar"
         isLoading={isInterviewsLoading}
         available={interviewsByStatusAndTypeData.length > 0}
         span={2}
@@ -234,7 +231,6 @@ const RecruiterCharts: React.FC = () => {
       <ChartCard
         title="AI score distribution"
         subtitle="Candidates grouped by resume-score band (global, for triage)"
-        typeTag="Bar"
         isLoading={isResumeScoreLoading}
         available={resumeScoreData.some((band) => band.Candidates > 0)}
         span={2}

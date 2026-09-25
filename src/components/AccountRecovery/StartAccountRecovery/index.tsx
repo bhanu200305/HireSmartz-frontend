@@ -46,8 +46,9 @@ const StartAccountRecovery = () => {
           <MdOutlineMailLock className="text-4xl text-brand-600" />
           <h2 className="text-xl font-semibold text-gray-900">Check that inbox</h2>
           <p className="text-sm text-gray-500">
-            If {email.trim()} is a confirmed recovery email, we&apos;ve sent a link to finish
-            recovering your account.
+            If this address is a confirmed recovery email, a link is on its way. It expires in 1
+            hour. If you never set up a recovery email, no email will arrive. Contact support
+            instead.
           </p>
           <Link to="/login" className="mt-2 text-sm text-primary hover:underline">
             Back to login
@@ -63,10 +64,12 @@ const StartAccountRecovery = () => {
       <div className="mb-6 text-center">
         <h2 className="text-xl font-semibold text-gray-900">Recover your account</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Lost access to your email <span className="whitespace-nowrap">and</span> your
-          authenticator? Enter your recovery email; this will reset your password{' '}
-          <span className="font-medium">and remove your two-factor methods</span> so you can set
-          them up again.
+          This only works if you added a recovery email in Settings → Security before losing access.
+          It&apos;s a different address from the one you log in with. Recovering will{' '}
+          <span className="font-medium">
+            reset your password and remove your two-factor methods
+          </span>
+          .
         </p>
       </div>
 
@@ -76,7 +79,7 @@ const StartAccountRecovery = () => {
           noAutoCapitalize
           value={email}
           onChange={(e) => setEmail(e.target.value.replace(/\s/g, ''))}
-          placeholder="Recovery email"
+          placeholder="Recovery email (not your login email)"
           className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
         />
 
@@ -89,7 +92,7 @@ const StartAccountRecovery = () => {
           {isLoading ? 'Submitting…' : 'Send recovery link'}
         </Button>
 
-        <p className="rounded-xl bg-gray-50 px-3 py-2 text-center text-xs text-gray-500">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-800">
           Never set up a recovery email, or lost access to it too? Contact support and we&apos;ll
           verify your identity manually.
         </p>
