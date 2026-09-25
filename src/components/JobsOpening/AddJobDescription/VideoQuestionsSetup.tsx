@@ -64,7 +64,6 @@ const VideoQuestionsSetup = () => {
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
 
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
-  const streamJobOpeningId = useSelector((state: RootState) => state.streamSlice.jobOpeningId);
   const streamInterviewRoundId = useSelector(
     (state: RootState) => state.streamSlice.interviewRoundId
   );

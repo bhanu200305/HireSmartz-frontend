@@ -89,7 +89,7 @@ const extendedApi = api.injectEndpoints({
         jobOpeningId,
         page = 0,
         size = 10,
-        status = true,
+        status: _status = true,
         sortBy = '',
         sortDir = '',
         ...rest

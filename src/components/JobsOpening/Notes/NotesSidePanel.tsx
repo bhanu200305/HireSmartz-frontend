@@ -645,7 +645,7 @@ const NotesSidePanel = ({
             <p
               className={`text-center text-[#717171] ${isCompact ? 'text-[12px] pb-2' : 'text-sm pb-3'}`}
             >
-              You can only add notes to jobs you're assigned to.
+              You can only add notes to jobs you&apos;re assigned to.
             </p>
           )}
           <div

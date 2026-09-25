@@ -91,10 +91,11 @@ const LocationFormModal = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="text-sm text-[#2D323A]">
+          <label htmlFor="location-name" className="text-sm text-[#2D323A]">
             Location Name <span className="required-asterisk">*</span>
           </label>
           <Input
+            id="location-name"
             value={formState.locationName}
             onChange={(event) =>
               onFormChange((previous) => ({
@@ -110,8 +111,11 @@ const LocationFormModal = ({
           )}
         </div>
         <div>
-          <label className="text-sm text-[#2D323A]">Location Code</label>
+          <label htmlFor="location-code" className="text-sm text-[#2D323A]">
+            Location Code
+          </label>
           <Input
+            id="location-code"
             value={formState.code}
             onChange={(event) =>
               onFormChange((previous) => ({
@@ -127,10 +131,11 @@ const LocationFormModal = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="text-sm text-[#2D323A]">
+          <label htmlFor="address-line-1" className="text-sm text-[#2D323A]">
             Address Line 1 <span className="required-asterisk">*</span>
           </label>
           <Input
+            id="address-line-1"
             value={formState.addressLine1}
             onChange={(event) =>
               onFormChange((previous) => ({
@@ -146,8 +151,11 @@ const LocationFormModal = ({
           )}
         </div>
         <div>
-          <label className="text-sm text-[#2D323A]">Address Line 2</label>
+          <label htmlFor="address-line-2" className="text-sm text-[#2D323A]">
+            Address Line 2
+          </label>
           <Input
+            id="address-line-2"
             value={formState.addressLine2}
             onChange={(event) =>
               onFormChange((previous) => ({
@@ -160,7 +168,9 @@ const LocationFormModal = ({
           />
         </div>
         <div>
-          <label className="text-sm text-[#2D323A]">Phone Number</label>
+          <label htmlFor="location-phone-number" className="text-sm text-[#2D323A]">
+            Phone Number
+          </label>
           <div
             className={`phone-input-wrapper flex items-center bg-white w-full px-4 mt-1 border rounded-3xl ${
               validationErrors.phoneNumber
@@ -197,6 +207,7 @@ const LocationFormModal = ({
             />
             <div className="border-l-2 border-gray-300 h-6 mx-2"></div>
             <Input
+              id="location-phone-number"
               type="tel"
               value={formState.phoneNumber}
               onChange={(event) => {
@@ -227,11 +238,12 @@ const LocationFormModal = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <div>
-          <label className="text-sm text-[#2D323A]">
+          <label htmlFor="location-country" className="text-sm text-[#2D323A]">
             Country <span className="required-asterisk">*</span>
           </label>
           <div className="border-wrapper border border-[var(--border)] p-1 mt-1 w-full rounded-3xl">
             <Select
+              id="location-country"
               showSearch
               optionFilterProp="children"
               placeholder="Select Country"
@@ -251,11 +263,12 @@ const LocationFormModal = ({
           )}
         </div>
         <div>
-          <label className="text-sm text-[#2D323A]">
+          <label htmlFor="location-state" className="text-sm text-[#2D323A]">
             State <span className="required-asterisk">*</span>
           </label>
           <div className="border-wrapper border border-[var(--border)] p-1 mt-1 w-full rounded-3xl">
             <Select
+              id="location-state"
               showSearch
               placeholder="Select State"
               disabled={!formState.country}
@@ -275,11 +288,12 @@ const LocationFormModal = ({
           )}
         </div>
         <div>
-          <label className="text-sm text-[#2D323A]">
+          <label htmlFor="location-city" className="text-sm text-[#2D323A]">
             City <span className="required-asterisk">*</span>
           </label>
           <div className="border-wrapper border border-[var(--border)] p-1 mt-1 w-full rounded-3xl">
             <Select
+              id="location-city"
               showSearch
               optionFilterProp="children"
               placeholder="Select City"
@@ -303,10 +317,11 @@ const LocationFormModal = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <div>
-          <label className="text-sm text-[#2D323A]">
+          <label htmlFor="location-zip-code" className="text-sm text-[#2D323A]">
             Zip Code <span className="required-asterisk">*</span>
           </label>
           <Input
+            id="location-zip-code"
             value={formState.zipCode}
             onChange={(event) =>
               onFormChange((previous) => ({

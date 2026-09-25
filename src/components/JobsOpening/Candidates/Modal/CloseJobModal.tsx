@@ -92,8 +92,11 @@ const CloseJobModal: React.FC<CloseJobProps> = ({
           </p>
         )}
 
-        <label className="text-sm text-gray-600">Closure reason</label>
+        <label htmlFor="close-job-reason" className="text-sm text-gray-600">
+          Closure reason
+        </label>
         <Select
+          id="close-job-reason"
           className="w-full mt-1 mb-3"
           placeholder="Select a reason"
           value={closureReason || undefined}
@@ -111,8 +114,11 @@ const CloseJobModal: React.FC<CloseJobProps> = ({
 
         {(isOtherReason || !closureReason) && (
           <>
-            <label className="text-sm text-gray-600">Custom reason</label>
+            <label htmlFor="close-job-custom-reason" className="text-sm text-gray-600">
+              Custom reason
+            </label>
             <Textarea
+              id="close-job-custom-reason"
               className="mt-1 mb-1"
               value={otherReason}
               onChange={(e) => {

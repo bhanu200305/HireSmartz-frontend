@@ -40,7 +40,6 @@ const PushTemplatesTab: React.FC = () => {
   const [pushToTenants, { isLoading: isPushing }] = usePushTemplatesToTenantsMutation();
 
   const companies = tenantResults?.tenants ?? [];
-  const selectedCompanies = companies.filter((c) => selectedIds.has(c.tenant_id));
 
   const handlePushClick = () => {
     if (selectedIds.size === 0) {
@@ -99,15 +98,6 @@ const PushTemplatesTab: React.FC = () => {
         type: 'error',
       });
     }
-  };
-
-  const toggleCompany = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   return (

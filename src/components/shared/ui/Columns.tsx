@@ -14,7 +14,7 @@ type ColProps = AntdColProps & {
 
 export const COL = ({
   children,
-  filterable = false,
+  filterable: _filterable = false,
   sortable = false,
   currentSortKey,
   sortKey,

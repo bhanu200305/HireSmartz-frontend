@@ -68,7 +68,6 @@ const DateTimeRangePicker: React.FC<DateTimeProps> = ({ value, onApply, onReset 
 
     const start = dayjs(startDateTime);
     const end = dayjs(endDateTime);
-    const now = dayjs();
 
     if (end.isBefore(start)) {
       showToast({

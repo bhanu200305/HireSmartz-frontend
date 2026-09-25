@@ -10,7 +10,6 @@ export const useSecondaryContact = <T extends FieldValues>(formMethods: {
   const {
     watch,
     trigger,
-    setValue,
     formState: { errors },
   } = formMethods;
 

@@ -18,7 +18,7 @@ export const Button = ({
   onClick,
   disabled = false,
   type,
-  loading,
+  loading: _loading,
   ...props
 }: ButtonProps & { loading?: boolean }) => {
   return (

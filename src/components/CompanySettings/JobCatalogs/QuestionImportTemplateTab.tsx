@@ -50,8 +50,9 @@ const QuestionImportTemplateTab: React.FC = () => {
   return (
     <div className="max-w-xl">
       <Typography variant="body2">
-        The bulk question-import template every tenant downloads when adding questions to a job's
-        bank in bulk. Uploading a new file replaces it for everyone - there's no per-tenant version.
+        The bulk question-import template every tenant downloads when adding questions to a
+        job&apos;s bank in bulk. Uploading a new file replaces it for everyone - there&apos;s no
+        per-tenant version.
       </Typography>
       <Typography variant="body2" className="mt-2 text-neutral-500">
         Accepted formats: .xlsx or .csv.

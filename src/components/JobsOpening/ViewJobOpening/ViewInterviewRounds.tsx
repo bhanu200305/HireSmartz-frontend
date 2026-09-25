@@ -37,11 +37,14 @@ const ViewInterviewRound = () => {
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0 flex items-center flex-wrap gap-2">
-                    <h3
-                      className="text-lg cursor-pointer"
-                      onClick={() => toggleRound(round.id.toString())}
-                    >
-                      {index + 1}. {round.round?.name}
+                    <h3 className="text-lg">
+                      <button
+                        type="button"
+                        className="cursor-pointer border-none bg-transparent p-0 text-lg"
+                        onClick={() => toggleRound(round.id.toString())}
+                      >
+                        {index + 1}. {round.round?.name}
+                      </button>
                     </h3>
                     {badge && (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 bg-sky-50 px-2.5 py-1 rounded-full whitespace-nowrap">
