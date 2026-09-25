@@ -5,10 +5,11 @@ export const inviteTeamMemberSchema = z.object({
   // Collected but NOT sent to the API yet — organization-service's
   // InviteTenantUserRequest is `extra="forbid"`, so posting an unrecognized
   // field would 422 every invite. Held in the form only until that service
-  // adds a `name` column/field to accept it (see the backend request this
+  // adds first/last name fields to accept it (see the backend request this
   // was raised against). Wiring it into the mutation call is then a
   // one-line change, not a form redesign.
-  name: z.string().trim().min(1, 'Name is required.'),
+  firstName: z.string().trim().min(1, 'First name is required.'),
+  lastName: z.string().trim().optional(),
   email: emailValidation(),
   // Optional on the wire (POST /v1/tenants/{id}/users/invitations) — a
   // department isn't required to send an invite.

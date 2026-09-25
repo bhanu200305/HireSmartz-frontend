@@ -89,7 +89,8 @@ const InviteTeamMemberForm = ({
   const { control, handleSubmit, setValue, formState } = useForm<InviteTeamMemberFormValues>({
     resolver: zodResolver(inviteTeamMemberSchema),
     defaultValues: {
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       departmentId: '',
       designation: '',
@@ -103,8 +104,8 @@ const InviteTeamMemberForm = ({
     try {
       await inviteTenantUser({
         tenantId,
-        // `data.name` is deliberately NOT sent yet — see
-        // InviteTeamMemberSchema.ts's comment on why.
+        // `data.firstName`/`data.lastName` are deliberately NOT sent yet —
+        // see InviteTeamMemberSchema.ts's comment on why.
         email: data.email,
         department_id: data.departmentId || undefined,
         designation: data.designation || undefined,
@@ -125,23 +126,44 @@ const InviteTeamMemberForm = ({
       {isLoading && <Loader />}
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        <div>
-          <label htmlFor="inviteName" className="text-sm text-gray-600">
-            Name <span className="required-asterisk">*</span>
-          </label>
-          <Controller
-            name="name"
-            control={control}
-            render={({ field }) => (
-              <Input
-                id="inviteName"
-                {...field}
-                placeholder="Jordan Lee"
-                className="bg-white w-full px-4 py-2 mt-1 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-                error={errors.name?.message}
-              />
-            )}
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="inviteFirstName" className="text-sm text-gray-600">
+              First Name <span className="required-asterisk">*</span>
+            </label>
+            <Controller
+              name="firstName"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  id="inviteFirstName"
+                  {...field}
+                  placeholder="Jordan"
+                  className="bg-white w-full px-4 py-2 mt-1 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                  error={errors.firstName?.message}
+                />
+              )}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="inviteLastName" className="text-sm text-gray-600">
+              Last Name
+            </label>
+            <Controller
+              name="lastName"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  id="inviteLastName"
+                  {...field}
+                  placeholder="Lee"
+                  className="bg-white w-full px-4 py-2 mt-1 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                  error={errors.lastName?.message}
+                />
+              )}
+            />
+          </div>
         </div>
 
         <div>

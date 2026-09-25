@@ -91,7 +91,31 @@ const extendedApi = authApi.injectEndpoints({
         body,
         responseHandler: noContentResponseHandler,
       }),
-      invalidatesTags: ['MfaMethods'],
+      // Deliberately no `invalidatesTags` here. For a method that was already
+      // armed, the backend genuinely disables it and we patch the cache
+      // below to match. For a method still `is_enabled: false` ("Awaiting
+      // confirmation"), the backend treats /disable on an unarmed factor as
+      // an idempotent no-op and leaves the row untouched — a refetch would
+      // just bring back the exact same "Awaiting confirmation" row, making
+      // a successful removal look like it silently failed. Either way, the
+      // local removal below is the correct final state to show.
+      async onQueryStarted({ mfa_method_id }, { dispatch, getState, queryFulfilled }) {
+        await queryFulfilled;
+        const removed = extendedApi.endpoints.getMfaStatus
+          .select()(getState())
+          .data?.methods.find((m) => m.mfa_method_id === mfa_method_id);
+        if (!removed) return;
+        dispatch(
+          extendedApi.util.updateQueryData('getMfaStatus', undefined, (draft) => {
+            draft.methods = draft.methods.filter((m) => m.mfa_method_id !== mfa_method_id);
+            draft.is_complete =
+              draft.methods.filter((m) => m.is_enabled).length >= draft.minimum_required;
+            if (!draft.available_to_add.includes(removed.method_type)) {
+              draft.available_to_add = [...draft.available_to_add, removed.method_type];
+            }
+          })
+        );
+      },
     }),
   }),
 });
