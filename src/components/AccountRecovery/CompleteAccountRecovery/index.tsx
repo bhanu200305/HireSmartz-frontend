@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { FaCheckCircle } from 'react-icons/fa';
 import { MdErrorOutline, MdLockOutline } from 'react-icons/md';
-import { AuthPageShell, Button, Input, showToast } from '../../shared';
+import { AuthPageShell, Button, PasswordInput, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import { useCompleteAccountRecoveryMutation } from '../../../api/authentication-service/AccountRecovery/completeAccountRecovery';
 import {
@@ -112,9 +112,8 @@ const CompleteAccountRecovery = () => {
             name="newPassword"
             control={control}
             render={({ field }) => (
-              <Input
+              <PasswordInput
                 {...field}
-                type="password"
                 autoComplete="new-password"
                 noAutoCapitalize
                 placeholder="New password*"
@@ -143,9 +142,8 @@ const CompleteAccountRecovery = () => {
             name="confirmNewPassword"
             control={control}
             render={({ field }) => (
-              <Input
+              <PasswordInput
                 {...field}
-                type="password"
                 autoComplete="new-password"
                 noAutoCapitalize
                 placeholder="Confirm new password*"

@@ -20,6 +20,16 @@ export type BookingStatus =
   | 'failed'
   | 'rescheduled';
 export type InterviewType = 'audio' | 'audio_screening' | 'ai_video' | 'panel';
+// Same terminal set BookingDetailDrawer.tsx's own local `TERMINAL` encodes —
+// a PANEL booking's real-world-outcome-known statuses, used wherever the
+// UI needs to gate on "this booking already concluded" (e.g. eligibility
+// for request-reschedule, which interview-service enforces identically).
+export const CONCLUDED_BOOKING_STATUSES: BookingStatus[] = [
+  'completed',
+  'cancelled',
+  'no_show',
+  'failed',
+];
 export type FeedbackRecommendation = 'strong_yes' | 'yes' | 'no' | 'strong_no';
 export type InterviewAuth = 'platform' | 'public' | 'booking-link';
 
@@ -531,6 +541,17 @@ export const interviewApi = createApi({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}/interviewer-calendar-status` }),
       providesTags: (_r, _e, id) => [{ type: 'Booking', id }],
     }),
+    nudgeInterviewerCalendarConnect: build.mutation<
+      null,
+      { bookingId: string; interviewerId: string }
+    >({
+      query: ({ bookingId, interviewerId }) =>
+        platform({
+          url: `/bookings/${bookingId}/interviewers/${interviewerId}/nudge-calendar-connect`,
+          method: 'POST',
+        }),
+      invalidatesTags: (_r, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }],
+    }),
     attachRecording: build.mutation<ArtifactView, { bookingId: string; external_ref: string }>({
       query: ({ bookingId, external_ref }) =>
         platform({
@@ -693,6 +714,7 @@ export const {
   useGetParticipationQuery,
   useGetArtifactsQuery,
   useGetInterviewerCalendarStatusQuery,
+  useNudgeInterviewerCalendarConnectMutation,
   useAttachRecordingMutation,
   useUploadOfflineRecordingMutation,
   useSubmitFeedbackMutation,

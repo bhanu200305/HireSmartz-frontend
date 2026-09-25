@@ -32,8 +32,8 @@ import {
   useUpdateOwnUserProfileMutation,
   useUploadOwnAvatarMutation,
   useClearOwnAvatarMutation,
-  useListUsersQuery,
 } from '../../api/organization-service/Users/users';
+import { useGetMyRolesQuery } from '../../api/organization-service/Roles/roles';
 import {
   useGetOwnPlatformProfileQuery,
   useUpdateOwnPlatformProfileMutation,
@@ -84,17 +84,16 @@ const UserProfile = () => {
   const profileLoaded = isPlatformCaller ? isPlatformProfileLoaded : isTenantProfileLoaded;
 
   // GET /v1/users/me never populates `role` (see OrgUser's own docstring —
-  // only the list endpoint does), so the signed-in tenant user's real role
-  // name has to be resolved the same way ViewOrganisationUser and
-  // EditOrganisationUser already resolve any other user's role: pull the
-  // tenant's user list and find this user's own row in it.
-  const { data: tenantUsersList } = useListUsersQuery(
-    { includeInactive: true, limit: 200 },
-    { skip: isPlatformCaller || !tenantId }
-  );
-  const ownRoleName = tenantUsersList?.items.find(
-    (u) => u.user_id === tenantProfileData?.user_id
-  )?.role;
+  // only the list endpoint does), and that list endpoint 403s for
+  // interviewer/viewer and only ever covers its first `limit` rows anyway.
+  // GET /v1/roles/me works for any logged-in tenant user and returns exactly
+  // this user's own assignments, so it replaced that lookup entirely.
+  const { data: myRoles } = useGetMyRolesQuery(undefined, { skip: isPlatformCaller || !tenantId });
+  // Blank until `myRoles` actually resolves (matches every other field on
+  // this form, which starts blank rather than flashing a placeholder while
+  // its own query is in flight) — "No role assigned" is only for the
+  // genuinely-loaded-and-empty case, not the not-yet-loaded one.
+  const ownRoleName = myRoles ? myRoles.names.join(', ') || 'No role assigned' : '';
 
   const [updateTenantProfile, { isLoading: isUpdatingTenant }] = useUpdateOwnUserProfileMutation();
   const [updatePlatformProfile, { isLoading: isUpdatingPlatform }] =
@@ -779,9 +778,7 @@ const UserProfile = () => {
 
                       <Form.Item
                         label={
-                          <span className="text-sm font-semibold text-[var(--gray-700)]">
-                            Role <span className="required-asterisk">*</span>
-                          </span>
+                          <span className="text-sm font-semibold text-[var(--gray-700)]">Role</span>
                         }
                         name="roleName"
                         style={{ marginBottom: '12px' }}

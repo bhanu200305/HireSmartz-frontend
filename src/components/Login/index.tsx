@@ -1,8 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { Button, Input, showToast } from '..';
+import { Button, Input, PasswordInput, showToast } from '..';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Checkbox } from 'antd';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import {
   useLoginMutation,
   LoginRequest,
@@ -162,12 +161,6 @@ const Login = () => {
     }
   };
   const { email, password, errors, rememberMe, isFormValid } = localState;
-  // OWASP Authentication Cheat Sheet: masked by default, reveal only on an
-  // explicit user action, never auto-shown. Typing is blocked while
-  // revealed (readOnly) so the plaintext on screen can't silently drift
-  // from what's about to be submitted — the user must hide it again to
-  // keep editing.
-  const [showPassword, setShowPassword] = useState(false);
   const [login, { isLoading }] = useLoginMutation();
   const [fetchUserDashboard] = useLazyGetUserDashboardQuery();
 
@@ -636,9 +629,7 @@ const Login = () => {
                 className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
               />
 
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                readOnly={showPassword}
+              <PasswordInput
                 noAutoCapitalize
                 onChange={onHandleChange}
                 onKeyDown={handleKeyDown}
@@ -647,18 +638,7 @@ const Login = () => {
                 value={password}
                 placeholder="Password"
                 error={errors.password}
-                className="border-[var(--border)] px-4 pr-10 focus:ring focus:ring-brand-300"
-                suffix={
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    aria-pressed={showPassword}
-                    className="cursor-pointer text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
-                  </button>
-                }
+                className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
               />
 
               <div className="-mt-1 flex items-center justify-between">

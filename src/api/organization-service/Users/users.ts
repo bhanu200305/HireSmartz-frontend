@@ -18,6 +18,13 @@ export type OrgUser = {
   department_id: string | null;
   is_email_verified: boolean;
   is_active: boolean;
+  /** `is_active` is set true immediately on creation, regardless of whether
+   * this person has actually finished setup — so on its own it can't tell a
+   * real, logged-in user apart from someone still sitting on an unaccepted
+   * invite. `false` here means exactly that: invited, hasn't set a password
+   * yet. Render status as "Pending setup" (not "Active") whenever
+   * `is_active && !has_set_password`. */
+  has_set_password: boolean;
   /** Display-only tenant role name(s) — comma-joined when a user holds more
    * than one live assignment, `null` when they hold none. Only populated on
    * the list endpoints (see organization-service's `UserView.role`
@@ -27,6 +34,16 @@ export type OrgUser = {
    * PATCH /users/me — `null` until one has ever been uploaded. */
   avatar_url: string | null;
 };
+
+// PATCH /v1/users/{user_id} only — never on the list response. `null` when
+// the save didn't touch `email`; otherwise tells the caller whether the
+// address change actually re-sent a working invite link: `true` means this
+// person still had a pending, un-accepted invite and a fresh one just went
+// to the corrected address; `false` means the email changed but there was
+// nothing to resend (e.g. they'd already accepted). A UI that only toasts
+// "saved" on a corrected typo would leave the admin assuming the person can
+// now log in, when `false` means they still can't until re-invited by hand.
+export type UpdateUserResponse = OrgUser & { invite_resent: boolean | null };
 
 export type ListUsersArgs = {
   includeInactive?: boolean;
@@ -125,7 +142,7 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['OrgUsers'],
     }),
-    updateUser: build.mutation<OrgUser, UpdateUserRequest>({
+    updateUser: build.mutation<UpdateUserResponse, UpdateUserRequest>({
       query: ({ userId, ...body }) => ({
         url: `/v1/users/${userId}`,
         method: 'PATCH',

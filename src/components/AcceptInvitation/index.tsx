@@ -15,7 +15,7 @@ import {
 } from 'react-icons/md';
 import { get } from 'lodash-es';
 import { Select } from 'antd';
-import { Button, Input, showToast } from '../shared';
+import { Button, Input, PasswordInput, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import Footer from '../Footer';
 import {
@@ -643,9 +643,8 @@ const AcceptInvitation = () => {
                 name="password"
                 control={control}
                 render={({ field }) => (
-                  <Input
+                  <PasswordInput
                     {...field}
-                    type="password"
                     autoComplete="new-password"
                     noAutoCapitalize
                     placeholder="Password*"
@@ -674,9 +673,8 @@ const AcceptInvitation = () => {
                 name="confirmPassword"
                 control={control}
                 render={({ field }) => (
-                  <Input
+                  <PasswordInput
                     {...field}
-                    type="password"
                     autoComplete="new-password"
                     noAutoCapitalize
                     placeholder="Confirm password*"

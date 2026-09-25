@@ -21,6 +21,7 @@ export { Button } from './ui/button';
 export { Code } from './ui/code';
 export { Form } from './ui/form';
 export { Input } from './ui/input';
+export { PasswordInput } from './ui/passwordInput';
 export { default as PhoneNumberField } from './ui/PhoneNumberField';
 export { default as NameTitleSelect } from './ui/NameTitleSelect';
 export { Textarea } from './ui/textarea';

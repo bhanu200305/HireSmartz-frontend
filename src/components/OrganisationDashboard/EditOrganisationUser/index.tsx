@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { MdOutlineArrowBack } from 'react-icons/md';
+import { MdClose, MdOutlineArrowBack } from 'react-icons/md';
 import { Select } from 'antd';
 import MainLayout from '../../../layouts/MainLayout';
 import {
@@ -22,7 +22,11 @@ import {
 import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
 import { useListRolesQuery } from '../../../api/organization-service/Roles/roles';
 import { useListTenantOfficesQuery } from '../../../api/organization-service/Tenants/offices';
-import { useAssignRoleMutation } from '../../../api/organization-service/Roles/assignments';
+import {
+  useAssignRoleMutation,
+  useListUserRoleAssignmentsQuery,
+  useRevokeRoleMutation,
+} from '../../../api/organization-service/Roles/assignments';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import {
   isPhoneValidForCountry,
@@ -69,17 +73,30 @@ const EditOrgUser = () => {
   // real RBAC grant via POST /v1/roles/assignments, not a form field on this
   // user's record). Kept as its own action with its own button rather than
   // folded into "Save changes", same as ViewOrganisationUser/AssignRoleModal
-  // already does it. There is no endpoint to list a user's EXISTING
-  // assignments (see assignments.ts's header comment), so this can only ADD
-  // a role — it can't show or change whatever they already hold.
+  // already does it. GET /v1/roles/users/{user_id}/assignments (below) is
+  // what makes "change a role" possible now — revoke the old assignment,
+  // then grant the new one — instead of only ever adding a second one.
   const { data: roles } = useListRolesQuery({ scope: 'tenant', isMaster: false });
   const { data: offices } = useListTenantOfficesQuery(
     { tenantId: tenantId ?? '' },
     { skip: !tenantId }
   );
+  const { data: currentAssignments } = useListUserRoleAssignmentsQuery(
+    { userId },
+    { skip: !userId }
+  );
   const [assignRole, { isLoading: isAssigningRole }] = useAssignRoleMutation();
+  const [revokeRole, { isLoading: isRevokingRole }] = useRevokeRoleMutation();
+  const [revokingAssignmentId, setRevokingAssignmentId] = useState<string | null>(null);
   const [assignRoleId, setAssignRoleId] = useState<string | undefined>(undefined);
   const [assignLocationId, setAssignLocationId] = useState<string | undefined>(undefined);
+
+  const roleName = (roleId: string) => roles?.find((r) => r.role_id === roleId)?.name ?? roleId;
+  const locationLabel = (locationId: string | null) => {
+    if (!locationId) return 'Everywhere';
+    const office = offices?.find((o) => o.office_id === locationId);
+    return office ? `${office.city}, ${office.address_line_1}` : locationId;
+  };
 
   const handleAssignRole = async () => {
     if (!assignRoleId) return;
@@ -94,6 +111,18 @@ const EditOrgUser = () => {
       setAssignLocationId(undefined);
     } catch (err) {
       showToast({ message: getOrgErrorMessage(err, 'Failed to assign role.'), type: 'error' });
+    }
+  };
+
+  const handleRevokeRole = async (assignmentId: string) => {
+    setRevokingAssignmentId(assignmentId);
+    try {
+      await revokeRole({ assignmentId, userId }).unwrap();
+      showToast({ message: 'Role removed.', type: 'success' });
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to remove role.'), type: 'error' });
+    } finally {
+      setRevokingAssignmentId(null);
     }
   };
 
@@ -133,7 +162,7 @@ const EditOrgUser = () => {
       return;
     }
     try {
-      await updateUser({
+      const updated = await updateUser({
         userId,
         first_name: form.first_name.trim() || undefined,
         last_name: form.last_name.trim() || undefined,
@@ -146,6 +175,13 @@ const EditOrgUser = () => {
         ...(email ? { email } : {}),
       }).unwrap();
       showToast({ message: 'User updated.', type: 'success' });
+      // null when email wasn't touched. true/false only appear alongside an
+      // email change — true means they still had a pending, un-accepted
+      // invite and a fresh one just went to the corrected address, so the
+      // admin knows the corrected address actually got a working link.
+      if (updated.invite_resent === true) {
+        showToast({ message: 'Invitation resent to the new email.', type: 'success' });
+      }
       navigate(`/view-organisation-user?orgUserId=${userId}`);
     } catch (err) {
       showToast({ message: getOrgErrorMessage(err, 'Failed to update user.'), type: 'error' });
@@ -262,10 +298,37 @@ const EditOrgUser = () => {
           </Typography>
           <p className="text-xs text-gray-500 mt-1 mb-4">
             This grants a real RBAC role via a separate action from the fields above.
-            &quot;Title&quot; is just a label, not a permission. Adds a role in addition to whatever
-            this person already holds; there&apos;s no way yet to view or remove an existing
-            assignment from here.
+            &quot;Title&quot; is just a label, not a permission. To change a role, remove the
+            current one below and assign the new one.
           </p>
+
+          {!!currentAssignments?.length && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {currentAssignments.map((assignment) => (
+                <span
+                  key={assignment.assignment_id}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 pl-3 pr-1.5 py-1 text-sm text-gray-700"
+                >
+                  {roleName(assignment.role_id)}
+                  <span className="text-gray-400">· {locationLabel(assignment.location_id)}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${roleName(assignment.role_id)}`}
+                    disabled={isRevokingRole}
+                    onClick={() => handleRevokeRole(assignment.assignment_id)}
+                    className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {revokingAssignmentId === assignment.assignment_id ? (
+                      <span className="block h-3.5 w-3.5 animate-pulse rounded-full bg-gray-400" />
+                    ) : (
+                      <MdClose size={14} />
+                    )}
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
             <div>
               <p className="text-sm text-gray-600">Role</p>

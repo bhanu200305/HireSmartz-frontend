@@ -1,7 +1,7 @@
 import MainLayout from '../../layouts/MainLayout';
 import { MdLockOutline, MdOutlineArrowBack } from 'react-icons/md';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Button, Input, showToast } from '../shared';
+import { Button, PasswordInput, showToast } from '../shared';
 import { Controller, useForm } from 'react-hook-form';
 import { passwordSchema } from './ChangePasswordSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -137,9 +137,8 @@ const ChangePassword = () => {
                     name="currentPassword"
                     control={control}
                     render={({ field }) => (
-                      <Input
+                      <PasswordInput
                         {...field}
-                        type="password"
                         autoComplete="current-password"
                         noAutoCapitalize
                         placeholder={autoLogin ? 'Temporary Password*' : 'Current Password*'}
@@ -176,9 +175,8 @@ const ChangePassword = () => {
                     name="newPassword"
                     control={control}
                     render={({ field }) => (
-                      <Input
+                      <PasswordInput
                         {...field}
-                        type="password"
                         autoComplete="new-password"
                         noAutoCapitalize
                         placeholder="New Password*"
@@ -216,9 +214,8 @@ const ChangePassword = () => {
                     name="confirmNewPassword"
                     control={control}
                     render={({ field }) => (
-                      <Input
+                      <PasswordInput
                         {...field}
-                        type="password"
                         autoComplete="new-password"
                         noAutoCapitalize
                         placeholder="Confirm New Password*"

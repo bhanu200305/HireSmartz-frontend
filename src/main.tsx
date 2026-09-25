@@ -13,7 +13,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 
 dayjs.extend(customParseFormat);
 
-// CareerForce Pro brand theme applied to every Ant Design component app-wide.
+// Careerforce Pro brand theme applied to every Ant Design component app-wide.
 // Sourced from the same CSS custom properties as the Tailwind theme
 // (src/theme/index.css) so AntD and the hand-rolled shared/ui kit never drift
 // apart — change a hex value once, both systems pick it up.

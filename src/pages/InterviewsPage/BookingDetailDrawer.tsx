@@ -15,6 +15,7 @@ import {
   useGetArtifactsQuery,
   useGetInterviewersQuery,
   useGetInterviewerCalendarStatusQuery,
+  useNudgeInterviewerCalendarConnectMutation,
   useGetSessionStateQuery,
   useCancelBookingMutation,
   useSkipBookingMutation,
@@ -133,6 +134,8 @@ export const BookingDetailDrawer = ({
   const [submitFeedback, feedbackState] = useSubmitFeedbackMutation();
   const [attachRecording, attachState] = useAttachRecordingMutation();
   const [uploadOfflineRecording, uploadState] = useUploadOfflineRecordingMutation();
+  const [nudgeCalendarConnect, { isLoading: isNudging }] =
+    useNudgeInterviewerCalendarConnectMutation();
   const audioFileInputRef = useRef<HTMLInputElement>(null);
 
   const [pending, setPending] = useState<PendingAction>(null);
@@ -167,6 +170,16 @@ export const BookingDetailDrawer = ({
     } catch (e) {
       const err = e as InterviewApiError;
       showToast({ message: err?.message || 'Could not attach recording.', type: 'error' });
+    }
+  };
+
+  const sendCalendarReminder = async (interviewerId: string) => {
+    try {
+      await nudgeCalendarConnect({ bookingId: id, interviewerId }).unwrap();
+      showToast({ message: 'Reminder sent.', type: 'success' });
+    } catch (e) {
+      const err = e as InterviewApiError;
+      showToast({ message: err?.message || 'Could not send reminder.', type: 'error' });
     }
   };
 
@@ -347,9 +360,21 @@ export const BookingDetailDrawer = ({
                       <span className="min-w-0 truncate text-neutral-700">
                         {iv.display_name || iv.email || 'Interviewer'}
                       </span>
-                      <Badge status={iv.calendar_connected ? 'success' : 'warning'} dot={false}>
-                        {iv.calendar_connected ? 'Calendar connected' : 'No calendar'}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge status={iv.calendar_connected ? 'success' : 'warning'} dot={false}>
+                          {iv.calendar_connected ? 'Calendar connected' : 'No calendar'}
+                        </Badge>
+                        {!iv.calendar_connected && (
+                          <button
+                            type="button"
+                            onClick={() => void sendCalendarReminder(iv.interviewer_id)}
+                            disabled={isNudging}
+                            className="text-xs font-medium text-primary-600 hover:underline disabled:opacity-50"
+                          >
+                            {isNudging ? 'Sending…' : 'Send reminder'}
+                          </button>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>

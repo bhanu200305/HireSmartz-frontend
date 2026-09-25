@@ -35,6 +35,7 @@ import {
   useLazyGetCalendarConnectUrlQuery,
   useGetArtifactsQuery,
   useUploadOfflineRecordingMutation,
+  CONCLUDED_BOOKING_STATUSES,
 } from '../../../api/interview-service/client';
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
@@ -1150,6 +1151,26 @@ const CandidateDetails = () => {
                             CONNECT CALENDAR
                           </Button>
                         )}
+                        {isPanelRound &&
+                          selectedBooking != null &&
+                          CONCLUDED_BOOKING_STATUSES.includes(selectedBooking.status) && (
+                            // Same eligibility interview-service's own
+                            // request-reschedule endpoint enforces for a
+                            // PANEL booking (already concluded) — mirrors
+                            // the Call Outcome card's button below, just
+                            // gated on booking status instead of
+                            // call_intent (PANEL has no call_intent).
+                            <Button
+                              className="rounded-full border border-primary-200 bg-primary-50 px-5 py-2 text-sm font-semibold text-primary-700 disabled:opacity-50"
+                              disabled={isRequestingReschedule}
+                              onClick={() => {
+                                setRescheduleRound(selectedRound);
+                                setIsRescheduleConfirmOpen(true);
+                              }}
+                            >
+                              {isRequestingReschedule ? 'Sending…' : 'Request reschedule'}
+                            </Button>
+                          )}
                         {/* Ideally offline-PANEL only — an online PANEL round
                             already gets its recording automatically via
                             LiveKit egress. Gated on round_type alone for now:

@@ -103,7 +103,7 @@ interface GlobalSearchProps {
 // A USER result's `extraJson.userType` says which of three things it is
 // (see org-service's `GlobalSearchUseCase._to_result_item`):
 //   - "COMPANY": a real, accepted `users` row — has its own detail page.
-//   - "CFP": CareerForce Pro's own internal staff, merged in for a platform
+//   - "CFP": Careerforce Pro's own internal staff, merged in for a platform
 //     (SuperAdmin) search — no single-record detail page anywhere in the
 //     app, only the listing at `/organisation-users`.
 //   - "COMPANY_PENDING": someone a tenant has invited who has not yet

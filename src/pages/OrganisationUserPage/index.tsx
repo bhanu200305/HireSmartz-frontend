@@ -8,7 +8,7 @@ import useHasAccess from '../../hooks/useHasAccess';
 import { RootState } from '../../redux/provider/store';
 
 // The Users tab covers two audiences that never overlap: a tenant's own
-// directory (OrganisationUserTable, needs a tenant_id) and CareerForcePro's
+// directory (OrganisationUserTable, needs a tenant_id) and Careerforce Pro's
 // internal team (CfpUsers, platform staff with no tenant_id — see its own
 // comment). Each section only renders for the audience it applies to, so a
 // platform admin isn't shown a permanently-empty tenant user list, and a

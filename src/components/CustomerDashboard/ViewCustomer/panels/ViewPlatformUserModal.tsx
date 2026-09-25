@@ -387,6 +387,13 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
       }).unwrap();
       setOverride(updated);
       showToast({ message: 'User updated.', type: 'success' });
+      // null when email wasn't touched. true/false only appear alongside an
+      // email change — true means they still had a pending, un-accepted
+      // invite and a fresh one just went to the corrected address, so the
+      // admin knows the corrected address actually got a working link.
+      if (updated.invite_resent === true) {
+        showToast({ message: 'Invitation resent to the new email.', type: 'success' });
+      }
       setIsEditing(false);
       setEditForm(null);
     } catch (err) {
@@ -486,8 +493,23 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
             </div>
             <div>
               <Typography variant="subtitle2">Status</Typography>
-              <Badge status={displayUser.is_active ? 'success' : 'neutral'}>
-                {displayUser.is_active ? 'Active' : 'Deactivated'}
+              {/* is_active alone can't tell a real, logged-in user apart
+                  from someone still sitting on an unaccepted invite — see
+                  OrgUser.has_set_password's own docstring. */}
+              <Badge
+                status={
+                  !displayUser.is_active
+                    ? 'neutral'
+                    : displayUser.has_set_password
+                      ? 'success'
+                      : 'warning'
+                }
+              >
+                {!displayUser.is_active
+                  ? 'Deactivated'
+                  : displayUser.has_set_password
+                    ? 'Active'
+                    : 'Pending setup'}
               </Badge>
             </div>
           </div>

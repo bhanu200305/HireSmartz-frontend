@@ -87,6 +87,16 @@ export type DeleteRoleRequest = RoleCatalogContext & {
   roleId: string;
 };
 
+// GET /v1/roles/me — works for any logged-in tenant user, unlike resolving a
+// role off GET /v1/users (403s for interviewer/viewer, and only ever covers
+// the first `limit` users anyway). Read-only self lookup, no scope/tenantId
+// args needed — the caller's own token supplies both server-side.
+export type MyRolesView = {
+  user_id: string;
+  role_ids: string[];
+  names: string[];
+};
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     listRoles: build.query<Role[], RoleCatalogContext>({
@@ -125,6 +135,14 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, ctx) => [{ type: 'Roles', id: catalogTagId(ctx) }],
     }),
+    getMyRoles: build.query<MyRolesView, void>({
+      query: () => '/v1/roles/me',
+      // Same tag assignRole/revokeRole already invalidate — this refetches
+      // whenever a role is granted or removed, for the caller or anyone
+      // else, same over-invalidation tradeoff every other 'RoleAssignments'
+      // consumer already accepts.
+      providesTags: ['RoleAssignments'],
+    }),
   }),
 });
 
@@ -134,4 +152,5 @@ export const {
   useRenameRoleMutation,
   useReplaceRolePermissionsMutation,
   useDeleteRoleMutation,
+  useGetMyRolesQuery,
 } = extendedApi;

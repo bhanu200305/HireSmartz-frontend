@@ -39,7 +39,7 @@ const TenantOverrideSection: React.FC = () => {
         Edit a tenant&apos;s templates on their behalf
       </Typography>
       <Typography variant="caption" className="mb-4 block text-gray-500">
-        Search for a company, then edit or revert the same customisations they&apos;d manage
+        Search for a company, then edit or revert the same customizations they&apos;d manage
         themselves from My Company → Email Templates.
       </Typography>
 

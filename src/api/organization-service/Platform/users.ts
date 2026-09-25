@@ -4,6 +4,7 @@ import type {
   ListUsersResponse,
   OrgUser,
   UpdateUserRequest,
+  UpdateUserResponse,
   UserLocationsResponse,
 } from '../Users/users';
 
@@ -75,7 +76,7 @@ const extendedApi = orgApi.injectEndpoints({
     // this. Same UpdateUserUseCase/UpdateUserCommand either way — only the
     // guard and where tenant_id comes from differ, same as every other route
     // in this file.
-    updatePlatformTenantUser: build.mutation<OrgUser, UpdatePlatformTenantUserRequest>({
+    updatePlatformTenantUser: build.mutation<UpdateUserResponse, UpdatePlatformTenantUserRequest>({
       query: ({ tenantId, userId, ...body }) => ({
         url: `${usersBasePath(tenantId)}/${userId}`,
         method: 'PATCH',

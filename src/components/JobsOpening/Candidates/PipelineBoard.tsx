@@ -3,7 +3,10 @@ import dayjs from 'dayjs';
 import { Badge, type BadgeStatus } from '../../shared';
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
-import { useGetBookingQuery } from '../../../api/interview-service/client';
+import {
+  CONCLUDED_BOOKING_STATUSES,
+  useGetBookingQuery,
+} from '../../../api/interview-service/client';
 import {
   bucketForStatus,
   isAiVideoRound,
@@ -116,8 +119,9 @@ const RoundCard = ({
   // there) and any round with no booking yet.
   const isVoiceCallRound =
     isIntakeCallRound(round) || isAudioScreeningRound(round) || isAiVideoRound(round);
+  const isPanelRound = round.round_type === 'PANEL';
   const { data: booking } = useGetBookingQuery(round.interview_booking_id ?? '', {
-    skip: !round.interview_booking_id || !isVoiceCallRound,
+    skip: !round.interview_booking_id || !(isVoiceCallRound || isPanelRound),
   });
   const technicalFailure = booking?.call_intent === 'technical_failure';
   // Borrows the 'failed' bucket's danger styling, same as `overdue` already
@@ -127,10 +131,16 @@ const RoundCard = ({
   const visuallyFailed = overdue || technicalFailure;
   const meta = visuallyFailed ? BUCKET_META.failed : BUCKET_META[bucket];
   // Same eligibility interview-service's own request-reschedule endpoint
-  // enforces (AUDIO/AUDIO_SCREENING/AI_VIDEO, call already concluded) —
-  // never offered somewhere the backend would just reject it.
-  const canRequestReschedule =
-    isVoiceCallRound && booking?.call_intent != null && Boolean(onRequestReschedule);
+  // enforces — AUDIO/AUDIO_SCREENING/AI_VIDEO gate on the booking's
+  // call_intent (call already concluded one way or another), while PANEL
+  // has no call_intent concept and gates on the booking's own status
+  // instead (also already concluded). Never offered somewhere the backend
+  // would just reject it.
+  const canRequestReschedule = isPanelRound
+    ? booking != null &&
+      CONCLUDED_BOOKING_STATUSES.includes(booking.status) &&
+      Boolean(onRequestReschedule)
+    : isVoiceCallRound && booking?.call_intent != null && Boolean(onRequestReschedule);
 
   return (
     <div

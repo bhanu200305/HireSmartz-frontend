@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Switch, Tooltip } from 'antd';
-import { MdLock, MdOutlineArrowBack, MdOutlineNotifications } from 'react-icons/md';
+import { Switch } from 'antd';
+import { MdInfoOutline, MdLock, MdOutlineArrowBack, MdOutlineNotifications } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
 import { Typography, showToast } from '../shared';
@@ -12,68 +12,22 @@ import {
 } from '../../api/notification-service/Preferences/index';
 import { getNotifErrorMessage } from '../../shared/utils/auth/notifError.helpers';
 
-const CATEGORY_META: Record<string, { label: string; description: string }> = {
-  security: {
-    label: 'Security alerts',
-    description:
-      'Password resets, sign-in device alerts, two-factor changes. Required: protects your account.',
-  },
-  transactional: {
-    label: 'Account actions',
-    description:
-      'Confirmations of actions you (or an admin) took. Required: completes the flow that produced it.',
-  },
-  onboarding: {
-    label: 'Onboarding & invitations',
-    description: 'Getting set up, joining a company. Required.',
-  },
-  activity: {
-    label: 'Product activity',
-    description: 'Everything else: informational only.',
-  },
-};
-
-const CHANNEL_LABELS: Record<string, string> = {
-  email: 'Email',
-  sms: 'SMS',
-  in_app: 'In-app',
-};
-
 const humanize = (value: string): string =>
   value
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
 
-const categoryMeta = (category: string) =>
-  CATEGORY_META[category] || { label: humanize(category), description: '' };
-
-const channelLabel = (channel: string) => CHANNEL_LABELS[channel] || humanize(channel);
-
-const groupByCategory = (items: PreferenceItem[]): Map<string, PreferenceItem[]> => {
-  const grouped = new Map<string, PreferenceItem[]>();
-  for (const item of items) {
-    const existing = grouped.get(item.category);
-    if (existing) {
-      existing.push(item);
-    } else {
-      grouped.set(item.category, [item]);
-    }
-  }
-  return grouped;
-};
-
 /**
  * `GET/PUT /v1/preferences/me` — a user's own notification opt-outs.
  * Identity-scoped on the backend (no permission gate), same as the bell.
  *
- * Every (category, channel) pair is always returned by the backend, whether
- * or not the user has ever touched it, and `is_editable` is derived from the
- * catalogue rather than hard-coded here — a category is only ever rendered
- * enabled when the backend says it may be, which also makes this render
- * correctly for a platform-scoped caller (Super Admin/staff): the backend
- * returns every switch already disabled for them, with no special case
- * needed on this side (see preferences_router.py's `my_preferences`).
+ * `items` is only ever the switches that actually work today — every entry
+ * is editable, so there's no locked/editable split to render here anymore.
+ * The required categories (security, account setup, service emails) come
+ * back separately as `always_on`, a flat read-only list with no switches.
+ * A platform account gets `notice` instead of either: `items` is empty for
+ * them, and `notice` explains why in place of the switch list.
  */
 const NotificationSettings = () => {
   const navigate = useNavigate();
@@ -100,80 +54,6 @@ const NotificationSettings = () => {
     }
   };
 
-  const categoryEntries = Array.from(
-    (data ? groupByCategory(data.items) : new Map<string, PreferenceItem[]>()).entries()
-  );
-  // Split so the section people can actually act on renders first, ahead of
-  // the required/locked ones — previously every section looked identical
-  // (same switch styling whether clickable or not), so the one editable
-  // category was easy to miss below several that only look interactive.
-  const editableEntries = categoryEntries.filter(([, items]) => items.some((i) => i.is_editable));
-  const lockedEntries = categoryEntries.filter(([, items]) => items.every((i) => !i.is_editable));
-
-  const renderCategory = ([category, items]: [string, PreferenceItem[]]) => {
-    const meta = categoryMeta(category);
-    const isEditableCategory = items.some((i) => i.is_editable);
-    return (
-      <section key={category} className="rounded-2xl border border-[var(--border)] bg-white p-6">
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <Typography variant="h6" className="block">
-            {meta.label}
-          </Typography>
-          <span
-            className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
-            style={
-              isEditableCategory
-                ? { background: 'var(--primary-50)', color: 'var(--primary)' }
-                : { background: 'var(--gray-100)', color: 'var(--gray-500)' }
-            }
-          >
-            {isEditableCategory ? 'Customizable' : 'Always on'}
-          </span>
-        </div>
-        {meta.description && (
-          <Typography variant="caption" className="mb-3 block text-gray-500">
-            {meta.description}
-          </Typography>
-        )}
-        <div className="divide-y">
-          {items.map((item) => {
-            const key = `${item.category}:${item.channel}`;
-            return (
-              <div
-                key={key}
-                className={`flex items-center justify-between py-3 ${
-                  !item.is_editable ? 'opacity-60' : ''
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Typography
-                    variant="body1"
-                    className={!item.is_editable ? 'text-gray-500' : undefined}
-                  >
-                    {channelLabel(item.channel)}
-                  </Typography>
-                  {!item.is_editable && (
-                    <Tooltip title="Required, cannot be turned off — protects your account or completes a flow you started.">
-                      <span className="inline-flex items-center gap-1 text-xs text-gray-400">
-                        <MdLock size={12} />
-                        Locked
-                      </span>
-                    </Tooltip>
-                  )}
-                </div>
-                <Switch
-                  checked={item.is_enabled}
-                  disabled={!item.is_editable || pendingKey === key}
-                  onChange={(checked) => handleToggle(item, checked)}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </section>
-    );
-  };
-
   return (
     <MainLayout>
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
@@ -195,23 +75,85 @@ const NotificationSettings = () => {
           <p className="text-sm text-red-600">Could not load your notification settings.</p>
         )}
 
-        {!isLoading && !isError && (
+        {!isLoading && !isError && data && (
           <div className="flex flex-col gap-4">
-            <Typography variant="caption" className="text-gray-500">
-              {editableEntries.length > 0
-                ? 'Security and account-action alerts are always on to protect you — everything under “Customizable” below is yours to turn on or off.'
-                : 'Everything below is required to run and protect your account, so none of it can be turned off yet. Optional updates (like digests) will show up here as toggles once we add them.'}
-            </Typography>
-            {editableEntries.map(renderCategory)}
-            {lockedEntries.length > 0 && (
-              <div className="mt-2 flex flex-col gap-4">
-                {editableEntries.length > 0 && (
-                  <Typography variant="caption" className="text-gray-400">
-                    Always on
+            {data.notice ? (
+              <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
+                <div className="flex items-start gap-2">
+                  <MdInfoOutline className="mt-0.5 shrink-0 text-lg text-gray-400" />
+                  <Typography variant="body1" className="text-gray-600">
+                    {data.notice}
                   </Typography>
+                </div>
+              </section>
+            ) : (
+              <>
+                {data.items.length > 0 && (
+                  <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
+                    <Typography variant="h6" className="mb-3 block">
+                      Customizable
+                    </Typography>
+                    <div className="divide-y">
+                      {data.items.map((item) => {
+                        const key = `${item.category}:${item.channel}`;
+                        return (
+                          <div key={key} className="flex items-center justify-between gap-4 py-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Typography variant="body1">{item.label}</Typography>
+                                <span className="rounded-full bg-[var(--gray-100)] px-2 py-0.5 text-xs font-medium text-[var(--gray-500)]">
+                                  {item.channel_label}
+                                </span>
+                              </div>
+                              {item.description && (
+                                <Typography variant="caption" className="block text-gray-500">
+                                  {item.description}
+                                </Typography>
+                              )}
+                            </div>
+                            <Switch
+                              checked={item.is_enabled}
+                              disabled={pendingKey === key}
+                              onChange={(checked) => handleToggle(item, checked)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
                 )}
-                {lockedEntries.map(renderCategory)}
-              </div>
+
+                {data.always_on.length > 0 && (
+                  <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
+                    <Typography variant="h6" className="mb-3 block">
+                      Always on
+                    </Typography>
+                    <div className="divide-y">
+                      {data.always_on.map((entry) => (
+                        <div
+                          key={entry.category}
+                          className="flex items-center justify-between gap-4 py-3"
+                        >
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <MdLock size={12} className="text-gray-400" />
+                              <Typography variant="body1" className="text-gray-500">
+                                {entry.label}
+                              </Typography>
+                            </div>
+                            <Typography variant="caption" className="block text-gray-500">
+                              {entry.reason}
+                            </Typography>
+                          </div>
+                          <span className="shrink-0 text-xs text-gray-400">
+                            {entry.channels.map(humanize).join(', ')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
             )}
           </div>
         )}

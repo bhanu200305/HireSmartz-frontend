@@ -26,7 +26,7 @@ const STATUS_BADGE: Record<string, BadgeStatus> = {
 };
 
 /**
- * §B — CareerForcePro's own internal team: Super Admins + Sales/Support/
+ * §B — Careerforce Pro's own internal team: Super Admins + Sales/Support/
  * Finance/Ops staff, and the departments they belong to. Distinct from a
  * customer's own Users section (OrganisationDashboard) — this is
  * `/v1/platform/staff` + `/v1/platform/departments`, rows with `tenant_id

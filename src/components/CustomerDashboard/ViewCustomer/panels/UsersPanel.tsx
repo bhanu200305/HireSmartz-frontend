@@ -467,14 +467,16 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       sorter: (a: TableRow, b: TableRow) =>
         Number(a.kind === 'user' ? a.is_active : false) -
         Number(b.kind === 'user' ? b.is_active : false),
-      render: (_: unknown, row: TableRow) =>
-        row.kind === 'pending' ? (
-          <Badge status="warning">Pending</Badge>
-        ) : (
-          <Badge status={row.is_active ? 'success' : 'neutral'}>
-            {row.is_active ? 'Active' : 'Deactivated'}
-          </Badge>
-        ),
+      render: (_: unknown, row: TableRow) => {
+        if (row.kind === 'pending') return <Badge status="warning">Pending</Badge>;
+        if (!row.is_active) return <Badge status="neutral">Deactivated</Badge>;
+        // is_active is set true immediately on creation, regardless of
+        // whether this person has actually finished setup — has_set_password
+        // is what tells "invited, hasn't logged in yet" apart from a real
+        // active user.
+        if (!row.has_set_password) return <Badge status="warning">Pending setup</Badge>;
+        return <Badge status="success">Active</Badge>;
+      },
     },
     {
       title: 'Actions',

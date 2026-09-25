@@ -57,7 +57,7 @@ const SEARCH_PAGE_SIZE = 200;
  * restoring access is the low-risk direction, same reasoning as
  * UsersPanel.tsx's identical Super-Admin-side switch) turns one back on.
  * The tenant-scoped reactivate route used to not exist at all — only
- * organization-service's platform router had it, for a CareerForce Pro
+ * organization-service's platform router had it, for a Careerforce Pro
  * operator acting on a tenant's behalf — which meant a Company Admin who
  * deactivated someone by mistake, or wanted to re-add them, had no way
  * back: re-adding via "Add user" 409s with "already exists" (deactivating
@@ -345,8 +345,13 @@ const OrganisationUserTable = () => {
                 }
               />
             </Tooltip>
-            <Badge status={row.is_active ? 'success' : 'neutral'}>
-              {row.is_active ? 'Active' : 'Deactivated'}
+            {/* is_active alone can't tell a real, logged-in user apart from
+                someone still sitting on an unaccepted invite — see
+                OrgUser.has_set_password's own docstring. */}
+            <Badge
+              status={!row.is_active ? 'neutral' : row.has_set_password ? 'success' : 'warning'}
+            >
+              {!row.is_active ? 'Deactivated' : row.has_set_password ? 'Active' : 'Pending setup'}
             </Badge>
           </div>
         ),

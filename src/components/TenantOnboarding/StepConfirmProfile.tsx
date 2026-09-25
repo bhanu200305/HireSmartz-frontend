@@ -57,7 +57,7 @@ const StepConfirmProfile = ({ draft, onBack, onConfirmed }: StepConfirmProfilePr
       {isLoading && <Loader />}
 
       <p className="text-sm text-gray-500 mb-4">
-        We scraped a preview from{' '}
+        We fetched a preview from{' '}
         <span className="font-medium text-gray-700">{draft.companyName}</span>
         &apos;s website. Review or edit it before the invite goes out.
       </p>

@@ -1,14 +1,14 @@
 import { orgApi } from '../orgApi';
 
-// RBAC_API.md — the only two RBAC write endpoints that exist today. There is
-// deliberately no "list roles" or "list this user's assignments" endpoint
-// anywhere in organization-service (confirmed against every router in the
-// service, not just roles/api/routers.py) — a caller must already hold a
-// `role_id` (from wherever it was minted, e.g. seeded system roles) to grant
-// one, and an `assignment_id` (returned by the grant itself) to revoke one.
-// Until a role/assignment catalog endpoint exists, a UI can only offer
-// "grant"/"revoke" in flows that already have both ids in hand — see
-// RolesManagement's "not available yet" state for the general case.
+// RBAC_API.md. organization-service now also exposes
+// GET /v1/roles/users/{user_id}/assignments (needs user:read) — the tenant
+// mirror of the platform-only `listUserRoleAssignmentsAsPlatform` below, same
+// response shape. That's what lets a UI show a user's CURRENT role(s) with a
+// Remove action, and what makes "change a role" mean "revoke the old
+// assignment, then grant the new one" instead of only ever adding a second
+// one (see EditOrgUser and AssignRoleModal, both of which resolve each
+// returned `role_id` against `useListRolesQuery` rather than a second,
+// redundant name/location join here).
 export type AssignRoleRequest = {
   user_id: string;
   role_id: string;
@@ -55,6 +55,10 @@ export type ListUserRoleAssignmentsAsPlatformArgs = {
   userId: string;
 };
 
+export type ListUserRoleAssignmentsArgs = {
+  userId: string;
+};
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     assignRole: build.mutation<AssignRoleResponse, AssignRoleRequest>({
@@ -63,9 +67,14 @@ const extendedApi = orgApi.injectEndpoints({
         method: 'POST',
         body,
       }),
+      // 'OrgUsers' included so the users list's `role` column (and this
+      // user's own profile Role field) stop showing the stale role until a
+      // manual reload — previously missing here, so a grant/revoke never
+      // invalidated it.
       invalidatesTags: (_result, _error, { user_id }) => [
         { type: 'UserPermissions', id: user_id },
         'RoleAssignments',
+        'OrgUsers',
       ],
     }),
     revokeRole: build.mutation<RevokeRoleResponse, { assignmentId: string; userId: string }>({
@@ -76,6 +85,7 @@ const extendedApi = orgApi.injectEndpoints({
       invalidatesTags: (_result, _error, { userId }) => [
         { type: 'UserPermissions', id: userId },
         'RoleAssignments',
+        'OrgUsers',
       ],
     }),
     // Super Admin's mirror of assignRole/revokeRole above — same
@@ -123,6 +133,20 @@ const extendedApi = orgApi.injectEndpoints({
         'RoleAssignments',
       ],
     }),
+    // GET /v1/roles/users/{user_id}/assignments — the tenant-session mirror
+    // of the platform version above, same response shape (see this file's
+    // header comment). Needs user:read.
+    listUserRoleAssignments: build.query<UserRoleAssignment[], ListUserRoleAssignmentsArgs>({
+      query: ({ userId }) => ({
+        url: `/v1/roles/users/${userId}/assignments`,
+        method: 'GET',
+      }),
+      transformResponse: (response: { assignments: UserRoleAssignment[] }) => response.assignments,
+      providesTags: (_result, _error, { userId }) => [
+        { type: 'UserPermissions', id: userId },
+        'RoleAssignments',
+      ],
+    }),
   }),
 });
 
@@ -132,4 +156,5 @@ export const {
   useAssignRoleAsPlatformMutation,
   useRevokeRoleAsPlatformMutation,
   useListUserRoleAssignmentsAsPlatformQuery,
+  useListUserRoleAssignmentsQuery,
 } = extendedApi;

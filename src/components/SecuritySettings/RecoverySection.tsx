@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MdOutlineMailLock } from 'react-icons/md';
-import { Badge, Button, Input, showToast } from '..';
+import { Badge, Button, Input, PasswordInput, showToast } from '..';
 import {
   useGetRecoveryEmailStatusQuery,
   useRemoveRecoveryEmailMutation,
@@ -60,8 +60,7 @@ const SetRecoveryEmailForm = ({ onPending }: { onPending: (email: string) => voi
         />
         {emailError && <p className="mt-1 px-2 text-sm text-red-500">{emailError}</p>}
       </div>
-      <Input
-        type="password"
+      <PasswordInput
         autoComplete="current-password"
         noAutoCapitalize
         value={password}
@@ -124,8 +123,7 @@ const PendingConfirmation = ({
         <Badge status="warning">Awaiting confirmation</Badge>
       </div>
       <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row">
-        <Input
-          type="password"
+        <PasswordInput
           autoComplete="current-password"
           noAutoCapitalize
           value={password}
@@ -196,8 +194,7 @@ const VerifiedRecoveryEmail = ({ maskedEmail }: { maskedEmail: string }) => {
 
       {isRemoving && (
         <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row">
-          <Input
-            type="password"
+          <PasswordInput
             autoComplete="current-password"
             noAutoCapitalize
             value={password}

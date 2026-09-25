@@ -131,12 +131,23 @@ const ViewOrgUser = () => {
               </div>
               <div>
                 <Typography variant="h4">{user.full_name}</Typography>
+                {/* is_active alone can't tell a real, logged-in user apart
+                    from someone still sitting on an unaccepted invite — see
+                    OrgUser.has_set_password's own docstring. */}
                 <span
                   className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    user.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
+                    !user.is_active
+                      ? 'bg-gray-100 text-gray-500'
+                      : user.has_set_password
+                        ? 'bg-green-50 text-green-700'
+                        : 'bg-amber-50 text-amber-700'
                   }`}
                 >
-                  {user.is_active ? 'Active' : 'Deactivated'}
+                  {!user.is_active
+                    ? 'Deactivated'
+                    : user.has_set_password
+                      ? 'Active'
+                      : 'Pending setup'}
                 </span>
               </div>
             </div>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { isPossiblePhoneNumber } from 'libphonenumber-js';
 import { MdOutlineSecurity } from 'react-icons/md';
 import { FaRegCopy } from 'react-icons/fa';
-import { Badge, Button, Input, showToast } from '..';
+import { Badge, Button, Input, PasswordInput, showToast } from '..';
 import { restrictE164Input } from '../../shared/utils/validation/phoneValidation';
 import {
   useConfirmMfaMethodMutation,
@@ -222,8 +222,7 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
 
       {isRemoving && (
         <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row">
-          <Input
-            type="password"
+          <PasswordInput
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -270,7 +269,7 @@ const AddMethodButton = ({
       showToast({
         message: getAuthErrorMessage(
           err,
-          `Could not start ${METHOD_LABELS[methodType]} enrolment.`
+          `Could not start ${METHOD_LABELS[methodType]} enrollment.`
         ),
         type: 'error',
       });

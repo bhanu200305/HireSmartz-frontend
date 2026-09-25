@@ -43,6 +43,26 @@ import {
 const SCRAPE_POLL_INTERVAL_MS = 2000;
 const SCRAPE_POLL_TIMEOUT_MS = 30000;
 
+// ai-service's ResilientWebsiteScraper reports one of three specific reasons
+// on FAILED (see that module's docstring) — none of them are a certain
+// diagnosis, just the best inference available (e.g. "blocked or
+// inaccessible" also fires for a page that's simply very sparse), so this
+// deliberately hedges rather than asserting a cause, and always steers the
+// admin to fill the fields in by hand either way.
+const getScrapeFailureMessage = (reason: string | null): string => {
+  if (!reason) return 'Could not scrape this website. Please fill in the details manually.';
+  if (reason.startsWith('site unreachable')) {
+    return "Couldn't reach this website — check the URL, or try again in a moment.";
+  }
+  if (reason.startsWith('site blocked or inaccessible')) {
+    return "Couldn't load this site automatically — it may be blocking automated access. Please fill in the details manually.";
+  }
+  if (reason.startsWith('insufficient content')) {
+    return "This page didn't have enough content to pull details from. Please fill in the details manually.";
+  }
+  return 'Could not scrape this website. Please fill in the details manually.';
+};
+
 // Same mapping ViewCustomer (Super Admin's per-company view) uses, so a
 // tenant's status reads identically everywhere it appears.
 const STATUS_BADGE: Record<string, BadgeStatus> = {
@@ -161,7 +181,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         }
         if (result.status === 'FAILED') {
           showToast({
-            message: result.reason || 'Could not scrape this website.',
+            message: getScrapeFailureMessage(result.reason),
             type: 'error',
           });
           break;

@@ -18,7 +18,7 @@ const humanizeType = (value: string): string =>
 
 /**
  * `GET /v1/template-settings/overrides` — every system notification
- * CareerForce Pro can send on this tenant's behalf (invites, password
+ * Careerforce Pro can send on this tenant's behalf (invites, password
  * resets, MFA codes, account-locked alerts, …), whether or not this tenant
  * has customised it. Distinct from the OTHER "SMS Templates" tab on this
  * page, which is a separate, candidate-facing recruiting-SMS feature with

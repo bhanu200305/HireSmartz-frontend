@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { Select } from 'antd';
+import { MdClose } from 'react-icons/md';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import { Button, showToast } from '../../shared';
 import { useListRolesQuery } from '../../../api/organization-service/Roles/roles';
 import { useListTenantOfficesQuery } from '../../../api/organization-service/Tenants/offices';
-import { useAssignRoleMutation } from '../../../api/organization-service/Roles/assignments';
+import {
+  useAssignRoleMutation,
+  useListUserRoleAssignmentsQuery,
+  useRevokeRoleMutation,
+} from '../../../api/organization-service/Roles/assignments';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 
 type AssignRoleModalProps = {
@@ -40,7 +45,29 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
 
   const { data: roles } = useListRolesQuery({ scope: 'tenant', isMaster: false }, { skip: !open });
   const { data: offices } = useListTenantOfficesQuery({ tenantId }, { skip: !open });
+  const { data: currentAssignments } = useListUserRoleAssignmentsQuery({ userId }, { skip: !open });
   const [assignRole, { isLoading: isAssigning }] = useAssignRoleMutation();
+  const [revokeRole, { isLoading: isRevoking }] = useRevokeRoleMutation();
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  const roleName = (id: string) => roles?.find((r) => r.role_id === id)?.name ?? id;
+  const locationLabel = (id: string | null) => {
+    if (!id) return 'Everywhere';
+    const office = offices?.find((o) => o.office_id === id);
+    return office ? `${office.city}, ${office.address_line_1}` : id;
+  };
+
+  const handleRevoke = async (assignmentId: string) => {
+    setRevokingId(assignmentId);
+    try {
+      await revokeRole({ assignmentId, userId }).unwrap();
+      showToast({ message: 'Role removed.', type: 'success' });
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to remove role.'), type: 'error' });
+    } finally {
+      setRevokingId(null);
+    }
+  };
 
   const reset = () => {
     setRoleId(null);
@@ -77,9 +104,44 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
       modalProps={{ width: 640 }}
     >
       <div className="flex flex-col gap-4">
+        {!!currentAssignments?.length && (
+          <div>
+            <p className="text-sm text-gray-600 mb-1.5">Current role(s)</p>
+            <div className="flex flex-col gap-1.5">
+              {currentAssignments.map((assignment) => (
+                <div
+                  key={assignment.assignment_id}
+                  className="flex items-center justify-between gap-2 rounded-full bg-gray-100 pl-3 pr-1.5 py-1 text-sm text-gray-700"
+                >
+                  <span>
+                    {roleName(assignment.role_id)}
+                    <span className="text-gray-400">
+                      {' '}
+                      · {locationLabel(assignment.location_id)}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${roleName(assignment.role_id)}`}
+                    disabled={isRevoking}
+                    onClick={() => handleRevoke(assignment.assignment_id)}
+                    className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {revokingId === assignment.assignment_id ? (
+                      <span className="block h-3.5 w-3.5 animate-pulse rounded-full bg-gray-400" />
+                    ) : (
+                      <MdClose size={14} />
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <label htmlFor="assignRoleSelect" className="text-sm text-gray-600">
-            Role
+            {currentAssignments?.length ? 'Assign another role' : 'Role'}
           </label>
           <Select
             id="assignRoleSelect"
