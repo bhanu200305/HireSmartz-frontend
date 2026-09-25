@@ -1433,7 +1433,12 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
               </div>
             </div>
           )}
-          <VideoGrid token={token} liveKit={liveKit} isRecording={recording} />
+          <VideoGrid
+            token={token}
+            liveKit={liveKit}
+            isRecording={recording}
+            candidateName={decodedInterviewToken.candidateName}
+          />
         </div>
 
         {/* Minimal bottom bar: statuses + controls */}

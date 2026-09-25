@@ -5,12 +5,13 @@
  * Replaces Agora-based VideoGrid with LiveKit's built-in components
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   ParticipantTile,
   FocusLayoutContainer,
   FocusLayout,
   CarouselLayout,
+  VideoTrack,
   useRemoteParticipants,
   useLocalParticipant,
   useTracks,
@@ -27,11 +28,19 @@ import { PinButton } from './shared/PinButton';
 import { SpotlightStage, type SpotlightSide } from './shared/SpotlightStage';
 import { SoundwaveTile } from './soundwave/SoundwaveTile';
 import { TileLabel } from './shared/TileLabel';
+import { useDisablePictureInPicture } from './shared/useDisablePictureInPicture';
 
 interface VideoGridProps {
   token: LiveKitTokenResponse;
   liveKit: UseLiveKitReturn;
   isRecording: boolean;
+  /** The candidate's real name, already resolved by the caller (decoded
+   * interview token, falling back to `token.participantName` — see
+   * InterviewLiveKit.tsx's own `smsCandidateName`). LiveKit's own
+   * `participant.identity` for the candidate is a generic role string
+   * ("candidate"), not a real name, so a remote tile falls back to
+   * showing that literal word unless this is supplied. */
+  candidateName?: string;
 }
 
 // PIN/SPOTLIGHT — added alongside chat/settings/background (see
@@ -55,10 +64,13 @@ interface VideoGridProps {
 // AI's presence looks identical (and unmistakable) in either state — it
 // never disappears or degrades to a blank box when the other side is
 // pinned/maximized.
-const VideoGridInner: React.FC = () => {
+const VideoGridInner: React.FC<{ candidateName?: string }> = ({ candidateName }) => {
   const { localParticipant, cameraTrack: localCameraPublication } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
   const { isPinned, togglePin, pinnedTrackRef, unpin } = useSpotlight();
+
+  const roomContainerRef = useRef<HTMLDivElement | null>(null);
+  useDisablePictureInPicture(roomContainerRef);
 
   const cameraTrackRefs = useTracks([Track.Source.Camera], { onlySubscribed: true });
   const micTrackRefs = useTracks([Track.Source.Microphone], { onlySubscribed: true });
@@ -112,6 +124,17 @@ const VideoGridInner: React.FC = () => {
       const micRef = micTrackRefs.find((ref) => ref.participant.identity === participant.identity);
       const pinRef: TrackReferenceOrPlaceholder | undefined = cameraRef ?? micRef;
       const source = cameraRef ? Track.Source.Camera : Track.Source.Microphone;
+      // interview-service mints the candidate's LiveKit identity as the
+      // generic role string "candidate", not their real name — `.name` is
+      // never set for them either, so both halves of LiveKit's own
+      // fallback resolve to that literal word. `candidateName` (decoded
+      // from the interview token, passed down from InterviewLiveKit.tsx)
+      // is the one place their real name actually exists on this side, so
+      // it wins whenever this tile's identity marks it as the candidate's.
+      const displayName =
+        candidateName && participant.identity?.toLowerCase().startsWith('candidate')
+          ? candidateName
+          : participant.name || participant.identity || 'Interviewer';
       return {
         key: `${participant.identity}-${source}`,
         identity: participant.identity,
@@ -119,11 +142,19 @@ const VideoGridInner: React.FC = () => {
         node: (
           <div className="relative h-full w-full">
             {cameraRef ? (
-              <ParticipantTile trackRef={cameraRef} className="h-full w-full" />
+              // Explicit children, not the bare `<ParticipantTile trackRef=.../>`
+              // this used to be — LiveKit's own default template renders its
+              // built-in `ParticipantName` from `participant.name`/`.identity`
+              // directly (no prop to override it), which is exactly the
+              // generic "candidate" text this tile exists to fix.
+              <ParticipantTile trackRef={cameraRef} className="h-full w-full">
+                <VideoTrack trackRef={cameraRef} />
+                <TileLabel>{displayName}</TileLabel>
+              </ParticipantTile>
             ) : (
               <>
                 <SoundwaveTile audioTrackRef={micRef} label="" className="h-full w-full" />
-                <TileLabel>{participant.name || participant.identity || 'Interviewer'}</TileLabel>
+                <TileLabel>{displayName}</TileLabel>
               </>
             )}
             {pinRef && (
@@ -144,7 +175,7 @@ const VideoGridInner: React.FC = () => {
   );
 
   return (
-    <div className="relative w-full h-full bg-gray-900">
+    <div ref={roomContainerRef} className="relative w-full h-full bg-gray-900">
       <div className="video-grid-container w-full h-full absolute inset-0">
         {screenShareTrack ? (
           <FocusLayoutContainer>
@@ -176,9 +207,9 @@ const VideoGridInner: React.FC = () => {
   );
 };
 
-export const VideoGrid: React.FC<VideoGridProps> = () => (
+export const VideoGrid: React.FC<VideoGridProps> = ({ candidateName }) => (
   <LayoutContextProvider>
-    <VideoGridInner />
+    <VideoGridInner candidateName={candidateName} />
   </LayoutContextProvider>
 );
 

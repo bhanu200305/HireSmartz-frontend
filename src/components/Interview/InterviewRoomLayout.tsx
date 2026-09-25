@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ParticipantTile,
   DisconnectButton,
@@ -21,6 +21,7 @@ import { ChatPanel, useUnreadChatCount } from './shared/ChatPanel';
 import { SettingsPanel } from './shared/SettingsPanel';
 import { PanelQuestionsPanel, usePanelQuestions } from './shared/PanelQuestionsPanel';
 import { useFullscreenLock } from './shared/useFullscreenLock';
+import { useDisablePictureInPicture } from './shared/useDisablePictureInPicture';
 
 // The custom room UI that replaces LiveKit's stock `<VideoConference />`
 // (what `SessionJoinScreen` used before this component existed — a generic
@@ -57,6 +58,9 @@ const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean })
   const { localParticipant, cameraTrack: localCameraPublication } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
   const { isPinned, togglePin } = useSpotlight();
+
+  const roomContainerRef = useRef<HTMLDivElement | null>(null);
+  useDisablePictureInPicture(roomContainerRef);
 
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -182,7 +186,7 @@ const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean })
   const showEmptyState = remoteParticipants.length === 0;
 
   return (
-    <div className="flex h-full w-full flex-col bg-neutral-950">
+    <div ref={roomContainerRef} className="flex h-full w-full flex-col bg-neutral-950">
       <div className="relative flex-1 p-3">
         {pinnedSide ? (
           <SpotlightStage
