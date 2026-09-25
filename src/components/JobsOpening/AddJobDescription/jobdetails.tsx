@@ -30,6 +30,7 @@ import { get } from 'lodash-es';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import FillWithAiWidget from './FillWithAiWidget';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
+import { useGetPermittedOfficesQuery } from '../../../api/job-service/JobOpening/GetPermittedOffices';
 import {
   useCreateEducationPreferenceMutation,
   useDeleteEducationPreferenceMutation,
@@ -261,10 +262,27 @@ const JobDetails = () => {
   const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
   const [isSubmittingWithModal, setIsSubmittingWithModal] = useState(false);
   const [triggerGetJobDescriptionById] = useLazyGetJobDescriptionByIdQuery();
-  const { data: offices = [], isFetching: loadingJobLocations } = useListTenantOfficesQuery(
+  const { data: offices = [], isFetching: loadingOfficesList } = useListTenantOfficesQuery(
     { tenantId: tenantId ?? '', isMaster },
     { skip: !tenantId }
   );
+  // Filters the Location dropdown to offices this user holds job:update
+  // at (job-service re-validates on save regardless).
+  const existingJobIdForPermissions = jobIdRef.current || resolvedJobId;
+  const officeIdsForPermissionCheck = useMemo(
+    () => offices.map((office) => office.office_id),
+    [offices]
+  );
+  const { data: permittedOfficesData, isFetching: loadingPermittedOffices } =
+    useGetPermittedOfficesQuery(
+      { jobOpeningId: existingJobIdForPermissions, officeIds: officeIdsForPermissionCheck },
+      { skip: !existingJobIdForPermissions || officeIdsForPermissionCheck.length === 0 }
+    );
+  const permittedOfficeIds = useMemo(
+    () => new Set(permittedOfficesData?.permitted_office_ids ?? []),
+    [permittedOfficesData]
+  );
+  const loadingJobLocations = loadingOfficesList || loadingPermittedOffices;
   const {
     data: orgDepartments = [],
     isFetching: departmentsLoading,
@@ -521,13 +539,26 @@ const JobDetails = () => {
   const jobLocationOptions = useMemo(
     () =>
       (offices ?? [])
+        // Only permitted offices, plus whatever's already saved on this
+        // job. Unfiltered while permission data is still loading.
+        .filter(
+          (office) =>
+            !permittedOfficesData ||
+            permittedOfficeIds.has(office.office_id) ||
+            idsMatch(office.office_id, selectedOfficeLocationId)
+        )
         .map((office) => ({
           id: office.office_id,
           name: officeDisplayName(office),
         }))
         .sort((a, b) => (a.name || '').localeCompare(b.name || '')),
-    [offices]
+    [offices, permittedOfficeIds, permittedOfficesData, selectedOfficeLocationId]
   );
+
+  // True only when offices exist but none are permitted — distinct from
+  // "org has no offices", which already has its own empty-list UX.
+  const hasNoPermittedOfficeToSelect =
+    Boolean(permittedOfficesData) && offices.length > 0 && jobLocationOptions.length === 0;
 
   const selectedLocationDetails = useMemo(
     () => offices.find((office) => idsMatch(office.office_id, selectedOfficeLocationId)),
@@ -1673,6 +1704,7 @@ const JobDetails = () => {
           })(),
         },
         offices,
+        suggestedSkills,
       });
       const savedId = resolveSavedJobId();
       if (!savedId) {
@@ -1779,6 +1811,7 @@ const JobDetails = () => {
         jobTitle: orgTitleId ? [orgTitleId] : processedPayload.jobTitle,
       },
       offices,
+      suggestedSkills,
     });
 
     try {
@@ -1880,6 +1913,7 @@ const JobDetails = () => {
             })(),
           },
           offices,
+          suggestedSkills,
         });
         await updateJobOpening({ jobOpeningId: savedId, body: details }).unwrap();
         // Sync Redux so isFormDirty doesn't still read dirty right after saving.
@@ -2243,6 +2277,12 @@ const JobDetails = () => {
                         enableEditDelete={false}
                       />
                     </div>
+                    {hasNoPermittedOfficeToSelect && !errors.officeLocation && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        You are not permitted to create a job at any office location. Contact your
+                        admin to get access.
+                      </p>
+                    )}
                   </Form.Item>
                   {selectedOfficeLocationId && (
                     <>

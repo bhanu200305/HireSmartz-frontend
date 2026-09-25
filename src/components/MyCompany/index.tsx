@@ -23,6 +23,8 @@ import TenantShiftsTab from './JobSettings/TenantShiftsTab';
 import TenantJobModesTab from './JobSettings/TenantJobModesTab';
 import TenantClosureReasonsTab from './JobSettings/TenantClosureReasonsTab';
 import TenantEducationPreferencesTab from './JobSettings/TenantEducationPreferencesTab';
+import TenantJobTitlesTab from './JobSettings/TenantJobTitlesTab';
+import TenantDepartmentSettingsTab from './JobSettings/TenantDepartmentSettingsTab';
 // import TenantAtsIntegrationTab from './JobSettings/TenantAtsIntegrationTab'; // hidden for now
 import OnboardingChecklist from './OnboardingChecklist';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
@@ -76,6 +78,7 @@ const MyCompany: React.FC = () => {
   const canViewCompanyDetails = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const canViewLocations = useHasAccess(Authorities.LOCATION_VIEW);
   const canViewDepartments = useHasAccess(Authorities.DEPARTMENT_VIEW);
+  const canViewJobTitles = useHasAccess(Authorities.TENANT_JOB_TITLE_VIEW);
   const canViewFeatureSettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const canViewTeam = useHasAccess(Authorities.INVITATION_VIEW);
   const canViewActivity = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
@@ -162,6 +165,16 @@ const MyCompany: React.FC = () => {
           key: '3',
           label: 'Departments',
           children: <DepartmentsTab tenantId={tenantId} />,
+        },
+        canViewJobTitles && {
+          key: '19',
+          label: 'Job Titles',
+          children: <TenantJobTitlesTab tenantId={tenantId} />,
+        },
+        canViewDepartments && {
+          key: '20',
+          label: 'Department Settings',
+          children: <TenantDepartmentSettingsTab tenantId={tenantId} />,
         },
       ].filter(Boolean) as TabsProps['items'],
     },

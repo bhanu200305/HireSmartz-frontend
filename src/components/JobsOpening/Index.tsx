@@ -1050,6 +1050,7 @@ const JobsOpening = () => {
                 onSearch={handleSearch}
                 allowClear
                 value={filters.text || ''}
+                className="w-full sm:w-64 shrink-0"
               />
               <DateTimeRangePicker
                 value={handleDateValue(filters)}
@@ -1108,7 +1109,7 @@ const JobsOpening = () => {
               {hasFeatureAccess('job_opening', 'create', role, authorities) && (
                 <Button
                   appname="add Job Description"
-                  className="text-white bg-button rounded-3xl px-4 py-2 flex items-center shadow-xs hover:shadow-sm transition-shadow"
+                  className="text-white bg-button rounded-3xl px-4 py-2 flex items-center shrink-0 shadow-xs hover:shadow-sm transition-shadow"
                   onClick={handleCreateNewJob}
                 >
                   <PlusOutlined className="text-sm pr-2" />{' '}

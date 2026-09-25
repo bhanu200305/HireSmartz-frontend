@@ -9,6 +9,7 @@ export type PlatformInterviewRoundType = {
   max_occurrences: number | null;
   requires_duration: boolean;
   available_variants: string[] | null;
+  round_description: string | null;
 };
 
 export type SaveInterviewRoundTypeRequest = {
@@ -18,6 +19,13 @@ export type SaveInterviewRoundTypeRequest = {
   max_occurrences?: number | null;
   requires_duration?: boolean;
   available_variants?: string[] | null;
+  round_description?: string | null;
+};
+
+// PUT /platform/master-interview-rounds/{id} — round_description only,
+// rejected server-side if any other field is sent.
+export type UpdateInterviewRoundTypeRequest = {
+  round_description?: string | null;
 };
 
 const extendedApi = jobApi.injectEndpoints({
@@ -37,7 +45,7 @@ const extendedApi = jobApi.injectEndpoints({
     }),
     updatePlatformInterviewRoundType: build.mutation<
       PlatformInterviewRoundType,
-      SaveInterviewRoundTypeRequest & { roundTypeId: string }
+      UpdateInterviewRoundTypeRequest & { roundTypeId: string }
     >({
       query: ({ roundTypeId, ...body }) => ({
         url: `/platform/master-interview-rounds/${roundTypeId}`,

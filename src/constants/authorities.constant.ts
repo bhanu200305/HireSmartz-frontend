@@ -76,6 +76,13 @@ export enum Authorities {
   LOCATION_DELETE = 'location:delete',
   LOCATION_APPROVE = 'location:approve',
   LOCATION_EXPORT = 'location:export',
+  // A tenant's own job-title catalogue — distinct resource from the
+  // platform's JOB_TITLE_CATALOG_* above. Real backend catalog only has
+  // these 4 (no approve/export), same discipline as CANDIDATE_VIEW/ADD.
+  TENANT_JOB_TITLE_VIEW = 'tenant_job_title:read',
+  TENANT_JOB_TITLE_ADD = 'tenant_job_title:write',
+  TENANT_JOB_TITLE_EDIT = 'tenant_job_title:update',
+  TENANT_JOB_TITLE_DELETE = 'tenant_job_title:delete',
 
   // -- organization-service: team invitations --
   INVITATION_VIEW = 'invitation:read',
@@ -375,6 +382,26 @@ export const PERMISSION_CATALOG: PermissionCatalogEntry[] = [
   {
     code: Authorities.LOCATION_EXPORT,
     label: 'Export locations',
+    module: 'Departments & Locations',
+  },
+  {
+    code: Authorities.TENANT_JOB_TITLE_VIEW,
+    label: 'View job titles',
+    module: 'Departments & Locations',
+  },
+  {
+    code: Authorities.TENANT_JOB_TITLE_ADD,
+    label: 'Add job titles',
+    module: 'Departments & Locations',
+  },
+  {
+    code: Authorities.TENANT_JOB_TITLE_EDIT,
+    label: 'Edit job titles',
+    module: 'Departments & Locations',
+  },
+  {
+    code: Authorities.TENANT_JOB_TITLE_DELETE,
+    label: 'Delete job titles',
     module: 'Departments & Locations',
   },
 
@@ -784,6 +811,10 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.LOCATION_VIEW,
       Authorities.LOCATION_EDIT,
       Authorities.LOCATION_ADD,
+      Authorities.TENANT_JOB_TITLE_VIEW,
+      Authorities.TENANT_JOB_TITLE_ADD,
+      Authorities.TENANT_JOB_TITLE_EDIT,
+      Authorities.TENANT_JOB_TITLE_DELETE,
       Authorities.COMPANY_SETTINGS_VIEW,
       Authorities.COMPANY_SETTINGS_EDIT,
       Authorities.REPORT_EXPORT,
@@ -815,6 +846,7 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.JOB_OPENING_VIEW,
       Authorities.JOB_OPENING_EDIT,
       Authorities.JOB_OPENING_CREATE,
+      Authorities.TENANT_JOB_TITLE_VIEW,
       Authorities.REPORT_VIEW,
       Authorities.USER_VIEW,
     ],
@@ -825,6 +857,7 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.INTERVIEW_QUESTIONS_VIEW,
       Authorities.INTERVIEW_QUESTIONS_EDIT,
       Authorities.JOB_OPENING_VIEW,
+      Authorities.TENANT_JOB_TITLE_VIEW,
       Authorities.USER_VIEW,
     ],
     interviewer: [

@@ -186,6 +186,18 @@ const extendedApi = orgApi.injectEndpoints({
         ...tenantJobTitlesTag(tenantId, departmentId),
       ],
     }),
+    removeTenantJobTitleFromDepartment: build.mutation<
+      void,
+      { tenantId: string; departmentId: string; jobTitleId: string; isMaster?: boolean }
+    >({
+      query: ({ tenantId, departmentId, jobTitleId, isMaster }) => ({
+        url: `${departmentJobTitlesPath({ tenantId, departmentId, isMaster })}/${jobTitleId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, { tenantId, departmentId }) => [
+        ...tenantJobTitlesTag(tenantId, departmentId),
+      ],
+    }),
   }),
 });
 
@@ -198,4 +210,5 @@ export const {
   useUpdateTenantJobTitleMutation,
   useDeleteTenantJobTitleMutation,
   useAssignTenantJobTitleToDepartmentMutation,
+  useRemoveTenantJobTitleFromDepartmentMutation,
 } = extendedApi;

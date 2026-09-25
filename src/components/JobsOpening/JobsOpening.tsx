@@ -155,14 +155,6 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
     };
   }, [dispatch, isEditMode]);
 
-  // Interviewer page check
-  const isInterviewPage = pathname.includes('interviewer-startinterview');
-
-  if (isInterviewPage) {
-    // Interviewer page: skip layout, show only child route
-    return <Outlet context={{ refetchCandidates }} />;
-  }
-
   return (
     <MainLayout>
       <JobDetailsLayout

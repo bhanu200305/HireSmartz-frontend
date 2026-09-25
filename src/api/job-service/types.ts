@@ -78,6 +78,8 @@ export type JobLocationPayload = {
 export type JobSkillPayload = {
   skill_id: string;
   skill_type: 'required' | 'optional';
+  // Omitted for a plain manual add; backend defaults that to 'manual'.
+  source?: 'title_mapping' | 'ai_extracted' | 'manual';
 };
 
 export type JobLocationResponse = {
@@ -222,12 +224,11 @@ export type ListMasterScoringCategoriesResponse = {
   categories: MasterScoringCategory[];
 };
 
+// applies_audio_screening/applies_ai_video/applies_panel are migration-
+// managed, not editable — not in this request's shape.
 export type UpdateMasterScoringCategoryRequest = {
   display_name: string;
   description: string;
-  applies_audio_screening: boolean;
-  applies_ai_video: boolean;
-  applies_panel: boolean;
 };
 
 export type MasterScoringCategoryWeight = {

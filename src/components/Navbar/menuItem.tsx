@@ -134,7 +134,6 @@ const MenuItems = [
       '/add-new-round',
       '/view-job-description',
       '/view-job-opening',
-      '/interviewer-startinterview',
     ],
     requiredAuthority: Authorities.JOB_OPENING_VIEW,
   },

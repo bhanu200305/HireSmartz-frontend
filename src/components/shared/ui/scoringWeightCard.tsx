@@ -150,6 +150,8 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
       <div className="flex flex-col gap-5">
         {localWeights.map((w) => {
           const meta = categoryMeta[w.categoryName];
+          // Budget left for this field so the total can't exceed 100.
+          const maxForThis = Math.max(0, 100 - (total - w.weightPercentage));
           return (
             <div key={w.id}>
               <div className="flex items-start justify-between mb-1">
@@ -167,7 +169,7 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
                 <input
                   type="number"
                   min={0}
-                  max={100}
+                  max={maxForThis}
                   value={rawInputs[String(w.id)] ?? String(w.weightPercentage)}
                   disabled={!editable}
                   onChange={(e) => {
@@ -177,7 +179,7 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
                       setRawInputs((prev) => ({ ...prev, [String(w.id)]: '' }));
                       return;
                     }
-                    const val = Math.min(100, Math.max(0, Number(digitsOnly)));
+                    const val = Math.min(maxForThis, Math.max(0, Number(digitsOnly)));
                     setRawInputs((prev) => ({ ...prev, [String(w.id)]: String(val) }));
                     handleSliderChange(w.id, val);
                   }}
@@ -207,8 +209,11 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
                 value={w.weightPercentage}
                 disabled={!editable}
                 onChange={(val) => {
+                  // Track stays a true 0-100 scale (so a 10% value visibly
+                  // fills 10%, not the whole bar) - the cap is enforced
+                  // here instead of via `max`, same budget as the input.
                   if (typeof val === 'number') {
-                    handleSliderChange(w.id, val);
+                    handleSliderChange(w.id, Math.min(val, maxForThis));
                   }
                 }}
                 trackStyle={{ backgroundColor: meta?.color ?? '#6366f1' }}

@@ -1,23 +1,27 @@
 import React from 'react';
 import {
   useListPlatformInterviewRoundTypesQuery,
+  useUpdatePlatformInterviewRoundTypeMutation,
   PlatformInterviewRoundType,
 } from '../../../api/job-service/Platform/masterInterviewRounds';
 import PlatformCatalogTab from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
-// Read-only for now — these fields are migration-managed, editing them here
-// caused a real data-integrity incident. Description editing comes later
-// once the backend exposes it.
-const noFields: CatalogField<Record<string, never>>[] = [];
-const emptyForm: Record<string, never> = {};
+// Only description is editable — every other field is migration-managed.
+type RoundTypeFormValues = { round_description: string };
+
+const roundTypeFields: CatalogField<RoundTypeFormValues>[] = [
+  { name: 'round_description', label: 'Description', type: 'textarea' },
+];
+const emptyForm: RoundTypeFormValues = { round_description: '' };
 
 /** Platform-wide interview-round-type catalogue a job's sequence is built from. */
 const InterviewRoundTypesTab: React.FC = () => {
   const { data, isLoading } = useListPlatformInterviewRoundTypesQuery();
+  const [updateRoundType] = useUpdatePlatformInterviewRoundTypeMutation();
 
   return (
-    <PlatformCatalogTab<PlatformInterviewRoundType, Record<string, never>>
+    <PlatformCatalogTab<PlatformInterviewRoundType, RoundTypeFormValues>
       title="Platform-wide interview-round-type catalog."
       itemNounSingular="Round type"
       itemNounPlural="Round types"
@@ -25,14 +29,27 @@ const InterviewRoundTypesTab: React.FC = () => {
       isLoading={isLoading}
       idOf={(item) => item.round_type_id}
       labelOf={(item) => item.round_name}
-      columns={[{ title: 'Name', dataIndex: 'round_name', key: 'round_name' }]}
-      fields={noFields}
+      columns={[
+        { title: 'Name', dataIndex: 'round_name', key: 'round_name' },
+        {
+          title: 'Description',
+          dataIndex: 'round_description',
+          key: 'round_description',
+          render: (_, item) => item.round_description || '-',
+        },
+      ]}
+      fields={roundTypeFields}
       emptyForm={emptyForm}
-      toFormValues={() => emptyForm}
+      toFormValues={(item) => ({ round_description: item.round_description ?? '' })}
       onCreate={() => Promise.resolve()}
-      onUpdate={() => Promise.resolve()}
+      onUpdate={(id, values) =>
+        updateRoundType({
+          roundTypeId: id,
+          round_description: values.round_description.trim() || null,
+        }).unwrap()
+      }
       allowCreate={false}
-      allowEdit={false}
+      allowEdit
     />
   );
 };
