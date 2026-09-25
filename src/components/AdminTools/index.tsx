@@ -32,7 +32,7 @@ const AdminTools = () => {
           className="flex w-fit items-center text-gray-600 hover:text-primary-600 transition-colors cursor-pointer"
         >
           <MdOutlineArrowBack className="mr-2" />
-          <span>Back to profile</span>
+          <span>Back</span>
         </button>
 
         <div className="flex items-center gap-2.5">

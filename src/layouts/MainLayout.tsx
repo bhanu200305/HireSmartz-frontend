@@ -61,7 +61,6 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
     if (isDesktop) setMobileSidebarOpen(false);
   }, [isDesktop]);
 
-  const hideNavbarPaths = ['/profile', '/change-password'];
   const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
   const lastActivityRef = useRef<number>(Date.now());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,8 +178,6 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
     };
   }, [navigate]);
 
-  const hideSidebar = hideNavbarPaths.includes(window.location.pathname);
-
   return (
     <div
       className={clsx(
@@ -188,14 +185,12 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
         fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'
       )}
     >
-      {!hideSidebar && (
-        <Sidebar
-          collapsed={collapsed}
-          onToggleCollapse={toggleCollapsed}
-          mobileOpen={mobileSidebarOpen}
-          onCloseMobile={() => setMobileSidebarOpen(false)}
-        />
-      )}
+      <Sidebar
+        collapsed={collapsed}
+        onToggleCollapse={toggleCollapsed}
+        mobileOpen={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
+      />
       <div
         className={clsx(
           'flex flex-col transition-[margin-left] duration-200 ease-in-out',
@@ -203,17 +198,11 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
         )}
         style={{
           // No reserved gutter below `lg` — Sidebar is an overlay drawer
-          // there, not a permanent rail, so content should use the full
-          // width exactly like the hideSidebar case does.
-          marginLeft:
-            hideSidebar || !isDesktop
-              ? 0
-              : collapsed
-                ? SIDEBAR_WIDTH_COLLAPSED
-                : SIDEBAR_WIDTH_EXPANDED,
+          // there, not a permanent rail.
+          marginLeft: !isDesktop ? 0 : collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
         }}
       >
-        <Header onOpenMobileMenu={hideSidebar ? undefined : () => setMobileSidebarOpen(true)} />
+        <Header onOpenMobileMenu={() => setMobileSidebarOpen(true)} />
         <div
           className={clsx('w-full', fullHeight ? 'flex-1 min-h-0 overflow-hidden' : 'flex-grow')}
         >

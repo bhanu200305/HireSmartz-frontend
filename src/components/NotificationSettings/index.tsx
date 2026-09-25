@@ -62,7 +62,7 @@ const NotificationSettings = () => {
           className="flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
         >
           <MdOutlineArrowBack className="mr-2" />
-          <span>Back to profile</span>
+          <span>Back</span>
         </button>
 
         <div className="flex items-center gap-2">

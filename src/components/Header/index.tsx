@@ -81,10 +81,7 @@ const resolveSearchSelection = (
 };
 
 interface HeaderProps {
-  /** Opens the mobile off-canvas sidebar drawer (state owned by MainLayout).
-   * Only passed on routes that actually render a sidebar — see MainLayout's
-   * `hideSidebar` check — so this button doesn't show up with nothing for
-   * it to open. */
+  /** Opens the mobile off-canvas sidebar drawer (state owned by MainLayout). */
   onOpenMobileMenu?: () => void;
 }
 
