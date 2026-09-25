@@ -15,6 +15,10 @@ import { orgApi } from '../orgApi';
 export type InviteTenantUserRequest = {
   tenantId: string;
   email: string;
+  // Prefilled onto the invite so AcceptInvitation's form doesn't ask the
+  // invitee to retype what whoever invited them already typed — see
+  // ValidateInvitationResponse.invited_name.
+  name: string;
   department_id?: string;
   designation?: string;
   contact_phone?: string;

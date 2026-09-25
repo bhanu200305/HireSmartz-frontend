@@ -10,6 +10,7 @@ import type { Role } from '../../../../api/organization-service/Roles/roles';
 export type ReviewRow = {
   include: boolean;
   email: string;
+  name: string;
   role: RosterRole | '';
   department: string;
   designation: string;
@@ -25,6 +26,7 @@ export const toReviewRows = (rows: ParsedRosterRow[], knownRoleNames: string[]):
   return rows.map((row) => ({
     include: true,
     email: row.email,
+    name: row.name,
     role: byLowerName.get((row.role || '').toLowerCase()) ?? '',
     department: row.department || '',
     designation: row.designation || '',
@@ -63,9 +65,10 @@ const BulkImportRows: React.FC<BulkImportRowsProps> = ({
 
   // Fixed column template shared by the header and every data row, so the
   // two stay pixel-aligned regardless of content length. Email gets the
-  // most room (it's the one field that identifies the row); role/department/
-  // designation share what's left evenly.
-  const GRID_COLUMNS = '28px minmax(0,2fr) minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr)';
+  // most room (it's the one field that identifies the row); name/role/
+  // department/designation share what's left evenly.
+  const GRID_COLUMNS =
+    '28px minmax(0,1.8fr) minmax(0,1.3fr) minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr)';
 
   return (
     <div className="overflow-x-auto rounded-xl border">
@@ -75,6 +78,7 @@ const BulkImportRows: React.FC<BulkImportRowsProps> = ({
           style={{ gridTemplateColumns: GRID_COLUMNS }}
         >
           <span />
+          <span>Name</span>
           <span>Email</span>
           <span>Role *</span>
           <span>Department</span>
@@ -93,6 +97,9 @@ const BulkImportRows: React.FC<BulkImportRowsProps> = ({
                 onChange={(e) => updateRow(index, { include: e.target.checked })}
                 aria-label={`Include ${row.email}`}
               />
+              <span className="truncate text-sm" title={row.name}>
+                {row.name}
+              </span>
               <span className="truncate text-sm" title={row.email}>
                 {row.email}
               </span>

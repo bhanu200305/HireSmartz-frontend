@@ -18,13 +18,12 @@ export type ValidateInvitationResponse = {
   // splitE164). Null when no contact phone was ever recorded for this
   // invite.
   contact_phone: string | null;
-  // Same prefill idea as contact_phone, for whoever an admin already typed a
-  // name for when creating this invite (e.g. the "Add user" flow). Optional
-  // because older backends / invite paths that don't capture a name yet
-  // simply omit these keys rather than send null — treat both "missing" and
-  // null the same as "nothing to prefill".
-  first_name?: string | null;
-  last_name?: string | null;
+  // Same prefill idea as contact_phone — whoever created this invite (single
+  // invite or bulk import) may already have typed a name. A single combined
+  // string, split back into firstName/lastName client-side (see
+  // AcceptInvitation/index.tsx's prefill effect). Optional/null for invite
+  // paths that don't capture a name.
+  invited_name?: string | null;
 };
 
 // Wire shape of every error this endpoint (and validateInvitation) returns —

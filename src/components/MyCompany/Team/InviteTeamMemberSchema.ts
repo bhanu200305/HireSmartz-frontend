@@ -2,14 +2,8 @@ import { z } from 'zod';
 import { emailValidation } from '../../../shared/utils/validation/input.helpers';
 
 export const inviteTeamMemberSchema = z.object({
-  // Collected but NOT sent to the API yet — organization-service's
-  // InviteTenantUserRequest is `extra="forbid"`, so posting an unrecognized
-  // field would 422 every invite. Held in the form only until that service
-  // adds first/last name fields to accept it (see the backend request this
-  // was raised against). Wiring it into the mutation call is then a
-  // one-line change, not a form redesign.
-  firstName: z.string().trim().min(1, 'First name is required.'),
-  lastName: z.string().trim().optional(),
+  // Matches InviteTenantUserRequest.name's single-string wire shape.
+  name: z.string().trim().min(1, 'Name is required.'),
   email: emailValidation(),
   // Optional on the wire (POST /v1/tenants/{id}/users/invitations) — a
   // department isn't required to send an invite.

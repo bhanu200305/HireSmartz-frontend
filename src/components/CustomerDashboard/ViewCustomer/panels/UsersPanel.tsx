@@ -45,6 +45,7 @@ import type { OrgUser } from '../../../../api/organization-service/Users/users';
 import type { InvitationSummary } from '../../../../api/organization-service/Tenants/teamInvitations';
 import {
   getOrgErrorCode,
+  getOrgErrorDetails,
   getOrgErrorMessage,
 } from '../../../../shared/utils/auth/orgError.helpers';
 import {
@@ -178,6 +179,14 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
   const [viewingUser, setViewingUser] = useState<OrgUser | null>(null);
   const [searchText, setSearchText] = useState('');
+  // Set only when "Create user" fails with DEACTIVATED_USER_EMAIL_CONFLICT —
+  // deactivating never frees the email, only suspends it, so re-adding via
+  // "Add user" 409s (see handleReactivate's own comment below). Cleared on
+  // every new submit attempt and whenever the modal is closed/reopened.
+  const [deactivatedConflict, setDeactivatedConflict] = useState<{
+    userId: string;
+    email: string;
+  } | null>(null);
 
   const field = (key: keyof FormState) => ({
     value: form[key] || '',
@@ -241,6 +250,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
       return;
     }
+    setDeactivatedConflict(null);
     try {
       // A location-scoped role can't be granted in the same call as creation
       // — CreateUserCommand has no location_id at all, only role_id (an
@@ -323,7 +333,30 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       setIsAddOpen(false);
       setForm(emptyForm);
     } catch (err) {
+      if (getOrgErrorCode(err) === 'DEACTIVATED_USER_EMAIL_CONFLICT') {
+        const existingUserId = getOrgErrorDetails(err)?.existing_user_id;
+        if (typeof existingUserId === 'string') {
+          setDeactivatedConflict({ userId: existingUserId, email: form.email.trim() });
+          return;
+        }
+      }
       showToast({ message: getOrgErrorMessage(err, 'Failed to create user.'), type: 'error' });
+    }
+  };
+
+  const handleReactivateConflict = async () => {
+    if (!deactivatedConflict) return;
+    try {
+      await reactivateUser({ tenantId, userId: deactivatedConflict.userId }).unwrap();
+      showToast({ message: `${deactivatedConflict.email} was reactivated.`, type: 'success' });
+      setIsAddOpen(false);
+      setDeactivatedConflict(null);
+      setForm(emptyForm);
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to reactivate user.'),
+        type: 'error',
+      });
     }
   };
 
@@ -592,8 +625,31 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         />
       </div>
 
-      <AntdCommonModal open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add user">
+      <AntdCommonModal
+        open={isAddOpen}
+        onClose={() => {
+          setIsAddOpen(false);
+          setDeactivatedConflict(null);
+        }}
+        title="Add user"
+      >
         <div className="flex flex-col gap-4">
+          {deactivatedConflict && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm text-amber-800">
+                A deactivated user already exists with the email{' '}
+                <span className="font-medium">{deactivatedConflict.email}</span>. Deactivating
+                never frees the email, so reactivate that account instead of creating a new one.
+              </p>
+              <Button
+                className="mt-3 rounded-3xl bg-button px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={handleReactivateConflict}
+                disabled={isReactivating}
+              >
+                {isReactivating ? 'Reactivating…' : 'Reactivate existing user'}
+              </Button>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input placeholder="First name *" {...field('first_name')} />
             <Input placeholder="Last name" {...field('last_name')} />
@@ -635,7 +691,10 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           <div className="grid grid-cols-2 gap-4">
             <Button
               className="w-full border border-gray-300 rounded-full py-2"
-              onClick={() => setIsAddOpen(false)}
+              onClick={() => {
+                setIsAddOpen(false);
+                setDeactivatedConflict(null);
+              }}
               disabled={isCreating}
             >
               Cancel

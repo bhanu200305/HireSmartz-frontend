@@ -2,6 +2,7 @@ import {
   PlatformApiErrorBody,
   getPlatformErrorBody,
   getPlatformErrorCode,
+  getPlatformErrorDetails,
   getPlatformErrorMessage,
   getPlatformErrorRequestId,
 } from '../api/platformErrorEnvelope';
@@ -25,6 +26,9 @@ export const getOrgErrorMessage = getPlatformErrorMessage;
 
 /** Branch on this for a specific `error_code`; never on the message text. */
 export const getOrgErrorCode = getPlatformErrorCode;
+
+/** Extra structured data an error attached (e.g. DEACTIVATED_USER_EMAIL_CONFLICT's `existing_user_id`). */
+export const getOrgErrorDetails = getPlatformErrorDetails;
 
 /** Worth surfacing in support-facing copy — ties a user's report to a server-side log line. */
 export const getOrgErrorRequestId = getPlatformErrorRequestId;

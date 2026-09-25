@@ -54,6 +54,7 @@ export type RosterRole = string;
 
 export type ConfirmRosterRow = {
   email: string;
+  name: string;
   role: RosterRole;
   department?: string | null;
   designation?: string | null;

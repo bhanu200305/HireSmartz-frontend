@@ -151,6 +151,7 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
         tenantId,
         rows: confirmedRows.map((row) => ({
           email: row.email,
+          name: row.name,
           role: row.role as RosterRole,
           department: row.department || undefined,
           designation: row.designation || undefined,
