@@ -1,5 +1,5 @@
 import { Form, Radio, Select } from 'antd';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { showToast } from '../../shared';
 import { MdClose } from 'react-icons/md';
 import TextArea from 'antd/es/input/TextArea';
@@ -42,7 +42,6 @@ const formatVariantLabel = (variant: string) =>
 const EditInterviewRound = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { id: jobIdFromParams } = useParams();
   const roundData = location.state;
   const [form] = Form.useForm();
   const [editInterviewRound, { isLoading: isEditing }] = useEditInterviewRoundMutation();

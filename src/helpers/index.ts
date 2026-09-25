@@ -3,6 +3,15 @@ import { getLocalStorageItem } from '../shared/utils/auth/localstorage.helpers';
 import { LOCALSTORAGE_KEYS } from '../constants/webAPI';
 import { jwtDecode } from 'jwt-decode';
 
+// RTK Query mutation trigger shape used by archiveFn/resendInviteFn below —
+// called with the request payload, returns something `.unwrap()`-able.
+type MutationTrigger = (payload: Record<string, unknown>) => { unwrap: () => Promise<unknown> };
+type ToastFn = (config: {
+  message: string;
+  type?: 'success' | 'error' | 'info' | 'warning';
+}) => void;
+type RefetchFn = () => void;
+
 /**
  * Generic archive/unarchive handler for users and companies.
  *
@@ -52,9 +61,9 @@ export const handleArchive = async ({
 }: {
   type: string;
   recordId: number;
-  archiveFn: Function;
-  showToast: Function;
-  refetch: Function;
+  archiveFn: MutationTrigger;
+  showToast: ToastFn;
+  refetch: RefetchFn;
   isArchived: boolean;
 }) => {
   if (!recordId) return;
@@ -116,9 +125,9 @@ export const handleResendInvite = async ({
 }: {
   type: string;
   recordId: number;
-  resendInviteFn: Function;
-  showToast: Function;
-  refetch: Function;
+  resendInviteFn: MutationTrigger;
+  showToast: ToastFn;
+  refetch: RefetchFn;
   firstName: string;
   emailId: string;
 }) => {

@@ -57,15 +57,12 @@ const FileUploadModal = ({
 
   const handleFileSelect = (selectedFiles: File[]) => {
     const newFiles: File[] = [];
-    let hasInvalidFiles = false;
-
     for (const file of selectedFiles) {
       if (!isFileTypeAllowed(file)) {
         showToast({
           message: `${file.name} is not a supported file type. Allowed types: ${getAllowedTypesDisplay()}`,
           type: 'error',
         });
-        hasInvalidFiles = true;
         continue;
       }
       if (file.size / 1024 / 1024 > maxSizeMB) {
@@ -73,7 +70,6 @@ const FileUploadModal = ({
           message: `${file.name} exceeds ${maxSizeMB}MB size limit.`,
           type: 'error',
         });
-        hasInvalidFiles = true;
         continue;
       }
 
@@ -81,20 +77,7 @@ const FileUploadModal = ({
     }
     if (newFiles.length > 0) {
       setFiles((prev) => [...prev, ...newFiles]);
-      if (newFiles.length === selectedFiles.length) {
-        // showToast({
-        //   message: `${newFiles.length} file(s) added successfully.`,
-        //   type: 'success'
-        // })
-      }
     }
-
-    // if (hasInvalidFiles && newFiles.length === 0) {
-    //   showToast({
-    //     message: 'No valid files were selected. Please check file types and sizes.',
-    //     type: 'warning'
-    //   })
-    // }
   };
 
   const handleUpload = async () => {

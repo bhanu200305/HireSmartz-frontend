@@ -383,7 +383,7 @@ const ViewJobDetails = () => {
 
           <div className="mt-2 max-w-[33%]">
             <div className="flex items-center gap-2">
-              <label className="text-sm capitalize">Company Culture</label>
+              <span className="text-sm capitalize">Company Culture</span>
               <Tooltip
                 trigger={['hover', 'click']}
                 title={hasCultureInfo ? cultureInfoText : 'No company culture information provided'}

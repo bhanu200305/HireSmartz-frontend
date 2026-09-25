@@ -44,6 +44,8 @@ const EditModal: FC<EditModalProps> = ({
             onKeyPress={handleKeyPress}
             placeholder="Enter new value"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            // Sole input in this modal — focusing it on open is the expected UX.
+            // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           />
         </div>

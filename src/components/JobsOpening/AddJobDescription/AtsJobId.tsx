@@ -78,13 +78,17 @@ const AtsJobId = () => {
             <h3 className="text-base font-bold text-neutral-900 font-display mb-1">
               Upload from ATS
             </h3>
-            <label className="self-start mt-3 mb-2 text-sm font-semibold text-neutral-700">
+            <label
+              htmlFor="ats-job-id"
+              className="self-start mt-3 mb-2 text-sm font-semibold text-neutral-700"
+            >
               Please Select Job ID
             </label>
 
             <Form.Item className="w-full">
               <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">
                 <Select
+                  id="ats-job-id"
                   showSearch
                   placeholder="Select Job ID"
                   value={selectedJobId || undefined}

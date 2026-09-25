@@ -591,12 +591,17 @@ const Login = () => {
         <div className="login-card-pop relative z-10 w-full max-w-sm rounded-3xl bg-white px-8 py-9 shadow-2xl ring-1 ring-black/5">
           {/* Brand */}
           <div className="mb-7 flex flex-col items-center">
-            <img
-              src="/cfpLogo.svg"
-              alt="Careerforce Pro"
-              className="h-10 w-auto object-contain cursor-pointer"
+            <button
+              type="button"
+              className="border-none bg-transparent p-0 cursor-pointer"
               onClick={() => navigate('/')}
-            />
+            >
+              <img
+                src="/cfpLogo.svg"
+                alt="Careerforce Pro"
+                className="h-10 w-auto object-contain"
+              />
+            </button>
             <span className="ai-recruitment-text mt-2 text-[11px] tracking-widest">
               AI POWERED RECRUITMENT SOLUTIONS
             </span>
@@ -618,6 +623,8 @@ const Login = () => {
               <Input
                 name="email"
                 type="email"
+                // First field of the login form — focusing it on load is the expected UX.
+                // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 autoComplete="email"
                 noAutoCapitalize

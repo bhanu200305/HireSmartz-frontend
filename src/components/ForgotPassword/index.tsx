@@ -186,6 +186,8 @@ const ForgotPassword = () => {
             <Input
               name="email"
               type="email"
+              // Sole input on this page — focusing it on load is the expected UX.
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               noAutoCapitalize
               error={errors.email}

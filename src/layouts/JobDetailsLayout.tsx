@@ -15,7 +15,6 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const location = useLocation();
   const isViewMode = location.pathname.includes('/jobs/view/');
   const isEditMode = location.pathname.includes('/jobs/edit/');
-  const isReadOnlyMode = isViewMode || isEditMode;
   const search = location.search;
   const { id } = useParams<{ id: string }>();
   const aiJobDescriptionId = useSelector(
@@ -24,7 +23,6 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const jobDetails = useSelector((state: RootState) => state.JobSlice.details);
   const jobDescription = useSelector((state: RootState) => state.JobSlice.description);
   const isFormCompleted = useSelector((state: RootState) => state.JobSlice.isFormCompleted);
-  const interviewRounds = useSelector((state: RootState) => state.JobSlice.interviewRounds);
 
   const isCreateMode = !isViewMode && !isEditMode;
 

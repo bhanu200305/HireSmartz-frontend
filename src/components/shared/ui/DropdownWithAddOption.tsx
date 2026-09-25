@@ -271,6 +271,8 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
           maxTagPlaceholder={maxTagPlaceholder}
           tagRender={tagRender}
           disabled={disabled}
+          // Caller-controlled via the `autoFocus` prop, not hardcoded here.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus={autoFocus}
           // onBlur={() => setSearchValue('')}
           open={dropdownOpen}

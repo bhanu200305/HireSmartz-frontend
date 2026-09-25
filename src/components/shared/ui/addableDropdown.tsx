@@ -19,7 +19,7 @@ const AddableDropdown: FC<AddableDropdownProps> = ({
   onClose,
   onSubmit,
 }) => {
-  const { control, handleSubmit, reset, setValue } = useForm<{ value: string }>();
+  const { control, handleSubmit, reset } = useForm<{ value: string }>();
 
   const handleFormSubmit = (data: { value: string }) => {
     onSubmit(data.value);

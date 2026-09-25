@@ -63,11 +63,18 @@ const TableHeadBar: React.FC<TableHeadBarProps> = ({
         <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-primary-50">
           <img src={icon} alt="" className="w-6 h-6 object-contain" />
         </div>
-        <h2
-          className={`font-display text-lg font-semibold text-neutral-900 ${onTitleClick ? 'cursor-pointer transition-colors hover:text-primary' : ''}`}
-          onClick={onTitleClick}
-        >
-          {title}
+        <h2 className="font-display text-lg font-semibold text-neutral-900">
+          {onTitleClick ? (
+            <button
+              type="button"
+              onClick={onTitleClick}
+              className="cursor-pointer border-none bg-transparent p-0 font-display text-lg font-semibold text-neutral-900 transition-colors hover:text-primary"
+            >
+              {title}
+            </button>
+          ) : (
+            title
+          )}
         </h2>
       </div>
       <div className="flex flex-wrap justify-between items-center gap-2">
