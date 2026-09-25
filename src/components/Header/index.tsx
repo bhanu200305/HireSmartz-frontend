@@ -580,7 +580,12 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
   return (
     <>
       <header
-        className="sticky top-0 z-30 bg-white px-4 sm:px-7 py-3.5 flex items-center gap-3 w-full border-b"
+        // z-[1100]: above antd's default Modal z-index (1000, higher still
+        // for stacked modals like TenantAnalyticsModal-on-PlatformTenants
+        // ListModal) so the header stays visible and usable above any
+        // modal's mask instead of being buried under it — see Footer's
+        // matching treatment in MainLayout.
+        className="sticky top-0 z-[1100] bg-white px-4 sm:px-7 py-3.5 flex items-center gap-3 w-full border-b"
         style={{ borderColor: 'var(--border)' }}
       >
         {onOpenMobileMenu && (

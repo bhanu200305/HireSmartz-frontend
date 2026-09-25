@@ -50,6 +50,14 @@ export const Search = forwardRef<HTMLInputElement, SearchProps>(
           <input
             ref={ref}
             type="text"
+            // The browser's own address/contact autofill can otherwise pop
+            // up over this exact spot and compete with the app's own
+            // results dropdown — a click meant for one of our results can
+            // land on the browser's suggestion instead, which does nothing
+            // useful here and just closes our dropdown. `off` isn't honored
+            // by every browser for every field, but Chrome respects it for
+            // a plain text input like this one.
+            autoComplete="off"
             placeholder={placeholder}
             value={searchValue}
             className="ml-2 w-full bg-transparent text-base border-none outline-none"

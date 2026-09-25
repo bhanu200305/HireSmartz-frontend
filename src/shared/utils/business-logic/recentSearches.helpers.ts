@@ -18,7 +18,7 @@ type RecentSearchApiItem = {
   queryText?: string;
 };
 
-const sanitizeQuery = (queryText: string): string => queryText.trim();
+export const sanitizeQuery = (queryText: string): string => queryText.trim();
 
 const isValidQuery = (queryText: string): boolean =>
   sanitizeQuery(queryText).length >= MIN_RECENT_SEARCH_LENGTH;
@@ -88,6 +88,74 @@ export const upsertRecentSearch = (
     ...dedupedItems,
   ]);
 };
+
+// "Remove" for a recent-search chip — there is no backend DELETE for a
+// single recent-search row yet (only GET .../search/recent, which always
+// returns the server's own last-N list), so an item removed here would
+// otherwise just reappear the next time that list is refetched. Persisting
+// the dismissal locally, per scope, and filtering it out of whatever the
+// server/localStorage returns is what makes "remove" actually stick across
+// reloads until that backend endpoint exists.
+const buildDismissedRecentSearchesStorageKey = (scopeKey?: string): string =>
+  `${RECENT_SEARCHES_STORAGE_KEY}_dismissed_${normalizeStorageScope(scopeKey)}`;
+
+export const getDismissedRecentSearchQueries = (scopeKey?: string): Set<string> => {
+  try {
+    const rawValue = localStorage.getItem(buildDismissedRecentSearchesStorageKey(scopeKey));
+    if (!rawValue) return new Set();
+
+    const parsedValue = JSON.parse(rawValue) as unknown;
+    if (!Array.isArray(parsedValue)) return new Set();
+
+    return new Set(parsedValue.filter((value): value is string => typeof value === 'string'));
+  } catch {
+    return new Set();
+  }
+};
+
+const saveDismissedRecentSearchQueries = (
+  scopeKey: string | undefined,
+  dismissed: Set<string>
+): void => {
+  try {
+    localStorage.setItem(
+      buildDismissedRecentSearchesStorageKey(scopeKey),
+      JSON.stringify(Array.from(dismissed))
+    );
+  } catch (error) {
+    console.error('Failed to save dismissed recent searches to localStorage:', error);
+  }
+};
+
+export const dismissRecentSearch = (
+  scopeKey: string | undefined,
+  queryText: string
+): Set<string> => {
+  const dismissed = getDismissedRecentSearchQueries(scopeKey);
+  dismissed.add(sanitizeQuery(queryText).toLowerCase());
+  saveDismissedRecentSearchQueries(scopeKey, dismissed);
+  return dismissed;
+};
+
+// Called when the user performs a genuine new search for a term they'd
+// previously dismissed as a suggestion chip — that's a fresh, deliberate
+// use of the term, not the old stale chip, so it should be allowed to
+// reappear as a recent search rather than staying permanently hidden.
+export const undismissRecentSearch = (
+  scopeKey: string | undefined,
+  queryText: string
+): Set<string> => {
+  const dismissed = getDismissedRecentSearchQueries(scopeKey);
+  dismissed.delete(sanitizeQuery(queryText).toLowerCase());
+  saveDismissedRecentSearchQueries(scopeKey, dismissed);
+  return dismissed;
+};
+
+export const filterDismissedRecentSearches = (
+  items: RecentSearchItem[],
+  dismissed: Set<string>
+): RecentSearchItem[] =>
+  items.filter((item) => !dismissed.has(sanitizeQuery(item.queryText).toLowerCase()));
 
 export const mergeRecentSearches = (
   primaryItems: RecentSearchItem[],

@@ -64,7 +64,12 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
   ];
 
   return (
-    <AntdCommonModal open onClose={onClose} title="Active users" modalProps={{ width: 780 }}>
+    <AntdCommonModal
+      open
+      onClose={onClose}
+      title="Active users"
+      modalProps={{ width: 780, maskClosable: true }}
+    >
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
           <span>Rows per page</span>

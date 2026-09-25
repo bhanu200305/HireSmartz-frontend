@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, ModalProps } from 'antd';
+import clsx from 'clsx';
 import { MdClose } from 'react-icons/md';
 
 export type CommonModalProps = {
@@ -29,6 +30,11 @@ const AntdCommonModal: React.FC<CommonModalProps> = ({
       maskClosable={false}
       keyboard={false}
       className="ant-custom-modal"
+      // Reserves the sticky header/footer's height at the top/bottom of the
+      // full-viewport modal wrap (see index.css) so a centered modal never
+      // renders underneath them — those two now sit at a higher z-index
+      // than any modal and would otherwise visually clip the modal's edges.
+      wrapClassName={clsx('ant-custom-modal-wrap', modalProps.wrapClassName)}
       title={null}
       // antd's own default close icon is a bare, unboxed glyph with no
       // hover affordance — easy to miss and, at small sizes, easy to

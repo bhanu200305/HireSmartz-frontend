@@ -12,6 +12,7 @@ import {
   useGetLoginMetricsQuery,
   useGetSessionMetricsQuery,
 } from '../../api/organization-service/Platform/metrics';
+import { formattedDateTime, formatEnumString } from '../../shared/utils/methods';
 import PlatformTenantsListModal from '../Dashboard/PlatformTenantsListModal';
 
 /**
@@ -110,6 +111,18 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
           label="Monthly active users"
           value={logins?.available ? logins.distinct_users.toLocaleString() : null}
           description="Distinct users who successfully signed in at least once over the last 30 days."
+          // Same GET /v1/platform/metrics/logins call that already produced
+          // the headline number — success/failure/mfa_required were always
+          // in the response, just never shown once you clicked in.
+          details={
+            logins?.available
+              ? [
+                  { label: 'Successful sign-ins', value: logins.success.toLocaleString() },
+                  { label: 'Failed sign-ins', value: logins.failure.toLocaleString() },
+                  { label: 'MFA challenges', value: logins.mfa_required.toLocaleString() },
+                ]
+              : undefined
+          }
         />
       )}
       {activeDetail === 'sessions' && (
@@ -120,6 +133,30 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
           label="Active sessions"
           value={sessions?.available ? sessions.active_sessions.toLocaleString() : null}
           description="Sessions currently active across the platform right now."
+          // Same GET /v1/platform/metrics/sessions call the headline number
+          // already came from — by_device and last_activity were always in
+          // the response too.
+          details={
+            sessions?.available
+              ? [
+                  {
+                    label: 'Distinct users online',
+                    value: sessions.distinct_users.toLocaleString(),
+                  },
+                  ...sessions.by_device.map((row) => ({
+                    label: formatEnumString(row.device_type),
+                    value: `${row.sessions.toLocaleString()} sessions · ${row.users.toLocaleString()} users`,
+                  })),
+                  {
+                    label: 'Last activity',
+                    value:
+                      sessions.last_activity_status === 'live' && sessions.last_activity_at
+                        ? formattedDateTime(sessions.last_activity_at)
+                        : 'No active session',
+                  },
+                ]
+              : undefined
+          }
         />
       )}
     </>

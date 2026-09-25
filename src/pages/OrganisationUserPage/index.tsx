@@ -1,4 +1,6 @@
 import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { BsArrowLeft } from 'react-icons/bs';
 import { OrganisationUserTable } from '../../components';
 import CfpUsers from '../../components/CfpUsers';
 import RequirePermission from '../../components/RequirePermission';
@@ -14,6 +16,7 @@ import { RootState } from '../../redux/provider/store';
 // platform admin isn't shown a permanently-empty tenant user list, and a
 // tenant admin isn't shown a section they have no permission for anyway.
 const OrganisationUserPage = () => {
+  const navigate = useNavigate();
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
   const hasTenantUsersAccess = useHasAccess(Authorities.USER_VIEW);
   const hasCfpUsersAccess = useHasAccess(Authorities.PLATFORM_VIEW);
@@ -22,6 +25,13 @@ const OrganisationUserPage = () => {
     <RequirePermission permission={[Authorities.USER_VIEW, Authorities.PLATFORM_VIEW]}>
       <MainLayout>
         <div className="w-full p-8 pt-16 flex flex-col gap-10">
+          <div
+            className="flex items-center gap-2 text-sm text-gray-500 -mb-6 cursor-pointer hover:text-primary-600 transition-colors w-fit"
+            onClick={() => navigate(-1)}
+          >
+            <BsArrowLeft />
+            <span>Back</span>
+          </div>
           {hasTenantUsersAccess && tenantId && <OrganisationUserTable />}
           {hasCfpUsersAccess && <CfpUsers />}
         </div>

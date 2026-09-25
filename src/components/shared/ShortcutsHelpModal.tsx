@@ -19,7 +19,7 @@ const ShortcutsHelpModal: React.FC<ShortcutsHelpModalProps> = ({ open, onClose }
     open={open}
     onClose={onClose}
     title="Keyboard Shortcuts"
-    modalProps={{ width: 420, keyboard: true }}
+    modalProps={{ width: 420, keyboard: true, maskClosable: true }}
   >
     <div className="flex flex-col gap-2">
       {SHORTCUTS.map((shortcut) => (

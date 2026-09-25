@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   MdOutlineGroups,
   MdOutlineWorkOutline,
@@ -6,15 +6,23 @@ import {
   MdOutlineEventAvailable,
 } from 'react-icons/md';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
-import { StatCardRow, ChartCard, StatDetailModal } from '../shared';
-import type { StatCardData } from '../shared';
+import { StatCardRow, ChartCard, DonutStat, StatDetailModal } from '../shared';
+import type { StatCardData, DonutSlice } from '../shared';
 import { Badge } from '../shared/ui/badge';
 import {
   useGetPlatformTenantDashboardQuery,
   type PlatformTenantSummary,
 } from '../../api/organization-service/Platform/tenants';
+import { useGetTenantJobStatsQuery } from '../../api/job-service/Platform/tenantJobStats';
 import { TENANT_STATUS_BADGE, formatTenantStatusLabel } from './tenantDisplay.helpers';
 import TenantUsersListModal from './TenantUsersListModal';
+
+// Same three-slice palette HiringOverviewCharts.tsx's own "Jobs by status"
+// donut uses (Admin's tenant-scoped version of this exact chart) — kept in
+// sync deliberately so the same status reads as the same color everywhere.
+const COLOR_SUCCESS = '#059669';
+const COLOR_WARNING = '#d97706';
+const COLOR_NEUTRAL = '#9aa3bc';
 
 const initials = (name: string): string =>
   name
@@ -55,10 +63,22 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
   onClose,
 }) => {
   const { data, isLoading } = useGetPlatformTenantDashboardQuery(tenant.tenant_id);
+  const { data: jobStats, isLoading: isJobStatsLoading } = useGetTenantJobStatsQuery(
+    tenant.tenant_id
+  );
   const [showUsers, setShowUsers] = useState(false);
   const [activeDetail, setActiveDetail] = useState<'jobs' | 'applications' | 'interviews' | null>(
     null
   );
+
+  const jobsByStatusData: DonutSlice[] = useMemo(() => {
+    if (!jobStats) return [];
+    return [
+      { name: 'Open', value: jobStats.published_count, color: COLOR_SUCCESS },
+      { name: 'Closed', value: jobStats.closed_count, color: COLOR_NEUTRAL },
+      { name: 'Draft', value: jobStats.draft_count, color: COLOR_WARNING },
+    ].filter((slice) => slice.value > 0);
+  }, [jobStats]);
 
   const cards: StatCardData[] = [
     {
@@ -156,10 +176,10 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
           <ChartCard
             title="Jobs by status"
             subtitle="Open, closed and draft jobs for this tenant"
-            available={false}
-            unavailableLabel={COMING_SOON}
+            isLoading={isJobStatsLoading}
+            available={Boolean(jobStats) && jobStats!.total_count > 0}
           >
-            <div />
+            <DonutStat data={jobsByStatusData} centerLabel="Jobs" />
           </ChartCard>
           <ChartCard
             title="Hiring funnel"

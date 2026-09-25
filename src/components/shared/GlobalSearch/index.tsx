@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { List, Tag, Divider, Avatar, Empty } from 'antd';
 import { UserOutlined, SolutionOutlined, ShopOutlined } from '@ant-design/icons';
+import { MdClose } from 'react-icons/md';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { formatPhoneNumber } from '../../../shared/utils/methods';
@@ -8,9 +9,13 @@ import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
 import { useDebouncedQuery } from '../../../hooks/useDebouncedQuery';
 import {
   buildRecentSearchesStorageKey,
+  dismissRecentSearch,
+  filterDismissedRecentSearches,
+  getDismissedRecentSearchQueries,
   getStoredRecentSearches,
   normalizeRecentSearchesFromApi,
   saveRecentSearches,
+  undismissRecentSearch,
   upsertRecentSearch,
   type RecentSearchItem,
 } from '../../../shared/utils/business-logic/recentSearches.helpers';
@@ -51,6 +56,11 @@ interface SearchSection {
   renderItem: (item: SearchResult) => React.ReactNode;
   /** Resolves an item's detail path — same resolver `renderItem`'s `<Link>` uses, reused here so ArrowDown/Enter navigates to exactly the same place a click would. */
   getDetailPath: (item: SearchResult) => string;
+  /** Optional `navigate(path, { state })` state for this item — mirrors
+   * whatever `renderItem`'s own `<Link state={...}>` passes (e.g. Users'
+   * CFP-staff/pending-invite carry `searchQuery` for the listing page they
+   * land on), so ArrowDown/Enter behaves the same as a click. */
+  getNavState?: (item: SearchResult) => Record<string, unknown> | undefined;
 }
 
 interface ResultSectionProps {
@@ -137,6 +147,21 @@ const defaultNavigationConfig: SearchNavigationConfig = {
   getJobDetailPath: (item) => `/jobs/view/${item?.extraJson?.id}/candidates`,
   getUserDetailPath: getDefaultUserDetailPath,
   getCompanyDetailPath: (item) => `/view-company?companyId=${item?.extraJson?.id}`,
+};
+
+// Same priority `ResultSection`'s own `getCount()` uses for its badge: the
+// backend's true (uncapped) count for that source type when one came back,
+// else the section's own (slice-capped) item count. Used here to ORDER
+// sections instead — see the `sections` memo's own comment.
+const getSectionMatchCount = (
+  section: SearchSection,
+  sourceTypeCounts: SourceTypeCount[]
+): number => {
+  if (section.sourceType) {
+    const countObj = sourceTypeCounts.find((c) => c.sourceType === section.sourceType);
+    if (countObj) return countObj.count;
+  }
+  return section.items.length;
 };
 
 const ResultSection: React.FC<ResultSectionProps> = ({
@@ -311,9 +336,17 @@ const UserResultItem: React.FC<{
   item: SearchResult;
   onClose: (clearSearch?: boolean) => void;
   getUserDetailPath: (item: SearchResult) => string;
-}> = ({ item, onClose, getUserDetailPath }) => {
+  searchQuery: string;
+}> = ({ item, onClose, getUserDetailPath, searchQuery }) => {
   const isCfpStaff = isCfpStaffResult(item);
   const isPendingInvite = isPendingInviteResult(item);
+  // CFP Staff and a pending invite both route to `/organisation-users` (the
+  // LIST, not a per-record page — see getDefaultUserDetailPath's own
+  // docstring on why neither has one). Carrying the search term there lets
+  // that page pre-filter to it instead of dropping the searcher on the full,
+  // unfiltered staff list with no way to tell which row they were after.
+  const linkState =
+    isCfpStaff || isPendingInvite ? { searchQuery, fromGlobalSearch: true } : undefined;
   return (
     <div style={{ display: 'flex', gap: 10 }}>
       <Avatar
@@ -329,6 +362,7 @@ const UserResultItem: React.FC<{
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <Link
             to={getUserDetailPath(item)}
+            state={linkState}
             className="font-semibold text-primary hover:text-primary roboto-font inline-block cursor-pointer"
             style={{ pointerEvents: 'auto' }}
             onClick={() => onClose(false)}
@@ -454,6 +488,9 @@ export default function GlobalSearch({
     getStoredRecentSearches(searchScopeKey)
   );
   const [pendingRecentQuery, setPendingRecentQuery] = useState<string>('');
+  const [dismissedQueries, setDismissedQueries] = useState<Set<string>>(() =>
+    getDismissedRecentSearchQueries(searchScopeKey)
+  );
 
   const routes = useMemo(
     () => ({
@@ -487,6 +524,7 @@ export default function GlobalSearch({
   useEffect(() => {
     setPendingRecentQuery('');
     setRecentSearches(getStoredRecentSearches(searchScopeKey));
+    setDismissedQueries(getDismissedRecentSearchQueries(searchScopeKey));
     void refetchRecentSearches();
   }, [refetchRecentSearches, searchScopeKey]);
 
@@ -509,9 +547,24 @@ export default function GlobalSearch({
         saveRecentSearches(updatedSearches, searchScopeKey);
         return updatedSearches;
       });
+      // A deliberate new search for this term overrides any earlier "remove"
+      // of it as a suggestion chip — see undismissRecentSearch's own doc.
+      setDismissedQueries(undismissRecentSearch(searchScopeKey, pendingRecentQuery));
     },
     [pendingRecentQuery, searchScopeKey],
     RECENT_SEARCH_SAVE_DEBOUNCE_MS
+  );
+
+  const handleRemoveRecentSearch = useCallback(
+    (queryText: string) => {
+      setDismissedQueries(dismissRecentSearch(searchScopeKey, queryText));
+    },
+    [searchScopeKey]
+  );
+
+  const visibleRecentSearches = useMemo(
+    () => filterDismissedRecentSearches(recentSearches, dismissedQueries),
+    [recentSearches, dismissedQueries]
   );
 
   useEffect(() => {
@@ -582,8 +635,13 @@ export default function GlobalSearch({
     [onQueryChange, onSearchTrigger, searchScopeKey]
   );
 
-  const sections: SearchSection[] = useMemo(
-    () => [
+  const sections: SearchSection[] = useMemo(() => {
+    // Explicitly typed (rather than inferred straight off `.sort(...)`
+    // below) so each object literal's `renderItem`/etc. still gets checked
+    // contextually against `SearchSection` — chaining `.sort` directly onto
+    // the array literal loses that and leaves every `renderItem`'s `item`
+    // param typed `any`.
+    const unordered: SearchSection[] = [
       {
         key: 'candidates',
         title: 'Candidates',
@@ -629,9 +687,14 @@ export default function GlobalSearch({
             item={item}
             onClose={onClose}
             getUserDetailPath={routes.getUserDetailPath}
+            searchQuery={query.query}
           />
         ),
         getDetailPath: routes.getUserDetailPath,
+        getNavState: (item) =>
+          isCfpStaffResult(item) || isPendingInviteResult(item)
+            ? { searchQuery: query.query, fromGlobalSearch: true }
+            : undefined,
       },
       {
         key: 'companies',
@@ -652,19 +715,30 @@ export default function GlobalSearch({
         ),
         getDetailPath: routes.getCompanyDetailPath,
       },
-    ],
-    [
-      candidatesFromApi,
-      jobsFromApi,
-      usersFromApi,
-      companiesFromApi,
-      sourceTypeCounts,
-      query.query,
-      handleViewAll,
-      onClose,
-      routes,
-    ]
-  );
+    ];
+
+    // Sorted so a category with actual matches always renders above one
+    // with none — a fixed Candidates→Jobs→Users→Companies order otherwise
+    // means an empty category's "No data" box can sit above real results
+    // just because it comes first in that list, pushing what the user
+    // actually searched for further down (or out of view). `.sort` is
+    // stable, so ties (including "both empty") keep their original
+    // relative order rather than jittering between renders.
+    return unordered.sort(
+      (a, b) =>
+        getSectionMatchCount(b, sourceTypeCounts) - getSectionMatchCount(a, sourceTypeCounts)
+    );
+  }, [
+    candidatesFromApi,
+    jobsFromApi,
+    usersFromApi,
+    companiesFromApi,
+    sourceTypeCounts,
+    query.query,
+    handleViewAll,
+    onClose,
+    routes,
+  ]);
 
   const hasResults = sections.some((section) => section.show);
   const showSearchInput = (!query.query || query.query.trim() === '') && isInputFocused;
@@ -698,7 +772,8 @@ export default function GlobalSearch({
 
   const navigateToItem = useCallback(
     (entry: { item: SearchResult; section: SearchSection }) => {
-      navigate(entry.section.getDetailPath(entry.item));
+      const state = entry.section.getNavState?.(entry.item);
+      navigate(entry.section.getDetailPath(entry.item), state ? { state } : undefined);
       onClose(false);
     },
     [navigate, onClose]
@@ -756,15 +831,18 @@ export default function GlobalSearch({
           }}
         >
           <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>Try searching for</span>
-          {Array.isArray(recentSearches) &&
-            recentSearches.map((item) => (
+          {Array.isArray(visibleRecentSearches) &&
+            visibleRecentSearches.map((item) => (
               <Tag
                 key={String(item.id ?? item.queryText)}
                 style={{
                   cursor: 'pointer',
                   margin: 0,
                   borderRadius: 999,
-                  padding: '2px 12px',
+                  padding: '2px 6px 2px 12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
                   backgroundColor: '#f8f9fb',
                   color: '#374151',
                   border: '1px solid #edeef2',
@@ -784,6 +862,35 @@ export default function GlobalSearch({
                 }}
               >
                 {item.queryText}
+                <button
+                  type="button"
+                  aria-label={`Remove "${item.queryText}" from recent searches`}
+                  // stopPropagation on mousedown itself, not just the eventual
+                  // click — the Tag's own search-trigger is wired to
+                  // onMouseDown too, which fires (and bubbles) before a click
+                  // handler here ever would, so only stopping there keeps
+                  // "remove" from also firing a search for the term first.
+                  onMouseDown={(e: React.MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleRemoveRecentSearch(item.queryText as string);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 16,
+                    height: 16,
+                    padding: 0,
+                    border: 'none',
+                    borderRadius: '50%',
+                    background: 'transparent',
+                    color: '#9ca3af',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <MdClose size={12} />
+                </button>
               </Tag>
             ))}
         </div>

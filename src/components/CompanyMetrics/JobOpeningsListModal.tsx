@@ -93,7 +93,12 @@ const JobOpeningsListModal: React.FC<{
   ];
 
   return (
-    <AntdCommonModal open onClose={onClose} title={title} modalProps={{ width: 820 }}>
+    <AntdCommonModal
+      open
+      onClose={onClose}
+      title={title}
+      modalProps={{ width: 820, maskClosable: true }}
+    >
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
           <span>Rows per page</span>

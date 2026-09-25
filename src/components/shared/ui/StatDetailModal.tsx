@@ -20,6 +20,11 @@ export interface StatDetailModalProps {
   value: string | number | null | undefined;
   /** What this number represents — shown under the value. */
   description: React.ReactNode;
+  /** Breakdown rows shown below the description, e.g. success/failure
+   * counts or a device-type split — real numbers already returned by the
+   * same query that produced `value`, just not previously surfaced here.
+   * Omit when there's genuinely nothing more to show than the number. */
+  details?: { label: string; value: React.ReactNode }[];
   /** Optional caveat, e.g. "Breakdown by round: coming soon". */
   footer?: React.ReactNode;
   /** A real page this stat's full list/detail lives on. Omit if none exists yet. */
@@ -42,6 +47,7 @@ const StatDetailModal: React.FC<StatDetailModalProps> = ({
   label,
   value,
   description,
+  details,
   footer,
   viewAllHref,
   viewAllLabel = 'View full list',
@@ -50,7 +56,7 @@ const StatDetailModal: React.FC<StatDetailModalProps> = ({
   const isPlaceholder = displayValue === 'Not enough data yet';
 
   return (
-    <AntdCommonModal open onClose={onClose} modalProps={{ width: 420 }}>
+    <AntdCommonModal open onClose={onClose} modalProps={{ width: 420, maskClosable: true }}>
       <div className="flex items-start gap-3">
         {icon && (
           <div
@@ -77,6 +83,17 @@ const StatDetailModal: React.FC<StatDetailModalProps> = ({
       </div>
 
       <p className="mt-4 text-sm text-neutral-600">{description}</p>
+
+      {details && details.length > 0 && (
+        <dl className="mt-4 flex flex-col gap-1.5 rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5">
+          {details.map((row) => (
+            <div key={row.label} className="flex items-center justify-between gap-3 text-sm">
+              <dt className="text-neutral-500">{row.label}</dt>
+              <dd className="font-medium text-neutral-900">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
       {footer && <div className="mt-3 text-xs text-neutral-500">{footer}</div>}
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 export type DonutSlice = {
   name: string;
@@ -14,18 +14,20 @@ type DonutStatProps = {
   height?: number;
 };
 
-const tooltipStyle = {
-  borderRadius: 10,
-  border: '1px solid var(--gray-200, #e5e8f0)',
-  fontSize: 12,
-  boxShadow: '0 8px 24px -12px rgba(16,30,54,.18)',
-};
-
 /**
  * Donut with the total centered inside the ring and a labeled dot list
  * alongside it, instead of a bottom legend — matches the KPI-dashboard
  * design (Jobs by status / Organization status / MFA success all use this
  * same shape: one number people scan first, plus the breakdown next to it).
+ *
+ * No hover tooltip: recharts positions a Pie's default tooltip near the
+ * hovered slice's own arc midpoint, which for a wide-innerRadius donut like
+ * this one can land inside the ring — directly on top of the center total
+ * pinned there via `absolute inset-0`, with no `position` override that
+ * reliably keeps it clear of that box at every slice angle. The slice's
+ * name/value are already visible at all times in the list to the right, so
+ * the tooltip was showing nothing new — dropping it removes the overlap
+ * outright instead of chasing a position fix.
  */
 const DonutStat: React.FC<DonutStatProps> = ({ data, centerLabel, height = 168 }) => {
   const total = data.reduce((sum, slice) => sum + slice.value, 0);
@@ -48,7 +50,6 @@ const DonutStat: React.FC<DonutStatProps> = ({ data, centerLabel, height = 168 }
                 <Cell key={slice.name} fill={slice.color} />
               ))}
             </Pie>
-            <Tooltip contentStyle={tooltipStyle} />
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">

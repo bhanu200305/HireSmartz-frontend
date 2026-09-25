@@ -103,7 +103,12 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   ];
 
   return (
-    <AntdCommonModal open onClose={onClose} title="Total applications" modalProps={{ width: 860 }}>
+    <AntdCommonModal
+      open
+      onClose={onClose}
+      title="Total applications"
+      modalProps={{ width: 860, maskClosable: true }}
+    >
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
           <span>Rows per page</span>

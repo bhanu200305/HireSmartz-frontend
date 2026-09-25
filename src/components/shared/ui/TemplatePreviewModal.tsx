@@ -34,7 +34,7 @@ const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
       onClose={onClose}
       title="Preview"
       subtitle={preview?.subject || undefined}
-      modalProps={{ width: 640 }}
+      modalProps={{ width: 640, maskClosable: true }}
     >
       {isLoading ? (
         <div className="flex h-64 items-center justify-center">

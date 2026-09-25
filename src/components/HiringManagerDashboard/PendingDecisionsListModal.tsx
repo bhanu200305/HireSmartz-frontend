@@ -23,7 +23,12 @@ const PendingDecisionsListModal: React.FC<{ onClose: () => void }> = ({ onClose 
   const { jobNameMap } = useJobOpeningNameMap();
 
   return (
-    <AntdCommonModal open onClose={onClose} title="Pending Decision" modalProps={{ width: 900 }}>
+    <AntdCommonModal
+      open
+      onClose={onClose}
+      title="Pending Decision"
+      modalProps={{ width: 900, maskClosable: true }}
+    >
       <CandidatePoolTable
         items={data?.items ?? []}
         jobNameMap={jobNameMap}

@@ -101,7 +101,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
       onClose={onClose}
       title={jobTitle}
       subtitle={job.job_profile_code}
-      modalProps={{ width: 820 }}
+      modalProps={{ width: 820, maskClosable: true }}
     >
       <div className="flex flex-col gap-4">
         <StatCardRow cards={statusCards} columns={4} />

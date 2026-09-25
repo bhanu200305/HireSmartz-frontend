@@ -198,6 +198,47 @@ canvas[data-agora-recording='true'] {
   background-color: #ffffff !important;
 }
 
+/*
+ * MainLayout's Header and Footer are sticky at z-[1100], above every antd
+ * Modal (z-index ~1000+), so they stay visible instead of being buried
+ * under a modal's full-viewport mask. --app-header-height/--app-footer-height
+ * are kept in sync with their real rendered height by a ResizeObserver in
+ * MainLayout; the px fallbacks only apply before that effect runs or on
+ * pages that don't mount MainLayout.
+ *
+ * Without this, a modal box could still render underneath the header/footer
+ * bands and get visually clipped by their now-higher, opaque z-index.
+ * Reserving that space in the wrap's padding, and capping the modal's own
+ * height so its body scrolls internally instead, keeps every modal fully
+ * inside the visible gap between them.
+ */
+.ant-custom-modal-wrap.ant-modal-wrap {
+  padding-top: var(--app-header-height, 64px);
+  padding-bottom: var(--app-footer-height, 84px);
+  box-sizing: border-box;
+}
+
+.ant-custom-modal .ant-modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(
+    100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 48px
+  );
+  overflow: hidden;
+}
+
+.ant-custom-modal .ant-modal-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ant-custom-modal .ant-modal-body .modal-content {
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .ant-tabs-tab:focus {
   outline: none !important;
   box-shadow: none !important;
@@ -322,6 +363,23 @@ canvas[data-agora-recording='true'] {
   padding-inline: 14px 28px !important;
   display: flex !important;
   align-items: center !important;
+}
+
+/* The rule above floors the INNER `.ant-select-selector` (the visible pill)
+   at 36px, but antd sizes the OUTER `.ant-select` wrapper itself per the
+   `size` prop — 24px for "small", 32px for the default size — via its own
+   `height` (not `min-height`), so a wrapper shorter than 36px doesn't grow
+   to fit it. The pill still renders at 36px regardless (min-height beats a
+   shorter `height` on the -selector itself), but now taller than its own
+   wrapper's box, so it overflows silently past whatever margin/gap follows
+   the wrapper in the layout — e.g. a `size="small"` Select sitting right
+   above a table ends up overlapping it by the full 12px difference. Matching
+   the same floor on the wrapper keeps the reserved layout space equal to
+   what's actually rendered, at every antd size. */
+.ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(
+    .ant-select-borderless
+  ):not(.send-email-cc-bcc-select) {
+  min-height: 36px !important;
 }
 
 .ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(

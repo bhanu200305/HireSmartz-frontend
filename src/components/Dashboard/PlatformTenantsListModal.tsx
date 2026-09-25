@@ -6,6 +6,8 @@ import CustomTable from '../shared/ui/table';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { Badge } from '../shared/ui/badge';
 import { Loader } from '../shared/ui/loader';
+import { Search } from '../shared';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import {
   useListPlatformTenantsQuery,
@@ -19,6 +21,18 @@ import {
 } from './tenantDisplay.helpers';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// Same four values GET /v1/platform/tenants filters on (see
+// TENANT_STATUS_BADGE) — 'all' is a UI-only sentinel translated back to
+// `undefined` (no status filter) below, same convention CustomerDashboard's
+// Companies page already uses for this Select.
+const STATUS_FILTER_OPTIONS = [
+  { label: 'All', value: 'all' },
+  ...Object.keys(TENANT_STATUS_BADGE).map((status) => ({
+    label: formatTenantStatusLabel(status),
+    value: status,
+  })),
+];
 
 type TenantRow = PlatformTenantSummary & { key: string };
 
@@ -47,8 +61,12 @@ const PlatformTenantsListModal: React.FC<{
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('platform_tenants_modal', 10);
   const [selectedTenant, setSelectedTenant] = useState<PlatformTenantSummary | null>(null);
+  const [status, setStatus] = useState<string | undefined>(undefined);
+  const [search, setSearch] = useState('');
 
   const { data, isLoading } = useListPlatformTenantsQuery({
+    status,
+    q: search || undefined,
     limit: pageSize,
     offset: page * pageSize,
     created_after: createdAfter,
@@ -93,8 +111,45 @@ const PlatformTenantsListModal: React.FC<{
   ];
 
   return (
-    <AntdCommonModal open onClose={onClose} title={title} modalProps={{ width: 820 }}>
+    <AntdCommonModal
+      open
+      onClose={onClose}
+      title={title}
+      // Read-only list — nothing here can be lost by an outside click, so
+      // unlike AntdCommonModal's form-safe default, clicking the backdrop
+      // closes it.
+      modalProps={{ width: 820, maskClosable: true }}
+    >
       <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Search
+              appname="platform tenants modal"
+              placeholder="Search company..."
+              value={search}
+              allowClear
+              onSearch={(value) => {
+                setSearch(value);
+                setPage(0);
+              }}
+            />
+            <div className="cfp-dropdown-trigger w-40">
+              <FilterSelectIcon />
+              <Select
+                placeholder="Status"
+                className="w-full custom-select"
+                variant="borderless"
+                value={status ?? 'all'}
+                onChange={(value) => {
+                  setStatus(value === 'all' ? undefined : value);
+                  setPage(0);
+                }}
+                options={STATUS_FILTER_OPTIONS}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
           <span>Rows per page</span>
           <Select

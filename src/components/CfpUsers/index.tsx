@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
-import { MdOutlinePersonAdd, MdDelete, MdOutlineAdd, MdOutlineUploadFile } from 'react-icons/md';
+import { useLocation } from 'react-router-dom';
+import {
+  MdOutlinePersonAdd,
+  MdDelete,
+  MdOutlineAdd,
+  MdOutlineUploadFile,
+  MdSearch,
+} from 'react-icons/md';
 import { HiOutlineUserGroup } from 'react-icons/hi';
 import { Button, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
@@ -43,11 +50,22 @@ const CfpUsers: React.FC = () => {
     useCreatePlatformDepartmentMutation();
   const [offboardStaff] = useOffboardPlatformStaffMutation();
 
+  // Global search's CFP-staff/pending-invite results land here (see
+  // UserResultItem in GlobalSearch/index.tsx) — there's no per-person page
+  // for them to go to instead. Pre-filling this list's own filter with the
+  // term they searched, rather than dropping them on the full unfiltered
+  // list, is what actually gets them to the person they were after.
+  const location = useLocation();
+  const globalSearchQuery =
+    (location.state as { searchQuery?: string; fromGlobalSearch?: boolean } | null)
+      ?.fromGlobalSearch && (location.state as { searchQuery?: string }).searchQuery;
+
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
   const [departmentName, setDepartmentName] = useState('');
   const [staffToOffboard, setStaffToOffboard] = useState<PlatformStaffMember | null>(null);
+  const [searchText, setSearchText] = useState(globalSearchQuery || '');
 
   const handleAddDepartment = async () => {
     if (!departmentName.trim()) return;
@@ -73,10 +91,21 @@ const CfpUsers: React.FC = () => {
     }
   };
 
-  const staffRows: (PlatformStaffMember & { key: string })[] = (staff || []).map((member) => ({
+  const allStaffRows: (PlatformStaffMember & { key: string })[] = (staff || []).map((member) => ({
     ...member,
     key: member.membership_id,
   }));
+
+  const staffRows = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return allStaffRows;
+    return allStaffRows.filter(
+      (member) =>
+        member.email.toLowerCase().includes(q) ||
+        member.role.toLowerCase().includes(q) ||
+        (member.department_name ?? '').toLowerCase().includes(q)
+    );
+  }, [allStaffRows, searchText]);
 
   const staffColumns: TableProps<PlatformStaffMember & { key: string }>['columns'] = [
     {
@@ -143,7 +172,15 @@ const CfpUsers: React.FC = () => {
           </span>
           <h2 className="font-display text-xl font-bold text-gray-900">CFP Users</h2>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-52">
+            <Input
+              prefix={<MdSearch className="text-gray-400" />}
+              placeholder="Search staff..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+          </div>
           <Button
             className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1 text-sm font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-colors"
             onClick={() => setIsDeptModalOpen(true)}
@@ -172,7 +209,17 @@ const CfpUsers: React.FC = () => {
           <CustomTable
             columns={staffColumns}
             dataSource={staffRows}
-            emptyText={<div className="py-10 text-center text-gray-400 text-sm">No staff yet.</div>}
+            rowClassName={(member) =>
+              globalSearchQuery &&
+              member.email.toLowerCase().includes(globalSearchQuery.toLowerCase())
+                ? 'bg-primary-50'
+                : ''
+            }
+            emptyText={
+              <div className="py-10 text-center text-gray-400 text-sm">
+                {searchText.trim() ? 'No staff match your search.' : 'No staff yet.'}
+              </div>
+            }
           />
         </div>
       )}

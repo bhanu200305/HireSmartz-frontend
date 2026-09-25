@@ -78,7 +78,7 @@ const ResumeViewerModal = ({
       onClose={onClose}
       title="Resume"
       subtitle={candidateName}
-      modalProps={{ width: 900 }}
+      modalProps={{ width: 900, maskClosable: true }}
     >
       {isFetching ? (
         <div className="flex justify-center py-10">

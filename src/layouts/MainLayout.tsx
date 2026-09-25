@@ -178,6 +178,32 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
     };
   }, [navigate]);
 
+  // Keeps --app-header-height/--app-footer-height (consumed by
+  // AntdCommonModal's CSS, see index.css) in sync with the header/footer's
+  // real rendered height — the header in particular isn't a fixed height,
+  // its controls wrap onto a second row below the `lg` breakpoint. Set on
+  // <html> rather than this component's own root so the antd Modal, which
+  // portals to document.body outside this subtree, can still read them.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const headerEl = headerRef.current;
+    const footerEl = footerRef.current;
+    if (!headerEl || !footerEl) return;
+
+    const root = document.documentElement;
+    const updateVars = () => {
+      root.style.setProperty('--app-header-height', `${headerEl.offsetHeight}px`);
+      root.style.setProperty('--app-footer-height', `${footerEl.offsetHeight}px`);
+    };
+    updateVars();
+
+    const observer = new ResizeObserver(updateVars);
+    observer.observe(headerEl);
+    observer.observe(footerEl);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div
       className={clsx(
@@ -202,13 +228,23 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
           marginLeft: !isDesktop ? 0 : collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
         }}
       >
-        <Header onOpenMobileMenu={() => setMobileSidebarOpen(true)} />
+        <div ref={headerRef}>
+          <Header onOpenMobileMenu={() => setMobileSidebarOpen(true)} />
+        </div>
         <div
           className={clsx('w-full', fullHeight ? 'flex-1 min-h-0 overflow-hidden' : 'flex-grow')}
         >
           {children}
         </div>
-        <Footer />
+        {/* sticky + z-[1100]: mirrors Header's treatment above so the
+            footer stays visible above any modal's mask instead of being
+            buried under it (a full-viewport antd Modal otherwise renders
+            over the whole app shell). bg-surface-gray matches the page
+            background it sits on so it reads as solid, not translucent,
+            once it's stacked above a dimmed backdrop. */}
+        <div ref={footerRef}>
+          <Footer className="sticky bottom-0 z-[1100] bg-surface-gray" />
+        </div>
       </div>
     </div>
   );

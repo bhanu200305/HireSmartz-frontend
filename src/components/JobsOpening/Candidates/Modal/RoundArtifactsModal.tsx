@@ -310,7 +310,11 @@ const RoundArtifactsModal = ({
       onClose={onClose}
       title="Round Recordings"
       subtitle={roundName}
-      modalProps={{ width: 640, styles: { body: { maxHeight: '75vh', overflowY: 'auto' } } }}
+      modalProps={{
+        width: 640,
+        maskClosable: true,
+        styles: { body: { maxHeight: '75vh', overflowY: 'auto' } },
+      }}
     >
       {feedback.candidate_feedback_submitted_at && (
         <CommonCard className="mb-4">

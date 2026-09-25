@@ -1,16 +1,23 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   MdOutlineGroups,
   MdOutlineWorkOutline,
   MdOutlineDescription,
   MdOutlineEventAvailable,
 } from 'react-icons/md';
-import { StatCardRow, ChartCard, StatDetailModal } from '../../../shared';
-import type { StatCardData } from '../../../shared';
+import { StatCardRow, ChartCard, DonutStat, StatDetailModal } from '../../../shared';
+import type { StatCardData, DonutSlice } from '../../../shared';
 import { useGetPlatformTenantDashboardQuery } from '../../../../api/organization-service/Platform/tenants';
+import { useGetTenantJobStatsQuery } from '../../../../api/job-service/Platform/tenantJobStats';
 import TenantUsersListModal from '../../../Dashboard/TenantUsersListModal';
 
 const COMING_SOON = 'Coming soon: needs a platform-scoped job-service/candidate-service endpoint.';
+
+// Same three-slice palette HiringOverviewCharts.tsx's own "Jobs by status"
+// donut uses (Admin's tenant-scoped version of this exact chart).
+const COLOR_SUCCESS = '#059669';
+const COLOR_WARNING = '#d97706';
+const COLOR_NEUTRAL = '#9aa3bc';
 
 /**
  * 1.5 Tenants — the analytics popup for one company, Super Admin side.
@@ -26,10 +33,20 @@ const COMING_SOON = 'Coming soon: needs a platform-scoped job-service/candidate-
  */
 const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { data, isLoading } = useGetPlatformTenantDashboardQuery(tenantId);
+  const { data: jobStats, isLoading: isJobStatsLoading } = useGetTenantJobStatsQuery(tenantId);
   const [showUsers, setShowUsers] = useState(false);
   const [activeDetail, setActiveDetail] = useState<'jobs' | 'applications' | 'interviews' | null>(
     null
   );
+
+  const jobsByStatusData: DonutSlice[] = useMemo(() => {
+    if (!jobStats) return [];
+    return [
+      { name: 'Open', value: jobStats.published_count, color: COLOR_SUCCESS },
+      { name: 'Closed', value: jobStats.closed_count, color: COLOR_NEUTRAL },
+      { name: 'Draft', value: jobStats.draft_count, color: COLOR_WARNING },
+    ].filter((slice) => slice.value > 0);
+  }, [jobStats]);
 
   const cards: StatCardData[] = [
     {
@@ -111,10 +128,10 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <ChartCard
           title="Jobs by status"
           subtitle="Open, closed and draft jobs for this tenant"
-          available={false}
-          unavailableLabel={COMING_SOON}
+          isLoading={isJobStatsLoading}
+          available={Boolean(jobStats) && jobStats!.total_count > 0}
         >
-          <div />
+          <DonutStat data={jobsByStatusData} centerLabel="Jobs" />
         </ChartCard>
         <ChartCard
           title="Hiring funnel"
