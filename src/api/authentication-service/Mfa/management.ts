@@ -1,5 +1,6 @@
 import { authApi, noContentResponseHandler } from '../authApi';
 import type { MfaMethodType } from '../Login/login';
+import { getAuthErrorCode } from '../../../shared/utils/auth/authError.helpers';
 
 // /api/v1/mfa/* — all authenticated, all act on the CALLER's own factors
 // only (resolved from the verified token's `sub`, never a path/body
@@ -63,6 +64,16 @@ export type MfaDisableRequest = {
   current_password: string;
 };
 
+/**
+ * A method the settings screen was still acting on (confirm/resend/disable)
+ * can 404 with `mfa_method_not_found` if it was already removed — e.g. from
+ * another tab. The local list is stale in exactly that case, so refetch it;
+ * on every other error (wrong code, wrong password, ...) the list is still
+ * accurate and refetching would just be wasted traffic.
+ */
+const invalidateOnRemoved = (_result: unknown, error: unknown) =>
+  error && getAuthErrorCode(error) === 'mfa_method_not_found' ? (['MfaMethods'] as const) : [];
+
 const extendedApi = authApi.injectEndpoints({
   endpoints: (build) => ({
     getMfaStatus: build.query<MfaEnrolmentStatus, void>({
@@ -75,10 +86,12 @@ const extendedApi = authApi.injectEndpoints({
     }),
     confirmMfaMethod: build.mutation<MfaMethodView, MfaConfirmRequest>({
       query: (body) => ({ url: '/mfa/confirm', method: 'POST', body }),
-      invalidatesTags: ['MfaMethods'],
+      invalidatesTags: (result, error) =>
+        !error ? ['MfaMethods'] : invalidateOnRemoved(result, error),
     }),
     resendMfaEnrolmentCode: build.mutation<MfaMethodView, MfaResendRequest>({
       query: (body) => ({ url: '/mfa/resend', method: 'POST', body }),
+      invalidatesTags: invalidateOnRemoved,
     }),
     setDefaultMfaMethod: build.mutation<MfaMethodView, MfaSetDefaultRequest>({
       query: (body) => ({ url: '/mfa/default', method: 'POST', body }),
@@ -91,31 +104,8 @@ const extendedApi = authApi.injectEndpoints({
         body,
         responseHandler: noContentResponseHandler,
       }),
-      // Deliberately no `invalidatesTags` here. For a method that was already
-      // armed, the backend genuinely disables it and we patch the cache
-      // below to match. For a method still `is_enabled: false` ("Awaiting
-      // confirmation"), the backend treats /disable on an unarmed factor as
-      // an idempotent no-op and leaves the row untouched — a refetch would
-      // just bring back the exact same "Awaiting confirmation" row, making
-      // a successful removal look like it silently failed. Either way, the
-      // local removal below is the correct final state to show.
-      async onQueryStarted({ mfa_method_id }, { dispatch, getState, queryFulfilled }) {
-        await queryFulfilled;
-        const removed = extendedApi.endpoints.getMfaStatus
-          .select()(getState())
-          .data?.methods.find((m) => m.mfa_method_id === mfa_method_id);
-        if (!removed) return;
-        dispatch(
-          extendedApi.util.updateQueryData('getMfaStatus', undefined, (draft) => {
-            draft.methods = draft.methods.filter((m) => m.mfa_method_id !== mfa_method_id);
-            draft.is_complete =
-              draft.methods.filter((m) => m.is_enabled).length >= draft.minimum_required;
-            if (!draft.available_to_add.includes(removed.method_type)) {
-              draft.available_to_add = [...draft.available_to_add, removed.method_type];
-            }
-          })
-        );
-      },
+      invalidatesTags: (result, error) =>
+        !error ? ['MfaMethods'] : invalidateOnRemoved(result, error),
     }),
   }),
 });

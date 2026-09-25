@@ -15,7 +15,7 @@ import {
   type MfaMethodView,
 } from '../../api/authentication-service/Mfa/management';
 import type { MfaMethodType } from '../../api/authentication-service/Login/login';
-import { getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
+import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
 import { maskDeliveryHint } from '../../shared/utils/formatting/maskDeliveryHint';
 
 const METHOD_LABELS: Record<MfaMethodType, string> = {
@@ -68,6 +68,11 @@ const ConfirmEnrolment = ({
       showToast({ message: 'Two-factor method confirmed and armed.', type: 'success' });
       onDone();
     } catch (err) {
+      if (getAuthErrorCode(err) === 'mfa_method_not_found') {
+        showToast({ message: 'This method was already removed.', type: 'error' });
+        onCancel();
+        return;
+      }
       showToast({
         message: getAuthErrorMessage(err, 'That code was not accepted. Please try again.'),
         type: 'error',
@@ -81,6 +86,11 @@ const ConfirmEnrolment = ({
       await resendCode({ mfa_method_id: enrolment.mfa_method_id }).unwrap();
       showToast({ message: 'A new code was sent.', type: 'success' });
     } catch (err) {
+      if (getAuthErrorCode(err) === 'mfa_method_not_found') {
+        showToast({ message: 'This method was already removed.', type: 'error' });
+        onCancel();
+        return;
+      }
       showToast({ message: getAuthErrorMessage(err, 'Could not resend the code.'), type: 'error' });
     }
   };
@@ -179,6 +189,15 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
       setIsRemoving(false);
       setPassword('');
     } catch (err) {
+      if (getAuthErrorCode(err) === 'mfa_method_not_found') {
+        // Already gone — another tab removed it first. The list refetch
+        // (triggered by this error, see management.ts) will drop this row;
+        // just stop showing the now-pointless password form.
+        showToast({ message: 'This method was already removed.', type: 'error' });
+        setIsRemoving(false);
+        setPassword('');
+        return;
+      }
       // invalid_credentials on a wrong password, among others — always the
       // backend's own message, never invented client-side.
       showToast({
