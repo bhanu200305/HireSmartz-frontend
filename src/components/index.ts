@@ -5,6 +5,7 @@ export { default as LandingPage } from './LandingPage/index';
 export { default as BookDemoPage } from './LandingPage/BookDemoPage';
 export { default as customers } from './CustomerDashboard/Index';
 export { default as JobsOpening } from './JobsOpening/Index';
+export { default as VideoInterviewQuestions } from './JobsOpening/ViewJobOpening/VideoInterviewQuestions';
 export { default as CreateJobDescription } from './JobsOpening/AddJobDescription/index';
 export { default as AddOrganisationUser } from './OrganisationDashboard/OrganisationAddUser';
 export { default as OrganisationUserTable } from './OrganisationDashboard/Index';

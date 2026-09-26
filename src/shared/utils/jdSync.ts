@@ -29,7 +29,7 @@ const normalizeNumber = (value: number | string | null | undefined): number | nu
 
 const normalizeText = (value: string | null | undefined): string => (value ?? '').trim();
 
-const normalizeId = (value: string | null | undefined): string | null =>
+const normalizeId = (value: string | number | null | undefined): string | null =>
   value ? String(value) : null;
 
 // Order shouldn't matter for skill selection — compare as sets.
@@ -77,10 +77,13 @@ export type AiOwnedJdFields = {
   maxSalary?: number | string | null;
   // Extraction-only, never AI-composed — don't add to JdDescriptionInputs above.
   vacancies?: number | string | null;
-  jobTypeId?: string | null;
-  jobModeId?: string | null;
-  shiftId?: string | null;
-  educationPreferenceId?: string | null;
+  // Form fields allow a numeric platform id alongside a string UUID (see
+  // EditJobDetailsSchema.ts's catalogId) - normalizeId() below coerces
+  // either to a string, so the comparison works regardless.
+  jobTypeId?: string | number | null;
+  jobModeId?: string | number | null;
+  shiftId?: string | number | null;
+  educationPreferenceId?: string | number | null;
   // A full snapshot, not a value to merge — see diffAiOwnedFields below.
   unresolvedAiSuggestions?: Record<string, string>;
 };
@@ -94,10 +97,10 @@ export type AiOwnedJdFieldUpdates = {
   minSalary?: string;
   maxSalary?: string;
   vacancies?: number;
-  jobTypeId?: string;
-  jobModeId?: string;
-  shiftId?: string;
-  educationPreferenceId?: string;
+  jobTypeId?: string | number;
+  jobModeId?: string | number;
+  shiftId?: string | number;
+  educationPreferenceId?: string | number;
   unresolvedAiSuggestions?: Record<string, string>;
 };
 

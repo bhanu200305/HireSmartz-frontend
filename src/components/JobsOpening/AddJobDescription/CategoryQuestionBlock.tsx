@@ -76,16 +76,25 @@ export const CategoryQuestionBlock = ({
       ) : (
         <div className="space-y-3 mb-4">
           {questions.map((question, index) => (
-            <QuestionRowItem
+            <div
               key={question.id}
-              question={question}
-              index={index}
-              onDrop={onDrop}
-              checked={selectedIds.includes(question.id)}
-              onCheckChange={(checked) => onSelectOne(question.id, checked)}
-              onEdit={() => onEdit(question)}
-              onDelete={() => onDelete(question.id)}
-            />
+              draggable
+              onDragStart={(e) => e.dataTransfer.setData('text/plain', String(index))}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const fromIndex = Number(e.dataTransfer.getData('text/plain'));
+                if (!Number.isNaN(fromIndex)) onDrop(fromIndex, index);
+              }}
+            >
+              <QuestionRowItem
+                question={question}
+                checked={selectedIds.includes(question.id)}
+                onCheckChange={(checked) => onSelectOne(question.id, checked)}
+                onEdit={() => onEdit(question)}
+                onDelete={() => onDelete(question.id)}
+              />
+            </div>
           ))}
         </div>
       )}
