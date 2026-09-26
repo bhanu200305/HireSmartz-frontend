@@ -28,6 +28,7 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const [rows, setRows] = useState<UserRow[]>([]);
   const [meta, setMeta] = useState<LoginUsersResponse | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +38,12 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         if (cancelled) return;
         setRows(result.items.map((item) => ({ ...item, key: item.user_id })));
         setMeta(result);
+        setHasLoadedOnce(true);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('Failed to load monthly active users', error);
+        setLoadError(true);
         setHasLoadedOnce(true);
       });
     return () => {
@@ -49,9 +56,16 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
   const handleLoadMore = async () => {
     if (!meta?.next_cursor) return;
-    const result = await fetchPage({ limit: PAGE_LIMIT, cursor: meta.next_cursor }).unwrap();
-    setRows((prev) => [...prev, ...result.items.map((item) => ({ ...item, key: item.user_id }))]);
-    setMeta(result);
+    try {
+      const result = await fetchPage({ limit: PAGE_LIMIT, cursor: meta.next_cursor }).unwrap();
+      setRows((prev) => [
+        ...prev,
+        ...result.items.map((item) => ({ ...item, key: item.user_id })),
+      ]);
+      setMeta(result);
+    } catch (error) {
+      console.error('Failed to load more monthly active users', error);
+    }
   };
 
   const columns: TableProps<UserRow>['columns'] = [
@@ -98,6 +112,10 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     >
       {!hasLoadedOnce ? (
         <Loader />
+      ) : loadError ? (
+        <div className="py-10 text-center text-sm text-neutral-400">
+          Something went wrong loading this data. Please try again.
+        </div>
       ) : meta && !meta.available ? (
         <div className="py-10 text-center text-sm text-neutral-400">
           This data is currently unavailable.

@@ -109,8 +109,11 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setModalState({ mode: 'edit', jobTitle });
   };
 
+  const isFormValid =
+    form.name.trim().length > 0 && (modalState?.mode === 'edit' || form.departmentIds.length > 0);
+
   const handleSubmit = async () => {
-    if (!form.name.trim() || (modalState?.mode === 'add' && form.departmentIds.length === 0)) {
+    if (!isFormValid) {
       showToast({ message: 'Please fill the mandatory fields to save.', type: 'error' });
       return;
     }
@@ -341,7 +344,7 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             <Button
               className="w-full bg-button text-white rounded-full py-2"
               onClick={handleSubmit}
-              disabled={isCreating || isUpdating}
+              disabled={isCreating || isUpdating || !isFormValid}
             >
               {isCreating || isUpdating ? 'Saving…' : 'Save'}
             </Button>

@@ -109,8 +109,11 @@ const DepartmentsTab: React.FC = () => {
     setModalState({ mode: 'edit', department });
   };
 
+  const isFormValid =
+    form.name.trim().length > 0 && (modalState?.mode === 'edit' || form.code.trim().length > 0);
+
   const handleSubmit = async () => {
-    if (!form.name.trim() || (modalState?.mode === 'add' && !form.code.trim())) {
+    if (!isFormValid) {
       showToast({ message: 'Code and name are required.', type: 'error' });
       return;
     }
@@ -321,7 +324,7 @@ const DepartmentsTab: React.FC = () => {
             <Button
               className="w-full bg-button text-white rounded-full py-2"
               onClick={handleSubmit}
-              disabled={isCreating || isUpdating}
+              disabled={isCreating || isUpdating || !isFormValid}
             >
               {isCreating || isUpdating ? 'Saving…' : 'Save'}
             </Button>

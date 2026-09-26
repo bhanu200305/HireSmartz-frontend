@@ -401,6 +401,8 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
     }
   };
 
+  const isEditFormValid = Boolean(editForm && editForm.first_name.trim().length > 0);
+
   if (!displayUser) return null;
 
   return (
@@ -466,7 +468,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
               <Button
                 className="rounded-full bg-button text-white px-6 py-2 disabled:opacity-60"
                 onClick={() => save()}
-                disabled={isSaving}
+                disabled={isSaving || !isEditFormValid}
               >
                 {isSaving ? 'Saving…' : 'Save changes'}
               </Button>

@@ -270,7 +270,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
             <Button
               className="w-full bg-button text-white rounded-full py-2"
               onClick={handleSubmit}
-              disabled={isSaving}
+              disabled={isSaving || missingRequired}
             >
               {isSaving ? 'Saving…' : 'Save'}
             </Button>

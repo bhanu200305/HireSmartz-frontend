@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Modal } from 'antd';
 import { MdArrowBack, MdClose } from 'react-icons/md';
 import { showToast } from '../../shared';
+import { useModalCloseAttention } from '../../shared/ui/useModalCloseAttention';
 import TemplateStep from './TemplateStep';
 import PermissionsStep from './PermissionsStep';
 import { getAssignablePermissionCeiling } from '../../../shared/utils/auth/rbac.helpers';
@@ -43,6 +44,7 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
   const [permissions, setPermissions] = useState<Authorities[]>([]);
   const [locationOverrides, setLocationOverrides] = useState<RoleLocationPermissions[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const withCloseAttention = useModalCloseAttention();
 
   const actingPermissions = useEffectivePermissions();
 
@@ -116,10 +118,10 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
   return (
     <Modal
       open={open}
-      onCancel={handleClose}
+      onCancel={withCloseAttention({ onClose: handleClose })}
       footer={null}
       centered
-      maskClosable={false}
+      maskClosable
       width={760}
       className="ant-custom-modal"
       // The gradient header below has to stay outside the scrollable region

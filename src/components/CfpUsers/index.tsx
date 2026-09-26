@@ -390,7 +390,7 @@ const CfpUsers: React.FC = () => {
             <Button
               className="w-full bg-button text-white rounded-full py-2"
               onClick={handleAddDepartment}
-              disabled={isCreatingDepartment}
+              disabled={isCreatingDepartment || !departmentName.trim()}
             >
               {isCreatingDepartment ? 'Saving…' : 'Save'}
             </Button>

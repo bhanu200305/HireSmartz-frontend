@@ -27,6 +27,7 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [meta, setMeta] = useState<SessionsListResponse | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +38,12 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
         setRows(result.items.map((item) => ({ ...item, key: item.session_id })));
         setMeta(result);
         setHasLoadedOnce(true);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('Failed to load active sessions', error);
+        setLoadError(true);
+        setHasLoadedOnce(true);
       });
     return () => {
       cancelled = true;
@@ -45,12 +52,16 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
 
   const handleLoadMore = async () => {
     if (!meta?.next_cursor) return;
-    const result = await fetchPage({ limit: PAGE_LIMIT, cursor: meta.next_cursor }).unwrap();
-    setRows((prev) => [
-      ...prev,
-      ...result.items.map((item) => ({ ...item, key: item.session_id })),
-    ]);
-    setMeta(result);
+    try {
+      const result = await fetchPage({ limit: PAGE_LIMIT, cursor: meta.next_cursor }).unwrap();
+      setRows((prev) => [
+        ...prev,
+        ...result.items.map((item) => ({ ...item, key: item.session_id })),
+      ]);
+      setMeta(result);
+    } catch (error) {
+      console.error('Failed to load more active sessions', error);
+    }
   };
 
   const columns: TableProps<SessionRow>['columns'] = [
@@ -104,6 +115,10 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
     >
       {!hasLoadedOnce ? (
         <Loader />
+      ) : loadError ? (
+        <div className="py-10 text-center text-sm text-neutral-400">
+          Something went wrong loading this data. Please try again.
+        </div>
       ) : meta && !meta.available ? (
         <div className="py-10 text-center text-sm text-neutral-400">
           This data is currently unavailable.

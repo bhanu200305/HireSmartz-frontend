@@ -283,7 +283,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             <Button
               className="w-full bg-button text-white rounded-full py-2"
               onClick={handleAdd}
-              disabled={isAdding}
+              disabled={isAdding || !name.trim()}
             >
               {isAdding ? 'Saving…' : 'Save'}
             </Button>

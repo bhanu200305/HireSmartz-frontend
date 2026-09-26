@@ -200,6 +200,33 @@ canvas[data-agora-recording='true'] {
 }
 
 /*
+ * Clicking outside a modal that doesn't close on mask-click otherwise gives
+ * no feedback at all — this flashes the close (X) button red instead, so
+ * the click visibly points at the control that does close it. Triggered via
+ * useModalCloseAttention.ts.
+ */
+@keyframes modal-close-attention-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-3px);
+  }
+  40%,
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+.modal-close-attention {
+  animation: modal-close-attention-shake 0.5s ease-in-out;
+  color: #dc2626 !important;
+  background-color: rgba(220, 38, 38, 0.12) !important;
+}
+
+/*
  * MainLayout's Header and Footer are sticky at z-[1100], above every antd
  * Modal (z-index ~1000+), so they stay visible instead of being buried
  * under a modal's full-viewport mask. --app-header-height/--app-footer-height

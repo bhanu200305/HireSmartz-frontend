@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, ModalProps } from 'antd';
 import clsx from 'clsx';
 import { MdClose } from 'react-icons/md';
+import { useModalCloseAttention } from './useModalCloseAttention';
 
 export type CommonModalProps = {
   open: boolean;
@@ -20,14 +21,22 @@ const AntdCommonModal: React.FC<CommonModalProps> = ({
   children,
   modalProps = {},
 }) => {
+  const withCloseAttention = useModalCloseAttention();
+  // The underlying antd Modal always gets maskClosable=true so a mask click
+  // reaches onCancel at all — whether that click actually closes (real
+  // maskClosable intent, defaulting to the old `false`) is decided inside
+  // withCloseAttention/onCancel below, not by this prop.
+  const { maskClosable: callerMaskClosable, ...restModalProps } = modalProps;
+
   if (!open) return null;
+
   return (
     <Modal
       open={open}
-      onCancel={onClose}
+      onCancel={withCloseAttention({ onClose, closeOnMaskClick: !!callerMaskClosable })}
       footer={null}
       centered
-      maskClosable={false}
+      maskClosable
       keyboard={false}
       className="ant-custom-modal"
       // Reserves the sticky header/footer's height at the top/bottom of the
@@ -46,7 +55,7 @@ const AntdCommonModal: React.FC<CommonModalProps> = ({
           <MdClose size={18} />
         </span>
       }
-      {...modalProps}
+      {...restModalProps}
     >
       {(title || subtitle) && (
         <div className="mb-6 text-center">

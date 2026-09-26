@@ -15,6 +15,7 @@ import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import './header.css';
 import { Search, showToast } from '../shared';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
+import { useModalCloseAttention } from '../shared/ui/useModalCloseAttention';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { KeyboardEvent } from 'react';
 import GlobalSearch, {
@@ -111,15 +112,16 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
   const [shouldFetchCategories, setShouldFetchCategories] = useState(false);
   const [showSwitchCalendarModal, setShowSwitchCalendarModal] = useState(false);
   const [showDisconnectCalendarModal, setShowDisconnectCalendarModal] = useState(false);
+  const withCloseAttention = useModalCloseAttention();
 
   // getLocalStorageItem now falls back to sessionStorage for this key (see
   // that helper's own comment) — this used to read straight from
   // localStorage, which Login/index.tsx only populates via a second call
   // (`setTokens`) after its own unconditional sessionStorage write. `token`
   // going stale here meant `skip: !token` below always skipped BOTH profile
-  // queries, `userData` never resolved, and the avatar/"Welcome"/Logout
-  // dropdown this whole block gates on (`{userData && (...)}`, further
-  // down) silently never rendered.
+  // queries, `userData` never resolved, and the avatar/name/Logout dropdown
+  // this whole block gates on (`{userData && (...)}`, further down) silently
+  // never rendered.
   const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
   const autoLogin = location?.state?.autoLogin;
 
@@ -776,10 +778,10 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                       },
                     ],
                   }}
-                  // The trigger beside this already shows the avatar and
-                  // "Welcome <first name>", so the dropdown doesn't repeat the
-                  // user's name at all — it adds only the company context the
-                  // trigger can't show, on one compact line above the menu.
+                  // The trigger beside this already shows the avatar and the
+                  // user's first name, so the dropdown doesn't repeat it at
+                  // all — it adds only the company context the trigger can't
+                  // show, on one compact line above the menu.
                   dropdownRender={(menu) => (
                     <div
                       className="rounded-xl overflow-hidden"
@@ -817,13 +819,10 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                   trigger={['click']}
                 >
                   <div className="flex items-center gap-3 px-1 py-1 text-sm cursor-pointer">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-neutral-500">Welcome</span>
-                      <span className="font-semibold text-neutral-900">
-                        {makeFirstLetterUpperCase(userData?.firstName)}{' '}
-                        <DownOutlined className="text-xs text-neutral-500 cursor-pointer" />
-                      </span>
-                    </div>
+                    <span className="font-semibold text-neutral-900">
+                      {makeFirstLetterUpperCase(userData?.firstName)}{' '}
+                      <DownOutlined className="text-xs text-neutral-500 cursor-pointer" />
+                    </span>
                   </div>
                 </Dropdown>
               </div>
@@ -834,7 +833,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
 
       <Modal
         open={showSwitchCalendarModal}
-        onCancel={() => setShowSwitchCalendarModal(false)}
+        onCancel={withCloseAttention({ onClose: () => setShowSwitchCalendarModal(false) })}
         onOk={confirmSwitchCalendar}
         okText="Yes, Switch"
         cancelText="Cancel"
@@ -844,7 +843,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
         }}
         title="Switch Calendar"
         centered
-        maskClosable={false}
+        maskClosable
       >
         <p className="text-gray-600 text-sm">
           Your current calendar connection will be <strong>disconnected</strong> before linking a
@@ -855,7 +854,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
 
       <Modal
         open={showDisconnectCalendarModal}
-        onCancel={() => setShowDisconnectCalendarModal(false)}
+        onCancel={withCloseAttention({ onClose: () => setShowDisconnectCalendarModal(false) })}
         onOk={confirmDisconnectCalendar}
         okText="Yes, Disconnect"
         cancelText="Cancel"
@@ -865,7 +864,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
         }}
         title="Disconnect Calendar"
         centered
-        maskClosable={false}
+        maskClosable
       >
         <p className="text-gray-600 text-sm">
           Your calendar will be <strong>disconnected</strong>. Any scheduled interviews tied to this
