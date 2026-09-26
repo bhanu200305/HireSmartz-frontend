@@ -1,22 +1,42 @@
 import React, { useState } from 'react';
+<<<<<<< Updated upstream
 import { Select } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
+=======
+>>>>>>> Stashed changes
 import type { TableProps } from 'antd';
 import { Link } from 'react-router-dom';
 import AntdCommonModal from './AntdCommonModal';
 import CustomTable from './table';
 import MasterPagination from './MasterPagination';
+import { RowsPerPageSelect } from './RowsPerPageSelect';
 import { Badge } from './badge';
 import { Loader } from './loader';
+import { Search } from './search';
 import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
 import {
   useListCandidatesQuery,
   type CandidateView,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
+import FilterMenu, {
+  type CandidateListFilterValues,
+} from '../../JobsOpening/Candidates/FilterMenu';
 import {
   useJobOpeningNameMap,
   jobDisplayName,
 } from '../../HiringManagerDashboard/useJobOpeningNameMap';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
+
+// Candidate / Resume score / Applied date are the only three columns
+// candidate-service can actually sort by (`ListCandidatesArgs.sortBy`) — see
+// that type's own docstring. Mapping table-column key -> API sort key here
+// rather than making the column keys match the API names directly, since
+// 'candidate' (this modal's column) reads better than 'name' as a header.
+const SORT_KEY_BY_COLUMN: Record<string, 'applied_date' | 'resume_score' | 'name'> = {
+  candidate: 'name',
+  resume_score: 'resume_score',
+  applied_date: 'applied_date',
+};
 
 type CandidateRow = CandidateView & { key: string };
 
@@ -43,22 +63,43 @@ const formatDate = (iso: string | null): string =>
 const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('total_applications_modal', 10);
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState<CandidateListFilterValues>({});
+  const [sort, setSort] = useState<{
+    sortBy: 'applied_date' | 'resume_score' | 'name';
+    sortOrder: 'asc' | 'desc';
+  }>({ sortBy: 'applied_date', sortOrder: 'desc' });
 
   const { data, isLoading } = useListCandidatesQuery({
     limit: pageSize,
     offset: page * pageSize,
-    sortBy: 'applied_date',
-    sortOrder: 'desc',
+    search: search || undefined,
+    statusCode: filters.statusCode,
+    source: filters.source,
+    sortBy: sort.sortBy,
+    sortOrder: sort.sortOrder,
   });
   const { jobNameMap } = useJobOpeningNameMap();
 
   const candidates = data?.items ?? [];
   const dataSource: CandidateRow[] = candidates.map((c) => ({ ...c, key: c.id }));
 
+  // Reflects the CURRENT server-side sort back onto the column header (the
+  // active arrow) — `sorter: true` below means antd never sorts client-side
+  // itself, it just shows the control and reports clicks via `onChange`.
+  const sortOrderFor = (columnKey: string): 'ascend' | 'descend' | undefined =>
+    sort.sortBy === SORT_KEY_BY_COLUMN[columnKey]
+      ? sort.sortOrder === 'asc'
+        ? 'ascend'
+        : 'descend'
+      : undefined;
+
   const columns: TableProps<CandidateRow>['columns'] = [
     {
       title: 'Candidate',
       key: 'candidate',
+      sorter: true,
+      sortOrder: sortOrderFor('candidate'),
       render: (_: unknown, row: CandidateRow) => (
         <Link
           to={`/jobs/view/${row.job_opening_id}/candidates/${row.id}/details`}
@@ -85,6 +126,8 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       dataIndex: 'resume_score',
       key: 'resume_score',
       align: 'center',
+      sorter: true,
+      sortOrder: sortOrderFor('resume_score'),
       render: (value: number | null) => value ?? '-',
     },
     {
@@ -97,6 +140,8 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       title: 'Applied date',
       dataIndex: 'applied_date',
       key: 'applied_date',
+      sorter: true,
+      sortOrder: sortOrderFor('applied_date'),
       render: (value: string) => formatDate(value),
     },
   ];
@@ -109,12 +154,35 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       modalProps={{ width: 860, maskClosable: true }}
     >
       <div className="flex flex-col gap-3">
+<<<<<<< Updated upstream
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Search
+              appname="total applications modal"
+              placeholder="Search candidates..."
+              value={search}
+              allowClear
+              onSearch={(value) => {
+                setSearch(value);
+                setPage(0);
+              }}
+            />
+            <FilterMenu
+              filters={filters}
+              onFilterChange={(next) => {
+                setFilters((prev) => ({ ...prev, ...next }));
+                setPage(0);
+              }}
+            />
+          </div>
+        </div>
+
         <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
           <span>Rows per page</span>
           <Select
             size="small"
             value={pageSize}
-            className="w-20"
+            className="rows-per-page-select"
             options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
             onChange={(size) => {
               setPageSize(size);
@@ -122,6 +190,16 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             }}
           />
         </div>
+=======
+        <RowsPerPageSelect
+          pageSize={pageSize}
+          options={PAGE_SIZE_OPTIONS}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
+>>>>>>> Stashed changes
 
         <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {isLoading ? (
@@ -130,6 +208,17 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             <CustomTable<CandidateRow>
               columns={columns}
               dataSource={dataSource}
+              onChange={(_pagination, _tableFilters, sorter) => {
+                const active = Array.isArray(sorter) ? sorter[0] : sorter;
+                const resolved = active as SorterResult<CandidateRow>;
+                if (!resolved?.order || !resolved.columnKey) {
+                  setSort({ sortBy: 'applied_date', sortOrder: 'desc' });
+                  return;
+                }
+                const sortBy = SORT_KEY_BY_COLUMN[String(resolved.columnKey)];
+                if (!sortBy) return;
+                setSort({ sortBy, sortOrder: resolved.order === 'ascend' ? 'asc' : 'desc' });
+              }}
               emptyText={
                 <div className="py-10 text-center text-sm text-neutral-400">
                   No candidate applications yet.

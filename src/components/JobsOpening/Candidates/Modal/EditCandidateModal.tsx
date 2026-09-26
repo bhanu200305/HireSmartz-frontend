@@ -54,8 +54,10 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
     }
   }, [open, candidate]);
 
+  const isFormValid = firstName.trim().length > 0 && lastName.trim().length > 0;
+
   const handleSave = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
+    if (!isFormValid) {
       showToast({ message: 'First and last name are required.', type: 'error' });
       return;
     }
@@ -189,7 +191,7 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
         <Button
           type="button"
           onClick={() => void handleSave()}
-          disabled={isLoading}
+          disabled={isLoading || !isFormValid}
           className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
         >
           {isLoading ? 'SAVING…' : 'SAVE CHANGES'}

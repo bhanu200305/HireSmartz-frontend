@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Modal } from 'antd';
-import { MdClose } from 'react-icons/md';
+import { MdArrowBack, MdClose } from 'react-icons/md';
 import { showToast } from '../../shared';
+import { useModalCloseAttention } from '../../shared/ui/useModalCloseAttention';
 import TemplateStep from './TemplateStep';
 import PermissionsStep from './PermissionsStep';
 import { getAssignablePermissionCeiling } from '../../../shared/utils/auth/rbac.helpers';
@@ -43,6 +44,7 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
   const [permissions, setPermissions] = useState<Authorities[]>([]);
   const [locationOverrides, setLocationOverrides] = useState<RoleLocationPermissions[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const withCloseAttention = useModalCloseAttention();
 
   const actingPermissions = useEffectivePermissions();
 
@@ -116,10 +118,10 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
   return (
     <Modal
       open={open}
-      onCancel={handleClose}
+      onCancel={withCloseAttention({ onClose: handleClose })}
       footer={null}
       centered
-      maskClosable={false}
+      maskClosable
       width={760}
       className="ant-custom-modal"
       // The gradient header below has to stay outside the scrollable region
@@ -132,12 +134,31 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
       // header own its own padding sidesteps that entirely.
       styles={{ body: { padding: 0 } }}
       closeIcon={
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white">
+        // A persistent dark chip behind the icon, not just white/80 text on
+        // the bare gradient — at the header's accent-500 (light cyan) end
+        // that combination had almost no contrast and the X effectively
+        // disappeared. The chip guarantees contrast across the whole
+        // gradient regardless of which color sits underneath it.
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/20 text-white shadow-sm transition-colors hover:bg-black/35">
           <MdClose size={18} />
         </span>
       }
     >
-      <div className="rounded-t-2xl bg-gradient-to-r from-primary-700 via-primary-500 to-accent-500 px-6 py-4 text-white">
+      <div className="flex-shrink-0 rounded-t-2xl bg-gradient-to-r from-primary-700 via-primary-500 to-accent-500 px-6 py-4 text-white">
+        {/* Step navigation lives in the header, not the footer — same place
+            every other multi-step flow in the app puts its "back" control
+            (e.g. TenantOnboarding's wizard), and unlike a footer button it
+            never scrolls out of reach behind a long permission matrix. */}
+        {step === 2 && (
+          <button
+            type="button"
+            onClick={() => setStep(1)}
+            className="mb-1.5 flex items-center gap-1 text-xs font-medium text-white/70 transition-colors hover:text-white cursor-pointer"
+          >
+            <MdArrowBack size={14} />
+            Back
+          </button>
+        )}
         <div className="text-[10.5px] font-bold uppercase tracking-wide text-white/70 mb-0.5">
           Step {step} of {TOTAL_STEPS}
         </div>
@@ -157,22 +178,20 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
       {/* Only this region scrolls — the header above stays put. Step 2's
           permission matrix (every module, up to 2 columns each, plus any
           number of per-location overrides) is comfortably taller than most
-          viewports at full height; without a cap the modal's own bottom
-          edge (Back/Submit buttons included) ran off the browser window
-          with no way to reach it. This box's cap plus the fixed header
-          above it (~90px) has to stay comfortably under 100vh — `centered`
-          only centers what fits; content taller than the viewport still
-          pushes the modal itself past the top/bottom edge. 74vh leaves that
-          margin even on a shorter laptop screen while still noticeably
-          taller than before.
+          viewports at full height. `flex: 1 1 auto; min-height: 0` (rather
+          than a hardcoded vh cap) lets this region fill exactly whatever
+          room index.css's `.ant-modal-content` rule leaves under the real
+          app header/footer, instead of guessing a vh figure that can run
+          taller than that budget and get silently clipped — see the
+          comment on `.ant-modal-body .modal-content` in index.css.
           `overflowX: 'hidden'` isn't decorative: per the CSS overflow spec,
           setting overflow-y to anything but `visible` while overflow-x is
           left at its default `visible` computes overflow-x to `auto` too
           (the "orthogonal overflow" rule) — that silently opened a
           horizontal scrollbar and clipped a sliver off this content's width. */}
       <div
-        className="thin-scrollbar px-6 pt-4 pb-6"
-        style={{ maxHeight: '74vh', overflowY: 'auto', overflowX: 'hidden' }}
+        className="thin-scrollbar px-6 pt-4"
+        style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}
       >
         {step === 1 ? (
           <TemplateStep
@@ -194,7 +213,6 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
             onLocationOverridesChange={setLocationOverrides}
             availableLocations={availableLocations}
             showLocationOverrides={scope === 'tenant'}
-            onBack={() => setStep(1)}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
           />

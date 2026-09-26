@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
 import { Select as AntSelect } from 'antd';
 import { MdSearch } from 'react-icons/md';
-import { CustomTable, Input, Typography, Button, paginationConfig, showToast } from '../../shared';
+import { CustomTable, Input, Typography, Button, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
+import MasterPagination from '../../shared/ui/MasterPagination';
+import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
 import {
   useListTenantJobTitlesQuery,
@@ -18,6 +22,11 @@ import useHasAccess from '../../../hooks/useHasAccess';
 import { Authorities } from '../../../constants/authorities.constant';
 
 type JobTitleAssignRow = TenantJobTitle & { key: string; isMapped: boolean };
+type SortKey = 'name';
+
+const SORT_COMPARATORS: Record<SortKey, (a: TenantJobTitle, b: TenantJobTitle) => number> = {
+  name: (a, b) => a.name.localeCompare(b.name),
+};
 
 /**
  * Assign this tenant's own job titles to its own departments - mirrors
@@ -31,6 +40,10 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
   const [searchText, setSearchText] = useState('');
   const [stagedMappedIds, setStagedMappedIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('mycompany_department_job_titles', 10);
 
   const canEdit = useHasAccess(Authorities.DEPARTMENT_EDIT);
 
@@ -58,6 +71,33 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
     const q = searchText.trim().toLowerCase();
     return list.filter((jt) => jt.name.toLowerCase().includes(q));
   }, [allJobTitles, searchText]);
+
+  // Sorted+paginated client-side, same "Rows per page" + MasterPagination UI
+  // every list-drilldown modal already uses, rather than antd Table's own
+  // default pager, which this tab used to render instead.
+  const sortedJobTitles = useMemo(() => {
+    const sorted = [...filteredJobTitles].sort(SORT_COMPARATORS[sortBy]);
+    return sortOrder === 'desc' ? sorted.reverse() : sorted;
+  }, [filteredJobTitles, sortBy, sortOrder]);
+
+  const sortOrderFor = (key: SortKey): 'ascend' | 'descend' | undefined =>
+    sortBy === key ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
+  const handleTableChange: TableProps<JobTitleAssignRow>['onChange'] = (
+    _pagination,
+    _filters,
+    sorter
+  ) => {
+    const active = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<JobTitleAssignRow>);
+    setPage(0);
+    if (!active?.order || !active.columnKey) {
+      setSortBy('name');
+      setSortOrder('asc');
+      return;
+    }
+    setSortBy(active.columnKey as SortKey);
+    setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
+  };
 
   const {
     data: mappedJobTitles,
@@ -154,7 +194,8 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
       title: 'Job Title',
       dataIndex: 'name',
       key: 'name',
-      sorter: (a: JobTitleAssignRow, b: JobTitleAssignRow) => a.name.localeCompare(b.name),
+      sorter: true,
+      sortOrder: sortOrderFor('name'),
       render: (_: unknown, row: JobTitleAssignRow) => (
         <span className={row.isMapped ? 'font-semibold text-primary-700' : 'text-gray-700'}>
           {row.name}
@@ -163,11 +204,13 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
     },
   ];
 
-  const dataSource: JobTitleAssignRow[] = filteredJobTitles.map((jt) => ({
-    ...jt,
-    key: tenantJobTitleFormId(jt),
-    isMapped: stagedMappedIds.has(tenantJobTitleFormId(jt)),
-  }));
+  const dataSource: JobTitleAssignRow[] = sortedJobTitles
+    .slice(page * pageSize, page * pageSize + pageSize)
+    .map((jt) => ({
+      ...jt,
+      key: tenantJobTitleFormId(jt),
+      isMapped: stagedMappedIds.has(tenantJobTitleFormId(jt)),
+    }));
 
   return (
     <div>
@@ -181,7 +224,10 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
           showSearch
           placeholder="Select department"
           value={selectedDepartmentId ?? undefined}
-          onChange={(value) => setSelectedDepartmentId(value)}
+          onChange={(value) => {
+            setSelectedDepartmentId(value);
+            setPage(0);
+          }}
           options={sortedDepartments.map((d) => ({ label: d.name, value: d.org_department_id }))}
           filterOption={(input, option) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -193,7 +239,10 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
           placeholder="Search job titles..."
           className="w-full sm:w-[320px]"
           value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            setPage(0);
+          }}
         />
       </div>
 
@@ -202,46 +251,71 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
           No departments yet. Add one on the Departments tab first.
         </div>
       ) : (
-        <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm relative">
-          {isMappedLoading && (
-            <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center">
-              <Loader />
-            </div>
-          )}
-          <div className="px-4 py-3 flex justify-between items-center border-b border-neutral-200 bg-gray-50">
-            <Typography variant="body1">{activeDepartmentName}: job titles</Typography>
-            <span className="text-xs font-medium text-gray-400">
-              {stagedMappedIds.size} of {(allJobTitles ?? []).length} selected
-            </span>
+        <>
+          <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
+            <span>Rows per page</span>
+            <AntSelect
+              size="small"
+              value={pageSize}
+              className="rows-per-page-select"
+              options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
+              onChange={(size) => {
+                setPageSize(size);
+                setPage(0);
+              }}
+            />
           </div>
 
-          <CustomTable<JobTitleAssignRow>
-            columns={columns}
-            dataSource={dataSource}
-            rowClassName={(row) => (row.isMapped ? '!bg-primary-50/40' : '')}
-            emptyText="No job titles found."
-            pagination={paginationConfig('job titles')}
-          />
-
-          {canEdit && (
-            <div className="border-t px-4 py-4 flex justify-center gap-4">
-              <Button
-                className="min-w-[140px] border border-gray-300 rounded-full py-2"
-                onClick={handleReset}
-                disabled={!isDirty || isBusy}
-              >
-                Reset
-              </Button>
-              <Button
-                className="min-w-[140px] bg-button text-white rounded-full py-2"
-                onClick={handleSave}
-                disabled={!isDirty || isBusy}
-              >
-                {isSaving ? 'Saving…' : 'Save'}
-              </Button>
+          <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm relative">
+            {isMappedLoading && (
+              <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center">
+                <Loader />
+              </div>
+            )}
+            <div className="px-4 py-3 flex justify-between items-center border-b border-neutral-200 bg-gray-50">
+              <Typography variant="body1">{activeDepartmentName}: job titles</Typography>
+              <span className="text-xs font-medium text-gray-400">
+                {stagedMappedIds.size} of {(allJobTitles ?? []).length} selected
+              </span>
             </div>
-          )}
-        </div>
+
+            <CustomTable<JobTitleAssignRow>
+              columns={columns}
+              dataSource={dataSource}
+              rowClassName={(row) => (row.isMapped ? '!bg-primary-50/40' : '')}
+              emptyText="No job titles found."
+              pagination={false}
+              onChange={handleTableChange}
+            />
+
+            {canEdit && (
+              <div className="border-t px-4 py-4 flex justify-center gap-4">
+                <Button
+                  className="min-w-[140px] border border-gray-300 rounded-full py-2"
+                  onClick={handleReset}
+                  disabled={!isDirty || isBusy}
+                >
+                  Reset
+                </Button>
+                <Button
+                  className="min-w-[140px] bg-button text-white rounded-full py-2"
+                  onClick={handleSave}
+                  disabled={!isDirty || isBusy}
+                >
+                  {isSaving ? 'Saving…' : 'Save'}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <MasterPagination
+            current={page + 1}
+            pageSize={pageSize}
+            total={sortedJobTitles.length}
+            itemLabel="job titles"
+            onPageChange={(nextPage) => setPage(nextPage - 1)}
+          />
+        </>
       )}
     </div>
   );

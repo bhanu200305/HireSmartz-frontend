@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
+import { Select as AntdSelect } from 'antd';
 import {
   MdOutlineAdd,
   MdOutlineBlock,
@@ -19,12 +21,14 @@ import {
   PhoneNumberField,
   Select,
   Typography,
-  paginationConfig,
   showToast,
 } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
+import MasterPagination from '../../../shared/ui/MasterPagination';
 import ConfirmationModal from '../../../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
+import { usePersistedPageSize } from '../../../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../../../constants/app.constants';
 import {
   useListPlatformTenantUsersQuery,
   useCreatePlatformTenantUserMutation,
@@ -78,6 +82,12 @@ type PendingRow = {
 };
 
 type TableRow = UserRow | PendingRow;
+
+// Matches each sortable column's own `key` below. Comparators live inside
+// the component (see SORT_COMPARATORS) since a couple of them close over
+// `departmentName`/`designationName`, which read this tenant's own fetched
+// department/designation lists.
+type SortKey = 'full_name' | 'title' | 'department' | 'designation' | 'role' | 'status';
 
 type FormState = {
   email: string;
@@ -183,6 +193,10 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
   const [viewingUser, setViewingUser] = useState<OrgUser | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('full_name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('view_customer_users_panel', 10);
   // A PendingRow carries no user_id — CreateUserUseCase writes the `users`
   // row and the `Invite` together, in one transaction, at invite time, but
   // ListInvitationsView only surfaces the invite's own fields. The matching
@@ -264,6 +278,54 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         : row.invited_email.toLowerCase().includes(q) || row.role.toLowerCase().includes(q)
     );
   }, [rows, searchText]);
+
+  // Fully client-side, same as DepartmentsTab.tsx's controlled
+  // sortBy/sortOrder + sortOrderFor/handleTableChange pattern — this panel
+  // has no server-side sort of its own to defer to, it already fetches every
+  // row for this tenant at once.
+  const SORT_COMPARATORS: Record<SortKey, (a: TableRow, b: TableRow) => number> = {
+    full_name: (a, b) =>
+      (a.kind === 'user' ? a.full_name : a.invited_email).localeCompare(
+        b.kind === 'user' ? b.full_name : b.invited_email
+      ),
+    title: (a, b) =>
+      (a.kind === 'user' ? (a.title ?? '') : '').localeCompare(
+        b.kind === 'user' ? (b.title ?? '') : ''
+      ),
+    department: (a, b) =>
+      departmentName(a.department_id).localeCompare(departmentName(b.department_id)),
+    designation: (a, b) =>
+      designationName(a.designation_id).localeCompare(designationName(b.designation_id)),
+    role: (a, b) =>
+      (a.kind === 'user' ? (a.role ?? '') : a.role).localeCompare(
+        b.kind === 'user' ? (b.role ?? '') : b.role
+      ),
+    status: (a, b) =>
+      Number(a.kind === 'user' ? a.is_active : false) -
+      Number(b.kind === 'user' ? b.is_active : false),
+  };
+
+  const sortedRows = useMemo(() => {
+    const sorted = [...filteredRows].sort(SORT_COMPARATORS[sortBy]);
+    return sortOrder === 'desc' ? sorted.reverse() : sorted;
+    // SORT_COMPARATORS is a fresh object every render but its comparators
+    // are pure and keyed only by SortKey — safe to omit here.
+  }, [filteredRows, sortBy, sortOrder]);
+
+  const sortOrderFor = (key: SortKey): 'ascend' | 'descend' | undefined =>
+    sortBy === key ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
+  const handleTableChange: TableProps<TableRow>['onChange'] = (_pagination, _filters, sorter) => {
+    const active = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<TableRow>);
+    setPage(0);
+    if (!active?.order || !active.columnKey) {
+      setSortBy('full_name');
+      setSortOrder('asc');
+      return;
+    }
+    setSortBy(active.columnKey as SortKey);
+    setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
+  };
 
   const handleAdd = async () => {
     if (!form.email.trim() || !form.first_name.trim()) {
@@ -477,10 +539,8 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     {
       title: 'Name',
       key: 'full_name',
-      sorter: (a: TableRow, b: TableRow) =>
-        (a.kind === 'user' ? a.full_name : a.invited_email).localeCompare(
-          b.kind === 'user' ? b.full_name : b.invited_email
-        ),
+      sorter: true,
+      sortOrder: sortOrderFor('full_name'),
       render: (_: unknown, row: TableRow) =>
         row.kind === 'user' ? (
           <button
@@ -504,10 +564,8 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'Title',
       dataIndex: 'title',
       key: 'title',
-      sorter: (a: TableRow, b: TableRow) =>
-        (a.kind === 'user' ? (a.title ?? '') : '').localeCompare(
-          b.kind === 'user' ? (b.title ?? '') : ''
-        ),
+      sorter: true,
+      sortOrder: sortOrderFor('title'),
       render: (_: unknown, row: TableRow) => (
         <span className="text-gray-600 text-sm">
           {row.kind === 'user' ? row.title || '-' : '-'}
@@ -517,8 +575,8 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     {
       title: 'Department',
       key: 'department',
-      sorter: (a: TableRow, b: TableRow) =>
-        departmentName(a.department_id).localeCompare(departmentName(b.department_id)),
+      sorter: true,
+      sortOrder: sortOrderFor('department'),
       render: (_: unknown, row: TableRow) =>
         row.department_id ? (
           <Badge status="neutral" dot={false}>
@@ -531,8 +589,8 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     {
       title: 'Designation',
       key: 'designation',
-      sorter: (a: TableRow, b: TableRow) =>
-        designationName(a.designation_id).localeCompare(designationName(b.designation_id)),
+      sorter: true,
+      sortOrder: sortOrderFor('designation'),
       render: (_: unknown, row: TableRow) =>
         row.designation_id ? (
           <Badge status="neutral" dot={false}>
@@ -545,10 +603,8 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     {
       title: 'Role',
       key: 'role',
-      sorter: (a: TableRow, b: TableRow) =>
-        (a.kind === 'user' ? (a.role ?? '') : a.role).localeCompare(
-          b.kind === 'user' ? (b.role ?? '') : b.role
-        ),
+      sorter: true,
+      sortOrder: sortOrderFor('role'),
       render: (_: unknown, row: TableRow) =>
         row.role ? (
           <span className="text-gray-600 text-sm">{row.role}</span>
@@ -559,9 +615,8 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     {
       title: 'Status',
       key: 'status',
-      sorter: (a: TableRow, b: TableRow) =>
-        Number(a.kind === 'user' ? a.is_active : false) -
-        Number(b.kind === 'user' ? b.is_active : false),
+      sorter: true,
+      sortOrder: sortOrderFor('status'),
       render: (_: unknown, row: TableRow) => {
         if (row.kind === 'pending') return <Badge status="warning">Pending</Badge>;
         if (!row.is_active) return <Badge status="neutral">Deactivated</Badge>;
@@ -640,7 +695,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     },
   ];
 
-  const dataSource: TableRow[] = filteredRows;
+  const dataSource: TableRow[] = sortedRows.slice(page * pageSize, page * pageSize + pageSize);
 
   return (
     <div className="p-4">
@@ -651,7 +706,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             {users.length} {users.length === 1 ? 'user' : 'users'}
             {pendingInvitations.length > 0 &&
               `, ${pendingInvitations.length} pending ${pendingInvitations.length === 1 ? 'invite' : 'invites'}`}
-            {searchText.trim() && ` (${dataSource.length} shown)`}
+            {searchText.trim() && ` (${sortedRows.length} shown)`}
           </span>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -660,7 +715,10 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               prefix={<MdSearch className="text-gray-400" />}
               placeholder="Search users..."
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setPage(0);
+              }}
             />
           </div>
           <div className="w-44">
@@ -668,7 +726,10 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               appname="cfp"
               showFilterIcon
               value={includeInactive}
-              onChange={(value) => setIncludeInactive(value as 'active' | 'all')}
+              onChange={(value) => {
+                setIncludeInactive(value as 'active' | 'all');
+                setPage(0);
+              }}
               options={[
                 { label: 'Active only', value: 'active' },
                 { label: 'Include deactivated', value: 'all' },
@@ -676,13 +737,13 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             />
           </div>
           <Button
-            className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1 hover:bg-gray-50 transition-colors shrink-0"
+            className="rounded-full border border-gray-300 px-4 py-2 flex items-center gap-1 hover:bg-gray-50 transition-colors shrink-0"
             onClick={() => setIsBulkImportOpen(true)}
           >
             <MdOutlineFileUpload /> Import team
           </Button>
           <Button
-            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+            className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
             onClick={() => setIsAddOpen(true)}
           >
             <MdOutlineAdd /> Add user
@@ -690,16 +751,38 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         </div>
       </div>
 
+      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
+        <span>Rows per page</span>
+        <AntdSelect
+          size="small"
+          value={pageSize}
+          className="rows-per-page-select"
+          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
+      </div>
+
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable<TableRow>
           columns={columns}
           dataSource={dataSource}
+          onChange={handleTableChange}
           emptyText={
             searchText.trim() ? 'No users match your search.' : 'No users or pending invites yet.'
           }
-          pagination={paginationConfig('users')}
         />
       </div>
+
+      <MasterPagination
+        current={page + 1}
+        pageSize={pageSize}
+        total={sortedRows.length}
+        itemLabel="users"
+        onPageChange={(nextPage) => setPage(nextPage - 1)}
+      />
 
       <AntdCommonModal
         open={isAddOpen}

@@ -201,16 +201,19 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
             id="websiteUrl"
             {...register('websiteUrl')}
             placeholder="https://acme.com"
-            className="bg-white w-full px-4 py-2 mt-1 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+            className="bg-white w-full h-11 px-4 py-2 mt-1 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
             error={errors.websiteUrl?.message}
             noAutoCapitalize
           />
         </div>
 
         <div>
-          <p className="text-sm text-gray-600">Industry</p>
-          <div className="industry-select-wrapper flex items-center bg-white w-full px-4 mt-1 border rounded-3xl border-[var(--border)]">
+          <label htmlFor="industryId" className="text-sm text-gray-600">
+            Industry
+          </label>
+          <div className="industry-select-wrapper flex items-center bg-white w-full h-11 px-4 mt-1 border rounded-3xl border-[var(--border)]">
             <Select
+              id="industryId"
               className="w-full custom-select-jobs placeholder-style"
               variant="borderless"
               value={watch('industryId') || undefined}
@@ -239,6 +242,8 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
           </label>
           <Input
             id="adminEmail"
+            type="email"
+            noAutoCapitalize
             value={watch('adminEmail')}
             onChange={(e) => {
               setValue('adminEmail', e.target.value.replace(/\s/g, ''), { shouldDirty: true });

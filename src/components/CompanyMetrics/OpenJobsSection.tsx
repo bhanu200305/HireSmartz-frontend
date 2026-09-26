@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { MdOutlineWorkOutline } from 'react-icons/md';
-import { Badge } from '../shared';
+import { Badge, Search } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import { useGetJobOpeningsListLegacyQuery as useGetJobOpeningsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
 import type { JobListArgs, JobSummary } from '../../api/job-service/JobOpenings/types';
 import { jobStatus, daysOpen } from './jobOpeningListHelpers';
 import JobDetailModal from './JobDetailModal';
+import JobOpeningsListModal from './JobOpeningsListModal';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 
 type OpenJobsSectionProps = {
@@ -24,8 +25,19 @@ type OpenJobsSectionProps = {
  * per-job detail, instead of a second copy drifting from this one.
  */
 const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
-  const { data, isLoading } = useGetJobOpeningsQuery({ page: 1, page_size: 10, status });
+  const [search, setSearch] = useState('');
+  const { data, isLoading } = useGetJobOpeningsQuery({
+    page: 1,
+    page_size: 10,
+    status,
+    text: search || undefined,
+  });
   const [selectedJob, setSelectedJob] = useState<JobSummary | null>(null);
+  // Always just the first page of up to 10 — "View all" (below) is the
+  // escape hatch to the full paginated/searchable/sortable list
+  // (`JobOpeningsListModal`) rather than this preview table growing its own
+  // pager to match.
+  const [isViewAllOpen, setIsViewAllOpen] = useState(false);
   const jobs = data?.items ?? [];
   // Job title comes from the org-service catalogue lookup, not the job summary itself.
   const { titleMap } = useJobTitleNameMap();
@@ -34,14 +46,23 @@ const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4">
-      <div className="mb-3 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
-          <MdOutlineWorkOutline />
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+            <MdOutlineWorkOutline />
+          </div>
+          <div>
+            <h3 className="font-display text-sm font-semibold text-neutral-900">Open jobs</h3>
+            <p className="text-xs text-neutral-400">Click a job to see its candidate pipeline</p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-display text-sm font-semibold text-neutral-900">Open jobs</h3>
-          <p className="text-xs text-neutral-400">Click a job to see its candidate pipeline</p>
-        </div>
+        <Search
+          appname="open jobs section"
+          placeholder="Search jobs..."
+          value={search}
+          allowClear
+          onSearch={setSearch}
+        />
       </div>
 
       {isLoading ? (
@@ -94,7 +115,23 @@ const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
         </div>
       )}
 
+      <div className="mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setIsViewAllOpen(true)}
+          className="group flex items-center gap-1 text-xs font-semibold tracking-wide text-primary uppercase transition-colors hover:text-primary-700 cursor-pointer"
+        >
+          View all
+          <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">
+            →
+          </span>
+        </button>
+      </div>
+
       {selectedJob && <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
+      {isViewAllOpen && (
+        <JobOpeningsListModal title="Open jobs" onClose={() => setIsViewAllOpen(false)} />
+      )}
     </div>
   );
 };

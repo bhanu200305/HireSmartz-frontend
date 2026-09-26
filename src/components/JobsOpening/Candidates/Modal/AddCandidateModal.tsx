@@ -152,6 +152,8 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
     return true;
   };
 
+  const isFormValid = Boolean(file) && firstName.trim().length > 0 && lastName.trim().length > 0;
+
   const handleSubmit = async () => {
     if (!jobOpeningId || !organizationId) {
       showToast({ message: 'Job opening or organization is missing.', type: 'error' });
@@ -345,7 +347,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
             <Button
               type="button"
               onClick={() => void handleSubmit()}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isFormValid}
               className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
             >
               {isUploading ? 'UPLOADING…' : isCreating ? 'ADDING…' : 'ADD CANDIDATE'}

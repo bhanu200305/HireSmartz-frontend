@@ -200,6 +200,33 @@ canvas[data-agora-recording='true'] {
 }
 
 /*
+ * Clicking outside a modal that doesn't close on mask-click otherwise gives
+ * no feedback at all — this flashes the close (X) button red instead, so
+ * the click visibly points at the control that does close it. Triggered via
+ * useModalCloseAttention.ts.
+ */
+@keyframes modal-close-attention-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-3px);
+  }
+  40%,
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+.modal-close-attention {
+  animation: modal-close-attention-shake 0.5s ease-in-out;
+  color: #dc2626 !important;
+  background-color: rgba(220, 38, 38, 0.12) !important;
+}
+
+/*
  * MainLayout's Header and Footer are sticky at z-[1100], above every antd
  * Modal (z-index ~1000+), so they stay visible instead of being buried
  * under a modal's full-viewport mask. --app-header-height/--app-footer-height
@@ -212,14 +239,22 @@ canvas[data-agora-recording='true'] {
  * Reserving that space in the wrap's padding, and capping the modal's own
  * height so its body scrolls internally instead, keeps every modal fully
  * inside the visible gap between them.
+ *
+ * Applied to every antd Modal unconditionally (`.ant-modal-wrap` /
+ * `.ant-modal-content` / `.ant-modal-body`, not just ones opting into the
+ * `.ant-custom-modal` class) — a call site that builds its own `<Modal>`
+ * directly (rather than going through AntdCommonModal) got none of this
+ * otherwise, which is exactly what let a tall modal (e.g. CreateRoleModal's
+ * permissions step) render past the header/footer with no way to reach its
+ * own footer buttons.
  */
-.ant-custom-modal-wrap.ant-modal-wrap {
+.ant-modal-wrap {
   padding-top: var(--app-header-height, 64px);
   padding-bottom: var(--app-footer-height, 84px);
   box-sizing: border-box;
 }
 
-.ant-custom-modal .ant-modal-content {
+.ant-modal-content {
   display: flex;
   flex-direction: column;
   max-height: calc(
@@ -228,16 +263,79 @@ canvas[data-agora-recording='true'] {
   overflow: hidden;
 }
 
-.ant-custom-modal .ant-modal-body {
+.ant-modal-body {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  /* Fallback scroll container for modals that dump content straight into
+     the body instead of managing their own inner scroll region (like
+     AntdCommonModal's `.modal-content` or CreateRoleModal's own scroll div
+     below) — those already opt out of overflow via their own inner
+     wrapper's `overflow: auto`, which zeroes their flex-shrink minimum size
+     and lets them absorb the squeeze first, so this never double-scrolls
+     against them. */
+  overflow-y: auto;
 }
 
-.ant-custom-modal .ant-modal-body .modal-content {
+.ant-modal-body .modal-content {
   min-height: 0;
   overflow-y: auto;
+}
+
+/*
+ * Same header/footer-clearance rule as the antd Modal block above, for the
+ * app's own hand-rolled `fixed inset-0` confirm/edit dialogs (they don't go
+ * through antd's Modal, so none of the rules above reach them). Put
+ * `app-modal-overlay` on the full-viewport backdrop div and
+ * `app-modal-panel` on the actual white dialog box inside it.
+ */
+.app-modal-overlay {
+  padding-top: var(--app-header-height, 64px);
+  padding-bottom: var(--app-footer-height, 84px);
+  box-sizing: border-box;
+}
+
+.app-modal-panel {
+  max-height: calc(
+    100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 48px
+  );
+  overflow-y: auto;
+}
+
+/*
+ * Same reasoning as the sticky Header/Footer's z-[1100] above (see the
+ * comment on .ant-custom-modal-wrap.ant-modal-wrap) — but that only covers
+ * antd Modal, whose own z-index it was deliberately set above. A plain
+ * Dropdown/Select/Popover/Tooltip portalled out of an element that lives
+ * INSIDE the header (the profile menu, the notification bell, a header
+ * filter Select) still defaults to antd's own base z-index (~1050), lower
+ * than the header sitting on top of it — so the header visually cuts across
+ * the top of its own dropdown instead of the dropdown rendering cleanly over
+ * it. Raising these above 1100 fixes every such popup at once, wherever in
+ * the app it's triggered from, rather than passing a one-off `zIndex` prop
+ * to each `<Dropdown>`/`<Select>` call site.
+ */
+.ant-dropdown,
+.ant-select-dropdown,
+.ant-popover,
+.ant-tooltip {
+  z-index: 1200 !important;
+}
+
+/*
+ * Same reasoning again, for antd Drawer (BookingDetailDrawer, NotesSidePanel,
+ * the mobile Sidebar drawer, BulkSendSmsModal): its default z-index (~1000)
+ * sits BELOW the sticky Header/Footer's 1100, so a full-height drawer's mask
+ * and panel render underneath them instead of over them — the footer's
+ * opaque band then visually cuts across the bottom of the drawer's content
+ * instead of the drawer covering it. Raising the whole component above 1100
+ * makes it (mask included) sit on top of the header/footer like any other
+ * overlay, the same fix already applied to Dropdown/Select/Popover/Tooltip
+ * above.
+ */
+.ant-drawer {
+  z-index: 1200 !important;
 }
 
 .ant-tabs-tab:focus {
@@ -356,7 +454,7 @@ canvas[data-agora-recording='true'] {
 /* Form / unwrapped Ant Design Select & TreeSelect */
 .ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(
     .ant-select-borderless
-  ):not(.send-email-cc-bcc-select)
+  ):not(.send-email-cc-bcc-select):not(.rows-per-page-select)
   .ant-select-selector {
   border-radius: 9999px !important;
   background-color: #ffffff !important;
@@ -379,25 +477,56 @@ canvas[data-agora-recording='true'] {
    what's actually rendered, at every antd size. */
 .ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(
     .ant-select-borderless
-  ):not(.send-email-cc-bcc-select) {
+  ):not(.send-email-cc-bcc-select):not(.rows-per-page-select) {
   min-height: 36px !important;
 }
 
 .ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(
     .ant-select-borderless
-  )
+  ):not(.rows-per-page-select)
   .ant-select-arrow {
   color: var(--gray-800);
 }
 
 .ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(
     .ant-select-borderless
-  )
+  ):not(.rows-per-page-select)
   .ant-select-selection-item,
 .ant-select:not(.custom-select):not(.custom-select-jobs):not(.custom-select-no-border):not(
     .ant-select-borderless
-  )
+  ):not(.rows-per-page-select)
   .ant-select-selection-placeholder {
+  color: var(--gray-800);
+}
+
+/* Compact numeric "rows per page" selector shared by every list-drilldown
+   modal's pagination footer (PlatformTenantsListModal, TeamMembersListModal,
+   TenantUsersListModal, JobOpeningsListModal, CandidatesListModal). Excluded
+   from the generic plain-Select rule above on purpose — that rule's 28px
+   right padding is sized for wide filter dropdowns ("Categories", "Status");
+   applied to a bare 1-2 digit value here it reads as a large dead gap
+   between the number and its arrow. Same pill look (white background,
+   rounded, default antd border), just narrower and snugger.
+*/
+.rows-per-page-select.ant-select {
+  min-height: 36px;
+  width: 68px;
+}
+
+.rows-per-page-select .ant-select-selector {
+  border-radius: 9999px !important;
+  background-color: #ffffff !important;
+  min-height: 36px !important;
+  padding-inline: 10px 22px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.rows-per-page-select .ant-select-arrow {
+  color: var(--gray-800);
+}
+
+.rows-per-page-select .ant-select-selection-item {
   color: var(--gray-800);
 }
 
@@ -554,6 +683,18 @@ select:focus {
 .industry-select-wrapper .ant-select-selector:focus {
   border-color: transparent !important;
   box-shadow: none !important;
+}
+
+/* Fill the wrapper's fixed height (matched to the Website field's Input
+   height) instead of floating antd's own shorter default selector box
+   centered inside it — keeps text/placeholder vertically aligned with the
+   Input right next to it. */
+.industry-select-wrapper .ant-select-selector {
+  height: 100% !important;
+  align-items: center;
+  padding-inline: 0 !important;
+  background: transparent !important;
+  border: none !important;
 }
 
 .view-candidate-tabs .ant-tabs-tab.ant-tabs-tab-active {

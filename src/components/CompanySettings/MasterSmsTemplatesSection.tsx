@@ -15,7 +15,12 @@ const humanizeType = (value: string): string =>
   value
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
+    .join(' ')
+    // Display-only: the backend's `notification_type` enum (still sent as-is
+    // on save) spells these four `..._invited` — this reads "Invitation"
+    // instead, matching `invitation_accepted`'s own noun form rather than
+    // the odd-one-out adjective.
+    .replace(/\bInvited\b/, 'Invitation');
 
 const EditMasterSmsTemplateModal: React.FC<{
   template: MasterSmsTemplate | null;

@@ -259,7 +259,6 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
           onChange={handleChange}
           className={`w-full capitalize ${className}`}
           placeholder={placeholder}
-          popupClassName="rounded-3xl"
           variant="borderless"
           loading={loading}
           showSearch

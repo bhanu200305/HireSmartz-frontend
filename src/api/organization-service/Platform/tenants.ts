@@ -26,6 +26,12 @@ export type ListPlatformTenantsArgs = {
   // platform_router.py), this was just never wired from the frontend.
   created_after?: string;
   created_before?: string;
+  // Real server-side sort — platform_router.py's own Literal, not a
+  // freeform string. Defaults match the endpoint's own defaults
+  // (created_at desc), so an unfiltered caller keeps getting exactly what
+  // it always has if it doesn't pass these.
+  sort_by?: 'created_at' | 'company_name';
+  sort_order?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
 };
@@ -91,6 +97,8 @@ const extendedApi = orgApi.injectEndpoints({
           ...(args?.q ? { q: args.q } : {}),
           ...(args?.created_after ? { created_after: args.created_after } : {}),
           ...(args?.created_before ? { created_before: args.created_before } : {}),
+          ...(args?.sort_by ? { sort_by: args.sort_by } : {}),
+          ...(args?.sort_order ? { sort_order: args.sort_order } : {}),
           limit: args?.limit ?? 50,
           offset: args?.offset ?? 0,
         },

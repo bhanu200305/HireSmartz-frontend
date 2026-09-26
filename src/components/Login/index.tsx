@@ -106,11 +106,17 @@ const Login = () => {
 
   useEffect(() => {
     if (hasShownSuccessToastRef.current) return;
-    const successMessage = (location.state as { successMessage?: string } | null)?.successMessage;
-    if (successMessage) {
+    const state = location.state as { successMessage?: string; prefillEmail?: string } | null;
+    if (state?.successMessage) {
       hasShownSuccessToastRef.current = true;
-      showToast({ message: successMessage, type: 'success' });
-      // Clear the state so the toast doesn't re-appear on refresh
+      showToast({ message: state.successMessage, type: 'success' });
+    }
+    if (state?.successMessage || state?.prefillEmail) {
+      hasShownSuccessToastRef.current = true;
+      // Clear the state so neither the toast nor the prefilled email
+      // re-appears on refresh/back — the latter especially shouldn't linger
+      // in history state on a shared machine. The email itself was already
+      // read into localState's initial value below before this runs.
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, []);
@@ -145,7 +151,7 @@ const Login = () => {
   const [localState, setLocalState] = useReducer(
     (prevState, newState) => ({ ...prevState, ...newState }),
     {
-      email: '',
+      email: (location.state as { prefillEmail?: string } | null)?.prefillEmail || '',
       password: '',
       errors: {} as FormErrors,
       rememberMe: Boolean(getLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME)) === true,

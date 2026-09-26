@@ -46,9 +46,17 @@ const ResetPassword = () => {
   const onSubmit = async (data: ResetPasswordFormValues) => {
     if (!token) return;
     try {
-      await resetPassword({ token, new_password: data.newPassword }).unwrap();
+      const result = await resetPassword({ token, new_password: data.newPassword }).unwrap();
       setIsDone(true);
-      setTimeout(() => navigate('/login'), 2000);
+      // Defensive read: a missing `email` (e.g. still on the old 204
+      // response, before the backend change is deployed) just means no
+      // prefill — the reset itself already succeeded by this point, so it
+      // must never turn into an error toast.
+      const prefillEmail = result?.email;
+      setTimeout(
+        () => navigate('/login', { state: prefillEmail ? { prefillEmail } : undefined }),
+        2000
+      );
     } catch (err) {
       if (getAuthErrorCode(err) === 'invalid_verification_token') {
         setTokenIsDead(true);

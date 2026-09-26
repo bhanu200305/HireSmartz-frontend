@@ -34,9 +34,9 @@ const VerifyEmail = () => {
 
     verifyEmail({ token })
       .unwrap()
-      .then(() => {
+      .then((result) => {
         setScreen('verified');
-        setTimeout(() => navigate('/login'), 2000);
+        setTimeout(() => navigate('/login', { state: { prefillEmail: result.email } }), 2000);
       })
       .catch((err) => {
         const errorCode = getAuthErrorCode(err);

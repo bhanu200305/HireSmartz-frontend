@@ -78,6 +78,8 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
     onClose();
   };
 
+  const isFormValid = email.trim().length > 0 && (kind !== 'staff' || role.trim().length > 0);
+
   const handleSubmit = async () => {
     if (!email.trim()) {
       showToast({ message: 'Email is required.', type: 'error' });
@@ -116,7 +118,13 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
             { label: 'Super Admin / co-founder', value: 'super_admin' },
           ]}
         />
-        <Input placeholder="Email *" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input
+          type="email"
+          noAutoCapitalize
+          placeholder="Email *"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
         {kind === 'staff' && (
           <>
             <Select
@@ -129,7 +137,9 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
               notFoundContent={
                 rolesForbidden ? "You don't have permission to view platform roles." : undefined
               }
-              options={platformRoles.map((r) => ({ label: r.roleName, value: r.roleName }))}
+              options={platformRoles
+                .filter((r) => r.roleName !== 'super_admin')
+                .map((r) => ({ label: r.roleName, value: r.roleName }))}
             />
             {rolesForbidden && (
               <p className="text-xs text-red-500">
@@ -166,7 +176,7 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
           <Button
             className="w-full bg-button text-white rounded-full py-2"
             onClick={handleSubmit}
-            disabled={isLoading}
+            disabled={isLoading || !isFormValid}
           >
             {isLoading ? 'Sending…' : 'Send invite'}
           </Button>

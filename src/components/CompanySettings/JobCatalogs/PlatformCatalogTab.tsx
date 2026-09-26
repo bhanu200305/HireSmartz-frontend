@@ -1,10 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import { Select } from 'antd';
 import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
-import { Button, CustomTable, Input, Typography, paginationConfig, showToast } from '../../shared';
+import { Button, CustomTable, Input, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
+import MasterPagination from '../../shared/ui/MasterPagination';
+import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import CatalogFormFields, { type CatalogField } from './CatalogFormFields';
 
@@ -67,6 +71,11 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
   const [itemToDelete, setItemToDelete] = useState<TItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize(
+    `company_settings_catalog_${itemNounPlural.trim().toLowerCase().replace(/\s+/g, '_')}`,
+    10
+  );
 
   const filtered = useMemo(() => {
     const q = searchText.trim().toLowerCase();
@@ -168,7 +177,9 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
     },
   ].filter(Boolean) as TableProps<TItem & { key: string }>['columns'];
 
-  const dataSource = filtered.map((item) => ({ ...item, key: idOf(item) }));
+  const dataSource = filtered
+    .slice(page * pageSize, page * pageSize + pageSize)
+    .map((item) => ({ ...item, key: idOf(item) }));
 
   return (
     <div>
@@ -176,7 +187,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
         <div>
           <Typography variant="body2">{title}</Typography>
           <span className="text-xs font-medium text-gray-400">
-            {dataSource.length} {dataSource.length === 1 ? itemNounSingular : itemNounPlural}
+            {filtered.length} {filtered.length === 1 ? itemNounSingular : itemNounPlural}
             {searchText.trim() && ` of ${items?.length ?? 0}`}
           </span>
         </div>
@@ -186,17 +197,34 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
             placeholder={`Search ${itemNounPlural.toLowerCase()}...`}
             className="w-56"
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              setPage(0);
+            }}
           />
           {allowCreate && (
             <Button
-              className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+              className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
               onClick={openAdd}
             >
               <MdOutlineAdd /> Add {itemNounSingular.toLowerCase()}
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
+        <span>Rows per page</span>
+        <Select
+          size="small"
+          value={pageSize}
+          className="rows-per-page-select"
+          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
       </div>
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
@@ -208,9 +236,17 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
               ? `No ${itemNounPlural.toLowerCase()} match your search.`
               : `No ${itemNounPlural.toLowerCase()} yet.`
           }
-          pagination={paginationConfig(itemNounPlural.toLowerCase())}
+          pagination={false}
         />
       </div>
+
+      <MasterPagination
+        current={page + 1}
+        pageSize={pageSize}
+        total={filtered.length}
+        itemLabel={itemNounPlural.toLowerCase()}
+        onPageChange={(nextPage) => setPage(nextPage - 1)}
+      />
 
       <AntdCommonModal
         open={modalState !== null}
@@ -234,7 +270,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
             <Button
               className="w-full bg-button text-white rounded-full py-2"
               onClick={handleSubmit}
-              disabled={isSaving}
+              disabled={isSaving || missingRequired}
             >
               {isSaving ? 'Saving…' : 'Save'}
             </Button>

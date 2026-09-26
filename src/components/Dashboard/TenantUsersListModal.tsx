@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { Select } from 'antd';
 import type { TableProps } from 'antd';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import CustomTable from '../shared/ui/table';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { Badge } from '../shared/ui/badge';
 import { Loader } from '../shared/ui/loader';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import { useListPlatformTenantUsersQuery } from '../../api/organization-service/Platform/users';
 import type { OrgUser } from '../../api/organization-service/Users/users';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
+import ViewPlatformUserModal from '../CustomerDashboard/ViewCustomer/panels/ViewPlatformUserModal';
 
 type UserRow = OrgUser & { key: string };
 
@@ -28,10 +29,12 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
 }) => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('tenant_active_users_modal', 10);
+  const [viewingUser, setViewingUser] = useState<OrgUser | null>(null);
+  const [includeInactive, setIncludeInactive] = useState(false);
 
   const { data, isLoading } = useListPlatformTenantUsersQuery({
     tenantId,
-    includeInactive: false,
+    includeInactive,
     limit: pageSize,
     offset: page * pageSize,
   });
@@ -44,10 +47,16 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
       title: 'Name',
       key: 'name',
       render: (_: unknown, row: UserRow) => (
-        <div>
-          <span className="block font-semibold text-neutral-900">{row.full_name}</span>
+        <button
+          type="button"
+          onClick={() => setViewingUser(row)}
+          className="text-left cursor-pointer"
+        >
+          <span className="block font-semibold text-neutral-900 hover:text-primary-600 hover:underline">
+            {row.full_name}
+          </span>
           {row.title && <span className="text-xs text-neutral-400">{row.title}</span>}
-        </div>
+        </button>
       ),
     },
     {
@@ -70,12 +79,28 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
       modalProps={{ width: 780, maskClosable: true }}
     >
       <div className="flex flex-col gap-3">
+<<<<<<< Updated upstream
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Select
+            className="w-48"
+            value={includeInactive ? 'all' : 'active'}
+            onChange={(value) => {
+              setIncludeInactive(value === 'all');
+              setPage(0);
+            }}
+            options={[
+              { label: 'Active only', value: 'active' },
+              { label: 'Include deactivated', value: 'all' },
+            ]}
+          />
+        </div>
+
         <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
           <span>Rows per page</span>
           <Select
             size="small"
             value={pageSize}
-            className="w-20"
+            className="rows-per-page-select"
             options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
             onChange={(size) => {
               setPageSize(size);
@@ -83,6 +108,16 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
             }}
           />
         </div>
+=======
+        <RowsPerPageSelect
+          pageSize={pageSize}
+          options={PAGE_SIZE_OPTIONS}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
+>>>>>>> Stashed changes
 
         <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {isLoading ? (
@@ -91,6 +126,12 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
             <CustomTable<UserRow>
               columns={columns}
               dataSource={dataSource}
+              onRow={(row) => ({
+                onClick: () => setViewingUser(row),
+                className: 'cursor-pointer',
+              })}
+              enableKeyboardNav
+              onRowEnter={(row) => setViewingUser(row)}
               emptyText={
                 <div className="py-10 text-center text-sm text-neutral-400">No active users.</div>
               }
@@ -106,6 +147,13 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
           onPageChange={(nextPage) => setPage(nextPage - 1)}
         />
       </div>
+
+      <ViewPlatformUserModal
+        open={viewingUser !== null}
+        tenantId={tenantId}
+        user={viewingUser}
+        onClose={() => setViewingUser(null)}
+      />
     </AntdCommonModal>
   );
 };

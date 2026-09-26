@@ -47,8 +47,10 @@ const RecruiterRoundScoreModal = ({
     }
   }, [open, currentScore, currentReason]);
 
+  const isFormValid = score > 0 && reason.trim().length > 0;
+
   const handleSave = async () => {
-    if (!score || !reason.trim()) {
+    if (!isFormValid) {
       showToast({ message: 'Both a score and a reason are required.', type: 'error' });
       return;
     }
@@ -106,7 +108,7 @@ const RecruiterRoundScoreModal = ({
         <Button
           type="button"
           onClick={() => void handleSave()}
-          disabled={isLoading || isDeleting}
+          disabled={isLoading || isDeleting || !isFormValid}
           className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
         >
           {isLoading ? 'SAVING…' : 'SAVE SCORE'}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal } from 'antd';
+import { useModalCloseAttention } from '../../../shared/ui/useModalCloseAttention';
 
 type ScoringCriteriaModalProps = {
   visible: boolean;
@@ -38,6 +39,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
   subtitle,
   matchMetrics,
 }) => {
+  const withCloseAttention = useModalCloseAttention();
   const METRIC_DESCRIPTION_MAP: Record<ResumeMetricLabel, string> = {
     [RESUME_METRIC_LABELS.SKILLS_MATCH]:
       'Evaluates resumes based on exact matches to the required skills listed in the job description.',
@@ -412,11 +414,11 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
     <div>
       <Modal
         open={visible}
-        onCancel={onClose}
+        onCancel={withCloseAttention({ onClose })}
         footer={footer}
         centered
         width="80vw"
-        maskClosable={false}
+        maskClosable
         keyboard
         className="custom-modal"
       >

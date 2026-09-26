@@ -67,7 +67,7 @@ const RolePermissionsHint: React.FC<RolePermissionsHintProps> = ({
       }}
     >
       <span
-        className={`cursor-help border-b border-dashed border-gray-300 hover:border-primary-400 hover:text-primary-600 ${className}`}
+        className={`cursor-pointer border-b border-dashed border-gray-300 hover:border-primary-400 hover:text-primary-600 ${className}`}
       >
         {permissions.length} permissions
       </span>

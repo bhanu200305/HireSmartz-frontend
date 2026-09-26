@@ -79,15 +79,18 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({
       subtitle="Adjust this role's baseline permissions and location-specific overrides."
       modalProps={{
         width: 760,
-        // Same overflow cap as CreateRoleModal's Step 2 — this renders the
-        // identical RolePermissionsEditor and can grow just as tall. Title
-        // and subtitle scroll along with it here (unlike CreateRoleModal's
-        // fixed gradient header, there's nothing else eating into the
-        // viewport budget), so this can safely cap a bit higher.
-        // `overflowX: 'hidden'` avoids the same stray-horizontal-scrollbar
-        // quirk documented in CreateRoleModal's own styles.body comment.
+        // No hardcoded vh cap here — index.css already caps every antd
+        // Modal's `.ant-modal-content` at the real, ResizeObserver-tracked
+        // gap between the app header/footer and scrolls `.modal-content`
+        // inside it. A per-modal vh guess on top of that is a second,
+        // independent height limit that can disagree with the real one and
+        // silently clip this modal's own sticky Save/Cancel row — see the
+        // comment on `.ant-modal-body .modal-content` in index.css.
+        // `overflowX: 'hidden'` avoids a stray horizontal scrollbar per the
+        // CSS "orthogonal overflow" rule (overflow-y non-visible computes
+        // overflow-x to auto unless it's set explicitly too).
         styles: {
-          body: { maxHeight: '76vh', overflowY: 'auto', overflowX: 'hidden', paddingRight: 14 },
+          body: { overflowX: 'hidden', paddingRight: 14 },
         },
         classNames: { body: 'thin-scrollbar' },
       }}
@@ -115,7 +118,11 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({
         showLocationOverrides={role.scope === 'tenant'}
       />
 
-      <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+      {/* Sticky, not scrolled-away: same treatment as CreateRoleModal's
+          Step 2 footer — this renders the identical RolePermissionsEditor
+          and can grow just as tall, so Cancel/Save need to stay reachable
+          without scrolling all the way down past it. */}
+      <div className="sticky bottom-0 -mx-6 mt-6 flex justify-end gap-2 border-t border-gray-100 bg-white px-6 py-4 z-10">
         <button
           type="button"
           onClick={onClose}

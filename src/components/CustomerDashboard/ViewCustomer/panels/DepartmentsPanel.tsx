@@ -165,7 +165,7 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             />
           </div>
           <Button
-            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+            className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
             onClick={() => setIsAddOpen(true)}
           >
             <MdOutlineAdd /> Add department
@@ -212,7 +212,7 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             <Button
               className="w-full bg-button text-white rounded-full py-2"
               onClick={handleAdd}
-              disabled={isAdding}
+              disabled={isAdding || !name.trim()}
             >
               {isAdding ? 'Saving…' : 'Save'}
             </Button>

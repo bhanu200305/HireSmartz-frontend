@@ -70,7 +70,6 @@ const SyncAts = () => {
                       showSearch
                       allowClear
                       placeholder="Select ATS"
-                      popupClassName="rounded-3xl"
                       loading={atsLoading}
                       filterOption={(input, option) =>
                         (option?.children ?? '')

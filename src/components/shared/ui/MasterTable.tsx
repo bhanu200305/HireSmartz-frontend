@@ -119,7 +119,6 @@ export const MasterTable = React.forwardRef<HTMLDivElement, MasterTableProps<any
                   }
                   allowClear
                   className="w-full custom-select"
-                  popupClassName="rounded-3xl"
                   variant="borderless"
                   options={filter.options}
                 />

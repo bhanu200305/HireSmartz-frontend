@@ -1,19 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
-import { Select as AntSelect } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
+import { Select, Select as AntSelect } from 'antd';
 import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
-import {
-  Badge,
-  Button,
-  CustomTable,
-  Input,
-  Typography,
-  paginationConfig,
-  showToast,
-} from '../shared';
+import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import MasterPagination from '../shared/ui/MasterPagination';
+import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
   useListPlatformJobTitlesQuery,
   useCreatePlatformJobTitleMutation,
@@ -37,6 +33,12 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 type FormState = { name: string; description: string; departmentIds: string[] };
 const emptyForm: FormState = { name: '', description: '', departmentIds: [] };
 type JobTitleRow = PlatformJobTitle & { key: string };
+type SortKey = 'code' | 'name';
+
+const SORT_COMPARATORS: Record<SortKey, (a: PlatformJobTitle, b: PlatformJobTitle) => number> = {
+  code: (a, b) => a.code.localeCompare(b.code),
+  name: (a, b) => a.name.localeCompare(b.name),
+};
 
 /**
  * GET/POST/PUT/DELETE /v1/platform/job-titles — the platform's master
@@ -59,6 +61,10 @@ const JobTitlesTab: React.FC = () => {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [jobTitleToDelete, setJobTitleToDelete] = useState<PlatformJobTitle | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('company_settings_job_titles', 10);
 
   // Hooks must run unconditionally on every render — kept above the
   // `if (isLoading) return` below, not after it, or React sees a different
@@ -74,6 +80,30 @@ const JobTitlesTab: React.FC = () => {
     );
   }, [jobTitles, searchText]);
 
+  const sortedJobTitleList = useMemo(() => {
+    const sorted = [...filteredJobTitleList].sort(SORT_COMPARATORS[sortBy]);
+    return sortOrder === 'desc' ? sorted.reverse() : sorted;
+  }, [filteredJobTitleList, sortBy, sortOrder]);
+
+  const sortOrderFor = (key: SortKey): 'ascend' | 'descend' | undefined =>
+    sortBy === key ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
+  const handleTableChange: TableProps<JobTitleRow>['onChange'] = (
+    _pagination,
+    _filters,
+    sorter
+  ) => {
+    const active = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<JobTitleRow>);
+    setPage(0);
+    if (!active?.order || !active.columnKey) {
+      setSortBy('name');
+      setSortOrder('asc');
+      return;
+    }
+    setSortBy(active.columnKey as SortKey);
+    setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
+  };
+
   const openAdd = () => {
     setForm(emptyForm);
     setModalState({ mode: 'add' });
@@ -83,9 +113,12 @@ const JobTitlesTab: React.FC = () => {
     setModalState({ mode: 'edit', jobTitle });
   };
 
+  const isFormValid =
+    form.name.trim().length > 0 && (modalState?.mode === 'edit' || form.departmentIds.length > 0);
+
   const handleSubmit = async () => {
-    if (!form.name.trim() || (modalState?.mode === 'add' && form.departmentIds.length === 0)) {
-      showToast({ message: 'Name and at least one department are required.', type: 'error' });
+    if (!isFormValid) {
+      showToast({ message: 'Please fill the mandatory fields to save.', type: 'error' });
       return;
     }
     try {
@@ -155,7 +188,8 @@ const JobTitlesTab: React.FC = () => {
       dataIndex: 'code',
       key: 'code',
       width: 160,
-      sorter: (a: JobTitleRow, b: JobTitleRow) => a.code.localeCompare(b.code),
+      sorter: true,
+      sortOrder: sortOrderFor('code'),
       render: (_: unknown, jobTitle: JobTitleRow) => (
         <Badge status="neutral" dot={false} className="font-mono tracking-wide">
           {jobTitle.code}
@@ -166,7 +200,8 @@ const JobTitlesTab: React.FC = () => {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      sorter: (a: JobTitleRow, b: JobTitleRow) => a.name.localeCompare(b.name),
+      sorter: true,
+      sortOrder: sortOrderFor('name'),
       render: (_: unknown, jobTitle: JobTitleRow) => (
         <span className="font-semibold text-gray-900">{jobTitle.name}</span>
       ),
@@ -175,8 +210,6 @@ const JobTitlesTab: React.FC = () => {
       title: 'Description',
       dataIndex: 'description',
       key: 'description',
-      sorter: (a: JobTitleRow, b: JobTitleRow) =>
-        (a.description ?? '').localeCompare(b.description ?? ''),
       render: (_: unknown, jobTitle: JobTitleRow) => (
         <span className="text-gray-500 text-sm">{jobTitle.description || '-'}</span>
       ),
@@ -208,10 +241,9 @@ const JobTitlesTab: React.FC = () => {
     },
   ];
 
-  const dataSource: JobTitleRow[] = filteredJobTitleList.map((jobTitle) => ({
-    ...jobTitle,
-    key: jobTitle.job_title_id,
-  }));
+  const dataSource: JobTitleRow[] = sortedJobTitleList
+    .slice(page * pageSize, page * pageSize + pageSize)
+    .map((jobTitle) => ({ ...jobTitle, key: jobTitle.job_title_id }));
 
   return (
     <div>
@@ -219,7 +251,8 @@ const JobTitlesTab: React.FC = () => {
         <div>
           <Typography variant="body2">Platform-wide job-title catalog.</Typography>
           <span className="text-xs font-medium text-gray-400">
-            {dataSource.length} {dataSource.length === 1 ? 'job title' : 'job titles'}
+            {sortedJobTitleList.length}{' '}
+            {sortedJobTitleList.length === 1 ? 'job title' : 'job titles'}
             {searchText.trim() && ` of ${jobTitles?.length ?? 0}`}
           </span>
         </div>
@@ -229,10 +262,13 @@ const JobTitlesTab: React.FC = () => {
             placeholder="Search job titles..."
             className="w-64"
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              setPage(0);
+            }}
           />
           <Button
-            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+            className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
             onClick={openAdd}
           >
             <MdOutlineAdd /> Add job title
@@ -240,14 +276,37 @@ const JobTitlesTab: React.FC = () => {
         </div>
       </div>
 
+      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
+        <span>Rows per page</span>
+        <Select
+          size="small"
+          value={pageSize}
+          className="rows-per-page-select"
+          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
+      </div>
+
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable<JobTitleRow>
           columns={columns}
           dataSource={dataSource}
           emptyText={searchText.trim() ? 'No job titles match your search.' : 'No job titles yet.'}
-          pagination={paginationConfig('job titles')}
+          pagination={false}
+          onChange={handleTableChange}
         />
       </div>
+
+      <MasterPagination
+        current={page + 1}
+        pageSize={pageSize}
+        total={sortedJobTitleList.length}
+        itemLabel="job titles"
+        onPageChange={(nextPage) => setPage(nextPage - 1)}
+      />
 
       <AntdCommonModal
         open={modalState !== null}
@@ -290,7 +349,7 @@ const JobTitlesTab: React.FC = () => {
             <Button
               className="w-full bg-button text-white rounded-full py-2"
               onClick={handleSubmit}
-              disabled={isCreating || isUpdating}
+              disabled={isCreating || isUpdating || !isFormValid}
             >
               {isCreating || isUpdating ? 'Saving…' : 'Save'}
             </Button>

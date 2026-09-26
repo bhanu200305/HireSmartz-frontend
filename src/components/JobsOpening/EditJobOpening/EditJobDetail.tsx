@@ -2557,7 +2557,6 @@ const EditJobDetail = () => {
                       }}
                       className="w-full custom-select-jobs placeholder-style"
                       placeholder="Select Exemption Status"
-                      popupClassName="rounded-3xl"
                       loading={exemptionLoading}
                       allowClear
                     >

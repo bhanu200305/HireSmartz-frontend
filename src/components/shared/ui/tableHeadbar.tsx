@@ -87,7 +87,6 @@ const TableHeadBar: React.FC<TableHeadBarProps> = ({
                 placeholder="Status"
                 allowClear
                 className="w-full custom-select"
-                popupClassName="rounded-xl"
                 variant="borderless"
                 onChange={handleStatusChange}
                 value={getSelectValue()}

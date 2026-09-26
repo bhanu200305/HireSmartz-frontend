@@ -90,8 +90,13 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
     setForm((prev) => ({ ...prev, ...result.value }));
   };
 
+  const isFormValid =
+    form.address_line_1.trim().length > 0 &&
+    form.city.trim().length > 0 &&
+    form.country.trim().length > 0;
+
   const handleSubmit = async () => {
-    if (!form.address_line_1.trim() || !form.city.trim() || !form.country.trim()) {
+    if (!isFormValid) {
       showToast({ message: 'Address, city, and country are required.', type: 'error' });
       return;
     }
@@ -137,7 +142,7 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
         <Button
           className="w-full bg-button text-white rounded-full py-2"
           onClick={handleSubmit}
-          disabled={isSaving}
+          disabled={isSaving || !isFormValid}
         >
           {isSaving ? 'Saving…' : 'Save'}
         </Button>

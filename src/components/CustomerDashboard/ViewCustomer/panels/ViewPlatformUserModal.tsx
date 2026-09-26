@@ -401,6 +401,8 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
     }
   };
 
+  const isEditFormValid = Boolean(editForm && editForm.first_name.trim().length > 0);
+
   if (!displayUser) return null;
 
   return (
@@ -423,7 +425,13 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
         {isEditing && editForm ? (
           <div className="pb-4 border-b border-gray-100">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input placeholder="Email" defaultValue={editForm.email} onBlur={handleEmailBlur} />
+              <Input
+                type="email"
+                noAutoCapitalize
+                placeholder="Email"
+                defaultValue={editForm.email}
+                onBlur={handleEmailBlur}
+              />
               <Input placeholder="First name *" {...field('first_name')} />
               <Input placeholder="Last name" {...field('last_name')} />
               <NameTitleSelect
@@ -460,7 +468,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
               <Button
                 className="rounded-full bg-button text-white px-6 py-2 disabled:opacity-60"
                 onClick={() => save()}
-                disabled={isSaving}
+                disabled={isSaving || !isEditFormValid}
               >
                 {isSaving ? 'Saving…' : 'Save changes'}
               </Button>

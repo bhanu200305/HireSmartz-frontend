@@ -7,6 +7,7 @@ import { RootState } from '../../redux/provider/store';
 import MainLayout from '../../layouts/MainLayout';
 import { Button, showToast } from '../../components/shared';
 import { Loader } from '../../components/shared/ui/loader';
+import { useModalCloseAttention } from '../../components/shared/ui/useModalCloseAttention';
 import {
   useLazyGetNylasAuthUrlQuery,
   useGetNylasGrantStatusQuery,
@@ -51,6 +52,7 @@ const CalendarSettingsPage = () => {
 
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+  const withCloseAttention = useModalCloseAttention();
 
   const {
     data: grantStatus,
@@ -266,14 +268,14 @@ const CalendarSettingsPage = () => {
 
       <Modal
         open={showSwitchModal}
-        onCancel={() => setShowSwitchModal(false)}
+        onCancel={withCloseAttention({ onClose: () => setShowSwitchModal(false) })}
         onOk={confirmSwitch}
         okText="Yes, switch"
         cancelText="Cancel"
         okButtonProps={{ loading: isDisconnecting || isConnecting, danger: true }}
         title="Switch calendar"
         centered
-        maskClosable={false}
+        maskClosable
       >
         <p className="text-gray-600 text-sm">
           Your current calendar connection will be <strong>disconnected</strong> before linking a
@@ -284,14 +286,14 @@ const CalendarSettingsPage = () => {
 
       <Modal
         open={showDisconnectModal}
-        onCancel={() => setShowDisconnectModal(false)}
+        onCancel={withCloseAttention({ onClose: () => setShowDisconnectModal(false) })}
         onOk={confirmDisconnect}
         okText="Yes, disconnect"
         cancelText="Cancel"
         okButtonProps={{ loading: isDisconnecting, danger: true }}
         title="Disconnect calendar"
         centered
-        maskClosable={false}
+        maskClosable
       >
         <p className="text-gray-600 text-sm">
           Your calendar will be <strong>disconnected</strong>. Any scheduled interviews tied to this

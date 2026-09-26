@@ -12,7 +12,6 @@ type PermissionsStepProps = {
   onLocationOverridesChange: (next: RoleLocationPermissions[]) => void;
   availableLocations: LocationOption[];
   showLocationOverrides: boolean;
-  onBack: () => void;
   onSubmit: () => void;
   isSubmitting: boolean;
 };
@@ -27,7 +26,6 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
   onLocationOverridesChange,
   availableLocations,
   showLocationOverrides,
-  onBack,
   onSubmit,
   isSubmitting,
 }) => (
@@ -48,15 +46,13 @@ const PermissionsStep: React.FC<PermissionsStepProps> = ({
       showLocationOverrides={showLocationOverrides}
     />
 
-    <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-      <button
-        type="button"
-        onClick={onBack}
-        disabled={isSubmitting}
-        className="text-sm font-semibold text-gray-600 border border-gray-200 rounded-full px-5 py-2 cursor-pointer"
-      >
-        ← Back
-      </button>
+    {/* Sticky, not scrolled-away: this step's permission matrix can run
+        well past one screen, and a footer that simply flowed after it (the
+        old behavior) meant Submit was only reachable after scrolling all
+        the way down — same sticky-footer treatment as the Careers public
+        pages use for their own long-form submit bars. "Back" itself lives
+        in the modal header now (see CreateRoleModal/index.tsx), not here. */}
+    <div className="sticky bottom-0 -mx-6 mt-6 flex justify-end gap-2 border-t border-gray-100 bg-white px-6 py-4 z-10">
       <button
         type="button"
         onClick={onSubmit}

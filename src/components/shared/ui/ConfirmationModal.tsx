@@ -26,8 +26,8 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
   cancelText = 'CANCEL',
 }) => {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-neutral-900/50 z-[2000] p-4">
-      <div className="bg-white p-6 rounded-2xl shadow-lg border border-neutral-100 max-w-lg w-full relative">
+    <div className="app-modal-overlay fixed inset-0 flex items-center justify-center bg-neutral-900/50 z-[2000] p-4">
+      <div className="app-modal-panel bg-white p-6 rounded-2xl shadow-lg border border-neutral-100 max-w-lg w-full relative">
         {/* Title section with proper text wrapping */}
         <div className="flex items-start justify-between mb-5 gap-3">
           <h2 className="font-display text-lg font-semibold text-neutral-900 flex-1 break-words overflow-hidden">

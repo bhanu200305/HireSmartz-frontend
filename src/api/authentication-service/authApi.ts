@@ -127,14 +127,28 @@ const authBaseQueryWithReauth: BaseQueryFn<
 
 /**
  * A 204 No Content response has no body — authentication-service returns
- * this for logout, reset-password, change-password, MFA disable and session
- * revocation. Calling response.json() on it throws, so every endpoint that
- * documents a 204 passes this as its responseHandler instead of relying on
- * fetchBaseQuery's default JSON parse.
+ * this for logout, change-password, account-recovery/complete, MFA disable
+ * and session revocation. Calling response.json() on it throws, so every
+ * endpoint that documents a 204 passes this as its responseHandler instead
+ * of relying on fetchBaseQuery's default JSON parse.
+ *
+ * fetchBaseQuery calls this same responseHandler for a FAILED response too
+ * (a 4xx/5xx from the same endpoint), not just the successful 204 — and
+ * those do have a JSON body (the usual error envelope, sometimes carrying
+ * e.g. `data.details.violations` for a password-policy failure). Discarding
+ * the body unconditionally lost that: getAuthErrorMessage had nothing to
+ * read and every caller fell back to its generic message. So parse it as
+ * JSON whenever there's a body at all, and only return `undefined` for the
+ * genuinely-empty 204 case this exists for.
  */
-export const noContentResponseHandler = async (response: Response): Promise<undefined> => {
-  await response.text();
-  return undefined;
+export const noContentResponseHandler = async (response: Response): Promise<unknown> => {
+  const text = await response.text();
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 };
 
 export const authApi = createApi({

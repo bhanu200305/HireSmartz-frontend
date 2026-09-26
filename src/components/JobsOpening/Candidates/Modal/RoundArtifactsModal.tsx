@@ -313,7 +313,12 @@ const RoundArtifactsModal = ({
       modalProps={{
         width: 640,
         maskClosable: true,
-        styles: { body: { maxHeight: '75vh', overflowY: 'auto' } },
+        // No hardcoded vh cap — index.css already caps every antd Modal's
+        // `.ant-modal-content` at the real gap between the app header/footer
+        // and scrolls `.modal-content` inside it; a per-modal vh guess on
+        // top of that budget is a second, independent limit that can
+        // disagree with it and silently clip content (see the comment on
+        // `.ant-modal-body .modal-content` in index.css).
       }}
     >
       {feedback.candidate_feedback_submitted_at && (

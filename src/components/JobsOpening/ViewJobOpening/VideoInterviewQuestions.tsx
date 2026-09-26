@@ -82,7 +82,6 @@ const VideoInterviewQuestions = () => {
                 onChange={handleRoundChange}
                 className="w-full custom-select placeholder-style border-none shadow-none"
                 placeholder="Select a video round"
-                popupClassName="rounded-3xl"
               >
                 {videoRounds.map((round: any) => (
                   <Option key={round.id} value={round.uniqueRoundIdentifier}>

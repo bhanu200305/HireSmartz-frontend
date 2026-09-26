@@ -417,7 +417,10 @@ const AcceptInvitation = () => {
         message: 'Account activated with two-factor authentication on. You can now log in.',
         type: 'success',
       });
-      setTimeout(() => navigate('/login'), 2000);
+      setTimeout(
+        () => navigate('/login', { state: { prefillEmail: invitation?.invited_email } }),
+        2000
+      );
     } catch (err: unknown) {
       const body = get(err, 'data') as InvitationErrorBody | undefined;
       if (body?.error_code === 'EXTERNAL_SERVICE_ERROR') {

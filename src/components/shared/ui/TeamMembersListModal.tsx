@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
-import { Select } from 'antd';
 import type { TableProps } from 'antd';
+import { Link, useNavigate } from 'react-router-dom';
 import AntdCommonModal from './AntdCommonModal';
 import CustomTable from './table';
 import MasterPagination from './MasterPagination';
+import { RowsPerPageSelect } from './RowsPerPageSelect';
 import { Badge } from './badge';
 import { Loader } from './loader';
+import { FilterSelectIcon } from './FilterSelectIcon';
 import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
 import { useListUsersQuery, type OrgUser } from '../../../api/organization-service/Users/users';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
+import { useRolesCatalog } from '../../../hooks/useRolesCatalog';
+
+const humanizeRole = (baseRoleName: string): string =>
+  baseRoleName
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 
 type UserRow = OrgUser & { key: string };
 
@@ -19,46 +28,70 @@ type UserRow = OrgUser & { key: string };
  * scoped to active users (matching what the card's own count counts).
  */
 const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('active_team_members_modal', 10);
+  const [includeInactive, setIncludeInactive] = useState(false);
+  const [role, setRole] = useState<string | undefined>(undefined);
 
   const { data, isLoading } = useListUsersQuery({
-    includeInactive: false,
+    includeInactive,
+    role,
     limit: pageSize,
     offset: page * pageSize,
   });
+  const { roles } = useRolesCatalog({ scope: 'tenant', isMaster: false });
+
+  const roleOptions = Array.from(
+    new Map(
+      roles
+        .filter((r) => r.baseRoleName)
+        .map((r) => [
+          r.baseRoleName as string,
+          { label: humanizeRole(r.baseRoleName as string), value: r.baseRoleName as string },
+        ])
+    ).values()
+  );
 
   const users = data?.items ?? [];
   const dataSource: UserRow[] = users.map((u) => ({ ...u, key: u.user_id }));
 
+  // No client-side `sorter`s here on purpose — this table is server-
+  // paginated (`limit`/`offset`), so a client-side comparator would only
+  // ever reorder the current page while its header arrow implies a real
+  // full-list sort. `GET /v1/users` has no sort param to back a real one;
+  // `role` and `includeInactive` (below) are the filters it actually
+  // supports.
   const columns: TableProps<UserRow>['columns'] = [
     {
       title: 'Name',
       key: 'name',
-      sorter: (a: UserRow, b: UserRow) => a.full_name.localeCompare(b.full_name),
       render: (_: unknown, row: UserRow) => (
-        <div>
-          <span className="block font-semibold text-neutral-900">{row.full_name}</span>
+        <Link
+          to={`/view-organisation-user?orgUserId=${row.user_id}`}
+          onClick={() => onClose()}
+          className="inline-block"
+        >
+          <span className="block font-semibold text-neutral-900 hover:text-primary-600 hover:underline">
+            {row.full_name}
+          </span>
           {row.title && <span className="text-xs text-neutral-400">{row.title}</span>}
-        </div>
+        </Link>
       ),
     },
     {
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
-      sorter: (a: UserRow, b: UserRow) => a.email.localeCompare(b.email),
     },
     {
       title: 'Role',
       key: 'role',
-      sorter: (a: UserRow, b: UserRow) => (a.role ?? '').localeCompare(b.role ?? ''),
       render: (_: unknown, row: UserRow) => <Badge status="info">{row.role ?? '-'}</Badge>,
     },
     {
       title: 'Phone',
       key: 'phone',
-      sorter: (a: UserRow, b: UserRow) => (a.phone_no ?? '').localeCompare(b.phone_no ?? ''),
       render: (_: unknown, row: UserRow) =>
         row.phone_no ? `${row.country_code ?? ''} ${row.phone_no}` : '-',
     },
@@ -72,12 +105,49 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
       modalProps={{ width: 780, maskClosable: true }}
     >
       <div className="flex flex-col gap-3">
+<<<<<<< Updated upstream
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="cfp-dropdown-trigger w-40">
+              <FilterSelectIcon />
+              <Select
+                placeholder="Role"
+                allowClear
+                className="w-full custom-select"
+                variant="borderless"
+                value={role}
+                onChange={(value) => {
+                  setRole(value);
+                  setPage(0);
+                }}
+                options={roleOptions}
+              />
+            </div>
+            <div className="cfp-dropdown-trigger w-48">
+              <FilterSelectIcon />
+              <Select
+                className="w-full custom-select"
+                variant="borderless"
+                value={includeInactive ? 'all' : 'active'}
+                onChange={(value) => {
+                  setIncludeInactive(value === 'all');
+                  setPage(0);
+                }}
+                options={[
+                  { label: 'Active only', value: 'active' },
+                  { label: 'Include deactivated', value: 'all' },
+                ]}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
           <span>Rows per page</span>
           <Select
             size="small"
             value={pageSize}
-            className="w-20"
+            className="rows-per-page-select"
             options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
             onChange={(size) => {
               setPageSize(size);
@@ -85,6 +155,16 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
             }}
           />
         </div>
+=======
+        <RowsPerPageSelect
+          pageSize={pageSize}
+          options={PAGE_SIZE_OPTIONS}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
+>>>>>>> Stashed changes
 
         <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {isLoading ? (
@@ -93,6 +173,18 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
             <CustomTable<UserRow>
               columns={columns}
               dataSource={dataSource}
+              onRow={(row) => ({
+                onClick: () => {
+                  onClose();
+                  navigate(`/view-organisation-user?orgUserId=${row.user_id}`);
+                },
+                className: 'cursor-pointer',
+              })}
+              enableKeyboardNav
+              onRowEnter={(row) => {
+                onClose();
+                navigate(`/view-organisation-user?orgUserId=${row.user_id}`);
+              }}
               emptyText={
                 <div className="py-10 text-center text-sm text-neutral-400">
                   No active team members.

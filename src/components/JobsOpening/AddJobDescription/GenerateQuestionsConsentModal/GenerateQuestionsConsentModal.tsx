@@ -56,8 +56,8 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-[2000] p-4 animate-fade-in">
-      <div className="bg-[#FAFAFA] p-6 rounded-3xl shadow-2xl max-w-lg w-full relative border border-gray-200">
+    <div className="app-modal-overlay fixed inset-0 flex items-center justify-center bg-black/60 z-[2000] p-4 animate-fade-in">
+      <div className="app-modal-panel bg-[#FAFAFA] p-6 rounded-3xl shadow-2xl max-w-lg w-full relative border border-gray-200">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <Typography variant="h5" className="text-gray-800 m-0 font-semibold font-sora">

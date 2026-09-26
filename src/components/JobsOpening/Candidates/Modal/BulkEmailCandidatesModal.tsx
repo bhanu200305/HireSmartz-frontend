@@ -49,6 +49,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
     usePreviewCandidateEmailMutation();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const canPreview = candidates.length === 1;
+  const isFormValid = subject.trim().length > 0 && body.trim().length > 0;
 
   useEffect(() => {
     if (open) {
@@ -178,7 +179,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
                 <Button
                   type="button"
                   onClick={() => void handlePreview()}
-                  disabled={isPreviewing || isSending}
+                  disabled={isPreviewing || isSending || !isFormValid}
                   className="rounded-full border border-gray-300 px-5 py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >
                   {isPreviewing ? 'LOADING…' : 'PREVIEW'}
@@ -187,7 +188,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
               <Button
                 type="button"
                 onClick={() => void handleSend()}
-                disabled={candidates.length === 0 || isSending}
+                disabled={candidates.length === 0 || isSending || !isFormValid}
                 className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
               >
                 {isSending ? 'SENDING…' : 'SEND EMAIL'}

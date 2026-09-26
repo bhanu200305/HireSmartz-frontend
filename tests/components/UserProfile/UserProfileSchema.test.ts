@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { UserProfileSchema } from '../../../src/components/UserProfile/UserProfileSchema';
+import { getUserProfileSchema } from '../../../src/components/UserProfile/UserProfileSchema';
+
+const UserProfileSchema = getUserProfileSchema(true);
 
 const basePayload = {
   firstName: 'Jane',
@@ -63,5 +65,25 @@ describe('UserProfileSchema', () => {
     expect(
       UserProfileSchema.safeParse({ ...basePayload, addressLine1: '123 Main St' }).success
     ).toBe(true);
+  });
+});
+
+describe('getUserProfileSchema(false) — platform staff, no phone on file', () => {
+  // A platform staff/Super Admin invite never collects a phone number (see
+  // getUserProfileSchema's own comment), so an existing account with none
+  // must still be able to save other edits.
+  const PlatformProfileSchema = getUserProfileSchema(false);
+
+  it('allows an empty phone number', () => {
+    const result = PlatformProfileSchema.safeParse({ ...basePayload, phoneNumber: '' });
+    expect(result.success).toBe(true);
+  });
+
+  it('still rejects a phone number that is present but invalid for the country', () => {
+    const result = PlatformProfileSchema.safeParse({ ...basePayload, phoneNumber: '12345' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors.phoneNumber?.[0]).toBeDefined();
+    }
   });
 });

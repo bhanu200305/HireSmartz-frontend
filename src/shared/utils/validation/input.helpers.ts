@@ -197,10 +197,7 @@ export const passwordValidation = () => {
         // password_policy.py) — the backend is the source of truth. Reading
         // the constant here, instead of a hardcoded number, is what stops
         // this check and its message from drifting out of sync with each
-        // other OR with the backend again — that drift (a stale `8` here
-        // while the backend already required 12) is exactly what let a
-        // password pass this form and then get rejected by the API with a
-        // 422 the user had no warning about.
+        // other or with the backend.
         check: value.length >= MIN_PASSWORD_LENGTH,
         message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
       },
@@ -208,26 +205,16 @@ export const passwordValidation = () => {
         check: value.length <= MAX_PASSWORD_LENGTH,
         message: `Password must be at most ${MAX_PASSWORD_LENGTH} characters.`,
       },
-      {
-        check: /[A-Z]/.test(value),
-        message: 'Password must contain at least one uppercase letter (A-Z).',
-      },
-      {
-        check: /[a-z]/.test(value),
-        message: 'Password must contain at least one lowercase letter (a-z).',
-      },
-      {
-        check: /[0-9]/.test(value),
-        message: 'Password must contain at least one number (0-9).',
-      },
-      {
-        // Matches the backend's own rule: any character that is not a
-        // letter, digit, or whitespace counts as special (so ~, `, £, €,
-        // etc. all count too) — a narrower frontend regex here would reject
-        // passwords the backend would otherwise accept.
-        check: /[^A-Za-z0-9\s]/.test(value),
-        message: 'Password must contain at least one special character (!@#$%^&*, etc.).',
-      },
+      // No character-class (uppercase/lowercase/digit/special) requirements
+      // here on purpose — the backend dropped composition rules entirely in
+      // favor of length + a common-password blocklist (NIST guidance), and
+      // this validator exists only to mirror the backend's actual policy for
+      // early client-side feedback, never to enforce a stricter rule of its
+      // own. A composition check used to live here; it was removed rather
+      // than kept "for extra safety" because it wasn't backed by the API at
+      // all, and with the length cap now at 16 it would have made a
+      // materially narrower set of passwords valid than the backend
+      // actually requires.
     ];
 
     const failed = requirements.filter((req) => !req.check);

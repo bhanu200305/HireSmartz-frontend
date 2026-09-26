@@ -61,7 +61,10 @@ const TemplateStep: React.FC<TemplateStepProps> = ({
         ))}
       </div>
 
-      <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+      {/* Sticky footer, same treatment as PermissionsStep's — keeps
+          Cancel/Continue consistently in the same pinned spot across both
+          steps of this modal regardless of how long the template list gets. */}
+      <div className="sticky bottom-0 -mx-6 mt-6 flex justify-end gap-2 border-t border-gray-100 bg-white px-6 py-4 z-10">
         <button
           type="button"
           onClick={onCancel}
