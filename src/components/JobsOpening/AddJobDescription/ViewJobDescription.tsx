@@ -76,6 +76,7 @@ const ViewJobDescription = () => {
   const [previewDescription, setPreviewDescription] = useState('');
   const [editorContent, setEditorContent] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [isSyncingWithATS, setIsSyncingWithATS] = useState(
     location.pathname.includes('/sync-ats') ? true : false
   );
@@ -252,19 +253,21 @@ const ViewJobDescription = () => {
           }).unwrap();
           await refetch();
           setPreviewDescription(markdown);
+          setSaveError(null);
           showToast({
             message: 'Job description has been updated successfully',
             type: 'success',
           });
         } catch (error: any) {
-          showToast({
-            message: getJobErrorMessage(error, 'Failed to update job description'),
-            type: 'error',
-          });
+          const message = getJobErrorMessage(error, 'Failed to update job description');
+          setSaveError(message);
+          showToast({ message, type: 'error' });
+          return;
         }
       }
       setHasChanges(false);
     } else {
+      setSaveError(null);
       setHasChanges(false);
     }
     setIsEditing(!isEditing);
@@ -273,6 +276,7 @@ const ViewJobDescription = () => {
     if (!hasChanges) {
       setHasChanges(true);
     }
+    if (saveError) setSaveError(null);
     setEditorContent(content);
   };
 
@@ -402,6 +406,10 @@ const ViewJobDescription = () => {
                     onContentChange={handleEditorChange}
                     placeholder="Write your job description here..."
                   />
+                  {saveError && <p className="text-red-500 text-sm px-2 py-1">{saveError}</p>}
+                  <p className="text-xs text-gray-400 px-2 py-1">
+                    Do not include discriminatory, abusive, or hateful language.
+                  </p>
                 </div>
               ) : (
                 <div className="prose max-w-none prose-p:my-2 prose-li:my-1 prose-h2:mt-4 prose-h2:mb-2">

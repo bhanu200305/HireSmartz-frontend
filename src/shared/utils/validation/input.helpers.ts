@@ -197,10 +197,7 @@ export const passwordValidation = () => {
         // password_policy.py) — the backend is the source of truth. Reading
         // the constant here, instead of a hardcoded number, is what stops
         // this check and its message from drifting out of sync with each
-        // other OR with the backend again — that drift (a stale `8` here
-        // while the backend already required 12) is exactly what let a
-        // password pass this form and then get rejected by the API with a
-        // 422 the user had no warning about.
+        // other or with the backend.
         check: value.length >= MIN_PASSWORD_LENGTH,
         message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
       },

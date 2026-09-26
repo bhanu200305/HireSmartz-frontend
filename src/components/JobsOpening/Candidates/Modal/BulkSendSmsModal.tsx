@@ -47,6 +47,8 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
   const [results, setResults] = useState<{ name: string; sent: boolean; reason: string | null }[]>(
     []
   );
+  const [messageError, setMessageError] = useState<string | null>(null);
+  const [aiIntentError, setAiIntentError] = useState<string | null>(null);
   const [sendBulkSms, { isLoading: isSending }] = useSendBulkCandidateSmsMutation();
   const [generateSmsContent, { isLoading: isGenerating }] = useGenerateSmsContentMutation();
   const [previewSms, { data: preview, isLoading: isPreviewing }] = usePreviewCandidateSmsMutation();
@@ -77,6 +79,8 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
       setShowAiPrompt(false);
       setAiIntent('');
       setIsPreviewOpen(false);
+      setMessageError(null);
+      setAiIntentError(null);
     }
   }, [open]);
 
@@ -103,6 +107,7 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
     }
     const basisCandidate = candidates[0];
     if (!basisCandidate) return;
+    setAiIntentError(null);
     try {
       const res = await generateSmsContent({
         candidateId: basisCandidate.id,
@@ -118,10 +123,9 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
       setMessage(generated.slice(0, SMS_MAX_LEN));
       setShowAiPrompt(false);
     } catch (e) {
-      showToast({
-        message: getCandidateErrorMessage(e, 'Could not generate a draft'),
-        type: 'error',
-      });
+      const message = getCandidateErrorMessage(e, 'Could not generate a draft');
+      setAiIntentError(message);
+      showToast({ message, type: 'error' });
     }
   };
 
@@ -133,6 +137,7 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
     }
     if (candidates.length === 0) return;
 
+    setMessageError(null);
     try {
       const res = await sendBulkSms({
         candidateIds: candidates.map((c) => c.id),
@@ -157,7 +162,9 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
         type: sentCount > 0 ? 'success' : 'warning',
       });
     } catch (e) {
-      showToast({ message: getCandidateErrorMessage(e, 'Could not send SMS'), type: 'error' });
+      const message = getCandidateErrorMessage(e, 'Could not send SMS');
+      setMessageError(message);
+      showToast({ message, type: 'error' });
     }
   };
 
@@ -260,7 +267,10 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
                   <TextArea
                     id="bulk-sms-ai-intent"
                     value={aiIntent}
-                    onChange={(e) => setAiIntent(e.target.value)}
+                    onChange={(e) => {
+                      setAiIntent(e.target.value);
+                      if (aiIntentError) setAiIntentError(null);
+                    }}
                     maxLength={AI_INTENT_MAX_LEN}
                     placeholder="e.g. Remind them to bring a photo ID to the interview"
                     rows={2}
@@ -275,13 +285,19 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
                     {isGenerating ? '…' : 'Draft'}
                   </Button>
                 </div>
+                {aiIntentError && (
+                  <p className="text-red-500 text-sm px-2 py-1">{aiIntentError}</p>
+                )}
               </div>
             )}
 
             <TextArea
               id="bulk-sms-message"
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                if (messageError) setMessageError(null);
+              }}
               maxLength={SMS_MAX_LEN}
               showCount={{
                 formatter: ({ count, maxLength }) => `${count} / ${maxLength ?? SMS_MAX_LEN}`,
@@ -290,6 +306,10 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
               rows={4}
               className="resize-y rounded-lg text-sm min-h-[100px]"
             />
+            {messageError && <p className="text-red-500 text-sm px-2 py-1">{messageError}</p>}
+            <p className="text-xs text-gray-400 px-2 py-1">
+              Do not include discriminatory, abusive, or hateful language.
+            </p>
           </div>
         ) : (
           <div>

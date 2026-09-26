@@ -226,6 +226,8 @@ const NotesSidePanel = ({
   const [isPosting, setIsPosting] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [, setDeletingId] = useState<string | null>(null);
+  const [composerError, setComposerError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const prevOpenRef = useRef(false);
 
@@ -239,6 +241,8 @@ const NotesSidePanel = ({
       setNewNoteContent('');
       setEditingNoteId(null);
       setEditingContent('');
+      setComposerError(null);
+      setEditError(null);
     }
     prevOpenRef.current = open;
   }, [open]);
@@ -260,9 +264,12 @@ const NotesSidePanel = ({
 
     if (remoteActions) {
       setIsPosting(true);
+      setComposerError(null);
       try {
         await remoteActions.onCreate(content);
         setNewNoteContent('');
+      } catch (e) {
+        setComposerError(e instanceof Error ? e.message : 'Could not save note.');
       } finally {
         setIsPosting(false);
       }
@@ -329,6 +336,7 @@ const NotesSidePanel = ({
   const handleStartEdit = (note: CandidateNoteItem) => {
     setEditingNoteId(note.id);
     setEditingContent(note.content);
+    setEditError(null);
   };
 
   const handleSaveEdit = async (note: CandidateNoteItem) => {
@@ -339,10 +347,13 @@ const NotesSidePanel = ({
       // Same reasoning as handleDelete above.
       if (!note.id) return;
       setIsSavingEdit(true);
+      setEditError(null);
       try {
         await remoteActions.onUpdate(note.id, content);
         setEditingNoteId(null);
         setEditingContent('');
+      } catch (e) {
+        setEditError(e instanceof Error ? e.message : 'Could not update note.');
       } finally {
         setIsSavingEdit(false);
       }
@@ -551,10 +562,22 @@ const NotesSidePanel = ({
                               className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-600/30"
                               rows={3}
                               value={editingContent}
-                              onChange={(e) => setEditingContent(e.target.value)}
+                              onChange={(e) => {
+                                setEditingContent(e.target.value);
+                                if (editError) setEditError(null);
+                              }}
                             />
+                            {editError && (
+                              <p className="text-red-500 text-sm px-2 py-1">{editError}</p>
+                            )}
                             <div className="flex items-center justify-end gap-2 mt-2">
-                              <Button size="small" onClick={() => setEditingNoteId(null)}>
+                              <Button
+                                size="small"
+                                onClick={() => {
+                                  setEditingNoteId(null);
+                                  setEditError(null);
+                                }}
+                              >
                                 Cancel
                               </Button>
                               <Button
@@ -629,7 +652,10 @@ const NotesSidePanel = ({
                 rows={isCompact ? 2 : 3}
                 placeholder={composerPlaceholder}
                 value={newNoteContent}
-                onChange={(e) => setNewNoteContent(e.target.value)}
+                onChange={(e) => {
+                  setNewNoteContent(e.target.value);
+                  if (composerError) setComposerError(null);
+                }}
               />
               <button
                 type="button"
@@ -640,6 +666,12 @@ const NotesSidePanel = ({
               >
                 <IoPaperPlaneOutline size={isCompact ? 20 : 22} aria-hidden />
               </button>
+              {composerError && (
+                <p className="text-red-500 text-sm px-2 py-1">{composerError}</p>
+              )}
+              <p className="text-xs text-gray-400 px-2 py-1">
+                Do not include discriminatory, abusive, or hateful language.
+              </p>
             </div>
           ) : (
             <p

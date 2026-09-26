@@ -204,8 +204,9 @@ const JobListingNotesPanel = ({
             ...inv,
           }).unwrap();
         } catch (e) {
-          showToast({ message: get(e, 'data.message', 'Could not save note'), type: 'error' });
-          throw e;
+          const message = get(e, 'data.message', 'Could not save note');
+          showToast({ message, type: 'error' });
+          throw new Error(message);
         }
       },
       onUpdate: async (noteId: string, noteText: string) => {
@@ -216,8 +217,9 @@ const JobListingNotesPanel = ({
             ...inv,
           }).unwrap();
         } catch (e) {
-          showToast({ message: get(e, 'data.message', 'Could not update note'), type: 'error' });
-          throw e;
+          const message = get(e, 'data.message', 'Could not update note');
+          showToast({ message, type: 'error' });
+          throw new Error(message);
         }
       },
       onDelete: async (noteId: string) => {

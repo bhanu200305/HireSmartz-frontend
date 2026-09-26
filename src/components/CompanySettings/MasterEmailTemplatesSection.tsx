@@ -80,6 +80,9 @@ const EditMasterTemplateModal: React.FC<{
           />
         </div>
         <PlainTextEmailBodyEditor htmlBody={htmlBody} onChange={setHtmlBody} />
+        <p className="-mt-2 text-xs text-gray-400">
+          Do not include discriminatory, abusive, or hateful language.
+        </p>
         <div className="flex justify-end">
           <Button
             type="button"

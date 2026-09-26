@@ -7,6 +7,7 @@ import CustomTable from '../shared/ui/table';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { Badge, Search } from '../shared';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { Loader } from '../shared/ui/loader';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import { useGetJobOpeningsListLegacyQuery as useGetJobOpeningsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
@@ -154,19 +155,14 @@ const JobOpeningsListModal: React.FC<{
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
-          <span>Rows per page</span>
-          <Select
-            size="small"
-            value={pageSize}
-            className="rows-per-page-select"
-            options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-            onChange={(size) => {
-              setPageSize(size);
-              setPage(0);
-            }}
-          />
-        </div>
+        <RowsPerPageSelect
+          pageSize={pageSize}
+          options={PAGE_SIZE_OPTIONS}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
 
         <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {isLoading ? (

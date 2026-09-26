@@ -16,6 +16,7 @@ import { Button, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import { Badge, BadgeStatus } from '../../shared/ui/badge';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
+import CorrectAdminEmailModal from '../CorrectAdminEmailModal';
 import {
   useGetPlatformTenantQuery,
   useGetPlatformTenantEntitlementsQuery,
@@ -115,6 +116,7 @@ const ViewCustomer = () => {
     useUpdatePlatformTenantEntitlementsMutation();
   const [suspendTenant, { isLoading: isSuspending }] = useSuspendTenantMutation();
   const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+  const [showCorrectEmail, setShowCorrectEmail] = useState(false);
 
   // Same profile query CompanyProfilePanel uses (shared cache — a logo
   // upload from either place invalidates the other's tag too), fetched here
@@ -309,6 +311,14 @@ const ViewCustomer = () => {
                   <p className="text-xs text-gray-400 mt-0.5">Company overview and management</p>
                 </div>
               </div>
+              {(tenant.status === 'draft' || tenant.status === 'pre_approved') && (
+                <Button
+                  className="rounded-full border border-primary-300 text-primary-600 px-5 py-2 hover:bg-primary-50 transition-colors shrink-0"
+                  onClick={() => setShowCorrectEmail(true)}
+                >
+                  Correct admin email
+                </Button>
+              )}
               {tenant.status === 'active' && (
                 <Button
                   className="rounded-full border border-red-300 text-red-600 px-5 py-2 hover:bg-red-50 transition-colors shrink-0"
@@ -363,6 +373,15 @@ const ViewCustomer = () => {
           isLoading={isSuspending}
           onConfirm={handleSuspend}
           onClose={() => setShowSuspendConfirm(false)}
+        />
+      )}
+
+      {showCorrectEmail && (
+        <CorrectAdminEmailModal
+          tenantId={tenantId}
+          companyName={tenant.company_name}
+          currentEmail={tenant.admin_email}
+          onClose={() => setShowCorrectEmail(false)}
         />
       )}
     </MainLayout>

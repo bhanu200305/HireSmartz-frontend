@@ -239,9 +239,9 @@ const CandidatesListing = () => {
         <Button
           className="p-2 cursor-pointer flex items-center justify-center hover:underline text-primary"
           onClick={handleBackToList}
-          title="Back to Job Openings"
+          title="Back"
         >
-          <span className="text-sm">Back to Job Openings</span>
+          <span className="text-sm">Back</span>
         </Button>
       </div>
 

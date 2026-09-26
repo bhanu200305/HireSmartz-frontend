@@ -61,6 +61,7 @@ const JobDescriptionPanel = ({
   const [previewDescription, setPreviewDescription] = useState('');
   const [editorContent, setEditorContent] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   // Which job the "JD generation failed" toast was last shown for, so it isn't repeated.
   const failedToastShownForJobRef = useRef<string | null>(null);
   // Previous jd_status tick, to detect an actual transition into READY.
@@ -233,6 +234,7 @@ const JobDescriptionPanel = ({
   const handleEditToggle = async () => {
     if (!isEditing) {
       setHasChanges(false);
+      setSaveError(null);
       setIsEditing(true);
       return;
     }
@@ -287,12 +289,13 @@ const JobDescriptionPanel = ({
         }).unwrap();
         await refetch();
         setPreviewDescription(markdown);
+        setSaveError(null);
         showToast({ message: 'Job description has been updated successfully', type: 'success' });
       } catch (error: any) {
-        showToast({
-          message: getJobErrorMessage(error, 'Failed to update job description'),
-          type: 'error',
-        });
+        const message = getJobErrorMessage(error, 'Failed to update job description');
+        setSaveError(message);
+        showToast({ message, type: 'error' });
+        return;
       }
     }
     setHasChanges(false);
@@ -301,6 +304,7 @@ const JobDescriptionPanel = ({
 
   const handleEditorChange = (content: string) => {
     if (!hasChanges) setHasChanges(true);
+    if (saveError) setSaveError(null);
     setEditorContent(content);
   };
 
@@ -408,6 +412,10 @@ const JobDescriptionPanel = ({
             onContentChange={handleEditorChange}
             placeholder="Write your job description here..."
           />
+          {saveError && <p className="text-red-500 text-sm px-2 py-1">{saveError}</p>}
+          <p className="text-xs text-gray-400 px-2 py-1">
+            Do not include discriminatory, abusive, or hateful language.
+          </p>
         </div>
       ) : (
         <div className="prose max-w-none prose-sm prose-p:my-2 prose-li:my-1 prose-h2:mt-4 prose-h2:mb-2 max-h-[520px] overflow-y-auto pr-1">

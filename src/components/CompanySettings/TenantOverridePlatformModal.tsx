@@ -132,6 +132,9 @@ const TenantOverridePlatformModal: React.FC<TenantOverridePlatformModalProps> = 
               rows={14}
               className="font-mono text-xs"
             />
+            <p className="mt-1 text-xs text-gray-400">
+              Do not include discriminatory, abusive, or hateful language.
+            </p>
           </div>
           {hasSms && (
             <div>
@@ -142,6 +145,9 @@ const TenantOverridePlatformModal: React.FC<TenantOverridePlatformModalProps> = 
                 onChange={setSmsMessage}
                 rows={3}
               />
+              <p className="mt-1 text-xs text-gray-400">
+                Do not include discriminatory, abusive, or hateful language.
+              </p>
             </div>
           )}
           <div className="flex flex-wrap items-center justify-between gap-2">

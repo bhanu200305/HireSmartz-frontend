@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { FaCity } from 'react-icons/fa';
 import { MdOutlineArrowBack } from 'react-icons/md';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Popconfirm, Select } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { Popconfirm, Select, Tooltip } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
 import type { TableProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,7 @@ import {
   useListPlatformTenantsQuery,
 } from '../../api/organization-service/Platform/tenants';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
+import CorrectAdminEmailModal from './CorrectAdminEmailModal';
 
 const PAGE_SIZE = 20;
 
@@ -59,6 +60,11 @@ const CustomerTable = () => {
     sort_order: sort.sortOrder,
   });
   const [deleteTenant, { isLoading: isDeleting }] = useDeleteTenantMutation();
+  const [correctEmailTenant, setCorrectEmailTenant] = useState<{
+    tenant_id: string;
+    company_name: string;
+    admin_email: string;
+  } | null>(null);
 
   const handleDelete = async (tenantId: string) => {
     try {
@@ -142,33 +148,51 @@ const CustomerTable = () => {
     {
       title: '',
       key: 'actions',
-      // Draft-only — the backend refuses anything else (409
-      // TENANT_NOT_DELETABLE) anyway, so a non-draft row simply shows
-      // nothing here rather than a button that would always fail.
-      render: (_: unknown, tenant: TenantRow) =>
-        tenant.status === 'draft' ? (
+      render: (_: unknown, tenant: TenantRow) => {
+        // Delete is draft-only; Correct admin email is draft or
+        // pre_approved — draft rows always show at least one of the two, so
+        // this is a strict superset check.
+        const canCorrectEmail = tenant.status === 'draft' || tenant.status === 'pre_approved';
+        if (!canCorrectEmail) return null;
+        return (
           // stopPropagation on the wrapping span, not the Button itself —
           // the shared Button's onClick type takes no event argument, but
-          // the row's own onRow.onClick still needs blocking so a delete
+          // the row's own onRow.onClick still needs blocking so an action
           // click doesn't also navigate to /view-company underneath it.
-          <span onClick={(e) => e.stopPropagation()}>
-            <Popconfirm
-              title="Delete this draft company?"
-              description="This cannot be undone."
-              okText="Delete"
-              okButtonProps={{ danger: true }}
-              onConfirm={() => void handleDelete(tenant.tenant_id)}
-            >
-              <Button
-                appname="delete draft company"
-                disabled={isDeleting}
-                className="!border-none !bg-transparent !shadow-none text-red-600"
+          <span onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1">
+            {canCorrectEmail && (
+              <Tooltip title="Correct admin email">
+                <Button
+                  appname="correct admin email"
+                  onClick={() => setCorrectEmailTenant(tenant)}
+                  className="!border-none !bg-transparent !shadow-none text-gray-500"
+                >
+                  <EditOutlined />
+                </Button>
+              </Tooltip>
+            )}
+            {tenant.status === 'draft' && (
+              // Draft-only — the backend refuses anything else (409
+              // TENANT_NOT_DELETABLE) anyway.
+              <Popconfirm
+                title="Delete this draft company?"
+                description="This cannot be undone."
+                okText="Delete"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => void handleDelete(tenant.tenant_id)}
               >
-                <DeleteOutlined />
-              </Button>
-            </Popconfirm>
+                <Button
+                  appname="delete draft company"
+                  disabled={isDeleting}
+                  className="!border-none !bg-transparent !shadow-none text-red-600"
+                >
+                  <DeleteOutlined />
+                </Button>
+              </Popconfirm>
+            )}
           </span>
-        ) : null,
+        );
+      },
     },
   ];
 
@@ -274,6 +298,15 @@ const CustomerTable = () => {
           onPageChange={(p) => setPage(p - 1)}
         />
       </div>
+
+      {correctEmailTenant && (
+        <CorrectAdminEmailModal
+          tenantId={correctEmailTenant.tenant_id}
+          companyName={correctEmailTenant.company_name}
+          currentEmail={correctEmailTenant.admin_email}
+          onClose={() => setCorrectEmailTenant(null)}
+        />
+      )}
     </MainLayout>
   );
 };

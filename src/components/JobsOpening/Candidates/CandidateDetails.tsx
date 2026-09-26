@@ -68,7 +68,6 @@ import ResumeReviewModal from './Modal/ResumeReviewModal';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import ResumeViewerModal from './Modal/ResumeViewerModal';
 import PipelineBoard from './PipelineBoard';
-import StatusHistoryTab from './StatusHistoryTab';
 import { roundLabel, formatRoundStatus, formatCallIntent } from './roundDisplay';
 import {
   resolveCurrentRound,
@@ -111,7 +110,7 @@ import {
 //   call detail) — that's interview-service's data, not yet surfaced
 //   through candidate-service.
 
-type TabKey = 'assessment' | 'resume' | 'summary' | 'sms' | 'history';
+type TabKey = 'assessment' | 'resume' | 'summary' | 'sms';
 
 const candidateHeaderIconCircle =
   'inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--primary)] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40';
@@ -238,7 +237,7 @@ const CandidateDetails = () => {
   // to string keys (kept in case anything already-sent still links with it).
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     const tabParam = searchParams.get('tab');
-    const validTabs: TabKey[] = ['assessment', 'resume', 'summary', 'sms', 'history'];
+    const validTabs: TabKey[] = ['assessment', 'resume', 'summary', 'sms'];
     if (tabParam && validTabs.includes(tabParam as TabKey)) return tabParam as TabKey;
     if (tabParam === '3') return 'summary';
     return 'assessment';
@@ -868,9 +867,9 @@ const CandidateDetails = () => {
           <Button
             className="p-2 cursor-pointer flex items-center justify-center hover:underline text-primary"
             onClick={handleBackToList}
-            title="Back to Candidate List"
+            title="Back"
           >
-            <span className="text-sm">Back to Candidate List</span>
+            <span className="text-sm">Back</span>
           </Button>
         </div>
 
@@ -1067,7 +1066,6 @@ const CandidateDetails = () => {
                 { key: 'resume', label: 'Resume' },
                 { key: 'summary', label: 'Interview Summary' },
                 { key: 'sms', label: 'SMS Communication' },
-                { key: 'history', label: 'Status History' },
               ]}
             />
           )}
@@ -1845,8 +1843,6 @@ const CandidateDetails = () => {
               </div>
             </CommonCard>
           )}
-
-          {activeTab === 'history' && candidateId && <StatusHistoryTab candidateId={candidateId} />}
         </div>
       </div>
 

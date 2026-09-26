@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Select } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
 import type { TableProps } from 'antd';
 import { Link } from 'react-router-dom';
 import AntdCommonModal from './AntdCommonModal';
 import CustomTable from './table';
 import MasterPagination from './MasterPagination';
+import { RowsPerPageSelect } from './RowsPerPageSelect';
 import { Badge } from './badge';
 import { Loader } from './loader';
 import { Search } from './search';
@@ -172,19 +172,14 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
-          <span>Rows per page</span>
-          <Select
-            size="small"
-            value={pageSize}
-            className="rows-per-page-select"
-            options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-            onChange={(size) => {
-              setPageSize(size);
-              setPage(0);
-            }}
-          />
-        </div>
+        <RowsPerPageSelect
+          pageSize={pageSize}
+          options={PAGE_SIZE_OPTIONS}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
 
         <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {isLoading ? (

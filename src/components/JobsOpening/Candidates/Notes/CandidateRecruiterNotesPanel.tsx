@@ -75,19 +75,18 @@ const CandidateRecruiterNotesPanel = ({
         try {
           await addNote({ candidateId: cid, body: { note: noteText } }).unwrap();
         } catch (e) {
-          showToast({ message: getCandidateErrorMessage(e, 'Could not save note'), type: 'error' });
-          throw e;
+          const message = getCandidateErrorMessage(e, 'Could not save note');
+          showToast({ message, type: 'error' });
+          throw new Error(message);
         }
       },
       onUpdate: async (noteId: string, noteText: string) => {
         try {
           await editNote({ candidateId: cid, noteId, body: { note: noteText } }).unwrap();
         } catch (e) {
-          showToast({
-            message: getCandidateErrorMessage(e, 'Could not update note'),
-            type: 'error',
-          });
-          throw e;
+          const message = getCandidateErrorMessage(e, 'Could not update note');
+          showToast({ message, type: 'error' });
+          throw new Error(message);
         }
       },
       onDelete: async (noteId: string) => {

@@ -146,6 +146,9 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
           </div>
 
           <PlainTextEmailBodyEditor htmlBody={htmlBody} onChange={setHtmlBody} />
+          <p className="-mt-2 text-xs text-gray-400">
+            Do not include discriminatory, abusive, or hateful language.
+          </p>
 
           {hasSms && (
             <div>
@@ -156,6 +159,9 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
                 onChange={setSmsMessage}
                 rows={3}
               />
+              <p className="mt-1 text-xs text-gray-400">
+                Do not include discriminatory, abusive, or hateful language.
+              </p>
             </div>
           )}
 

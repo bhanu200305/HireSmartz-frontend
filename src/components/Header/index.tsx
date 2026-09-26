@@ -704,6 +704,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                 placeholder="Categories"
                 allowClear
                 className="w-full custom-select my-select-with-divider"
+                popupClassName="rounded-xl"
                 variant="borderless"
                 value={getDisplayValue()}
                 onChange={(value) => {

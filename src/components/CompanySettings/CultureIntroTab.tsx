@@ -50,9 +50,11 @@ const CultureIntroTab: React.FC = () => {
   const isLoading = isPlatformDefault ? isPlatformLoading : isTenantLoading;
 
   const [draft, setDraft] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(data?.intro_text ?? '');
+    setError(null);
   }, [data]);
 
   const isDirty = data !== undefined && draft.trim() !== data.intro_text.trim();
@@ -75,6 +77,7 @@ const CultureIntroTab: React.FC = () => {
       showToast({ message: 'The culture intro cannot be empty.', type: 'error' });
       return;
     }
+    setError(null);
     try {
       if (isPlatformDefault) {
         await updatePlatformDefault(text).unwrap();
@@ -86,10 +89,9 @@ const CultureIntroTab: React.FC = () => {
       }
       showToast({ message: 'Culture intro updated.', type: 'success' });
     } catch (err) {
-      showToast({
-        message: getOrgErrorMessage(err, 'Failed to update culture intro.'),
-        type: 'error',
-      });
+      const message = getOrgErrorMessage(err, 'Failed to update culture intro.');
+      setError(message);
+      showToast({ message, type: 'error' });
     }
   };
 
@@ -134,10 +136,17 @@ const CultureIntroTab: React.FC = () => {
         <div className="max-w-2xl">
           <Textarea
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (error) setError(null);
+            }}
             rows={6}
             className="rounded-2xl text-sm"
+            error={error ?? undefined}
           />
+          <p className="mt-1 text-xs text-gray-400">
+            Do not include discriminatory, abusive, or hateful language.
+          </p>
           <div className="flex justify-end mt-3">
             <Button
               className="rounded-full bg-primary-600 text-white px-6 py-2 disabled:opacity-50"

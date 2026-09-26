@@ -45,14 +45,19 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
 }) => {
   const [rating, setRating] = useState<number>(0);
   const [notes, setNotes] = useState<string>('');
+  const [notesError, setNotesError] = useState<string | null>(null);
   const [submitFeedback, { isLoading: isSubmitting }] = useSubmitFeedbackMutation();
 
-  const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    if (value.length <= MAX_NOTES_LENGTH) {
-      setNotes(value);
-    }
-  }, []);
+  const handleNotesChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      if (value.length <= MAX_NOTES_LENGTH) {
+        setNotes(value);
+      }
+      if (notesError) setNotesError(null);
+    },
+    [notesError]
+  );
 
   const handleSubmit = useCallback(async () => {
     if (rating === 0) {
@@ -67,6 +72,7 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
       return;
     }
 
+    setNotesError(null);
     try {
       await submitFeedback({
         bookingId,
@@ -78,6 +84,7 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
       onSubmitSuccess();
     } catch (err: any) {
       const errorMsg = err?.data?.message || 'Failed to submit feedback';
+      setNotesError(errorMsg);
       message.error(errorMsg);
       console.error('Quick feedback submission error:', err);
     }
@@ -128,6 +135,10 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
           <div className="text-right text-xs text-gray-400 mt-1">
             {notes.length}/{MAX_NOTES_LENGTH} Characters
           </div>
+          {notesError && <p className="text-red-500 text-sm px-2 py-1">{notesError}</p>}
+          <p className="text-xs text-gray-400 px-2 py-1">
+            Do not include discriminatory, abusive, or hateful language.
+          </p>
         </div>
 
         {/* Bottom actions */}

@@ -5,6 +5,7 @@ import type { TableProps } from 'antd';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import CustomTable from '../shared/ui/table';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { Badge } from '../shared/ui/badge';
 import { Loader } from '../shared/ui/loader';
 import { Search } from '../shared';
@@ -165,19 +166,15 @@ const PlatformTenantsListModal: React.FC<{
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
-          <span>Rows per page</span>
-          <Select
-            size="small"
-            value={pageSize}
-            className="rows-per-page-select"
-            options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-            onChange={(size) => {
-              setPageSize(size);
-              setPage(0);
-            }}
-          />
-        </div>
+        <RowsPerPageSelect
+          pageSize={pageSize}
+          options={PAGE_SIZE_OPTIONS}
+          className="w-24"
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
 
         <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {isLoading ? (
