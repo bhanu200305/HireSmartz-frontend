@@ -122,7 +122,15 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
   // queries, `userData` never resolved, and the avatar/name/Logout dropdown
   // this whole block gates on (`{userData && (...)}`, further down) silently
   // never rendered.
-  const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
+  const loginToken = useSelector((state: RootState) => state.LoginSlice.loginToken);
+  // Every API layer's own auth header falls back to `LoginSlice.loginToken`
+  // when storage is empty (see src/api/index.ts and friends) — this must
+  // match, or storage-empty-but-Redux-has-it sessions silently skip both
+  // profile queries below (`skip: !token`) while every other authenticated
+  // call in the app keeps working off the Redux fallback, and the avatar/
+  // name/Logout dropdown this whole block gates on never renders, with no
+  // error to explain why.
+  const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS) || loginToken;
   const autoLogin = location?.state?.autoLogin;
 
   const role = useSelector((state: RootState) => state.LoginSlice.role);
