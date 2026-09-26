@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { MdOutlineAdminPanelSettings } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
+import { MdOutlineAdminPanelSettings, MdOutlineArrowBack } from 'react-icons/md';
 import { FaPlus } from 'react-icons/fa';
 import MainLayout from '../../layouts/MainLayout';
 import { RootState } from '../../redux/provider/store';
@@ -27,6 +28,7 @@ import type { Role } from '../../types';
  * here beyond passing `isMaster` through and using real office ids.
  */
 const RolesManagement: React.FC = () => {
+  const navigate = useNavigate();
   const session = useSelector((state: RootState) => state.LoginSlice);
   const effectivePermissions = useEffectivePermissions();
   const isMaster = isMasterSuperAdminRole(session.role);
@@ -102,6 +104,13 @@ const RolesManagement: React.FC = () => {
   return (
     <MainLayout>
       <div className="w-full p-8 pt-16">
+        <button
+          onClick={() => navigate('/')}
+          className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+        >
+          <MdOutlineArrowBack className="mr-2" />
+          <span>Back</span>
+        </button>
         <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
           <div className="flex items-center gap-2.5">
             <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">

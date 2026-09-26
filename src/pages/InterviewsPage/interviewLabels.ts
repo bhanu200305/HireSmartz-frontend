@@ -13,6 +13,7 @@ export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   completed: 'Completed',
   cancelled: 'Canceled',
   no_show: 'No-show',
+  interviewer_no_show: 'Interviewer no-show',
   failed: 'Failed',
   rescheduled: 'Rescheduled',
 };
@@ -23,6 +24,10 @@ export const BOOKING_STATUS_BADGE: Record<BookingStatus, BadgeStatus> = {
   completed: 'success',
   cancelled: 'neutral',
   no_show: 'warning',
+  // Distinct from the candidate's `no_show` ('warning') on purpose — this is
+  // the company's failure, not the candidate's, and the two must never read
+  // as the same status at a glance.
+  interviewer_no_show: 'info',
   failed: 'danger',
   rescheduled: 'warning',
 };

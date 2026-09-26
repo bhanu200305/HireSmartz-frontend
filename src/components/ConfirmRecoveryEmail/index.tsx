@@ -88,7 +88,7 @@ const ConfirmRecoveryEmail = () => {
             'Confirmation links expire; set a recovery email again to get a new one.'}
         </p>
         <Link to="/login" className="mt-2 text-sm text-primary hover:underline">
-          Back to login
+          Back
         </Link>
       </div>
     </AuthPageShell>

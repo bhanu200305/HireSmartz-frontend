@@ -1,9 +1,14 @@
 import { useState } from 'react';
-import { isPossiblePhoneNumber } from 'libphonenumber-js';
-import { MdOutlineSecurity } from 'react-icons/md';
+import { Select } from 'antd';
+import { MdOutlineSecurity, MdPhoneIphone } from 'react-icons/md';
 import { FaRegCopy } from 'react-icons/fa';
 import { Badge, Button, Input, PasswordInput, showToast } from '..';
-import { restrictE164Input } from '../../shared/utils/validation/phoneValidation';
+import { countryCodes } from '../../constants/countryCode';
+import {
+  isPhoneValidForCountry,
+  restrictPhoneDigitsForCountry,
+  toE164,
+} from '../../shared/utils/validation/phoneValidation';
 import {
   useConfirmMfaMethodMutation,
   useDisableMfaMethodMutation,
@@ -24,15 +29,6 @@ const METHOD_LABELS: Record<MfaMethodType, string> = {
   email: 'Email',
 };
 
-// E.164 shape, matches the backend's own check — the fast pre-check;
-// `isPossiblePhoneNumber` (below, where this is used) additionally confirms
-// the digit count is right for whichever country the leading dial code
-// implies, which this shape alone can't tell (it'd happily accept a
-// 14-digit "+91..." number, well past what an Indian number is). The
-// enrolment's own OTP round-trip is what proves the number is reachable, so
-// a "possible" shape is enough here.
-const phoneNumberPattern = /^\+[1-9]\d{7,14}$/;
-
 /** In-place "enter the code we just sent / that's on your app" step, shared
  * by every method type once /enable has returned. */
 const ConfirmEnrolment = ({
@@ -47,6 +43,17 @@ const ConfirmEnrolment = ({
   const [code, setCode] = useState('');
   const [confirmMfaMethod, { isLoading: isConfirming }] = useConfirmMfaMethodMutation();
   const [resendCode, { isLoading: isResending }] = useResendMfaEnrolmentCodeMutation();
+  // An enrolment that's never been /confirm'd has nothing to disarm, but
+  // /mfa/disable still requires the current password unconditionally (see
+  // mfa_router.py's disable_mfa docstring — it's guarding against a hijacked
+  // session turning off MFA at all, not just an already-armed factor). So a
+  // plain "Cancel" that only clears this component's own local state leaves
+  // the just-created row behind forever as "Awaiting confirmation" — /enable
+  // already created it server-side, and nothing else ever removes it. This
+  // second step actually deletes it.
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelPassword, setCancelPassword] = useState('');
+  const [disableMethod, { isLoading: isCancelSubmitting }] = useDisableMfaMethodMutation();
 
   const handleCopySecret = async () => {
     if (!enrolment.secret) return;
@@ -95,6 +102,28 @@ const ConfirmEnrolment = ({
     }
   };
 
+  const handleCancelEnrolment = async () => {
+    if (!cancelPassword) return;
+    try {
+      await disableMethod({
+        mfa_method_id: enrolment.mfa_method_id,
+        current_password: cancelPassword,
+      }).unwrap();
+      onCancel();
+    } catch (err) {
+      if (getAuthErrorCode(err) === 'mfa_method_not_found') {
+        // Already gone — another tab (or another way this same tab acted on
+        // it) removed it first. Nothing left to cancel.
+        onCancel();
+        return;
+      }
+      showToast({
+        message: getAuthErrorMessage(err, 'Could not cancel this enrolment.'),
+        type: 'error',
+      });
+    }
+  };
+
   return (
     <div className="mt-3 rounded-2xl border border-[var(--border)] bg-gray-50 p-4">
       {enrolment.secret && enrolment.provisioning_uri ? (
@@ -126,6 +155,9 @@ const ConfirmEnrolment = ({
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleConfirm();
+          }}
           placeholder="Confirmation code"
           className="border-[var(--border)] px-4"
         />
@@ -153,12 +185,55 @@ const ConfirmEnrolment = ({
         )}
         <button
           type="button"
-          onClick={onCancel}
-          className="ml-auto text-gray-400 hover:underline cursor-pointer"
+          onClick={() => setIsCancelling(true)}
+          className="ml-auto font-medium text-gray-600 hover:text-red-600 hover:underline cursor-pointer"
         >
           Cancel
         </button>
       </div>
+
+      {isCancelling && (
+        // Confirming the code (above) and cancelling out of it (here) both
+        // act on the SAME just-created row — /mfa/enable already created it
+        // server-side the moment this component mounted, so "Cancel" has to
+        // actually delete it (current password required, same as Remove on
+        // an already-armed method below) or it sits behind as a permanent
+        // "Awaiting confirmation" entry with no other way to clear it.
+        <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border)] pt-3">
+          <p className="text-xs text-gray-500">Enter your password to cancel this enrolment.</p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <PasswordInput
+              autoComplete="current-password"
+              value={cancelPassword}
+              onChange={(e) => setCancelPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCancelEnrolment();
+              }}
+              placeholder="Confirm your current password"
+              className="border-[var(--border)] px-4"
+            />
+            <Button
+              type="button"
+              appname="cancel mfa enrolment"
+              onClick={handleCancelEnrolment}
+              disabled={!cancelPassword || isCancelSubmitting}
+              className="shrink-0 rounded-3xl bg-red-600 px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isCancelSubmitting ? 'Cancelling…' : 'Confirm cancel'}
+            </Button>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsCancelling(false);
+              setCancelPassword('');
+            }}
+            className="self-start text-xs text-gray-500 hover:underline cursor-pointer"
+          >
+            Never mind, keep entering the code
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -208,7 +283,16 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
   };
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] p-4">
+    // The whole card toggles the removal panel, not just the "Remove" text —
+    // there was previously no visual cue that only that one small link did
+    // anything, which read as the row simply not responding to clicks
+    // anywhere else on it. Inner interactive controls (Set as default, the
+    // password form once open) stop the click from bubbling here so they
+    // don't also re-toggle the panel out from under the user.
+    <div
+      className="cursor-pointer rounded-2xl border border-[var(--border)] p-4"
+      onClick={() => setIsRemoving((v) => !v)}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-medium text-gray-900">{METHOD_LABELS[method.method_type]}</p>
@@ -222,7 +306,10 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
           {method.is_enabled && !method.is_default && (
             <button
               type="button"
-              onClick={handleSetDefault}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSetDefault();
+              }}
               disabled={isSettingDefault}
               className="text-xs text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -231,7 +318,10 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
           )}
           <button
             type="button"
-            onClick={() => setIsRemoving((v) => !v)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsRemoving((v) => !v);
+            }}
             className="text-xs text-red-600 hover:underline cursor-pointer"
           >
             Remove
@@ -240,11 +330,17 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
       </div>
 
       {isRemoving && (
-        <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="mt-3 flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row"
+        >
           <PasswordInput
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleDisable();
+            }}
             placeholder="Confirm your current password"
             className="border-[var(--border)] px-4"
           />
@@ -272,7 +368,14 @@ const AddMethodButton = ({
   onEnrolled: (enrolment: MfaEnrolmentView) => void;
 }) => {
   const [showPhoneInput, setShowPhoneInput] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
+  // Dial code + national digits, same split UserProfile's own phone field
+  // uses (countryCode.ts's `{label, value, short}` + restrictPhoneDigitsForCountry)
+  // — replaces the old single free-text E.164 field, which had no country
+  // picker at all and only showed "+919876543210" as placeholder text (never
+  // a real prefilled value, but easy to mistake for one against a grayed-out
+  // empty input).
+  const [countryCode, setCountryCode] = useState('');
+  const [nationalNumber, setNationalNumber] = useState('');
   const [enableMethod, { isLoading }] = useEnableMfaMethodMutation();
 
   const startEnrolment = async (phone?: string) => {
@@ -283,7 +386,8 @@ const AddMethodButton = ({
       }).unwrap();
       onEnrolled(enrolment);
       setShowPhoneInput(false);
-      setPhoneNumber('');
+      setCountryCode('');
+      setNationalNumber('');
     } catch (err) {
       showToast({
         message: getAuthErrorMessage(
@@ -296,19 +400,61 @@ const AddMethodButton = ({
   };
 
   if (methodType === 'sms' && showPhoneInput) {
-    const isValidPhone = phoneNumberPattern.test(phoneNumber) && isPossiblePhoneNumber(phoneNumber);
+    const isValidPhone =
+      Boolean(countryCode) && isPhoneValidForCountry(nationalNumber, countryCode);
+    // Guarded the same way the "Send code" button's own `disabled` is — Enter
+    // pressed right after picking a country (before a number is typed) just
+    // no-ops rather than submitting an incomplete number.
+    const submitIfValid = () => {
+      if (isValidPhone && !isLoading) startEnrolment(toE164(countryCode, nationalNumber));
+    };
     return (
       <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-[var(--border)] p-4 sm:flex-row sm:items-center">
-        <Input
-          value={phoneNumber}
-          onChange={(e) => setPhoneNumber(restrictE164Input(e.target.value))}
-          placeholder="+919876543210"
-          className="border-[var(--border)] px-4"
-        />
+        <div className="phone-input-wrapper flex flex-1 items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-gray)] pl-4 pr-2 transition-colors focus-within:border-[var(--primary-300)] focus-within:bg-white focus-within:shadow-[0_0_0_3px_var(--focus-ring)]">
+          <MdPhoneIphone className="text-lg shrink-0 text-[var(--gray-400)]" />
+          <Select
+            value={countryCode || undefined}
+            onChange={(value) => {
+              setCountryCode(value);
+              setNationalNumber((prev) => restrictPhoneDigitsForCountry(prev, value));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitIfValid();
+            }}
+            className="border-none bg-transparent focus:outline-none focus:ring-0"
+            dropdownStyle={{ minWidth: 'min(300px, 92vw)' }}
+            variant="borderless"
+            style={{ width: '76px', fontSize: '14px' }}
+            options={countryCodes.map(({ label, value, short }) => ({
+              label: `${short} - ${label}`,
+              value,
+            }))}
+            optionLabelProp="value"
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            placeholder="Search..."
+          />
+          <div className="h-6 border-l-2 border-[var(--border)]" />
+          <Input
+            type="tel"
+            value={nationalNumber}
+            onChange={(e) =>
+              setNationalNumber(restrictPhoneDigitsForCountry(e.target.value, countryCode))
+            }
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitIfValid();
+            }}
+            placeholder="Phone number"
+            maxLength={15}
+            className="!shadow-none w-full border-none bg-transparent py-2.5 focus:outline-none focus:ring-0"
+          />
+        </div>
         <Button
           type="button"
           appname="start sms mfa enrolment"
-          onClick={() => startEnrolment(phoneNumber)}
+          onClick={submitIfValid}
           disabled={!isValidPhone || isLoading}
           className="shrink-0 rounded-3xl bg-button px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >

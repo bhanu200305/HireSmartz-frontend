@@ -173,7 +173,7 @@ const CompleteAccountRecovery = () => {
         </Button>
 
         <Link to="/login" className="text-center text-sm text-gray-500 hover:underline">
-          Back to login
+          Back
         </Link>
       </form>
     </AuthPageShell>

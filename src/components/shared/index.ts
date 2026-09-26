@@ -35,6 +35,7 @@ export type { LocationCascadeValue } from './ui/LocationCascadeFields';
 export { default as ComingSoonTab } from './ui/ComingSoonTab';
 export { showToast } from './ui/toast';
 export { default as CustomTable } from './ui/table';
+export { RowsPerPageSelect } from './ui/RowsPerPageSelect';
 export { paginationConfig } from './tablePagination';
 export { default as CustomCollapse } from './ui/collapse';
 export { default as CollapsibleSection } from './ui/CollapsibleSection';

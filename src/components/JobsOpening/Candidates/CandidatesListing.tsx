@@ -7,7 +7,6 @@ import clsx from 'clsx';
 import {
   LuCalendarPlus,
   LuMail,
-  LuMessageSquare,
   LuSquarePen,
   LuThumbsDown,
   LuThumbsUp,
@@ -40,7 +39,6 @@ import { useListCandidateStatusesQuery } from '../../../api/candidate-service/Ma
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
 import AddCandidateModal from './Modal/AddCandidateModal';
-import BulkSendSmsModal from './Modal/BulkSendSmsModal';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
 import BulkScheduleInterviewsModal from './Modal/BulkScheduleInterviewsModal';
 import ChangeCandidateStatusModal, {
@@ -86,7 +84,6 @@ const CandidatesListing = () => {
   const [isJobNotesPanelOpen, setIsJobNotesPanelOpen] = useState(false);
   const [notesCandidate, setNotesCandidate] = useState<{ id: string; name: string } | null>(null);
   const [isBulkEmailOpen, setIsBulkEmailOpen] = useState(false);
-  const [isBulkSmsOpen, setIsBulkSmsOpen] = useState(false);
   const [isBulkScheduleOpen, setIsBulkScheduleOpen] = useState(false);
   const [statusModal, setStatusModal] = useState<{
     mode: ChangeCandidateStatusMode;
@@ -651,12 +648,6 @@ const CandidatesListing = () => {
                   >
                     <LuMail size={16} /> Email
                   </Button>
-                  <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
-                    onClick={() => setIsBulkSmsOpen(true)}
-                  >
-                    <LuMessageSquare size={16} /> SMS
-                  </Button>
                   {canManageCandidates && (
                     <Button
                       className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
@@ -691,11 +682,6 @@ const CandidatesListing = () => {
       <BulkEmailCandidatesModal
         open={isBulkEmailOpen}
         onClose={() => setIsBulkEmailOpen(false)}
-        candidates={selectedCandidates}
-      />
-      <BulkSendSmsModal
-        open={isBulkSmsOpen}
-        onClose={() => setIsBulkSmsOpen(false)}
         candidates={selectedCandidates}
       />
       <BulkScheduleInterviewsModal

@@ -17,8 +17,7 @@ import {
   formatTenantStatusLabel,
   formatTenantDate,
 } from './tenantDisplay.helpers';
-
-const PAGE_SIZE_OPTIONS = [5, 10, 20];
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 
 /**
  * Super Admin's "CFP Company" Dashboard slide, replaced to point at real

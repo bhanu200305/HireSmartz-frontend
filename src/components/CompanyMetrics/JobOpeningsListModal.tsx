@@ -12,8 +12,7 @@ import type { JobSummary } from '../../api/job-service/JobOpenings/types';
 import { jobStatus, daysOpen } from './jobOpeningListHelpers';
 import JobDetailModal from './JobDetailModal';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
-
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 
 type JobRow = JobSummary & { key: string };
 

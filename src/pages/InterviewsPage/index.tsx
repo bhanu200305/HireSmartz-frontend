@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Select } from 'antd';
 import { BsCalendar4Event } from 'react-icons/bs';
+import { MdOutlineArrowBack } from 'react-icons/md';
 import dayjs from 'dayjs';
 
 import MainLayout from '../../layouts/MainLayout';
@@ -47,6 +49,7 @@ const roundLabel = (booking: { sequence_no: number }): string =>
   booking.sequence_no ? `Round ${booking.sequence_no}` : '-';
 
 export const InterviewsPage = () => {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [statusFilter, setStatusFilter] = useState<BookingStatus | undefined>(undefined);
   const [typeFilter, setTypeFilter] = useState<InterviewType | undefined>(undefined);
@@ -126,6 +129,13 @@ export const InterviewsPage = () => {
   return (
     <MainLayout>
       <div className="w-full p-8 pt-16">
+        <button
+          onClick={() => navigate('/')}
+          className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+        >
+          <MdOutlineArrowBack className="mr-2" />
+          <span>Back</span>
+        </button>
         <div className="mb-6 flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
             <BsCalendar4Event size={20} />

@@ -51,7 +51,7 @@ const StartAccountRecovery = () => {
             instead.
           </p>
           <Link to="/login" className="mt-2 text-sm text-primary hover:underline">
-            Back to login
+            Back
           </Link>
         </div>
       </AuthPageShell>
@@ -103,7 +103,7 @@ const StartAccountRecovery = () => {
           className="flex items-center justify-center text-sm text-gray-500 hover:underline cursor-pointer"
         >
           <FaArrowLeft className="mr-2 inline-block text-xs" />
-          Back to login
+          Back
         </button>
       </form>
     </AuthPageShell>

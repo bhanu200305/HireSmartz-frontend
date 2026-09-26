@@ -206,7 +206,7 @@ const MfaChallengeStep = ({
           onClick={onBack}
           className="mt-1 flex items-center gap-1 text-gray-400 hover:text-gray-600 cursor-pointer"
         >
-          <FaArrowLeft size={12} /> Back to login
+          <FaArrowLeft size={12} /> Back
         </button>
       </div>
     );
@@ -283,7 +283,7 @@ const MfaChallengeStep = ({
           onClick={onBack}
           className="mt-1 flex items-center gap-1 text-gray-400 hover:text-gray-600 cursor-pointer"
         >
-          <FaArrowLeft size={12} /> Back to login
+          <FaArrowLeft size={12} /> Back
         </button>
       </div>
     </form>

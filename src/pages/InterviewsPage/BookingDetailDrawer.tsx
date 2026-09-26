@@ -46,7 +46,13 @@ const GHOST_BTN =
 const DANGER_BTN =
   'rounded-3xl bg-danger-bg px-4 py-2 text-sm font-medium text-danger-text hover:brightness-95 disabled:opacity-50';
 
-const TERMINAL: BookingStatus[] = ['completed', 'cancelled', 'no_show', 'failed'];
+const TERMINAL: BookingStatus[] = [
+  'completed',
+  'cancelled',
+  'no_show',
+  'interviewer_no_show',
+  'failed',
+];
 
 const fmt = (iso: string | null): string =>
   iso && dayjs(iso).isValid() ? dayjs(iso).format('DD MMM YYYY, h:mm A') : '-';
@@ -83,7 +89,23 @@ export const BookingDetailDrawer = ({
   const open = Boolean(bookingId);
   const id = bookingId ?? '';
 
-  const { data: booking, isLoading, isFetching, error } = useGetBookingQuery(id, { skip: !open });
+  const {
+    data: booking,
+    isLoading,
+    isFetching,
+    error,
+  } = useGetBookingQuery(id, {
+    skip: !open,
+    // Both the candidate's scheduling email AND (for PANEL) this booking's
+    // status flipping to "Scheduled" happen server-side once the last
+    // interviewer connects their calendar — nothing clicked in this drawer
+    // triggers either, so it has to catch up on its own. `refetchOnMount...`
+    // covers "opened again later"; the poll covers "left open while it
+    // happens".
+    refetchOnMountOrArgChange: true,
+    pollingInterval: 20_000,
+    skipPollingIfUnfocused: true,
+  });
   const { data: followUps } = useGetFollowUpsQuery(id, { skip: !open });
   const { data: participation } = useGetParticipationQuery(id, { skip: !open });
   const { data: artifacts } = useGetArtifactsQuery(id, { skip: !open });
@@ -107,6 +129,10 @@ export const BookingDetailDrawer = ({
   });
   const { data: calendarStatus } = useGetInterviewerCalendarStatusQuery(id, {
     skip: !open || !isPanel,
+    refetchOnMountOrArgChange: true,
+    pollingInterval: 15_000,
+    skipPollingIfUnfocused: true,
+    refetchOnFocus: true,
   });
   // Job Service owns the question bank, grouped by round — matched back to
   // THIS booking's round by `sequence_no`, not `round_id`, because a round

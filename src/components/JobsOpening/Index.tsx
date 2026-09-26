@@ -19,6 +19,7 @@ import {
   MdOutlineCheckCircle,
   MdOutlineEditNote,
   MdOutlineCancel,
+  MdOutlineArrowBack,
 } from 'react-icons/md';
 import { StatCardRow, type StatCardData } from '../shared/ui/StatCardRow';
 import { hasFeatureAccess, isAssignedToJob } from '../../shared/utils/auth/getAccess';
@@ -1011,6 +1012,13 @@ const JobsOpening = () => {
     <div>
       <MainLayout>
         <div className="jobs-list-page w-full p-4 sm:p-8 justify-start pt-8 sm:pt-16">
+          <button
+            onClick={() => navigate('/')}
+            className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+          >
+            <MdOutlineArrowBack className="mr-2" />
+            <span>Back</span>
+          </button>
           {(isLoading || isDuplicating) && <Loader />}
           <div className="flex flex-wrap gap-4 justify-between p-2">
             {isFromGlobalSearch && filters.text ? (

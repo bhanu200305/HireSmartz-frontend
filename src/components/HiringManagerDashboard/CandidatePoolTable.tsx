@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { CustomTable, Badge } from '../shared';
 import type { CandidatePoolItem } from '../../api/candidate-service/Stats/stats';
 import { jobDisplayName } from './useJobOpeningNameMap';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 
 const formatDate = (iso: string | null): string =>
   iso
@@ -116,7 +117,7 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
         pageSize,
         total,
         showSizeChanger: true,
-        pageSizeOptions: ['10', '25', '50', '100'],
+        pageSizeOptions: PAGE_SIZE_OPTIONS.map(String),
         showTotal: (t, range) => `${range[0]}-${range[1]} of ${t} candidates`,
         onChange: onPageChange,
       }}

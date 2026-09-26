@@ -3,6 +3,7 @@ import type { TableProps } from 'antd';
 import {
   MdOutlineAdd,
   MdOutlineBlock,
+  MdOutlineEdit,
   MdOutlineFileUpload,
   MdOutlineRefresh,
   MdPersonOff,
@@ -30,6 +31,7 @@ import {
   useDeactivatePlatformTenantUserMutation,
   useReactivatePlatformTenantUserMutation,
   useAttachPlatformTenantUserLocationMutation,
+  useUpdatePlatformTenantUserMutation,
 } from '../../../../api/organization-service/Platform/users';
 import {
   useListPlatformTenantInvitationsQuery,
@@ -146,10 +148,11 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   // shows up via `data.items` instead). `limit: 100`, not the endpoint's own
   // default of 50 — a tenant that bulk-imported more than 50 people at once
   // would otherwise silently lose the overflow off this list.
-  const { data: invitationsData } = useListPlatformTenantInvitationsQuery({
-    tenantId,
-    limit: 100,
-  });
+  const { data: invitationsData, refetch: refetchInvitations } =
+    useListPlatformTenantInvitationsQuery({
+      tenantId,
+      limit: 100,
+    });
   const { data: departments } = useListPlatformTenantDepartmentsQuery(tenantId);
   const { data: designations } = useListPlatformTenantDesignationsQuery(tenantId);
   const { data: offices } = useListPlatformTenantOfficesQuery(tenantId);
@@ -162,6 +165,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     useResendPlatformTenantInvitationMutation();
   const [revokeInvite, { isLoading: isRevokingInvite }] =
     useRevokePlatformTenantInvitationMutation();
+  const [updateUser, { isLoading: isChangingEmail }] = useUpdatePlatformTenantUserMutation();
   // Only used when a location was also picked for the new hire's role — see
   // handleAdd. CreateUserCommand.role_id alone (the common case, no
   // follow-up call needed) already grants the role at creation, applying
@@ -179,6 +183,18 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
   const [viewingUser, setViewingUser] = useState<OrgUser | null>(null);
   const [searchText, setSearchText] = useState('');
+  // A PendingRow carries no user_id — CreateUserUseCase writes the `users`
+  // row and the `Invite` together, in one transaction, at invite time, but
+  // ListInvitationsView only surfaces the invite's own fields. The matching
+  // OrgUser (same email, `has_set_password: false`) already carries the real
+  // user_id PATCH .../users/{user_id} needs, resolved here by email against
+  // the users already fetched into `data.items` above — no new call needed.
+  const [changeEmailTarget, setChangeEmailTarget] = useState<{
+    invitationId: string;
+    userId: string;
+    currentEmail: string;
+  } | null>(null);
+  const [newEmail, setNewEmail] = useState('');
   // Set only when "Create user" fails with DEACTIVATED_USER_EMAIL_CONFLICT —
   // deactivating never frees the email, only suspends it, so re-adding via
   // "Add user" 409s (see handleReactivate's own comment below). Cleared on
@@ -201,6 +217,14 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     designations?.find((d) => d.designation_id === id)?.name || '-';
 
   const users = data?.items ?? [];
+
+  const userIdByEmail = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const user of users) {
+      map.set(user.email.trim().toLowerCase(), user.user_id);
+    }
+    return map;
+  }, [users]);
 
   // Only "pending" — "accepted" is already a real row in `users` above (would
   // double-list the same person), and "expired"/"revoked" are no longer
@@ -385,6 +409,44 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
   };
 
+  const startChangeEmail = (invitationId: string, userId: string, currentEmail: string) => {
+    setChangeEmailTarget({ invitationId, userId, currentEmail });
+    setNewEmail(currentEmail);
+  };
+
+  const cancelChangeEmail = () => {
+    setChangeEmailTarget(null);
+    setNewEmail('');
+  };
+
+  const handleChangeEmail = async () => {
+    if (!changeEmailTarget) return;
+    const trimmed = newEmail.trim();
+    if (!trimmed) return;
+    try {
+      const res = await updateUser({
+        tenantId,
+        userId: changeEmailTarget.userId,
+        email: trimmed,
+      }).unwrap();
+      showToast({
+        message: res.invite_resent
+          ? 'Email updated — a fresh invite was sent to the new address.'
+          : 'Email updated.',
+        type: 'success',
+      });
+      cancelChangeEmail();
+      // updatePlatformTenantUser only invalidates the user directory
+      // ('OrgUsers') — this invitation's own `invited_email` (organization-
+      // service redirects the pending invite to the new address as part of
+      // the same PATCH) is a separate cache entry that needs its own
+      // refetch to show the change here.
+      void refetchInvitations();
+    } catch (err) {
+      showToast({ message: getOrgErrorMessage(err, 'Failed to update email.'), type: 'error' });
+    }
+  };
+
   const handleResendInvite = async (invitationId: string) => {
     try {
       await resendInvite({ tenantId, invitationId }).unwrap();
@@ -514,11 +576,25 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 80,
+      width: 115,
       render: (_: unknown, row: TableRow) => {
         if (row.kind === 'pending') {
+          const matchedUserId = userIdByEmail.get(row.invited_email.trim().toLowerCase());
           return (
             <div className="flex gap-1">
+              {matchedUserId && (
+                <button
+                  type="button"
+                  aria-label="Change email"
+                  className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  disabled={isChangingEmail}
+                  onClick={() =>
+                    startChangeEmail(row.invitation_id, matchedUserId, row.invited_email)
+                  }
+                >
+                  <MdOutlineEdit />
+                </button>
+              )}
               <button
                 type="button"
                 aria-label="Resend invitation"
@@ -638,8 +714,8 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm text-amber-800">
                 A deactivated user already exists with the email{' '}
-                <span className="font-medium">{deactivatedConflict.email}</span>. Deactivating
-                never frees the email, so reactivate that account instead of creating a new one.
+                <span className="font-medium">{deactivatedConflict.email}</span>. Deactivating never
+                frees the email, so reactivate that account instead of creating a new one.
               </p>
               <Button
                 className="mt-3 rounded-3xl bg-button px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -719,6 +795,41 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           onClose={() => setUserToDeactivate(null)}
         />
       )}
+
+      <AntdCommonModal
+        open={changeEmailTarget !== null}
+        onClose={cancelChangeEmail}
+        title="Change email"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-gray-600">
+            Correcting a typo? This resends the invitation to the new address —{' '}
+            {changeEmailTarget?.currentEmail} will no longer receive it.
+          </p>
+          <Input
+            type="email"
+            placeholder="Corrected email address"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              className="w-full border border-gray-300 rounded-full py-2"
+              onClick={cancelChangeEmail}
+              disabled={isChangingEmail}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="w-full bg-button text-white rounded-full py-2"
+              onClick={() => void handleChangeEmail()}
+              disabled={!newEmail.trim() || isChangingEmail}
+            >
+              {isChangingEmail ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </AntdCommonModal>
 
       <BulkImport
         open={isBulkImportOpen}

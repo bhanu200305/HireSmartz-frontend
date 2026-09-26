@@ -17,9 +17,10 @@ import {
   LuFileText,
 } from 'react-icons/lu';
 import { IoChatbubbleEllipses } from 'react-icons/io5';
-import { CommonCard, Button, showToast } from '../../shared';
+import { CommonCard, Button, Badge, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
+import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import { NotesPillTrigger } from '../Notes/NotesPillTrigger';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { useGetJobQuestionsQuery } from '../../../api/job-service/JobOpening/jobQuestions';
@@ -32,6 +33,8 @@ import {
   useListCandidateInterviewRoundsQuery,
   useListEligibleInterviewersQuery,
   useSetPanelInterviewersMutation,
+  type InterviewerView,
+  type CandidateInterviewRoundView,
 } from '../../../api/candidate-service/Candidates/interviewRounds';
 import {
   useListCandidateInterviewScoresQuery,
@@ -48,10 +51,11 @@ import {
   useLazyGetCalendarConnectUrlQuery,
   useGetCalendarGrantStatusQuery,
   useGetArtifactsQuery,
+  useGetInterviewersCalendarStatusQuery,
   useUploadOfflineRecordingMutation,
+  useGetAudioScreeningQuestionsQuery,
   CONCLUDED_BOOKING_STATUSES,
 } from '../../../api/interview-service/client';
-import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
@@ -120,6 +124,100 @@ const formatDateTime = (value: string | null | undefined) =>
 const formatStatus = (status: string) =>
   status.replace(/[_-]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
 
+/** The interviewer-picker `Select` — colored dropdown dots and selected-chip
+ * backgrounds by calendar-connected status, identical UI/behavior whether
+ * it's rostering a PANEL round for the first time (Create Booking) or
+ * picking a new roster for an already-booked one (Request reschedule's
+ * "choose different interviewers" step). Extracted so both call sites share
+ * one implementation instead of the color-coding logic drifting between two
+ * copies. */
+const PanelInterviewerPicker = ({
+  id,
+  value,
+  onChange,
+  options,
+  loading,
+  calendarConnectedById,
+  helperText,
+}: {
+  id: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+  options: InterviewerView[];
+  loading: boolean;
+  calendarConnectedById: Map<string, boolean>;
+  helperText?: string;
+}) => (
+  <div>
+    <label htmlFor={id} className="mb-1 block text-sm text-gray-800">
+      Interviewer(s) <span className="required-asterisk">*</span>
+    </label>
+    <Select
+      id={id}
+      mode="multiple"
+      className="w-full"
+      placeholder="Choose who sits on this round's panel"
+      loading={loading}
+      value={value}
+      onChange={onChange}
+      showSearch
+      optionFilterProp="label"
+      notFoundContent={loading ? 'Loading…' : 'No eligible interviewers found'}
+      options={options.map((interviewer) => ({
+        label: `${interviewer.display_name} (${interviewer.email})`,
+        value: interviewer.id,
+      }))}
+      // `label` itself stays plain text (kept searchable via
+      // optionFilterProp) and only the rendering is colored, so filtering
+      // behavior is unaffected.
+      optionRender={(option) => {
+        const connected = calendarConnectedById.get(String(option.value));
+        return (
+          <span className="flex items-center gap-2">
+            <span
+              className={`h-2 w-2 shrink-0 rounded-full ${
+                connected === false
+                  ? 'bg-red-500'
+                  : connected === true
+                    ? 'bg-green-500'
+                    : 'bg-gray-300'
+              }`}
+              aria-hidden
+            />
+            {option.label}
+          </span>
+        );
+      }}
+      tagRender={({ label, value: tagValue, closable, onClose }) => {
+        const connected = calendarConnectedById.get(String(tagValue));
+        return (
+          <span
+            className={`mb-0.5 mr-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
+              connected === false
+                ? 'border-red-200 bg-red-50 text-red-700'
+                : connected === true
+                  ? 'border-green-200 bg-green-50 text-green-700'
+                  : 'border-gray-200 bg-gray-50 text-gray-600'
+            }`}
+          >
+            {label}
+            {closable && (
+              <span
+                onClick={onClose}
+                className="cursor-pointer text-current opacity-60 hover:opacity-100"
+                aria-hidden
+              >
+                ×
+              </span>
+            )}
+          </span>
+        );
+      }}
+    />
+    {helperText && <p className="mt-1 text-xs text-gray-400">{helperText}</p>}
+  </div>
+);
+
 const CandidateDetails = () => {
   const navigate = useNavigate();
   const { candidateId, id: jobIdFromParams } = useParams<{
@@ -158,6 +256,33 @@ const CandidateDetails = () => {
   // PipelineBoard's own Panel Interviewers picker) whenever the selected
   // round changes, below.
   const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<string[]>([]);
+  // Confirmation gate before requesting a reschedule — the candidate's
+  // resume-consistency score is recalculated from whatever call actually
+  // ends up happening, so a recruiter needs to know the current score (if
+  // any) is about to be replaced before they commit to a new call.
+  const [isRescheduleConfirmOpen, setIsRescheduleConfirmOpen] = useState(false);
+  // Which round the confirm modal/mutation actually act on — deliberately
+  // separate from `selectedRound`. The Call Outcome card's own button sets
+  // this to `selectedRound` (same round already open), but PipelineBoard's
+  // per-card "Request reschedule" button needs to trigger the exact same
+  // flow WITHOUT first navigating into that round's drill-down view.
+  const [rescheduleRound, setRescheduleRound] = useState<CandidateInterviewRoundView | null>(null);
+  // PANEL reschedules get an extra "keep the same roster, or pick a new
+  // one?" step the generic ConfirmationModal below doesn't ask — backend
+  // carries the original roster forward automatically on an empty body, so
+  // this is purely a UI decision point, not something the API requires an
+  // answer to. `rescheduleRound.round_type`, not `isPanelRound` — this can
+  // open straight from a PipelineBoard card for a round that isn't the
+  // currently drilled-into `selectedRound` at all.
+  const isRescheduleRoundPanel = rescheduleRound?.round_type === 'PANEL';
+  const [rescheduleStep, setRescheduleStep] = useState<'choice' | 'picker'>('choice');
+  const [rescheduleInterviewerIds, setRescheduleInterviewerIds] = useState<string[]>([]);
+  // Reset to the first step every time a fresh reschedule flow opens, so a
+  // previous round's "choose different interviewers" progress can't leak
+  // into the next one.
+  useEffect(() => {
+    if (isRescheduleConfirmOpen) setRescheduleStep('choice');
+  }, [isRescheduleConfirmOpen, rescheduleRound?.id]);
   const [scoreModalFor, setScoreModalFor] = useState<{
     scoreId: string;
     roundName: string;
@@ -186,6 +311,13 @@ const CandidateDetails = () => {
 
   const { data: rawRounds = [] } = useListCandidateInterviewRoundsQuery(candidateId ?? '', {
     skip: !candidateId,
+    // A round's own status (e.g. PANEL flipping to "Scheduled" once the
+    // candidate actually books a time after every interviewer connects
+    // their calendar) changes from a backend event chain, not from
+    // anything clicked on this screen — poll so the Pipeline board catches
+    // up without a manual refresh, same reasoning as useGetCandidateQuery.
+    pollingInterval: 20_000,
+    skipPollingIfUnfocused: true,
   });
   // The instant-call flow (Intake Call first, resume within 24h) and the
   // resume-first flow get the SAME plan-level round order from the backend —
@@ -221,10 +353,42 @@ const CandidateDetails = () => {
   const roundQuestions = jobQuestions?.rounds.find((r) => r.sequence === selectedRound?.sequence);
   const [setPanelInterviewers, { isLoading: isSavingInterviewers }] =
     useSetPanelInterviewersMutation();
+  // Needed both for the Create Booking picker (pre-booking, driven off
+  // `selectedRound`) and the "choose different interviewers" reschedule
+  // step (post-booking, can be driven off a DIFFERENT round entirely —
+  // `rescheduleRound` — opened straight from a PipelineBoard card without
+  // ever drilling into that round). Eligibility itself is candidate-scoped,
+  // not round-scoped, so one query correctly serves both.
+  const showsReschedulePicker =
+    isRescheduleConfirmOpen && isRescheduleRoundPanel && rescheduleStep === 'picker';
   const { data: eligibleInterviewers, isLoading: isLoadingInterviewers } =
     useListEligibleInterviewersQuery(candidateId ?? '', {
-      skip: !candidateId || !isPanelRound || Boolean(selectedRound?.interview_booking_id),
+      skip:
+        !candidateId ||
+        !((isPanelRound && !selectedRound?.interview_booking_id) || showsReschedulePicker),
     });
+  // Colors the picker's chips (dropdown options AND already-picked tags)
+  // green/red by whether each interviewer has connected their calendar —
+  // nothing pushes an update when someone connects elsewhere, so this polls
+  // while the picker is open instead of requiring a manual page refresh to
+  // see a chip flip from red to green. Omitting `interviewerIds` asks for
+  // the WHOLE eligible pool's status (not just the currently-selected
+  // roster) so the dropdown itself is color-coded before anything is picked,
+  // not only the chips already chosen.
+  const { data: interviewersCalendarStatus } = useGetInterviewersCalendarStatusQuery(
+    { jobId: parsedJobId ?? '' },
+    {
+      skip:
+        !parsedJobId ||
+        !((isPanelRound && !selectedRound?.interview_booking_id) || showsReschedulePicker),
+      pollingInterval: 15_000,
+      skipPollingIfUnfocused: true,
+      refetchOnFocus: true,
+    }
+  );
+  const interviewerCalendarConnectedById = new Map(
+    (interviewersCalendarStatus ?? []).map((s) => [s.interviewer_id, s.calendar_connected])
+  );
   // Re-seeded whenever the SELECTED ROUND changes (by id, not by reference —
   // `setSelectedRound` below replaces the object on every booking-created/
   // interviewers-saved success, and re-seeding on every such change would
@@ -236,6 +400,29 @@ const CandidateDetails = () => {
   }, [selectedRound?.id]);
   const { data: selectedBooking } = useGetBookingQuery(selectedRound?.interview_booking_id ?? '', {
     skip: !selectedRound?.interview_booking_id,
+    // The candidate's scheduling email (and, for PANEL, the round flipping
+    // to "Scheduled") both happen server-side once the last interviewer
+    // connects their calendar — no action on this screen triggers either,
+    // so this has to catch up on its own instead of waiting for a manual
+    // refresh. Same reasoning as useGetCandidateQuery's own polling above.
+    pollingInterval: 20_000,
+    skipPollingIfUnfocused: true,
+  });
+  // The real questions Vapi asked on this AUDIO_SCREENING call — distinct
+  // from job-service's static per-round question bank (`roundQuestions`
+  // below), which is a fixed plan, not what actually got asked. Only
+  // meaningful for AUDIO_SCREENING; a 404 means the call hasn't concluded
+  // (or Vapi's reply hasn't been processed) yet, not a real error — handled
+  // where this is rendered, not here.
+  const {
+    data: audioScreeningQuestions,
+    error: audioScreeningQuestionsError,
+    isLoading: isLoadingAudioScreeningQuestions,
+  } = useGetAudioScreeningQuestionsQuery(selectedRound?.interview_booking_id ?? '', {
+    skip:
+      !selectedRound ||
+      !isAudioScreeningRound(selectedRound) ||
+      !selectedRound.interview_booking_id,
   });
   // Every past attempt for this round, not just the current one — see
   // getBookingHistory's own docstring for why interview-service, not
@@ -301,18 +488,6 @@ const CandidateDetails = () => {
       }, 1000);
     });
   };
-  // Confirmation gate before requesting a reschedule — the candidate's
-  // resume-consistency score is recalculated from whatever call actually
-  // ends up happening, so a recruiter needs to know the current score (if
-  // any) is about to be replaced before they commit to a new call.
-  const [isRescheduleConfirmOpen, setIsRescheduleConfirmOpen] = useState(false);
-  // Which round the confirm modal/mutation actually act on — deliberately
-  // separate from `selectedRound`. The Call Outcome card's own button sets
-  // this to `selectedRound` (same round already open), but PipelineBoard's
-  // per-card "Request reschedule" button needs to trigger the exact same
-  // flow WITHOUT first navigating into that round's drill-down view.
-  const [rescheduleRound, setRescheduleRound] = useState<CandidateInterviewRoundView | null>(null);
-
   // Offline hiring-panel recording: `POST /bookings/{id}/recording/upload`
   // — the candidate visited in person, so there's no LiveKit session to
   // detect a recording automatically; a recruiter attaches the audio file
@@ -392,15 +567,32 @@ const CandidateDetails = () => {
     }
   };
 
-  const handleRequestCallReschedule = async () => {
+  // `interviewerIds` is PANEL's "choose different interviewers" path only —
+  // omitted (undefined), the backend carries the original roster forward
+  // automatically. Same degradation as creating a booking the first time,
+  // so the toast branches the same way `handleCreateBooking` below does.
+  const handleRequestCallReschedule = async (interviewerIds?: string[]) => {
     if (!rescheduleRound?.interview_booking_id) return;
     try {
-      await requestCallReschedule(rescheduleRound.interview_booking_id).unwrap();
-      showToast({
-        message:
-          'Reschedule requested — the candidate has been emailed a new link, valid for 24 hours.',
-        type: 'success',
-      });
+      const booking = await requestCallReschedule({
+        bookingId: rescheduleRound.interview_booking_id,
+        interviewerIds,
+      }).unwrap();
+      const pendingNames = booking.pending_calendar_connect_interviewer_names;
+      if (pendingNames && pendingNames.length > 0) {
+        showToast({
+          message:
+            booking.envelope_message ||
+            `Reschedule requested — waiting on ${pendingNames.join(', ')} to connect their calendar before the candidate is scheduled.`,
+          type: 'success',
+        });
+      } else {
+        showToast({
+          message:
+            'Reschedule requested — the candidate has been emailed a new link, valid for 24 hours.',
+          type: 'success',
+        });
+      }
     } catch (e) {
       showToast({
         message: getCandidateErrorMessage(e, 'Could not request a reschedule'),
@@ -409,6 +601,8 @@ const CandidateDetails = () => {
     } finally {
       setIsRescheduleConfirmOpen(false);
       setRescheduleRound(null);
+      setRescheduleStep('choice');
+      setRescheduleInterviewerIds([]);
     }
   };
 
@@ -475,7 +669,24 @@ const CandidateDetails = () => {
         interview_booking_id: booking.id,
         interviewer_ids: isPanelRound ? selectedInterviewerIds : selectedRound.interviewer_ids,
       });
-      showToast({ message: 'Booking created successfully.', type: 'success' });
+      // PANEL only — interview-service still creates the booking even when
+      // part of the roster hasn't connected their calendar yet, but the
+      // candidate's scheduling email doesn't go out until everyone has.
+      // Surface that instead of the generic success toast so it's not
+      // mistaken for "fully scheduled". Prefer the backend's own
+      // `envelope_message` (already phrased for display) over building one
+      // from the names ourselves.
+      const pendingNames = booking.pending_calendar_connect_interviewer_names;
+      if (pendingNames && pendingNames.length > 0) {
+        showToast({
+          message:
+            booking.envelope_message ||
+            `Booking created — waiting on ${pendingNames.join(', ')} to connect their calendar before the candidate is scheduled.`,
+          type: 'success',
+        });
+      } else {
+        showToast({ message: 'Booking created successfully.', type: 'success' });
+      }
     } catch (error) {
       showToast({
         message: getCandidateErrorMessage(error, 'Could not create booking.'),
@@ -1146,6 +1357,52 @@ const CandidateDetails = () => {
                     </CommonCard>
                   )}
 
+                  {isAudioScreeningRound(selectedRound) && (
+                    <CommonCard>
+                      <div className="p-5 flex flex-col gap-3">
+                        <h4 className="font-semibold text-gray-900">Questions asked</h4>
+                        <p className="text-sm text-gray-600">
+                          The real questions Vapi asked on this call, not the job&apos;s question
+                          plan.
+                        </p>
+                        {isLoadingAudioScreeningQuestions ? (
+                          <Loader />
+                        ) : audioScreeningQuestionsError ? (
+                          <p className="text-sm text-gray-400">
+                            {'status' in audioScreeningQuestionsError &&
+                            audioScreeningQuestionsError.status === 404
+                              ? 'Questions will appear once the call completes.'
+                              : 'Could not load the questions for this call right now.'}
+                          </p>
+                        ) : audioScreeningQuestions && audioScreeningQuestions.length > 0 ? (
+                          <ol className="list-decimal space-y-3 pl-5 text-sm">
+                            {audioScreeningQuestions.map((q) => (
+                              <li key={q.id} className="text-gray-800">
+                                {q.question_text}
+                                {q.answer_text && (
+                                  <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
+                                )}
+                                {q.scoring_sections.length > 0 && (
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {q.scoring_sections.map((section) => (
+                                      <Badge key={section} status="neutral" dot={false}>
+                                        {section}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </li>
+                            ))}
+                          </ol>
+                        ) : (
+                          <p className="text-sm text-gray-400">
+                            No questions were recorded for this call.
+                          </p>
+                        )}
+                      </div>
+                    </CommonCard>
+                  )}
+
                   <CommonCard>
                     <div className="p-5 flex flex-col gap-3">
                       <h4 className="font-semibold text-gray-900">Interview scheduling</h4>
@@ -1161,35 +1418,15 @@ const CandidateDetails = () => {
                         </p>
                       )}
                       {isPanelRound && !selectedRound.interview_booking_id && (
-                        <div>
-                          <label
-                            htmlFor="panel-interviewer-select"
-                            className="mb-1 block text-sm text-gray-800"
-                          >
-                            Interviewer(s) <span className="required-asterisk">*</span>
-                          </label>
-                          <Select
-                            id="panel-interviewer-select"
-                            mode="multiple"
-                            className="w-full"
-                            placeholder="Choose who sits on this round's panel"
-                            loading={isLoadingInterviewers}
-                            value={selectedInterviewerIds}
-                            onChange={(value) => setSelectedInterviewerIds(value)}
-                            showSearch
-                            optionFilterProp="label"
-                            notFoundContent={
-                              isLoadingInterviewers ? 'Loading…' : 'No eligible interviewers found'
-                            }
-                            options={(eligibleInterviewers ?? []).map((interviewer) => ({
-                              label: `${interviewer.display_name} (${interviewer.email})`,
-                              value: interviewer.id,
-                            }))}
-                          />
-                          <p className="mt-1 text-xs text-gray-400">
-                            Pick at least one panel interviewer to enable Create Booking.
-                          </p>
-                        </div>
+                        <PanelInterviewerPicker
+                          id="panel-interviewer-select"
+                          value={selectedInterviewerIds}
+                          onChange={setSelectedInterviewerIds}
+                          options={eligibleInterviewers ?? []}
+                          loading={isLoadingInterviewers}
+                          calendarConnectedById={interviewerCalendarConnectedById}
+                          helperText="Pick at least one panel interviewer to enable Create Booking."
+                        />
                       )}
                       <div className="flex flex-wrap gap-3">
                         <Button
@@ -1478,7 +1715,7 @@ const CandidateDetails = () => {
                                 <td className="px-2 py-3 text-gray-500">
                                   {roundScore?.recruiter_scored_by ?? 'Not assigned'}
                                 </td>
-                                <td className="px-2 py-3 text-gray-700">
+                                <td className="max-w-[260px] px-2 py-3 text-gray-700">
                                   {scoreText ?? statusText}
                                   {roundScore?.section_scores &&
                                     roundScore.section_scores.length > 0 && (
@@ -1488,6 +1725,18 @@ const CandidateDetails = () => {
                                           .join(' · ')}
                                       </div>
                                     )}
+                                  {/* The AI's own reasoning behind `score` — same
+                                      field/pairing as the Resume Assessment card's
+                                      `candidate.scoring_reason` under
+                                      `candidate.resume_score` above, just never
+                                      carried over to this per-round table despite
+                                      candidate-service returning it here too
+                                      (CandidateInterviewScoreView.scoring_reason). */}
+                                  {roundScore?.scoring_reason && (
+                                    <div className="mt-0.5 text-[11px] text-gray-400">
+                                      {roundScore.scoring_reason}
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="px-2 py-3">
                                   {outcomeLabel ? (
@@ -1652,7 +1901,90 @@ const CandidateDetails = () => {
           candidateName={candidateDisplayName(candidate)}
         />
       )}
-      {isRescheduleConfirmOpen && (
+      {isRescheduleConfirmOpen && isRescheduleRoundPanel && rescheduleStep === 'choice' && (
+        // PANEL's own first step — carrying the roster forward is a plain
+        // POST with no body (backend does it automatically), so "keep the
+        // same interviewers" fires the reschedule immediately instead of
+        // asking for a second confirmation on top of this one.
+        <AntdCommonModal
+          title="Request reschedule"
+          subtitle="Keep this round's current panel, or pick different interviewers for the new attempt?"
+          open
+          onClose={() => {
+            setIsRescheduleConfirmOpen(false);
+            setRescheduleRound(null);
+          }}
+          modalProps={{ width: 480 }}
+        >
+          <div className="flex flex-col gap-3">
+            <Button
+              type="button"
+              onClick={() => void handleRequestCallReschedule()}
+              disabled={isRequestingReschedule}
+              className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+            >
+              {isRequestingReschedule ? 'Sending…' : 'Keep the same interviewers'}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setRescheduleInterviewerIds(rescheduleRound?.interviewer_ids ?? []);
+                setRescheduleStep('picker');
+              }}
+              disabled={isRequestingReschedule}
+              className="w-full rounded-full border border-primary-200 bg-primary-50 py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-primary-700 disabled:opacity-50"
+            >
+              Choose different interviewers
+            </Button>
+          </div>
+        </AntdCommonModal>
+      )}
+      {isRescheduleConfirmOpen && isRescheduleRoundPanel && rescheduleStep === 'picker' && (
+        // Same picker UI as the initial Create Booking flow (colored by
+        // calendar-connect status) — just feeding `request-reschedule`'s
+        // `interviewer_ids` instead of `createBooking`'s.
+        <AntdCommonModal
+          title="Choose different interviewers"
+          subtitle="This new attempt will be scheduled with the roster picked below."
+          open
+          onClose={() => {
+            setIsRescheduleConfirmOpen(false);
+            setRescheduleRound(null);
+          }}
+          modalProps={{ width: 560 }}
+        >
+          <div className="flex flex-col gap-4">
+            <PanelInterviewerPicker
+              id="reschedule-interviewer-select"
+              value={rescheduleInterviewerIds}
+              onChange={setRescheduleInterviewerIds}
+              options={eligibleInterviewers ?? []}
+              loading={isLoadingInterviewers}
+              calendarConnectedById={interviewerCalendarConnectedById}
+              helperText="Pick at least one panel interviewer to request the reschedule."
+            />
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                onClick={() => setRescheduleStep('choice')}
+                disabled={isRequestingReschedule}
+                className="flex-1 rounded-full border border-gray-200 py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-gray-600 disabled:opacity-50"
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleRequestCallReschedule(rescheduleInterviewerIds)}
+                disabled={isRequestingReschedule || rescheduleInterviewerIds.length === 0}
+                className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+              >
+                {isRequestingReschedule ? 'Sending…' : 'Request reschedule'}
+              </Button>
+            </div>
+          </div>
+        </AntdCommonModal>
+      )}
+      {isRescheduleConfirmOpen && !isRescheduleRoundPanel && (
         <ConfirmationModal
           onClose={() => {
             setIsRescheduleConfirmOpen(false);

@@ -11,6 +11,7 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 import { Button, Input, showToast } from '../../../shared';
 import TemplatePreviewModal from '../../../shared/ui/TemplatePreviewModal';
 import type { CandidateView } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
+import { toTitleCase } from './smsHelpers';
 
 const SMS_MAX_LEN = 160;
 // POST /candidates/{candidate_id}/messages/sms/generate — one candidate
@@ -65,7 +66,12 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
 
   useEffect(() => {
     if (open) {
-      setMessage('');
+      // Prefilled with a greeting instead of left blank — the recruiter
+      // still edits/replaces it before sending, but starting from "Hi
+      // <Name>," means the candidate reliably gets addressed by name
+      // without the recruiter having to remember to type it themselves.
+      const firstName = toTitleCase(candidates[0]?.first_name ?? '');
+      setMessage(firstName ? `Hi ${firstName}, ` : '');
       setResults([]);
       setShowAiPrompt(false);
       setAiIntent('');
@@ -101,7 +107,14 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
         candidateId: basisCandidate.id,
         body: { intent },
       }).unwrap();
-      setMessage(res.message.slice(0, SMS_MAX_LEN));
+      // The AI draft is generic, not personalized — same greeting-by-name
+      // guarantee as the initial prefill above, so switching to "Generate
+      // with AI" never drops the name the recruiter already had in the box.
+      const firstName = toTitleCase(basisCandidate.first_name ?? '');
+      const needsGreeting =
+        firstName && !res.message.toLowerCase().includes(firstName.toLowerCase());
+      const generated = needsGreeting ? `Hi ${firstName}, ${res.message}` : res.message;
+      setMessage(generated.slice(0, SMS_MAX_LEN));
       setShowAiPrompt(false);
     } catch (e) {
       showToast({

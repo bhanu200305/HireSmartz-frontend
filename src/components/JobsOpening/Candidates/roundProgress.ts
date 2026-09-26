@@ -22,6 +22,7 @@ const ROUND_STATUS_BUCKET: Record<string, RoundBucket> = {
   to_be_scheduled: 'pending',
   pending: 'pending',
   no_show: 'failed',
+  interviewer_no_show: 'failed',
   cancelled: 'failed',
   aborted: 'failed',
 };
@@ -63,6 +64,17 @@ export const isAudioScreeningRound = (round: CandidateInterviewRoundView): boole
  * Call. */
 export const isAiVideoRound = (round: CandidateInterviewRoundView): boolean =>
   round.stage_type === 'interview' && round.round_type === 'AI_VIDEO';
+
+/** True when a round's real-world outcome was specifically "the
+ * interviewer never joined" — distinct from `no_show` (candidate-service's
+ * existing vocabulary for a CANDIDATE no-show). Both bucket to 'failed' (the
+ * round genuinely concluded, just not successfully), but the two must never
+ * render as the same badge: an interviewer no-show is the company's failure,
+ * not the candidate's, and lumping them together on the card misattributes
+ * it. Normalised the same way `bucketForStatus` is, since interview-service
+ * owns this vocabulary and casing/separators aren't guaranteed. */
+export const isInterviewerNoShowRound = (round: CandidateInterviewRoundView): boolean =>
+  round.status.trim().toLowerCase().replace(/[-\s]+/g, '_') === 'interviewer_no_show';
 
 /** Moves the resume stage to sit immediately AFTER the Intake Call round for
  * instant-call-flow candidates, so the pipeline reads in the order things

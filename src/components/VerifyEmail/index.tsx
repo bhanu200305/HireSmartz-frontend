@@ -96,7 +96,7 @@ const VerifyEmail = () => {
           {errorMessage || 'Verification links expire; ask for a new one from the login page.'}
         </p>
         <Link to="/login" className="mt-2 text-sm text-primary hover:underline">
-          Back to login
+          Back
         </Link>
       </div>
     </AuthPageShell>

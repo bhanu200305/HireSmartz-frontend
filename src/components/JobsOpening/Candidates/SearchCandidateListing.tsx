@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { Col, Row, Spin } from 'antd';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LuUsersRound } from 'react-icons/lu';
+import { MdOutlineArrowBack } from 'react-icons/md';
 
 import MainLayout from '../../../layouts/MainLayout';
 import { Loader } from '../../shared/ui/loader';
@@ -14,6 +15,7 @@ import { CommonCard, Search } from '../../shared';
 
 const SearchCandidateListing = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Get data from global search navigation state
   const { candidatesData, searchQuery, fromGlobalSearch } = location.state || {};
@@ -175,6 +177,13 @@ const SearchCandidateListing = () => {
     <>
       <MainLayout>
         <div className="w-full p-8 justify-start pt-16">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+          >
+            <MdOutlineArrowBack className="mr-2" />
+            <span>Back</span>
+          </button>
           {isLoading && <Loader />}
           <div className="flex space-x-4 justify-between p-2">
             {isResults ? (

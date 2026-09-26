@@ -1,7 +1,7 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { MdOutlineInsights } from 'react-icons/md';
+import { MdOutlineArrowBack, MdOutlineInsights } from 'react-icons/md';
 import MainLayout from '../../layouts/MainLayout';
 import { Typography, LiveBadge } from '../shared';
 import { RootState } from '../../redux/provider/store';
@@ -23,6 +23,7 @@ import OpenJobsSection from './OpenJobsSection';
  * worse than — it never had real data behind it) the KPIs now above them.
  */
 const CompanyMetrics: React.FC = () => {
+  const navigate = useNavigate();
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
 
   if (!tenantId) {
@@ -34,6 +35,13 @@ const CompanyMetrics: React.FC = () => {
   return (
     <MainLayout>
       <div className="w-full p-8 pt-12">
+        <button
+          onClick={() => navigate('/')}
+          className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+        >
+          <MdOutlineArrowBack className="mr-2" />
+          <span>Back</span>
+        </button>
         <div className="flex items-start justify-between gap-3 mb-5">
           <div className="flex items-center space-x-2">
             <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">

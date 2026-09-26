@@ -212,7 +212,7 @@ const ForgotPassword = () => {
             className="flex items-center justify-center text-gray-600 text-sm hover:text-primary-600 hover:underline mt-4 transition-colors"
           >
             <FaArrowLeft className="mr-2 inline-block" />
-            Go back to Login
+            Back
           </Link>
 
           <Link

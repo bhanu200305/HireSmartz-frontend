@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FaCity } from 'react-icons/fa';
+import { MdOutlineArrowBack } from 'react-icons/md';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Popconfirm, Select } from 'antd';
 import type { TableProps } from 'antd';
@@ -157,6 +158,13 @@ const CustomerTable = () => {
   return (
     <MainLayout>
       <div className="w-full p-8 justify-start pt-16">
+        <button
+          onClick={() => navigate('/')}
+          className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+        >
+          <MdOutlineArrowBack className="mr-2" />
+          <span>Back</span>
+        </button>
         {isLoading && <Loader />}
         <div className="flex flex-wrap gap-4 justify-between items-center p-2">
           <div className="flex items-center gap-2.5">

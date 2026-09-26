@@ -24,7 +24,7 @@ const StepDone = ({ companyName, adminEmail, invitationId }: StepDoneProps) => {
           appname="back to customers"
           className="w-full text-white bg-[var(--color-primary)] rounded-3xl py-3"
         >
-          Back to Customers
+          Back
         </Button>
       </Link>
     </div>

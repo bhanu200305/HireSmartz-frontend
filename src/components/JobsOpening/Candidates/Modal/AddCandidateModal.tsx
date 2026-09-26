@@ -16,6 +16,7 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 import {
   isPhoneValidForCountry,
   PHONE_VALIDATION_MESSAGE,
+  toE164,
 } from '../../../../shared/utils/validation/phoneValidation';
 import { useEnterToSubmit } from '../../../../hooks/useEnterToSubmit';
 
@@ -139,7 +140,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       emailId: email.trim() || undefined,
-      contactNo: phone.trim() || undefined,
+      contactNo: phone.trim() ? toE164(countryCode, phone) : undefined,
       qualification: qualification.trim() || undefined,
       address: address.trim() || undefined,
     }).unwrap();

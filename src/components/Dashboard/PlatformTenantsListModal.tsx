@@ -19,8 +19,7 @@ import {
   formatTenantStatusLabel,
   formatTenantDate,
 } from './tenantDisplay.helpers';
-
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 
 // Same four values GET /v1/platform/tenants filters on (see
 // TENANT_STATUS_BADGE) — 'all' is a UI-only sentinel translated back to

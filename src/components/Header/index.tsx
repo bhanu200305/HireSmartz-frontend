@@ -602,210 +602,234 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
             reflows onto as many rows as it needs instead of relying on a
             scroll a phone user has no visible cue to find — see the git
             history for why that scroll-only fallback existed originally.
-            At `lg` and up this reverts to that exact original single-row,
-            horizontally-scrolling layout (`lg:flex-nowrap lg:overflow-x-auto
-            lg:gap-4`): this row's widths (`w-[180px] sm:w-[250px]
+            At `lg` and up, this row's widths (`w-[180px] sm:w-[250px]
             lg:w-[350px]` on Search, `w-40 sm:w-50` on Categories) react to
             the raw VIEWPORT width via Tailwind's breakpoints, not to how
             much of it the sidebar has already claimed — a `sm:` breakpoint
             (640px+) is satisfied on, say, a 768px-wide iPad in portrait,
             but the sidebar's fixed 240px (when shown as the `lg:`+ rail)
             still leaves less real content width there than these controls
-            actually need. Rather than re-deriving every width against the
-            sidebar (fragile the next time either changes), `lg:overflow-x-
-            auto` keeps every control — notably the profile/logout menu,
-            otherwise the one item that can get pushed off the end — reachable
-            by scrolling this row horizontally at those in-between desktop-ish
-            widths. Nothing about what's IN the row changes. */}
-        <div className="header-controls-scroll flex flex-1 flex-wrap items-center justify-end gap-3 lg:flex-nowrap lg:gap-4 lg:overflow-x-auto">
-          <Dropdown
-            open={showGlobal}
-            placement="bottomLeft"
-            trigger={[]}
-            dropdownRender={() => (
-              <div
-                style={{
-                  backgroundColor: '#fff',
-                  borderRadius: 12,
-                  boxShadow: '0 8px 24px rgba(16, 26, 58, 0.12)',
-                }}
-              >
-                <GlobalSearch
-                  query={searchParams}
-                  onQueryChange={(value) => {
-                    setSearchQuery(value);
-                    dispatch(setGlobalSearchQuery(value));
+            actually need.
+
+            Only the Search/Categories/Location cluster below (wrapped in
+            `.header-controls-scroll`) absorbs that shortfall, scrolling
+            horizontally at `lg`+ if it doesn't fit. Notifications and the
+            profile/logout menu live in their own `shrink-0` group AFTER it,
+            entirely outside that scrollable region, so neither can ever be
+            the thing that gets pushed past the visible edge. That used to be
+            possible — every control here, profile/logout included, shared
+            ONE `overflow-x-auto` region, and being last in it meant the
+            account menu was the first thing scrolled out of view at those
+            in-between widths, reachable only via a thin scrollbar most
+            people never noticed, which read as "the logout menu just
+            vanished". */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-3 lg:flex-nowrap lg:gap-4">
+          {/* `lg:flex-auto` (`flex: 1 1 auto`), not `flex-1` (`flex: 1 1
+              0%`) — with a `0%` basis, this item's flex-shrink WEIGHT
+              (shrink factor × basis) is zero, and the pinned cluster beside
+              it is deliberately `shrink-0` (zero weight too), so with both
+              weights at zero the shrink algorithm distributes none of the
+              deficit to either — the whole row overflows the header instead
+              of this cluster scrolling, which is what pushed the pinned
+              cluster out past the visible edge instead of protecting it.
+              `flex-auto`'s `auto` basis (real content width) keeps this a
+              non-zero weight, so it actually absorbs the shrink. */}
+          <div className="header-controls-scroll flex min-w-0 flex-wrap items-center justify-end gap-3 lg:flex-auto lg:flex-nowrap lg:gap-4 lg:overflow-x-auto lg:overflow-y-hidden">
+            <Dropdown
+              open={showGlobal}
+              placement="bottomLeft"
+              trigger={[]}
+              dropdownRender={() => (
+                <div
+                  style={{
+                    backgroundColor: '#fff',
+                    borderRadius: 12,
+                    boxShadow: '0 8px 24px rgba(16, 26, 58, 0.12)',
                   }}
-                  onClose={(clearSearch = true) => {
-                    if (clearSearch) {
-                      setSearchQuery('');
-                      setSelectedValue(null);
-                      dispatch(clearGlobalSearch());
-                      dispatch(
-                        api.util.invalidateTags([
-                          { type: 'SearchResults', id: 'Users' },
-                          { type: 'SearchResults', id: 'OrgUsers' },
-                          { type: 'SearchResults', id: 'Companies' },
-                          { type: 'SearchResults', id: 'JobOpenings' },
-                        ])
-                      );
-                    }
-                    setIsSearchFocused(false);
+                >
+                  <GlobalSearch
+                    query={searchParams}
+                    onQueryChange={(value) => {
+                      setSearchQuery(value);
+                      dispatch(setGlobalSearchQuery(value));
+                    }}
+                    onClose={(clearSearch = true) => {
+                      if (clearSearch) {
+                        setSearchQuery('');
+                        setSelectedValue(null);
+                        dispatch(clearGlobalSearch());
+                        dispatch(
+                          api.util.invalidateTags([
+                            { type: 'SearchResults', id: 'Users' },
+                            { type: 'SearchResults', id: 'OrgUsers' },
+                            { type: 'SearchResults', id: 'Companies' },
+                            { type: 'SearchResults', id: 'JobOpenings' },
+                          ])
+                        );
+                      }
+                      setIsSearchFocused(false);
+                    }}
+                    isInputFocused={isSearchFocused}
+                    onSearchTrigger={handleSearchChange}
+                    navigationConfig={globalSearchNavigationConfig}
+                    registerKeyHandler={registerGlobalSearchKeyHandler}
+                  />
+                </div>
+              )}
+            >
+              <div className="w-[180px] sm:w-[250px] lg:w-[350px]">
+                <Search
+                  ref={searchInputRef}
+                  appname="Search"
+                  placeholder="Search..."
+                  allowClear
+                  className="my-search"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  onSearch={handleSearchChange}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => {
+                    setTimeout(() => setIsSearchFocused(false), 200);
                   }}
-                  isInputFocused={isSearchFocused}
-                  onSearchTrigger={handleSearchChange}
-                  navigationConfig={globalSearchNavigationConfig}
-                  registerKeyHandler={registerGlobalSearchKeyHandler}
+                  onKeyDown={handleSearchInputKeyDown}
                 />
               </div>
-            )}
-          >
-            <div className="w-[180px] sm:w-[250px] lg:w-[350px]">
-              <Search
-                ref={searchInputRef}
-                appname="Search"
-                placeholder="Search..."
-                allowClear
-                className="my-search"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onSearch={handleSearchChange}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => {
-                  setTimeout(() => setIsSearchFocused(false), 200);
-                }}
-                onKeyDown={handleSearchInputKeyDown}
-              />
-            </div>
-          </Dropdown>
+            </Dropdown>
 
-          <div className="cfp-dropdown-trigger w-40 sm:w-50">
-            <FilterSelectIcon />
-            <Select
-              placeholder="Categories"
-              allowClear
-              className="w-full custom-select my-select-with-divider"
-              popupClassName="rounded-xl"
-              variant="borderless"
-              value={getDisplayValue()}
-              onChange={(value) => {
-                if (!value) {
-                  handleClear();
-                } else {
-                  handleSelect(value);
-                }
-              }}
-              onClear={handleClear}
-              suffixIcon={<DownOutlined />}
-              open={dropdownOpen}
-              onDropdownVisibleChange={handleDropdownVisibleChange}
-              dropdownMatchSelectWidth={false}
-              dropdownStyle={{ minWidth: '200px' }}
-              loading={!categoriesData && shouldFetchCategories}
-            >
-              {renderCategoryOptions()}
-            </Select>
+            <div className="cfp-dropdown-trigger w-40 sm:w-50">
+              <FilterSelectIcon />
+              <Select
+                placeholder="Categories"
+                allowClear
+                className="w-full custom-select my-select-with-divider"
+                popupClassName="rounded-xl"
+                variant="borderless"
+                value={getDisplayValue()}
+                onChange={(value) => {
+                  if (!value) {
+                    handleClear();
+                  } else {
+                    handleSelect(value);
+                  }
+                }}
+                onClear={handleClear}
+                suffixIcon={<DownOutlined />}
+                open={dropdownOpen}
+                onDropdownVisibleChange={handleDropdownVisibleChange}
+                dropdownMatchSelectWidth={false}
+                dropdownStyle={{ minWidth: '200px' }}
+                loading={!categoriesData && shouldFetchCategories}
+              >
+                {renderCategoryOptions()}
+              </Select>
+            </div>
+
+            <LocationSwitcher />
           </div>
 
-          <LocationSwitcher />
+          {/* Pinned cluster — never shrinks, never scrolls, always fully
+            visible regardless of how tight the space above gets. No visual
+            divider from the cluster before it — same plain gap spacing as
+            every other control here, unchanged from before this split. */}
+          <div className="flex shrink-0 items-center gap-3 lg:gap-4">
+            <NotificationBell disabled={!canShowNotificationBell} />
 
-          <NotificationBell disabled={!canShowNotificationBell} />
-
-          {userData && (
-            <div className="flex items-center gap-2">
-              <div onClick={handleProfileClick} className="cursor-pointer">
-                {userData?.profilePicture ? (
-                  <Avatar
-                    size={40}
-                    src={userData?.profilePicture}
-                    alt={userData?.firstName}
-                    onError={() => false}
-                  >
-                    <span>{userData?.firstName.charAt(0).toUpperCase()}</span>
-                  </Avatar>
-                ) : (
-                  <Avatar size={40} style={{ backgroundColor: 'var(--primary)' }}>
-                    {userData?.firstName.charAt(0).toUpperCase()}
-                  </Avatar>
-                )}
-              </div>
-              <Dropdown
-                menu={{
-                  items: [
-                    {
-                      key: 'profile',
-                      label: 'User Profile',
-                      onClick: handleProfileClick,
-                    },
-                    {
-                      key: 'change-password',
-                      label: 'Change Password',
-                      onClick: handleChangePasswordClick,
-                    },
-                    ...calendarMenuItems,
-                    {
-                      type: 'divider' as const,
-                      className: 'custom-divider',
-                    },
-                    {
-                      key: 'logout',
-                      label: 'Logout',
-                      onClick: handleLogoutClick,
-                    },
-                  ],
-                }}
-                // The trigger beside this already shows the avatar and
-                // "Welcome <first name>", so the dropdown doesn't repeat the
-                // user's name at all — it adds only the company context the
-                // trigger can't show, on one compact line above the menu.
-                dropdownRender={(menu) => (
-                  <div
-                    className="rounded-xl overflow-hidden"
-                    style={{
-                      backgroundColor: '#fff',
-                      boxShadow: '0 8px 24px rgba(16, 26, 58, 0.12)',
-                    }}
-                  >
-                    {tenantId && tenantProfile && (
-                      <>
-                        <div className="flex items-center gap-2 px-4 pt-3 pb-2 min-w-0">
-                          <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden shrink-0">
-                            {tenantProfile.logo_url ? (
-                              <img
-                                src={tenantProfile.logo_url}
-                                alt={tenantProfile.company_name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-[10px] font-semibold text-gray-500">
-                                {tenantProfile.company_name?.charAt(0).toUpperCase()}
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-sm font-medium text-neutral-800 truncate">
-                            {tenantProfile.company_name}
-                          </span>
-                        </div>
-                        <div className="border-t" style={{ borderColor: 'var(--border)' }} />
-                      </>
-                    )}
-                    {menu}
-                  </div>
-                )}
-                trigger={['click']}
-              >
-                <div className="flex items-center gap-3 px-1 py-1 text-sm cursor-pointer">
-                  <div className="flex flex-col">
-                    <span className="text-xs text-neutral-500">Welcome</span>
-                    <span className="font-semibold text-neutral-900">
-                      {makeFirstLetterUpperCase(userData?.firstName)}{' '}
-                      <DownOutlined className="text-xs text-neutral-500 cursor-pointer" />
-                    </span>
-                  </div>
+            {userData && (
+              <div className="flex items-center gap-2">
+                <div onClick={handleProfileClick} className="cursor-pointer">
+                  {userData?.profilePicture ? (
+                    <Avatar
+                      size={40}
+                      src={userData?.profilePicture}
+                      alt={userData?.firstName}
+                      onError={() => false}
+                    >
+                      <span>{userData?.firstName.charAt(0).toUpperCase()}</span>
+                    </Avatar>
+                  ) : (
+                    <Avatar size={40} style={{ backgroundColor: 'var(--primary)' }}>
+                      {userData?.firstName.charAt(0).toUpperCase()}
+                    </Avatar>
+                  )}
                 </div>
-              </Dropdown>
-            </div>
-          )}
+                <Dropdown
+                  menu={{
+                    items: [
+                      {
+                        key: 'profile',
+                        label: 'User Profile',
+                        onClick: handleProfileClick,
+                      },
+                      {
+                        key: 'change-password',
+                        label: 'Change Password',
+                        onClick: handleChangePasswordClick,
+                      },
+                      ...calendarMenuItems,
+                      {
+                        type: 'divider' as const,
+                        className: 'custom-divider',
+                      },
+                      {
+                        key: 'logout',
+                        label: 'Logout',
+                        onClick: handleLogoutClick,
+                      },
+                    ],
+                  }}
+                  // The trigger beside this already shows the avatar and
+                  // "Welcome <first name>", so the dropdown doesn't repeat the
+                  // user's name at all — it adds only the company context the
+                  // trigger can't show, on one compact line above the menu.
+                  dropdownRender={(menu) => (
+                    <div
+                      className="rounded-xl overflow-hidden"
+                      style={{
+                        backgroundColor: '#fff',
+                        boxShadow: '0 8px 24px rgba(16, 26, 58, 0.12)',
+                      }}
+                    >
+                      {tenantId && tenantProfile && (
+                        <>
+                          <div className="flex items-center gap-2 px-4 pt-3 pb-2 min-w-0">
+                            <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                              {tenantProfile.logo_url ? (
+                                <img
+                                  src={tenantProfile.logo_url}
+                                  alt={tenantProfile.company_name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-[10px] font-semibold text-gray-500">
+                                  {tenantProfile.company_name?.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-sm font-medium text-neutral-800 truncate">
+                              {tenantProfile.company_name}
+                            </span>
+                          </div>
+                          <div className="border-t" style={{ borderColor: 'var(--border)' }} />
+                        </>
+                      )}
+                      {menu}
+                    </div>
+                  )}
+                  trigger={['click']}
+                >
+                  <div className="flex items-center gap-3 px-1 py-1 text-sm cursor-pointer">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-neutral-500">Welcome</span>
+                      <span className="font-semibold text-neutral-900">
+                        {makeFirstLetterUpperCase(userData?.firstName)}{' '}
+                        <DownOutlined className="text-xs text-neutral-500 cursor-pointer" />
+                      </span>
+                    </div>
+                  </div>
+                </Dropdown>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

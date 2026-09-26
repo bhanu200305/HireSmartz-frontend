@@ -17,9 +17,15 @@ import { isMasterSuperAdminRole } from '../../shared/utils/auth/permission.helpe
 import { useGetOwnUserProfileQuery } from '../../api/organization-service/Users/users';
 import { useGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
 
-// Public-folder asset — referenced by URL, not imported (mirrors how Header
+// Public-folder assets — referenced by URL, not imported (mirrors how Header
 // previously referenced /cfpLogo.svg).
 const WHITE_LOGO_SRC = '/white-logo.svg';
+// The dedicated icon-only mark (also this app's favicon — see index.html),
+// not a shrunk crop of the full wordmark above. Collapsing the sidebar used
+// to just shrink WHITE_LOGO_SRC down to a small square with
+// `objectPosition: 'left'`, which only ever showed a squashed sliver of the
+// wordmark's left edge instead of a real icon.
+const ICON_LOGO_SRC = '/logoSmall.svg';
 
 // Both widths every page's content column needs to know, to reserve the
 // right amount of space — kept here (not computed ad hoc) since MainLayout
@@ -183,10 +189,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         onClick={() => navigate('/')}
       >
         <img
-          src={WHITE_LOGO_SRC}
+          src={isCollapsed ? ICON_LOGO_SRC : WHITE_LOGO_SRC}
           alt="Careerforce Pro"
-          className={isCollapsed ? 'h-7 w-7 object-contain' : 'h-8 w-auto object-contain'}
-          style={isCollapsed ? { objectPosition: 'left' } : undefined}
+          className={isCollapsed ? 'h-8 w-8 object-contain' : 'h-8 w-auto object-contain'}
         />
       </div>
 

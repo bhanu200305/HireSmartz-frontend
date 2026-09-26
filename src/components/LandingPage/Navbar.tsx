@@ -63,13 +63,28 @@ const Navbar = () => {
           </Link>
         </div>
 
-        <button
-          className="cursor-pointer text-2xl text-neutral-700 md:hidden"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Toggle menu"
-        >
-          {menuOpen ? <LuX /> : <LuMenu />}
-        </button>
+        {/* Mobile-only header pair — the hero section's own standalone "Book
+            a Demo" CTA is visible with zero taps, so a mobile visitor who
+            actually wants to log in shouldn't need two (open the menu, then
+            find Login) to reach the one entry point that isn't repeated
+            anywhere else on the page. Kept alongside the hamburger's own
+            copy of this link below, same as "Book a Demo" already appears
+            both here and in the hero. */}
+        <div className="flex items-center gap-4 md:hidden">
+          <Link
+            to="/login"
+            className="text-sm font-semibold text-neutral-700 hover:text-primary-600"
+          >
+            Login
+          </Link>
+          <button
+            className="cursor-pointer text-2xl text-neutral-700"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? <LuX /> : <LuMenu />}
+          </button>
+        </div>
       </nav>
 
       {menuOpen && (

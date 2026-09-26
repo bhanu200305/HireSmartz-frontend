@@ -8,8 +8,7 @@ import { Badge } from './badge';
 import { Loader } from './loader';
 import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
 import { useListUsersQuery, type OrgUser } from '../../../api/organization-service/Users/users';
-
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
+import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 
 type UserRow = OrgUser & { key: string };
 

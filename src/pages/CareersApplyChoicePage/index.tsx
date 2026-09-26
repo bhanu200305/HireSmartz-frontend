@@ -23,7 +23,7 @@ export const CareersApplyChoicePage = () => {
       <header className="bg-gray-900 shadow-md text-white px-4 h-12 flex items-center justify-center relative shrink-0">
         <button
           onClick={() => navigate(-1)}
-          className="absolute left-4 cursor-pointer text-white p-1 hover:opacity-75 transition-opacity"
+          className="absolute left-4 inline-flex cursor-pointer items-center gap-1 text-white p-1 hover:opacity-75 transition-opacity"
           aria-label="Go back"
         >
           <svg
@@ -36,6 +36,7 @@ export const CareersApplyChoicePage = () => {
           >
             <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
+          <span className="text-sm">Back</span>
         </button>
         {logoUrl ? (
           <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-9 object-contain" />

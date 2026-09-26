@@ -17,6 +17,7 @@ export type BookingStatus =
   | 'completed'
   | 'cancelled'
   | 'no_show'
+  | 'interviewer_no_show'
   | 'failed'
   | 'rescheduled';
 export type InterviewType = 'audio' | 'audio_screening' | 'ai_video' | 'panel';
@@ -24,10 +25,13 @@ export type InterviewType = 'audio' | 'audio_screening' | 'ai_video' | 'panel';
 // a PANEL booking's real-world-outcome-known statuses, used wherever the
 // UI needs to gate on "this booking already concluded" (e.g. eligibility
 // for request-reschedule, which interview-service enforces identically).
+// `interviewer_no_show` is reschedule-eligible the same as `no_show` —
+// interview-service enforces that already, nothing else to wire up here.
 export const CONCLUDED_BOOKING_STATUSES: BookingStatus[] = [
   'completed',
   'cancelled',
   'no_show',
+  'interviewer_no_show',
   'failed',
 ];
 export type FeedbackRecommendation = 'strong_yes' | 'yes' | 'no' | 'strong_no';
@@ -80,6 +84,21 @@ export interface BookingView {
   created_at: string | null;
 }
 
+/** `POST /bookings`'s own response, on top of the plain `BookingView` every
+ * other booking-returning endpoint gives back. interview-service still
+ * creates the booking even when part of a PANEL roster hasn't connected
+ * their calendar yet — nothing here blocks on that — but it names who's
+ * still missing so the recruiter knows to nudge them instead of just
+ * wondering why nothing's scheduled. Empty/absent means the whole roster
+ * was already calendar-connected at booking time. */
+export interface CreateBookingResponse extends BookingView {
+  pending_calendar_connect_interviewer_names?: string[] | null;
+  /** The envelope's own display-ready message for this call — prefer this
+   * verbatim over building one from `pending_calendar_connect_interviewer_names`
+   * client-side when it's present. */
+  envelope_message?: string;
+}
+
 export interface CreateBookingRequest {
   candidate_id: string;
   job_id: string;
@@ -107,6 +126,21 @@ export interface CreateBookingRequest {
    * recruiter-driven booking) — omit only for a booking with no
    * candidate-service round to correlate to. */
   candidate_interview_round_id?: string | null;
+}
+
+/** `GET /bookings/{id}/audio-screening-questions` — the real set Vapi asked
+ * on an AUDIO_SCREENING call, as opposed to job-service's static job-level
+ * question bank (`QuestionResponse` in `job-service/types.ts`, which is what
+ * the PANEL "Interview questions" card shows — a fixed plan, not what was
+ * actually asked). Same field shape as that type on purpose, since both are
+ * "a question plus its scoring context": `answer_text` is the reference
+ * answer used for scoring, `scoring_sections` ties the question back to the
+ * rubric's sections. Only meaningful for AUDIO_SCREENING bookings. */
+export interface AudioScreeningQuestionView {
+  id: string;
+  question_text: string;
+  answer_text: string | null;
+  scoring_sections: string[];
 }
 
 export interface PaginatedBookings {
@@ -323,11 +357,23 @@ const rawInterviewQuery = fetchBaseQuery({
 const isEnvelope = (value: unknown): value is Envelope<unknown> =>
   typeof value === 'object' && value !== null && 'status_code' in value && 'message' in value;
 
-const interviewBaseQuery: BaseQueryFn<InterviewFetchArgs, unknown, InterviewApiError> = async (
-  args,
-  api,
-  extraOptions
-) => {
+/** The envelope's own `message` — server-generated, display-ready text
+ * (e.g. create_booking's "waiting on X, Y to connect their calendar"). Most
+ * callers don't need it (their `data` shape already says everything), but a
+ * few want to show the backend's own phrasing verbatim rather than build
+ * their own from the raw data — surfaced here via `meta` so it costs
+ * nothing to endpoints that never look at it. */
+interface InterviewQueryMeta {
+  message?: string;
+}
+
+const interviewBaseQuery: BaseQueryFn<
+  InterviewFetchArgs,
+  unknown,
+  InterviewApiError,
+  object,
+  InterviewQueryMeta
+> = async (args, api, extraOptions) => {
   const { auth, ...request } = args;
   const headers = { ...(request.headers as Record<string, string> | undefined) };
   if (auth === 'platform') {
@@ -375,7 +421,7 @@ const interviewBaseQuery: BaseQueryFn<InterviewFetchArgs, unknown, InterviewApiE
       }),
     };
   }
-  return { data: payload.data };
+  return { data: payload.data, meta: { message: payload.message } };
 };
 
 const platform = (request: Omit<InterviewFetchArgs, 'auth'>): InterviewFetchArgs => ({
@@ -408,7 +454,7 @@ export const interviewApi = createApi({
       invalidatesTags: ['Calendar'],
     }),
     createBooking: build.mutation<
-      BookingView,
+      CreateBookingResponse,
       { body: CreateBookingRequest; idempotencyKey?: string }
     >({
       query: ({ body, idempotencyKey }) =>
@@ -418,6 +464,13 @@ export const interviewApi = createApi({
           body,
           headers: { 'Idempotency-Key': idempotencyKey ?? createIdempotencyKey() },
         }),
+      transformResponse: (
+        response: Omit<CreateBookingResponse, 'envelope_message'>,
+        meta: InterviewQueryMeta | undefined
+      ) => ({
+        ...response,
+        envelope_message: meta?.message,
+      }),
       invalidatesTags: ['Booking', 'Dashboard'],
     }),
     getBooking: build.query<BookingView, string>({
@@ -434,17 +487,49 @@ export const interviewApi = createApi({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}/history` }),
       providesTags: (_result, _error, id) => [{ type: 'Booking', id }],
     }),
+    // 404 means "not available yet" (the call hasn't concluded, or Vapi's
+    // reply hasn't been processed) — NOT a real error. Callers should check
+    // `error.status === 404` and render a neutral waiting state rather than
+    // an error toast; this endpoint is never called for AUDIO/AI_VIDEO/PANEL,
+    // where it wouldn't exist at all.
+    getAudioScreeningQuestions: build.query<AudioScreeningQuestionView[], string>({
+      query: (bookingId) => platform({ url: `/bookings/${bookingId}/audio-screening-questions` }),
+    }),
     // Manually requests a reschedule for a concluded AUDIO/AUDIO_SCREENING
-    // call — creates a fresh attempt booking and emails the candidate a
-    // 24h scheduling link. `bookingId` is the ORIGINAL (concluded) booking,
-    // not the new one this creates. Only invalidates `Booking` for the
-    // original id — the round list refetch (candidate-service, not this
-    // slice) is what surfaces the new attempt row, same as the automatic
-    // reschedule flow already relies on.
-    requestCallReschedule: build.mutation<BookingView, string>({
-      query: (bookingId) =>
-        platform({ url: `/bookings/${bookingId}/request-reschedule`, method: 'POST' }),
-      invalidatesTags: (_result, _error, bookingId) => [{ type: 'Booking', id: bookingId }],
+    // call, or a PANEL round whose booking already ran its course — creates
+    // a fresh attempt booking. `bookingId` is the ORIGINAL (concluded)
+    // booking, not the new one this creates. Only invalidates `Booking` for
+    // the original id — the round list refetch (candidate-service, not
+    // this slice) is what surfaces the new attempt row, same as the
+    // automatic reschedule flow already relies on.
+    //
+    // `interviewerIds` is PANEL-only — omit it (no body at all) to carry
+    // the original roster forward automatically; pass a new roster to
+    // reschedule onto different interviewers instead. Same response shape
+    // and same calendar-connect degradation as `createBooking` (a missing
+    // calendar → nudge sent, complete roster → candidate emailed
+    // immediately), so this reuses `CreateBookingResponse` and the same
+    // envelope-message passthrough rather than plain `BookingView`.
+    requestCallReschedule: build.mutation<
+      CreateBookingResponse,
+      { bookingId: string; interviewerIds?: string[] }
+    >({
+      query: ({ bookingId, interviewerIds }) =>
+        platform({
+          url: `/bookings/${bookingId}/request-reschedule`,
+          method: 'POST',
+          ...(interviewerIds && interviewerIds.length > 0
+            ? { body: { interviewer_ids: interviewerIds } }
+            : {}),
+        }),
+      transformResponse: (
+        response: Omit<CreateBookingResponse, 'envelope_message'>,
+        meta: InterviewQueryMeta | undefined
+      ) => ({
+        ...response,
+        envelope_message: meta?.message,
+      }),
+      invalidatesTags: (_result, _error, { bookingId }) => [{ type: 'Booking', id: bookingId }],
     }),
     listBookings: build.query<
       PaginatedBookings,
@@ -548,6 +633,29 @@ export const interviewApi = createApi({
     getInterviewerCalendarStatus: build.query<BookingInterviewerCalendarStatusView, string>({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}/interviewer-calendar-status` }),
       providesTags: (_r, _e, id) => [{ type: 'Booking', id }],
+    }),
+    // Same shape of question as getInterviewerCalendarStatus above, just
+    // BEFORE a booking exists — the panel picker needs to color its chips
+    // while the recruiter is still choosing a roster, not only after
+    // Create Booking. `interviewerIds` narrows to just those (e.g. the
+    // currently-selected roster); omit it to get every eligible
+    // interviewer for the job instead, which is what colors the whole
+    // dropdown rather than only already-picked chips.
+    getInterviewersCalendarStatus: build.query<
+      InterviewerCalendarStatusView[],
+      { jobId: string; interviewerIds?: string[] }
+    >({
+      query: ({ jobId, interviewerIds }) =>
+        platform({
+          url: '/calendar/interviewers-status',
+          params: {
+            job_id: jobId,
+            ...(interviewerIds && interviewerIds.length > 0
+              ? { interviewer_ids: interviewerIds.join(',') }
+              : {}),
+          },
+        }),
+      providesTags: ['Calendar'],
     }),
     nudgeInterviewerCalendarConnect: build.mutation<
       null,
@@ -709,6 +817,7 @@ export const {
   useCreateBookingMutation,
   useGetBookingQuery,
   useGetBookingHistoryQuery,
+  useGetAudioScreeningQuestionsQuery,
   useRequestCallRescheduleMutation,
   useListBookingsQuery,
   useCancelBookingMutation,
@@ -722,6 +831,7 @@ export const {
   useGetParticipationQuery,
   useGetArtifactsQuery,
   useGetInterviewerCalendarStatusQuery,
+  useGetInterviewersCalendarStatusQuery,
   useNudgeInterviewerCalendarConnectMutation,
   useAttachRecordingMutation,
   useUploadOfflineRecordingMutation,

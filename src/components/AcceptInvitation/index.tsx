@@ -460,7 +460,7 @@ const AcceptInvitation = () => {
           <h2 className="text-xl font-semibold text-gray-900">{copy.title}</h2>
           <p className="text-sm text-gray-500">{copy.message}</p>
           <Link to="/login" className="text-sm text-primary hover:underline mt-2">
-            {isAlreadyAccepted ? 'Go to login' : 'Back to login'}
+            {isAlreadyAccepted ? 'Go to login' : 'Back'}
           </Link>
         </div>
       </PageShell>

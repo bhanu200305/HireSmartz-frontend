@@ -221,7 +221,11 @@ export const passwordValidation = () => {
         message: 'Password must contain at least one number (0-9).',
       },
       {
-        check: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(value),
+        // Matches the backend's own rule: any character that is not a
+        // letter, digit, or whitespace counts as special (so ~, `, £, €,
+        // etc. all count too) — a narrower frontend regex here would reject
+        // passwords the backend would otherwise accept.
+        check: /[^A-Za-z0-9\s]/.test(value),
         message: 'Password must contain at least one special character (!@#$%^&*, etc.).',
       },
     ];

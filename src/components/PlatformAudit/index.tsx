@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Select } from 'antd';
 import { LuSquareActivity } from 'react-icons/lu';
+import { MdOutlineArrowBack } from 'react-icons/md';
 import MainLayout from '../../layouts/MainLayout';
 import { Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
@@ -55,6 +57,7 @@ const describeAction = (action: string): string =>
  * same fallback shape `TenantActivityFeedTab` uses for the same reason.
  */
 const PlatformAudit: React.FC = () => {
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [tenantSearch, setTenantSearch] = useState('');
   const [tenantFilter, setTenantFilter] = useState<string | undefined>(undefined);
@@ -119,6 +122,13 @@ const PlatformAudit: React.FC = () => {
   return (
     <MainLayout>
       <div className="w-full p-8 pt-16">
+        <button
+          onClick={() => navigate('/')}
+          className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+        >
+          <MdOutlineArrowBack className="mr-2" />
+          <span>Back</span>
+        </button>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
             <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">

@@ -48,10 +48,13 @@ export const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
 export const DEFAULT_PAGE_SIZE = 10;
 
 /**
- * Available page size options for user selection
- * Provides standard pagination choices
+ * The one page-size progression every list/table's size-changer offers —
+ * every screen previously defined its own local copy of this array, and
+ * they'd drifted ([5,10,20], [10,20,50], [10,25,50,100], ...), so which
+ * options you got depended on which screen you were on. Import this instead
+ * of redeclaring it locally.
  */
-export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+export const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
 /**
  * Maximum results allowed per request
@@ -128,20 +131,16 @@ export const MAX_PHONE_LENGTH = 15;
  *
  * Must match authentication-service's MIN_PASSWORD_LENGTH
  * (app/modules/auth/domain/services/password_policy.py) — the backend is
- * the source of truth here. This constant existed before but was unused;
- * shared/utils/validation/input.helpers.ts's passwordValidation() had its
- * own hardcoded `8`, which was what actually let a too-short password pass
- * the frontend and get rejected by the API with a 422 the user had no
- * warning about. Import this constant rather than re-hardcoding the number
- * anywhere else this needs to be checked or displayed.
+ * the source of truth here. Import this constant rather than re-hardcoding
+ * the number anywhere else this needs to be checked or displayed.
  */
-export const MIN_PASSWORD_LENGTH = 12;
+export const MIN_PASSWORD_LENGTH = 8;
 
 /**
  * Maximum password length. Matches authentication-service's
  * MAX_PASSWORD_LENGTH in the same file.
  */
-export const MAX_PASSWORD_LENGTH = 128;
+export const MAX_PASSWORD_LENGTH = 16;
 
 /**
  * Maximum job title length

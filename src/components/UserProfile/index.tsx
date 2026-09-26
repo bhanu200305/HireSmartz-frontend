@@ -449,13 +449,15 @@ const UserProfile = () => {
                     <span>Calendar</span>
                   </button>
                 )}
-                <button
-                  onClick={() => navigate('/settings/notifications')}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
-                >
-                  <MdOutlineNotifications className="text-base" />
-                  <span>Notification settings</span>
-                </button>
+                {!isPlatformCaller && (
+                  <button
+                    onClick={() => navigate('/settings/notifications')}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
+                  >
+                    <MdOutlineNotifications className="text-base" />
+                    <span>Notification settings</span>
+                  </button>
+                )}
                 <button
                   onClick={() => navigate('/settings/security')}
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"

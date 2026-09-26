@@ -12,6 +12,7 @@ import {
   isAiVideoRound,
   isAudioScreeningRound,
   isIntakeCallRound,
+  isInterviewerNoShowRound,
   isOverdue,
   isRoundConcluded,
   resolveCurrentRound,
@@ -130,6 +131,12 @@ const RoundCard = ({
   // round's own status.
   const visuallyFailed = overdue || technicalFailure;
   const meta = visuallyFailed ? BUCKET_META.failed : BUCKET_META[bucket];
+  // Bucket-wise this is still 'failed' (the round concluded, just not
+  // successfully) — border/step styling stays as-is. Only the badge pill
+  // itself gets a distinct color, so it never reads as the same status as
+  // a candidate no-show at a glance.
+  const interviewerNoShow = isInterviewerNoShowRound(round);
+  const badgeStatus = interviewerNoShow ? 'info' : meta.badgeStatus;
   // Same eligibility interview-service's own request-reschedule endpoint
   // enforces — AUDIO/AUDIO_SCREENING/AI_VIDEO gate on the booking's
   // call_intent (call already concluded one way or another), while PANEL
@@ -172,7 +179,7 @@ const RoundCard = ({
         </span>
       </div>
       <div className="flex flex-col gap-1.5 px-3.5 pb-3.5 pt-2.5">
-        <Badge status={meta.badgeStatus} className="w-fit">
+        <Badge status={badgeStatus} className="w-fit">
           {overdue
             ? 'Overdue'
             : technicalFailure
