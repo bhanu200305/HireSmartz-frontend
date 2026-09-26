@@ -2653,7 +2653,6 @@ const JobDetails = () => {
                         }}
                         className="w-full custom-select-jobs placeholder-style"
                         placeholder="Select Exemption Status"
-                        popupClassName="rounded-3xl"
                         loading={exemptionLoading}
                       >
                         {exemptionStatus.length > 0 ? (

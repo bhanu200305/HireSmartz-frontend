@@ -22,7 +22,7 @@ import { Form, Select, Upload } from 'antd';
 import { Button, Input, showToast } from '../shared';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { UserProfileSchema } from './UserProfileSchema';
+import { getUserProfileSchema } from './UserProfileSchema';
 import { countryCodes } from '../../constants/countryCode';
 import React, { useEffect, useState } from 'react';
 import './userProfile.css';
@@ -139,7 +139,12 @@ const UserProfile = () => {
     reset,
     formState: { errors, isDirty },
   } = useForm({
-    resolver: zodResolver(UserProfileSchema),
+    // Phone is required for a tenant user but was never collected for a
+    // platform staff/Super Admin invite (or the bootstrap script) — see
+    // getUserProfileSchema's own comment. Requiring it unconditionally would
+    // lock every pre-existing phone-less platform account out of saving any
+    // edit at all.
+    resolver: zodResolver(getUserProfileSchema(!isPlatformCaller)),
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -666,7 +671,8 @@ const UserProfile = () => {
                       <Form.Item
                         label={
                           <span className="text-sm font-semibold text-[var(--gray-700)]">
-                            Phone Number <span className="required-asterisk">*</span>
+                            Phone Number{' '}
+                            {!isPlatformCaller && <span className="required-asterisk">*</span>}
                           </span>
                         }
                         name="phone"
@@ -845,7 +851,6 @@ const UserProfile = () => {
                           onSearch={setCountrySearch}
                           filterOption={false}
                           className="w-full custom-select placeholder-style"
-                          popupClassName="rounded-3xl"
                         >
                           {countries.map((country) => (
                             <Option key={country.id} value={country.name}>
@@ -875,7 +880,6 @@ const UserProfile = () => {
                           onChange={handleStateChange}
                           disabled={!selectedCountry}
                           className="w-full custom-select placeholder-style"
-                          popupClassName="rounded-3xl"
                         >
                           {states.map((state) => (
                             <Option key={state.id} value={state.name}>
@@ -905,7 +909,6 @@ const UserProfile = () => {
                           onChange={handleCityChange}
                           disabled={!selectedState}
                           className="w-full custom-select placeholder-style"
-                          popupClassName="rounded-3xl"
                           optionFilterProp="children"
                           optionLabelProp="label"
                         >

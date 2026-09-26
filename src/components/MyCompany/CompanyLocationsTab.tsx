@@ -1,17 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
+import { Select } from 'antd';
 import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
-import {
-  Badge,
-  Button,
-  CustomTable,
-  Input,
-  Typography,
-  paginationConfig,
-  showToast,
-} from '../shared';
+import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import MasterPagination from '../shared/ui/MasterPagination';
+import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import OfficeFormModal, { OfficeFormValues } from './OfficeFormModal';
 import {
   useListTenantOfficesQuery,
@@ -25,6 +22,14 @@ import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 
 type OfficeRow = TenantOffice & { key: string };
+type SortKey = 'address' | 'city' | 'state' | 'country';
+
+const SORT_COMPARATORS: Record<SortKey, (a: TenantOffice, b: TenantOffice) => number> = {
+  address: (a, b) => a.address_line_1.localeCompare(b.address_line_1),
+  city: (a, b) => a.city.localeCompare(b.city),
+  state: (a, b) => (a.state ?? '').localeCompare(b.state ?? ''),
+  country: (a, b) => a.country.localeCompare(b.country),
+};
 
 /**
  * §C — GET/POST/PATCH/DELETE /v1/tenants/{tenant_id}/offices. Delete needs no
@@ -52,6 +57,10 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   } | null>(null);
   const [officeToDelete, setOfficeToDelete] = useState<TenantOffice | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('address');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('mycompany_locations', 10);
 
   const filteredOffices = useMemo(() => {
     const q = searchText.trim().toLowerCase();
@@ -69,6 +78,29 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         .some((field) => (field as string).toLowerCase().includes(q))
     );
   }, [offices, searchText]);
+
+  // Sorted+paginated client-side, same "Rows per page" + MasterPagination UI
+  // every list-drilldown modal already uses, rather than antd Table's own
+  // default pager, which this tab used to render instead.
+  const sortedOffices = useMemo(() => {
+    const sorted = [...filteredOffices].sort(SORT_COMPARATORS[sortBy]);
+    return sortOrder === 'desc' ? sorted.reverse() : sorted;
+  }, [filteredOffices, sortBy, sortOrder]);
+
+  const sortOrderFor = (key: SortKey): 'ascend' | 'descend' | undefined =>
+    sortBy === key ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
+  const handleTableChange: TableProps<OfficeRow>['onChange'] = (_pagination, _filters, sorter) => {
+    const active = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<OfficeRow>);
+    setPage(0);
+    if (!active?.order || !active.columnKey) {
+      setSortBy('address');
+      setSortOrder('asc');
+      return;
+    }
+    setSortBy(active.columnKey as SortKey);
+    setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
+  };
 
   const handleSubmit = async (values: OfficeFormValues) => {
     try {
@@ -118,7 +150,8 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'Address',
       dataIndex: 'address_line_1',
       key: 'address',
-      sorter: (a: OfficeRow, b: OfficeRow) => a.address_line_1.localeCompare(b.address_line_1),
+      sorter: true,
+      sortOrder: sortOrderFor('address'),
       render: (_: unknown, office: OfficeRow) => (
         <span className="font-semibold text-gray-900">
           {[office.address_line_1, office.address_line_2].filter(Boolean).join(', ')}
@@ -129,7 +162,8 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'City',
       dataIndex: 'city',
       key: 'city',
-      sorter: (a: OfficeRow, b: OfficeRow) => a.city.localeCompare(b.city),
+      sorter: true,
+      sortOrder: sortOrderFor('city'),
       render: (_: unknown, office: OfficeRow) => (
         <span className="text-gray-600 text-sm">{office.city || '-'}</span>
       ),
@@ -138,7 +172,8 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'State',
       dataIndex: 'state',
       key: 'state',
-      sorter: (a: OfficeRow, b: OfficeRow) => (a.state ?? '').localeCompare(b.state ?? ''),
+      sorter: true,
+      sortOrder: sortOrderFor('state'),
       render: (_: unknown, office: OfficeRow) => (
         <span className="text-gray-600 text-sm">{office.state || '-'}</span>
       ),
@@ -147,7 +182,8 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'Country',
       dataIndex: 'country',
       key: 'country',
-      sorter: (a: OfficeRow, b: OfficeRow) => a.country.localeCompare(b.country),
+      sorter: true,
+      sortOrder: sortOrderFor('country'),
       render: (_: unknown, office: OfficeRow) => (
         <Badge status="neutral" dot={false}>
           {office.country}
@@ -193,10 +229,12 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     },
   ].filter(Boolean) as TableProps<OfficeRow>['columns'];
 
-  const dataSource: OfficeRow[] = filteredOffices.map((office) => ({
-    ...office,
-    key: office.office_id,
-  }));
+  const dataSource: OfficeRow[] = sortedOffices
+    .slice(page * pageSize, page * pageSize + pageSize)
+    .map((office) => ({
+      ...office,
+      key: office.office_id,
+    }));
 
   return (
     <div className="p-4">
@@ -204,7 +242,7 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <div>
           <Typography variant="body2">Every office your company operates out of.</Typography>
           <span className="text-xs font-medium text-gray-400">
-            {dataSource.length} {dataSource.length === 1 ? 'office' : 'offices'}
+            {sortedOffices.length} {sortedOffices.length === 1 ? 'office' : 'offices'}
             {searchText.trim() && ` of ${offices?.length ?? 0}`}
           </span>
         </div>
@@ -214,18 +252,35 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               prefix={<MdSearch className="text-gray-400" />}
               placeholder="Search locations..."
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setPage(0);
+              }}
             />
           </div>
           {canAdd && (
             <Button
-              className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+              className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
               onClick={() => setModalState({ mode: 'add' })}
             >
               <MdOutlineAdd /> Add Location
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
+        <span>Rows per page</span>
+        <Select
+          size="small"
+          value={pageSize}
+          className="rows-per-page-select"
+          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
       </div>
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
@@ -235,9 +290,18 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           emptyText={
             searchText.trim() ? 'No offices match your search.' : 'No office locations yet.'
           }
-          pagination={paginationConfig('offices')}
+          pagination={false}
+          onChange={handleTableChange}
         />
       </div>
+
+      <MasterPagination
+        current={page + 1}
+        pageSize={pageSize}
+        total={sortedOffices.length}
+        itemLabel="locations"
+        onPageChange={(nextPage) => setPage(nextPage - 1)}
+      />
 
       <OfficeFormModal
         open={modalState !== null}

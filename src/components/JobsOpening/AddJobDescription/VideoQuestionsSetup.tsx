@@ -432,7 +432,6 @@ const VideoQuestionsSetup = () => {
                   }}
                   className="w-full custom-select placeholder-style border-none shadow-none"
                   placeholder="Select video round"
-                  popupClassName="rounded-3xl"
                 >
                   {videoRounds.map((r) => (
                     <Option key={r.id} value={r.id}>

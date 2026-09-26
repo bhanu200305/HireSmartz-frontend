@@ -24,8 +24,8 @@
 }
 
 .notification-bell-button {
-  width: 48px !important;
-  height: 48px !important;
+  width: 40px !important;
+  height: 40px !important;
   border-radius: 9999px !important;
   background: transparent !important;
   color: var(--primary-600) !important;

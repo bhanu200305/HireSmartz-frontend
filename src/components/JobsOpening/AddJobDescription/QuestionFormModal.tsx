@@ -94,7 +94,6 @@ const QuestionFormModal = ({
                   onChange={onCategoryChange}
                   className="w-full custom-select placeholder-style"
                   placeholder="Select Question Category"
-                  popupClassName="rounded-3xl"
                   loading={isCategoryLoading}
                 >
                   {categoryOptions.length > 0 ? (

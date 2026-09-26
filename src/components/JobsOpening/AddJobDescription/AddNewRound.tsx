@@ -178,8 +178,8 @@ const AddNewRound = () => {
     <>
       {/* Modal Overlay */}
       {isLoading && <Loader />}
-      <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
-        <div className="bg-white p-0 rounded-2xl shadow-xl w-[500px] max-w-[92vw] relative overflow-hidden">
+      <div className="app-modal-overlay fixed inset-0 flex items-center justify-center bg-black/60 z-50">
+        <div className="app-modal-panel bg-white p-0 rounded-2xl shadow-xl w-[500px] max-w-[92vw] relative overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
             <h2 className="text-base font-bold text-neutral-900 font-display">
               Add New Interview Round
@@ -221,7 +221,6 @@ const AddNewRound = () => {
                         showSearch
                         allowClear
                         placeholder="Select Interview Round"
-                        popupClassName="rounded-3xl"
                         loading={interviewRoundsLoading}
                         filterOption={(input, option) =>
                           typeof option?.children === 'string' &&
@@ -354,7 +353,6 @@ const AddNewRound = () => {
                           onChange={(value) => field.onChange(Number(value))}
                           className="w-full custom-select placeholder-style"
                           placeholder="Select Duration"
-                          popupClassName="rounded-3xl"
                           options={slotOptions}
                         />
                       </div>

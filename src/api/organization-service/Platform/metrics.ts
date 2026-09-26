@@ -146,6 +146,69 @@ export type MfaMetricsParams = {
   windowDays?: number;
 };
 
+export type LoginUserItem = {
+  user_id: string;
+  /** `null` for the rare id org-service has no profile row for (platform
+   * staff / Super Admins) — render a fallback, never a blank cell. */
+  name: string | null;
+  email: string | null;
+  last_login_at: string;
+  login_count: number;
+};
+
+export type LoginUsersResponse = {
+  /** `false` means the metrics backend didn't answer — render
+   * "unavailable", never an empty list. */
+  available: boolean;
+  as_of: string | null;
+  window_start: string | null;
+  window_end: string | null;
+  total: number;
+  items: LoginUserItem[];
+  /** Opaque — round-trip it as `cursor` on the next call, never parse it.
+   * `null` means this was the last page. */
+  next_cursor: string | null;
+};
+
+export type LoginUsersParams = {
+  tenantId?: string;
+  /** Only meaningful on the FIRST call (no `cursor`) — the cursor pins the
+   * window from page 1, so the backend ignores this once a cursor is
+   * present. Omit on "Load more" calls. */
+  windowDays?: number;
+  limit?: number;
+  cursor?: string;
+};
+
+export type SessionListItem = {
+  session_id: string;
+  user_id: string;
+  /** Same null-fallback rule as `LoginUserItem.name`. */
+  name: string | null;
+  email: string | null;
+  device_type: string;
+  browser: string;
+  operating_system: string;
+  city: string | null;
+  country: string | null;
+  login_at: string;
+  last_activity_at: string;
+};
+
+export type SessionsListResponse = {
+  available: boolean;
+  as_of: string | null;
+  total: number;
+  items: SessionListItem[];
+  next_cursor: string | null;
+};
+
+export type SessionsListParams = {
+  tenantId?: string;
+  limit?: number;
+  cursor?: string;
+};
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     // Independent calls, one per dashboard tile/chart — fetched separately so
@@ -205,6 +268,35 @@ const extendedApi = orgApi.injectEndpoints({
         },
       }),
     }),
+    // "Monthly active users" card's real drill-down — the actual list of who
+    // signed in, cursor-paginated (no offset/total-pages — `next_cursor` is
+    // opaque, forward-only "Load more", not a numbered pager).
+    getLoginUsers: build.query<LoginUsersResponse, LoginUsersParams | void>({
+      query: (params) => ({
+        url: '/v1/platform/metrics/logins/users',
+        params: {
+          tenant_id: params?.tenantId,
+          // Ignored by the backend once `cursor` is set anyway (the cursor
+          // pins the window from page 1) — omitted here too so the request
+          // itself reflects that rather than sending a stale value.
+          window_days: params?.cursor ? undefined : params?.windowDays,
+          limit: params?.limit,
+          cursor: params?.cursor,
+        },
+      }),
+    }),
+    // "Active sessions" card's real drill-down — same cursor-paginated shape
+    // as getLoginUsers above.
+    getSessionsList: build.query<SessionsListResponse, SessionsListParams | void>({
+      query: (params) => ({
+        url: '/v1/platform/metrics/sessions/list',
+        params: {
+          tenant_id: params?.tenantId,
+          limit: params?.limit,
+          cursor: params?.cursor,
+        },
+      }),
+    }),
   }),
 });
 
@@ -218,4 +310,6 @@ export const {
   useGetSessionMetricsQuery,
   useGetLoginMetricsQuery,
   useGetMfaMetricsQuery,
+  useLazyGetLoginUsersQuery,
+  useLazyGetSessionsListQuery,
 } = extendedApi;

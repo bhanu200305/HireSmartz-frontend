@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
 import { Select } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
 import type { TableProps } from 'antd';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import CustomTable from '../shared/ui/table';
 import MasterPagination from '../shared/ui/MasterPagination';
-import { Badge } from '../shared';
+import { Badge, Search } from '../shared';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { Loader } from '../shared/ui/loader';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import { useGetJobOpeningsListLegacyQuery as useGetJobOpeningsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
-import type { JobSummary } from '../../api/job-service/JobOpenings/types';
+import type { JobSummary, JobStatusFilter } from '../../api/job-service/JobOpenings/types';
 import { jobStatus, daysOpen } from './jobOpeningListHelpers';
 import JobDetailModal from './JobDetailModal';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
+
+const STATUS_FILTER_OPTIONS: { label: string; value: JobStatusFilter | 'all' }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Published', value: 'published' },
+  { label: 'Draft', value: 'draft' },
+  { label: 'Closed', value: 'closed' },
+];
 
 type JobRow = JobSummary & { key: string };
 
@@ -39,12 +48,26 @@ const JobOpeningsListModal: React.FC<{
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('active_job_openings_modal', 10);
   const [selectedJob, setSelectedJob] = useState<JobSummary | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<JobStatusFilter | 'all'>('published');
+  // The only column this endpoint can actually sort by that this table also
+  // shows — job-service's `sort_by` is a closed enum (job_open_date /
+  // created_at / vacancies / job_profile_code, see JobSortField backend-
+  // side), so "Job title"/"Applicants"/"Interviews" have no real sort to
+  // wire up. "Days open" is derived FROM job_open_date, so sorting by that
+  // (inverted — an older open date means MORE days open) is the one honest
+  // server-side sort available here.
+  const [daysOpenSortDir, setDaysOpenSortDir] = useState<'asc' | 'desc' | null>(null);
 
   const { data, isLoading } = useGetJobOpeningsQuery({
-    status: 'published',
+    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+    text: search || undefined,
     page: page + 1,
     page_size: pageSize,
     ...(assignedToMe ? { assigned_to_me: true } : {}),
+    ...(daysOpenSortDir
+      ? { sort_by: 'job_open_date', sort_dir: daysOpenSortDir === 'asc' ? 'desc' : 'asc' }
+      : {}),
   });
 
   const jobs = data?.items ?? [];
@@ -87,6 +110,9 @@ const JobOpeningsListModal: React.FC<{
     {
       title: 'Days open',
       key: 'days_open',
+      sorter: true,
+      sortOrder:
+        daysOpenSortDir === 'asc' ? 'ascend' : daysOpenSortDir === 'desc' ? 'descend' : undefined,
       render: (_: unknown, job: JobRow) => daysOpen(job.job_open_date),
     },
   ];
@@ -99,12 +125,41 @@ const JobOpeningsListModal: React.FC<{
       modalProps={{ width: 820, maskClosable: true }}
     >
       <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Search
+              appname="job openings modal"
+              placeholder="Search jobs..."
+              value={search}
+              allowClear
+              onSearch={(value) => {
+                setSearch(value);
+                setPage(0);
+              }}
+            />
+            <div className="cfp-dropdown-trigger w-40">
+              <FilterSelectIcon />
+              <Select
+                placeholder="Status"
+                className="w-full custom-select"
+                variant="borderless"
+                value={statusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value);
+                  setPage(0);
+                }}
+                options={STATUS_FILTER_OPTIONS}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
           <span>Rows per page</span>
           <Select
             size="small"
             value={pageSize}
-            className="w-20"
+            className="rows-per-page-select"
             options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
             onChange={(size) => {
               setPageSize(size);
@@ -124,6 +179,17 @@ const JobOpeningsListModal: React.FC<{
                 onClick: () => setSelectedJob(job),
                 className: 'cursor-pointer',
               })}
+              onChange={(_pagination, _tableFilters, sorter) => {
+                const active = Array.isArray(sorter) ? sorter[0] : sorter;
+                const resolved = active as SorterResult<JobRow>;
+                setDaysOpenSortDir(
+                  resolved?.columnKey === 'days_open' && resolved.order
+                    ? resolved.order === 'ascend'
+                      ? 'asc'
+                      : 'desc'
+                    : null
+                );
+              }}
               enableKeyboardNav
               onRowEnter={(job) => setSelectedJob(job)}
               emptyText={

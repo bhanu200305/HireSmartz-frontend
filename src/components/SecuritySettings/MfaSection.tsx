@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSelector } from 'react-redux';
 import { Select } from 'antd';
 import { MdOutlineSecurity, MdPhoneIphone } from 'react-icons/md';
 import { FaRegCopy } from 'react-icons/fa';
@@ -9,6 +10,7 @@ import {
   restrictPhoneDigitsForCountry,
   toE164,
 } from '../../shared/utils/validation/phoneValidation';
+import { cleanPhoneNumber } from '../../shared/utils/methods';
 import {
   useConfirmMfaMethodMutation,
   useDisableMfaMethodMutation,
@@ -22,6 +24,9 @@ import {
 import type { MfaMethodType } from '../../api/authentication-service/Login/login';
 import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
 import { maskDeliveryHint } from '../../shared/utils/formatting/maskDeliveryHint';
+import { useGetOwnUserProfileQuery } from '../../api/organization-service/Users/users';
+import { useGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
+import type { RootState } from '../../redux/provider/store';
 
 const METHOD_LABELS: Record<MfaMethodType, string> = {
   totp: 'Authenticator app',
@@ -363,9 +368,15 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
 const AddMethodButton = ({
   methodType,
   onEnrolled,
+  existingCountryCode,
+  existingNationalNumber,
 }: {
   methodType: MfaMethodType;
   onEnrolled: (enrolment: MfaEnrolmentView) => void;
+  /** Whatever's already on the profile — prefilled in, not enforced; see
+   * the "+ Add" button's onClick below. */
+  existingCountryCode: string;
+  existingNationalNumber: string;
 }) => {
   const [showPhoneInput, setShowPhoneInput] = useState(false);
   // Dial code + national digits, same split UserProfile's own phone field
@@ -467,7 +478,21 @@ const AddMethodButton = ({
   return (
     <button
       type="button"
-      onClick={() => (methodType === 'sms' ? setShowPhoneInput(true) : startEnrolment(undefined))}
+      onClick={() => {
+        if (methodType === 'sms') {
+          // Prefill with whatever's already on the profile — a better
+          // default, not a new field; the user can still change either
+          // part, and whatever's in the boxes when they hit "Send code" is
+          // what's sent.
+          setCountryCode(existingCountryCode);
+          setNationalNumber(
+            restrictPhoneDigitsForCountry(existingNationalNumber, existingCountryCode)
+          );
+          setShowPhoneInput(true);
+        } else {
+          startEnrolment(undefined);
+        }
+      }}
       disabled={isLoading}
       className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] p-4 text-sm text-gray-600 hover:border-primary hover:text-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
     >
@@ -485,6 +510,19 @@ const AddMethodButton = ({
 const MfaSection = () => {
   const { data, isLoading, isError } = useGetMfaStatusQuery();
   const [pendingEnrolment, setPendingEnrolment] = useState<MfaEnrolmentView | null>(null);
+
+  // Same profile the standalone profile page already loads (UserProfile) —
+  // reused here only to default the SMS phone input, not as a new source of
+  // truth for it.
+  const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
+  const isPlatformCaller = callerKind === 'platform';
+  const { data: tenantProfile } = useGetOwnUserProfileQuery(undefined, { skip: isPlatformCaller });
+  const { data: platformProfile } = useGetOwnPlatformProfileQuery(undefined, {
+    skip: !isPlatformCaller,
+  });
+  const profile = isPlatformCaller ? platformProfile : tenantProfile;
+  const existingCountryCode = profile?.country_code || '';
+  const existingNationalNumber = profile?.phone_no ? cleanPhoneNumber(profile.phone_no) : '';
 
   return (
     <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
@@ -529,6 +567,8 @@ const MfaSection = () => {
                   key={methodType}
                   methodType={methodType}
                   onEnrolled={setPendingEnrolment}
+                  existingCountryCode={existingCountryCode}
+                  existingNationalNumber={existingNationalNumber}
                 />
               )
             )}

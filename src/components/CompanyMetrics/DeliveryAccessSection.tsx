@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { ChartCard } from '../shared';
 import { RootState } from '../../redux/provider/store';
@@ -80,7 +81,14 @@ const DeliveryAccessSection: React.FC = () => {
             <tbody className="divide-y divide-neutral-100">
               {offboarded?.members.map((member) => (
                 <tr key={member.user_id}>
-                  <td className="py-2 truncate text-neutral-700">{member.full_name}</td>
+                  <td className="py-2 truncate">
+                    <Link
+                      to={`/view-organisation-user?orgUserId=${member.user_id}`}
+                      className="text-neutral-700 hover:text-primary-600 hover:underline"
+                    >
+                      {member.full_name}
+                    </Link>
+                  </td>
                   <td className="py-2 truncate text-neutral-500">{member.email}</td>
                   <td className="py-2 text-neutral-500">{formatDate(member.offboarded_at)}</td>
                 </tr>

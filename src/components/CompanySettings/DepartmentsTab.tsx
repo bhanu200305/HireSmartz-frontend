@@ -1,18 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
+import { Select } from 'antd';
 import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
-import {
-  Badge,
-  Button,
-  CustomTable,
-  Input,
-  Typography,
-  paginationConfig,
-  showToast,
-} from '../shared';
+import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import MasterPagination from '../shared/ui/MasterPagination';
+import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
   useListMasterDepartmentsQuery,
   useCreateMasterDepartmentMutation,
@@ -25,6 +22,13 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 type FormState = { code: string; name: string; description: string };
 const emptyForm: FormState = { code: '', name: '', description: '' };
 type DepartmentRow = MasterDepartment & { key: string };
+type SortKey = 'code' | 'name' | 'description';
+
+const SORT_COMPARATORS: Record<SortKey, (a: MasterDepartment, b: MasterDepartment) => number> = {
+  code: (a, b) => a.code.localeCompare(b.code),
+  name: (a, b) => a.name.localeCompare(b.name),
+  description: (a, b) => (a.description ?? '').localeCompare(b.description ?? ''),
+};
 
 /**
  * GET/POST/PUT/DELETE /v1/platform/master-departments — the platform's
@@ -45,6 +49,10 @@ const DepartmentsTab: React.FC = () => {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [departmentToDelete, setDepartmentToDelete] = useState<MasterDepartment | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('company_settings_departments', 10);
 
   // Hooks must run unconditionally on every render — kept above the
   // `if (isLoading) return` below, not after it, or React sees a different
@@ -59,6 +67,34 @@ const DepartmentsTab: React.FC = () => {
         (department.description ?? '').toLowerCase().includes(q)
     );
   }, [departments, searchText]);
+
+  // Sorted+paginated fully client-side (this catalogue has no server-side
+  // list endpoint) — same "Rows per page" + MasterPagination UI every
+  // list-drilldown modal already uses, rather than antd Table's own default
+  // pager, which this tab used to render instead.
+  const sortedDepartments = useMemo(() => {
+    const sorted = [...filteredDepartments].sort(SORT_COMPARATORS[sortBy]);
+    return sortOrder === 'desc' ? sorted.reverse() : sorted;
+  }, [filteredDepartments, sortBy, sortOrder]);
+
+  const sortOrderFor = (key: SortKey): 'ascend' | 'descend' | undefined =>
+    sortBy === key ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
+  const handleTableChange: TableProps<DepartmentRow>['onChange'] = (
+    _pagination,
+    _filters,
+    sorter
+  ) => {
+    const active = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<DepartmentRow>);
+    setPage(0);
+    if (!active?.order || !active.columnKey) {
+      setSortBy('name');
+      setSortOrder('asc');
+      return;
+    }
+    setSortBy(active.columnKey as SortKey);
+    setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
+  };
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -126,7 +162,8 @@ const DepartmentsTab: React.FC = () => {
       dataIndex: 'code',
       key: 'code',
       width: 160,
-      sorter: (a: DepartmentRow, b: DepartmentRow) => a.code.localeCompare(b.code),
+      sorter: true,
+      sortOrder: sortOrderFor('code'),
       render: (_: unknown, department: DepartmentRow) => (
         <Badge status="neutral" dot={false} className="font-mono tracking-wide">
           {department.code}
@@ -137,7 +174,8 @@ const DepartmentsTab: React.FC = () => {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      sorter: (a: DepartmentRow, b: DepartmentRow) => a.name.localeCompare(b.name),
+      sorter: true,
+      sortOrder: sortOrderFor('name'),
       render: (_: unknown, department: DepartmentRow) => (
         <span className="font-semibold text-gray-900">{department.name}</span>
       ),
@@ -146,8 +184,8 @@ const DepartmentsTab: React.FC = () => {
       title: 'Description',
       dataIndex: 'description',
       key: 'description',
-      sorter: (a: DepartmentRow, b: DepartmentRow) =>
-        (a.description ?? '').localeCompare(b.description ?? ''),
+      sorter: true,
+      sortOrder: sortOrderFor('description'),
       render: (_: unknown, department: DepartmentRow) => (
         <span className="text-gray-500 text-sm">{department.description || '-'}</span>
       ),
@@ -179,10 +217,9 @@ const DepartmentsTab: React.FC = () => {
     },
   ];
 
-  const dataSource: DepartmentRow[] = filteredDepartments.map((department) => ({
-    ...department,
-    key: department.department_id,
-  }));
+  const dataSource: DepartmentRow[] = sortedDepartments
+    .slice(page * pageSize, page * pageSize + pageSize)
+    .map((department) => ({ ...department, key: department.department_id }));
 
   return (
     <div>
@@ -192,7 +229,8 @@ const DepartmentsTab: React.FC = () => {
             Global list of functional organizational units. Departments are industry-agnostic here.
           </Typography>
           <span className="text-xs font-medium text-gray-400">
-            {dataSource.length} {dataSource.length === 1 ? 'department' : 'departments'}
+            {sortedDepartments.length}{' '}
+            {sortedDepartments.length === 1 ? 'department' : 'departments'}
             {searchText.trim() && ` of ${departments?.length ?? 0}`}
           </span>
         </div>
@@ -202,15 +240,32 @@ const DepartmentsTab: React.FC = () => {
             placeholder="Search departments..."
             className="w-64"
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              setPage(0);
+            }}
           />
           <Button
-            className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+            className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
             onClick={openAdd}
           >
             <MdOutlineAdd /> Add department
           </Button>
         </div>
+      </div>
+
+      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
+        <span>Rows per page</span>
+        <Select
+          size="small"
+          value={pageSize}
+          className="rows-per-page-select"
+          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
       </div>
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
@@ -220,9 +275,18 @@ const DepartmentsTab: React.FC = () => {
           emptyText={
             searchText.trim() ? 'No departments match your search.' : 'No departments yet.'
           }
-          pagination={paginationConfig('departments')}
+          pagination={false}
+          onChange={handleTableChange}
         />
       </div>
+
+      <MasterPagination
+        current={page + 1}
+        pageSize={pageSize}
+        total={sortedDepartments.length}
+        itemLabel="departments"
+        onPageChange={(nextPage) => setPage(nextPage - 1)}
+      />
 
       <AntdCommonModal
         open={modalState !== null}

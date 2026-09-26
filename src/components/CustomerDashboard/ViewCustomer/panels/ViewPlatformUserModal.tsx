@@ -423,7 +423,13 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
         {isEditing && editForm ? (
           <div className="pb-4 border-b border-gray-100">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input placeholder="Email" defaultValue={editForm.email} onBlur={handleEmailBlur} />
+              <Input
+                type="email"
+                noAutoCapitalize
+                placeholder="Email"
+                defaultValue={editForm.email}
+                onBlur={handleEmailBlur}
+              />
               <Input placeholder="First name *" {...field('first_name')} />
               <Input placeholder="Last name" {...field('last_name')} />
               <NameTitleSelect

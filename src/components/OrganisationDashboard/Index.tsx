@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
 import { LuUsersRound } from 'react-icons/lu';
 import { PlusOutlined } from '@ant-design/icons';
 import { MdSearch, MdOutlineFileUpload, MdOutlineRefresh, MdOutlineBlock } from 'react-icons/md';
@@ -42,6 +43,11 @@ const PAGE_SIZE = 20;
 // model and the repository enforce it), so this can't ask for more anyway.
 const SEARCH_PAGE_SIZE = 200;
 
+// The five columns this table can sort by — matches each column's own `key`
+// below (comparators live inside the component, since they close over the
+// `TableRow` union, which itself depends on the query's own row shape).
+type SortKey = 'full_name' | 'email' | 'role' | 'phone' | 'status';
+
 /** §"Users — Organization Directory": GET /v1/users. Tenant comes from the
  * caller's own session — no company/tenant selector, unlike the Super
  * Admin's Companies screen. Only what the real API supports: an
@@ -73,6 +79,8 @@ const OrganisationUserTable = () => {
   const [roleFilter, setRoleFilter] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(0);
   const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('full_name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const canArchive = useHasAccess(Authorities.USER_ARCHIVE);
@@ -251,16 +259,57 @@ const OrganisationUserTable = () => {
     );
   }, [rows, searchText]);
 
-  const dataSource: TableRow[] = filteredUsers;
+  // Client-side, over whatever rows are already on the page — same
+  // DepartmentsTab.tsx pattern (controlled sortBy/sortOrder + a
+  // sortOrderFor/handleTableChange pair), swapped in for the plain
+  // uncontrolled `sorter` functions this table used to hand antd directly.
+  const SORT_COMPARATORS: Record<SortKey, (a: TableRow, b: TableRow) => number> = {
+    full_name: (a, b) =>
+      (a.kind === 'user' ? a.full_name : a.invited_email).localeCompare(
+        b.kind === 'user' ? b.full_name : b.invited_email
+      ),
+    email: (a, b) =>
+      (a.kind === 'user' ? a.email : '').localeCompare(b.kind === 'user' ? b.email : ''),
+    role: (a, b) => (a.role || '').localeCompare(b.role || ''),
+    phone: (a, b) =>
+      (a.kind === 'user' ? a.phone_no || '' : '').localeCompare(
+        b.kind === 'user' ? b.phone_no || '' : ''
+      ),
+    status: (a, b) =>
+      Number(a.kind === 'user' ? a.is_active : false) -
+      Number(b.kind === 'user' ? b.is_active : false),
+  };
+
+  const sortedUsers = useMemo(() => {
+    const sorted = [...filteredUsers].sort(SORT_COMPARATORS[sortBy]);
+    return sortOrder === 'desc' ? sorted.reverse() : sorted;
+    // SORT_COMPARATORS is a fresh object every render but its comparator
+    // functions are pure and keyed only by SortKey — safe to omit here.
+  }, [filteredUsers, sortBy, sortOrder]);
+
+  const sortOrderFor = (key: SortKey): 'ascend' | 'descend' | undefined =>
+    sortBy === key ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
+  const handleTableChange: TableProps<TableRow>['onChange'] = (_pagination, _filters, sorter) => {
+    const active = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<TableRow>);
+    setPage(0);
+    if (!active?.order || !active.columnKey) {
+      setSortBy('full_name');
+      setSortOrder('asc');
+      return;
+    }
+    setSortBy(active.columnKey as SortKey);
+    setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
+  };
+
+  const dataSource: TableRow[] = sortedUsers;
 
   const columns: TableProps<TableRow>['columns'] = [
     {
       title: 'Name',
       key: 'full_name',
-      sorter: (a: TableRow, b: TableRow) =>
-        (a.kind === 'user' ? a.full_name : a.invited_email).localeCompare(
-          b.kind === 'user' ? b.full_name : b.invited_email
-        ),
+      sorter: true,
+      sortOrder: sortOrderFor('full_name'),
       render: (_: unknown, row: TableRow) =>
         row.kind === 'user' ? (
           <Link
@@ -279,8 +328,8 @@ const OrganisationUserTable = () => {
     {
       title: 'Email',
       key: 'email',
-      sorter: (a: TableRow, b: TableRow) =>
-        (a.kind === 'user' ? a.email : '').localeCompare(b.kind === 'user' ? b.email : ''),
+      sorter: true,
+      sortOrder: sortOrderFor('email'),
       render: (_: unknown, row: TableRow) =>
         row.kind === 'user' ? (
           <span className="text-sm text-gray-600 truncate" title={row.email}>
@@ -293,7 +342,8 @@ const OrganisationUserTable = () => {
     {
       title: 'Role',
       key: 'role',
-      sorter: (a: TableRow, b: TableRow) => (a.role || '').localeCompare(b.role || ''),
+      sorter: true,
+      sortOrder: sortOrderFor('role'),
       render: (_: unknown, row: TableRow) => {
         if (row.kind === 'pending') {
           return row.role ? (
@@ -329,10 +379,8 @@ const OrganisationUserTable = () => {
     {
       title: 'Phone',
       key: 'phone',
-      sorter: (a: TableRow, b: TableRow) =>
-        (a.kind === 'user' ? a.phone_no || '' : '').localeCompare(
-          b.kind === 'user' ? b.phone_no || '' : ''
-        ),
+      sorter: true,
+      sortOrder: sortOrderFor('phone'),
       render: (_: unknown, row: TableRow) =>
         row.kind === 'pending' ? (
           <span className="text-sm text-gray-300">-</span>
@@ -345,9 +393,8 @@ const OrganisationUserTable = () => {
     {
       title: 'Status',
       key: 'status',
-      sorter: (a: TableRow, b: TableRow) =>
-        Number(a.kind === 'user' ? a.is_active : false) -
-        Number(b.kind === 'user' ? b.is_active : false),
+      sorter: true,
+      sortOrder: sortOrderFor('status'),
       render: (_: unknown, row: TableRow) =>
         row.kind === 'pending' ? (
           <Badge status="warning">Pending</Badge>
@@ -497,6 +544,7 @@ const OrganisationUserTable = () => {
         <CustomTable<TableRow>
           columns={columns}
           dataSource={dataSource}
+          onChange={handleTableChange}
           emptyText={
             !isLoading ? (
               <div className="py-10 text-center text-gray-400 text-sm">No users found.</div>

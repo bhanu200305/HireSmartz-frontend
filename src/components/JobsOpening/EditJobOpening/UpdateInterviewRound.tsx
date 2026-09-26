@@ -136,8 +136,8 @@ const UpdateInterviewRound = () => {
     <>
       {/* Modal Overlay */}
       {isEditing && <Loader />}
-      <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
-        <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[500px] max-w-[92vw] relative">
+      <div className="app-modal-overlay fixed inset-0 flex items-center justify-center bg-black/60 z-50">
+        <div className="app-modal-panel bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[500px] max-w-[92vw] relative">
           <h2 className="text-lg font-semibold text-center mb-6">Update Interview Round</h2>
           <Form form={form} layout="vertical" onFinish={handleSubmit(onSubmit)}>
             <Form.Item
@@ -164,7 +164,6 @@ const UpdateInterviewRound = () => {
                       showSearch
                       placeholder="Select Interview Round"
                       loading={interviewRoundsLoading}
-                      popupClassName="rounded-3xl"
                       filterOption={(input, option) =>
                         typeof option?.children === 'string' &&
                         (option.children as string).toLowerCase().includes(input.toLowerCase())
@@ -287,7 +286,6 @@ const UpdateInterviewRound = () => {
                         onChange={(value) => field.onChange(Number(value))}
                         className="w-full custom-select placeholder-style"
                         placeholder="Select Duration"
-                        popupClassName="rounded-3xl"
                         options={slotOptions}
                       />
                     </div>

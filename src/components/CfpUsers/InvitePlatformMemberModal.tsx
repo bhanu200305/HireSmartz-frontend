@@ -116,7 +116,13 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
             { label: 'Super Admin / co-founder', value: 'super_admin' },
           ]}
         />
-        <Input placeholder="Email *" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input
+          type="email"
+          noAutoCapitalize
+          placeholder="Email *"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
         {kind === 'staff' && (
           <>
             <Select

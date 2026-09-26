@@ -5,15 +5,16 @@ import {
   MdOutlineGroups,
   MdOutlineWifiTethering,
 } from 'react-icons/md';
-import { StatCardRow, StatDetailModal } from '../shared';
+import { StatCardRow } from '../shared';
 import type { StatCardData } from '../shared';
 import {
   useGetGrowthMetricsQuery,
   useGetLoginMetricsQuery,
   useGetSessionMetricsQuery,
 } from '../../api/organization-service/Platform/metrics';
-import { formattedDateTime, formatEnumString } from '../../shared/utils/methods';
 import PlatformTenantsListModal from '../Dashboard/PlatformTenantsListModal';
+import LoginUsersListModal from './LoginUsersListModal';
+import ActiveSessionsListModal from './ActiveSessionsListModal';
 
 /**
  * 1.1 "Platform overview" — Total customers / New customers this month /
@@ -28,9 +29,10 @@ import PlatformTenantsListModal from '../Dashboard/PlatformTenantsListModal';
  * opens `PlatformTenantsListModal`, the second time with `created_after` set
  * to the start of the current UTC month, the same boundary
  * `GetGrowthMetricsUseCase` itself uses to compute the number on the card.
- * The other two don't have their own list endpoints yet (see the KPI backend
- * request list), so they open `StatDetailModal` instead — the number plus
- * what it counts.
+ * "Monthly active users" and "Active sessions" now have real list drill-
+ * downs too (`LoginUsersListModal`/`ActiveSessionsListModal`, backed by
+ * org-service's `.../logins/users` and `.../sessions/list`) — the actual
+ * people/sessions behind each number, cursor-paginated.
  */
 const startOfCurrentUtcMonth = (): string => {
   const now = new Date();
@@ -103,61 +105,9 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
           onClose={() => setShowNewCustomers(false)}
         />
       )}
-      {activeDetail === 'mau' && (
-        <StatDetailModal
-          onClose={() => setActiveDetail(null)}
-          icon={<MdOutlineGroups />}
-          variant="orange"
-          label="Monthly active users"
-          value={logins?.available ? logins.distinct_users.toLocaleString() : null}
-          description="Distinct users who successfully signed in at least once over the last 30 days."
-          // Same GET /v1/platform/metrics/logins call that already produced
-          // the headline number — success/failure/mfa_required were always
-          // in the response, just never shown once you clicked in.
-          details={
-            logins?.available
-              ? [
-                  { label: 'Successful sign-ins', value: logins.success.toLocaleString() },
-                  { label: 'Failed sign-ins', value: logins.failure.toLocaleString() },
-                  { label: 'MFA challenges', value: logins.mfa_required.toLocaleString() },
-                ]
-              : undefined
-          }
-        />
-      )}
+      {activeDetail === 'mau' && <LoginUsersListModal onClose={() => setActiveDetail(null)} />}
       {activeDetail === 'sessions' && (
-        <StatDetailModal
-          onClose={() => setActiveDetail(null)}
-          icon={<MdOutlineWifiTethering />}
-          variant="neutral"
-          label="Active sessions"
-          value={sessions?.available ? sessions.active_sessions.toLocaleString() : null}
-          description="Sessions currently active across the platform right now."
-          // Same GET /v1/platform/metrics/sessions call the headline number
-          // already came from — by_device and last_activity were always in
-          // the response too.
-          details={
-            sessions?.available
-              ? [
-                  {
-                    label: 'Distinct users online',
-                    value: sessions.distinct_users.toLocaleString(),
-                  },
-                  ...sessions.by_device.map((row) => ({
-                    label: formatEnumString(row.device_type),
-                    value: `${row.sessions.toLocaleString()} sessions · ${row.users.toLocaleString()} users`,
-                  })),
-                  {
-                    label: 'Last activity',
-                    value:
-                      sessions.last_activity_status === 'live' && sessions.last_activity_at
-                        ? formattedDateTime(sessions.last_activity_at)
-                        : 'No active session',
-                  },
-                ]
-              : undefined
-          }
-        />
+        <ActiveSessionsListModal onClose={() => setActiveDetail(null)} />
       )}
     </>
   );

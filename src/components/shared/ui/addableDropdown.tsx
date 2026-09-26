@@ -28,8 +28,8 @@ const AddableDropdown: FC<AddableDropdownProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
-      <div className="bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[500px] max-w-[92vw] relative">
+    <div className="app-modal-overlay fixed inset-0 flex items-center justify-center bg-black/30 z-50">
+      <div className="app-modal-panel bg-[#FAFAFA] p-6 rounded-lg shadow-lg w-[500px] max-w-[92vw] relative">
         <h2 className="text-lg font-semibold text-center mb-6">{title}</h2>
         <div>
           <Form.Item label={label}>

@@ -348,7 +348,7 @@ const IntakeQuestionsTab: React.FC = () => {
                       options={fieldOptions}
                     />
                     <Button
-                      className="rounded-full border border-gray-300 px-4 py-1.5 whitespace-nowrap"
+                      className="rounded-full border border-gray-300 px-4 py-2 whitespace-nowrap"
                       onClick={() => handleSave(question)}
                       disabled={!isDirty || isSaving}
                     >
@@ -389,7 +389,7 @@ const IntakeQuestionsTab: React.FC = () => {
               disabled={atCap}
             />
             <Button
-              className="rounded-full border border-gray-300 px-4 py-1.5 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-full border border-gray-300 px-4 py-2 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => void handleAdd()}
               disabled={!newQuestionText.trim() || !newQuestionFieldId || atCap || isCreating}
             >

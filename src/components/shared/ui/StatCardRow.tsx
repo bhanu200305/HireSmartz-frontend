@@ -128,18 +128,27 @@ const StatCard = ({
         <div
           className={clsx(
             'flex shrink-0 items-center justify-center rounded-lg text-base',
-            // Fixed size for both variants — this used to be `cqh`-based
-            // (container-query height) for tall cards, so it could adapt to
-            // a genuinely short browser window. Browser zoom shrinks the
-            // effective CSS-pixel viewport the exact same way a real short
-            // window does (a well-known zoom quirk — CSS has no way to tell
-            // the two apart), so at any zoom level other than 100% these
-            // cards shrank independently of everything else on the page
-            // (which scales normally under zoom) — reported as "the 4 cards
-            // keep getting smaller". Fixed sizing trades away shrinking to
-            // fit an extremely short window for staying stable across zoom
-            // levels, which is the far more common case.
-            tall ? 'h-8 w-8' : 'h-9 w-9',
+            // `cqh`-based (container-query height) so tall cards scale with
+            // the actual room `OverviewSlide`'s `fillHeight` gives them —
+            // without this they stay one fixed pixel size while the
+            // surrounding card grows/shrinks with viewport/zoom, which is
+            // what left a big dead gap around a tiny fixed-size grid at some
+            // resolutions (and a cramped one at others). This used to be
+            // *unbounded* `cqh`, which is what caused the earlier bug:
+            // browser zoom shrinks the effective CSS-pixel viewport the same
+            // way a real short window does (CSS can't tell the two apart),
+            // so at some zoom levels the container's `cqh` height shrank
+            // enough to take these down to near-invisible — reported as "the
+            // 4 cards keep getting smaller". The `clamp()` floor is what
+            // fixes that: it lets the size track the container (solving the
+            // dead-space complaint) while guaranteeing it never shrinks
+            // below a legible minimum (solving the vanish-at-zoom bug). The
+            // ceiling caps how big they get at very low zoom / very tall
+            // windows so they don't blow out of proportion either. The `N`
+            // in `N*cqh` has to be picked so the *typical* fillHeight body
+            // actually lands mid-range, not hugging the floor — too small a
+            // multiplier makes the clamp look like it's doing nothing.
+            tall ? 'size-[clamp(28px,13cqh,56px)]' : 'h-9 w-9',
             styles.badge
           )}
           aria-hidden
@@ -148,14 +157,24 @@ const StatCard = ({
         </div>
       )}
       <div className="min-w-0">
-        <p className={clsx(tall ? 'text-xs' : 'text-sm', 'text-neutral-500')}>{label}</p>
+        <p
+          className={clsx(
+            tall ? 'text-[clamp(0.6875rem,3.5cqh,0.9375rem)]' : 'text-sm',
+            'text-neutral-500'
+          )}
+        >
+          {label}
+        </p>
         <p
           className={clsx(
             'font-display font-bold tracking-tight',
             tall ? 'mt-1' : 'mt-1',
             isPlaceholder
               ? 'text-sm font-medium text-neutral-400 italic'
-              : clsx('leading-none text-neutral-900', tall ? 'text-xl' : 'text-[26px]')
+              : clsx(
+                  'leading-none text-neutral-900',
+                  tall ? 'text-[clamp(1rem,7cqh,2rem)]' : 'text-[26px]'
+                )
           )}
         >
           {displayValue}
@@ -194,9 +213,14 @@ const StatCard = ({
         'transition-all duration-200 ease-out hover:-translate-y-0.5',
         tall
           ? clsx(
-              // Fixed padding/min-height — was `cqh`-based (see the icon
-              // comment above for why that shrank under browser zoom).
-              'rounded-xl border border-neutral-300 p-3 min-h-[88px] justify-center',
+              // `cqh`-based padding/min-height, clamped — see the icon
+              // comment above for why plain `cqh` isn't safe (shrinks toward
+              // invisible at some zoom levels), why fixed-only isn't either
+              // (leaves dead space or crowding depending on how much room
+              // `fillHeight` actually gives this card), and why the `N` in
+              // `N*cqh` needs to be big enough that the typical case doesn't
+              // just sit at the floor.
+              'rounded-xl border border-neutral-300 p-[clamp(0.625rem,4.5cqh,1.5rem)] min-h-[clamp(80px,40cqh,170px)] justify-center',
               styles.hoverBorder,
               styles.hoverGlow
             )

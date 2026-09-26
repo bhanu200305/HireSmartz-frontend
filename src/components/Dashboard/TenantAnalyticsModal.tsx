@@ -118,21 +118,25 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
       modalProps={{
         width: 860,
         maskClosable: true,
-        // Caps the body at a fraction of the viewport and scrolls inside
-        // it instead of letting the modal grow past the screen — five
-        // chart tiles plus the stat-card row is comfortably taller than
-        // most viewports, and an overflowing modal has no way to reach its
-        // own footer/close affordance below the fold. Extra right padding
-        // plus `.thin-scrollbar` (index.css) keep the scrollbar itself from
-        // overlapping the rightmost column of cards — some Windows/Chrome
-        // setups render the default scrollbar as a wide overlay rather
-        // than reserving its own track space. `overflowX: 'hidden'` is
-        // required alongside `overflowY: 'auto'` — per the CSS overflow
-        // spec, leaving overflow-x at its default `visible` while
-        // overflow-y isn't computes overflow-x to `auto` too, opening a
-        // stray horizontal scrollbar that clips a sliver off this content.
+        // No hardcoded vh cap here — index.css already caps every antd
+        // Modal's `.ant-modal-content` at the real, ResizeObserver-tracked
+        // gap between the app header/footer and scrolls `.modal-content`
+        // inside it; five chart tiles plus the stat-card row is comfortably
+        // taller than most viewports, and a per-modal vh guess on top of
+        // that budget is a second, independent limit that can disagree
+        // with it and silently clip content — see the comment on
+        // `.ant-modal-body .modal-content` in index.css. Extra right
+        // padding plus `.thin-scrollbar` (index.css) keep the scrollbar
+        // itself from overlapping the rightmost column of cards — some
+        // Windows/Chrome setups render the default scrollbar as a wide
+        // overlay rather than reserving its own track space.
+        // `overflowX: 'hidden'` is required alongside `overflowY: 'auto'`
+        // — per the CSS overflow spec, leaving overflow-x at its default
+        // `visible` while overflow-y isn't computes overflow-x to `auto`
+        // too, opening a stray horizontal scrollbar that clips a sliver
+        // off this content.
         styles: {
-          body: { maxHeight: '70vh', overflowY: 'auto', overflowX: 'hidden', paddingRight: 14 },
+          body: { overflowX: 'hidden', paddingRight: 14 },
         },
         classNames: { body: 'thin-scrollbar' },
       }}

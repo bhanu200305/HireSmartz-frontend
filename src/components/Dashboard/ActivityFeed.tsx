@@ -273,7 +273,6 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
                 value={filters.entityType}
                 onChange={handleChange}
                 className="w-full custom-select"
-                popupClassName="rounded-3xl"
                 variant="borderless"
                 style={{ width: 150, fontSize: 14 }}
               />

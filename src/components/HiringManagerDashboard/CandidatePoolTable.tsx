@@ -1,7 +1,9 @@
 import React from 'react';
+import { Select } from 'antd';
 import type { TableProps } from 'antd';
 import { Link } from 'react-router-dom';
 import { CustomTable, Badge } from '../shared';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import type { CandidatePoolItem } from '../../api/candidate-service/Stats/stats';
 import { jobDisplayName } from './useJobOpeningNameMap';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
@@ -22,10 +24,18 @@ type CandidatePoolTableProps = {
   page: number;
   pageSize: number;
   onPageChange: (page: number, pageSize: number) => void;
-  /** Pending decisions' rows hyperlink the candidate name to their profile
-   * (for making the decision); the qualified-pool table doesn't. */
+  /** Hyperlinks the candidate name through to their own pipeline/detail
+   * page — every call site of this shared table passes this on, so a
+   * clicked candidate always opens their record rather than sitting inert. */
   linkToCandidate?: boolean;
   emptyText: string;
+  /** `jobOpeningId` server-side filter (`CandidateStatsParams`, forwarded by
+   * both the qualified-pool and pending-decisions endpoints) — the caller
+   * owns the actual query param since the query itself lives there; this
+   * component just renders the dropdown (it already has `jobNameMap`) and
+   * reports the choice back up. */
+  jobOpeningId?: string;
+  onJobOpeningIdChange: (jobOpeningId: string | undefined) => void;
 };
 
 /**
@@ -45,7 +55,10 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
   onPageChange,
   linkToCandidate,
   emptyText,
+  jobOpeningId,
+  onJobOpeningIdChange,
 }) => {
+  const jobOptions = Object.entries(jobNameMap).map(([id, name]) => ({ label: name, value: id }));
   const columns: TableProps<CandidatePoolItem>['columns'] = [
     {
       title: 'Candidate',
@@ -108,20 +121,38 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
   ];
 
   return (
-    <CustomTable<CandidatePoolItem>
-      columns={columns}
-      dataSource={items}
-      emptyText={loading ? 'Loading…' : emptyText}
-      pagination={{
-        current: page,
-        pageSize,
-        total,
-        showSizeChanger: true,
-        pageSizeOptions: PAGE_SIZE_OPTIONS.map(String),
-        showTotal: (t, range) => `${range[0]}-${range[1]} of ${t} candidates`,
-        onChange: onPageChange,
-      }}
-    />
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-end">
+        <div className="cfp-dropdown-trigger w-56">
+          <FilterSelectIcon />
+          <Select
+            placeholder="Job"
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            className="w-full custom-select"
+            variant="borderless"
+            value={jobOpeningId}
+            onChange={(value) => onJobOpeningIdChange(value)}
+            options={jobOptions}
+          />
+        </div>
+      </div>
+      <CustomTable<CandidatePoolItem>
+        columns={columns}
+        dataSource={items}
+        emptyText={loading ? 'Loading…' : emptyText}
+        pagination={{
+          current: page,
+          pageSize,
+          total,
+          showSizeChanger: true,
+          pageSizeOptions: PAGE_SIZE_OPTIONS.map(String),
+          showTotal: (t, range) => `${range[0]}-${range[1]} of ${t} candidates`,
+          onChange: onPageChange,
+        }}
+      />
+    </div>
   );
 };
 

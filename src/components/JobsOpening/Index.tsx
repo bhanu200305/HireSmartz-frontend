@@ -1072,7 +1072,6 @@ const JobsOpening = () => {
                   onChange={handleStatusChange}
                   allowClear
                   className="w-full custom-select"
-                  popupClassName="rounded-3xl status-filter-dropdown"
                   popupMatchSelectWidth={false}
                   variant="borderless"
                   value={
@@ -1102,7 +1101,6 @@ const JobsOpening = () => {
                   onChange={handleLocationChange}
                   allowClear
                   className="w-full custom-select"
-                  popupClassName="rounded-3xl"
                   popupMatchSelectWidth={false}
                   variant="borderless"
                   value={filters.locationId}

@@ -257,7 +257,6 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
                     allowClear={false}
                     style={{ width: 100 }}
                     className="custom-select notification-filter-select"
-                    popupClassName="rounded-3xl"
                     variant="borderless"
                   >
                     <Option value="all">All</Option>

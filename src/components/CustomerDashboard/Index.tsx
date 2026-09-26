@@ -3,6 +3,7 @@ import { FaCity } from 'react-icons/fa';
 import { MdOutlineArrowBack } from 'react-icons/md';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Popconfirm, Select } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
 import type { TableProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
@@ -30,9 +31,10 @@ const STATUS_BADGE: Record<string, BadgeStatus> = {
 /**
  * Super Admin's "Companies" screen — GET /v1/platform/tenants. Filters/sort
  * kept to what the real endpoint supports: status, a substring search on
- * company name (`q`, server-side), and offset pagination — no date-range
- * filter, no recruiter/interview counts, no impersonation-from-this-screen
- * (none of those exist on this contract or endpoint).
+ * company name (`q`, server-side), server-side sort by Company/Joined
+ * (`sort_by`/`sort_order`), and offset pagination — no date-range filter, no
+ * recruiter/interview counts, no impersonation-from-this-screen (none of
+ * those exist on this contract or endpoint).
  */
 const CustomerTable = () => {
   const navigate = useNavigate();
@@ -43,12 +45,18 @@ const CustomerTable = () => {
   const [status, setStatus] = useState<string | undefined>('active');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<{
+    sortBy: 'created_at' | 'company_name';
+    sortOrder: 'asc' | 'desc';
+  }>({ sortBy: 'created_at', sortOrder: 'desc' });
 
   const { data, isLoading, error } = useListPlatformTenantsQuery({
     status,
     q: search || undefined,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
+    sort_by: sort.sortBy,
+    sort_order: sort.sortOrder,
   });
   const [deleteTenant, { isLoading: isDeleting }] = useDeleteTenantMutation();
 
@@ -79,11 +87,18 @@ const CustomerTable = () => {
   type TenantRow = (typeof tenants)[number] & { key: string };
   const dataSource: TenantRow[] = tenants.map((tenant) => ({ ...tenant, key: tenant.tenant_id }));
 
+  const sortOrderFor = (
+    columnKey: 'company_name' | 'created_at'
+  ): 'ascend' | 'descend' | undefined =>
+    sort.sortBy === columnKey ? (sort.sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
   const columns: TableProps<TenantRow>['columns'] = [
     {
       title: 'Company',
       dataIndex: 'company_name',
       key: 'company_name',
+      sorter: true,
+      sortOrder: sortOrderFor('company_name'),
       render: (_: unknown, tenant: TenantRow) => (
         <span className="font-semibold text-primary-600">{tenant.company_name}</span>
       ),
@@ -116,6 +131,8 @@ const CustomerTable = () => {
     {
       title: 'Joined',
       key: 'created_at',
+      sorter: true,
+      sortOrder: sortOrderFor('created_at'),
       render: (_: unknown, tenant: TenantRow) => (
         <span className="text-sm text-gray-500">
           {tenant.created_at ? new Date(tenant.created_at).toLocaleDateString() : '-'}
@@ -228,6 +245,17 @@ const CustomerTable = () => {
               onClick: () => navigate(`/view-company?companyId=${tenant.tenant_id}`),
               className: 'cursor-pointer',
             })}
+            onChange={(_pagination, _filters, sorter) => {
+              const active = Array.isArray(sorter) ? sorter[0] : sorter;
+              const resolved = active as SorterResult<TenantRow>;
+              setPage(0);
+              if (!resolved?.order || !resolved.columnKey) {
+                setSort({ sortBy: 'created_at', sortOrder: 'desc' });
+                return;
+              }
+              const sortBy = resolved.columnKey as 'created_at' | 'company_name';
+              setSort({ sortBy, sortOrder: resolved.order === 'ascend' ? 'asc' : 'desc' });
+            }}
             enableKeyboardNav
             onRowEnter={(tenant) => navigate(`/view-company?companyId=${tenant.tenant_id}`)}
             emptyText={

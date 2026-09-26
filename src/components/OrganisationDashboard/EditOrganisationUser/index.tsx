@@ -224,6 +224,8 @@ const EditOrgUser = () => {
               </label>
               <Input
                 id="edit-user-email"
+                type="email"
+                noAutoCapitalize
                 defaultValue={user.email}
                 placeholder="Email"
                 onBlur={handleEmailBlur}

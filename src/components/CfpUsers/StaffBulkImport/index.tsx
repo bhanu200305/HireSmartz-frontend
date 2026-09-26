@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Upload } from 'antd';
-import { MdOutlineFileUpload, MdOutlineDownload } from 'react-icons/md';
+import { MdOutlineFileUpload, MdOutlineDownload, MdInsertDriveFile, MdClose } from 'react-icons/md';
 import { FaCheckCircle } from 'react-icons/fa';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import { Button, showToast, StepIndicator, type Step } from '../../shared';
@@ -44,6 +44,7 @@ type StaffBulkImportProps = {
  * designation column). */
 const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [rows, setRows] = useState<StaffReviewRow[]>([]);
   const [result, setResult] = useState<{
     created: number;
@@ -70,20 +71,26 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
 
   const resetAndClose = () => {
     setStep(1);
+    setSelectedFile(null);
     setRows([]);
     setResult(null);
     onClose();
   };
 
-  const handleUpload = async (file: File) => {
+  const handleSelectFile = (file: File) => {
     const isAllowedType = ALLOWED_IMPORT_TYPES.includes(file.type) || /\.xlsx$/i.test(file.name);
     if (!isAllowedType) {
       showToast({ message: 'Please upload a .xlsx file.', type: 'error' });
       return false;
     }
+    setSelectedFile(file);
+    return false;
+  };
 
+  const handleUpload = async () => {
+    if (!selectedFile) return;
     try {
-      const { storage_key } = await uploadStaffRoster(file).unwrap();
+      const { storage_key } = await uploadStaffRoster(selectedFile).unwrap();
       const parsed = await parseStaffRoster(storage_key).unwrap();
       setRows(toStaffReviewRows(parsed.rows, roleNames, departments));
       setStep(2);
@@ -93,7 +100,6 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
         type: 'error',
       });
     }
-    return false;
   };
 
   const handleConfirm = async () => {
@@ -152,17 +158,47 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
           >
             <MdOutlineDownload /> Download the roster template
           </button>
-          <Upload.Dragger
-            beforeUpload={handleUpload}
-            maxCount={1}
-            accept=".xlsx"
-            showUploadList={false}
-            className="border-dashed border-gray-300 rounded-lg p-6"
-          >
-            <MdOutlineFileUpload className="text-2xl mb-2 text-primary mx-auto" />
-            <p className="text-gray-600">Upload a spreadsheet of existing staff</p>
-            <p className="text-xs text-gray-400 mt-1">.xlsx only</p>
-          </Upload.Dragger>
+          {!selectedFile ? (
+            <Upload.Dragger
+              beforeUpload={handleSelectFile}
+              maxCount={1}
+              accept=".xlsx"
+              showUploadList={false}
+              className="border-dashed border-gray-300 rounded-lg p-6"
+            >
+              <MdOutlineFileUpload className="text-2xl mb-2 text-primary mx-auto" />
+              <p className="text-gray-600">Upload a spreadsheet of existing staff</p>
+              <p className="text-xs text-gray-400 mt-1">.xlsx only</p>
+            </Upload.Dragger>
+          ) : (
+            <div className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <MdInsertDriveFile className="text-2xl text-primary shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-800 truncate">{selectedFile.name}</p>
+                  <p className="text-xs text-gray-400">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedFile(null)}
+                aria-label="Remove file"
+                className="text-gray-400 hover:text-gray-600 shrink-0 cursor-pointer"
+              >
+                <MdClose className="text-xl" />
+              </button>
+            </div>
+          )}
+          {selectedFile && (
+            <Button
+              type="button"
+              onClick={handleUpload}
+              disabled={isBusy}
+              className="w-full mt-4 text-white bg-[var(--color-primary)] rounded-3xl py-2.5 disabled:opacity-50"
+            >
+              Upload &amp; Continue
+            </Button>
+          )}
         </div>
       )}
 

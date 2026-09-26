@@ -3,6 +3,8 @@ import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { MdApartment } from 'react-icons/md';
 import { Select } from 'antd';
+import { Search } from '../shared';
+import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { Badge } from '../shared/ui/badge';
 import { Loader } from '../shared/ui/loader';
 import MasterPagination from '../shared/ui/MasterPagination';
@@ -18,6 +20,16 @@ import {
   formatTenantDate,
 } from './tenantDisplay.helpers';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
+
+// Same four values GET /v1/platform/tenants filters on — matches
+// PlatformTenantsListModal's own STATUS_FILTER_OPTIONS.
+const STATUS_FILTER_OPTIONS = [
+  { label: 'All', value: 'all' },
+  ...Object.keys(TENANT_STATUS_BADGE).map((status) => ({
+    label: formatTenantStatusLabel(status),
+    value: status,
+  })),
+];
 
 /**
  * Super Admin's "CFP Company" Dashboard slide, replaced to point at real
@@ -40,20 +52,46 @@ import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
  * is exactly the friction this was asked to remove; the modal renders the
  * same content in place, instantly. An earlier hover-preview popover on
  * each row was pulled — this click-through modal replaced it outright.
- * "View all" still links to `/company` for the status/search filters this
- * compact card has no room for.
+ * Search + status filter wired to the same `q`/`status` params
+ * `PlatformTenantsListModal` uses against this identical endpoint — "View
+ * all" still links to `/company` for anyone who wants the full page.
  */
 const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) => {
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('tenants_preview_card', 5);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<string | undefined>(undefined);
+  // Same server-side sort PlatformTenantsListModal/CustomerTable already use
+  // against this identical endpoint — this card just had no column headers
+  // wired to it yet.
+  const [sort, setSort] = useState<{
+    sortBy: 'created_at' | 'company_name';
+    sortOrder: 'asc' | 'desc';
+  }>({ sortBy: 'created_at', sortOrder: 'desc' });
 
   const { data, isLoading } = useListPlatformTenantsQuery({
     limit: pageSize,
     offset: page * pageSize,
+    q: search || undefined,
+    status,
+    sort_by: sort.sortBy,
+    sort_order: sort.sortOrder,
   });
   const tenants = data?.tenants ?? [];
   const total = data?.total ?? 0;
+
+  const toggleSort = (column: 'created_at' | 'company_name') => {
+    setSort((prev) =>
+      prev.sortBy === column
+        ? { sortBy: column, sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' }
+        : { sortBy: column, sortOrder: 'asc' }
+    );
+    setPage(0);
+  };
+
+  const sortIndicator = (column: 'created_at' | 'company_name') =>
+    sort.sortBy === column ? (sort.sortOrder === 'asc' ? ' ↑' : ' ↓') : '';
 
   const [selectedTenant, setSelectedTenant] = useState<PlatformTenantSummary | null>(null);
 
@@ -85,12 +123,39 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
           <Select
             size="small"
             value={pageSize}
-            className="w-16"
+            className="rows-per-page-select"
             options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
             onChange={(size) => {
               setPageSize(size);
               setPage(0);
             }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2.5">
+        <Search
+          appname="tenants preview card"
+          placeholder="Search company..."
+          value={search}
+          allowClear
+          onSearch={(value) => {
+            setSearch(value);
+            setPage(0);
+          }}
+        />
+        <div className="cfp-dropdown-trigger w-36">
+          <FilterSelectIcon />
+          <Select
+            placeholder="Status"
+            className="w-full custom-select"
+            variant="borderless"
+            value={status ?? 'all'}
+            onChange={(value) => {
+              setStatus(value === 'all' ? undefined : value);
+              setPage(0);
+            }}
+            options={STATUS_FILTER_OPTIONS}
           />
         </div>
       </div>
@@ -107,8 +172,11 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
           <table className="min-w-[500px] w-full text-left text-sm">
             <thead className="sticky top-0 m-0 bg-neutral-50 p-0">
               <tr className="text-neutral-500">
-                <th className="py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                  Company
+                <th
+                  className="cursor-pointer select-none py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap hover:text-neutral-700"
+                  onClick={() => toggleSort('company_name')}
+                >
+                  Company{sortIndicator('company_name')}
                 </th>
                 <th className="py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
                   Status
@@ -116,8 +184,11 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
                 <th className="py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
                   Admin email
                 </th>
-                <th className="py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                  Created
+                <th
+                  className="cursor-pointer select-none py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap hover:text-neutral-700"
+                  onClick={() => toggleSort('created_at')}
+                >
+                  Created{sortIndicator('created_at')}
                 </th>
               </tr>
             </thead>

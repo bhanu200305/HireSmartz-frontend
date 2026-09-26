@@ -1,17 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
-import { Select as AntSelect } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
+import { Select, Select as AntSelect } from 'antd';
 import { MdSearch } from 'react-icons/md';
-import {
-  Badge,
-  CustomTable,
-  Input,
-  Typography,
-  Button,
-  paginationConfig,
-  showToast,
-} from '../shared';
+import { Badge, CustomTable, Input, Typography, Button, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
+import MasterPagination from '../shared/ui/MasterPagination';
+import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
   useListMasterDepartmentsQuery,
   useListMasterDepartmentJobTitlesQuery,
@@ -25,6 +21,12 @@ import {
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 type JobTitleAssignRow = PlatformJobTitle & { key: string; isMapped: boolean };
+type SortKey = 'code' | 'name';
+
+const SORT_COMPARATORS: Record<SortKey, (a: PlatformJobTitle, b: PlatformJobTitle) => number> = {
+  code: (a, b) => a.code.localeCompare(b.code),
+  name: (a, b) => a.name.localeCompare(b.name),
+};
 
 /**
  * Assign job titles to a department — GET .../master-departments/{id}/job-titles
@@ -38,6 +40,13 @@ const DepartmentSettingsTab: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [stagedMappedIds, setStagedMappedIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize(
+    'company_settings_department_job_title_assignments',
+    10
+  );
 
   const { data: departments, isLoading: isDeptsLoading } = useListMasterDepartmentsQuery();
   const sortedDepartments = useMemo(
@@ -60,6 +69,30 @@ const DepartmentSettingsTab: React.FC = () => {
       (jt) => jt.name.toLowerCase().includes(q) || jt.code.toLowerCase().includes(q)
     );
   }, [allJobTitles, searchText]);
+
+  const sortedJobTitles = useMemo(() => {
+    const sorted = [...filteredJobTitles].sort(SORT_COMPARATORS[sortBy]);
+    return sortOrder === 'desc' ? sorted.reverse() : sorted;
+  }, [filteredJobTitles, sortBy, sortOrder]);
+
+  const sortOrderFor = (key: SortKey): 'ascend' | 'descend' | undefined =>
+    sortBy === key ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
+  const handleTableChange: TableProps<JobTitleAssignRow>['onChange'] = (
+    _pagination,
+    _filters,
+    sorter
+  ) => {
+    const active = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<JobTitleAssignRow>);
+    setPage(0);
+    if (!active?.order || !active.columnKey) {
+      setSortBy('name');
+      setSortOrder('asc');
+      return;
+    }
+    setSortBy(active.columnKey as SortKey);
+    setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
+  };
 
   const {
     data: mappedJobTitles,
@@ -147,7 +180,8 @@ const DepartmentSettingsTab: React.FC = () => {
       dataIndex: 'code',
       key: 'code',
       width: 160,
-      sorter: (a: JobTitleAssignRow, b: JobTitleAssignRow) => a.code.localeCompare(b.code),
+      sorter: true,
+      sortOrder: sortOrderFor('code'),
       render: (_: unknown, row: JobTitleAssignRow) => (
         <Badge status="neutral" dot={false} className="font-mono tracking-wide">
           {row.code}
@@ -158,7 +192,8 @@ const DepartmentSettingsTab: React.FC = () => {
       title: 'Job Title',
       dataIndex: 'name',
       key: 'name',
-      sorter: (a: JobTitleAssignRow, b: JobTitleAssignRow) => a.name.localeCompare(b.name),
+      sorter: true,
+      sortOrder: sortOrderFor('name'),
       render: (_: unknown, row: JobTitleAssignRow) => (
         <span className={row.isMapped ? 'font-semibold text-primary-700' : 'text-gray-700'}>
           {row.name}
@@ -167,11 +202,13 @@ const DepartmentSettingsTab: React.FC = () => {
     },
   ];
 
-  const dataSource: JobTitleAssignRow[] = filteredJobTitles.map((jt) => ({
-    ...jt,
-    key: jt.job_title_id,
-    isMapped: stagedMappedIds.has(jt.job_title_id),
-  }));
+  const dataSource: JobTitleAssignRow[] = sortedJobTitles
+    .slice(page * pageSize, page * pageSize + pageSize)
+    .map((jt) => ({
+      ...jt,
+      key: jt.job_title_id,
+      isMapped: stagedMappedIds.has(jt.job_title_id),
+    }));
 
   return (
     <div>
@@ -185,7 +222,10 @@ const DepartmentSettingsTab: React.FC = () => {
           showSearch
           placeholder="Select department"
           value={selectedDepartmentId ?? undefined}
-          onChange={(value) => setSelectedDepartmentId(value)}
+          onChange={(value) => {
+            setSelectedDepartmentId(value);
+            setPage(0);
+          }}
           options={sortedDepartments.map((d) => ({ label: d.name, value: d.department_id }))}
           filterOption={(input, option) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -197,7 +237,24 @@ const DepartmentSettingsTab: React.FC = () => {
           placeholder="Search job titles..."
           className="w-full sm:w-[320px]"
           value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            setPage(0);
+          }}
+        />
+      </div>
+
+      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
+        <span>Rows per page</span>
+        <Select
+          size="small"
+          value={pageSize}
+          className="rows-per-page-select"
+          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
         />
       </div>
 
@@ -224,7 +281,8 @@ const DepartmentSettingsTab: React.FC = () => {
             dataSource={dataSource}
             rowClassName={(row) => (row.isMapped ? '!bg-primary-50/40' : '')}
             emptyText="No job titles found."
-            pagination={paginationConfig('job titles')}
+            pagination={false}
+            onChange={handleTableChange}
           />
 
           <div className="border-t px-4 py-4 flex justify-center gap-4">
@@ -244,6 +302,16 @@ const DepartmentSettingsTab: React.FC = () => {
             </Button>
           </div>
         </div>
+      )}
+
+      {selectedDepartmentId && (
+        <MasterPagination
+          current={page + 1}
+          pageSize={pageSize}
+          total={sortedJobTitles.length}
+          itemLabel="job titles"
+          onPageChange={(nextPage) => setPage(nextPage - 1)}
+        />
       )}
     </div>
   );

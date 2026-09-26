@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { StatCardRow, ChartCard, FunnelBars } from '../shared';
 import type { StatCardData } from '../shared';
@@ -40,6 +41,7 @@ const COMING_SOON_ROUND_TYPE =
  * reimplementing it or diverging from the metrics page's version.
  */
 const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ job, onClose }) => {
+  const navigate = useNavigate();
   const jobId = job.org_job_opening_id;
   // `job.title` doesn't exist on the current backend contract (job-service
   // only ever returns job_title_id — see JobSummaryView's docstring) — the
@@ -75,6 +77,10 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
     {
       label: 'Total applicants',
       value: isTotalLoading ? undefined : totalApplications?.total?.toLocaleString(),
+      onClick: () => {
+        onClose();
+        navigate(`/jobs/view/${jobId}/candidates`);
+      },
     },
     {
       label: 'Interview bookings',

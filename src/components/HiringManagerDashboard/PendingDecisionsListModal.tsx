@@ -15,8 +15,10 @@ const DEFAULT_PAGE_SIZE = 10;
 const PendingDecisionsListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [jobOpeningId, setJobOpeningId] = useState<string | undefined>(undefined);
 
   const { data, isFetching } = useGetPendingDecisionsListQuery({
+    jobOpeningId,
     limit: pageSize,
     offset: (page - 1) * pageSize,
   });
@@ -39,6 +41,11 @@ const PendingDecisionsListModal: React.FC<{ onClose: () => void }> = ({ onClose 
         onPageChange={(nextPage, nextPageSize) => {
           setPage(nextPage);
           setPageSize(nextPageSize);
+        }}
+        jobOpeningId={jobOpeningId}
+        onJobOpeningIdChange={(value) => {
+          setJobOpeningId(value);
+          setPage(1);
         }}
         linkToCandidate
         emptyText="No pending decisions."

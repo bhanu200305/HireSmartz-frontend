@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Select } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
 import type { TableProps } from 'antd';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import CustomTable from '../shared/ui/table';
@@ -62,6 +63,10 @@ const PlatformTenantsListModal: React.FC<{
   const [selectedTenant, setSelectedTenant] = useState<PlatformTenantSummary | null>(null);
   const [status, setStatus] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{
+    sortBy: 'created_at' | 'company_name';
+    sortOrder: 'asc' | 'desc';
+  }>({ sortBy: 'created_at', sortOrder: 'desc' });
 
   const { data, isLoading } = useListPlatformTenantsQuery({
     status,
@@ -69,16 +74,25 @@ const PlatformTenantsListModal: React.FC<{
     limit: pageSize,
     offset: page * pageSize,
     created_after: createdAfter,
+    sort_by: sort.sortBy,
+    sort_order: sort.sortOrder,
   });
 
   const tenants = data?.tenants ?? [];
   const dataSource: TenantRow[] = tenants.map((tenant) => ({ ...tenant, key: tenant.tenant_id }));
+
+  const sortOrderFor = (
+    columnKey: 'company_name' | 'created_at'
+  ): 'ascend' | 'descend' | undefined =>
+    sort.sortBy === columnKey ? (sort.sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
 
   const columns: TableProps<TenantRow>['columns'] = [
     {
       title: 'Company',
       dataIndex: 'company_name',
       key: 'company_name',
+      sorter: true,
+      sortOrder: sortOrderFor('company_name'),
       render: (_: unknown, tenant: TenantRow) => (
         <span className="font-semibold text-primary-600">{tenant.company_name}</span>
       ),
@@ -103,6 +117,8 @@ const PlatformTenantsListModal: React.FC<{
     {
       title: 'Created',
       key: 'created_at',
+      sorter: true,
+      sortOrder: sortOrderFor('created_at'),
       render: (_: unknown, tenant: TenantRow) => (
         <span className="text-neutral-600">{formatTenantDate(tenant.created_at)}</span>
       ),
@@ -154,7 +170,7 @@ const PlatformTenantsListModal: React.FC<{
           <Select
             size="small"
             value={pageSize}
-            className="w-24"
+            className="rows-per-page-select"
             options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
             onChange={(size) => {
               setPageSize(size);
@@ -174,6 +190,17 @@ const PlatformTenantsListModal: React.FC<{
                 onClick: () => setSelectedTenant(tenant),
                 className: 'cursor-pointer',
               })}
+              onChange={(_pagination, _filters, sorter) => {
+                const active = Array.isArray(sorter) ? sorter[0] : sorter;
+                const resolved = active as SorterResult<TenantRow>;
+                setPage(0);
+                if (!resolved?.order || !resolved.columnKey) {
+                  setSort({ sortBy: 'created_at', sortOrder: 'desc' });
+                  return;
+                }
+                const sortBy = resolved.columnKey as 'created_at' | 'company_name';
+                setSort({ sortBy, sortOrder: resolved.order === 'ascend' ? 'asc' : 'desc' });
+              }}
               enableKeyboardNav
               onRowEnter={(tenant) => setSelectedTenant(tenant)}
               emptyText={

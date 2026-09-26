@@ -1,19 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import type { SorterResult } from 'antd/es/table/interface';
+import { Select as AntSelect } from 'antd';
 import { MdDelete, MdOutlineAdd, MdSearch } from 'react-icons/md';
-import {
-  Badge,
-  Button,
-  CustomTable,
-  Input,
-  Select,
-  Typography,
-  paginationConfig,
-  showToast,
-} from '../shared';
+import { Badge, Button, CustomTable, Input, Select, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
+import MasterPagination from '../shared/ui/MasterPagination';
+import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
   useListTenantDepartmentsQuery,
   useAddTenantDepartmentMutation,
@@ -26,6 +22,7 @@ import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 
 type DepartmentRow = TenantDepartment & { key: string };
+type SortKey = 'name' | 'office';
 
 /**
  * §C — GET/POST/DELETE /v1/tenants/{tenant_id}/departments. Delete needs a
@@ -51,12 +48,21 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [officeId, setOfficeId] = useState<string | undefined>(undefined);
   const [departmentToDelete, setDepartmentToDelete] = useState<TenantDepartment | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('mycompany_departments', 10);
 
   // City alone isn't unique — two offices in the same city would otherwise
   // show identically in this table's "Office" column.
   const officeName = (id: string | null) => {
     const office = offices?.find((o) => o.office_id === id);
     return office ? `${office.city}, ${office.address_line_1}` : '-';
+  };
+
+  const SORT_COMPARATORS: Record<SortKey, (a: TenantDepartment, b: TenantDepartment) => number> = {
+    name: (a, b) => a.name.localeCompare(b.name),
+    office: (a, b) => officeName(a.office_id).localeCompare(officeName(b.office_id)),
   };
 
   const filteredDepartments = useMemo(() => {
@@ -68,6 +74,33 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         officeName(department.office_id).toLowerCase().includes(q)
     );
   }, [departments, searchText, offices]);
+
+  // Sorted+paginated client-side, same "Rows per page" + MasterPagination UI
+  // every list-drilldown modal already uses, rather than antd Table's own
+  // default pager, which this tab used to render instead.
+  const sortedDepartments = useMemo(() => {
+    const sorted = [...filteredDepartments].sort(SORT_COMPARATORS[sortBy]);
+    return sortOrder === 'desc' ? sorted.reverse() : sorted;
+  }, [filteredDepartments, sortBy, sortOrder]);
+
+  const sortOrderFor = (key: SortKey): 'ascend' | 'descend' | undefined =>
+    sortBy === key ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
+  const handleTableChange: TableProps<DepartmentRow>['onChange'] = (
+    _pagination,
+    _filters,
+    sorter
+  ) => {
+    const active = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<DepartmentRow>);
+    setPage(0);
+    if (!active?.order || !active.columnKey) {
+      setSortBy('name');
+      setSortOrder('asc');
+      return;
+    }
+    setSortBy(active.columnKey as SortKey);
+    setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
+  };
 
   const handleAdd = async () => {
     if (!name.trim()) {
@@ -110,7 +143,8 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      sorter: (a: DepartmentRow, b: DepartmentRow) => a.name.localeCompare(b.name),
+      sorter: true,
+      sortOrder: sortOrderFor('name'),
       render: (_: unknown, department: DepartmentRow) => (
         <span className="font-semibold text-gray-900">{department.name}</span>
       ),
@@ -118,8 +152,8 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     {
       title: 'Office',
       key: 'office',
-      sorter: (a: DepartmentRow, b: DepartmentRow) =>
-        officeName(a.office_id).localeCompare(officeName(b.office_id)),
+      sorter: true,
+      sortOrder: sortOrderFor('office'),
       render: (_: unknown, department: DepartmentRow) =>
         department.office_id ? (
           <Badge status="neutral" dot={false}>
@@ -146,10 +180,12 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     },
   ].filter(Boolean) as TableProps<DepartmentRow>['columns'];
 
-  const dataSource: DepartmentRow[] = filteredDepartments.map((department) => ({
-    ...department,
-    key: department.org_department_id,
-  }));
+  const dataSource: DepartmentRow[] = sortedDepartments
+    .slice(page * pageSize, page * pageSize + pageSize)
+    .map((department) => ({
+      ...department,
+      key: department.org_department_id,
+    }));
 
   return (
     <div className="p-4">
@@ -157,7 +193,8 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <div>
           <Typography variant="body2">Your company&apos;s functional departments.</Typography>
           <span className="text-xs font-medium text-gray-400">
-            {dataSource.length} {dataSource.length === 1 ? 'department' : 'departments'}
+            {sortedDepartments.length}{' '}
+            {sortedDepartments.length === 1 ? 'department' : 'departments'}
             {searchText.trim() && ` of ${departments?.length ?? 0}`}
           </span>
         </div>
@@ -167,18 +204,35 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               prefix={<MdSearch className="text-gray-400" />}
               placeholder="Search departments..."
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setPage(0);
+              }}
             />
           </div>
           {canAdd && (
             <Button
-              className="rounded-full bg-button text-white px-4 py-1.5 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+              className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
               onClick={() => setIsAddOpen(true)}
             >
               <MdOutlineAdd /> Add department
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
+        <span>Rows per page</span>
+        <AntSelect
+          size="small"
+          value={pageSize}
+          className="rows-per-page-select"
+          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
       </div>
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
@@ -188,9 +242,18 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           emptyText={
             searchText.trim() ? 'No departments match your search.' : 'No departments yet.'
           }
-          pagination={paginationConfig('departments')}
+          pagination={false}
+          onChange={handleTableChange}
         />
       </div>
+
+      <MasterPagination
+        current={page + 1}
+        pageSize={pageSize}
+        total={sortedDepartments.length}
+        itemLabel="departments"
+        onPageChange={(nextPage) => setPage(nextPage - 1)}
+      />
 
       <AntdCommonModal open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add department">
         <div className="flex flex-col gap-4">
