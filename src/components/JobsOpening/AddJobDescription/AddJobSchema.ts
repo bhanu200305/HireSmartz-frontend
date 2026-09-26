@@ -88,9 +88,6 @@ export const jobDetailsSchema = z
             message: 'Enter a valid maximum salary.',
           }
         )
-        .refine((val) => !!val, {
-          message: 'Maximum salary is required.',
-        })
     ),
     referralBonus: z.preprocess(
       (val) => {
@@ -226,6 +223,23 @@ export const jobDetailsSchema = z
         { message: 'Other requirements cannot exceed 1000 characters.' }
       )
       .optional(),
+    benefits: z
+      .string()
+      .transform((val) => {
+        if (!val) return val;
+        let cleaned = val.trim();
+        cleaned = cleaned.replace(/ {2,}/g, ' ');
+        cleaned = cleaned.replace(/[^\x20-\x7E\n\r\t]/g, '');
+        return cleaned;
+      })
+      .refine(
+        (val) => {
+          if (!val) return true;
+          return val.length <= 1000;
+        },
+        { message: 'Benefits cannot exceed 1000 characters.' }
+      )
+      .optional(),
   })
   .superRefine((data, ctx) => {
     const min = data.minSalary ? Number(data.minSalary) : null;
@@ -239,14 +253,6 @@ export const jobDetailsSchema = z
         code: z.ZodIssueCode.custom,
         message: 'Minimum salary is required.',
         path: ['minSalary'],
-      });
-    }
-
-    if (max === null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Maximum salary is required.',
-        path: ['maxSalary'],
       });
     }
     if (data.minExperience === null) {
@@ -329,6 +335,23 @@ export const jobDescriptionSchema = z.object({
       { message: 'Other requirements cannot exceed 1000 characters.' }
     )
     .optional(),
+  benefits: z
+    .string()
+    .transform((val) => {
+      if (!val) return val;
+      let cleaned = val.trim();
+      cleaned = cleaned.replace(/ {2,}/g, ' ');
+      cleaned = cleaned.replace(/[^\x20-\x7E\n\r\t]/g, '');
+      return cleaned;
+    })
+    .refine(
+      (val) => {
+        if (!val) return true;
+        return val.length <= 1000;
+      },
+      { message: 'Benefits cannot exceed 1000 characters.' }
+    )
+    .optional(),
 });
 
 export type JobDescriptionSchemaType = z.infer<typeof jobDescriptionSchema>;
@@ -364,6 +387,7 @@ export const jobDetailsDraftSchema = z.object({
   optionalSkills: z.array(catalogId).optional(),
   responsibilities: z.string().optional(),
   otherRequirements: z.string().optional(),
+  benefits: z.string().optional(),
 });
 
 export const jobDescriptionDraftSchema = z.object({
@@ -375,6 +399,7 @@ export const jobDescriptionDraftSchema = z.object({
   optionalSkills: z.array(catalogId).optional(),
   responsibilities: z.string().optional(),
   otherRequirements: z.string().optional(),
+  benefits: z.string().optional(),
 });
 export type JobDetailsDraftSchemaType = z.infer<typeof jobDetailsDraftSchema>;
 export type JobDescriptionDraftSchemaType = z.infer<typeof jobDescriptionDraftSchema>;

@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  useListClosureReasonsQuery,
+  useSearchOrganizationJobClosureReasonsQuery,
   useCreateClosureReasonMutation,
   useUpdateClosureReasonMutation,
   useDeleteClosureReasonMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import type { OrganizationClosureReason } from '../../../api/job-service/types';
-import PlatformCatalogTab from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
+import PlatformCatalogTab, {
+  type CatalogServerQuery,
+} from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
 
 type FormValues = { reason: string; description: string | null };
@@ -20,7 +22,20 @@ const fields: CatalogField<FormValues>[] = [
  * CloseJobModal. Unlike the Super Admin catalogue, these have no
  * `requires_input` flag — that's a platform-wide setting, not per-org. */
 const TenantClosureReasonsTab: React.FC = () => {
-  const { data, isLoading } = useListClosureReasonsQuery();
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchOrganizationJobClosureReasonsQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [create] = useCreateClosureReasonMutation();
   const [update] = useUpdateClosureReasonMutation();
   const [remove] = useDeleteClosureReasonMutation();
@@ -30,15 +45,13 @@ const TenantClosureReasonsTab: React.FC = () => {
       title="Your company's configured closure reasons."
       itemNounSingular="Closure reason"
       itemNounPlural="Closure reasons"
-      items={data?.map((item) => ({
-        id: item.reason_id,
-        reason: item.reason,
-        description: item.description,
-      }))}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.reason}
-      searchPredicate={(item, q) => item.reason.toLowerCase().includes(q)}
       columns={[
         { title: 'Reason', dataIndex: 'reason', key: 'reason' },
         { title: 'Description', dataIndex: 'description', key: 'description' },

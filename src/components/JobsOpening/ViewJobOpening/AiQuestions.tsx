@@ -89,13 +89,13 @@ const AiQuestions = () => {
 
       <div className="px-4 mt-2">
         <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-          JD Questions ({questions.length})
+          Interview Questions ({questions.length})
         </Typography>
       </div>
 
       {questionsByRound.length === 0 ? (
         <p className="text-gray-400 font-medium italic text-sm pl-4">
-          No JD questions configured for this job opening.
+          No interview questions configured for this job opening.
         </p>
       ) : (
         <div className="flex flex-col gap-5">

@@ -1,4 +1,5 @@
 import { jobApi } from '../jobApi';
+import type { CatalogPage, SearchArgs } from './catalogs';
 
 // This organization's own configured education-preference catalogue —
 // what a job's `education_preference_id` on Job Details references.
@@ -14,6 +15,35 @@ const educationPreferencesApi = jobApi.injectEndpoints({
       query: () => ({ url: '/education-preferences', method: 'GET' }),
       transformResponse: (response: { education_preferences: OrganizationEducationPreference[] }) =>
         response.education_preferences ?? [],
+      providesTags: ['EducationPreferences'],
+    }),
+
+    searchEducationPreferences: build.query<
+      CatalogPage<OrganizationEducationPreference>,
+      SearchArgs
+    >({
+      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+        url: '/education-preferences/search',
+        method: 'GET',
+        params: {
+          page,
+          page_size: pageSize,
+          search: search || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        },
+      }),
+      transformResponse: (response: {
+        education_preferences?: OrganizationEducationPreference[];
+        total?: number;
+        page?: number;
+        page_size?: number;
+      }) => ({
+        items: response.education_preferences ?? [],
+        total: response.total ?? (response.education_preferences ?? []).length,
+        page: response.page ?? 1,
+        pageSize: response.page_size ?? 20,
+      }),
       providesTags: ['EducationPreferences'],
     }),
 
@@ -53,6 +83,7 @@ const educationPreferencesApi = jobApi.injectEndpoints({
 
 export const {
   useListEducationPreferencesQuery,
+  useSearchEducationPreferencesQuery,
   useCreateEducationPreferenceMutation,
   useUpdateEducationPreferenceMutation,
   useDeleteEducationPreferenceMutation,

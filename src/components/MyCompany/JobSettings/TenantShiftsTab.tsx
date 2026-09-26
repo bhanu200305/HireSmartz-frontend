@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  useGetOrganizationShiftsQuery,
+  useSearchOrganizationShiftsQuery,
   useCreateOrganizationShiftMutation,
   useUpdateOrganizationShiftMutation,
   useDeleteOrganizationShiftMutation,
   type OrganizationShift,
 } from '../../../api/job-service/Shifts/shifts';
-import PlatformCatalogTab from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
+import PlatformCatalogTab, {
+  type CatalogServerQuery,
+} from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
 
 type FormValues = {
@@ -42,7 +44,20 @@ const computeDurationMinutes = (startTime: string, endTime: string): number | nu
  * `duration_minutes` is derived from start/end time rather than entered
  * directly, to keep it from disagreeing with the times actually saved. */
 const TenantShiftsTab: React.FC = () => {
-  const { data, isLoading } = useGetOrganizationShiftsQuery();
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchOrganizationShiftsQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [create] = useCreateOrganizationShiftMutation();
   const [update] = useUpdateOrganizationShiftMutation();
   const [remove] = useDeleteOrganizationShiftMutation();
@@ -52,7 +67,10 @@ const TenantShiftsTab: React.FC = () => {
       title="Your company's configured shifts."
       itemNounSingular="Shift"
       itemNounPlural="Shifts"
-      items={data?.shifts}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.shift_name}

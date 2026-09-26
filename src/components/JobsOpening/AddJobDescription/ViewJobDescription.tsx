@@ -1,5 +1,6 @@
 import { TbReload } from 'react-icons/tb';
 import { Button, Input, showToast } from '../../shared';
+import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import Footer from '../../Footer';
 import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Checkbox, Tooltip } from 'antd';
@@ -140,9 +141,10 @@ const ViewJobDescription = () => {
       });
     } catch (error: any) {
       showToast({
-        message:
-          error?.data?.message ||
-          (isSyncingWithATS ? 'Failed to sync with ATS' : 'Failed to save job'),
+        message: getJobErrorMessage(
+          error,
+          isSyncingWithATS ? 'Failed to sync with ATS' : 'Failed to save job'
+        ),
         type: 'error',
       });
     }
@@ -172,7 +174,10 @@ const ViewJobDescription = () => {
       refetchTopFivePrompt();
     } catch (error: any) {
       showToast({
-        message: error?.data?.message || 'Failed to regenerate job description. Please try again.',
+        message: getJobErrorMessage(
+          error,
+          'Failed to regenerate job description. Please try again.'
+        ),
         type: 'error',
       });
     }
@@ -253,7 +258,7 @@ const ViewJobDescription = () => {
           });
         } catch (error: any) {
           showToast({
-            message: error?.data?.message || 'Failed to update job description',
+            message: getJobErrorMessage(error, 'Failed to update job description'),
             type: 'error',
           });
         }

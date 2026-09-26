@@ -74,7 +74,10 @@ export const isAiVideoRound = (round: CandidateInterviewRoundView): boolean =>
  * it. Normalised the same way `bucketForStatus` is, since interview-service
  * owns this vocabulary and casing/separators aren't guaranteed. */
 export const isInterviewerNoShowRound = (round: CandidateInterviewRoundView): boolean =>
-  round.status.trim().toLowerCase().replace(/[-\s]+/g, '_') === 'interviewer_no_show';
+  round.status
+    .trim()
+    .toLowerCase()
+    .replace(/[-\s]+/g, '_') === 'interviewer_no_show';
 
 /** Moves the resume stage to sit immediately AFTER the Intake Call round for
  * instant-call-flow candidates, so the pipeline reads in the order things
@@ -119,11 +122,19 @@ export const orderRoundsForFlow = (
  * `orderRoundsForFlow` has moved the resume stage for an instant-call
  * candidate. Every caller passes the same (possibly reordered) array.
  */
+// A stale real round named "Resume Round", distinct from the synthetic
+// "resume" stage (always shown as "Resume Screening").
+export const isStaleResumeRound = (round: CandidateInterviewRoundView): boolean =>
+  round.stage_type === 'interview' && round.round_name.trim().toLowerCase() === 'resume round';
+
 export const resolveCurrentRound = (
   rounds: CandidateInterviewRoundView[]
 ): CandidateInterviewRoundView | null => {
   const outstanding = rounds.filter(
-    (r) => r.status !== 'completed' && (r.stage_type !== 'resume' || r.due_at !== null)
+    (r) =>
+      !isStaleResumeRound(r) &&
+      r.status !== 'completed' &&
+      (r.stage_type !== 'resume' || r.due_at !== null)
   );
   return outstanding[0] ?? null;
 };

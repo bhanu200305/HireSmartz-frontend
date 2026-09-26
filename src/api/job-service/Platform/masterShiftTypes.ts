@@ -1,4 +1,5 @@
 import { jobApi } from '../jobApi';
+import type { CatalogPage, SearchArgs } from '../JobOpening/catalogs';
 
 // The Super Admin's shift-type suggestion catalogue (what /master/shift-types
 // offers a tenant adding their own shift under /shifts).
@@ -25,6 +26,31 @@ const extendedApi = jobApi.injectEndpoints({
     listPlatformShiftTypes: build.query<PlatformShiftType[], void>({
       query: () => '/platform/master-shift-types',
       transformResponse: (response: { shift_types: PlatformShiftType[] }) => response.shift_types,
+      providesTags: ['PlatformShiftTypes'],
+    }),
+    searchPlatformShiftTypes: build.query<CatalogPage<PlatformShiftType>, SearchArgs>({
+      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+        url: '/platform/master-shift-types/search',
+        method: 'GET',
+        params: {
+          page,
+          page_size: pageSize,
+          search: search || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        },
+      }),
+      transformResponse: (response: {
+        shift_types?: PlatformShiftType[];
+        total?: number;
+        page?: number;
+        page_size?: number;
+      }) => ({
+        items: response.shift_types ?? [],
+        total: response.total ?? (response.shift_types ?? []).length,
+        page: response.page ?? 1,
+        pageSize: response.page_size ?? 20,
+      }),
       providesTags: ['PlatformShiftTypes'],
     }),
     createPlatformShiftType: build.mutation<PlatformShiftType, ShiftTypeWriteBody>({
@@ -54,6 +80,7 @@ const extendedApi = jobApi.injectEndpoints({
 
 export const {
   useListPlatformShiftTypesQuery,
+  useSearchPlatformShiftTypesQuery,
   useCreatePlatformShiftTypeMutation,
   useUpdatePlatformShiftTypeMutation,
   useDeletePlatformShiftTypeMutation,

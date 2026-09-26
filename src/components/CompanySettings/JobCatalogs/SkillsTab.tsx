@@ -1,14 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '../../shared';
 import {
-  useListPlatformSkillsQuery,
+  useSearchPlatformSkillsQuery,
   useCreatePlatformSkillMutation,
   useUpdatePlatformSkillMutation,
   useDeletePlatformSkillMutation,
   PlatformSkill,
 } from '../../../api/job-service/Platform/masterSkills';
 import { useListPlatformSkillCategoriesQuery } from '../../../api/job-service/Platform/masterSkillCategories';
-import PlatformCatalogTab from './PlatformCatalogTab';
+import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
 type FormValues = { name: string; description: string; skill_category_id: string | null };
@@ -17,7 +17,20 @@ const emptyForm: FormValues = { name: '', description: '', skill_category_id: nu
 /** Platform-wide skill catalogue. Org-added skills show read-only, flagged via
  * is_organization_specific. Blocked from deletion while still referenced. */
 const SkillsTab: React.FC = () => {
-  const { data, isLoading } = useListPlatformSkillsQuery();
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchPlatformSkillsQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const { data: categories = [] } = useListPlatformSkillCategoriesQuery();
   const [create] = useCreatePlatformSkillMutation();
   const [update] = useUpdatePlatformSkillMutation();
@@ -42,7 +55,10 @@ const SkillsTab: React.FC = () => {
       title="Platform-wide skill catalog."
       itemNounSingular="Skill"
       itemNounPlural="Skills"
-      items={data}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.skill_id}
       labelOf={(item) => item.skill}

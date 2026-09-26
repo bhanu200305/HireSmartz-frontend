@@ -21,7 +21,6 @@ import {
   updateJobDescription,
 } from '../../../redux/slices/jobOpeningSlice';
 import { jobDescriptionDraftSchema, jobDescriptionSchema } from './AddJobSchema';
-import { get } from 'lodash-es';
 import { useSaveJobOpeningMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
 import { capitalizeWordsAdvanced, validateDraft } from '../../../shared/utils/methods';
@@ -43,6 +42,8 @@ import {
   useDeleteEducationPreferenceMutation,
 } from '../../../api/job-service/JobOpening/educationPreferences';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
+import { Authorities } from '../../../constants/authorities.constant';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 
@@ -66,11 +67,9 @@ const JobDescription = () => {
   const isFromAts = location.state?.refresh;
   const atsJobOpeningId = location.state?.atsJobOpeningId;
   const { details, jobOpeningId } = useSelector((state: RootState) => state.JobSlice);
-  const { role } = useSelector((state: RootState) => state.LoginSlice);
-  // POST /skills requires organization:update, which only company_admin
-  // (and platform roles) hold — hide the add-option affordance for roles
-  // that would just get a 403.
-  const canAddSkill = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
+  const effectivePermissions = useEffectivePermissions();
+  // POST /skills requires organization:update.
+  const canAddSkill = effectivePermissions.includes(Authorities.COMPANY_SETTINGS_EDIT);
   const [saveJobOpening, { isLoading }] = useSaveJobOpeningMutation();
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
@@ -106,6 +105,7 @@ const JobDescription = () => {
     mandatorySkills: jobDescription?.mandatorySkills || [],
     optionalSkills: jobDescription?.optionalSkills || [],
     otherRequirements: jobDescription?.otherRequirements || '',
+    benefits: jobDescription?.benefits || '',
   };
 
   const {
@@ -209,7 +209,7 @@ const JobDescription = () => {
       setValue(addType, [...currentSkillIds, createdSkill.skill_id], { shouldValidate: true });
     } catch (err) {
       showToast({
-        message: get(err, 'data.message', 'Something went wrong while updating dropdown.'),
+        message: getJobErrorMessage(err, 'Something went wrong while updating dropdown.'),
         type: 'error',
       });
     } finally {
@@ -362,7 +362,7 @@ const JobDescription = () => {
       }, 0);
     } catch (error) {
       showToast({
-        message: get(error, 'data.message', 'Failed to save draft'),
+        message: getJobErrorMessage(error, 'Failed to save draft'),
         type: 'error',
       });
     }
@@ -416,7 +416,7 @@ const JobDescription = () => {
       });
     } catch (err) {
       showToast({
-        message: get(err, 'data.message', 'Something went wrong while saving job opening.'),
+        message: getJobErrorMessage(err, 'Something went wrong while saving job opening.'),
         type: 'error',
       });
     }
@@ -644,6 +644,30 @@ const JobDescription = () => {
           />
           {errors.otherRequirements && (
             <p className="text-red-500 text-sm mt-1">{errors.otherRequirements.message}</p>
+          )}
+        </Form.Item>
+      </div>
+
+      <div className="grid grid-cols gap-x-4">
+        <Form.Item label={<span>Benefits</span>}>
+          <Controller
+            name="benefits"
+            control={control}
+            render={({ field }) => (
+              <TextArea
+                {...field}
+                placeholder="Enter benefits offered"
+                rows={4}
+                maxLength={1000}
+                showCount={{
+                  formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
+                }}
+                className="w-full px-4 py-2 border rounded-lg"
+              />
+            )}
+          />
+          {errors.benefits && (
+            <p className="text-red-500 text-sm mt-1">{errors.benefits.message}</p>
           )}
         </Form.Item>
       </div>

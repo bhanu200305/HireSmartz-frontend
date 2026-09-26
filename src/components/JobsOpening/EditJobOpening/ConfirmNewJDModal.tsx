@@ -7,7 +7,7 @@ import { useSelector, shallowEqual, useDispatch } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 
 import { showToast } from '../../shared';
-import { get } from 'lodash-es';
+import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 
 import {
   setEditJobOpeningId,
@@ -62,7 +62,7 @@ const ConfirmNewJDModal = () => {
       })
       .catch((err) => {
         showToast({
-          message: get(err, 'data.message', 'Something went wrong while updating job opening.'),
+          message: getJobErrorMessage(err, 'Something went wrong while updating job opening.'),
           type: 'error',
         });
       });

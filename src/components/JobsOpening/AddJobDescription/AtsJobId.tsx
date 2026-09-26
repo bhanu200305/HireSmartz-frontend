@@ -10,6 +10,7 @@ import {
 import { Loader } from '../../shared/ui/loader';
 import { showToast } from '../../shared';
 import { get } from 'lodash-es';
+import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 
 const { Option } = Select;
 
@@ -46,7 +47,7 @@ const AtsJobId = () => {
       }
     } catch (err) {
       showToast({
-        message: get(err, 'data.message', 'Something went wrong while fetching job details.'),
+        message: getJobErrorMessage(err, 'Something went wrong while fetching job details.'),
         type: 'error',
       });
     }

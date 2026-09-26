@@ -35,14 +35,6 @@ const AIQuestionsSetupPage = lazyImport(
   () => import('./pages/AIQuestions'),
   'AIQuestionsSetupPage'
 );
-const VideoInterviewQuestionsPage = lazyImport(
-  () => import('./pages/VideoInterviewQuestionPage'),
-  'VideoInterviewQuestionsPage'
-);
-const VideoInterviewQuestionsSetupPage = lazyImport(
-  () => import('./pages/VideoInterviewQuestionPage'),
-  'VideoInterviewQuestionsSetupPage'
-);
 const ConfrimNewJDModalPage = lazy(() => import('./pages/ConfirmNewJDModal'));
 const CustomersPage = lazy(() => import('./pages/CustomerPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -147,9 +139,6 @@ const JobDescriptionStep = lazy(
 );
 const AiQuestionsSetup = lazy(
   () => import('./components/JobsOpening/AddJobDescription/AiQuestionsSetup')
-);
-const VideoQuestionsSetup = lazy(
-  () => import('./components/JobsOpening/AddJobDescription/VideoQuestionsSetup')
 );
 const InterviewSetup = lazy(
   () => import('./components/JobsOpening/AddJobDescription/InterviewSetup')
@@ -540,18 +529,6 @@ export const Routes: RouteType[] = [
     ],
   },
   {
-    name: 'VideoQuestionsSetup',
-    path: '/video-questions',
-    component: JobsOpening,
-    children: [
-      {
-        path: '',
-        component: VideoQuestionsSetup,
-        name: 'VideoQuestionsSetup',
-      },
-    ],
-  },
-  {
     name: 'ScoringCriteriaSetup',
     path: '/scoring-criteria',
     component: JobsOpening,
@@ -594,11 +571,6 @@ export const Routes: RouteType[] = [
         name: 'viewAIJobDescription',
         path: 'AiJobDescription',
         component: ViewDetailJdPage,
-      },
-      {
-        name: 'videoInterviewQuestions',
-        path: 'video-interview-questions',
-        component: VideoInterviewQuestionsPage,
       },
       {
         name: 'viewCandidatesOutlet',
@@ -695,11 +667,6 @@ export const Routes: RouteType[] = [
         name: 'editAiQuestions',
         path: 'editAiQuestions',
         component: AIQuestionsSetupPage,
-      },
-      {
-        name: 'editVideoQuestions',
-        path: 'editVideoQuestions',
-        component: VideoInterviewQuestionsSetupPage,
       },
       {
         name: 'editScoringCriteria',

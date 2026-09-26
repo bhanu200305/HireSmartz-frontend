@@ -176,7 +176,9 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
                 <MdInsertDriveFile className="text-2xl text-primary shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm text-gray-800 truncate">{selectedFile.name}</p>
-                  <p className="text-xs text-gray-400">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                  <p className="text-xs text-gray-400">
+                    {(selectedFile.size / 1024).toFixed(1)} KB
+                  </p>
                 </div>
               </div>
               <button

@@ -21,7 +21,6 @@ import {
 } from '../../../redux/slices/editJobOpeningSlice';
 import { Loader } from '../../shared/ui/loader';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
-import { get } from 'lodash-es';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
 import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
 import { asJobId } from '../../../api/job-service/jobId';
@@ -35,6 +34,8 @@ import {
   useDeleteEducationPreferenceMutation,
 } from '../../../api/job-service/JobOpening/educationPreferences';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
+import { Authorities } from '../../../constants/authorities.constant';
 import { capitalizeWordsAdvanced, validateDraft } from '../../../shared/utils/methods';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
@@ -85,11 +86,9 @@ const EditJobDescription = () => {
     }),
     shallowEqual
   );
-  const { role } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
-  // POST /skills requires organization:update, which only company_admin
-  // (and platform roles) hold — hide the add-option affordance for roles
-  // that would just get a 403.
-  const canAddSkill = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
+  const effectivePermissions = useEffectivePermissions();
+  // POST /skills requires organization:update.
+  const canAddSkill = effectivePermissions.includes(Authorities.COMPANY_SETTINGS_EDIT);
 
   const {
     handleSubmit,
@@ -107,6 +106,7 @@ const EditJobDescription = () => {
       optionalSkills: descriptionDetails?.optionalSkills || [],
       responsibilities: descriptionDetails?.responsibilities || '',
       otherRequirements: descriptionDetails?.otherRequirements || '',
+      benefits: descriptionDetails?.benefits || '',
     },
   });
 
@@ -137,6 +137,12 @@ const EditJobDescription = () => {
           descriptionDetails.otherRequirements !== null
         ) {
           setValue('otherRequirements', descriptionDetails.otherRequirements, {
+            shouldValidate: false,
+          });
+        }
+        // Same reasoning as otherRequirements above.
+        if (descriptionDetails.benefits !== undefined && descriptionDetails.benefits !== null) {
+          setValue('benefits', descriptionDetails.benefits, {
             shouldValidate: false,
           });
         }
@@ -199,7 +205,7 @@ const EditJobDescription = () => {
       setValue(addType, [...currentSkillIds, createdSkill.skill_id], { shouldValidate: true });
     } catch (err) {
       showToast({
-        message: get(err, 'data.message', 'Something went wrong while updating dropdown.'),
+        message: getJobErrorMessage(err, 'Something went wrong while updating dropdown.'),
         type: 'error',
       });
     } finally {
@@ -341,7 +347,7 @@ const EditJobDescription = () => {
       navigate('/jobs');
     } catch (error) {
       showToast({
-        message: get(error, 'data.message', 'Failed to save draft'),
+        message: getJobErrorMessage(error, 'Failed to save draft'),
         type: 'error',
       });
     }
@@ -401,7 +407,7 @@ const EditJobDescription = () => {
       navigate(`/jobs/edit/${id}/AiJobDescription/${savedId}`);
     } catch (error) {
       showToast({
-        message: get(error, 'data.message', 'Failed to update job opening'),
+        message: getJobErrorMessage(error, 'Failed to update job opening'),
         type: 'error',
       });
     }
@@ -642,6 +648,31 @@ const EditJobDescription = () => {
             />
             {errors.otherRequirements && (
               <p className="text-red-500 text-sm mt-1">{errors.otherRequirements.message}</p>
+            )}
+          </Form.Item>
+        </div>
+
+        <div className="grid grid-cols gap-4">
+          <Form.Item label={<span>Benefits</span>}>
+            <Controller
+              name="benefits"
+              control={control}
+              render={({ field }) => (
+                <TextArea
+                  {...field}
+                  value={field.value || ''}
+                  placeholder="Enter benefits offered"
+                  rows={4}
+                  maxLength={1000}
+                  showCount={{
+                    formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
+                  }}
+                  className="w-full px-4 py-2 border rounded-lg"
+                />
+              )}
+            />
+            {errors.benefits && (
+              <p className="text-red-500 text-sm mt-1">{errors.benefits.message}</p>
             )}
           </Form.Item>
         </div>

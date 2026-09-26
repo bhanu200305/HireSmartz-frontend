@@ -30,6 +30,8 @@ interface DropdownWithAddOptionProps {
   onReuseOption?: (id: string | number, type: string) => void;
   type: string;
   error?: string;
+  /** Overrides "No options available", e.g. with a permission-denied reason. */
+  emptyMessage?: string;
   label?: string;
   mode?: 'multiple' | 'tags' | undefined;
   maxTagCount?: number | 0 | 'responsive';
@@ -55,6 +57,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
   onReuseOption,
   type,
   error,
+  emptyMessage,
   mode,
   maxTagCount = 'responsive',
   disabled,
@@ -261,6 +264,12 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
           placeholder={placeholder}
           variant="borderless"
           loading={loading}
+          // Never null - antd won't open the popup at all if this is falsy.
+          notFoundContent={
+            <div className="p-2 text-gray-400">
+              {options.length === 0 ? (emptyMessage ?? 'No options available') : 'No matches found'}
+            </div>
+          }
           showSearch
           onSearch={handleSearch}
           searchValue={searchValue}
@@ -315,11 +324,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
                   Add &quot;{searchValue}&quot;
                 </div>
               )}
-              {filteredOptions.length === 0 && !showAddOption && (
-                <div className="p-2 text-gray-400">
-                  {options.length === 0 ? 'No options available' : 'No matches found'}
-                </div>
-              )}
+              {/* Empty state comes from notFoundContent above, not here. */}
             </>
           )}
         >

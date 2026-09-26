@@ -58,10 +58,7 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     if (!meta?.next_cursor) return;
     try {
       const result = await fetchPage({ limit: PAGE_LIMIT, cursor: meta.next_cursor }).unwrap();
-      setRows((prev) => [
-        ...prev,
-        ...result.items.map((item) => ({ ...item, key: item.user_id })),
-      ]);
+      setRows((prev) => [...prev, ...result.items.map((item) => ({ ...item, key: item.user_id }))]);
       setMeta(result);
     } catch (error) {
       console.error('Failed to load more monthly active users', error);

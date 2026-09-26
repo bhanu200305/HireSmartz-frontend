@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  useListPlatformSkillCategoriesQuery,
+  useSearchPlatformSkillCategoriesQuery,
   useCreatePlatformSkillCategoryMutation,
   useUpdatePlatformSkillCategoryMutation,
   useDeletePlatformSkillCategoryMutation,
   PlatformSkillCategory,
 } from '../../../api/job-service/Platform/masterSkillCategories';
-import PlatformCatalogTab from './PlatformCatalogTab';
+import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
 type FormValues = { name: string; description: string };
@@ -18,7 +18,20 @@ const fields: CatalogField<FormValues>[] = [
 
 /** Platform-wide skill-category catalogue. Blocked from deletion while a skill still references it. */
 const SkillCategoriesTab: React.FC = () => {
-  const { data, isLoading } = useListPlatformSkillCategoriesQuery();
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchPlatformSkillCategoriesQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [create] = useCreatePlatformSkillCategoryMutation();
   const [update] = useUpdatePlatformSkillCategoryMutation();
   const [remove] = useDeletePlatformSkillCategoryMutation();
@@ -28,7 +41,10 @@ const SkillCategoriesTab: React.FC = () => {
       title="Platform-wide skill-category catalog."
       itemNounSingular="Skill category"
       itemNounPlural="Skill categories"
-      items={data}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.category_id}
       labelOf={(item) => item.skill_category}

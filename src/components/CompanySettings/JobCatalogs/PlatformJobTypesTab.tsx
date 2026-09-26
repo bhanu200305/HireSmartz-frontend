@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  useListJobTypesQuery,
+  useSearchJobTypesQuery,
   useCreateJobTypeMutation,
   useUpdateJobTypeMutation,
   useDeleteJobTypeMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import type { OrganizationJobType } from '../../../api/job-service/types';
-import PlatformCatalogTab from './PlatformCatalogTab';
+import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
 type FormValues = { name: string; description: string };
@@ -18,7 +18,21 @@ const fields: CatalogField<FormValues>[] = [
 
 /** Platform-wide job-type catalogue, using the same isMaster-branched hooks as the Job Details wizard's Job Type dropdown. */
 const PlatformJobTypesTab: React.FC = () => {
-  const { data, isLoading } = useListJobTypesQuery({ isMaster: true });
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchJobTypesQuery({
+    isMaster: true,
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [create] = useCreateJobTypeMutation();
   const [update] = useUpdateJobTypeMutation();
   const [remove] = useDeleteJobTypeMutation();
@@ -28,7 +42,10 @@ const PlatformJobTypesTab: React.FC = () => {
       title="Platform-wide job-type catalog."
       itemNounSingular="Job type"
       itemNounPlural="Job types"
-      items={data}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.job_type_name}

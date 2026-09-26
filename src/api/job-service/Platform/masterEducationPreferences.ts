@@ -1,4 +1,5 @@
 import { jobApi } from '../jobApi';
+import type { CatalogPage, SearchArgs } from '../JobOpening/catalogs';
 
 // The Super Admin's education-preference catalogue. What a new tenant's own
 // configured education-preference list is seeded from.
@@ -14,6 +15,34 @@ const extendedApi = jobApi.injectEndpoints({
       query: () => '/platform/master-education-preferences',
       transformResponse: (response: { education_preferences: PlatformEducationPreference[] }) =>
         response.education_preferences,
+      providesTags: ['PlatformEducationPreferences'],
+    }),
+    searchPlatformEducationPreferences: build.query<
+      CatalogPage<PlatformEducationPreference>,
+      SearchArgs
+    >({
+      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+        url: '/platform/master-education-preferences/search',
+        method: 'GET',
+        params: {
+          page,
+          page_size: pageSize,
+          search: search || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        },
+      }),
+      transformResponse: (response: {
+        education_preferences?: PlatformEducationPreference[];
+        total?: number;
+        page?: number;
+        page_size?: number;
+      }) => ({
+        items: response.education_preferences ?? [],
+        total: response.total ?? (response.education_preferences ?? []).length,
+        page: response.page ?? 1,
+        pageSize: response.page_size ?? 20,
+      }),
       providesTags: ['PlatformEducationPreferences'],
     }),
     createPlatformEducationPreference: build.mutation<
@@ -50,6 +79,7 @@ const extendedApi = jobApi.injectEndpoints({
 
 export const {
   useListPlatformEducationPreferencesQuery,
+  useSearchPlatformEducationPreferencesQuery,
   useCreatePlatformEducationPreferenceMutation,
   useUpdatePlatformEducationPreferenceMutation,
   useDeletePlatformEducationPreferenceMutation,

@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  useListPlatformInterviewRoundTypesQuery,
+  useSearchPlatformInterviewRoundTypesQuery,
   useUpdatePlatformInterviewRoundTypeMutation,
   PlatformInterviewRoundType,
 } from '../../../api/job-service/Platform/masterInterviewRounds';
-import PlatformCatalogTab from './PlatformCatalogTab';
+import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
 // Only description is editable — every other field is migration-managed.
@@ -17,7 +17,20 @@ const emptyForm: RoundTypeFormValues = { round_description: '' };
 
 /** Platform-wide interview-round-type catalogue a job's sequence is built from. */
 const InterviewRoundTypesTab: React.FC = () => {
-  const { data, isLoading } = useListPlatformInterviewRoundTypesQuery();
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchPlatformInterviewRoundTypesQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [updateRoundType] = useUpdatePlatformInterviewRoundTypeMutation();
 
   return (
@@ -25,7 +38,10 @@ const InterviewRoundTypesTab: React.FC = () => {
       title="Platform-wide interview-round-type catalog."
       itemNounSingular="Round type"
       itemNounPlural="Round types"
-      items={data}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.round_type_id}
       labelOf={(item) => item.round_name}

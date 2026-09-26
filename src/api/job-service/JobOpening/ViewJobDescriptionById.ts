@@ -30,6 +30,7 @@ type ViewJobDescriptionResponse = {
    * Undefined on `updateJobDescription`'s response. */
   responsibilities?: string | null;
   otherRequirements?: string | null;
+  benefits?: string | null;
   minExperience?: number | null;
   maxExperience?: number | null;
   minSalary?: number | null;
@@ -43,10 +44,13 @@ type ViewJobDescriptionResponse = {
   // Also fed to AI enhance — exposed here for the Job Details sync check.
   shiftId?: string | null;
   jobTypeId?: string | null;
+  jobModeId?: string | null;
   educationPreferenceId?: string | null;
   locationCity?: string | null;
   locationState?: string | null;
   locationCountry?: string | null;
+  /** Field name -> unmatched AI guess text. Undefined on update's response. */
+  unresolvedAiSuggestions?: Record<string, string>;
 };
 
 type UpdateJobDescriptionRequest = {
@@ -82,6 +86,7 @@ const extendedApi = jobApi.injectEndpoints({
         entryPath: response.entry_path,
         responsibilities: response.responsibilities,
         otherRequirements: response.other_requirements,
+        benefits: response.benefits,
         minExperience:
           response.min_experience_req != null ? Number(response.min_experience_req) : null,
         maxExperience:
@@ -96,10 +101,12 @@ const extendedApi = jobApi.injectEndpoints({
         })),
         shiftId: response.shift_id,
         jobTypeId: response.job_type_id,
+        jobModeId: response.mode_id,
         educationPreferenceId: response.education_preference_id,
         locationCity: response.locations?.[0]?.city ?? null,
         locationState: response.locations?.[0]?.state ?? null,
         locationCountry: response.locations?.[0]?.country ?? null,
+        unresolvedAiSuggestions: response.unresolved_ai_suggestions,
       }),
       providesTags: (_r, _e, args) => [
         { type: 'JobDescription', id: resolveJobId(args) },

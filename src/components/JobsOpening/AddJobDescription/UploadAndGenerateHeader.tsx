@@ -28,6 +28,7 @@ interface UploadAndGenerateHeaderProps {
   isGenerating?: boolean;
   isUploading?: boolean;
   isDownloading?: boolean;
+  generateDisabled?: boolean;
 }
 
 export const UploadAndGenerateHeader = ({
@@ -44,8 +45,35 @@ export const UploadAndGenerateHeader = ({
   isGenerating = false,
   isUploading = false,
   isDownloading = false,
+  generateDisabled = false,
 }: UploadAndGenerateHeaderProps) => {
   const skippedCount = failedCount + duplicateCount;
+  const generateButton = (
+    <Button
+      className="border border-primary text-primary bg-white hover:bg-gray-50 flex items-center gap-1.5 px-3.5 py-1.5 font-semibold text-sm rounded-full shadow-sm"
+      onClick={onGenerate}
+      disabled={isGenerating || generateDisabled}
+    >
+      <HiOutlineRefresh className="text-base" />
+      GENERATE WITH AI
+    </Button>
+  );
+  const uploadDisabled = isUploading || generateDisabled;
+  const uploadLabel = (
+    <label
+      className={`bg-primary hover:bg-brand-700 text-white flex items-center gap-1.5 px-4 py-1.5 font-semibold text-sm rounded-full shadow-sm cursor-pointer ${uploadDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      <HiOutlineUpload className="text-base" />
+      UPLOAD FILE
+      <input
+        type="file"
+        accept=".xlsx,.csv"
+        className="hidden"
+        onChange={onUpload}
+        disabled={uploadDisabled}
+      />
+    </label>
+  );
   return (
     <div className="flex flex-col gap-4">
       <div className="bg-[#F8F9FA] rounded-2xl p-5 flex flex-col md:flex-row justify-between items-center border border-gray-200 gap-3">
@@ -55,29 +83,10 @@ export const UploadAndGenerateHeader = ({
           </Typography>
         </div>
         <div className="flex items-center gap-2.5">
-          <Button
-            className="border border-primary text-primary bg-white hover:bg-gray-50 flex items-center gap-1.5 px-3.5 py-1.5 font-semibold text-sm rounded-full shadow-sm"
-            onClick={onGenerate}
-            disabled={isGenerating}
-          >
-            <HiOutlineRefresh className="text-base" />
-            GENERATE WITH AI
-          </Button>
+          {generateButton}
 
           <div className="relative flex flex-col items-center">
-            <label
-              className={`bg-primary hover:bg-brand-700 text-white flex items-center gap-1.5 px-4 py-1.5 font-semibold text-sm rounded-full shadow-sm cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <HiOutlineUpload className="text-base" />
-              UPLOAD FILE
-              <input
-                type="file"
-                accept=".xlsx,.csv"
-                className="hidden"
-                onChange={onUpload}
-                disabled={isUploading}
-              />
-            </label>
+            {uploadLabel}
             <Typography
               variant="caption"
               className="text-gray-400 font-medium absolute top-full mt-0.5 whitespace-nowrap"

@@ -10,6 +10,8 @@ export type JobScoringWeight = {
   description?: string;
   weightPercentage: number;
   defaultWeightPercentage?: number;
+  appliesAudioScreening?: boolean;
+  appliesAiVideo?: boolean;
   appliesPanel?: boolean;
 };
 
@@ -54,6 +56,8 @@ const fromApiWeights = (
     description: w.description,
     weightPercentage: Number(w.weight_pct),
     defaultWeightPercentage: toOptionalNumber(w.default_weight_pct),
+    appliesAudioScreening: w.applies_audio_screening,
+    appliesAiVideo: w.applies_ai_video,
     appliesPanel: w.applies_panel,
   }));
 

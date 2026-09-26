@@ -161,6 +161,7 @@ export type JobDetailsResponse = {
   responsibilities: string | null;
   requirements: string | null;
   other_requirements: string | null;
+  benefits: string | null;
   education_preference: string[];
   use_culture_intro: boolean;
   is_multilingual: boolean;
@@ -171,6 +172,7 @@ export type JobDetailsResponse = {
   jd: string | null;
   locations: JobLocation[];
   skills: JobSkillView[];
+  unresolved_ai_suggestions: Record<string, string>;
 };
 
 export type SaveJobDetailsSkill = {
@@ -208,6 +210,7 @@ export type SaveJobDetailsArgs = {
   responsibilities?: string | null;
   requirements?: string | null;
   other_requirements?: string | null;
+  benefits?: string | null;
   education_preference?: string[];
   use_culture_intro?: boolean;
   is_multilingual?: boolean;

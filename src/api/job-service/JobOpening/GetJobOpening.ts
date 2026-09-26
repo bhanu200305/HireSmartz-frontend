@@ -18,6 +18,7 @@ type ListJobOpeningsArgs = Partial<JobFilterRequest> & {
   sortDir?: string;
   globalSearchRequestDto?: { text: string; field: string };
   assignedToMe?: boolean;
+  locationId?: string;
 };
 
 // Defaults to 'published' when no filter flag is set at all - a new caller
@@ -58,6 +59,7 @@ const extendedApi = jobApi.injectEndpoints({
             ...(args.sortBy ? { sort_by: args.sortBy } : {}),
             ...(args.sortDir ? { sort_dir: String(args.sortDir).toLowerCase() } : {}),
             ...(args.assignedToMe ? { assigned_to_me: true } : {}),
+            ...(args.locationId ? { location_id: args.locationId } : {}),
           },
         };
       },
@@ -70,11 +72,17 @@ const extendedApi = jobApi.injectEndpoints({
       providesTags: [{ type: 'JobOpenings', id: 'LIST' }],
     }),
 
-    getJobStats: build.query<JobStatsResponse, { assignedToMe?: boolean } | void>({
+    getJobStats: build.query<
+      JobStatsResponse,
+      { assignedToMe?: boolean; locationId?: string } | void
+    >({
       query: (args) => ({
         url: '/job-openings/stats',
         method: 'GET',
-        params: args?.assignedToMe ? { assigned_to_me: true } : undefined,
+        params: {
+          ...(args?.assignedToMe ? { assigned_to_me: true } : {}),
+          ...(args?.locationId ? { location_id: args.locationId } : {}),
+        },
       }),
       providesTags: ['JobStats'],
     }),

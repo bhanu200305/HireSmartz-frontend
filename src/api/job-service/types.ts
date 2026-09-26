@@ -123,6 +123,7 @@ export type JobDetailsResponse = {
   responsibilities: string | null;
   requirements: string | null;
   other_requirements: string | null;
+  benefits: string | null;
   // Organization-scoped catalogue references, not free text.
   // `education_preference_id` is a single value; `language_ids` is the set
   // of languages this job's communication requires.
@@ -133,6 +134,7 @@ export type JobDetailsResponse = {
   jd: string | null;
   locations: JobLocationResponse[];
   skills: JobSkillResponse[];
+  unresolved_ai_suggestions: Record<string, string>;
 };
 
 export type SaveJobDetailsRequest = {
@@ -154,6 +156,7 @@ export type SaveJobDetailsRequest = {
   responsibilities?: string | null;
   requirements?: string | null;
   other_requirements?: string | null;
+  benefits?: string | null;
   education_preference_id?: string | null;
   use_culture_intro?: boolean;
   language_ids?: string[];

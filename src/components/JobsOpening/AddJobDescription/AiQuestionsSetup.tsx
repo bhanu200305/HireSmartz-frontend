@@ -22,7 +22,10 @@ import {
   jobQuestionsApi,
 } from '../../../api/job-service/JobOpening/jobQuestions';
 import { useListInterviewRoundTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
-import { useGetJobScoringConfigQuery } from '../../../api/job-service/JobOpening/jobScoringConfig';
+import {
+  useGetJobScoringConfigQuery,
+  type JobScoringWeight,
+} from '../../../api/job-service/JobOpening/jobScoringConfig';
 import {
   useLazyValidateForPublishQuery,
   usePublishJobMutation,
@@ -85,6 +88,14 @@ const describePublishError = (err: unknown, fallback: string): string => {
     if (failedChecks.length > 0) {
       return `Cannot publish yet: ${describeFailedChecks(failedChecks, roundsMissingQuestions)}`;
     }
+  }
+  return getJobErrorMessage(err, fallback);
+};
+
+/** Friendlier copy for NO_ELIGIBLE_INTERVIEW_ROUNDS than the backend's own wording. */
+const describeGenerateQuestionsError = (err: unknown, fallback: string): string => {
+  if (getJobErrorCode(err) === 'NO_ELIGIBLE_INTERVIEW_ROUNDS') {
+    return 'Add an AI Video, Hiring Panel, or Audio Screening round to the Interview Sequence before generating questions.';
   }
   return getJobErrorMessage(err, fallback);
 };
@@ -202,6 +213,7 @@ const AiQuestionsSetup = () => {
     () => allRounds.filter((round) => !audioRoundTypeIds.has(round.round_id)),
     [allRounds, audioRoundTypeIds]
   );
+  const noEligibleRound = !isLoadingQuestions && jdRounds.length === 0;
 
   // Every round's questions, not just the picker-eligible ones.
   const questions = useMemo(() => allRounds.flatMap((round) => round.questions ?? []), [allRounds]);
@@ -233,9 +245,18 @@ const AiQuestionsSetup = () => {
       variants.includes('offline')
     );
   }, [roundTypes, activeRoundTypeId]);
-
+  // AI Video = available_variants ["soundwave", "avatar"].
+  const isAiVideoActiveRound = useMemo(() => {
+    const variants = roundTypes.find((rt) => rt.round_id === activeRoundTypeId)?.available_variants;
+    return (
+      !!variants &&
+      variants.length === 2 &&
+      variants.includes('soundwave') &&
+      variants.includes('avatar')
+    );
+  }, [roundTypes, activeRoundTypeId]);
   const { data: scoringData } = useGetJobScoringConfigQuery(activeJobOpeningId, {
-    skip: !activeJobOpeningId || !isHiringPanelActiveRound,
+    skip: !activeJobOpeningId,
   });
   const scoringSectionOptions = useMemo(
     () =>
@@ -249,6 +270,16 @@ const AiQuestionsSetup = () => {
         : [],
     [isHiringPanelActiveRound, scoringData]
   );
+  // What this round's questions should probe - shown as guidance text.
+  const activeRoundGuidanceLabels = useMemo(() => {
+    const weights = scoringData?.data?.interviewConfig?.weights ?? [];
+    const appliesToActiveRound = isHiringPanelActiveRound
+      ? (w: JobScoringWeight) => w.appliesPanel
+      : isAiVideoActiveRound
+        ? (w: JobScoringWeight) => w.appliesAiVideo
+        : (w: JobScoringWeight) => w.appliesAudioScreening;
+    return weights.filter(appliesToActiveRound).map((w) => w.displayName ?? w.categoryName);
+  }, [scoringData, isHiringPanelActiveRound, isAiVideoActiveRound]);
 
   // Stop polling once the list differs from its pre-generation snapshot.
   useEffect(() => {
@@ -336,7 +367,7 @@ const AiQuestionsSetup = () => {
       setShowGenerateConsentModal(false);
     } catch (err) {
       showToast({
-        message: getJobErrorMessage(err, 'Error generating questions'),
+        message: describeGenerateQuestionsError(err, 'Error generating questions'),
         type: 'error',
       });
     }
@@ -390,7 +421,7 @@ const AiQuestionsSetup = () => {
       showToast({ message: 'Questions uploaded successfully', type: 'success' });
     } catch (err) {
       showToast({
-        message: getJobErrorMessage(err, 'Error uploading file'),
+        message: describeGenerateQuestionsError(err, 'Error uploading file'),
         type: 'error',
       });
     }
@@ -427,7 +458,7 @@ const AiQuestionsSetup = () => {
       setInlineInputText('');
     } catch (err) {
       showToast({
-        message: getJobErrorMessage(err, 'Error saving questions'),
+        message: describeGenerateQuestionsError(err, 'Error saving questions'),
         type: 'error',
       });
     }
@@ -600,9 +631,16 @@ const AiQuestionsSetup = () => {
 
         <div className="flex justify-between items-center px-2">
           <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-            JD Questions
+            Interview Questions
           </Typography>
         </div>
+
+        {noEligibleRound && (
+          <Typography variant="body2" className="text-amber-600 px-2">
+            Add an AI Video, Hiring Panel, or Audio Screening round to the Interview Sequence before
+            adding questions.
+          </Typography>
+        )}
 
         {jdRounds.length > 0 && (
           <div className="mb-4">
@@ -626,6 +664,11 @@ const AiQuestionsSetup = () => {
                 label: round.round_name,
               }))}
             />
+            {activeRoundGuidanceLabels.length > 0 && (
+              <Typography variant="body2" className="text-gray-500 mt-1.5">
+                Focus questions on: {activeRoundGuidanceLabels.join(', ')}.
+              </Typography>
+            )}
           </div>
         )}
 
@@ -646,6 +689,7 @@ const AiQuestionsSetup = () => {
             setDuplicateRowCount(0);
           }}
           isGenerating={isGenerating}
+          generateDisabled={noEligibleRound}
           isUploading={isUploadingExcel}
           isDownloading={isDownloadingTemplate}
         />
@@ -685,11 +729,10 @@ const AiQuestionsSetup = () => {
             </p>
           ) : (
             <div className="space-y-3 mb-6">
-              {visibleQuestions.map((q, idx) => (
+              {visibleQuestions.map((q) => (
                 <QuestionRowItem
                   key={q.id}
                   question={{ id: q.id, question: q.question_text }}
-                  index={idx}
                   checked={selectedIds.includes(q.id)}
                   onCheckChange={(checked) => handleSelectOne(q.id, checked)}
                   onEdit={() => {
@@ -711,6 +754,7 @@ const AiQuestionsSetup = () => {
             onChange={setInlineInputText}
             onSubmit={handleInlineSubmit}
             isSubmitting={isInlineSubmitting || isLoadingQuestions}
+            disabled={noEligibleRound}
           />
         </div>
 

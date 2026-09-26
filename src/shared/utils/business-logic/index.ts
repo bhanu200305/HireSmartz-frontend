@@ -190,7 +190,13 @@ const AI_JD_HEADING_KEYWORD_RE =
 
 // A section-label-shaped substring (e.g. "**Compensation:**"), possibly
 // glued onto the end of the previous sentence with no line break.
-const AI_JD_GLUED_HEADING_RE = /(\*\*)?\b([A-Z][A-Za-z]*(?:\s+[A-Za-z()/-]+){0,3}):(\*\*)?(-)?/g;
+// Continuation whitespace is horizontal-only ([ \t], not \s) — \s also
+// matches \n, which let this "glued" (same-line) pattern reach across a
+// real line break and merge unrelated words from the next line into one
+// bogus label (e.g. "Full-Time" + "\n" + "Work Mode:" read as one glued
+// heading "Time\nWork Mode:", corrupting an already well-formed
+// "Job Type: Full-Time" line into three fragments).
+const AI_JD_GLUED_HEADING_RE = /(\*\*)?\b([A-Z][A-Za-z]*(?:[ \t]+[A-Za-z()/-]+){0,3}):(\*\*)?(-)?/g;
 
 /** A bare (no markdown syntax) line that reads like a section label rather
  * than prose — short, doesn't trail off mid-sentence, and either matches a

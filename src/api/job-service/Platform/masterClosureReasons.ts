@@ -1,4 +1,5 @@
 import { jobApi } from '../jobApi';
+import type { CatalogPage, SearchArgs } from '../JobOpening/catalogs';
 
 // GET/POST/PUT/DELETE /platform/master-closure-reasons — the Super Admin's
 // job-closure reason catalogue. `requires_input` gates whether closing a
@@ -21,6 +22,31 @@ const extendedApi = jobApi.injectEndpoints({
     listPlatformClosureReasons: build.query<PlatformClosureReason[], void>({
       query: () => '/platform/master-closure-reasons',
       transformResponse: (response: { reasons: PlatformClosureReason[] }) => response.reasons,
+      providesTags: ['PlatformClosureReasons'],
+    }),
+    searchPlatformClosureReasons: build.query<CatalogPage<PlatformClosureReason>, SearchArgs>({
+      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+        url: '/platform/master-closure-reasons/search',
+        method: 'GET',
+        params: {
+          page,
+          page_size: pageSize,
+          search: search || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        },
+      }),
+      transformResponse: (response: {
+        reasons?: PlatformClosureReason[];
+        total?: number;
+        page?: number;
+        page_size?: number;
+      }) => ({
+        items: response.reasons ?? [],
+        total: response.total ?? (response.reasons ?? []).length,
+        page: response.page ?? 1,
+        pageSize: response.page_size ?? 20,
+      }),
       providesTags: ['PlatformClosureReasons'],
     }),
     createPlatformClosureReason: build.mutation<PlatformClosureReason, ClosureReasonWriteBody>({
@@ -51,6 +77,7 @@ const extendedApi = jobApi.injectEndpoints({
 
 export const {
   useListPlatformClosureReasonsQuery,
+  useSearchPlatformClosureReasonsQuery,
   useCreatePlatformClosureReasonMutation,
   useUpdatePlatformClosureReasonMutation,
   useDeletePlatformClosureReasonMutation,

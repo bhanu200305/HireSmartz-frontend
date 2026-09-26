@@ -141,10 +141,35 @@ const JobDescriptionPanel = ({
       currentOptional
     );
     const newLabels = Object.fromEntries(newOptions.map((o) => [o.id, o.name]));
+    // Redux fields are arrays (`jobType`, `jobMode`, `shift`,
+    // `educationPreference`); the diff's fields are scalar ids.
+    const {
+      jobTypeId: jobTypeUpdate,
+      jobModeId: jobModeUpdate,
+      shiftId: shiftUpdate,
+      educationPreferenceId: educationPreferenceUpdate,
+      ...otherUpdates
+    } = diffAiOwnedFields(response, {
+      ...jobDetailsInRedux,
+      jobTypeId:
+        jobDetailsInRedux.jobType?.[0] != null ? String(jobDetailsInRedux.jobType[0]) : undefined,
+      jobModeId:
+        jobDetailsInRedux.jobMode?.[0] != null ? String(jobDetailsInRedux.jobMode[0]) : undefined,
+      shiftId:
+        jobDetailsInRedux.shift?.[0] != null ? String(jobDetailsInRedux.shift[0]) : undefined,
+      educationPreferenceId:
+        jobDetailsInRedux.educationPreference?.[0] != null
+          ? String(jobDetailsInRedux.educationPreference[0])
+          : undefined,
+    });
 
     dispatch(
       (isEditFlow ? updateEditJobDetails : updateJobDetails)({
-        ...diffAiOwnedFields(response, jobDetailsInRedux),
+        ...otherUpdates,
+        ...(jobTypeUpdate ? { jobType: [jobTypeUpdate] } : {}),
+        ...(jobModeUpdate ? { jobMode: [jobModeUpdate] } : {}),
+        ...(shiftUpdate ? { shift: [shiftUpdate] } : {}),
+        ...(educationPreferenceUpdate ? { educationPreference: [educationPreferenceUpdate] } : {}),
         ...(newMandatoryIds.length > 0
           ? { mandatorySkills: [...currentMandatory, ...newMandatoryIds] }
           : {}),
@@ -265,7 +290,7 @@ const JobDescriptionPanel = ({
         showToast({ message: 'Job description has been updated successfully', type: 'success' });
       } catch (error: any) {
         showToast({
-          message: error?.data?.message || 'Failed to update job description',
+          message: getJobErrorMessage(error, 'Failed to update job description'),
           type: 'error',
         });
       }

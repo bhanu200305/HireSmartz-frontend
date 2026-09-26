@@ -31,6 +31,5 @@ export { default as RolesManagement } from './RolesManagement/Index';
 export { default as UserProfile } from './UserProfile/index';
 export { default as ChangePassword } from './ChangePassword/index';
 export { default as AiCallBooking } from './AiCallBooking';
-export { default as VideoInterviewQuestions } from './JobsOpening/ViewJobOpening/VideoInterviewQuestions';
 
 export * from './shared';

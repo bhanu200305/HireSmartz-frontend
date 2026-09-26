@@ -48,6 +48,16 @@ describe('editJobOpeningSlice reducer', () => {
     expect(state.description.mandatorySkills).toEqual([]);
   });
 
+  it('updateEditJobDescription merges benefits independently of otherRequirements', () => {
+    const state = reducer(
+      initialState,
+      updateEditJobDescription({ benefits: 'Health insurance, 401(k) matching.' })
+    );
+
+    expect(state.description.benefits).toBe('Health insurance, 401(k) matching.');
+    expect(state.description.otherRequirements).toBe('');
+  });
+
   it('updateEditInterviewRounds replaces the interview rounds list wholesale', () => {
     const rounds = [{ id: 'r1' }] as any;
     const state = reducer(initialState, updateEditInterviewRounds(rounds));

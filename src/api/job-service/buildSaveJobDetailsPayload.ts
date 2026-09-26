@@ -150,6 +150,7 @@ export const buildSaveJobDetailsPayload = ({
     responsibilities: data.responsibilities || null,
     requirements: data.requirements || null,
     other_requirements: data.otherRequirements || null,
+    benefits: data.benefits || null,
     education_preference_id: uuidOrNull(data.educationPreference),
     use_culture_intro: Boolean(data.useCultureIntro),
     language_ids: toIdList(data.languages).filter(isUuid),

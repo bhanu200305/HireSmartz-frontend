@@ -1,4 +1,5 @@
 import { jobApi } from '../jobApi';
+import type { CatalogPage, SearchArgs } from '../JobOpening/catalogs';
 
 // The Super Admin's skill-category catalogue. What a skill's
 // `skill_category_id` references.
@@ -13,6 +14,31 @@ const extendedApi = jobApi.injectEndpoints({
     listPlatformSkillCategories: build.query<PlatformSkillCategory[], void>({
       query: () => '/platform/master-skill-categories',
       transformResponse: (response: { categories: PlatformSkillCategory[] }) => response.categories,
+      providesTags: ['PlatformSkillCategories'],
+    }),
+    searchPlatformSkillCategories: build.query<CatalogPage<PlatformSkillCategory>, SearchArgs>({
+      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+        url: '/platform/master-skill-categories/search',
+        method: 'GET',
+        params: {
+          page,
+          page_size: pageSize,
+          search: search || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        },
+      }),
+      transformResponse: (response: {
+        categories?: PlatformSkillCategory[];
+        total?: number;
+        page?: number;
+        page_size?: number;
+      }) => ({
+        items: response.categories ?? [],
+        total: response.total ?? (response.categories ?? []).length,
+        page: response.page ?? 1,
+        pageSize: response.page_size ?? 20,
+      }),
       providesTags: ['PlatformSkillCategories'],
     }),
     createPlatformSkillCategory: build.mutation<
@@ -46,6 +72,7 @@ const extendedApi = jobApi.injectEndpoints({
 
 export const {
   useListPlatformSkillCategoriesQuery,
+  useSearchPlatformSkillCategoriesQuery,
   useCreatePlatformSkillCategoryMutation,
   useUpdatePlatformSkillCategoryMutation,
   useDeletePlatformSkillCategoryMutation,

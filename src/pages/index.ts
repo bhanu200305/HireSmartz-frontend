@@ -26,10 +26,6 @@ export { default as EditAiJobDescriptionPage } from './EditAiJobDescriptionPage'
 export { default as EditDetailedInterviewRoundPage } from './EditDetailedInterviewPage';
 export { default as EditInterviewRoundPage } from './EditInterviewRoundPage';
 export { AiQuestionsPage, AIQuestionsSetupPage } from './AIQuestions';
-export {
-  VideoInterviewQuestionsPage,
-  VideoInterviewQuestionsSetupPage,
-} from './VideoInterviewQuestionPage';
 export { ViewCandidateDetailsPage, CandidatesPage, SearchCandidateListingPage } from './Candidates';
 // export { AtsJobDetailsPage } from './AtsJobDetails'
 export { default as AtsJobIdPage } from './AtsJobId';

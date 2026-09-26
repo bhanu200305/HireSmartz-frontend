@@ -52,6 +52,7 @@ const initialState: EditJobState = {
     mandatorySkills: [],
     optionalSkills: [],
     otherRequirements: '',
+    benefits: '',
   },
   interviewRounds: [],
   aiJobDescription: {

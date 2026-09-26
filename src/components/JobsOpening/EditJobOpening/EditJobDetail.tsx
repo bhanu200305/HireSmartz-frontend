@@ -41,7 +41,6 @@ import {
   setIsChanged,
 } from '../../../redux/slices/editJobOpeningSlice';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
-import { get } from 'lodash-es';
 import { capitalizeWordsAdvanced, validateDraft } from '../../../shared/utils/methods';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
 import {
@@ -65,6 +64,7 @@ import { asJobId } from '../../../api/job-service/jobId';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import { hasFeatureAccess, isAssignedToJob } from '../../../shared/utils/auth/getAccess';
 import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
+import { Authorities } from '../../../constants/authorities.constant';
 import {
   officeDisplayName,
   useListTenantOfficesQuery,
@@ -145,6 +145,8 @@ const EditJobDetail = () => {
 
   const justSavedRef = useRef(false);
   const initialLoadRef = useRef(true);
+  // Tells first-load hydration apart from a real department change below.
+  const hasHydratedJobTitleDepartmentRef = useRef(false);
   // Ensures loadJobData below reconciles the form only once per job id, not
   // on every later Redux update (which would clobber live edits).
   const hasSyncedFormForJobIdRef = useRef<string | null>(null);
@@ -161,11 +163,25 @@ const EditJobDetail = () => {
   );
   const { role, userId } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
   const effectivePermissions = useEffectivePermissions();
-  // hiring_manager/recruiter can only pick an existing catalogue entry,
-  // never add/edit/delete one from this form.
-  const canManageCatalogueEntries = role?.name !== 'hiring_manager' && role?.name !== 'recruiter';
+  // Backed by organization:update, job-service's real "manage" permission.
+  const canManageCatalogueEntries = effectivePermissions.includes(
+    Authorities.COMPANY_SETTINGS_EDIT
+  );
+  // Job Title gets its own narrower grant (tenant_job_title:write/update/
+  // delete) so a Hiring Manager can add/rename/remove titles inline without
+  // the broader company-settings permission the other catalogue fields need.
+  const canAddJobTitle =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.TENANT_JOB_TITLE_ADD);
+  const canEditJobTitle =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.TENANT_JOB_TITLE_EDIT);
+  const canDeleteJobTitle =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.TENANT_JOB_TITLE_DELETE);
+  const canManageJobTitle = canAddJobTitle || canEditJobTitle || canDeleteJobTitle;
   const tenantId = useSessionTenantId();
   const [, setSelectedLocationIdForUsers] = useState<string | undefined>(undefined);
+  const [dismissedUnresolvedAiFields, setDismissedUnresolvedAiFields] = useState<Set<string>>(
+    new Set()
+  );
 
   const { data: offices = [], isFetching: loadingJobLocations } = useListTenantOfficesQuery(
     { tenantId: tenantId ?? '' },
@@ -674,6 +690,7 @@ const EditJobDetail = () => {
       mandatorySkills: jobData.data.mandatorySkills?.map((skill: { id: number }) => skill.id) || [],
       optionalSkills: jobData.data.optionalSkills?.map((skill: { id: number }) => skill.id) || [],
       otherRequirements: jobData.data.otherRequirements || '',
+      benefits: jobData.data.benefits || '',
       useCultureIntro: Boolean(jobData.data.useCultureIntro),
     };
 
@@ -685,6 +702,7 @@ const EditJobDetail = () => {
       optionalSkills: jobData.data.optionalSkills?.map((skill: { id: number }) => skill.id) || [],
       responsibilities: jobData.data.responsibilities || '',
       otherRequirements: jobData.data.otherRequirements || '',
+      benefits: jobData.data.benefits || '',
     };
 
     const interviewRounds = (jobData.data.interviewRounds || []).map(
@@ -811,6 +829,10 @@ const EditJobDetail = () => {
         setValue('otherRequirements', fresh.otherRequirements, { shouldValidate: true });
         appliedAnything = true;
       }
+      if (fresh.benefits && !current.benefits) {
+        setValue('benefits', fresh.benefits, { shouldValidate: true });
+        appliedAnything = true;
+      }
       if (fresh.minExperience != null && current.minExperience == null) {
         setValue('minExperience', fresh.minExperience, { shouldValidate: true });
         appliedAnything = true;
@@ -885,16 +907,40 @@ const EditJobDetail = () => {
   useEffect(() => {
     if (!jdDetailsForSync) return;
     const current = getValues();
-    // Form field is `openings`, backend calls it `vacancies`.
-    const { vacancies: vacanciesUpdate, ...otherUpdates } = diffAiOwnedFields(jdDetailsForSync, {
+    // Form fields are arrays (`jobType`, `jobMode`, `shift`,
+    // `educationPreference`); backend/diff fields are scalar ids.
+    const {
+      vacancies: vacanciesUpdate,
+      jobTypeId: jobTypeUpdate,
+      jobModeId: jobModeUpdate,
+      shiftId: shiftUpdate,
+      educationPreferenceId: educationPreferenceUpdate,
+      ...otherUpdates
+    } = diffAiOwnedFields(jdDetailsForSync, {
       ...current,
       vacancies: current.openings,
+      jobTypeId: current.jobType?.[0],
+      jobModeId: current.jobMode?.[0],
+      shiftId: current.shift?.[0],
+      educationPreferenceId: current.educationPreference?.[0],
     });
     Object.entries(otherUpdates).forEach(([field, value]) => {
       setValue(field as keyof typeof otherUpdates, value, { shouldValidate: true });
     });
     if (vacanciesUpdate != null) {
       setValue('openings', vacanciesUpdate, { shouldValidate: true });
+    }
+    if (jobTypeUpdate) {
+      setValue('jobType', [jobTypeUpdate], { shouldValidate: true });
+    }
+    if (jobModeUpdate) {
+      setValue('jobMode', [jobModeUpdate], { shouldValidate: true });
+    }
+    if (shiftUpdate) {
+      setValue('shift', [shiftUpdate], { shouldValidate: true });
+    }
+    if (educationPreferenceUpdate) {
+      setValue('educationPreference', [educationPreferenceUpdate], { shouldValidate: true });
     }
 
     const currentMandatory = (current.mandatorySkills || []).map(String);
@@ -944,21 +990,20 @@ const EditJobDetail = () => {
   }, [selectedLocationDetails, setValue]);
 
   /**
-   * Handle Job Title validation and restoration after department selection.
-   *
-   * This effect ensures that:
-   * 1. Job titles are only displayed if a department is selected
-   * 2. If a department is not selected, job title field is cleared
-   * 3. After a department is selected, previously stored job titles are restored
-   *    if they exist in the department's job titles list
+   * Job title requires a department: clears the title if none is selected,
+   * restores it once a matching department is picked. The clear rule skips
+   * the effect's first run, so an AI-filled title with no department yet
+   * survives page load.
    */
   useEffect(() => {
     if (jobTitlesLoading || loadingCatalogue) return;
 
     const currentJobTitleIds = formValues.jobTitle || [];
+    const isInitialHydration = !hasHydratedJobTitleDepartmentRef.current;
+    hasHydratedJobTitleDepartmentRef.current = true;
 
     if (!selectedDepartmentId) {
-      if (currentJobTitleIds.length > 0) {
+      if (!isInitialHydration && currentJobTitleIds.length > 0) {
         setValue('jobTitle', [], { shouldValidate: true });
       }
       return;
@@ -1209,7 +1254,7 @@ const EditJobDetail = () => {
       }
     } catch (err) {
       showToast({
-        message: get(err, 'data.message', 'Something went wrong while updating dropdown.'),
+        message: getJobErrorMessage(err, 'Something went wrong while updating dropdown.'),
         type: 'error',
       });
     } finally {
@@ -1611,6 +1656,45 @@ const EditJobDetail = () => {
     setShiftModalMode('add');
   };
 
+  // location has no single-string add-flow (a full address) - text only.
+  const UNRESOLVED_AI_FIELD_LABELS: Record<string, string> = {
+    job_type: 'Job Type',
+    work_mode: 'Work Mode',
+    shift: 'Shift',
+    education_preference: 'Education Preference',
+    location: 'Location',
+    job_title: 'Job Title',
+    department: 'Department',
+  };
+  const handleCreateFromUnresolvedSuggestion = (fieldKey: string, guess: string) => {
+    switch (fieldKey) {
+      case 'job_type':
+        handleAddOption(guess, 'jobType');
+        break;
+      case 'work_mode':
+        handleAddOption(guess, 'jobMode');
+        break;
+      case 'education_preference':
+        handleAddOption(guess, 'educationPreference');
+        break;
+      case 'job_title':
+        handleAddOption(guess, 'jobTitle');
+        break;
+      case 'department':
+        handleAddOption(guess, 'department');
+        break;
+      case 'shift':
+        handleAddShiftOption(guess);
+        break;
+    }
+  };
+  // Dismissal is keyed by job id + field, not just field - otherwise
+  // dismissing "shift" on one job would silently hide it for every other
+  // job in the same browser session too.
+  const visibleUnresolvedAiSuggestions = Object.entries(
+    jobData?.data?.unresolvedAiSuggestions ?? {}
+  ).filter(([fieldKey]) => !dismissedUnresolvedAiFields.has(`${parsedJobId}:${fieldKey}`));
+
   const handleJobTitleChange = async (value: number | string | undefined) => {
     if (!value) {
       setValue('jobTitle', [], { shouldValidate: true });
@@ -1778,6 +1862,7 @@ const EditJobDetail = () => {
       mandatorySkills: data.mandatorySkills,
       optionalSkills: data.optionalSkills,
       otherRequirements: data.otherRequirements,
+      benefits: data.benefits,
       responsibilities: data.responsibilities,
     };
 
@@ -1872,6 +1957,50 @@ const EditJobDetail = () => {
         })}
         autoComplete="off"
       >
+        {visibleUnresolvedAiSuggestions.length > 0 && (
+          <div className="mt-2 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            {visibleUnresolvedAiSuggestions.map(([fieldKey, guess]) => (
+              <div key={fieldKey} className="flex items-center justify-between gap-4">
+                <span className="text-sm text-amber-900">
+                  <span className="mr-1.5">⚠️</span>
+                  <strong>{UNRESOLVED_AI_FIELD_LABELS[fieldKey] ?? fieldKey}:</strong> the job
+                  description mentions &quot;{guess}&quot;, but that isn&apos;t set up in your
+                  organization&apos;s catalogue yet.{' '}
+                  {fieldKey === 'location'
+                    ? canManageCatalogueEntries
+                      ? 'Add it under Company Settings > Locations.'
+                      : 'Contact your company admin to add it.'
+                    : !canManageCatalogueEntries
+                      ? 'Contact your company admin to add it.'
+                      : null}
+                </span>
+                <div className="flex items-center gap-3 shrink-0">
+                  {canManageCatalogueEntries && fieldKey !== 'location' && (
+                    <Button
+                      type="button"
+                      className="text-white bg-button rounded-3xl px-4 py-1.5 text-xs font-semibold cursor-pointer"
+                      onClick={() => handleCreateFromUnresolvedSuggestion(fieldKey, guess)}
+                    >
+                      Create it
+                    </Button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDismissedUnresolvedAiFields((prev) =>
+                        new Set(prev).add(`${parsedJobId}:${fieldKey}`)
+                      )
+                    }
+                    className="text-amber-600 hover:text-amber-800 cursor-pointer"
+                    aria-label="Dismiss notice"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="mt-2">
           <div className="w-full">
             <span className="text-lg font-semibold">Job Info</span>
@@ -1965,16 +2094,14 @@ const EditJobDetail = () => {
                   }
                   label="Job Title"
                   onAddOption={
-                    canManageCatalogueEntries
-                      ? (value) => handleAddOption(value, 'jobTitle')
-                      : undefined
+                    canAddJobTitle ? (value) => handleAddOption(value, 'jobTitle') : undefined
                   }
                   type="jobTitle"
                   error={errors.jobTitle?.message}
-                  enableEditDelete={canManageCatalogueEntries}
-                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
-                  onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
+                  enableEditDelete={canManageJobTitle}
+                  onEditOption={canEditJobTitle ? handleEditOption : undefined}
+                  onDeleteOption={canDeleteJobTitle ? handleDeleteOption : undefined}
+                  onReuseOption={canManageJobTitle ? handleReuseOption : undefined}
                 />
               </div>
             </Form.Item>
@@ -2621,13 +2748,7 @@ const EditJobDetail = () => {
                 <p className="text-red-500 text-sm mt-1">{errors.minSalary.message}</p>
               )}
             </Form.Item>
-            <Form.Item
-              label={
-                <span>
-                  Maximum Salary (in USD) <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
+            <Form.Item label={<span>Maximum Salary (in USD)</span>}>
               <Controller
                 name="maxSalary"
                 control={control}
@@ -3037,6 +3158,30 @@ const EditJobDetail = () => {
               />
               {errors.otherRequirements && (
                 <p className="text-red-500 text-sm mt-1">{errors.otherRequirements.message}</p>
+              )}
+            </Form.Item>
+          </div>
+
+          <div className="grid grid-cols-1 mt-2">
+            <Form.Item label={<span>Benefits</span>}>
+              <Controller
+                name="benefits"
+                control={control}
+                render={({ field }) => (
+                  <TextArea
+                    {...field}
+                    placeholder="Enter benefits offered"
+                    rows={4}
+                    maxLength={1000}
+                    showCount={{
+                      formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
+                    }}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                )}
+              />
+              {errors.benefits && (
+                <p className="text-red-500 text-sm mt-1">{errors.benefits.message}</p>
               )}
             </Form.Item>
           </div>

@@ -11,6 +11,7 @@ export type JdDescriptionInputs = {
   maxSalary?: number | string | null;
   responsibilities?: string | null;
   otherRequirements?: string | null;
+  benefits?: string | null;
   shiftId?: string | null;
   jobTypeId?: string | null;
   educationPreferenceId?: string | null;
@@ -51,6 +52,7 @@ export const haveDescriptionInputsChanged = (
   normalizeNumber(next.maxSalary) !== normalizeNumber(current.maxSalary) ||
   normalizeText(next.responsibilities) !== normalizeText(current.responsibilities) ||
   normalizeText(next.otherRequirements) !== normalizeText(current.otherRequirements) ||
+  normalizeText(next.benefits) !== normalizeText(current.benefits) ||
   normalizeId(next.shiftId) !== normalizeId(current.shiftId) ||
   normalizeId(next.jobTypeId) !== normalizeId(current.jobTypeId) ||
   normalizeId(next.educationPreferenceId) !== normalizeId(current.educationPreferenceId) ||
@@ -60,27 +62,43 @@ export const haveDescriptionInputsChanged = (
   !sameIdSet(next.skillIds, current.skillIds);
 
 // Fields the AI Job Description screen may write back into Job Details.
-// Excludes job title/department/shift/job type/education preference/
-// location — those are catalogue-bound, never AI-settable.
+// job_type/work_mode/shift/education_preference ARE AI-settable — job-service
+// fuzzy-matches an AI guess against the org's catalogue and fills the id.
+// Still excludes job title/department/location — those need extra
+// server-side context (department mapping, office matching) this shared
+// diff doesn't carry.
 export type AiOwnedJdFields = {
   responsibilities?: string | null;
   otherRequirements?: string | null;
+  benefits?: string | null;
   minExperience?: number | string | null;
   maxExperience?: number | string | null;
   minSalary?: number | string | null;
   maxSalary?: number | string | null;
   // Extraction-only, never AI-composed — don't add to JdDescriptionInputs above.
   vacancies?: number | string | null;
+  jobTypeId?: string | null;
+  jobModeId?: string | null;
+  shiftId?: string | null;
+  educationPreferenceId?: string | null;
+  // A full snapshot, not a value to merge — see diffAiOwnedFields below.
+  unresolvedAiSuggestions?: Record<string, string>;
 };
 
 export type AiOwnedJdFieldUpdates = {
   responsibilities?: string;
   otherRequirements?: string;
+  benefits?: string;
   minExperience?: number;
   maxExperience?: number;
   minSalary?: string;
   maxSalary?: string;
   vacancies?: number;
+  jobTypeId?: string;
+  jobModeId?: string;
+  shiftId?: string;
+  educationPreferenceId?: string;
+  unresolvedAiSuggestions?: Record<string, string>;
 };
 
 /** Only the fields where the backend's value is real and differs from
@@ -101,6 +119,9 @@ export const diffAiOwnedFields = (
     normalizeText(fresh.otherRequirements) !== normalizeText(current.otherRequirements)
   ) {
     updates.otherRequirements = fresh.otherRequirements;
+  }
+  if (fresh.benefits && normalizeText(fresh.benefits) !== normalizeText(current.benefits)) {
+    updates.benefits = fresh.benefits;
   }
   if (
     fresh.minExperience != null &&
@@ -131,6 +152,25 @@ export const diffAiOwnedFields = (
     normalizeNumber(fresh.vacancies) !== normalizeNumber(current.vacancies)
   ) {
     updates.vacancies = Number(fresh.vacancies);
+  }
+  if (fresh.jobTypeId && normalizeId(fresh.jobTypeId) !== normalizeId(current.jobTypeId)) {
+    updates.jobTypeId = fresh.jobTypeId;
+  }
+  if (fresh.jobModeId && normalizeId(fresh.jobModeId) !== normalizeId(current.jobModeId)) {
+    updates.jobModeId = fresh.jobModeId;
+  }
+  if (fresh.shiftId && normalizeId(fresh.shiftId) !== normalizeId(current.shiftId)) {
+    updates.shiftId = fresh.shiftId;
+  }
+  if (
+    fresh.educationPreferenceId &&
+    normalizeId(fresh.educationPreferenceId) !== normalizeId(current.educationPreferenceId)
+  ) {
+    updates.educationPreferenceId = fresh.educationPreferenceId;
+  }
+  // Replace wholesale, not diffed key by key — it's a full snapshot.
+  if (fresh.unresolvedAiSuggestions !== undefined) {
+    updates.unresolvedAiSuggestions = fresh.unresolvedAiSuggestions;
   }
   return updates;
 };

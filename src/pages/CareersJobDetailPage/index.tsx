@@ -27,7 +27,7 @@ const formatLocation = (
   return [loc.city, loc.state, loc.country].filter(Boolean).join(', ') || null;
 };
 
-// responsibilities/requirements/other_requirements are AI-extracted, one point per line.
+// responsibilities/requirements/other_requirements/benefits are AI-extracted, one point per line.
 // jd is raw text extracted from the uploaded PDF/DOCX, so its line breaks are mostly
 // hard-wraps rather than paragraph breaks and can carry stray control characters.
 // eslint-disable-next-line no-control-regex -- matching control chars is the point, not a mistake

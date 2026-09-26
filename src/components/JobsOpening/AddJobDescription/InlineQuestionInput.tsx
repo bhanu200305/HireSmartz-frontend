@@ -8,6 +8,7 @@ interface InlineQuestionInputProps {
   placeholder?: string;
   footnote?: string;
   isSubmitting?: boolean;
+  disabled?: boolean;
 }
 
 export const InlineQuestionInput = ({
@@ -17,6 +18,7 @@ export const InlineQuestionInput = ({
   placeholder = 'Add single or multiple questions here.',
   footnote = '',
   isSubmitting = false,
+  disabled = false,
 }: InlineQuestionInputProps) => {
   return (
     <div className="w-full">
@@ -26,7 +28,8 @@ export const InlineQuestionInput = ({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={2}
-          className="w-full bg-transparent border-none resize-none focus:outline-none placeholder-gray-400 text-sm leading-relaxed text-gray-800 roboto-font"
+          disabled={disabled}
+          className="w-full bg-transparent border-none resize-none focus:outline-none placeholder-gray-400 text-sm leading-relaxed text-gray-800 roboto-font disabled:cursor-not-allowed"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -36,10 +39,12 @@ export const InlineQuestionInput = ({
         />
         <button
           className={`p-3 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm text-primary hover:bg-gray-50 hover:scale-105 active:scale-95 transition-all ${
-            !value.trim() || isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+            !value.trim() || isSubmitting || disabled
+              ? 'opacity-50 cursor-not-allowed'
+              : 'cursor-pointer'
           }`}
           onClick={onSubmit}
-          disabled={!value.trim() || isSubmitting}
+          disabled={!value.trim() || isSubmitting || disabled}
         >
           <span className="text-xl font-bold leading-none">+</span>
         </button>

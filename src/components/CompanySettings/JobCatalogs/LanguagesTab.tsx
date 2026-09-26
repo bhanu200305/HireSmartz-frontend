@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '../../shared';
 import {
-  useListPlatformLanguagesQuery,
+  useSearchPlatformLanguagesQuery,
   useCreatePlatformLanguageMutation,
   useUpdatePlatformLanguageMutation,
   useDeletePlatformLanguageMutation,
   PlatformLanguage,
 } from '../../../api/job-service/Platform/masterLanguages';
-import PlatformCatalogTab from './PlatformCatalogTab';
+import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
 type FormValues = { name: string; language_code: string };
@@ -19,7 +19,20 @@ const fields: CatalogField<FormValues>[] = [
 
 /** Platform-wide language catalogue used by the Job Details Communication Language field. */
 const LanguagesTab: React.FC = () => {
-  const { data, isLoading } = useListPlatformLanguagesQuery();
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchPlatformLanguagesQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [create] = useCreatePlatformLanguageMutation();
   const [update] = useUpdatePlatformLanguageMutation();
   const [remove] = useDeletePlatformLanguageMutation();
@@ -29,7 +42,10 @@ const LanguagesTab: React.FC = () => {
       title="Platform-wide language catalog."
       itemNounSingular="Language"
       itemNounPlural="Languages"
-      items={data}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.language_id}
       labelOf={(item) => item.language_name}

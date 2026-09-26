@@ -21,12 +21,42 @@ const toJobTypeOption = (
   job_type_description: item.job_type_description,
 });
 
+/** Shared shape for every paginated catalogue list response. */
+export type CatalogPage<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+/** Shared args for a catalogue's `/search` sibling that takes no `isMaster`
+ * split - one org-scoped table, one route. */
+export type SearchArgs = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
+};
+
 export type ListJobTypesArgs = {
   /** Super Admin tokens have no tenant_id, so they must read the platform
    * catalogue (/platform/master-job-types) instead of /job-types. Required,
    * not optional - an omitted flag silently reads the wrong tenant's data
    * instead of erroring, so every caller must decide explicitly. */
   isMaster: boolean;
+};
+
+/** GET /job-types(/search) never accepts pagination params on the plain
+ * variant - dropdown consumers need the complete unbounded list. Only
+ * `searchJobTypes` below (a separate endpoint) paginates. */
+export type SearchJobTypesArgs = {
+  isMaster: boolean;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
 };
 
 type JobTypeListRow = OrganizationJobType & Partial<MasterJobType>;
@@ -44,6 +74,36 @@ const catalogsApi = jobApi.injectEndpoints({
           job_type_name: item.job_type_name,
           job_type_description: item.job_type_description,
         })),
+      providesTags: ['JobTypes'],
+    }),
+
+    searchJobTypes: build.query<CatalogPage<OrganizationJobType>, SearchJobTypesArgs>({
+      query: ({ isMaster, page, pageSize, search, sortBy, sortDir }) => ({
+        url: isMaster ? '/platform/master-job-types/search' : '/job-types/search',
+        method: 'GET',
+        params: {
+          page,
+          page_size: pageSize,
+          search: search || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        },
+      }),
+      transformResponse: (response: {
+        job_types?: JobTypeListRow[];
+        total?: number;
+        page?: number;
+        page_size?: number;
+      }) => ({
+        items: (response.job_types ?? []).map((item) => ({
+          id: item.id || item.job_type_id || '',
+          job_type_name: item.job_type_name,
+          job_type_description: item.job_type_description,
+        })),
+        total: response.total ?? (response.job_types ?? []).length,
+        page: response.page ?? 1,
+        pageSize: response.page_size ?? 20,
+      }),
       providesTags: ['JobTypes'],
     }),
 
@@ -107,6 +167,32 @@ const catalogsApi = jobApi.injectEndpoints({
       providesTags: ['JobModes'],
     }),
 
+    searchOrganizationJobModes: build.query<CatalogPage<OrganizationJobMode>, SearchArgs>({
+      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+        url: '/job-modes/search',
+        method: 'GET',
+        params: {
+          page,
+          page_size: pageSize,
+          search: search || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        },
+      }),
+      transformResponse: (response: {
+        job_modes?: OrganizationJobMode[];
+        total?: number;
+        page?: number;
+        page_size?: number;
+      }) => ({
+        items: response.job_modes ?? [],
+        total: response.total ?? (response.job_modes ?? []).length,
+        page: response.page ?? 1,
+        pageSize: response.page_size ?? 20,
+      }),
+      providesTags: ['JobModes'],
+    }),
+
     createJobMode: build.mutation<
       OrganizationJobMode,
       { job_mode_name: string; job_mode_description?: string | null }
@@ -141,6 +227,45 @@ const catalogsApi = jobApi.injectEndpoints({
     listClosureReasons: build.query<ClosureReason[], void>({
       query: () => ({ url: '/master/closure-reasons', method: 'GET' }),
       transformResponse: (response: { reasons: ClosureReason[] }) => response.reasons ?? [],
+      providesTags: ['ClosureReasons'],
+    }),
+
+    // This organization's own configured closure-reason list - the
+    // catalogue-management read side, paired with the create/update/delete
+    // mutations below (all on /job-closure-reasons).
+    listOrganizationJobClosureReasons: build.query<OrganizationClosureReason[], void>({
+      query: () => ({ url: '/job-closure-reasons', method: 'GET' }),
+      transformResponse: (response: { closure_reasons: OrganizationClosureReason[] }) =>
+        response.closure_reasons ?? [],
+      providesTags: ['ClosureReasons'],
+    }),
+
+    searchOrganizationJobClosureReasons: build.query<
+      CatalogPage<OrganizationClosureReason>,
+      SearchArgs
+    >({
+      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+        url: '/job-closure-reasons/search',
+        method: 'GET',
+        params: {
+          page,
+          page_size: pageSize,
+          search: search || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        },
+      }),
+      transformResponse: (response: {
+        closure_reasons?: OrganizationClosureReason[];
+        total?: number;
+        page?: number;
+        page_size?: number;
+      }) => ({
+        items: response.closure_reasons ?? [],
+        total: response.total ?? (response.closure_reasons ?? []).length,
+        page: response.page ?? 1,
+        pageSize: response.page_size ?? 20,
+      }),
       providesTags: ['ClosureReasons'],
     }),
 
@@ -254,6 +379,7 @@ const catalogsApi = jobApi.injectEndpoints({
 
 export const {
   useListJobTypesQuery,
+  useSearchJobTypesQuery,
   useCreateJobTypeMutation,
   useUpdateJobTypeMutation,
   useDeleteJobTypeMutation,

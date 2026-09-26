@@ -241,6 +241,8 @@ const JobsOpening = () => {
   // isn't always populated. backend's assigned_to_me is a no-op for any
   // other role anyway. See getJobStats.
   const canFilterToMyJobs = authorities.includes(Authorities.JOB_OPENING_CREATE);
+  // Shown disabled rather than hidden, so the reason stays visible.
+  const canCreateJob = hasFeatureAccess('job_opening', 'create', role, authorities);
   // Defaults to org-wide, matching their existing view before this toggle
   // existed — "my jobs" is an opt-in, not the default.
   const [showMyJobsOnly, setShowMyJobsOnly] = useState(false);
@@ -252,9 +254,12 @@ const JobsOpening = () => {
       refetchOnMountOrArgChange: true,
     }
   );
-  const { data: jobStats } = useGetJobStatsQuery(undefined, { skip: !hasTenantContext });
+  const { data: jobStats } = useGetJobStatsQuery(
+    { locationId: filters.locationId },
+    { skip: !hasTenantContext }
+  );
   const { data: myJobStats } = useGetJobStatsQuery(
-    { assignedToMe: true },
+    { assignedToMe: true, locationId: filters.locationId },
     { skip: !hasTenantContext || !canFilterToMyJobs }
   );
   const { data: orgDepartments = [] } = useListTenantDepartmentsQuery(tenantId ?? '', {
@@ -698,7 +703,10 @@ const JobsOpening = () => {
       })
       .catch((err) => {
         showToast({
-          message: err?.data?.message || 'Something went wrong while duplicating the job opening',
+          message: getJobErrorMessage(
+            err,
+            'Something went wrong while duplicating the job opening'
+          ),
           type: 'error',
         });
       })
@@ -730,7 +738,7 @@ const JobsOpening = () => {
       })
       .catch((err) => {
         showToast({
-          message: err?.data?.message || 'Something went wrong while deleting the job opening',
+          message: getJobErrorMessage(err, 'Something went wrong while deleting the job opening'),
           type: 'error',
         });
       })
@@ -1112,16 +1120,25 @@ const JobsOpening = () => {
                   ))}
                 </Select>
               </div>
-              {hasFeatureAccess('job_opening', 'create', role, authorities) && (
-                <Button
-                  appname="add Job Description"
-                  className="text-white bg-button rounded-3xl px-4 py-2 flex items-center shrink-0 shadow-xs hover:shadow-sm transition-shadow"
-                  onClick={handleCreateNewJob}
-                >
-                  <PlusOutlined className="text-sm pr-2" />{' '}
-                  <span className="text-sm whitespace-nowrap">ADD JOB OPENING</span>
-                </Button>
-              )}
+              <Tooltip
+                title={
+                  canCreateJob
+                    ? undefined
+                    : "You don't have permission to create job openings at this location. Contact your company admin for access."
+                }
+              >
+                <span className="shrink-0">
+                  <Button
+                    appname="add Job Description"
+                    className="text-white bg-button rounded-3xl px-4 py-2 flex items-center shrink-0 shadow-xs hover:shadow-sm transition-shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+                    onClick={handleCreateNewJob}
+                    disabled={!canCreateJob}
+                  >
+                    <PlusOutlined className="text-sm pr-2" />{' '}
+                    <span className="text-sm whitespace-nowrap">ADD JOB OPENING</span>
+                  </Button>
+                </span>
+              </Tooltip>
             </div>
           </div>
           {jobStats && (

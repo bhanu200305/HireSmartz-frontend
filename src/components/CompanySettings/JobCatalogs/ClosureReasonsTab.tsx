@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '../../shared';
 import {
-  useListPlatformClosureReasonsQuery,
+  useSearchPlatformClosureReasonsQuery,
   useCreatePlatformClosureReasonMutation,
   useUpdatePlatformClosureReasonMutation,
   useDeletePlatformClosureReasonMutation,
   PlatformClosureReason,
 } from '../../../api/job-service/Platform/masterClosureReasons';
-import PlatformCatalogTab from './PlatformCatalogTab';
+import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
 type FormValues = { reason: string; requires_input: boolean; description: string };
@@ -25,7 +25,20 @@ const fields: CatalogField<FormValues>[] = [
 /** GET/POST/PUT/DELETE /platform/master-closure-reasons — the fixed
  * job-closure reason catalogue a recruiter picks from on CloseJobModal. */
 const ClosureReasonsTab: React.FC = () => {
-  const { data, isLoading } = useListPlatformClosureReasonsQuery();
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchPlatformClosureReasonsQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [create] = useCreatePlatformClosureReasonMutation();
   const [update] = useUpdatePlatformClosureReasonMutation();
   const [remove] = useDeletePlatformClosureReasonMutation();
@@ -35,7 +48,10 @@ const ClosureReasonsTab: React.FC = () => {
       title="Platform-wide job-closure reason catalog."
       itemNounSingular="Closure reason"
       itemNounPlural="Closure reasons"
-      items={data}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.reason_id}
       labelOf={(item) => item.reason}

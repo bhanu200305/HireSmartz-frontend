@@ -1,4 +1,5 @@
 import { jobApi } from '../jobApi';
+import type { CatalogPage, SearchArgs } from '../JobOpening/catalogs';
 
 // The Super Admin's platform-wide skill catalogue. Rows with
 // organization_id set are a company's own additions, surfaced here
@@ -17,6 +18,31 @@ const extendedApi = jobApi.injectEndpoints({
     listPlatformSkills: build.query<PlatformSkill[], void>({
       query: () => '/platform/master-skills',
       transformResponse: (response: { skills: PlatformSkill[] }) => response.skills,
+      providesTags: ['PlatformSkills'],
+    }),
+    searchPlatformSkills: build.query<CatalogPage<PlatformSkill>, SearchArgs>({
+      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+        url: '/platform/master-skills/search',
+        method: 'GET',
+        params: {
+          page,
+          page_size: pageSize,
+          search: search || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        },
+      }),
+      transformResponse: (response: {
+        skills?: PlatformSkill[];
+        total?: number;
+        page?: number;
+        page_size?: number;
+      }) => ({
+        items: response.skills ?? [],
+        total: response.total ?? (response.skills ?? []).length,
+        page: response.page ?? 1,
+        pageSize: response.page_size ?? 20,
+      }),
       providesTags: ['PlatformSkills'],
     }),
     createPlatformSkill: build.mutation<
@@ -56,6 +82,7 @@ const extendedApi = jobApi.injectEndpoints({
 
 export const {
   useListPlatformSkillsQuery,
+  useSearchPlatformSkillsQuery,
   useCreatePlatformSkillMutation,
   useUpdatePlatformSkillMutation,
   useDeletePlatformSkillMutation,

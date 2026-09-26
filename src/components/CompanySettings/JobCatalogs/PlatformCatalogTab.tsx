@@ -12,6 +12,17 @@ import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import CatalogFormFields, { type CatalogField } from './CatalogFormFields';
 
+/** Backend-driven list state — omit `serverQuery`/`onServerQueryChange`
+ * entirely to fall back to the original client-side search+pagination
+ * (still used by any catalogue whose backend hasn't been upgraded yet). */
+export type CatalogServerQuery = {
+  page: number;
+  pageSize: number;
+  search: string;
+  sortBy: string;
+  sortDir: 'asc' | 'desc';
+};
+
 /**
  * One reusable list+add+edit+delete screen for a job-service
  * /platform/master-* catalogue — the 9 of these (Interview Rounds, Closure
@@ -43,6 +54,14 @@ export type PlatformCatalogTabProps<TItem, TFormValues extends Record<string, un
   allowCreate?: boolean;
   /** Hides the row-level Edit action, independent of `onDelete`. Defaults true. */
   allowEdit?: boolean;
+  /** Total match count from the backend. Only meaningful with `serverQuery`. */
+  total?: number;
+  /** Current backend search/sort/pagination state. Presence of this prop
+   * switches the whole component from client-side filtering to
+   * backend-driven search/sort/pagination — `items` is then just the
+   * current page, not the full catalogue. */
+  serverQuery?: CatalogServerQuery;
+  onServerQueryChange?: (next: CatalogServerQuery) => void;
 };
 
 function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>({
@@ -64,6 +83,9 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
   deleteConfirmTitle,
   allowCreate = true,
   allowEdit = true,
+  total,
+  serverQuery,
+  onServerQueryChange,
 }: PlatformCatalogTabProps<TItem, TFormValues>) {
   const [modalState, setModalState] = useState<{ mode: 'add' | 'edit'; item?: TItem } | null>(null);
   const [form, setForm] = useState<TFormValues>(emptyForm);
@@ -77,13 +99,16 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
     10
   );
 
+  const isServerDriven = !!serverQuery && !!onServerQueryChange;
+
   const filtered = useMemo(() => {
+    if (isServerDriven) return items ?? [];
     const q = searchText.trim().toLowerCase();
     if (!q) return items ?? [];
     return (items ?? []).filter((item) =>
       searchPredicate ? searchPredicate(item, q) : labelOf(item).toLowerCase().includes(q)
     );
-  }, [items, searchText, searchPredicate, labelOf]);
+  }, [items, searchText, searchPredicate, labelOf, isServerDriven]);
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -144,8 +169,28 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
 
   const showActions = allowEdit || !!onDelete;
 
+  // Server-driven mode: the "Name" column (assumed first) becomes remotely
+  // sortable via antd's built-in sorter UI, reporting through onChange below
+  // rather than sorting anything client-side itself.
+  const baseColumns = isServerDriven
+    ? (columns ?? []).map((col, index) =>
+        index === 0
+          ? {
+              ...col,
+              sorter: true,
+              sortOrder:
+                serverQuery!.sortBy === 'name'
+                  ? serverQuery!.sortDir === 'desc'
+                    ? ('descend' as const)
+                    : ('ascend' as const)
+                  : undefined,
+            }
+          : col
+      )
+    : columns;
+
   const allColumns: TableProps<TItem & { key: string }>['columns'] = [
-    ...(columns ?? []),
+    ...(baseColumns ?? []),
     showActions && {
       title: 'Actions',
       key: 'actions',
@@ -187,8 +232,16 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
         <div>
           <Typography variant="body2">{title}</Typography>
           <span className="text-xs font-medium text-gray-400">
-            {filtered.length} {filtered.length === 1 ? itemNounSingular : itemNounPlural}
-            {searchText.trim() && ` of ${items?.length ?? 0}`}
+            {isServerDriven ? (
+              `${total ?? dataSource.length} ${
+                (total ?? dataSource.length) === 1 ? itemNounSingular : itemNounPlural
+              }`
+            ) : (
+              <>
+                {dataSource.length} {dataSource.length === 1 ? itemNounSingular : itemNounPlural}
+                {searchText.trim() && ` of ${items?.length ?? 0}`}
+              </>
+            )}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -196,10 +249,14 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
             prefix={<MdSearch className="text-gray-400" />}
             placeholder={`Search ${itemNounPlural.toLowerCase()}...`}
             className="w-56"
-            value={searchText}
+            value={isServerDriven ? serverQuery!.search : searchText}
             onChange={(e) => {
-              setSearchText(e.target.value);
-              setPage(0);
+              if (isServerDriven) {
+                onServerQueryChange!({ ...serverQuery!, search: e.target.value, page: 1 });
+              } else {
+                setSearchText(e.target.value);
+                setPage(0);
+              }
             }}
           />
           {allowCreate && (
@@ -232,21 +289,46 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
           columns={allColumns}
           dataSource={dataSource}
           emptyText={
-            searchText.trim()
+            (isServerDriven ? serverQuery!.search.trim() : searchText.trim())
               ? `No ${itemNounPlural.toLowerCase()} match your search.`
               : `No ${itemNounPlural.toLowerCase()} yet.`
           }
-          pagination={false}
+          pagination={
+            isServerDriven
+              ? {
+                  current: serverQuery!.page,
+                  pageSize: serverQuery!.pageSize,
+                  total: total ?? 0,
+                }
+              : false
+          }
+          onChange={
+            isServerDriven
+              ? (pagination, _filters, sorter) => {
+                  const sort = Array.isArray(sorter) ? sorter[0] : sorter;
+                  const sortDir: 'asc' | 'desc' = sort?.order === 'descend' ? 'desc' : 'asc';
+                  onServerQueryChange!({
+                    ...serverQuery!,
+                    page: sort?.order ? 1 : (pagination.current ?? 1),
+                    pageSize: pagination.pageSize ?? serverQuery!.pageSize,
+                    sortBy: sort?.order ? 'name' : serverQuery!.sortBy,
+                    sortDir: sort?.order ? sortDir : serverQuery!.sortDir,
+                  });
+                }
+              : undefined
+          }
         />
       </div>
 
-      <MasterPagination
-        current={page + 1}
-        pageSize={pageSize}
-        total={filtered.length}
-        itemLabel={itemNounPlural.toLowerCase()}
-        onPageChange={(nextPage) => setPage(nextPage - 1)}
-      />
+      {!isServerDriven && (
+        <MasterPagination
+          current={page + 1}
+          pageSize={pageSize}
+          total={filtered.length}
+          itemLabel={itemNounPlural.toLowerCase()}
+          onPageChange={(nextPage) => setPage(nextPage - 1)}
+        />
+      )}
 
       <AntdCommonModal
         open={modalState !== null}

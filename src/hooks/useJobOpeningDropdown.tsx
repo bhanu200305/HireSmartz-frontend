@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../redux/provider/store';
 import { useSessionTenantId } from './useSessionTenantId';
+import { getJobErrorMessage } from '../shared/utils/auth/jobError.helpers';
 
 export type JobOpeningDropdownOption = {
   id: string;
@@ -217,6 +218,34 @@ const useJobOpeningDropdown = (
     callerKind,
   ]);
 
+  // Which query backs this endpoint, so we can surface why it's empty.
+  const activeQuery = (() => {
+    switch (endpoint) {
+      case 'JOB_TYPE':
+        return jobTypes;
+      case 'CLOSURE_REASON':
+        return closureReasons;
+      case 'JOB_MODE':
+        return jobModes;
+      case 'ROUNDS':
+        return roundTypes;
+      case 'EDUCATION_PREFERENCE':
+        return educationPreferences;
+      case 'LANGUAGE':
+        return languages;
+      case 'SHIFT':
+        return shifts;
+      case 'HIRING_MANAGER':
+      case 'RECRUITER':
+        return users;
+      default:
+        return undefined;
+    }
+  })();
+  const error = activeQuery?.isError
+    ? getJobErrorMessage(activeQuery.error, 'Failed to load options.')
+    : null;
+
   const loading =
     jobTypes.isLoading ||
     closureReasons.isLoading ||
@@ -246,7 +275,7 @@ const useJobOpeningDropdown = (
   return {
     jobOpeningDropdown,
     loading,
-    error: null as string | null,
+    error,
     refetch,
     searchSkills: (q: string) => {
       if (!isSkillsEndpoint(endpoint)) return;

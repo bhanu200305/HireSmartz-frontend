@@ -60,12 +60,8 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
   const handleAddNewQuestion = () => {
     if (pathname.includes('editAiQuestions')) {
       navigate(`/jobs/edit/${id}/editAiQuestions/addNewQuestion`);
-    } else if (pathname.includes('editVideoQuestions')) {
-      navigate(`/jobs/edit/${id}/editVideoQuestions/addNewQuestion`);
     } else if (pathname === '/ai-questions') {
       navigate('/ai-questions?addQuestion=true');
-    } else if (pathname === '/video-questions') {
-      navigate('/video-questions?addQuestion=true');
     }
   };
 
@@ -129,6 +125,7 @@ const JobsOpening = ({ refetchCandidates }: JobsOpeningProps) => {
             .filter((s) => String(s.skill_type).toUpperCase() !== 'REQUIRED')
             .map((s) => s.skill_id as unknown as number),
           otherRequirements: details.other_requirements ?? '',
+          benefits: details.benefits ?? '',
         })
       );
       dispatch(

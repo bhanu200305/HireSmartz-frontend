@@ -42,6 +42,7 @@ const initialState: JobState = {
     optionalSkills: [],
     responsibilities: '',
     otherRequirements: '',
+    benefits: '',
   },
   description: {
     educationPreference: [],

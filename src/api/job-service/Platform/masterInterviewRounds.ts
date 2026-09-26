@@ -1,4 +1,5 @@
 import { jobApi } from '../jobApi';
+import type { CatalogPage, SearchArgs } from '../JobOpening/catalogs';
 
 // The Super Admin's interview-round-type catalogue.
 export type PlatformInterviewRoundType = {
@@ -36,6 +37,34 @@ const extendedApi = jobApi.injectEndpoints({
         response.round_types,
       providesTags: ['PlatformInterviewRoundTypes'],
     }),
+    searchPlatformInterviewRoundTypes: build.query<
+      CatalogPage<PlatformInterviewRoundType>,
+      SearchArgs
+    >({
+      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+        url: '/platform/master-interview-rounds/search',
+        method: 'GET',
+        params: {
+          page,
+          page_size: pageSize,
+          search: search || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        },
+      }),
+      transformResponse: (response: {
+        round_types?: PlatformInterviewRoundType[];
+        total?: number;
+        page?: number;
+        page_size?: number;
+      }) => ({
+        items: response.round_types ?? [],
+        total: response.total ?? (response.round_types ?? []).length,
+        page: response.page ?? 1,
+        pageSize: response.page_size ?? 20,
+      }),
+      providesTags: ['PlatformInterviewRoundTypes'],
+    }),
     createPlatformInterviewRoundType: build.mutation<
       PlatformInterviewRoundType,
       SaveInterviewRoundTypeRequest
@@ -67,6 +96,7 @@ const extendedApi = jobApi.injectEndpoints({
 
 export const {
   useListPlatformInterviewRoundTypesQuery,
+  useSearchPlatformInterviewRoundTypesQuery,
   useCreatePlatformInterviewRoundTypeMutation,
   useUpdatePlatformInterviewRoundTypeMutation,
   useDeletePlatformInterviewRoundTypeMutation,

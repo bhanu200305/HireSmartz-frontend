@@ -133,6 +133,18 @@ const ViewJobSkills = () => {
             />
           </Form.Item>
         </div>
+
+        <div className="grid grid-cols gap-4">
+          <Form.Item label={<span>Benefits</span>}>
+            <TextArea
+              rows={4}
+              className="w-full px-4 py-2 border text-gray-500 rounded-lg border-[var(--border)]"
+              style={{ backgroundColor: '#ffffff', color: '#6b7280' }}
+              value={jobData?.data.benefits || ''}
+              disabled
+            />
+          </Form.Item>
+        </div>
       </Form>
     </>
   );

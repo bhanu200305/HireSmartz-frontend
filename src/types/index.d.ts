@@ -213,8 +213,11 @@ export type JobDetailsState = {
   mandatorySkills: Array<string | number>;
   optionalSkills?: Array<string | number>;
   otherRequirements?: string;
+  benefits?: string;
   /** skill_id -> skill_label for AI-added skills that never went through a dropdown search. */
   aiSuggestedSkillLabels?: Record<string, string>;
+  /** Field name -> unmatched AI guess text, for a still-blank field. */
+  unresolvedAiSuggestions?: Record<string, string>;
   /** @deprecated backend no longer accepts this (job-service migration 0016) */
   isMultilingual?: boolean;
   useCultureIntro?: boolean;
@@ -236,6 +239,7 @@ export type JobDescriptionState = {
   optionalSkills?: Array<string | number>;
   responsibilities?: string;
   otherRequirements?: string;
+  benefits?: string;
   candidateCommunicationLanguage?: string;
   isDraft?: boolean;
 };
@@ -284,6 +288,7 @@ export type SaveJobOpeningRequest = {
   communicationSkills?: string;
   responsibilities?: string;
   otherRequirements?: string;
+  benefits?: string;
   candidateCommunicationLanguage?: string;
   isMultilingual?: boolean;
   useCultureIntro?: boolean;
@@ -425,6 +430,9 @@ export type JobOpeningByIdResponse = {
     interviewedCandidateCount?: number;
     responsibilities?: string;
     otherRequirements?: string;
+    benefits?: string;
+    /** Field name -> unmatched AI guess text, for a still-blank field. */
+    unresolvedAiSuggestions?: Record<string, string>;
     candidateCommunicationLanguage?: string;
     hiringManager?: {
       id: number;
@@ -616,6 +624,7 @@ export type UpdateJobOpeningRequest = {
   communicationSkills?: string;
   responsibilities?: string;
   otherRequirements?: string;
+  benefits?: string;
   candidateCommunicationLanguage?: string;
   mandatorySkills?: number[];
   optionalSkills?: number[];

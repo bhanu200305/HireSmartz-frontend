@@ -61,6 +61,7 @@ export type PublicJobDetail = {
   responsibilities: string | null;
   requirements: string | null;
   other_requirements: string | null;
+  benefits: string | null;
   locations: PublicJobLocation[];
   skills: PublicJobSkill[];
   job_type_name: string | null;

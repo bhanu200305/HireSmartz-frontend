@@ -77,6 +77,7 @@ import {
   isAudioScreeningRound,
   isIntakeCallRound,
   isResumeStageRound,
+  isStaleResumeRound,
   orderRoundsForFlow,
 } from './roundProgress';
 
@@ -326,7 +327,7 @@ const CandidateDetails = () => {
   // by the resume stage's own `follows_intake_call` flag (candidate-service
   // migration 0023 — the per-candidate fact for this), so an instant-call
   // candidate's pipeline reads Intake Call → Resume Review.
-  const rounds = orderRoundsForFlow(rawRounds);
+  const rounds = orderRoundsForFlow(rawRounds).filter((r) => !isStaleResumeRound(r));
   const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId ?? '', {
     skip: !candidateId,
   });

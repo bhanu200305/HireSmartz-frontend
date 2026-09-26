@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  useListPlatformJobModesQuery,
+  useSearchPlatformJobModesQuery,
   useCreatePlatformJobModeMutation,
   useUpdatePlatformJobModeMutation,
   useDeletePlatformJobModeMutation,
   PlatformJobMode,
 } from '../../../api/job-service/Platform/masterJobModes';
-import PlatformCatalogTab from './PlatformCatalogTab';
+import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
 type FormValues = { name: string; description: string };
@@ -18,7 +18,20 @@ const fields: CatalogField<FormValues>[] = [
 
 /** Platform-wide job-mode catalogue (e.g. Remote, Hybrid, On-site). */
 const JobModesTab: React.FC = () => {
-  const { data, isLoading } = useListPlatformJobModesQuery();
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchPlatformJobModesQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [create] = useCreatePlatformJobModeMutation();
   const [update] = useUpdatePlatformJobModeMutation();
   const [remove] = useDeletePlatformJobModeMutation();
@@ -28,7 +41,10 @@ const JobModesTab: React.FC = () => {
       title="Platform-wide job-mode catalog."
       itemNounSingular="Job mode"
       itemNounPlural="Job modes"
-      items={data}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.job_mode_id}
       labelOf={(item) => item.job_mode_name}

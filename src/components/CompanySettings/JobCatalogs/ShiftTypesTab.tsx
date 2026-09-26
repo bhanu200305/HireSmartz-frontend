@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  useListPlatformShiftTypesQuery,
+  useSearchPlatformShiftTypesQuery,
   useCreatePlatformShiftTypeMutation,
   useUpdatePlatformShiftTypeMutation,
   useDeletePlatformShiftTypeMutation,
   PlatformShiftType,
 } from '../../../api/job-service/Platform/masterShiftTypes';
-import PlatformCatalogTab from './PlatformCatalogTab';
+import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
 
 type FormValues = {
@@ -45,7 +45,20 @@ const computeDurationMinutes = (startTime: string, endTime: string): number | nu
 
 /** Platform-wide shift-type catalogue offered to a tenant configuring their own shifts. */
 const ShiftTypesTab: React.FC = () => {
-  const { data, isLoading } = useListPlatformShiftTypesQuery();
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchPlatformShiftTypesQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [create] = useCreatePlatformShiftTypeMutation();
   const [update] = useUpdatePlatformShiftTypeMutation();
   const [remove] = useDeletePlatformShiftTypeMutation();
@@ -55,7 +68,10 @@ const ShiftTypesTab: React.FC = () => {
       title="Platform-wide shift-type catalog."
       itemNounSingular="Shift type"
       itemNounPlural="Shift types"
-      items={data}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.shift_type_id}
       labelOf={(item) => item.shift_name}

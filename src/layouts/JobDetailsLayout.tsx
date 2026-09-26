@@ -46,12 +46,10 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   // Create wizard: Job Details and AI Job Description are two separate
   // steps (jobdetails.tsx + JobDescriptionStep.tsx/JobDescriptionPanel.tsx),
-  // same shape as View/Edit below — previously merged into one split-screen
-  // step, un-merged back to match. Scoring Criteria sits right after AI
-  // Job Description; Video Questions is retired as its own step (JD
-  // Questions — the renamed AI Questions pool — is the one shared question
-  // bank now; see AiQuestionsSetup.tsx). VideoQuestionsSetup.tsx/its route
-  // are left in place, just unlinked from this nav.
+  // same shape as View/Edit below. Scoring Criteria sits right after AI
+  // Job Description; JD Questions (AiQuestionsSetup.tsx) is the one shared
+  // question bank for Audio Screening/AI Video/Hiring Panel - the old
+  // Video Questions step and its screen have been removed.
   const baseSteps = [
     'Job Details',
     'AI Job Description',
@@ -61,8 +59,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   ];
 
   // View/Edit keep Job Details and AI Job Description as two separate
-  // read-only tabs — same Scoring-Criteria-earlier, Video-Questions-retired
-  // changes as the create wizard, for consistency.
+  // read-only tabs, matching the create wizard above.
   const viewSteps = [
     'Job Details',
     'AI Job Description',

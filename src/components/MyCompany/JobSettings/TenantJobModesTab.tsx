@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  useListOrganizationJobModesQuery,
+  useSearchOrganizationJobModesQuery,
   useCreateJobModeMutation,
   useUpdateJobModeMutation,
   useDeleteJobModeMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import type { OrganizationJobMode } from '../../../api/job-service/types';
-import PlatformCatalogTab from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
+import PlatformCatalogTab, {
+  type CatalogServerQuery,
+} from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
 
 type FormValues = { name: string; description: string | null };
@@ -18,7 +20,20 @@ const fields: CatalogField<FormValues>[] = [
 
 /** This organization's own configured job modes. */
 const TenantJobModesTab: React.FC = () => {
-  const { data, isLoading } = useListOrganizationJobModesQuery();
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchOrganizationJobModesQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [create] = useCreateJobModeMutation();
   const [update] = useUpdateJobModeMutation();
   const [remove] = useDeleteJobModeMutation();
@@ -28,7 +43,10 @@ const TenantJobModesTab: React.FC = () => {
       title="Your company's configured job modes."
       itemNounSingular="Job mode"
       itemNounPlural="Job modes"
-      items={data}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.job_mode_name}

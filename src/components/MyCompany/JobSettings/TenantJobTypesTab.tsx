@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  useListJobTypesQuery,
+  useSearchJobTypesQuery,
   useCreateJobTypeMutation,
   useUpdateJobTypeMutation,
   useDeleteJobTypeMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import type { OrganizationJobType } from '../../../api/job-service/types';
-import PlatformCatalogTab from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
+import PlatformCatalogTab, {
+  type CatalogServerQuery,
+} from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
 
 type FormValues = { name: string; description: string };
@@ -18,7 +20,21 @@ const fields: CatalogField<FormValues>[] = [
 
 /** This organization's own configured job types. */
 const TenantJobTypesTab: React.FC = () => {
-  const { data, isLoading } = useListJobTypesQuery({ isMaster: false });
+  const [query, setQuery] = useState<CatalogServerQuery>({
+    page: 1,
+    pageSize: 10,
+    search: '',
+    sortBy: 'name',
+    sortDir: 'asc',
+  });
+  const { data, isLoading } = useSearchJobTypesQuery({
+    isMaster: false,
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search || undefined,
+    sortBy: query.sortBy,
+    sortDir: query.sortDir,
+  });
   const [create] = useCreateJobTypeMutation();
   const [update] = useUpdateJobTypeMutation();
   const [remove] = useDeleteJobTypeMutation();
@@ -28,7 +44,10 @@ const TenantJobTypesTab: React.FC = () => {
       title="Your company's configured job types."
       itemNounSingular="Job type"
       itemNounPlural="Job types"
-      items={data}
+      items={data?.items}
+      total={data?.total}
+      serverQuery={query}
+      onServerQueryChange={setQuery}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.job_type_name}

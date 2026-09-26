@@ -31,10 +31,13 @@ const PERMISSION_ACTION_LABELS: Record<string, string> = {
   'department:write': 'add departments',
   'department:update': 'edit departments or their job titles',
   'department:delete': 'delete departments',
+  'location:read': 'view office locations',
   'location:write': 'add office locations',
   'location:update': 'edit office locations',
   'location:delete': 'delete office locations',
+  'organization:read': "view this organization's configured data",
   'organization:update': 'edit these organization settings',
+  'tenant_job_title:read': 'view job titles',
 };
 
 /** The message to show a user — on a PERMISSION_DENIED error, replaces the

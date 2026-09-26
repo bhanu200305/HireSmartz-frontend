@@ -1038,6 +1038,25 @@ const ViewJobDetails = () => {
               />
             </Form.Item>
           </div>
+
+          <div className="grid grid-cols gap-4">
+            <Form.Item label={<span>Benefits</span>}>
+              <TextArea
+                rows={4}
+                className="w-full"
+                style={{
+                  background: 'var(--color-neutral-25)',
+                  border: '1px solid var(--color-neutral-100)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  color: '#374151',
+                  resize: 'none',
+                }}
+                value={jobData?.data.benefits || ''}
+                disabled
+              />
+            </Form.Item>
+          </div>
         </div>
       </Form>
     </>
