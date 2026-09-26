@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Select } from 'antd';
 import type { TableProps } from 'antd';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import CustomTable from '../shared/ui/table';
@@ -79,7 +80,6 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
       modalProps={{ width: 780, maskClosable: true }}
     >
       <div className="flex flex-col gap-3">
-<<<<<<< Updated upstream
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Select
             className="w-48"
@@ -95,20 +95,6 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
           />
         </div>
 
-        <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
-          <span>Rows per page</span>
-          <Select
-            size="small"
-            value={pageSize}
-            className="rows-per-page-select"
-            options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-            onChange={(size) => {
-              setPageSize(size);
-              setPage(0);
-            }}
-          />
-        </div>
-=======
         <RowsPerPageSelect
           pageSize={pageSize}
           options={PAGE_SIZE_OPTIONS}
@@ -117,7 +103,6 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
             setPage(0);
           }}
         />
->>>>>>> Stashed changes
 
         <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {isLoading ? (

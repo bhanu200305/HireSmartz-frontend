@@ -165,14 +165,27 @@ describe('passwordValidation', () => {
     }
   });
 
-  it('rejects a password missing uppercase, number, and special character', () => {
+  it('accepts a password with no character-class variety, as long as it meets the length policy', () => {
+    // No composition rules (uppercase/number/special) — the backend mirrors
+    // NIST guidance of length + a common-password blocklist only, see
+    // passwordValidation's own comment in input.helpers.ts.
     const result = schema.safeParse('lowercaseonly');
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a password shorter than MIN_PASSWORD_LENGTH', () => {
+    const result = schema.safeParse('short1!');
     expect(result.success).toBe(false);
     if (!result.success) {
-      const message = result.error.issues[0].message;
-      expect(message).toContain('uppercase letter');
-      expect(message).toContain('number');
-      expect(message).toContain('special character');
+      expect(result.error.issues[0].message).toContain('at least');
+    }
+  });
+
+  it('rejects a password longer than MAX_PASSWORD_LENGTH', () => {
+    const result = schema.safeParse('ThisPasswordIsWayTooLong1!');
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain('at most');
     }
   });
 

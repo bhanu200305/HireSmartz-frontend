@@ -704,10 +704,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                 placeholder="Categories"
                 allowClear
                 className="w-full custom-select my-select-with-divider"
-<<<<<<< Updated upstream
-=======
                 popupClassName="rounded-xl"
->>>>>>> Stashed changes
                 variant="borderless"
                 value={getDisplayValue()}
                 onChange={(value) => {
@@ -782,17 +779,10 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                       },
                     ],
                   }}
-<<<<<<< Updated upstream
                   // The trigger beside this already shows the avatar and the
                   // user's first name, so the dropdown doesn't repeat it at
                   // all — it adds only the company context the trigger can't
                   // show, on one compact line above the menu.
-=======
-                  // The trigger beside this already shows the avatar and
-                  // "Welcome <first name>", so the dropdown doesn't repeat the
-                  // user's name at all — it adds only the company context the
-                  // trigger can't show, on one compact line above the menu.
->>>>>>> Stashed changes
                   dropdownRender={(menu) => (
                     <div
                       className="rounded-xl overflow-hidden"
@@ -830,20 +820,10 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                   trigger={['click']}
                 >
                   <div className="flex items-center gap-3 px-1 py-1 text-sm cursor-pointer">
-<<<<<<< Updated upstream
                     <span className="font-semibold text-neutral-900">
                       {makeFirstLetterUpperCase(userData?.firstName)}{' '}
                       <DownOutlined className="text-xs text-neutral-500 cursor-pointer" />
                     </span>
-=======
-                    <div className="flex flex-col">
-                      <span className="text-xs text-neutral-500">Welcome</span>
-                      <span className="font-semibold text-neutral-900">
-                        {makeFirstLetterUpperCase(userData?.firstName)}{' '}
-                        <DownOutlined className="text-xs text-neutral-500 cursor-pointer" />
-                      </span>
-                    </div>
->>>>>>> Stashed changes
                   </div>
                 </Dropdown>
               </div>

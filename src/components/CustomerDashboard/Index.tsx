@@ -1,14 +1,9 @@
 import { useEffect, useState } from 'react';
 import { FaCity } from 'react-icons/fa';
 import { MdOutlineArrowBack } from 'react-icons/md';
-<<<<<<< Updated upstream
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { Popconfirm, Select, Tooltip } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-=======
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Popconfirm, Select } from 'antd';
->>>>>>> Stashed changes
 import type { TableProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';

@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-<<<<<<< Updated upstream
-import { Select } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-=======
->>>>>>> Stashed changes
 import type { TableProps } from 'antd';
 import { Link } from 'react-router-dom';
 import AntdCommonModal from './AntdCommonModal';
@@ -154,7 +150,6 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       modalProps={{ width: 860, maskClosable: true }}
     >
       <div className="flex flex-col gap-3">
-<<<<<<< Updated upstream
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
             <Search
@@ -177,20 +172,6 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
-          <span>Rows per page</span>
-          <Select
-            size="small"
-            value={pageSize}
-            className="rows-per-page-select"
-            options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-            onChange={(size) => {
-              setPageSize(size);
-              setPage(0);
-            }}
-          />
-        </div>
-=======
         <RowsPerPageSelect
           pageSize={pageSize}
           options={PAGE_SIZE_OPTIONS}
@@ -199,7 +180,6 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             setPage(0);
           }}
         />
->>>>>>> Stashed changes
 
         <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {isLoading ? (

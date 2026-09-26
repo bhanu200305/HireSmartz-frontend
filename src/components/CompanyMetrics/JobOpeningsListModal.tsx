@@ -1,20 +1,13 @@
 import React, { useState } from 'react';
-<<<<<<< Updated upstream
 import { Select } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-=======
->>>>>>> Stashed changes
 import type { TableProps } from 'antd';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import CustomTable from '../shared/ui/table';
 import MasterPagination from '../shared/ui/MasterPagination';
-<<<<<<< Updated upstream
 import { Badge, Search } from '../shared';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
-=======
 import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
-import { Badge } from '../shared';
->>>>>>> Stashed changes
 import { Loader } from '../shared/ui/loader';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import { useGetJobOpeningsListLegacyQuery as useGetJobOpeningsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
@@ -133,7 +126,6 @@ const JobOpeningsListModal: React.FC<{
       modalProps={{ width: 820, maskClosable: true }}
     >
       <div className="flex flex-col gap-3">
-<<<<<<< Updated upstream
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <Search
@@ -163,20 +155,6 @@ const JobOpeningsListModal: React.FC<{
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 text-sm text-neutral-500">
-          <span>Rows per page</span>
-          <Select
-            size="small"
-            value={pageSize}
-            className="rows-per-page-select"
-            options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-            onChange={(size) => {
-              setPageSize(size);
-              setPage(0);
-            }}
-          />
-        </div>
-=======
         <RowsPerPageSelect
           pageSize={pageSize}
           options={PAGE_SIZE_OPTIONS}
@@ -185,7 +163,6 @@ const JobOpeningsListModal: React.FC<{
             setPage(0);
           }}
         />
->>>>>>> Stashed changes
 
         <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
           {isLoading ? (

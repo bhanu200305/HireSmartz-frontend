@@ -1,8 +1,5 @@
 import { useState } from 'react';
-<<<<<<< Updated upstream
 import { useSelector } from 'react-redux';
-=======
->>>>>>> Stashed changes
 import { Select } from 'antd';
 import { MdOutlineSecurity, MdPhoneIphone } from 'react-icons/md';
 import { FaRegCopy } from 'react-icons/fa';
@@ -13,10 +10,7 @@ import {
   restrictPhoneDigitsForCountry,
   toE164,
 } from '../../shared/utils/validation/phoneValidation';
-<<<<<<< Updated upstream
 import { cleanPhoneNumber } from '../../shared/utils/methods';
-=======
->>>>>>> Stashed changes
 import {
   useConfirmMfaMethodMutation,
   useDisableMfaMethodMutation,
