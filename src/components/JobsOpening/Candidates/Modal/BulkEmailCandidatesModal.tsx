@@ -43,6 +43,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
   const [results, setResults] = useState<{ name: string; sent: boolean; reason: string | null }[]>(
     []
   );
+  const [bodyError, setBodyError] = useState<string | null>(null);
   const [sendBulkEmail, { isLoading: isSending }] = useSendBulkCandidateEmailMutation();
   const [previewEmail, { data: preview, isLoading: isPreviewing }] =
     usePreviewCandidateEmailMutation();
@@ -56,6 +57,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
       setBody('');
       setResults([]);
       setIsPreviewOpen(false);
+      setBodyError(null);
     }
   }, [open]);
 
@@ -83,6 +85,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
     }
     if (candidates.length === 0) return;
 
+    setBodyError(null);
     try {
       const res = await sendBulkEmail({
         candidateIds: candidates.map((c) => c.id),
@@ -109,7 +112,9 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
         type: sentCount > 0 ? 'success' : 'warning',
       });
     } catch (e) {
-      showToast({ message: getCandidateErrorMessage(e, 'Could not send email'), type: 'error' });
+      const message = getCandidateErrorMessage(e, 'Could not send email');
+      setBodyError(message);
+      showToast({ message, type: 'error' });
     }
   };
 
@@ -155,11 +160,18 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
               <TextArea
                 id="bulk-email-body"
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
+                onChange={(e) => {
+                  setBody(e.target.value);
+                  if (bodyError) setBodyError(null);
+                }}
                 placeholder="Type your message"
                 rows={8}
                 className="resize-y rounded-lg text-sm"
               />
+              {bodyError && <p className="text-red-500 text-sm px-2 py-1">{bodyError}</p>}
+              <p className="text-xs text-gray-400 px-2 py-1">
+                Do not include discriminatory, abusive, or hateful language.
+              </p>
             </div>
             <div className="flex gap-3">
               {canPreview && (

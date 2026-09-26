@@ -93,16 +93,22 @@ export const CandidateFeedbackPage = () => {
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [done, setDone] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const roundLabel = data ? interviewTypeLabel(data.interview_type) : 'interview';
 
+  // No client-side keyword/content check is added here on purpose — this
+  // field is judged by the backend's guardrail LLM only, specifically so a
+  // candidate reporting real discrimination is never blocked client-side.
+  // The only gate below is the existing rating/text presence check.
   const onSubmit = async () => {
     if (!rating || !text.trim()) return;
+    setSubmitError(null);
     try {
       await submit({ token, rating, feedback_text: text.trim() }).unwrap();
       setDone(true);
     } catch (e) {
-      alert(linkErrorText(e as InterviewApiError, 'Could not submit your feedback.'));
+      setSubmitError(linkErrorText(e as InterviewApiError, 'Could not submit your feedback.'));
     }
   };
 
@@ -184,8 +190,15 @@ export const CandidateFeedbackPage = () => {
         rows={4}
         placeholder="Tell us about your experience…"
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (submitError) setSubmitError(null);
+        }}
       />
+      <p className="mt-1 text-xs text-gray-400">
+        Please keep your feedback respectful and free of hateful or discriminatory language.
+      </p>
+      {submitError && <p className="mt-1 text-sm text-red-600">{submitError}</p>}
 
       <button
         type="button"

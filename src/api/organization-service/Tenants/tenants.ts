@@ -51,6 +51,19 @@ export type SuspendTenantResponse = {
   status: 'suspended' | string;
 };
 
+export type CorrectAdminEmailRequest = {
+  tenantId: string;
+  new_email: string;
+};
+
+export type CorrectAdminEmailResponse = {
+  admin_email: string;
+  // false when the tenant is still DRAFT (no invite exists yet — the
+  // corrected email is simply used whenever it's later confirmed). true
+  // means a fresh invite has already gone out to the corrected address.
+  invitation_resent: boolean;
+};
+
 export type CheckAdminEmailAvailabilityResponse = {
   // false means some other company, at any status (draft included), already
   // has this admin_email — see organization-service's
@@ -87,6 +100,19 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['Tenant'],
     }),
+    // Sales/Ops-tier fix for a mistyped admin_email on a DRAFT/PRE_APPROVED
+    // tenant (422 TENANT_ADMIN_EMAIL_NOT_EDITABLE once ACTIVE — the Company
+    // Admin has already logged in with the original email). Invalidates
+    // both 'Tenant' and 'PlatformTenants' since this is reachable from both
+    // the tenant-scoped and Super Admin platform screens.
+    correctAdminEmail: build.mutation<CorrectAdminEmailResponse, CorrectAdminEmailRequest>({
+      query: ({ tenantId, new_email }) => ({
+        url: `/v1/tenants/${tenantId}/correct-admin-email`,
+        method: 'POST',
+        body: { new_email },
+      }),
+      invalidatesTags: ['Tenant', 'PlatformTenants', 'TenantInvitations'],
+    }),
     // Lazy on purpose — the Create Company form triggers this itself
     // (debounced, on blur/change), it must NOT auto-fetch on mount the way
     // a plain useQuery would with no argument yet to check.
@@ -103,5 +129,6 @@ export const {
   useCreateTenantMutation,
   useConfirmTenantMutation,
   useSuspendTenantMutation,
+  useCorrectAdminEmailMutation,
   useLazyCheckAdminEmailAvailabilityQuery,
 } = extendedApi;

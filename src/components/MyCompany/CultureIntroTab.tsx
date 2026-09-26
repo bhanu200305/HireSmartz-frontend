@@ -27,6 +27,7 @@ const CultureIntroTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const canEdit = useHasAccess(Authorities.INTERVIEW_QUESTIONS_EDIT);
 
   const [draft, setDraft] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (data) {
@@ -42,14 +43,14 @@ const CultureIntroTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       showToast({ message: 'The culture intro cannot be empty.', type: 'error' });
       return;
     }
+    setError(null);
     try {
       await updateIntro({ tenantId, intro_text: text }).unwrap();
       showToast({ message: 'Culture intro updated.', type: 'success' });
     } catch (err) {
-      showToast({
-        message: getOrgErrorMessage(err, 'Failed to update culture intro.'),
-        type: 'error',
-      });
+      const message = getOrgErrorMessage(err, 'Failed to update culture intro.');
+      setError(message);
+      showToast({ message, type: 'error' });
     }
   };
 
@@ -68,11 +69,18 @@ const CultureIntroTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       <div className="max-w-2xl">
         <Textarea
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            if (error) setError(null);
+          }}
           rows={6}
           disabled={!canEdit}
           className="rounded-2xl text-sm"
+          error={error ?? undefined}
         />
+        <Typography variant="body2" className="mt-1 text-gray-400">
+          Do not include discriminatory, abusive, or hateful language.
+        </Typography>
         {canEdit && (
           <div className="flex justify-end mt-3">
             <Button

@@ -114,6 +114,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   } = useGetTenantCultureIntroQuery(tenantId);
   const [updateCultureIntro] = useUpdateTenantCultureIntroMutation();
   const [isEditMode, setIsEditMode] = useState(false);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [form, setForm] = useState<ProfileFormState>(toFormState(undefined, ''));
   const canEdit = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const [logoPreview, setLogoPreview] = useState('');
@@ -255,14 +256,17 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
   const handleField =
     (field: keyof ProfileFormState) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setForm((prev) => ({ ...prev, [field]: e.target.value }));
+      if (field === 'description' && descriptionError) setDescriptionError(null);
+    };
 
   const handleCancel = () => {
     setForm(toFormState(profile, cultureIntroValue ?? ''));
     setLogoPreview(profile?.logo_url || '');
     setScrapePreview(null);
     setPendingLogoStorageKey(null);
+    setDescriptionError(null);
     setIsEditMode(false);
   };
 
@@ -272,6 +276,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       showToast({ message: 'Company size must be a positive number.', type: 'error' });
       return;
     }
+    setDescriptionError(null);
     try {
       // `logo` is included for either a staged disk upload
       // (pendingLogoStorageKey, the common case — see handleLogoUpload) or
@@ -316,10 +321,9 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       setIsEditMode(false);
       refetch();
     } catch (err) {
-      showToast({
-        message: getOrgErrorMessage(err, 'Failed to update company profile.'),
-        type: 'error',
-      });
+      const message = getOrgErrorMessage(err, 'Failed to update company profile.');
+      setDescriptionError(message);
+      showToast({ message, type: 'error' });
     }
   };
 
@@ -454,12 +458,20 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             {isEditMode ? (
               <div className={key === 'website_url' ? 'flex items-center gap-2' : ''}>
                 {fullWidth ? (
-                  <Textarea
-                    value={form[key]}
-                    onChange={handleField(key)}
-                    placeholder={label}
-                    rows={4}
-                  />
+                  <>
+                    <Textarea
+                      value={form[key]}
+                      onChange={handleField(key)}
+                      placeholder={label}
+                      rows={4}
+                      error={key === 'description' ? (descriptionError ?? undefined) : undefined}
+                    />
+                    {key === 'description' && (
+                      <p className="mt-1 text-xs text-gray-400">
+                        Do not include discriminatory, abusive, or hateful language.
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <Input
                     value={form[key]}

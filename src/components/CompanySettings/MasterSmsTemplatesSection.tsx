@@ -66,6 +66,9 @@ const EditMasterSmsTemplateModal: React.FC<{
         <div>
           <p className="mb-1 block text-sm font-medium text-gray-700">Message</p>
           <TextArea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} />
+          <p className="mt-1 text-xs text-gray-400">
+            Do not include discriminatory, abusive, or hateful language.
+          </p>
         </div>
         <div className="flex justify-end">
           <Button
