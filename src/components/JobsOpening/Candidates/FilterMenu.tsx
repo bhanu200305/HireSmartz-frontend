@@ -30,7 +30,7 @@ const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
   const { data: sources = [] } = useListApplicationSourcesQuery();
 
   return (
-    <div className="py-2">
+    <div>
       <div className="flex flex-wrap gap-3 items-center">
         <div className="cfp-dropdown-trigger w-full sm:w-auto sm:min-w-[200px]">
           <FilterSelectIcon />

@@ -9,10 +9,12 @@ import {
   HiOutlineVideoCamera,
   HiOutlineOfficeBuilding,
 } from 'react-icons/hi';
-import { MdEdit } from 'react-icons/md';
+import { MdEdit, MdInfoOutline } from 'react-icons/md';
 import type { IconType } from 'react-icons';
 import { DraggableItem } from '../../shared/ui/DragAndDrop';
 import { showToast } from '../../shared';
+import RoundInfoModal from '../../shared/ui/RoundInfoModal';
+import { getRoundInfoContent } from '../../../shared/utils/roundInfoContent';
 
 type InterviewRound = {
   id: string | number;
@@ -74,6 +76,7 @@ export const SortableInterviewRounds = ({
   anchorRoundTypeIds,
 }: SortableInterviewRoundsProps) => {
   const [items, setItems] = useState<InterviewRound[]>(rounds);
+  const [infoRound, setInfoRound] = useState<InterviewRound | null>(null);
 
   useEffect(() => {
     setItems(rounds);
@@ -121,6 +124,9 @@ export const SortableInterviewRounds = ({
     const badge = getVariantBadge(round.variant);
     const BadgeIcon = badge?.icon;
     const summary = round.duration ? `${round.duration} min` : '';
+    // Resume and Intake Call are auto-seeded, locked anchor rounds — they
+    // can't be edited or removed, so their controls don't belong here.
+    const isAnchorRound = anchorRoundTypeIds?.has(String(round.round?.id)) ?? false;
 
     return (
       <div
@@ -140,38 +146,64 @@ export const SortableInterviewRounds = ({
               </span>
             )}
             {summary && <span className="text-sm text-neutral-500">{summary}</span>}
+            <button
+              type="button"
+              className="text-neutral-400 hover:text-primary-600 cursor-pointer p-0.5"
+              onClick={() => setInfoRound(round)}
+              aria-label={`About the ${round.round?.name} round`}
+            >
+              <MdInfoOutline size={16} />
+            </button>
           </div>
           {round.description && (
             <p className="text-sm text-neutral-500 mt-1 truncate">{round.description}</p>
           )}
         </div>
-        <div className="flex items-center gap-4 shrink-0">
-          <button
-            onClick={() => onEdit(round)}
-            className="text-neutral-500 hover:text-neutral-700 cursor-pointer"
-            aria-label="Edit round"
-          >
-            <MdEdit size={18} />
-          </button>
-          <button
-            className="text-red-500 hover:text-red-700 cursor-pointer"
-            onClick={() => onDelete(round.id)}
-            aria-label="Delete round"
-          >
-            <HiOutlineTrash size={18} />
-          </button>
-        </div>
+        {!isAnchorRound && (
+          <div className="flex items-center gap-4 shrink-0">
+            <button
+              onClick={() => onEdit(round)}
+              className="text-neutral-500 hover:text-neutral-700 cursor-pointer"
+              aria-label="Edit round"
+            >
+              <MdEdit size={18} />
+            </button>
+            <button
+              className="text-red-500 hover:text-red-700 cursor-pointer"
+              onClick={() => onDelete(round.id)}
+              aria-label="Delete round"
+            >
+              <HiOutlineTrash size={18} />
+            </button>
+          </div>
+        )}
       </div>
     );
   };
 
+  const infoModal = infoRound && (
+    <RoundInfoModal
+      roundName={infoRound.round?.name ?? 'Interview round'}
+      badgeLabel={getVariantBadge(infoRound.variant)?.label}
+      content={getRoundInfoContent({
+        variant: infoRound.variant,
+        roundName: infoRound.round?.name,
+      })}
+      fallbackText={infoRound.description}
+      onClose={() => setInfoRound(null)}
+    />
+  );
+
   if (isEditMode) {
     return (
-      <div className="space-y-4 pb-4">
-        {items.map((round, index) => (
-          <div key={round.id}>{renderCardBody(round, index)}</div>
-        ))}
-      </div>
+      <>
+        <div className="space-y-4 pb-4">
+          {items.map((round, index) => (
+            <div key={round.id}>{renderCardBody(round, index)}</div>
+          ))}
+        </div>
+        {infoModal}
+      </>
     );
   }
 
@@ -209,6 +241,7 @@ export const SortableInterviewRounds = ({
           </div>
         ))}
       </div>
+      {infoModal}
     </DndProvider>
   );
 };

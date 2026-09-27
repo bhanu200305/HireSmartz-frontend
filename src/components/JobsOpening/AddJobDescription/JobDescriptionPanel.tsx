@@ -359,15 +359,19 @@ const JobDescriptionPanel = ({
     </div>
   );
 
-  // Company logo banner, falls back to the company name.
+  // Company logo banner, falls back to the company name. The logo sits on a white
+  // badge instead of directly on bg-primary since uploaded logos are often dark
+  // and become unreadable against the blue background.
   const companyBanner = (
     <div className="h-11 px-4 bg-primary rounded-lg flex items-center justify-center">
       {tenantProfile?.logo_url ? (
-        <img
-          src={tenantProfile.logo_url}
-          alt={tenantProfile.company_name}
-          className="h-[42px] w-auto object-contain"
-        />
+        <div className="h-9 px-3 bg-white rounded-md flex items-center justify-center shadow-sm">
+          <img
+            src={tenantProfile.logo_url}
+            alt={tenantProfile.company_name}
+            className="h-7 w-auto object-contain"
+          />
+        </div>
       ) : (
         <span className="text-white font-semibold text-sm">{tenantProfile?.company_name}</span>
       )}
@@ -409,7 +413,6 @@ const JobDescriptionPanel = ({
             disabled={isUpdating}
           >
             <MdEdit size={18} />
-            <span className="text-primary">EDIT</span>
           </Button>
         )}
       </div>
@@ -469,7 +472,6 @@ const JobDescriptionPanel = ({
           </ReactMarkdown>
         </div>
       )}
-      <div className="mt-4">{companyBanner}</div>
     </div>
   );
 

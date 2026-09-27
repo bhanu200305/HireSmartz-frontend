@@ -239,8 +239,8 @@ const RoundCard = ({
               onOpenInterviewers();
             }}
           >
-            {round.interviewer_ids.length > 0
-              ? `Interviewers (${round.interviewer_ids.length}) ›`
+            {(round.interviewer_ids ?? []).length > 0
+              ? `Interviewers (${(round.interviewer_ids ?? []).length}) ›`
               : 'Set interviewers ›'}
           </button>
         )}
@@ -459,7 +459,7 @@ const PipelineBoard = ({
                 setInterviewersModalFor({
                   roundId: round.id,
                   roundName: roundLabel(round),
-                  currentInterviewerIds: round.interviewer_ids,
+                  currentInterviewerIds: round.interviewer_ids ?? [],
                 })
               }
               onRequestReschedule={

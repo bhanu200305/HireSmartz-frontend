@@ -918,6 +918,15 @@ const JobsOpening = () => {
         label: 'View',
         onClick: () => navigate(`/jobs/view/${record.jobOpeningId}/details`),
       },
+      !record.isDraft &&
+        !record.isClosed && {
+          key: 'add-candidate',
+          label: 'Add Candidate',
+          onClick: () =>
+            navigate(`/jobs/view/${record.jobOpeningId}/candidates`, {
+              state: { openAddCandidate: true },
+            }),
+        },
       {
         key: 'notes',
         label: 'Add notes',
@@ -983,6 +992,13 @@ const JobsOpening = () => {
       // "Duplicate" has no dedicated backend authority - it shares job:write with "create".
       if (item.key === 'duplicate') {
         return hasFeatureAccess('job_opening', 'create', role, authorities);
+      }
+      // Same gate as the ADD CANDIDATE button on the candidates page itself.
+      if (item.key === 'add-candidate') {
+        return (
+          hasFeatureAccess('job_opening', 'edit', role, authorities) ||
+          hasFeatureAccess('job_opening', 'create', role, authorities)
+        );
       }
       if (hasFeatureAccess('job_opening', item.key as any, role, authorities)) return true;
       return false;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Rate, Select, Tabs, Tooltip } from 'antd';
 import type { RootState } from '../../../redux/provider/store';
@@ -219,7 +219,6 @@ const PanelInterviewerPicker = ({
 );
 
 const CandidateDetails = () => {
-  const navigate = useNavigate();
   const { candidateId, id: jobIdFromParams } = useParams<{
     candidateId: string;
     id: string;
@@ -531,8 +530,6 @@ const CandidateDetails = () => {
       });
     }
   };
-
-  const handleBackToList = () => navigate(`/jobs/view/${parsedJobId}/candidates`);
 
   const handleDownloadResume = async () => {
     if (!candidateId) return;
@@ -863,16 +860,6 @@ const CandidateDetails = () => {
     <>
       {isCandidateLoading && <Loader />}
       <div className="flex flex-col mb-6 gap-2">
-        <div className="flex justify-end">
-          <Button
-            className="p-2 cursor-pointer flex items-center justify-center hover:underline text-primary"
-            onClick={handleBackToList}
-            title="Back"
-          >
-            <span className="text-sm">Back</span>
-          </Button>
-        </div>
-
         <div className="flex-1 bg-white px-6 py-4 shadow-sm rounded-xl">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-200">
             <h2 className="text-2xl font-bold">{candidateDisplayName(candidate)}</h2>

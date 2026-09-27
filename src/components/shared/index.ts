@@ -45,6 +45,7 @@ export { StepIndicator } from './ui/StepIndicator';
 export type { Step } from './ui/StepIndicator';
 export { default as PermissionMatrix } from './ui/PermissionMatrix';
 export { default as InfoHint } from './ui/InfoHint';
+export { default as RoundInfoModal } from './ui/RoundInfoModal';
 export { default as RolePermissionsHint } from './ui/RolePermissionsHint';
 export { AuthPageShell } from './ui/authPageShell';
 export { ScoringWeightCard } from './ui/scoringWeightCard';

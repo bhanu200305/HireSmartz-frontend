@@ -1,13 +1,17 @@
 import { HiOutlineMinus, HiOutlinePlus } from 'react-icons/hi';
+import { MdInfoOutline } from 'react-icons/md';
 import { Outlet, useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { Loader } from '../../shared/ui/loader';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getVariantBadge } from '../EditJobOpening/sortableInterviewRounds';
+import RoundInfoModal from '../../shared/ui/RoundInfoModal';
+import { getRoundInfoContent } from '../../../shared/utils/roundInfoContent';
 
 const ViewInterviewRound = () => {
   const [collapsedRounds, setCollapsedRounds] = useState<string[]>([]);
+  const [infoRoundId, setInfoRoundId] = useState<string | null>(null);
   const { id } = useParams();
   const jobId = asJobId(id);
   const { data: jobData, isLoading } = useGetJobOpeningByIdQuery(
@@ -53,6 +57,14 @@ const ViewInterviewRound = () => {
                       </span>
                     )}
                     {summary && <span className="text-sm text-neutral-500">{summary}</span>}
+                    <button
+                      type="button"
+                      className="text-neutral-400 hover:text-primary-600 cursor-pointer p-0.5"
+                      onClick={() => setInfoRoundId(round.id.toString())}
+                      aria-label={`About the ${round.round?.name} round`}
+                    >
+                      <MdInfoOutline size={16} />
+                    </button>
                   </div>
 
                   <div className="flex items-center space-x-4 shrink-0">
@@ -79,6 +91,26 @@ const ViewInterviewRound = () => {
         })}
         <Outlet />
       </div>
+      {infoRoundId &&
+        (() => {
+          const activeRound = jobData?.data.interviewRounds?.find(
+            (round) => round.id.toString() === infoRoundId
+          );
+          if (!activeRound) return null;
+          const badge = getVariantBadge(activeRound.variant);
+          return (
+            <RoundInfoModal
+              roundName={activeRound.round?.name ?? 'Interview round'}
+              badgeLabel={badge?.label}
+              content={getRoundInfoContent({
+                variant: activeRound.variant,
+                roundName: activeRound.round?.name,
+              })}
+              fallbackText={activeRound.description}
+              onClose={() => setInfoRoundId(null)}
+            />
+          );
+        })()}
     </>
   );
 };

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { LuArrowRight, LuFileText, LuPhoneCall } from 'react-icons/lu';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
 
@@ -39,27 +40,41 @@ export const CareersApplyChoicePage = () => {
           <span className="text-sm">Back</span>
         </button>
         {logoUrl ? (
-          <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-9 object-contain" />
+          <span className="bg-white rounded-md px-3 py-1.5 flex items-center">
+            <img
+              src={logoUrl}
+              alt={companyName ?? 'Company logo'}
+              className="h-7 object-contain"
+            />
+          </span>
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>
         )}
       </header>
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-10">
-        <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+      <main className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full px-4 py-14">
+        <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
           How would you like to apply?
         </h1>
-        <p className="text-sm text-gray-500 text-center mb-8">Pick whichever works for you</p>
+        <p className="text-sm text-gray-500 text-center mb-10">Pick whichever works for you</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full">
           <button
             type="button"
             onClick={() => navigate(`/careers/${organizationId}/jobs/${jobId}/apply`)}
-            className="text-left rounded-2xl border border-gray-200 bg-white p-6 hover:border-black transition-colors cursor-pointer"
+            className="group text-left rounded-2xl border border-gray-200 bg-white p-7 shadow-sm hover:shadow-lg hover:border-primary hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
           >
-            <div className="text-3xl mb-3">📄</div>
-            <div className="font-bold text-gray-900 mb-1">Apply with Resume</div>
-            <p className="text-sm text-gray-500">
+            <div className="flex items-start justify-between mb-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                <LuFileText size={22} />
+              </span>
+              <LuArrowRight
+                size={18}
+                className="text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all mt-2"
+              />
+            </div>
+            <div className="font-bold text-gray-900 mb-1.5">Apply with Resume</div>
+            <p className="text-sm text-gray-500 leading-relaxed">
               Fill out your details and upload your resume. We&apos;ll review and follow up by
               email.
             </p>
@@ -67,11 +82,19 @@ export const CareersApplyChoicePage = () => {
           <button
             type="button"
             onClick={() => navigate(`/careers/${organizationId}/jobs/${jobId}/apply/call`)}
-            className="text-left rounded-2xl border border-gray-200 bg-white p-6 hover:border-black transition-colors cursor-pointer"
+            className="group text-left rounded-2xl border border-gray-200 bg-white p-7 shadow-sm hover:shadow-lg hover:border-primary hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
           >
-            <div className="text-3xl mb-3">📞</div>
-            <div className="font-bold text-gray-900 mb-1">Instant Call with Iris</div>
-            <p className="text-sm text-gray-500">
+            <div className="flex items-start justify-between mb-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                <LuPhoneCall size={22} />
+              </span>
+              <LuArrowRight
+                size={18}
+                className="text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all mt-2"
+              />
+            </div>
+            <div className="font-bold text-gray-900 mb-1.5">Instant Call with Iris</div>
+            <p className="text-sm text-gray-500 leading-relaxed">
               Skip the form. Give us a call number and we&apos;ll call you. Upload your resume
               afterward.
             </p>

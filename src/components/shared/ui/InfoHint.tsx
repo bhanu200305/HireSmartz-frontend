@@ -28,7 +28,7 @@ const InfoHint: React.FC<InfoHintProps> = ({ content, className = '' }) => (
       border: '1px solid #e5e7eb',
     }}
   >
-    <span className={`text-gray-400 hover:text-primary-600 cursor-help inline-flex ${className}`}>
+    <span className={`text-gray-400 hover:text-primary-600 cursor-pointer inline-flex ${className}`}>
       <MdInfoOutline size={14} />
     </span>
   </Tooltip>

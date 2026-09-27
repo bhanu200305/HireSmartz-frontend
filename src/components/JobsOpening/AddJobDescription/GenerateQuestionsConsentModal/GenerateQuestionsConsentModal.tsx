@@ -231,10 +231,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
             onClick={handleConfirmClick}
             disabled={isLoading || !effectiveMode}
             className={clsx(
-              'text-white py-2 px-6 rounded-3xl cursor-pointer text-sm font-semibold transition flex items-center justify-center gap-2 min-w-[120px]',
-              effectiveMode === 'REPLACE'
-                ? 'bg-red-500 hover:bg-red-600'
-                : 'bg-button hover:opacity-90',
+              'text-white py-2 px-6 rounded-3xl cursor-pointer text-sm font-semibold transition flex items-center justify-center gap-2 min-w-[120px] bg-success hover:opacity-90',
               (isLoading || !effectiveMode) && 'opacity-50 cursor-not-allowed'
             )}
           >

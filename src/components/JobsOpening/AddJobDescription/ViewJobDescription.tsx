@@ -395,7 +395,6 @@ const ViewJobDescription = () => {
                     disabled={isUpdating}
                   >
                     <MdEdit size={20} />
-                    <span className="text-primary">EDIT</span>
                   </Button>
                 )}
               </div>

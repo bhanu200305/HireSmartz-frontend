@@ -1,9 +1,11 @@
 import { Form, Radio, Select } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, showToast } from '../../shared';
-import { MdClose } from 'react-icons/md';
+import { MdClose, MdInfoOutline } from 'react-icons/md';
 import TextArea from 'antd/es/input/TextArea';
 import { useState } from 'react';
+import RoundInfoModal from '../../shared/ui/RoundInfoModal';
+import { getRoundInfoContent } from '../../../shared/utils/roundInfoContent';
 import { useSaveInterviewRoundMutation } from '../../../api/job-service/JobOpening/AddInterviewRound';
 import { SaveInterviewRoundRequest } from '../../../types';
 import { Controller, useForm } from 'react-hook-form';
@@ -75,11 +77,13 @@ const AddNewRound = () => {
   );
 
   const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(null);
+  const [showRoundInfo, setShowRoundInfo] = useState(false);
 
   const {
     control,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<SaveInterviewRoundRequest>({
     defaultValues: {
@@ -199,8 +203,21 @@ const AddNewRound = () => {
             <Form form={form} layout="vertical" onFinish={handleSubmit(onSubmit)}>
               <Form.Item
                 label={
-                  <span className="text-sm font-semibold text-neutral-700">
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-neutral-700">
                     Round Name <span className="required-asterisk">*</span>
+                    <button
+                      type="button"
+                      disabled={!selectedRoundType}
+                      onClick={() => setShowRoundInfo(true)}
+                      aria-label="About this round"
+                      className={`inline-flex p-0.5 ${
+                        selectedRoundType
+                          ? 'text-neutral-400 hover:text-primary-600 cursor-pointer'
+                          : 'text-neutral-200 cursor-not-allowed'
+                      }`}
+                    >
+                      <MdInfoOutline size={16} />
+                    </button>
                   </span>
                 }
               >
@@ -404,6 +421,18 @@ const AddNewRound = () => {
           </div>
         </div>
       </div>
+      {showRoundInfo && selectedRoundType && (
+        <RoundInfoModal
+          roundName={selectedRoundType.name}
+          content={getRoundInfoContent({
+            specialKind: selectedRoundType.special_kind,
+            variant: watch('variant') ?? selectedRoundType.available_variants?.[0],
+            roundName: selectedRoundType.name,
+          })}
+          fallbackText={selectedRoundType.description}
+          onClose={() => setShowRoundInfo(false)}
+        />
+      )}
     </>
   );
 };
