@@ -23,7 +23,7 @@ jobs:
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GH_TOKEN }}
-          tag_prefix: "frontend-service-staging-"
+          tag_prefix: 'frontend-service-staging-'
           release_branches: staging-branch
           fetch_all_tags: true
           dry_run: false
@@ -81,7 +81,7 @@ jobs:
 
           echo "Pushing image to ECR..."
           docker push $IMAGE_URI
-          
+
           echo "IMAGE_FULL_NAME=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Setup Kubectl

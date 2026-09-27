@@ -274,9 +274,7 @@ canvas[data-agora-recording='true'] {
 .ant-modal-content {
   display: flex;
   flex-direction: column;
-  max-height: calc(
-    100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 48px
-  );
+  max-height: calc(100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 48px);
   overflow: hidden;
 }
 
@@ -328,9 +326,7 @@ canvas[data-agora-recording='true'] {
 }
 
 .app-modal-panel {
-  max-height: calc(
-    100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 48px
-  );
+  max-height: calc(100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 48px);
   overflow-y: auto;
 }
 
