@@ -58,3 +58,5 @@ describe('createCandidateStatusValidation', () => {
     expect(result.success).toBe(true);
   });
 });
+
+// Logs should be logged
