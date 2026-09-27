@@ -176,7 +176,7 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
         <div className="flex flex-col items-center py-2">
           <FiUploadCloud size={28} className="mb-1 text-primary" />
           <p className="text-xs text-gray-500">Click to upload or drag files here</p>
-          <p className="text-[11px] text-gray-400">
+          <p className="text-xs text-gray-400">
             PDF or DOCX, max {MAX_SIZE_MB}MB each, up to {MAX_FILES} files
           </p>
         </div>

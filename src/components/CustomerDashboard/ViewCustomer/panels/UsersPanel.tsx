@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import { Tooltip } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-import { Select as AntdSelect } from 'antd';
 import {
   MdOutlineAdd,
   MdOutlineBlock,
@@ -27,6 +27,7 @@ import { Loader } from '../../../shared/ui/loader';
 import MasterPagination from '../../../shared/ui/MasterPagination';
 import ConfirmationModal from '../../../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
+import { RowsPerPageSelect } from '../../../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../../../hooks/usePersistedPageSize';
 import { PAGE_SIZE_OPTIONS } from '../../../../constants/app.constants';
 import {
@@ -638,48 +639,56 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           return (
             <div className="flex gap-1">
               {matchedUserId && (
+                <Tooltip title="Change email">
+                  <button
+                    type="button"
+                    aria-label="Change email"
+                    className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    disabled={isChangingEmail}
+                    onClick={() =>
+                      startChangeEmail(row.invitation_id, matchedUserId, row.invited_email)
+                    }
+                  >
+                    <MdOutlineEdit />
+                  </button>
+                </Tooltip>
+              )}
+              <Tooltip title="Resend invitation">
                 <button
                   type="button"
-                  aria-label="Change email"
-                  className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  disabled={isChangingEmail}
-                  onClick={() =>
-                    startChangeEmail(row.invitation_id, matchedUserId, row.invited_email)
-                  }
+                  aria-label="Resend invitation"
+                  className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  disabled={isResendingInvite}
+                  onClick={() => handleResendInvite(row.invitation_id)}
                 >
-                  <MdOutlineEdit />
+                  <MdOutlineRefresh />
                 </button>
-              )}
-              <button
-                type="button"
-                aria-label="Resend invitation"
-                className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                disabled={isResendingInvite}
-                onClick={() => handleResendInvite(row.invitation_id)}
-              >
-                <MdOutlineRefresh />
-              </button>
-              <button
-                type="button"
-                aria-label="Revoke invitation"
-                className="p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                disabled={isRevokingInvite}
-                onClick={() => handleRevokeInvite(row.invitation_id)}
-              >
-                <MdOutlineBlock />
-              </button>
+              </Tooltip>
+              <Tooltip title="Revoke invitation">
+                <button
+                  type="button"
+                  aria-label="Revoke invitation"
+                  className="group p-2 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  disabled={isRevokingInvite}
+                  onClick={() => handleRevokeInvite(row.invitation_id)}
+                >
+                  <MdOutlineBlock className="text-gray-600 transition-colors group-hover:text-red-600" />
+                </button>
+              </Tooltip>
             </div>
           );
         }
         return row.is_active ? (
-          <button
-            type="button"
-            aria-label="Deactivate user"
-            className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-            onClick={() => setUserToDeactivate(row)}
-          >
-            <MdPersonOff className="text-red-500" />
-          </button>
+          <Tooltip title="Deactivate user">
+            <button
+              type="button"
+              aria-label="Deactivate user"
+              className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+              onClick={() => setUserToDeactivate(row)}
+            >
+              <MdPersonOff className="text-gray-600 transition-colors group-hover:text-red-600" />
+            </button>
+          </Tooltip>
         ) : (
           <button
             type="button"
@@ -751,19 +760,14 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         </div>
       </div>
 
-      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
-        <span>Rows per page</span>
-        <AntdSelect
-          size="small"
-          value={pageSize}
-          className="rows-per-page-select"
-          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-          onChange={(size) => {
-            setPageSize(size);
-            setPage(0);
-          }}
-        />
-      </div>
+      <RowsPerPageSelect
+        pageSize={pageSize}
+        options={PAGE_SIZE_OPTIONS}
+        onChange={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable<TableRow>

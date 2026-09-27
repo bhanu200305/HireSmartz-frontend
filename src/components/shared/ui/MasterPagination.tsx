@@ -101,7 +101,7 @@ export const MasterPagination: React.FC<MasterPaginationProps> = ({
           }`}
           aria-label="Previous page"
         >
-          <LeftOutlined style={{ fontSize: '10px' }} />
+          <LeftOutlined style={{ fontSize: '12px' }} />
         </button>
 
         <span className="text-gray-600 text-sm">Go to page</span>
@@ -129,7 +129,7 @@ export const MasterPagination: React.FC<MasterPaginationProps> = ({
           }`}
           aria-label="Next page"
         >
-          <RightOutlined style={{ fontSize: '10px' }} />
+          <RightOutlined style={{ fontSize: '12px' }} />
         </button>
       </div>
     </div>

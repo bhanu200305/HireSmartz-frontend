@@ -34,22 +34,47 @@ const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
       onClose={onClose}
       title="Preview"
       subtitle={preview?.subject || undefined}
-      modalProps={{ width: 640, maskClosable: true }}
+      // Not `maskClosable: true` — unlike the read-only list modals that
+      // opt into real backdrop-close (nothing there to lose), this stays on
+      // AntdCommonModal's default: an outside click flashes the X instead
+      // of closing, so a stray click while reading a preview can't dismiss
+      // it by accident.
+      modalProps={{ width: 640 }}
     >
-      {isLoading ? (
-        <div className="flex h-64 items-center justify-center">
-          <Spin />
-        </div>
-      ) : preview?.body_html ? (
-        <iframe
-          title="Notification preview"
-          sandbox=""
-          srcDoc={preview.body_html}
-          className="h-[60vh] w-full rounded-lg border border-gray-200"
-        />
-      ) : (
-        <pre className="whitespace-pre-wrap text-sm text-gray-700">{preview?.body_text}</pre>
-      )}
+      {/* Height computed from the SAME --app-header-height/--app-footer-height
+          vars index.css uses for `.ant-modal-content`'s own max-height budget
+          (`calc(100vh - header - footer - 48px)`), minus extra room for this
+          modal's title/subtitle block and padding — not a guessed vh
+          percentage. A flat guess (60vh, 65vh, ...) can still exceed the
+          modal's real available space once title+subtitle+padding are
+          counted, which leaves `.modal-content`'s own scroll fallback
+          engaged ALONGSIDE the iframe's own — this ties the box to the exact
+          budget so that never happens, and the iframe is the only thing that
+          ever scrolls. */}
+      <div
+        className="flex flex-col overflow-hidden"
+        style={{
+          height:
+            'calc(100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 208px)',
+        }}
+      >
+        {isLoading ? (
+          <div className="flex flex-1 items-center justify-center">
+            <Spin />
+          </div>
+        ) : preview?.body_html ? (
+          <iframe
+            title="Notification preview"
+            sandbox=""
+            srcDoc={preview.body_html}
+            className="w-full flex-1 min-h-0 rounded-lg border border-gray-200"
+          />
+        ) : (
+          <pre className="flex-1 min-h-0 overflow-auto whitespace-pre-wrap text-sm text-gray-700">
+            {preview?.body_text}
+          </pre>
+        )}
+      </div>
     </AntdCommonModal>
   );
 };

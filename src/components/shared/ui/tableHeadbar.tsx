@@ -90,6 +90,7 @@ const TableHeadBar: React.FC<TableHeadBarProps> = ({
                 variant="borderless"
                 onChange={handleStatusChange}
                 value={getSelectValue()}
+                popupMatchSelectWidth={false}
               >
                 <Option value={Status.ALL}>All</Option>
                 <Option value={Status.ACTIVE}>Active</Option>

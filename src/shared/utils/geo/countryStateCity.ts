@@ -96,6 +96,16 @@ export const findStateByName = async (
   return states.find((s) => s.name.toLowerCase() === target);
 };
 
+/** Unlike `findCountryByName`/`findStateByName`, this also falls back to a
+ * substring match (either direction) when there's no exact hit. Reverse/
+ * postal-code geocoding often has no clean city/town/village field to give
+ * — Nominatim's own `county`/`state_district` fallback is frequently a
+ * larger administrative unit whose name just embeds the real settlement
+ * name rather than matching it outright (e.g. a Mohali, Punjab postal code
+ * search returns `county: "S.A.S. Nagar (Mohali) Tahsil"`, not a bare
+ * "Mohali" — the vendored dataset's own entry). The length guard keeps a
+ * short name (e.g. a 2-letter one) from spuriously matching almost anything
+ * it happens to be a substring of. */
 export const findCityByName = async (
   countryId: number,
   stateId: number,
@@ -103,5 +113,18 @@ export const findCityByName = async (
 ): Promise<GeoCity | undefined> => {
   const cities = await getCities(countryId, stateId);
   const target = name.trim().toLowerCase();
-  return cities.find((c) => c.name.toLowerCase() === target);
+  if (!target) return undefined;
+
+  const exact = cities.find((c) => c.name.toLowerCase() === target);
+  if (exact) return exact;
+
+  const MIN_FUZZY_LENGTH = 3;
+  if (target.length < MIN_FUZZY_LENGTH) return undefined;
+  return cities.find((c) => {
+    const cityName = c.name.toLowerCase();
+    return (
+      cityName.length >= MIN_FUZZY_LENGTH &&
+      (target.includes(cityName) || cityName.includes(target))
+    );
+  });
 };

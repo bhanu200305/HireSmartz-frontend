@@ -220,13 +220,14 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                       role="option"
                       aria-selected={isSelected}
                       onClick={() => toggle(opt.id)}
-                      className={`flex items-center gap-3 px-2 py-2 rounded cursor-pointer text-sm transition-colors
-                        ${isSelected ? 'bg-brand-50/60' : 'hover:bg-gray-50'}
-                        ${isFocused ? 'ring-1 ring-brand-400 bg-brand-50' : ''}
+                      className={`flex items-center gap-3 px-2 py-2 rounded cursor-pointer text-sm bg-white transition-colors
+                        ${isFocused ? 'ring-1 ring-brand-400' : ''}
                       `}
                     >
                       <Checkbox checked={isSelected} tabIndex={-1} />
-                      <span className="text-gray-700">{opt.name}</span>
+                      <span className={isSelected ? 'text-brand-700 font-medium' : 'text-gray-700'}>
+                        {opt.name}
+                      </span>
                     </li>
                   );
                 })

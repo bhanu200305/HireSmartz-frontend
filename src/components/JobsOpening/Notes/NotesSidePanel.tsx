@@ -506,12 +506,12 @@ const NotesSidePanel = ({
                       <div className="flex-1 min-w-0 flex flex-col">
                         <div className="flex items-start justify-between gap-3">
                           <div
-                            className={`min-w-0 leading-snug pt-0.5 ${isCompact ? 'text-[14px]' : 'text-[15px]'}`}
+                            className={`min-w-0 leading-snug pt-0.5 ${isCompact ? 'text-sm' : 'text-base'}`}
                           >
                             <span className="font-bold text-gray-900">{note.authorName}</span>
                             {roleText ? (
                               <span
-                                className={`font-normal text-[#717171] ${isCompact ? 'text-[12px]' : 'text-[13px]'}`}
+                                className={`font-normal text-[#717171] ${isCompact ? 'text-xs' : 'text-sm'}`}
                               >
                                 {' '}
                                 ({roleText})
@@ -523,7 +523,7 @@ const NotesSidePanel = ({
                             {showTag ? (
                               <span
                                 className={`inline-flex items-center max-w-[200px] rounded-full border border-primary-600 bg-white font-medium text-primary-600 truncate ${
-                                  isCompact ? 'px-2.5 py-0.5 text-[11px]' : 'px-3 py-1 text-xs'
+                                  isCompact ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1 text-xs'
                                 }`}
                               >
                                 <span className="truncate" title={tagLabel}>
@@ -593,7 +593,7 @@ const NotesSidePanel = ({
                         ) : (
                           <p
                             className={`mt-2 mb-0 leading-relaxed text-[#4f4f4f] whitespace-pre-wrap break-words ${
-                              isCompact ? 'text-[13px]' : 'text-[14px]'
+                              isCompact ? 'text-sm' : 'text-sm'
                             }`}
                           >
                             {note.content}
@@ -602,7 +602,7 @@ const NotesSidePanel = ({
 
                         {timeStr ? (
                           <div
-                            className={`text-right text-[#828282] whitespace-nowrap ${isCompact ? 'mt-2 pt-0.5 text-[11px]' : 'mt-3 pt-1 text-[12px]'}`}
+                            className={`text-right text-[#828282] whitespace-nowrap ${isCompact ? 'mt-2 pt-0.5 text-xs' : 'mt-3 pt-1 text-xs'}`}
                           >
                             {timeStr}
                           </div>
@@ -632,12 +632,12 @@ const NotesSidePanel = ({
                 aria-hidden
               />
               <p
-                className={`font-semibold text-gray-900 mb-1.5 ${isCompact ? 'text-[15px]' : 'text-base'}`}
+                className={`font-semibold text-gray-900 mb-1.5 ${isCompact ? 'text-base' : 'text-base'}`}
               >
                 {emptyStateTitle}
               </p>
               <p
-                className={`text-[#717171] max-w-[320px] mx-auto leading-snug ${isCompact ? 'text-[13px]' : 'text-sm'}`}
+                className={`text-[#717171] max-w-[320px] mx-auto leading-snug ${isCompact ? 'text-sm' : 'text-sm'}`}
               >
                 {resolvedEmptySubtitle}
               </p>
@@ -673,13 +673,13 @@ const NotesSidePanel = ({
             </div>
           ) : (
             <p
-              className={`text-center text-[#717171] ${isCompact ? 'text-[12px] pb-2' : 'text-sm pb-3'}`}
+              className={`text-center text-[#717171] ${isCompact ? 'text-xs pb-2' : 'text-sm pb-3'}`}
             >
               You can only add notes to jobs you&apos;re assigned to.
             </p>
           )}
           <div
-            className={`flex items-center justify-between text-gray-400 ${isCompact ? 'text-[11px] mt-1' : 'text-xs mt-2'}`}
+            className={`flex items-center justify-between text-gray-400 ${isCompact ? 'text-xs mt-1' : 'text-xs mt-2'}`}
           >
             <span>
               {listNotes.length} Note{listNotes.length === 1 ? '' : 's'}

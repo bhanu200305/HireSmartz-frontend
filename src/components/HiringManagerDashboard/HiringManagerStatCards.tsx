@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { MdOutlineWorkOutline, MdOutlineRateReview, MdOutlinePendingActions } from 'react-icons/md';
-import { StatCardRow, StatDetailModal } from '../shared';
-import type { StatCardData } from '../shared';
+import { StatCardRow } from '../shared/ui/StatCardRow';
+import type { StatCardData } from '../shared/ui/StatCardRow';
+import StatDetailModal from '../shared/ui/StatDetailModal';
 import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import {
   useGetCandidatesInReviewQuery,
@@ -68,7 +69,7 @@ const HiringManagerStatCards: React.FC = () => {
             label: 'Candidates in review',
             value: isReviewLoading ? undefined : candidatesInReview?.total?.toLocaleString(),
             footer: (
-              <p className="text-[11px] text-neutral-400">
+              <p className="text-xs text-neutral-400">
                 Scheduled for, or already given, a panel interview
               </p>
             ),
@@ -80,7 +81,7 @@ const HiringManagerStatCards: React.FC = () => {
             label: 'Pending Decision',
             value: isPendingLoading ? undefined : pendingDecisions?.total?.toLocaleString(),
             footer: (
-              <p className="text-[11px] text-neutral-400">
+              <p className="text-xs text-neutral-400">
                 Interviewed, awaiting selection or rejection
               </p>
             ),

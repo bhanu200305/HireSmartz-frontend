@@ -95,6 +95,8 @@ const QuestionFormModal = ({
                   className="w-full custom-select placeholder-style"
                   placeholder="Select Question Category"
                   loading={isCategoryLoading}
+                  showSearch
+                  optionFilterProp="children"
                 >
                   {categoryOptions.length > 0 ? (
                     categoryOptions.map((option) => (

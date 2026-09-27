@@ -159,7 +159,7 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
             Back
           </button>
         )}
-        <div className="text-[10.5px] font-bold uppercase tracking-wide text-white/70 mb-0.5">
+        <div className="text-xs font-bold uppercase tracking-wide text-white/70 mb-0.5">
           Step {step} of {TOTAL_STEPS}
         </div>
         <h2 className="font-display text-base font-bold">

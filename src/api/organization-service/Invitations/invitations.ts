@@ -35,6 +35,13 @@ export type InvitationErrorCode =
   | 'INVITATION_ALREADY_ACCEPTED'
   | 'VALIDATION_ERROR'
   | 'EXTERNAL_SERVICE_ERROR'
+  // organization-service's PasswordPolicyViolationError.code — raised when
+  // AuthServiceClient recognizes a 422 `password_policy_violation` response
+  // from authentication-service instead of letting it fall into the generic
+  // EXTERNAL_SERVICE_ERROR bucket (see auth_service_client.py). `details`
+  // carries `violations: string[]`, the same per-rule messages
+  // PasswordPolicy.violations() produced on the backend.
+  | 'PASSWORD_POLICY_VIOLATION'
   // authentication-service's InvalidMfaCodeError.code, unchanged as it
   // crosses organization-service (see InvalidInvitationMfaCodeError's own
   // docstring on that side) — lowercase, unlike every other code here,

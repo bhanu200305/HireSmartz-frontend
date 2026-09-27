@@ -1,6 +1,6 @@
 import { Col, ColProps as AntdColProps } from 'antd';
+import { CaretUpOutlined, CaretDownOutlined } from '@ant-design/icons';
 import React from 'react';
-import { MdOutlineArrowDownward, MdOutlineArrowUpward } from 'react-icons/md';
 import { SortDirection } from '../../../types';
 
 type ColProps = AntdColProps & {
@@ -42,31 +42,20 @@ export const COL = ({
   const renderSortIcons = () => {
     if (!sortable) return null;
 
+    // Reuses AntD Table's own sorter markup/classes (already loaded app-wide
+    // wherever a real `<Table>` renders) instead of a hand-rolled icon, so
+    // this plain-div "table" looks identical to every other sortable list
+    // in the app rather than showing its own arrow style.
     return (
-      <span
-        style={{
-          marginLeft: 2,
-          display: 'inline-flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
-        <MdOutlineArrowUpward
-          size={14}
-          style={{
-            color: currentSortDirection === 'asc' ? 'var(--primary)' : 'black',
-            transition: 'color 0.3s',
-          }}
-        />
-        <MdOutlineArrowDownward
-          size={14}
-          style={{
-            color: currentSortDirection === 'desc' ? 'var(--primary)' : 'black',
-            transition: 'color 0.3s',
-          }}
-        />
+      <span className="ant-table-column-sorter">
+        <span className="ant-table-column-sorter-inner">
+          <CaretUpOutlined
+            className={`ant-table-column-sorter-up ${currentSortDirection === 'asc' ? 'active' : ''}`}
+          />
+          <CaretDownOutlined
+            className={`ant-table-column-sorter-down ${currentSortDirection === 'desc' ? 'active' : ''}`}
+          />
+        </span>
       </span>
     );
   };

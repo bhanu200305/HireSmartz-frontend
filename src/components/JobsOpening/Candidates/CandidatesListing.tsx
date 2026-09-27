@@ -17,6 +17,9 @@ import { IoArrowRedoOutline } from 'react-icons/io5';
 import { MdClose } from 'react-icons/md';
 import { CommonCard, Button, Badge, showToast } from '../../shared';
 import MasterPagination from '../../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../../shared/ui/RowsPerPageSelect';
+import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { Search } from '../../shared/ui/search';
 import { Loader } from '../../shared/ui/loader';
 import { COL } from '../../shared/ui/Columns';
@@ -59,8 +62,6 @@ import {
 
 type SelectedMap = Record<string, boolean>;
 
-const PAGE_SIZE = 20;
-
 const buildCurrentSortKey = (sortBy: string, sortOrder: 'asc' | 'desc') =>
   sortOrder === 'desc' ? `-${sortBy}` : sortBy;
 
@@ -79,6 +80,7 @@ const CandidatesListing = () => {
   const [sortBy, setSortBy] = useState<NonNullable<ListCandidatesArgs['sortBy']>>('applied_date');
   const [sortOrder, setSortOrder] = useState<NonNullable<ListCandidatesArgs['sortOrder']>>('desc');
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('job_candidates_listing', 20);
 
   const [selected, setSelected] = useState<SelectedMap>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -163,8 +165,8 @@ const CandidatesListing = () => {
       source,
       sortBy,
       sortOrder,
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
+      limit: pageSize,
+      offset: page * pageSize,
     },
     { skip: !parsedJobId, refetchOnMountOrArgChange: true }
   );
@@ -341,6 +343,14 @@ const CandidatesListing = () => {
       </div>
 
       <div className="w-full">
+        <RowsPerPageSelect
+          pageSize={pageSize}
+          options={PAGE_SIZE_OPTIONS}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
         {/* overflow-x-auto + min-w keeps columns readable on narrow viewports.
             980px (up from 760px) — the old width was too tight for two-word
             sortable headers ("RESUME SCORE", "APPLIED DATE") plus their sort
@@ -564,7 +574,7 @@ const CandidatesListing = () => {
 
         <MasterPagination
           current={page + 1}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           total={data?.total ?? 0}
           itemLabel="Candidates"
           onPageChange={(p) => setPage(p - 1)}

@@ -126,7 +126,7 @@ export const FeedbackTextEditor = ({
         toolbarClassName="border-b border-gray-200 bg-gray-50 rounded-t-lg"
         wrapperClassName="w-full"
         editorStyle={{
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'var(--font-sans)',
           lineHeight: '1.6',
           minHeight: '200px',
         }}

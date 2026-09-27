@@ -185,7 +185,7 @@ const RoundCard = ({
     >
       <div className="flex items-center gap-2 px-3.5 pt-3">
         <span
-          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${meta.stepBg} ${meta.stepText}`}
+          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${meta.stepBg} ${meta.stepText}`}
         >
           {visuallyFailed ? '!' : bucket === 'done' ? '✓' : index + 1}
         </span>

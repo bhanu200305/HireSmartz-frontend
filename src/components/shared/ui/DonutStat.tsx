@@ -56,7 +56,7 @@ const DonutStat: React.FC<DonutStatProps> = ({ data, centerLabel, height = 168 }
           <span className="font-display text-2xl font-bold text-neutral-900">
             {total.toLocaleString()}
           </span>
-          <span className="text-[10px] font-semibold tracking-wide text-neutral-400 uppercase">
+          <span className="text-xs font-semibold tracking-wide text-neutral-400 uppercase">
             {centerLabel}
           </span>
         </div>

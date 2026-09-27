@@ -1,20 +1,24 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-import { Select, Select as AntSelect } from 'antd';
-import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
+import { Select as AntSelect, Tooltip } from 'antd';
+import { MdBlock, MdDelete, MdEdit, MdOutlineAdd, MdRestore, MdSearch } from 'react-icons/md';
 import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { useEnterToSubmit } from '../../hooks/useEnterToSubmit';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
   useListPlatformJobTitlesQuery,
   useCreatePlatformJobTitleMutation,
   useUpdatePlatformJobTitleMutation,
   useDeletePlatformJobTitleMutation,
+  useDeactivatePlatformJobTitleMutation,
+  useActivatePlatformJobTitleMutation,
   PlatformJobTitle,
 } from '../../api/organization-service/Platform/jobTitles';
 import {
@@ -53,6 +57,9 @@ const JobTitlesTab: React.FC = () => {
   const [updateJobTitle, { isLoading: isUpdating }] = useUpdatePlatformJobTitleMutation();
   const [deleteJobTitle] = useDeletePlatformJobTitleMutation();
   const [assignJobTitleToDepartment] = useAssignJobTitleToDepartmentMutation();
+  const [deactivateJobTitle, { isLoading: isDeactivating }] =
+    useDeactivatePlatformJobTitleMutation();
+  const [activateJobTitle] = useActivatePlatformJobTitleMutation();
 
   const [modalState, setModalState] = useState<{
     mode: 'add' | 'edit';
@@ -60,6 +67,8 @@ const JobTitlesTab: React.FC = () => {
   } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [jobTitleToDelete, setJobTitleToDelete] = useState<PlatformJobTitle | null>(null);
+  const [jobTitleToDeactivate, setJobTitleToDeactivate] = useState<PlatformJobTitle | null>(null);
+  const [pendingActivateId, setPendingActivateId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -165,6 +174,10 @@ const JobTitlesTab: React.FC = () => {
     }
   };
 
+  const { onKeyDown: handleEnterToSubmit } = useEnterToSubmit(handleSubmit, {
+    enabled: modalState !== null && !isCreating && !isUpdating && isFormValid,
+  });
+
   const handleDelete = async () => {
     if (!jobTitleToDelete) return;
     try {
@@ -177,6 +190,38 @@ const JobTitlesTab: React.FC = () => {
       });
     } finally {
       setJobTitleToDelete(null);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!jobTitleToDeactivate) return;
+    try {
+      await deactivateJobTitle(jobTitleToDeactivate.job_title_id).unwrap();
+      showToast({ message: `"${jobTitleToDeactivate.name}" was deactivated.`, type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to deactivate job title.'),
+        type: 'error',
+      });
+    } finally {
+      setJobTitleToDeactivate(null);
+    }
+  };
+
+  // No confirmation modal, unlike deactivate — restoring visibility is the
+  // low-risk direction.
+  const handleActivate = async (jobTitle: PlatformJobTitle) => {
+    setPendingActivateId(jobTitle.job_title_id);
+    try {
+      await activateJobTitle(jobTitle.job_title_id).unwrap();
+      showToast({ message: `"${jobTitle.name}" was activated.`, type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to activate job title.'),
+        type: 'error',
+      });
+    } finally {
+      setPendingActivateId(null);
     }
   };
 
@@ -215,27 +260,65 @@ const JobTitlesTab: React.FC = () => {
       ),
     },
     {
+      title: 'Status',
+      key: 'status',
+      width: 110,
+      render: (_: unknown, jobTitle: JobTitleRow) => (
+        <Badge status={jobTitle.is_active ? 'success' : 'neutral'}>
+          {jobTitle.is_active ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+    {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 130,
       render: (_: unknown, jobTitle: JobTitleRow) => (
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Edit job title"
-            className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
-            onClick={() => openEdit(jobTitle)}
-          >
-            <MdEdit className="text-gray-600" />
-          </button>
-          <button
-            type="button"
-            aria-label="Delete job title"
-            className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-            onClick={() => setJobTitleToDelete(jobTitle)}
-          >
-            <MdDelete className="text-red-500" />
-          </button>
+          <Tooltip title="Edit job title">
+            <button
+              type="button"
+              aria-label="Edit job title"
+              className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+              onClick={() => openEdit(jobTitle)}
+            >
+              <MdEdit className="text-gray-600" />
+            </button>
+          </Tooltip>
+          <Tooltip title="Delete job title">
+            <button
+              type="button"
+              aria-label="Delete job title"
+              className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+              onClick={() => setJobTitleToDelete(jobTitle)}
+            >
+              <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+            </button>
+          </Tooltip>
+          {jobTitle.is_active ? (
+            <Tooltip title="Deactivate job title">
+              <button
+                type="button"
+                aria-label="Deactivate job title"
+                className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+                onClick={() => setJobTitleToDeactivate(jobTitle)}
+              >
+                <MdBlock className="text-gray-600 transition-colors group-hover:text-red-600" />
+              </button>
+            </Tooltip>
+          ) : (
+            <Tooltip title="Activate job title">
+              <button
+                type="button"
+                aria-label="Activate job title"
+                className="p-2 hover:bg-green-50 rounded-full disabled:cursor-not-allowed cursor-pointer transition-colors disabled:opacity-50"
+                disabled={pendingActivateId === jobTitle.job_title_id}
+                onClick={() => handleActivate(jobTitle)}
+              >
+                <MdRestore className="text-green-600" />
+              </button>
+            </Tooltip>
+          )}
         </div>
       ),
     },
@@ -276,19 +359,14 @@ const JobTitlesTab: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
-        <span>Rows per page</span>
-        <Select
-          size="small"
-          value={pageSize}
-          className="rows-per-page-select"
-          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-          onChange={(size) => {
-            setPageSize(size);
-            setPage(0);
-          }}
-        />
-      </div>
+      <RowsPerPageSelect
+        pageSize={pageSize}
+        options={PAGE_SIZE_OPTIONS}
+        onChange={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable<JobTitleRow>
@@ -313,9 +391,10 @@ const JobTitlesTab: React.FC = () => {
         onClose={() => setModalState(null)}
         title={modalState?.mode === 'edit' ? 'Edit job title' : 'Add job title'}
       >
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
           <Input
             placeholder="Name *"
+            maxLength={120}
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           />
@@ -363,6 +442,16 @@ const JobTitlesTab: React.FC = () => {
           confirmText="REMOVE"
           onConfirm={handleDelete}
           onClose={() => setJobTitleToDelete(null)}
+        />
+      )}
+
+      {jobTitleToDeactivate && (
+        <ConfirmationModal
+          title={`Deactivate "${jobTitleToDeactivate.name}"? Companies won't be able to import it anymore.`}
+          confirmText="DEACTIVATE"
+          isLoading={isDeactivating}
+          onConfirm={handleDeactivate}
+          onClose={() => setJobTitleToDeactivate(null)}
         />
       )}
     </div>

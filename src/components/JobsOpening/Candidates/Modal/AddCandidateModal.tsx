@@ -260,7 +260,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
                   <div className="flex flex-col items-center py-2">
                     <FiUploadCloud size={28} className="mb-1 text-primary" />
                     <p className="text-xs text-gray-500">Click to upload or drag a resume here</p>
-                    <p className="text-[11px] text-gray-400">PDF or DOCX, max {MAX_SIZE_MB}MB</p>
+                    <p className="text-xs text-gray-400">PDF or DOCX, max {MAX_SIZE_MB}MB</p>
                   </div>
                 </Upload.Dragger>
               )}

@@ -285,7 +285,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={jobData?.data.jobProfileCode || ''}
                 disabled
@@ -351,7 +351,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={jobTypeName}
                 disabled
@@ -368,7 +368,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={shiftName}
                 disabled
@@ -385,7 +385,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={selectedLanguageNames.length ? selectedLanguageNames.join(', ') : '-'}
                 disabled
@@ -450,7 +450,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={locationDisplayName}
                 disabled
@@ -467,7 +467,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={locationCode}
                 disabled
@@ -486,7 +486,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={locationAddressLine1}
                 disabled
@@ -502,7 +502,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={locationAddressLine2}
                 disabled
@@ -521,7 +521,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={locationCity}
                 disabled
@@ -537,7 +537,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={locationState}
                 disabled
@@ -553,7 +553,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={locationZipCode}
                 disabled
@@ -569,7 +569,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={locationCountry}
                 disabled
@@ -690,7 +690,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={
                   // openDate is an ISO 8601 string; let dayjs parse it natively.
@@ -718,7 +718,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={jobData?.data.openings || ''}
                 disabled
@@ -751,7 +751,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={jobData?.data.exemptionStatus?.statusName || ''}
                 disabled
@@ -848,7 +848,7 @@ const ViewJobDetails = () => {
                 boxShadow: 'none',
                 color: '#111827',
                 fontWeight: 600,
-                fontSize: '13px',
+                fontSize: '14px',
               }}
               intlConfig={{ locale: 'en-US', currency: 'USD' }}
             />
@@ -870,7 +870,7 @@ const ViewJobDetails = () => {
                 boxShadow: 'none',
                 color: '#111827',
                 fontWeight: 600,
-                fontSize: '13px',
+                fontSize: '14px',
               }}
               value={jobData?.data.minExperience ?? ''}
               disabled
@@ -887,7 +887,7 @@ const ViewJobDetails = () => {
                 boxShadow: 'none',
                 color: '#111827',
                 fontWeight: 600,
-                fontSize: '13px',
+                fontSize: '14px',
               }}
               value={jobData?.data.maxExperience ?? ''}
               disabled
@@ -913,7 +913,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={
                   jobData?.data.mandatorySkills?.length
@@ -954,7 +954,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={
                   jobData?.data.optionalSkills?.length
@@ -997,7 +997,7 @@ const ViewJobDetails = () => {
                   boxShadow: 'none',
                   color: '#111827',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '14px',
                 }}
                 value={
                   jobData?.data.educationPreference

@@ -38,7 +38,7 @@ export const Badge = ({ children, status = 'neutral', className, dot = true }: B
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold font-sans',
         statusClasses[status],
         className
       )}

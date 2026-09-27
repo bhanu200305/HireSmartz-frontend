@@ -1950,6 +1950,72 @@ const EditJobDetail = () => {
       });
     }
   };
+
+  // Plain "Save" — persists this tab's edits and nothing else. "Save & Next"
+  // above bundles two things a user editing an already-published job may not
+  // want together: it always navigates to the JD tab, AND it silently
+  // re-runs AI JD generation (enhanceJd({ regenerate: true })) whenever a
+  // description-relevant field changed. This mirrors onSubmit's own
+  // save-and-dispatch steps but stops right there — no regenerate check, no
+  // navigation — so a small edit doesn't kick off the whole pipeline.
+  const handleSaveOnly = async (data: JobDetailsState) => {
+    const hasInterviewsStarted = jobData?.data?.interviewedCandidateCount !== 0;
+    const languagesValue = hasInterviewsStarted
+      ? (jobData?.data?.languages ?? [])
+      : (data.languages ?? []);
+
+    const processedData = {
+      ...data,
+      referralBonus:
+        data.referralBonus === null ||
+        data.referralBonus === undefined ||
+        data.referralBonus === 0 ||
+        data.referralBonus === ''
+          ? ''
+          : data.referralBonus,
+      languages: languagesValue,
+      useCultureIntro: Boolean(data.useCultureIntro),
+      isDraft: false,
+    };
+    const payload = {
+      ...jobDetails,
+      ...processedData,
+    };
+    const jobDescriptionPayload = {
+      educationPreference: data.educationPreference,
+      mandatorySkills: data.mandatorySkills,
+      optionalSkills: data.optionalSkills,
+      otherRequirements: data.otherRequirements,
+      benefits: data.benefits,
+      responsibilities: data.responsibilities,
+    };
+
+    try {
+      const jobId = parsedJobId || asJobId(jobOpeningId);
+      const details = buildSaveJobDetailsPayload({ data: payload, offices });
+      await updateJobOpening({
+        jobOpeningId: jobId,
+        body: details,
+      }).unwrap();
+
+      showToast({ message: 'Job details saved.', type: 'success' });
+      justSavedRef.current = true;
+      dispatch(updateEditJobDetails(payload));
+      dispatch(updateEditJobDescription(jobDescriptionPayload));
+      dispatch(updateEditInterviewRounds(interViewRound));
+      // Re-baselines the unsaved-changes check against what was just
+      // persisted, rather than permanently disabling it via
+      // setAllowNavigation(true) — this stays on the page, so the guard
+      // should still catch whatever the user edits NEXT.
+      setInitialFormValues({ ...formValues });
+    } catch (error) {
+      showToast({
+        message: getJobErrorMessage(error, 'Failed to save job details'),
+        type: 'error',
+      });
+    }
+  };
+
   return (
     <>
       {(isFetchingJobData || isUpdatingDraft || isRegenerating) && <Loader />}
@@ -2246,6 +2312,8 @@ const EditJobDetail = () => {
                         <Select
                           mode="multiple"
                           allowClear
+                          showSearch
+                          optionFilterProp="label"
                           variant="borderless"
                           disabled={isDisabled}
                           placeholder="Select languages"
@@ -3208,6 +3276,20 @@ const EditJobDetail = () => {
               SAVE AS DRAFT
             </Button>
           )}
+          <Button
+            type="button"
+            className="border border-button text-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+            onClick={handleSubmit(handleSaveOnly, (invalidFields) => {
+              showToast({
+                message: 'Please fill all required fields before saving.',
+                type: 'error',
+              });
+              scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
+            })}
+            disabled={isFetchingJobData || isUpdatingDraft || !canEditThisJob}
+          >
+            SAVE
+          </Button>
           <Button
             type="button"
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"

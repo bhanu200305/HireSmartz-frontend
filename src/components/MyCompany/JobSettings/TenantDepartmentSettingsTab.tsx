@@ -6,6 +6,7 @@ import { MdSearch } from 'react-icons/md';
 import { CustomTable, Input, Typography, Button, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import MasterPagination from '../../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
@@ -219,7 +220,7 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
         more departments.
       </Typography>
 
-      <div className="flex items-center gap-4 mb-6 flex-wrap">
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
         <AntSelect
           showSearch
           placeholder="Select department"
@@ -232,18 +233,19 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
           filterOption={(input, option) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
           }
-          className="w-full sm:w-[280px]"
+          className="w-64"
         />
-        <Input
-          prefix={<MdSearch className="text-gray-400" />}
-          placeholder="Search job titles..."
-          className="w-full sm:w-[320px]"
-          value={searchText}
-          onChange={(e) => {
-            setSearchText(e.target.value);
-            setPage(0);
-          }}
-        />
+        <div className="w-52">
+          <Input
+            prefix={<MdSearch className="text-gray-400" />}
+            placeholder="Search job titles..."
+            value={searchText}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              setPage(0);
+            }}
+          />
+        </div>
       </div>
 
       {!selectedDepartmentId ? (
@@ -252,19 +254,14 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
         </div>
       ) : (
         <>
-          <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
-            <span>Rows per page</span>
-            <AntSelect
-              size="small"
-              value={pageSize}
-              className="rows-per-page-select"
-              options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-              onChange={(size) => {
-                setPageSize(size);
-                setPage(0);
-              }}
-            />
-          </div>
+          <RowsPerPageSelect
+            pageSize={pageSize}
+            options={PAGE_SIZE_OPTIONS}
+            onChange={(size) => {
+              setPageSize(size);
+              setPage(0);
+            }}
+          />
 
           <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm relative">
             {isMappedLoading && (

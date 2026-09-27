@@ -74,7 +74,7 @@ const AddNewPackage = () => {
             <h2 className="text-center text-2xl font-semibold mb-2">Add New Package</h2>
             <p className="text-center text-gray-500 mb-6">Please enter the following details</p>
 
-            <Form layout="vertical">
+            <Form layout="vertical" onFinish={handleSubmit(handleAddPackage)}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                 <Form.Item label="Voice Agent Usage: Calling Minutes">
                   <Input
@@ -158,8 +158,8 @@ const AddNewPackage = () => {
               <Form.Item className="mt-6">
                 <Button
                   appname="add-package"
+                  type="submit"
                   className="w-full text-white bg-[var(--color-primary)] rounded-3xl py-3"
-                  onClick={handleSubmit(handleAddPackage)}
                 >
                   SUBMIT
                 </Button>

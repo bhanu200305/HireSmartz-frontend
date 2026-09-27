@@ -25,27 +25,24 @@ import type { TenantDraft } from './index';
 const EMAIL_CHECK_DEBOUNCE_MS = 400;
 
 // Shape GuestOrganizations/index.tsx hands over via router state when a
-// Super Admin clicks "Approve" on a Book a Demo lead. Deliberately narrow —
-// only the fields this step's form actually has room for; website/industry
-// aren't collected by the demo form, so they stay for the Super Admin to
-// fill in here rather than being guessed at.
+// Super Admin clicks "Approve" on a Book a Demo lead. `companyName`/
+// `adminEmail`/`contactNumber` feed real form fields below; the rest
+// (`location`/`companySize`/`jobTitle`/`referralSource`) have nowhere to go
+// on the wire yet — `CreateTenantRequest` doesn't accept them, and this
+// step's form has no fields for them either (website/industry are the only
+// non-lead extras it collects). They're carried through anyway and shown as
+// read-only reference context in the banner below, so a Super Admin can
+// still see and act on them manually instead of the data silently
+// vanishing the moment a lead is approved.
 export type GuestOrgPrefill = {
   id: string;
   companyName: string;
   adminEmail: string;
   contactNumber: string;
-};
-
-// Best-effort only: the demo form collects one free-text phone field with no
-// guaranteed format or known country, while this step's phone field is
-// validated against whichever country is selected (defaults to US/Canada —
-// see adminContactCountryCode's own default below). Rather than seed a
-// value that fails that validation, this only prefills when the last 10
-// digits look like a plausible US/Canada number; anything else is left
-// blank for the Super Admin to type in themselves.
-const formatPrefillPhone = (raw: string): string => {
-  const digits = raw.replace(/\D/g, '').slice(-10);
-  return digits.length === 10 ? digits : '';
+  location: string;
+  companySize: number;
+  jobTitle: string;
+  referralSource: string | null;
 };
 
 type StepCompanyDetailsProps = {
@@ -64,7 +61,14 @@ type StepCompanyDetailsProps = {
 // why this no longer reuses DropdownWithAddOption.
 const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProps) => {
   const [createTenant, { isLoading }] = useCreateTenantMutation();
-  const { data: industries, isLoading: loadingIndustries } = useListIndustriesQuery();
+  // includeInactive: false — a deactivated industry shouldn't be offered
+  // when setting up a brand-new company. Industry has no separate picker
+  // endpoint (unlike Department/Job Title/Office), so this list is shared
+  // with IndustriesTab.tsx's own management table, which omits this to see
+  // everything.
+  const { data: industries, isLoading: loadingIndustries } = useListIndustriesQuery({
+    includeInactive: false,
+  });
   const [checkAdminEmailAvailability, { isFetching: isCheckingEmail }] =
     useLazyCheckAdminEmailAvailabilityQuery();
   const [emailTakenMessage, setEmailTakenMessage] = useState<string | null>(null);
@@ -72,6 +76,14 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
 
   const location = useLocation();
   const fromGuestOrg = (location.state as { fromGuestOrg?: GuestOrgPrefill } | null)?.fromGuestOrg;
+
+  // Resolved once, upfront, rather than inline in `defaultValues` below —
+  // the phone prefill needs this same value to know which country to clamp
+  // the demo lead's free-text number against.
+  const defaultAdminContactCountryCode =
+    initialValues?.adminContactCountryCode ??
+    countryCodes.find((code) => code.label === 'United States & Canada (+1)')?.value ??
+    '+1';
 
   const { register, handleSubmit, watch, setValue, trigger, formState } =
     useForm<TenantDetailsFormValues>({
@@ -83,13 +95,22 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
         websiteUrl: initialValues?.websiteUrl ?? '',
         industryId: initialValues?.industryId ?? '',
         adminEmail: initialValues?.adminEmail ?? fromGuestOrg?.adminEmail ?? '',
-        adminContactCountryCode:
-          initialValues?.adminContactCountryCode ??
-          countryCodes.find((code) => code.label === 'United States & Canada (+1)')?.value ??
-          '+1',
+        adminContactCountryCode: defaultAdminContactCountryCode,
+        // The demo form collects one free-text phone field with no
+        // guaranteed format or known country — this just clamps it to
+        // whatever's a *plausible* length for the country the field defaults
+        // to (same clamp `PhoneNumberField` applies on every keystroke), so
+        // a too-long/garbled paste doesn't sail past validation as one long
+        // digit string. It was previously an all-or-nothing US/Canada
+        // 10-digit regex that silently dropped every other country's lead.
         adminContactPhone:
           initialValues?.adminContactPhone ??
-          (fromGuestOrg ? formatPrefillPhone(fromGuestOrg.contactNumber) : ''),
+          (fromGuestOrg
+            ? restrictPhoneDigitsForCountry(
+                fromGuestOrg.contactNumber,
+                defaultAdminContactCountryCode
+              )
+            : ''),
       },
       mode: 'onChange',
     });
@@ -173,9 +194,37 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
       {isLoading && <Loader />}
 
       {fromGuestOrg && (
-        <div className="mb-4 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm text-brand-900">
-          Pre-filled from a Book a Demo lead. Add a website to trigger the branding scrape, and
-          confirm the industry, before creating the tenant.
+        <div className="mb-4 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900">
+          <p>
+            Pre-filled from a Book a Demo lead. Add a website to trigger the branding scrape, and
+            confirm the industry, before creating the tenant.
+          </p>
+          {/* Reference only — none of these have a field on this form or a
+              slot on the wire to create the tenant with (CreateTenantRequest
+              doesn't accept them), so they're shown here rather than
+              silently dropped the moment the lead is approved. */}
+          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-brand-800 sm:grid-cols-4">
+            <div>
+              <dt className="font-semibold uppercase tracking-wide text-brand-600">Location</dt>
+              <dd>{fromGuestOrg.location || '—'}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold uppercase tracking-wide text-brand-600">Company size</dt>
+              <dd>{fromGuestOrg.companySize ? `${fromGuestOrg.companySize}+ employees` : '—'}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold uppercase tracking-wide text-brand-600">
+                Requester&apos;s job title
+              </dt>
+              <dd>{fromGuestOrg.jobTitle || '—'}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold uppercase tracking-wide text-brand-600">
+                Heard about us via
+              </dt>
+              <dd>{fromGuestOrg.referralSource || '—'}</dd>
+            </div>
+          </dl>
         </div>
       )}
 

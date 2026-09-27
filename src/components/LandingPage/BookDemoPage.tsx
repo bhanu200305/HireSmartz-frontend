@@ -742,7 +742,7 @@ const BookDemoPage = () => {
                   {isSubmitting ? 'Submitting…' : 'Book a Demo'}
                 </button>
 
-                <p className="text-center text-[11px] leading-relaxed text-neutral-400">
+                <p className="text-center text-xs leading-relaxed text-neutral-400">
                   By providing your phone number, you agree to receive SMS messages from Careerforce
                   Pro related to your demo request. Message frequency varies. Message &amp; data
                   rates may apply. Reply STOP to unsubscribe or HELP for help. See our{' '}

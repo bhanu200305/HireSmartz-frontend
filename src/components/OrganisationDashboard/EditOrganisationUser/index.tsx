@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { MdClose, MdOutlineArrowBack } from 'react-icons/md';
-import { Select } from 'antd';
+import { Select, Tooltip } from 'antd';
 import MainLayout from '../../../layouts/MainLayout';
 import {
   Button,
@@ -285,6 +285,8 @@ const EditOrgUser = () => {
                 value={form.department_id}
                 onChange={(value) => setForm((prev) => ({ ...prev, department_id: value }))}
                 allowClear
+                showSearch
+                optionFilterProp="label"
                 options={(departments || []).map((d) => ({
                   label: d.name,
                   value: d.org_department_id,
@@ -313,19 +315,21 @@ const EditOrgUser = () => {
                 >
                   {roleName(assignment.role_id)}
                   <span className="text-gray-400">· {locationLabel(assignment.location_id)}</span>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${roleName(assignment.role_id)}`}
-                    disabled={isRevokingRole}
-                    onClick={() => handleRevokeRole(assignment.assignment_id)}
-                    className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {revokingAssignmentId === assignment.assignment_id ? (
-                      <span className="block h-3.5 w-3.5 animate-pulse rounded-full bg-gray-400" />
-                    ) : (
-                      <MdClose size={14} />
-                    )}
-                  </button>
+                  <Tooltip title={`Remove ${roleName(assignment.role_id)}`}>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${roleName(assignment.role_id)}`}
+                      disabled={isRevokingRole}
+                      onClick={() => handleRevokeRole(assignment.assignment_id)}
+                      className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {revokingAssignmentId === assignment.assignment_id ? (
+                        <span className="block h-3.5 w-3.5 animate-pulse rounded-full bg-gray-400" />
+                      ) : (
+                        <MdClose size={14} />
+                      )}
+                    </button>
+                  </Tooltip>
                 </span>
               ))}
             </div>
@@ -339,6 +343,8 @@ const EditOrgUser = () => {
                 placeholder="Select a role"
                 value={assignRoleId}
                 onChange={(value) => setAssignRoleId(value)}
+                showSearch
+                optionFilterProp="label"
                 options={(roles ?? []).map((role) => ({ label: role.name, value: role.role_id }))}
               />
             </div>
@@ -348,6 +354,8 @@ const EditOrgUser = () => {
                 className="w-full mt-1"
                 placeholder="Location (optional, applies everywhere if blank)"
                 allowClear
+                showSearch
+                optionFilterProp="label"
                 value={assignLocationId}
                 onChange={(value) => setAssignLocationId(value ?? undefined)}
                 options={(offices ?? []).map((office) => ({

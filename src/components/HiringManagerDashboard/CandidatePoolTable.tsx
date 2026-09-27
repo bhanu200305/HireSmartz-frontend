@@ -3,6 +3,8 @@ import { Select } from 'antd';
 import type { TableProps } from 'antd';
 import { Link } from 'react-router-dom';
 import { CustomTable, Badge } from '../shared';
+import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import type { CandidatePoolItem } from '../../api/candidate-service/Stats/stats';
 import { jobDisplayName } from './useJobOpeningNameMap';
@@ -135,22 +137,27 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
             value={jobOpeningId}
             onChange={(value) => onJobOpeningIdChange(value)}
             options={jobOptions}
+            popupMatchSelectWidth={false}
           />
         </div>
       </div>
+      <RowsPerPageSelect
+        pageSize={pageSize}
+        options={PAGE_SIZE_OPTIONS}
+        onChange={(size) => onPageChange(1, size)}
+      />
       <CustomTable<CandidatePoolItem>
         columns={columns}
         dataSource={items}
         emptyText={loading ? 'Loading…' : emptyText}
-        pagination={{
-          current: page,
-          pageSize,
-          total,
-          showSizeChanger: true,
-          pageSizeOptions: PAGE_SIZE_OPTIONS.map(String),
-          showTotal: (t, range) => `${range[0]}-${range[1]} of ${t} candidates`,
-          onChange: onPageChange,
-        }}
+        pagination={false}
+      />
+      <MasterPagination
+        current={page}
+        pageSize={pageSize}
+        total={total}
+        itemLabel="candidates"
+        onPageChange={(nextPage) => onPageChange(nextPage, pageSize)}
       />
     </div>
   );

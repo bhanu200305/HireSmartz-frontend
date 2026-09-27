@@ -716,6 +716,16 @@ export const interviewApi = createApi({
               : {}),
           },
         }),
+      // The route's own response model is `InterviewersCalendarStatusView`
+      // (calendar_dto.py) — a single object wrapping the list as
+      // `{ interviewers: [...] }`, NOT a bare array. Without this, `data`
+      // was that raw object cast to `InterviewerCalendarStatusView[]` by the
+      // generic above with nothing checking it actually matched at runtime,
+      // and every caller's `(data ?? []).map(...)` crashed the moment a
+      // Hiring Panel round was opened — `??` only replaces null/undefined,
+      // not a non-array object, so the fallback never kicked in either.
+      transformResponse: (response: { interviewers: InterviewerCalendarStatusView[] }) =>
+        response.interviewers,
       providesTags: ['Calendar'],
     }),
     nudgeInterviewerCalendarConnect: build.mutation<

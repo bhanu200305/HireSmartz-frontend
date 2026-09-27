@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
-import { Select } from 'antd';
+import { Tooltip } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
 import { useLocation } from 'react-router-dom';
 import {
@@ -18,6 +18,7 @@ import CustomTable from '../shared/ui/table';
 import MasterPagination from '../shared/ui/MasterPagination';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
@@ -210,14 +211,16 @@ const CfpUsers: React.FC = () => {
       align: 'right',
       render: (_: unknown, member) =>
         member.status.toLowerCase() === 'active' ? (
-          <button
-            type="button"
-            aria-label="Offboard"
-            className="p-2 hover:bg-danger-bg rounded-full transition-colors cursor-pointer"
-            onClick={() => setStaffToOffboard(member)}
-          >
-            <MdDelete className="text-red-500" />
-          </button>
+          <Tooltip title="Offboard">
+            <button
+              type="button"
+              aria-label="Offboard"
+              className="group p-2 hover:bg-danger-bg rounded-full transition-colors cursor-pointer"
+              onClick={() => setStaffToOffboard(member)}
+            >
+              <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+            </button>
+          </Tooltip>
         ) : (
           <span className="text-gray-300">-</span>
         ),
@@ -264,19 +267,14 @@ const CfpUsers: React.FC = () => {
         <Loader />
       ) : (
         <>
-          <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
-            <span>Rows per page</span>
-            <Select
-              size="small"
-              value={pageSize}
-              className="rows-per-page-select"
-              options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-              onChange={(size) => {
-                setPageSize(size);
-                setPage(0);
-              }}
-            />
-          </div>
+          <RowsPerPageSelect
+            pageSize={pageSize}
+            options={PAGE_SIZE_OPTIONS}
+            onChange={(size) => {
+              setPageSize(size);
+              setPage(0);
+            }}
+          />
 
           <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white">
             <CustomTable

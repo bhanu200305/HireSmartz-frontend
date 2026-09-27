@@ -11,6 +11,9 @@ import { COL } from '../../shared/ui/Columns';
 import renderHighlightedField from '../../shared/ui/RenderHighlightedField';
 import { formatPhoneNumber, formatStatus } from '../../../shared/utils/methods';
 import MasterPagination from '../../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../../shared/ui/RowsPerPageSelect';
+import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { CommonCard, Search } from '../../shared';
 
 const SearchCandidateListing = () => {
@@ -26,7 +29,7 @@ const SearchCandidateListing = () => {
   const [filteredCandidates, setFilteredCandidates] = useState<any[]>([]);
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = usePersistedPageSize('search_candidate_listing', 10);
   const [isFromGlobalSearch, setIsFromGlobalSearch] = useState(false);
   const hasResetRef = useRef(false);
 
@@ -159,6 +162,11 @@ const SearchCandidateListing = () => {
     setCurrentPage(page);
   };
 
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
+
   // Calculate paginated data
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
@@ -217,6 +225,14 @@ const SearchCandidateListing = () => {
               />
             </div>
           </div>
+
+          {candidates.length > 0 && (
+            <RowsPerPageSelect
+              pageSize={pageSize}
+              options={PAGE_SIZE_OPTIONS}
+              onChange={handlePageSizeChange}
+            />
+          )}
 
           {/* overflow-x-auto + min-w keeps columns readable on narrow viewports,
               same pattern as CandidatesListing.tsx — header and rows share one

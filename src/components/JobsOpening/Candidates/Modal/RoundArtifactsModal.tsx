@@ -51,6 +51,19 @@ const artifactKindLabel = (kind: string) =>
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Artifact';
 
+/** `1:05` for anything under an hour, `1:01:05` past that — never bare
+ * seconds alone, which reads ambiguously past ~99. */
+const formatDuration = (totalSeconds: number): string => {
+  const whole = Math.round(totalSeconds);
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor((whole % 3600) / 60);
+  const seconds = whole % 60;
+  const paddedSeconds = String(seconds).padStart(2, '0');
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${paddedSeconds}`
+    : `${minutes}:${paddedSeconds}`;
+};
+
 /**
  * Groups a round's artifacts (recordings/transcripts) into one tab per
  * reattempt — "Attempt 1", "Attempt 2", etc. — oldest first.
@@ -137,21 +150,65 @@ const OpenInNewTabLink = ({ url, label }: { url: string; label: string }) => (
 /** The recording artifact, played right in the modal. `isVideo` picks the
  * element — a video round (AI_VIDEO/PANEL) gets a real video frame, an
  * audio round (AUDIO/AUDIO_SCREENING, or a round type this modal doesn't
- * know) gets a compact audio bar instead of an oversized blank video box. */
-const RecordingPlayer = ({ url, isVideo }: { url: string; isVideo: boolean }) =>
-  isVideo ? (
-    <div className="overflow-hidden rounded-xl bg-neutral-900">
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists to attach; interview-service produces the recording alone. */}
-      <video controls preload="metadata" className="aspect-video w-full">
-        <source src={url} />
-      </video>
+ * know) gets a compact audio bar instead of an oversized blank video box.
+ *
+ * `preload="metadata"` (already needed so the native player shows a
+ * scrubbable duration without downloading the whole file) also lets this
+ * read `duration` off the element itself the moment it loads — surfaced
+ * both as a `title` (hovering the player shows it, the ask this was built
+ * for) and as a small always-visible label underneath, since a tooltip
+ * alone is easy to miss and duration is exactly the kind of thing you want
+ * to see before pressing play, not after hovering long enough to notice
+ * one exists. */
+const RecordingPlayer = ({ url, isVideo }: { url: string; isVideo: boolean }) => {
+  const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
+
+  const handleLoadedMetadata = (event: React.SyntheticEvent<HTMLMediaElement>) => {
+    const { duration } = event.currentTarget;
+    if (Number.isFinite(duration)) setDurationSeconds(duration);
+  };
+
+  const durationLabel = durationSeconds != null ? formatDuration(durationSeconds) : null;
+  const hoverTitle =
+    durationSeconds != null
+      ? `Duration: ${durationLabel} (${Math.round(durationSeconds)} seconds)`
+      : undefined;
+
+  return (
+    <div className="flex flex-col gap-1">
+      {isVideo ? (
+        <div className="overflow-hidden rounded-xl bg-neutral-900">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists to attach; interview-service produces the recording alone. */}
+          <video
+            controls
+            preload="metadata"
+            title={hoverTitle}
+            onLoadedMetadata={handleLoadedMetadata}
+            className="aspect-video w-full"
+          >
+            <source src={url} />
+          </video>
+        </div>
+      ) : (
+        // eslint-disable-next-line jsx-a11y/media-has-caption -- audio-only call recording, nothing to caption.
+        <audio
+          controls
+          preload="metadata"
+          title={hoverTitle}
+          onLoadedMetadata={handleLoadedMetadata}
+          className="w-full"
+        >
+          <source src={url} />
+        </audio>
+      )}
+      {durationLabel && (
+        <span className="text-xs text-neutral-400" title={hoverTitle}>
+          Duration: {durationLabel}
+        </span>
+      )}
     </div>
-  ) : (
-    // eslint-disable-next-line jsx-a11y/media-has-caption -- audio-only call recording, nothing to caption.
-    <audio controls preload="metadata" className="w-full">
-      <source src={url} />
-    </audio>
   );
+};
 
 /** The transcript artifact — fetched and shown as real, styled text instead
  * of a link, since `text/plain` is all it ever is (see this file's own
@@ -359,6 +416,12 @@ const RoundArtifactsModal = ({
       ) : (
         <Tabs
           tabPosition="top"
+          // Pinned to the top of the modal's own scroll container (see
+          // `.round-artifacts-tabs` in index.css) — this modal's content
+          // (recordings, transcripts) runs well past one screen, and without
+          // this the Attempt 1/Attempt 2 strip scrolls away with everything
+          // else, forcing a scroll back to the top just to switch attempts.
+          className="round-artifacts-tabs"
           items={attemptGroups.map((group, index) => ({
             key: String(index),
             label: `Attempt ${index + 1}`,

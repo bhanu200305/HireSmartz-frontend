@@ -92,15 +92,13 @@ const HiringPipeline: React.FC<HiringPipelineProps> = ({ stages }) => {
                 >
                   {stageIcon(stage.label)}
                 </div>
-                <div className="truncate text-[9.5px] font-bold uppercase tracking-wide text-neutral-500">
+                <div className="truncate text-xs font-bold uppercase tracking-wide text-neutral-500">
                   {stage.label}
                 </div>
                 <div className="mt-1 font-display text-lg font-semibold text-neutral-900">
                   {stage.value.toLocaleString()}
                 </div>
-                <div className="mt-0.5 text-[9px] text-neutral-400">
-                  Candidates · {pct}% of total
-                </div>
+                <div className="mt-0.5 text-xs text-neutral-400">Candidates · {pct}% of total</div>
               </div>
               {i < mainStages.length - 1 && (
                 <div className="flex shrink-0 items-center justify-center py-1 text-primary-500 sm:w-6 sm:py-0">
@@ -133,13 +131,13 @@ const HiringPipeline: React.FC<HiringPipelineProps> = ({ stages }) => {
                     {style.icon}
                   </div>
                   <div className="min-w-0">
-                    <div className="truncate text-[9.5px] font-bold uppercase tracking-wide text-neutral-500">
+                    <div className="truncate text-xs font-bold uppercase tracking-wide text-neutral-500">
                       {stage.label}
                     </div>
                     <div className="font-display text-sm font-semibold text-neutral-900">
                       {stage.value.toLocaleString()}
                     </div>
-                    <div className="truncate text-[8.5px] text-neutral-400">
+                    <div className="truncate text-xs text-neutral-400">
                       {pct}% of {lastMainStage.label}
                     </div>
                   </div>

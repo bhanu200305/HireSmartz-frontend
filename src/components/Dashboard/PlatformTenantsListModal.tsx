@@ -169,7 +169,6 @@ const PlatformTenantsListModal: React.FC<{
         <RowsPerPageSelect
           pageSize={pageSize}
           options={PAGE_SIZE_OPTIONS}
-          className="w-24"
           onChange={(size) => {
             setPageSize(size);
             setPage(0);
@@ -183,6 +182,7 @@ const PlatformTenantsListModal: React.FC<{
             <CustomTable<TenantRow>
               columns={columns}
               dataSource={dataSource}
+              scrollY="40vh"
               onRow={(tenant) => ({
                 onClick: () => setSelectedTenant(tenant),
                 className: 'cursor-pointer',

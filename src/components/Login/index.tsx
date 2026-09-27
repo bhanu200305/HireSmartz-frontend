@@ -96,6 +96,12 @@ const Login = () => {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [resendVerification, { isLoading: isResendingVerification }] =
     useResendVerificationMutation();
+  // Set when login fails with error_code "account_locked" — a password
+  // reset clears the lockout immediately (same effect as an admin's manual
+  // unlock, see AdminTools/UnlockUserSection.tsx), so this points there
+  // instead of leaving the visitor stuck on the generic toast with no way
+  // forward besides waiting out the lockout.
+  const [isAccountLocked, setIsAccountLocked] = useState(false);
 
   // StrictMode (dev only) double-invokes this mount effect within the same
   // render, before the replace-navigate below has a chance to clear
@@ -512,18 +518,22 @@ const Login = () => {
           // completing the login. Nothing is stored yet: mfa_token is not
           // an access token and authorises exactly the two MFA endpoints.
           setUnverifiedEmail(null);
+          setIsAccountLocked(false);
           setMfaChallenge(res);
           return;
         }
         setUnverifiedEmail(null);
+        setIsAccountLocked(false);
         void completeRealLogin(res, trimmedEmail);
       })
       .catch((err) => {
         const errorCode = getAuthErrorCode(err);
-        // email_not_verified gets its own affordance (resend link) below the
-        // form instead of just a dead-end toast — everything else keeps the
-        // backend's own (deliberately uniform, non-enumerating) message.
+        // email_not_verified/account_locked each get their own affordance
+        // below the form instead of just a dead-end toast — everything else
+        // keeps the backend's own (deliberately uniform, non-enumerating)
+        // message.
         setUnverifiedEmail(errorCode === 'email_not_verified' ? trimmedEmail : null);
+        setIsAccountLocked(errorCode === 'account_locked');
         showToast({ message: getAuthErrorMessage(err, 'Login failed'), type: 'error' });
       })
       .finally(() => {
@@ -569,23 +579,30 @@ const Login = () => {
 
   return (
     <>
-      <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
+      {/* No `overflow-hidden` on this element itself — see AcceptInvitation's
+          copy of this shell (AcceptInvitation/index.tsx's `PageShell`) for
+          why: it clipped the whole page to one viewport tall with no way to
+          scroll to whatever fell outside it. The decorative blobs below are
+          clipped to their own wrapper instead. */}
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
         {isLoading && <Loader />}
 
         {/* decorative background texture + glow blobs for depth */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.15]"
-          style={{
-            backgroundImage: 'radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)',
-            backgroundSize: '28px 28px',
-          }}
-        />
-        <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#7dd8ee]/30 blur-3xl" />
-        <div className="pointer-events-none absolute top-1/4 -right-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#182a72]/30 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-[#11b7dd]/20 blur-2xl" />
-        <div className="pointer-events-none absolute top-10 left-1/3 h-24 w-24 rounded-full border border-white/20" />
-        <div className="pointer-events-none absolute bottom-24 right-1/4 h-16 w-16 rounded-full border border-white/10" />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div
+            className="absolute inset-0 opacity-[0.15]"
+            style={{
+              backgroundImage: 'radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)',
+              backgroundSize: '28px 28px',
+            }}
+          />
+          <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#7dd8ee]/30 blur-3xl" />
+          <div className="absolute top-1/4 -right-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
+          <div className="absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#182a72]/30 blur-3xl" />
+          <div className="absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-[#11b7dd]/20 blur-2xl" />
+          <div className="absolute top-10 left-1/3 h-24 w-24 rounded-full border border-white/20" />
+          <div className="absolute bottom-24 right-1/4 h-16 w-16 rounded-full border border-white/10" />
+        </div>
 
         <div className="login-card-pop relative z-10 w-full max-w-sm rounded-3xl bg-white px-8 py-9 shadow-2xl ring-1 ring-black/5">
           {/* Brand */}
@@ -601,7 +618,7 @@ const Login = () => {
                 className="h-10 w-auto object-contain"
               />
             </button>
-            <span className="ai-recruitment-text mt-2 text-[11px] tracking-widest">
+            <span className="ai-recruitment-text mt-2 text-xs tracking-widest">
               AI POWERED RECRUITMENT SOLUTIONS
             </span>
           </div>
@@ -689,6 +706,16 @@ const Login = () => {
                   >
                     {isResendingVerification ? 'Sending…' : 'Resend verification email'}
                   </button>
+                </p>
+              )}
+
+              {isAccountLocked && (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-center text-xs text-amber-700">
+                  Your account is locked from too many failed attempts. Resetting your password
+                  unlocks it immediately.{' '}
+                  <Link to="/forgot-password" className="font-medium underline">
+                    Reset password
+                  </Link>
                 </p>
               )}
             </form>

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Upload } from 'antd';
+import { Dropdown, Upload, type MenuProps } from 'antd';
 import {
   MdEdit,
   MdOutlineFileUpload,
+  MdOutlineCropRotate,
   MdBusiness,
   MdLanguage,
   MdGroups,
@@ -12,6 +13,7 @@ import {
 } from 'react-icons/md';
 import { Button, Input, Textarea, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
+import ImageCropModal from '../shared/ui/ImageCropModal';
 import { Badge, BadgeStatus } from '../shared/ui/badge';
 import {
   useGetTenantProfileQuery,
@@ -119,14 +121,40 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const canEdit = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const [logoPreview, setLogoPreview] = useState('');
   const [isLogoHovered, setIsLogoHovered] = useState(false);
+  // Controlled explicitly (not left to antd's own hover/click default) so
+  // the open menu survives the mouse leaving the avatar circle on its way
+  // down to a menu item — the menu itself renders in a portal outside this
+  // div, so that transit is a real mouseleave on the avatar. Tying the
+  // Dropdown's MOUNT (not just its visual overlay) to isLogoHovered used to
+  // unmount the whole trigger — menu included — the instant that happened,
+  // which is what made it "vanish" before a click could land.
+  const [isLogoMenuOpen, setIsLogoMenuOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  // Set once handleLogoUpload's upload call resolves, cleared once Save (or
+  // Set once handleLogoCropConfirm's upload call resolves, cleared once Save (or
   // Cancel) resolves it. Uploading only stages a storage key server-side —
   // see request_tenant_logo_upload.py, which never touches the tenant row —
   // so this is what lets handleSave apply it, instead of the upload handler
   // applying it itself the instant a file is picked.
   const [pendingLogoStorageKey, setPendingLogoStorageKey] = useState<string | null>(null);
   const logoUploadRef = useRef<HTMLButtonElement>(null);
+  // The crop step sits between "logo candidate picked" (a disk file, an
+  // applied scrape preview, or the CURRENT logo re-opened for adjustment —
+  // see handleLogoFileSelected/handleAdjustScrapedLogo/
+  // handleAdjustCurrentLogo below) and "uploaded" — same shape as
+  // UserProfile's avatar crop flow (ImageCropModal is the same component).
+  // Nothing here survives past confirm/cancel, so it doesn't need to reset
+  // on every open.
+  const [isLogoCropModalOpen, setIsLogoCropModalOpen] = useState(false);
+  const [logoCropImageSrc, setLogoCropImageSrc] = useState('');
+  const [pendingCropFileName, setPendingCropFileName] = useState('company-logo.jpg');
+  // Only set when THIS crop session created a fresh blob: URL for a
+  // freshly-picked disk file — that's the only source that needs revoking
+  // on cancel/confirm. Re-adjusting the already-displayed logoPreview
+  // reuses that string as-is (it's still needed for the avatar afterward,
+  // successful crop or not), so tracking "did we create this" separately
+  // from "does it look like a blob: URL" avoids revoking a URL something
+  // else still owns.
+  const [logoCropObjectUrl, setLogoCropObjectUrl] = useState<string | null>(null);
 
   // undefined while still loading (cultureIntroError also unset yet) — only
   // resolves to '' once the 404 has actually come back, so a slow load
@@ -219,7 +247,54 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
   };
 
-  const handleLogoUpload = async (file: File) => {
+  // Separate from applyScrapeField('logo_reference') above: that one applies
+  // the scraped image exactly as ai-service found it (the reliable path — a
+  // third-party URL that a same-origin canvas read can't always process, see
+  // CrossOriginCropError), while this opens the same crop step a disk
+  // upload goes through, so the user can reframe a scraped logo that's a
+  // wide/short wordmark rather than a square mark before it goes into the
+  // circular avatar this app displays it in. Ends up going through
+  // handleLogoCropConfirm exactly like a freshly picked file.
+  const handleAdjustScrapedLogo = () => {
+    if (!scrapePreview?.logo_reference) return;
+    setLogoCropImageSrc(scrapePreview.logo_reference);
+    setLogoCropObjectUrl(null);
+    setPendingCropFileName('company-logo.jpg');
+    setIsLogoCropModalOpen(true);
+  };
+
+  // Re-opens the crop step on the logo ALREADY showing (whichever way it
+  // got there — upload or "Use this logo") instead of requiring a brand new
+  // file first. This is the "adjust" half of the logo's click menu below
+  // ("Select new image" is the other). Reuses logoPreview directly rather
+  // than creating a new object URL — see logoCropObjectUrl's own comment.
+  const handleAdjustCurrentLogo = () => {
+    if (!logoPreview) return;
+    setLogoCropImageSrc(logoPreview);
+    setLogoCropObjectUrl(null);
+    setPendingCropFileName(pendingCropFileName || 'company-logo.jpg');
+    setIsLogoCropModalOpen(true);
+  };
+
+  // Clicking the logo avatar (in edit mode) opens this instead of jumping
+  // straight to the file picker — there are now two different things
+  // "click the logo" can mean (pick a different image, or just reframe the
+  // one already showing), so it asks rather than assuming.
+  const logoMenuItems: MenuProps['items'] = [
+    { key: 'select', label: 'Select new image', icon: <MdOutlineFileUpload /> },
+    { key: 'adjust', label: 'Adjust current logo', icon: <MdOutlineCropRotate /> },
+  ];
+  const handleLogoMenuClick: NonNullable<MenuProps['onClick']> = ({ key }) => {
+    if (key === 'select') logoUploadRef.current?.click();
+    if (key === 'adjust') handleAdjustCurrentLogo();
+  };
+
+  // Picking a file no longer uploads it straight away — it opens the crop
+  // step first (handleLogoCropConfirm below does the actual upload once the
+  // user applies their adjustment), same flow as UserProfile's avatar
+  // upload. LIST_IGNORE, not `false`: antd's own upload list/behavior is
+  // never used, cropping owns the rest of the flow.
+  const handleLogoFileSelected = (file: File) => {
     if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
       showToast({ message: LOGO_FILE_TYPE_ERROR_MESSAGE, type: 'error' });
       return Upload.LIST_IGNORE;
@@ -229,15 +304,45 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       return Upload.LIST_IGNORE;
     }
 
-    const previewUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    setLogoCropImageSrc(objectUrl);
+    setLogoCropObjectUrl(objectUrl);
+    setPendingCropFileName(file.name);
+    setIsLogoCropModalOpen(true);
+    return Upload.LIST_IGNORE;
+  };
+
+  const handleLogoCropCancel = () => {
+    if (logoCropObjectUrl) URL.revokeObjectURL(logoCropObjectUrl);
+    setLogoCropImageSrc('');
+    setLogoCropObjectUrl(null);
+    setIsLogoCropModalOpen(false);
+  };
+
+  const handleLogoCropConfirm = async (croppedBlob: Blob) => {
+    if (logoCropObjectUrl) URL.revokeObjectURL(logoCropObjectUrl);
+    setLogoCropImageSrc('');
+    setLogoCropObjectUrl(null);
+    setIsLogoCropModalOpen(false);
+
+    const croppedFile = new File([croppedBlob], pendingCropFileName || 'company-logo.jpg', {
+      type: croppedBlob.type,
+    });
+    const previewUrl = URL.createObjectURL(croppedFile);
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
       // Upload only — stages a storage key, doesn't touch the tenant row.
       // Applying it is handleSave's job, same as every other field here, so
-      // picking a logo and leaving without saving no longer changes
-      // anything (see pendingLogoStorageKey's own comment above).
-      const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
+      // picking/adjusting a logo and leaving without saving no longer
+      // changes anything (see pendingLogoStorageKey's own comment above).
+      // This is now the ONLY way `logo` reaches handleSave's payload —
+      // applyScrapeField used to set logoPreview to the scraped URL
+      // directly and let handleSave send that URL as-is; routing it
+      // through this same crop+upload step instead means a scraped logo
+      // becomes an owned storage key too, not a third-party URL persisted
+      // verbatim.
+      const { storage_key } = await uploadLogo({ tenantId, file: croppedFile }).unwrap();
       setPendingLogoStorageKey(storage_key);
       showToast({ message: 'Logo selected. Save changes to apply.', type: 'success' });
     } catch (err) {
@@ -246,7 +351,6 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     } finally {
       setIsUploadingLogo(false);
     }
-    return false;
   };
 
   if (isLoading) return <Loader />;
@@ -278,15 +382,20 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
     setDescriptionError(null);
     try {
-      // `logo` is included for either a staged disk upload
-      // (pendingLogoStorageKey, the common case — see handleLogoUpload) or
-      // a scraped-and-applied logo (`logoPreview` holds ai-service's
-      // logo_reference URL in that case). The two are mutually exclusive —
-      // applyScrapeField clears pendingLogoStorageKey when it sets one — so
-      // this never sends both. `logoPreview` alone is never trusted here
-      // when it's a `blob:` URL: that's only ever a local upload preview,
-      // never a real value to persist.
-      const scrapedLogoApplied =
+      // `logo` is included for either a staged disk/cropped upload
+      // (pendingLogoStorageKey — the common case, and also where a scraped
+      // logo lands once it's been through the "Adjust" crop step; see
+      // handleLogoCropConfirm) or a scraped logo applied AS-IS via "Use
+      // this logo" (`logoPreview` holds ai-service's logo_reference URL
+      // unmodified in that case — kept as a fallback specifically because
+      // that URL is a third-party asset the crop step's canvas read can
+      // fail against if its host doesn't send permissive CORS headers; see
+      // CrossOriginCropError). The two are mutually exclusive — applying
+      // either one clears the other's state — so this never sends both.
+      // `logoPreview` alone is never trusted here when it's a `blob:` URL:
+      // that's only ever a local upload preview, never a real value to
+      // persist.
+      const scrapedLogoAppliedAsIs =
         !pendingLogoStorageKey &&
         logoPreview &&
         logoPreview !== (profile?.logo_url || '') &&
@@ -300,7 +409,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         admin_contact: form.admin_contact,
         ...(pendingLogoStorageKey
           ? { logo: pendingLogoStorageKey }
-          : scrapedLogoApplied
+          : scrapedLogoAppliedAsIs
             ? { logo: logoPreview }
             : {}),
       }).unwrap();
@@ -332,11 +441,20 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     label: string;
     icon: React.ReactNode;
     fullWidth?: boolean;
+    // Mirrors TenantModel's own column widths (organization_models.py) — no
+    // upper bound would let a value type past what the backend can store,
+    // which the PATCH would otherwise only reject after a round trip.
+    maxLength?: number;
   }[] = [
-    { key: 'name', label: 'Company name', icon: <MdBusiness size={16} /> },
-    { key: 'website_url', label: 'Website', icon: <MdLanguage size={16} /> },
+    { key: 'name', label: 'Company name', icon: <MdBusiness size={16} />, maxLength: 200 },
+    { key: 'website_url', label: 'Website', icon: <MdLanguage size={16} />, maxLength: 2048 },
     { key: 'company_size', label: 'Company size', icon: <MdGroups size={16} /> },
-    { key: 'admin_contact', label: 'Admin contact', icon: <MdPhone size={16} /> },
+    {
+      key: 'admin_contact',
+      label: 'Admin contact',
+      icon: <MdPhone size={16} />,
+      maxLength: 40,
+    },
     {
       key: 'description',
       label: 'Description',
@@ -354,12 +472,19 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       <img
         src={logoPreview}
         alt="Company logo"
-        className="w-full h-full object-cover"
+        // object-contain + a little padding, not object-cover: a scraped
+        // logo is frequently a wide/short wordmark, not a square mark, and
+        // `cover` was filling this circle by cropping most of it away
+        // (see the crop step above for how the user can now fix the
+        // FRAMING themselves instead of just getting whatever `cover`
+        // picked). The padding keeps a contained image off the circle's
+        // clipped corners.
+        className="w-full h-full object-contain p-2"
         onError={() => setLogoPreview('')}
       />
       {isEditMode && canEdit && (
         <Upload
-          beforeUpload={handleLogoUpload}
+          beforeUpload={handleLogoFileSelected}
           showUploadList={false}
           className="hidden"
           accept="image/png, image/jpeg"
@@ -367,13 +492,21 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           <button ref={logoUploadRef} className="hidden cursor-pointer"></button>
         </Upload>
       )}
-      {isEditMode && canEdit && isLogoHovered && !isUploadingLogo && (
-        <div
-          onClick={() => logoUploadRef.current?.click()}
-          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer"
+      {isEditMode && canEdit && !isUploadingLogo && (
+        <Dropdown
+          menu={{ items: logoMenuItems, onClick: handleLogoMenuClick }}
+          trigger={['click']}
+          open={isLogoMenuOpen}
+          onOpenChange={setIsLogoMenuOpen}
         >
-          <MdEdit className="text-white text-xl" />
-        </div>
+          <div
+            className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer transition-opacity ${
+              isLogoHovered || isLogoMenuOpen ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <MdEdit className="text-white text-xl" />
+          </div>
+        </Dropdown>
       )}
       {isUploadingLogo && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
@@ -383,7 +516,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     </div>
   ) : isEditMode && canEdit ? (
     <Upload.Dragger
-      beforeUpload={handleLogoUpload}
+      beforeUpload={handleLogoFileSelected}
       listType="picture"
       maxCount={1}
       accept="image/png, image/jpeg"
@@ -442,7 +575,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {fields.map(({ key, label, icon, fullWidth }) => (
+        {fields.map(({ key, label, icon, fullWidth, maxLength }) => (
           <div
             key={key}
             className={`min-w-0 p-4 rounded-xl border border-gray-100 bg-white ${fullWidth ? 'sm:col-span-2' : ''}`}
@@ -451,9 +584,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               <span className="w-7 h-7 shrink-0 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
                 {icon}
               </span>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                {label}
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
             </div>
             {isEditMode ? (
               <div className={key === 'website_url' ? 'flex items-center gap-2' : ''}>
@@ -477,6 +608,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                     value={form[key]}
                     onChange={handleField(key)}
                     placeholder={label}
+                    maxLength={maxLength}
                     noAutoCapitalize={key === 'website_url'}
                   />
                 )}
@@ -524,6 +656,13 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                   className="w-10 h-10 rounded-lg border border-gray-200 object-contain bg-white"
                 />
                 <span className="flex-1 text-sm text-gray-600 truncate">Logo found on site</span>
+                <button
+                  type="button"
+                  onClick={handleAdjustScrapedLogo}
+                  className="text-xs font-semibold text-gray-600 hover:underline shrink-0 cursor-pointer"
+                >
+                  Adjust &amp; use
+                </button>
                 <button
                   type="button"
                   onClick={() => applyScrapeField('logo_reference')}
@@ -591,6 +730,15 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           </Button>
         </div>
       )}
+      <ImageCropModal
+        open={isLogoCropModalOpen}
+        imageSrc={logoCropImageSrc}
+        onCancel={handleLogoCropCancel}
+        onConfirm={handleLogoCropConfirm}
+        isSaving={isUploadingLogo}
+        title="Adjust your logo"
+        subtitle="Drag to reposition, then zoom or rotate to fit the frame"
+      />
     </div>
   );
 };

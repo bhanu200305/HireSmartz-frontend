@@ -1,36 +1,55 @@
 import { useState } from 'react';
 import { MdOutlineLockOpen } from 'react-icons/md';
 import { Button, Input, showToast } from '..';
-import { useUnlockUserMutation } from '../../api/authentication-service/Admin/admin';
-import { getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
+import { useUnlockUserByEmailMutation } from '../../api/authentication-service/Admin/admin';
+import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
 
-// Loose check only — real validation is server-side (a non-UUID 422s as
-// VALIDATION_ERROR). This just stops an obviously-empty/malformed id from
-// reaching the confirm step.
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Loose check only — real validation is server-side (an invalid address
+// 422s as invalid_email). This just stops an obviously-empty/malformed
+// address from reaching the confirm step.
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// error_code -> message shown instead of the backend's own (deliberately
+// uniform, anti-enumeration — docs/API_CONTRACT.md §4.1 — so not worth
+// passing straight through) wording for these two specific cases. Anything
+// else falls back to getAuthErrorMessage's generic handling.
+const UNLOCK_ERROR_MESSAGES: Record<string, string> = {
+  credential_not_found: 'No account found with that email.',
+  invalid_email: 'Enter a valid email address.',
+};
 
 /**
- * POST /admin/users/{id}/unlock (docs/API_CONTRACT.md §8). Clears a locked
- * account's lockout and its failed-attempt counter in one call. Reachable
- * by a Company Admin for their own tenant's users, or platform support for
- * anybody — the server decides which; this form doesn't know or ask.
+ * POST /admin/users/unlock (docs/API_CONTRACT.md §8). Clears a locked
+ * account's lockout and its failed-attempt counter in one call, looked up by
+ * email — a Company Admin reaching for this has the person's email on hand,
+ * not their raw user id (unlockUser/useUnlockUserMutation, the {id}/unlock
+ * form this replaces, is kept around for the row-action use case elsewhere,
+ * which already has the id from the row it's acting on).
+ *
+ * Reachable by a Company Admin for their own tenant's users, or platform
+ * support for anybody — the server decides which; this form doesn't know or
+ * ask, same as the UUID version it replaces here.
  */
 const UnlockUserSection = () => {
-  const [userId, setUserId] = useState('');
+  const [email, setEmail] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
-  const [unlockUser, { isLoading }] = useUnlockUserMutation();
+  const [unlockUserByEmail, { isLoading }] = useUnlockUserByEmailMutation();
 
-  const isValidId = UUID_PATTERN.test(userId.trim());
+  const trimmedEmail = email.trim();
+  const isValidEmail = EMAIL_PATTERN.test(trimmedEmail);
 
   const handleConfirm = async () => {
     try {
-      await unlockUser({ userId: userId.trim() }).unwrap();
-      showToast({ message: 'Account unlocked.', type: 'success' });
-      setUserId('');
+      await unlockUserByEmail({ email: trimmedEmail }).unwrap();
+      showToast({ message: `${trimmedEmail} has been unlocked.`, type: 'success' });
+      setEmail('');
       setIsConfirming(false);
     } catch (err) {
+      const code = getAuthErrorCode(err);
       showToast({
-        message: getAuthErrorMessage(err, 'Could not unlock this account.'),
+        message:
+          (code && UNLOCK_ERROR_MESSAGES[code]) ||
+          getAuthErrorMessage(err, 'Could not unlock this account.'),
         type: 'error',
       });
     }
@@ -47,31 +66,36 @@ const UnlockUserSection = () => {
         it doesn&apos;t immediately re-lock.
       </p>
 
+      <label htmlFor="unlock-user-email" className="mb-1 block text-xs font-medium text-gray-500">
+        User email
+      </label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <Input
-          value={userId}
+          id="unlock-user-email"
+          type="email"
+          value={email}
           onChange={(e) => {
-            setUserId(e.target.value.trim());
+            setEmail(e.target.value);
             setIsConfirming(false);
           }}
-          placeholder="User id (UUID)"
-          className="border-[var(--border)] px-4 font-mono text-sm"
+          placeholder="user@company.com"
+          className="border-[var(--border)] px-4 text-sm"
         />
         <Button
           type="button"
           appname="unlock user"
           onClick={() => setIsConfirming(true)}
-          disabled={!isValidId || isLoading}
+          disabled={!isValidEmail || isLoading}
           className="shrink-0 rounded-3xl border border-[var(--border)] px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Unlock
         </Button>
       </div>
 
-      {isConfirming && isValidId && (
+      {isConfirming && isValidEmail && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm text-amber-800">
-            Unlock <code className="font-mono">{userId}</code>?
+            Unlock <code className="font-mono">{trimmedEmail}</code>?
           </p>
           <div className="flex gap-2">
             <Button

@@ -45,6 +45,7 @@ const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
             dropdownClassName="rounded-3xl"
             variant="borderless"
             options={statuses.map((s) => ({ label: s.label, value: s.code }))}
+            popupMatchSelectWidth={false}
           />
         </div>
         <div className="cfp-dropdown-trigger w-full sm:w-auto sm:min-w-[200px]">
@@ -60,6 +61,7 @@ const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
             dropdownClassName="rounded-3xl"
             variant="borderless"
             options={sources.map((s) => ({ label: s.label, value: s.code }))}
+            popupMatchSelectWidth={false}
           />
         </div>
       </div>

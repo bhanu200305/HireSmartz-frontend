@@ -836,7 +836,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
-                                <span className="text-[10px] font-semibold text-gray-500">
+                                <span className="text-xs font-semibold text-gray-500">
                                   {tenantProfile.company_name?.charAt(0).toUpperCase()}
                                 </span>
                               )}

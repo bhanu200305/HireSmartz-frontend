@@ -144,6 +144,8 @@ const RoleLocationPicker: React.FC<RoleLocationPickerProps> = ({
           mode="multiple"
           placeholder="Location(s) (optional, applies everywhere if blank)"
           allowClear
+          showSearch
+          optionFilterProp="label"
           value={locationIds}
           onChange={(value) => onLocationIdsChange(value ?? [])}
           maxTagCount="responsive"
@@ -177,7 +179,7 @@ const RoleLocationPicker: React.FC<RoleLocationPickerProps> = ({
                   key={id}
                   type="button"
                   onClick={() => setPreviewLocationId(id)}
-                  className={`text-[11px] font-medium rounded-full px-2.5 py-1 border cursor-pointer ${
+                  className={`text-xs font-medium rounded-full px-2.5 py-1 border cursor-pointer ${
                     previewLocationId === id
                       ? 'bg-primary-600 text-white border-primary-600'
                       : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300'

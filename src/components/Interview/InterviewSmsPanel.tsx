@@ -229,12 +229,12 @@ const InterviewSmsPanel = ({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
-            <span className="truncate text-[18px] font-semibold text-[#2f2f2f]">{headerName}</span>
-            <span className="truncate rounded-md bg-white/60 px-1 py-0 text-[14px] text-[#4b4b4b]">
+            <span className="truncate text-lg font-semibold text-[#2f2f2f]">{headerName}</span>
+            <span className="truncate rounded-md bg-white/60 px-1 py-0 text-sm text-[#4b4b4b]">
               {headerPhone}
             </span>
           </div>
-          <div className="text-[14px] text-[#3565b7]">Candidate</div>
+          <div className="text-sm text-[#3565b7]">Candidate</div>
         </div>
 
         <button

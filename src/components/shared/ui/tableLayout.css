@@ -17,7 +17,7 @@
    row hover instead of AntD's flat gray default — cascades to every
    CustomTable call site app-wide from this one file. */
 .customTable .ant-table-thead > tr > th {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -51,26 +51,22 @@
   box-shadow: inset 0 0 0 1px var(--color-primary-200, #c7d2fe);
 }
 
-/* CustomTable's `scroll={{ x: 'max-content' }}` opens a horizontal scrollbar
-   on `.ant-table-content` whenever columns don't fit (narrow screens, or the
-   list-style pop-up modals like PlatformTenantsListModal/TenantUsersListModal
-   that constrain the table to a modal width). Left unstyled, that renders as
-   the browser's default scrollbar, which on Windows/Chrome draws a stark
-   dark/black bar+border across the bottom of every one of these tables. This
-   thins it out and colors it to match the rest of the app's scrollbars
-   (same treatment as `.thin-scrollbar` in index.css), for every CustomTable
-   call site at once. */
-.customTable .ant-table-content {
-  scrollbar-width: thin;
-  scrollbar-color: var(--gray-300) transparent;
-}
-.customTable .ant-table-content::-webkit-scrollbar {
-  height: 6px;
-}
-.customTable .ant-table-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-.customTable .ant-table-content::-webkit-scrollbar-thumb {
-  background-color: var(--gray-300);
-  border-radius: 999px;
+/* CustomTable's `scroll={{ x: 'max-content' }}` (and, when `scrollY` is also
+   set, rc-table's separate `.ant-table-body` scroll region) no longer needs
+   its own scrollbar rule here — the global scrollbar style in index.css
+   already covers every scrollable element in the app identically, whichever
+   internal element antd actually scrolls. */
+
+/* AntD's own "ping" shadow — a dark inset fade AntD draws on
+   `.ant-table-container::before`/`::after` (see antd/es/table/style/fixed.js)
+   whenever a horizontally-scrollable table still has more content off to
+   that side, entirely independent of whether any column is actually
+   `fixed`. At the 8px blur this app's border-split token renders with, that
+   reads as a solid dark bar hugging the left/right edge rather than a
+   subtle hint — not a shadow this app's tables asked for or use elsewhere
+   (no CustomTable column sets `fixed`), so it's turned off everywhere
+   CustomTable is used. */
+.customTable .ant-table-ping-left .ant-table-container::before,
+.customTable .ant-table-ping-right .ant-table-container::after {
+  box-shadow: none !important;
 }

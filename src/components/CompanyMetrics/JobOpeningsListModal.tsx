@@ -171,6 +171,7 @@ const JobOpeningsListModal: React.FC<{
             <CustomTable<JobRow>
               columns={columns}
               dataSource={dataSource}
+              scrollY="40vh"
               onRow={(job) => ({
                 onClick: () => setSelectedJob(job),
                 className: 'cursor-pointer',

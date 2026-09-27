@@ -16,12 +16,19 @@ interface RowsPerPageSelectProps {
  * the five copies of this row can't drift from each other again — they used
  * to be independent inline markup with no bottom/right inset, so the select's
  * own boundary sat flush against the data card's border directly beneath it.
+ *
+ * Default class matches every other page's own "Rows per page" select
+ * (DepartmentsTab, CompanyLocationsTab, CfpUsers, etc., which build the same
+ * row inline rather than through this component) — `w-20` used to leave a
+ * much wider dead gap between the value and the arrow than that shared
+ * `.rows-per-page-select` styling in index.css, so the two never looked the
+ * same.
  */
 export const RowsPerPageSelect: React.FC<RowsPerPageSelectProps> = ({
   pageSize,
   options,
   onChange,
-  className = 'w-20',
+  className = 'rows-per-page-select',
 }) => (
   <div className="flex items-center justify-end gap-2 pb-2 pr-1 text-sm text-neutral-500">
     <span>Rows per page</span>

@@ -458,6 +458,8 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                   setEditForm((prev) => (prev ? { ...prev, department_id: value } : prev))
                 }
                 allowClear
+                showSearch
+                optionFilterProp="label"
                 options={(departments ?? []).map((d) => ({
                   label: d.name,
                   value: d.org_department_id,
@@ -653,6 +655,8 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <Select
                 allowClear
+                showSearch
+                optionFilterProp="label"
                 className="w-full max-w-xs"
                 placeholder="Select an office…"
                 value={pendingAttachLocationId}

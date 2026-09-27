@@ -33,6 +33,11 @@ export default tseslint.config(
       'react-refresh': reactRefresh,
       'unused-imports': unusedImports,
     },
+    // react-hooks was already a registered plugin, but nothing in `rules`
+    // below ever turned its checks on — meaning a hooks-order violation
+    // (a hook called after a conditional early return, say) had no static
+    // check catching it before it shipped and crashed at runtime instead.
+    // These two are the plugin's own standard `recommended-latest` rules.
     settings: {
       react: {
         version: 'detect',
@@ -44,6 +49,8 @@ export default tseslint.config(
       },
     },
     rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
       'no-console': 'off',
       // TypeScript already type-checks props at compile time, so the
       // PropTypes-era react/prop-types rule is redundant noise on a

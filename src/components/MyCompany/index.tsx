@@ -93,8 +93,12 @@ const MyCompany: React.FC = () => {
   // preferences) is gated on COMPANY_SETTINGS_VIEW ('organization:read')
   // instead — that's what job-service's own catalogue GET routes require.
   const canViewQrManagement = useHasAccess(Authorities.JOB_OPENING_VIEW);
-  const canViewJobSettings =
-    useHasAccess(Authorities.COMPANY_SETTINGS_VIEW) || useHasAccess(Authorities.JOB_CATALOG_VIEW);
+  // Both hooks must run unconditionally on every render — `||` short-circuits
+  // the second call once the first is true, which varies the hook count
+  // between renders and violates React's rules of hooks.
+  const canViewCompanySettings = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
+  const canViewJobCatalog = useHasAccess(Authorities.JOB_CATALOG_VIEW);
+  const canViewJobSettings = canViewCompanySettings || canViewJobCatalog;
 
   const handleTabChange = (key: string) => {
     setSearchParams({ tab: key });
@@ -311,12 +315,24 @@ const MyCompany: React.FC = () => {
             {isProfileLoading && <Loader />}
 
             <div className="flex items-center gap-4 mb-6">
-              <div className="relative w-14 h-14 shrink-0 bg-gradient-to-br from-primary-600 to-accent-500 text-white rounded-full flex items-center justify-center shadow-sm text-xl font-bold overflow-hidden">
+              <div
+                className={`relative w-14 h-14 shrink-0 text-white rounded-full flex items-center justify-center shadow-sm text-xl font-bold overflow-hidden ${
+                  profile?.logo_url
+                    ? 'bg-gray-100'
+                    : 'bg-gradient-to-br from-primary-600 to-accent-500'
+                }`}
+              >
                 {profile?.logo_url ? (
                   <img
                     src={profile.logo_url}
                     alt={profile.company_name}
-                    className="w-full h-full object-cover"
+                    // object-contain, not object-cover — see
+                    // CompanyProfileTab.tsx's identical fix for why cover was
+                    // cropping most of a non-square scraped logo away. This
+                    // header is display-only (no upload control of its own —
+                    // the logo is edited from the Company Profile tab), so
+                    // just the framing fix, no crop modal here.
+                    className="w-full h-full object-contain p-1.5"
                   />
                 ) : (
                   <span>{profile?.company_name?.toUpperCase()?.[0] || ''}</span>

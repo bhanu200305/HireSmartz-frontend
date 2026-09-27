@@ -7,11 +7,13 @@ import MainLayout from '../../layouts/MainLayout';
 import { Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
+import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import { useListAuditEventsQuery } from '../../api/organization-service/Platform/audit';
 import { useListPlatformTenantsQuery } from '../../api/organization-service/Platform/tenants';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
-const PAGE_SIZE = 25;
 // Purely to populate the Action filter's option list with real, actually-
 // observed values (see the note below on why this isn't a hardcoded enum) —
 // not a page anyone scrolls through, so it can afford to look back further
@@ -59,6 +61,7 @@ const describeAction = (action: string): string =>
 const PlatformAudit: React.FC = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('platform_audit', 25);
   const [tenantSearch, setTenantSearch] = useState('');
   const [tenantFilter, setTenantFilter] = useState<string | undefined>(undefined);
   const [actionFilter, setActionFilter] = useState<string | undefined>(undefined);
@@ -66,8 +69,8 @@ const PlatformAudit: React.FC = () => {
   const { data, isLoading, isFetching, error } = useListAuditEventsQuery({
     tenantId: tenantFilter,
     action: actionFilter,
-    limit: PAGE_SIZE,
-    offset: page * PAGE_SIZE,
+    limit: pageSize,
+    offset: page * pageSize,
   });
 
   const { data: tenantResults, isFetching: isSearchingTenants } = useListPlatformTenantsQuery({
@@ -195,39 +198,49 @@ const PlatformAudit: React.FC = () => {
               : 'No Super Admin actions recorded yet.'}
           </div>
         ) : (
-          <div
-            className={`divide-y divide-neutral-100 border border-neutral-200 rounded-xl overflow-hidden bg-white transition-opacity ${
-              isFetching ? 'opacity-60' : ''
-            }`}
-          >
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-primary-50 transition-colors"
-              >
-                <div>
-                  <Typography variant="body1" className="font-medium">
-                    {describeAction(event.action)}
-                  </Typography>
-                  <Typography variant="caption">
-                    {event.target_type} · by {event.actor_name || event.actor_id}
-                    {event.tenant_id
-                      ? ` · ${tenantNameById.get(event.tenant_id) ?? `tenant ${event.tenant_id}`}`
-                      : ''}
+          <>
+            <RowsPerPageSelect
+              pageSize={pageSize}
+              options={PAGE_SIZE_OPTIONS}
+              onChange={(size) => {
+                setPageSize(size);
+                setPage(0);
+              }}
+            />
+            <div
+              className={`divide-y divide-neutral-100 border border-neutral-200 rounded-xl overflow-hidden bg-white transition-opacity ${
+                isFetching ? 'opacity-60' : ''
+              }`}
+            >
+              {events.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-primary-50 transition-colors"
+                >
+                  <div>
+                    <Typography variant="body1" className="font-medium">
+                      {describeAction(event.action)}
+                    </Typography>
+                    <Typography variant="caption">
+                      {event.target_type} · by {event.actor_name || event.actor_id}
+                      {event.tenant_id
+                        ? ` · ${tenantNameById.get(event.tenant_id) ?? `tenant ${event.tenant_id}`}`
+                        : ''}
+                    </Typography>
+                  </div>
+                  <Typography variant="caption" className="whitespace-nowrap">
+                    {event.created_at ? new Date(event.created_at).toLocaleString() : '-'}
                   </Typography>
                 </div>
-                <Typography variant="caption" className="whitespace-nowrap">
-                  {event.created_at ? new Date(event.created_at).toLocaleString() : '-'}
-                </Typography>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
 
-        {(data?.total ?? 0) > PAGE_SIZE && (
+        {(data?.total ?? 0) > pageSize && (
           <MasterPagination
             current={page + 1}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={data?.total ?? 0}
             itemLabel="Events"
             onPageChange={(p) => setPage(p - 1)}

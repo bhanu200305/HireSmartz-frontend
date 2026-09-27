@@ -249,7 +249,6 @@ const PlatformScoringDefaultsTab: React.FC = () => {
         <Select
           id="scoringCompany"
           className="w-full sm:w-[260px]"
-          popupClassName="scoringCompanySelectDropdown"
           loading={isCompaniesLoading}
           showSearch
           value={isPlatformDefault ? 'platform' : selectedTenantId}

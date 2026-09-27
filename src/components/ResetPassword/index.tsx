@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { FaCheckCircle } from 'react-icons/fa';
 import { MdErrorOutline, MdLockOutline } from 'react-icons/md';
-import { AuthPageShell, Button, PasswordInput, showToast } from '../shared';
+import {
+  AuthPageShell,
+  Button,
+  PasswordInput,
+  PasswordRequirementsChecklist,
+  showToast,
+} from '../shared';
 import { Loader } from '../shared/ui/loader';
 import { useResetPasswordMutation } from '../../api/authentication-service/ResetPassword/resetPassword';
 import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
@@ -42,6 +48,7 @@ const ResetPassword = () => {
     defaultValues: { newPassword: '', confirmNewPassword: '' },
     mode: 'onChange',
   });
+  const newPassword = useWatch({ control, name: 'newPassword' }) ?? '';
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
     if (!token) return;
@@ -139,6 +146,11 @@ const ResetPassword = () => {
             <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
               {errors.newPassword.message}
             </p>
+          )}
+          {newPassword.length > 0 && (
+            <div className="px-2">
+              <PasswordRequirementsChecklist password={newPassword} />
+            </div>
           )}
         </div>
 

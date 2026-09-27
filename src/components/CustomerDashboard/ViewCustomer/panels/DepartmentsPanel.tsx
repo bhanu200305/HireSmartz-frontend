@@ -1,19 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import { Tooltip } from 'antd';
 import { MdDelete, MdOutlineAdd, MdSearch } from 'react-icons/md';
-import {
-  Badge,
-  Button,
-  CustomTable,
-  Input,
-  Select,
-  Typography,
-  paginationConfig,
-  showToast,
-} from '../../../shared';
+import { Badge, Button, CustomTable, Input, Select, Typography, showToast } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import ConfirmationModal from '../../../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
+import MasterPagination from '../../../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../../../shared/ui/RowsPerPageSelect';
+import { usePersistedPageSize } from '../../../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../../../constants/app.constants';
 import {
   useListPlatformTenantDepartmentsQuery,
   useAddPlatformTenantDepartmentMutation,
@@ -24,6 +20,7 @@ import type { TenantDepartment } from '../../../../api/organization-service/Tena
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
 
 type DepartmentRow = TenantDepartment & { key: string };
+type SortKey = 'name' | 'office';
 
 /**
  * Super Admin's mirror of MyCompany/DepartmentsTab.tsx — same add/delete
@@ -44,6 +41,10 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [officeId, setOfficeId] = useState<string | undefined>(undefined);
   const [departmentToDelete, setDepartmentToDelete] = useState<TenantDepartment | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('customer_dashboard_departments', 10);
 
   // City alone isn't unique — two offices in the same city (matches the
   // convention this file's own location Select already uses below) would
@@ -62,6 +63,35 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         officeName(department.office_id).toLowerCase().includes(q)
     );
   }, [departments, searchText, offices]);
+
+  const sortComparators: Record<SortKey, (a: TenantDepartment, b: TenantDepartment) => number> = {
+    name: (a, b) => a.name.localeCompare(b.name),
+    office: (a, b) => officeName(a.office_id).localeCompare(officeName(b.office_id)),
+  };
+
+  const sortedDepartments = useMemo(() => {
+    const sorted = [...filteredDepartments].sort(sortComparators[sortBy]);
+    return sortOrder === 'desc' ? sorted.reverse() : sorted;
+  }, [filteredDepartments, sortBy, sortOrder, offices]);
+
+  const sortOrderFor = (key: SortKey): 'ascend' | 'descend' | undefined =>
+    sortBy === key ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
+  const handleTableChange: TableProps<DepartmentRow>['onChange'] = (
+    _pagination,
+    _filters,
+    sorter
+  ) => {
+    const active = Array.isArray(sorter) ? sorter[0] : sorter;
+    setPage(0);
+    if (!active?.order || !active.columnKey) {
+      setSortBy('name');
+      setSortOrder('asc');
+      return;
+    }
+    setSortBy(active.columnKey as SortKey);
+    setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
+  };
 
   const handleAdd = async () => {
     if (!name.trim()) {
@@ -104,7 +134,8 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      sorter: (a: DepartmentRow, b: DepartmentRow) => a.name.localeCompare(b.name),
+      sorter: true,
+      sortOrder: sortOrderFor('name'),
       render: (_: unknown, department: DepartmentRow) => (
         <span className="font-semibold text-gray-900">{department.name}</span>
       ),
@@ -112,8 +143,8 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     {
       title: 'Office',
       key: 'office',
-      sorter: (a: DepartmentRow, b: DepartmentRow) =>
-        officeName(a.office_id).localeCompare(officeName(b.office_id)),
+      sorter: true,
+      sortOrder: sortOrderFor('office'),
       render: (_: unknown, department: DepartmentRow) =>
         department.office_id ? (
           <Badge status="neutral" dot={false}>
@@ -128,22 +159,26 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       key: 'actions',
       width: 80,
       render: (_: unknown, department: DepartmentRow) => (
-        <button
-          type="button"
-          aria-label="Delete department"
-          className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-          onClick={() => setDepartmentToDelete(department)}
-        >
-          <MdDelete className="text-red-500" />
-        </button>
+        <Tooltip title="Delete department">
+          <button
+            type="button"
+            aria-label="Delete department"
+            className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+            onClick={() => setDepartmentToDelete(department)}
+          >
+            <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+          </button>
+        </Tooltip>
       ),
     },
   ];
 
-  const dataSource: DepartmentRow[] = filteredDepartments.map((department) => ({
-    ...department,
-    key: department.org_department_id,
-  }));
+  const dataSource: DepartmentRow[] = sortedDepartments
+    .slice(page * pageSize, page * pageSize + pageSize)
+    .map((department) => ({
+      ...department,
+      key: department.org_department_id,
+    }));
 
   return (
     <div className="p-4">
@@ -151,7 +186,8 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <div>
           <Typography variant="body2">This company&apos;s functional departments.</Typography>
           <span className="text-xs font-medium text-gray-400">
-            {dataSource.length} {dataSource.length === 1 ? 'department' : 'departments'}
+            {filteredDepartments.length}{' '}
+            {filteredDepartments.length === 1 ? 'department' : 'departments'}
             {searchText.trim() && ` of ${departments?.length ?? 0}`}
           </span>
         </div>
@@ -161,7 +197,10 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               prefix={<MdSearch className="text-gray-400" />}
               placeholder="Search departments..."
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setPage(0);
+              }}
             />
           </div>
           <Button
@@ -173,6 +212,15 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         </div>
       </div>
 
+      <RowsPerPageSelect
+        pageSize={pageSize}
+        options={PAGE_SIZE_OPTIONS}
+        onChange={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
+
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable<DepartmentRow>
           columns={columns}
@@ -180,14 +228,24 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           emptyText={
             searchText.trim() ? 'No departments match your search.' : 'No departments yet.'
           }
-          pagination={paginationConfig('departments')}
+          pagination={false}
+          onChange={handleTableChange}
         />
       </div>
+
+      <MasterPagination
+        current={page + 1}
+        pageSize={pageSize}
+        total={sortedDepartments.length}
+        itemLabel="departments"
+        onPageChange={(nextPage) => setPage(nextPage - 1)}
+      />
 
       <AntdCommonModal open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add department">
         <div className="flex flex-col gap-4">
           <Input
             placeholder="Department name *"
+            maxLength={120}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />

@@ -13,11 +13,11 @@
 }
 
 .careerforce-font {
-  font-family: 'sora', sans-serif !important;
+  font-family: var(--font-display) !important;
   color: var(--color-primary) !important;
 }
 .ai-recruitment-text {
-  font-family: 'Roboto', sans-serif !important;
+  font-family: var(--font-sans) !important;
   color: #969696 !important;
 }
 

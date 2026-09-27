@@ -15,7 +15,7 @@ import {
 } from 'react-icons/md';
 import { get } from 'lodash-es';
 import { Select } from 'antd';
-import { Button, Input, PasswordInput, showToast } from '../shared';
+import { Button, Input, PasswordInput, PasswordRequirementsChecklist, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import Footer from '../Footer';
 import {
@@ -155,23 +155,34 @@ const ExternalServiceErrorBanner = ({
  * outer gradient background every AuthPageShell-style screen shares.
  */
 const PageShell = ({ children, wide = false }: { children: ReactNode; wide?: boolean }) => (
-  <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
-    <div
-      className="pointer-events-none absolute inset-0 opacity-[0.15]"
-      style={{
-        backgroundImage: 'radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)',
-        backgroundSize: '28px 28px',
-      }}
-    />
-    <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#7dd8ee]/30 blur-3xl" />
-    <div className="pointer-events-none absolute top-1/4 -right-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
-    <div className="pointer-events-none absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#182a72]/30 blur-3xl" />
+  // No `overflow-hidden` on this element itself — it used to clip the whole
+  // page (logo/header down through the footer) to exactly one viewport
+  // tall, so on this form specifically (the longest of the shared
+  // auth-shell screens: name + phone + password + MFA all at once) a short
+  // viewport left the top and bottom genuinely unreachable, with no
+  // scrollbar to get to them. The decorative blobs below — the actual
+  // reason `overflow-hidden` was here — are clipped to their own wrapper
+  // instead, so the page can grow taller than 100vh and scroll normally
+  // while the background still can't cause horizontal overflow.
+  <div className="relative flex min-h-screen w-full flex-col items-center justify-center font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        className="absolute inset-0 opacity-[0.15]"
+        style={{
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+        }}
+      />
+      <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#7dd8ee]/30 blur-3xl" />
+      <div className="absolute top-1/4 -right-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
+      <div className="absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#182a72]/30 blur-3xl" />
+    </div>
     <div
       className={`login-card-pop relative z-10 w-full rounded-3xl bg-white px-8 py-9 shadow-2xl ring-1 ring-black/5 sm:px-10 ${wide ? 'max-w-2xl' : 'max-w-md'}`}
     >
       <div className="mb-6 flex flex-col items-center">
         <img src="/cfpLogo.svg" alt="Careerforce Pro" className="h-10 w-auto object-contain" />
-        <span className="ai-recruitment-text mt-2 text-[11px] tracking-widest">
+        <span className="ai-recruitment-text mt-2 text-xs tracking-widest">
           AI POWERED RECRUITMENT SOLUTIONS
         </span>
       </div>
@@ -277,7 +288,7 @@ const AcceptInvitation = () => {
     }
   }, [token, validateInvitation]);
 
-  const { control, handleSubmit, trigger, setValue, getValues, formState } =
+  const { control, handleSubmit, trigger, setValue, getValues, setError, formState } =
     useForm<AcceptInvitationFormValues>({
       resolver: zodResolver(acceptInvitationSchema),
       defaultValues: {
@@ -297,6 +308,7 @@ const AcceptInvitation = () => {
   const methodType = useWatch({ control, name: 'methodType' });
   const countryCode = useWatch({ control, name: 'countryCode' });
   const phoneNumber = useWatch({ control, name: 'phoneNumber' });
+  const password = useWatch({ control, name: 'password' }) ?? '';
 
   // A code, once sent, is only valid for the destination it was sent to and
   // the method it was sent for. Tracked outside the form because it's a
@@ -423,6 +435,27 @@ const AcceptInvitation = () => {
       );
     } catch (err: unknown) {
       const body = get(err, 'data') as InvitationErrorBody | undefined;
+      if (body?.error_code === 'PASSWORD_POLICY_VIOLATION') {
+        // The backend caught something the checklist above didn't (the
+        // common-password blocklist and email-similarity check aren't
+        // replicated client-side — see passwordPolicy.ts) — shown as a
+        // field error on the password input, same as every other
+        // field-specific rejection this form makes, never as a toast: a
+        // toast here used to read as "credential provisioning failed" (an
+        // organization-service misclassification fixed alongside this),
+        // which told the user nothing about what to actually change.
+        const violations = Array.isArray(body.details?.violations)
+          ? (body.details!.violations as string[])
+          : [];
+        setError('password', {
+          type: 'server',
+          message:
+            violations.length > 0
+              ? violations.map((violation) => `• ${violation}`).join('\n')
+              : "That password doesn't meet the requirements above.",
+        });
+        return;
+      }
       if (body?.error_code === 'EXTERNAL_SERVICE_ERROR') {
         // Persistent inline banner, not a toast — see ExternalServiceErrorBanner.
         setExternalServiceError(true);
@@ -699,6 +732,11 @@ const AcceptInvitation = () => {
               )}
             </div>
           </div>
+          {password.length > 0 && (
+            <div className="px-2">
+              <PasswordRequirementsChecklist password={password} />
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl border border-[var(--border)] bg-gray-50 p-4 sm:p-5">

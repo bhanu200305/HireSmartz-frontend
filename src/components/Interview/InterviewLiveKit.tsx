@@ -1759,7 +1759,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                   onClick={() => onSidebarChange(activeSidebar === 'chat' ? null : 'chat')}
                 />
                 {unreadChatCount > 0 && (
-                  <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand-500 px-0.5 text-[9px] font-bold text-white">
+                  <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand-500 px-0.5 text-xs font-bold text-white">
                     {unreadChatCount}
                   </span>
                 )}
@@ -2033,7 +2033,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                               {q.scoring_sections.map((section) => (
                                 <span
                                   key={section}
-                                  className="rounded-full bg-gray-700/70 px-2 py-0.5 text-[10px] text-gray-300"
+                                  className="rounded-full bg-gray-700/70 px-2 py-0.5 text-xs text-gray-300"
                                 >
                                   {section}
                                 </span>
@@ -2060,7 +2060,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                               {q.scoring_sections.map((section) => (
                                 <span
                                   key={section}
-                                  className="rounded-full bg-gray-700/70 px-2 py-0.5 text-[10px] text-gray-300"
+                                  className="rounded-full bg-gray-700/70 px-2 py-0.5 text-xs text-gray-300"
                                 >
                                   {section}
                                 </span>

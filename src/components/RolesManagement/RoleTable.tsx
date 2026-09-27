@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-import { Select, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import { LuPencil, LuTrash2 } from 'react-icons/lu';
 import { CustomTable, Badge, InfoHint, RolePermissionsHint, Search } from '../shared';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import type { Role } from '../../types';
@@ -227,7 +228,7 @@ const RoleTable: React.FC<RoleTableProps> = ({
                 <button
                   type="button"
                   aria-label="Delete role"
-                  className="text-danger-solid hover:opacity-80 cursor-pointer"
+                  className="text-gray-600 hover:text-danger-solid transition-colors cursor-pointer"
                   onClick={() => onDelete(role)}
                 >
                   <LuTrash2 size={16} strokeWidth={2} aria-hidden />
@@ -257,19 +258,14 @@ const RoleTable: React.FC<RoleTableProps> = ({
             setPage(0);
           }}
         />
-        <div className="flex items-center gap-2 text-sm text-neutral-500">
-          <span>Rows per page</span>
-          <Select
-            size="small"
-            value={pageSize}
-            className="rows-per-page-select"
-            options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-            onChange={(size) => {
-              setPageSize(size);
-              setPage(0);
-            }}
-          />
-        </div>
+        <RowsPerPageSelect
+          pageSize={pageSize}
+          options={PAGE_SIZE_OPTIONS}
+          onChange={(size) => {
+            setPageSize(size);
+            setPage(0);
+          }}
+        />
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">

@@ -118,11 +118,27 @@ const ResumeViewerModal = ({
           <Loader />
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        // Height computed from the SAME --app-header-height/--app-footer-height
+        // vars index.css uses for `.ant-modal-content`'s own max-height
+        // budget (`calc(100vh - header - footer - 48px)`), minus extra room
+        // for this modal's title/subtitle block, the actions row below the
+        // iframe, and padding — not a guessed vh percentage. A flat guess
+        // can still exceed the modal's real available space once all of
+        // that is counted, which leaves `.modal-content`'s own scroll
+        // fallback engaged ALONGSIDE the PDF viewer's own — this ties the
+        // box to the exact budget so that never happens, and the PDF viewer
+        // is the only thing that ever scrolls.
+        <div
+          className="flex flex-col gap-3 overflow-hidden"
+          style={{
+            height:
+              'calc(100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 248px)',
+          }}
+        >
           <iframe
             title={`${candidateName} resume`}
             src={blobUrl}
-            className="h-[70vh] w-full rounded-lg border border-neutral-200"
+            className="w-full flex-1 min-h-0 rounded-lg border border-neutral-200"
           />
           <div className="flex items-center justify-end gap-4">
             <a

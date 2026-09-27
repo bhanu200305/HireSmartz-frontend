@@ -233,7 +233,7 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
                   disabled={isMarkingAll || unreadCount <= 0}
                   className="text-primary hover:text-[#0B5ED7] disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed whitespace-nowrap cursor-pointer transition-colors"
                   style={{
-                    fontFamily: 'Roboto, sans-serif',
+                    fontFamily: 'var(--font-sans)',
                     fontWeight: 500,
                     fontSize: '14px',
                     lineHeight: '14px',

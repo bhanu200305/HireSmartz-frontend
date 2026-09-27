@@ -1,8 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { StatCardRow, ChartCard, FunnelBars } from '../shared';
-import type { StatCardData } from '../shared';
+import { ChartCard, FunnelBars } from '../shared';
+import { StatCardRow } from '../shared/ui/StatCardRow';
+import type { StatCardData } from '../shared/ui/StatCardRow';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import type { JobSummary } from '../../api/job-service/JobOpenings/types';
 import {
@@ -146,7 +147,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: '#8593ac' }}
+                  tick={{ fontSize: 12, fill: '#8593ac' }}
                   axisLine={false}
                   tickLine={false}
                   height={30}
@@ -154,12 +155,12 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
                     value: 'Score band',
                     position: 'insideBottom',
                     offset: -2,
-                    style: { fontSize: 10, fill: '#8593ac' },
+                    style: { fontSize: 12, fill: '#8593ac' },
                   }}
                 />
                 <YAxis
                   allowDecimals={false}
-                  tick={{ fontSize: 11, fill: '#8593ac' }}
+                  tick={{ fontSize: 12, fill: '#8593ac' }}
                   axisLine={false}
                   tickLine={false}
                   width={48}
@@ -167,7 +168,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
                     value: 'Candidates',
                     angle: -90,
                     position: 'insideLeft',
-                    style: { fontSize: 10, fill: '#8593ac', textAnchor: 'middle' },
+                    style: { fontSize: 12, fill: '#8593ac', textAnchor: 'middle' },
                   }}
                 />
                 <Tooltip

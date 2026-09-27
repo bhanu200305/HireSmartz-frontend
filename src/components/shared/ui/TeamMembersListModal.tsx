@@ -158,6 +158,7 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
             <CustomTable<UserRow>
               columns={columns}
               dataSource={dataSource}
+              scrollY="40vh"
               onRow={(row) => ({
                 onClick: () => {
                   onClose();

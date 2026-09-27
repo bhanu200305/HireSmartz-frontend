@@ -170,7 +170,7 @@ export const UploadAndGenerateHeader = ({
                       <span className="text-xs font-bold text-gray-800 uppercase tracking-wide">
                         Row issues
                       </span>
-                      <span className="text-[11px] font-semibold text-gray-400">
+                      <span className="text-xs font-semibold text-gray-400">
                         {warnings.length} {warnings.length === 1 ? 'row' : 'rows'}
                       </span>
                     </div>

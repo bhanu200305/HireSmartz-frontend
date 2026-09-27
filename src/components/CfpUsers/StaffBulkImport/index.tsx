@@ -1,10 +1,19 @@
 import { useState } from 'react';
-import { Upload } from 'antd';
-import { MdOutlineFileUpload, MdOutlineDownload, MdInsertDriveFile, MdClose } from 'react-icons/md';
+import { Tooltip, Upload } from 'antd';
+import {
+  MdOutlineFileUpload,
+  MdOutlineDownload,
+  MdInsertDriveFile,
+  MdClose,
+  MdOutlineRemoveRedEye,
+} from 'react-icons/md';
 import { FaCheckCircle } from 'react-icons/fa';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import { Button, showToast, StepIndicator, type Step } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
+import SpreadsheetPreviewModal, {
+  type SpreadsheetPreviewSource,
+} from '../../shared/ui/SpreadsheetPreviewModal';
 import {
   useUploadStaffRosterMutation,
   useParseStaffRosterMutation,
@@ -50,6 +59,7 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
     created: number;
     failures: StaffRosterRowFailure[];
   } | null>(null);
+  const [previewSource, setPreviewSource] = useState<SpreadsheetPreviewSource | null>(null);
 
   const { roles, isLoading: isLoadingRoles } = useRolesCatalog({
     scope: 'platform',
@@ -139,6 +149,15 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
     }
   };
 
+  const handlePreviewTemplate = async () => {
+    try {
+      const { download_url } = await fetchTemplateUrl().unwrap();
+      setPreviewSource({ kind: 'url', url: download_url });
+    } catch {
+      showToast({ message: 'Failed to load a preview of the template.', type: 'error' });
+    }
+  };
+
   return (
     <AntdCommonModal
       open={open}
@@ -151,13 +170,22 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
 
       {step === 1 && (
         <div>
-          <button
-            type="button"
-            onClick={handleDownloadTemplate}
-            className="flex items-center gap-1 text-sm text-primary hover:underline mb-3 cursor-pointer"
-          >
-            <MdOutlineDownload /> Download the roster template
-          </button>
+          <div className="flex items-center gap-4 mb-3">
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              className="flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"
+            >
+              <MdOutlineDownload /> Download the roster template
+            </button>
+            <button
+              type="button"
+              onClick={handlePreviewTemplate}
+              className="flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"
+            >
+              <MdOutlineRemoveRedEye /> Preview
+            </button>
+          </div>
           {!selectedFile ? (
             <Upload.Dragger
               beforeUpload={handleSelectFile}
@@ -181,14 +209,28 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedFile(null)}
-                aria-label="Remove file"
-                className="text-gray-400 hover:text-gray-600 shrink-0 cursor-pointer"
-              >
-                <MdClose className="text-xl" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <Tooltip title="Preview file">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewSource({ kind: 'file', file: selectedFile })}
+                    aria-label="Preview file"
+                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    <MdOutlineRemoveRedEye className="text-xl" />
+                  </button>
+                </Tooltip>
+                <Tooltip title="Remove file">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFile(null)}
+                    aria-label="Remove file"
+                    className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    <MdClose className="text-xl" />
+                  </button>
+                </Tooltip>
+              </div>
             </div>
           )}
           {selectedFile && (
@@ -270,6 +312,15 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
           </Button>
         </div>
       )}
+
+      <SpreadsheetPreviewModal
+        open={!!previewSource}
+        onClose={() => setPreviewSource(null)}
+        title={
+          previewSource?.kind === 'file' ? 'Preview: file to upload' : 'Preview: roster template'
+        }
+        source={previewSource}
+      />
     </AntdCommonModal>
   );
 };

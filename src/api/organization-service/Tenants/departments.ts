@@ -5,6 +5,7 @@ export type TenantDepartment = {
   org_department_id: string;
   name: string;
   office_id: string | null;
+  is_active: boolean;
 };
 
 export type ListTenantDepartmentsArgs = {
@@ -46,6 +47,34 @@ export type UpdateTenantDepartmentRequest = {
   departmentId: string;
   department_name?: string;
   office_id?: string | null;
+  isMaster?: boolean;
+};
+
+// A department's OWN `office_id` above is its single primary office — this
+// is a separate, additive relationship: every OTHER office the department
+// also operates out of. GET /v1/tenants/{tenant_id}/departments/{department_id}/offices
+// row shape.
+export type TenantDepartmentOffice = {
+  office_id: string;
+  location_code: string | null;
+  address_line_1: string;
+  address_line_2: string | null;
+  city: string;
+  state: string | null;
+  country: string;
+  zip_code: string | null;
+};
+
+export type ListTenantDepartmentOfficesArgs = {
+  tenantId: string;
+  departmentId: string;
+  isMaster?: boolean;
+};
+
+export type TenantDepartmentOfficeMutationArgs = {
+  tenantId: string;
+  departmentId: string;
+  officeId: string;
   isMaster?: boolean;
 };
 
@@ -100,6 +129,63 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'TenantDepartments', id: tenantId },
       ],
     }),
+    deactivateTenantDepartment: build.mutation<
+      void,
+      { tenantId: string; departmentId: string; isMaster?: boolean }
+    >({
+      query: ({ tenantId, departmentId, isMaster }) => ({
+        url: `${departmentsBasePath({ tenantId, isMaster })}/${departmentId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'TenantDepartments', id: tenantId },
+      ],
+    }),
+    // No confirmation needed by convention — restoring visibility is the
+    // low-risk direction.
+    activateTenantDepartment: build.mutation<
+      void,
+      { tenantId: string; departmentId: string; isMaster?: boolean }
+    >({
+      query: ({ tenantId, departmentId, isMaster }) => ({
+        url: `${departmentsBasePath({ tenantId, isMaster })}/${departmentId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [
+        { type: 'TenantDepartments', id: tenantId },
+      ],
+    }),
+    listTenantDepartmentOffices: build.query<
+      TenantDepartmentOffice[],
+      ListTenantDepartmentOfficesArgs
+    >({
+      query: ({ tenantId, departmentId, isMaster }) =>
+        `${departmentsBasePath({ tenantId, isMaster })}/${departmentId}/offices`,
+      transformResponse: (response: { offices?: TenantDepartmentOffice[] }) =>
+        response.offices ?? [],
+      providesTags: (_result, _error, { departmentId }) => [
+        { type: 'TenantDepartmentOffices', id: departmentId },
+      ],
+    }),
+    addTenantDepartmentOffice: build.mutation<void, TenantDepartmentOfficeMutationArgs>({
+      query: ({ tenantId, departmentId, officeId, isMaster }) => ({
+        url: `${departmentsBasePath({ tenantId, isMaster })}/${departmentId}/offices`,
+        method: 'POST',
+        body: { office_id: officeId },
+      }),
+      invalidatesTags: (_result, _error, { departmentId }) => [
+        { type: 'TenantDepartmentOffices', id: departmentId },
+      ],
+    }),
+    removeTenantDepartmentOffice: build.mutation<void, TenantDepartmentOfficeMutationArgs>({
+      query: ({ tenantId, departmentId, officeId, isMaster }) => ({
+        url: `${departmentsBasePath({ tenantId, isMaster })}/${departmentId}/offices/${officeId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, { departmentId }) => [
+        { type: 'TenantDepartmentOffices', id: departmentId },
+      ],
+    }),
   }),
 });
 
@@ -108,4 +194,9 @@ export const {
   useAddTenantDepartmentMutation,
   useUpdateTenantDepartmentMutation,
   useDeleteTenantDepartmentMutation,
+  useDeactivateTenantDepartmentMutation,
+  useActivateTenantDepartmentMutation,
+  useListTenantDepartmentOfficesQuery,
+  useAddTenantDepartmentOfficeMutation,
+  useRemoveTenantDepartmentOfficeMutation,
 } = extendedApi;

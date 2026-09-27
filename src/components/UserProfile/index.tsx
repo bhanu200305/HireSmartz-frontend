@@ -51,7 +51,7 @@ import {
 } from '../../constants/file.constants';
 import { get } from 'lodash-es';
 import { Loader } from '../shared/ui/loader';
-import ProfilePictureCropModal from './ProfilePictureCropModal';
+import ImageCropModal from '../shared/ui/ImageCropModal';
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -573,7 +573,7 @@ const UserProfile = () => {
                           className="!w-24 !h-24 sm:!w-28 sm:!h-28 !rounded-full !border-2 !border-dashed !border-[var(--primary-300)] !bg-white/70 flex flex-col items-center justify-center mx-auto hover:!border-[var(--primary)] transition-colors"
                         >
                           <MdOutlineFileUpload className="text-2xl text-[var(--primary)] mx-auto" />
-                          <p className="text-[11px] leading-tight px-3 mt-1 text-[var(--gray-600)]">
+                          <p className="text-xs leading-tight px-3 mt-1 text-[var(--gray-600)]">
                             Upload photo
                           </p>
                         </Upload.Dragger>
@@ -955,7 +955,7 @@ const UserProfile = () => {
           </div>
         </div>
       </MainLayout>
-      <ProfilePictureCropModal
+      <ImageCropModal
         open={isCropModalOpen}
         imageSrc={cropImageSrc}
         onCancel={handleCropCancel}

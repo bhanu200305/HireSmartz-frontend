@@ -2379,6 +2379,8 @@ const JobDetails = () => {
                             <Select
                               mode="multiple"
                               allowClear
+                              showSearch
+                              optionFilterProp="label"
                               variant="borderless"
                               placeholder="Select languages"
                               className="w-full custom-select-jobs placeholder-style"

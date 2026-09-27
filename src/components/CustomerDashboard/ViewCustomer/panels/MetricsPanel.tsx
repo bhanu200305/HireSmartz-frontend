@@ -5,8 +5,11 @@ import {
   MdOutlineDescription,
   MdOutlineEventAvailable,
 } from 'react-icons/md';
-import { StatCardRow, ChartCard, DonutStat, StatDetailModal } from '../../../shared';
-import type { StatCardData, DonutSlice } from '../../../shared';
+import { ChartCard, DonutStat } from '../../../shared';
+import type { DonutSlice } from '../../../shared';
+import { StatCardRow } from '../../../shared/ui/StatCardRow';
+import type { StatCardData } from '../../../shared/ui/StatCardRow';
+import StatDetailModal from '../../../shared/ui/StatDetailModal';
 import { useGetPlatformTenantDashboardQuery } from '../../../../api/organization-service/Platform/tenants';
 import { useGetTenantJobStatsQuery } from '../../../../api/job-service/Platform/tenantJobStats';
 import TenantUsersListModal from '../../../Dashboard/TenantUsersListModal';

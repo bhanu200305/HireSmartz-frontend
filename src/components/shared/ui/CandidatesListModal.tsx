@@ -188,6 +188,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             <CustomTable<CandidateRow>
               columns={columns}
               dataSource={dataSource}
+              scrollY="40vh"
               onChange={(_pagination, _tableFilters, sorter) => {
                 const active = Array.isArray(sorter) ? sorter[0] : sorter;
                 const resolved = active as SorterResult<CandidateRow>;

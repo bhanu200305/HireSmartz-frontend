@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Select } from 'antd';
+import { Select, Tooltip } from 'antd';
 import { MdDelete, MdOutlineQuestionAnswer, MdOutlineUploadFile } from 'react-icons/md';
 import { Badge, Button, Input, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
@@ -338,6 +338,8 @@ const IntakeQuestionsTab: React.FC = () => {
                       className="w-44 shrink-0"
                       placeholder="Resume Field"
                       loading={isLoadingFields}
+                      showSearch
+                      optionFilterProp="label"
                       value={draft.fieldId || undefined}
                       onChange={(value) =>
                         setDrafts((prev) => ({
@@ -354,14 +356,16 @@ const IntakeQuestionsTab: React.FC = () => {
                     >
                       {isSaving ? 'Saving…' : 'Save'}
                     </Button>
-                    <button
-                      type="button"
-                      aria-label="Remove question"
-                      className="p-2 hover:bg-gray-100 rounded-full cursor-pointer"
-                      onClick={() => setQuestionToDelete(question)}
-                    >
-                      <MdDelete className="text-red-500" />
-                    </button>
+                    <Tooltip title="Remove question">
+                      <button
+                        type="button"
+                        aria-label="Remove question"
+                        className="group p-2 hover:bg-red-50 rounded-full cursor-pointer"
+                        onClick={() => setQuestionToDelete(question)}
+                      >
+                        <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+                      </button>
+                    </Tooltip>
                   </div>
                 );
               })}
@@ -383,6 +387,8 @@ const IntakeQuestionsTab: React.FC = () => {
               className="w-44 shrink-0"
               placeholder="Resume Field"
               loading={isLoadingFields}
+              showSearch
+              optionFilterProp="label"
               value={newQuestionFieldId}
               onChange={setNewQuestionFieldId}
               options={fieldOptions}

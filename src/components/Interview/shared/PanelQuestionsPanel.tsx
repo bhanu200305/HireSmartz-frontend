@@ -79,7 +79,7 @@ const QuestionList = ({ title, items }: { title: string; items: PanelQuestionIte
                 {q.scoring_sections.map((section) => (
                   <span
                     key={section}
-                    className="rounded-full bg-neutral-700/70 px-2 py-0.5 text-[10px] text-neutral-300"
+                    className="rounded-full bg-neutral-700/70 px-2 py-0.5 text-xs text-neutral-300"
                   >
                     {section}
                   </span>

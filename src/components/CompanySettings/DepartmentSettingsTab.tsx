@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-import { Select, Select as AntSelect } from 'antd';
+import { Select as AntSelect } from 'antd';
 import { MdSearch } from 'react-icons/md';
 import { Badge, CustomTable, Input, Typography, Button, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
@@ -217,7 +218,7 @@ const DepartmentSettingsTab: React.FC = () => {
         departments.
       </Typography>
 
-      <div className="flex items-center gap-4 mb-6 flex-wrap">
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
         <AntSelect
           showSearch
           placeholder="Select department"
@@ -230,33 +231,29 @@ const DepartmentSettingsTab: React.FC = () => {
           filterOption={(input, option) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
           }
-          className="w-full sm:w-[280px]"
+          className="w-64"
         />
-        <Input
-          prefix={<MdSearch className="text-gray-400" />}
-          placeholder="Search job titles..."
-          className="w-full sm:w-[320px]"
-          value={searchText}
-          onChange={(e) => {
-            setSearchText(e.target.value);
-            setPage(0);
-          }}
-        />
+        <div className="w-52">
+          <Input
+            prefix={<MdSearch className="text-gray-400" />}
+            placeholder="Search job titles..."
+            value={searchText}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              setPage(0);
+            }}
+          />
+        </div>
       </div>
 
-      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
-        <span>Rows per page</span>
-        <Select
-          size="small"
-          value={pageSize}
-          className="rows-per-page-select"
-          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-          onChange={(size) => {
-            setPageSize(size);
-            setPage(0);
-          }}
-        />
-      </div>
+      <RowsPerPageSelect
+        pageSize={pageSize}
+        options={PAGE_SIZE_OPTIONS}
+        onChange={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
 
       {!selectedDepartmentId ? (
         <div className="p-6 text-center text-gray-400 text-sm border rounded-xl">

@@ -104,7 +104,7 @@ const FeatureCard = ({ icon, title, description, tone = 'light', badge }: Featur
     )}
   >
     {badge && (
-      <span className="absolute top-4 right-4 rounded-full bg-accent-400 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white">
+      <span className="absolute top-4 right-4 rounded-full bg-accent-400 px-2 py-0.5 text-xs font-bold tracking-wide text-white">
         {badge}
       </span>
     )}
@@ -156,21 +156,21 @@ const HeroMockup = () => {
           <span className="h-2.5 w-2.5 rounded-full bg-[#f87171]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[#fbbf24]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[#34d399]" />
-          <span className="ml-auto text-[11px] font-medium text-neutral-400">Hiring Overview</span>
+          <span className="ml-auto text-xs font-medium text-neutral-400">Hiring Overview</span>
         </div>
 
         <div className="mb-4 grid grid-cols-3 gap-2.5">
           <div className="rounded-xl bg-[#eef2ff] px-3 py-2.5">
             <p className="font-display text-lg font-bold text-primary-600">128</p>
-            <p className="text-[10px] font-medium text-neutral-500">Candidates</p>
+            <p className="text-xs font-medium text-neutral-500">Candidates</p>
           </div>
           <div className="rounded-xl bg-[#ecf7fb] px-3 py-2.5">
             <p className="font-display text-lg font-bold text-accent-500">42</p>
-            <p className="text-[10px] font-medium text-neutral-500">Interviews</p>
+            <p className="text-xs font-medium text-neutral-500">Interviews</p>
           </div>
           <div className="rounded-xl bg-[#f9fafc] px-3 py-2.5">
             <p className="font-display text-lg font-bold text-neutral-800">93%</p>
-            <p className="text-[10px] font-medium text-neutral-500">Match Score</p>
+            <p className="text-xs font-medium text-neutral-500">Match Score</p>
           </div>
         </div>
 

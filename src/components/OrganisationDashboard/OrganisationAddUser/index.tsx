@@ -257,6 +257,8 @@ const AddOrganisationUser = () => {
             value={form.department_id}
             onChange={(value) => setForm((prev) => ({ ...prev, department_id: value }))}
             allowClear
+            showSearch
+            optionFilterProp="label"
             options={(departments || []).map((d) => ({
               label: d.name,
               value: d.org_department_id,

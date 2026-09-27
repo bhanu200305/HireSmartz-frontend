@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Tooltip } from 'antd';
 import {
   MdOutlineMailOutline,
   MdOutlineRefresh,
@@ -146,7 +147,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       <span className="text-xs text-gray-400">{invitation.role}</span>
                       <span
-                        className={`inline-flex items-center rounded-full text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 ${
+                        className={`inline-flex items-center rounded-full text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 ${
                           STATUS_BADGE_BG[invitation.status] || 'bg-gray-100 text-gray-500'
                         }`}
                       >
@@ -161,38 +162,51 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 {invitation.status === 'pending' && (
                   <div className="flex gap-1 shrink-0">
                     {matchedUserId && (
-                      <button
-                        type="button"
-                        aria-label="Change email"
-                        className="p-2 rounded-full text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        disabled={isChangingEmail}
-                        onClick={() =>
-                          changingEmailFor === invitation.invitation_id
-                            ? cancelChangeEmail()
-                            : startChangeEmail(invitation.invitation_id, invitation.invited_email)
+                      <Tooltip
+                        title={
+                          changingEmailFor === invitation.invitation_id ? 'Cancel' : 'Change email'
                         }
                       >
-                        <MdOutlineEdit size={16} />
-                      </button>
+                        <button
+                          type="button"
+                          aria-label="Change email"
+                          className="p-2 rounded-full text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          disabled={isChangingEmail}
+                          onClick={() =>
+                            changingEmailFor === invitation.invitation_id
+                              ? cancelChangeEmail()
+                              : startChangeEmail(invitation.invitation_id, invitation.invited_email)
+                          }
+                        >
+                          <MdOutlineEdit size={16} />
+                        </button>
+                      </Tooltip>
                     )}
-                    <button
-                      type="button"
-                      aria-label="Resend invitation"
-                      className="p-2 rounded-full text-primary-600 bg-primary-50 hover:bg-primary-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      disabled={isResending}
-                      onClick={() => handleResend(invitation.invitation_id)}
-                    >
-                      <MdOutlineRefresh size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Revoke invitation"
-                      className="p-2 rounded-full text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      disabled={isRevoking}
-                      onClick={() => handleRevoke(invitation.invitation_id)}
-                    >
-                      <MdOutlineBlock size={16} />
-                    </button>
+                    <Tooltip title="Resend invitation">
+                      <button
+                        type="button"
+                        aria-label="Resend invitation"
+                        className="p-2 rounded-full text-primary-600 bg-primary-50 hover:bg-primary-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        disabled={isResending}
+                        onClick={() => handleResend(invitation.invitation_id)}
+                      >
+                        <MdOutlineRefresh size={16} />
+                      </button>
+                    </Tooltip>
+                    <Tooltip title="Revoke invitation">
+                      <button
+                        type="button"
+                        aria-label="Revoke invitation"
+                        className="group p-2 rounded-full bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        disabled={isRevoking}
+                        onClick={() => handleRevoke(invitation.invitation_id)}
+                      >
+                        <MdOutlineBlock
+                          size={16}
+                          className="text-gray-600 transition-colors group-hover:text-red-600"
+                        />
+                      </button>
+                    </Tooltip>
                   </div>
                 )}
               </div>

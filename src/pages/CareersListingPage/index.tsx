@@ -255,7 +255,7 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
               {label}
             </p>
             {isRecentlyPosted(job.job_open_date) && (
-              <span className="shrink-0 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+              <span className="shrink-0 rounded-full bg-accent-500 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
                 New
               </span>
             )}
@@ -580,7 +580,9 @@ export const CareersListingPage = () => {
                 onChange={setSelectedLocations}
                 className="w-full"
                 maxTagCount="responsive"
-                suffixIcon={<DownOutlined style={{ fontSize: 10, color: '#9ca3af' }} />}
+                showSearch
+                optionFilterProp="children"
+                suffixIcon={<DownOutlined style={{ fontSize: 12, color: '#9ca3af' }} />}
                 style={{ height: 40 }}
               >
                 {locationOptions.map((city) => (
@@ -594,7 +596,7 @@ export const CareersListingPage = () => {
                 value={experienceBucket}
                 onChange={setExperienceBucket}
                 className="w-full"
-                suffixIcon={<DownOutlined style={{ fontSize: 10, color: '#9ca3af' }} />}
+                suffixIcon={<DownOutlined style={{ fontSize: 12, color: '#9ca3af' }} />}
                 style={{ height: 40 }}
               >
                 {EXPERIENCE_BUCKETS.map((bucket) => (
@@ -608,7 +610,7 @@ export const CareersListingPage = () => {
                 value={salaryBucket}
                 onChange={setSalaryBucket}
                 className="w-full"
-                suffixIcon={<DownOutlined style={{ fontSize: 10, color: '#9ca3af' }} />}
+                suffixIcon={<DownOutlined style={{ fontSize: 12, color: '#9ca3af' }} />}
                 style={{ height: 40 }}
               >
                 <Option value="any">Any Salary</Option>
@@ -640,7 +642,7 @@ export const CareersListingPage = () => {
                 value={datePostedBucket}
                 onChange={setDatePostedBucket}
                 className="w-full"
-                suffixIcon={<DownOutlined style={{ fontSize: 10, color: '#9ca3af' }} />}
+                suffixIcon={<DownOutlined style={{ fontSize: 12, color: '#9ca3af' }} />}
                 style={{ height: 40 }}
               >
                 {DATE_POSTED_BUCKETS.map((bucket) => (

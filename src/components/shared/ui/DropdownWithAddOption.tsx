@@ -246,7 +246,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
     overlayInnerStyle: {
       borderRadius: 8,
       padding: '6px 10px',
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 600,
       letterSpacing: '0.02em',
     },
@@ -315,7 +315,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
               {/* Add option */}
               {showAddOption && (
                 <div
-                  className="p-2 cursor-pointer hover:bg-gray-100 flex items-center text-primary capitalize"
+                  className="p-2 cursor-pointer bg-white hover:font-medium flex items-center text-primary capitalize"
                   key="add-new-option"
                   // onClick={() => onAddOption(searchValue, type)}
                   onClick={handleAddOption}
@@ -372,11 +372,14 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
                       >
                         <button
                           type="button"
-                          className="p-1 hover:bg-gray-200 rounded text-red-600 transition-colors mr-2 cursor-pointer"
+                          className="group p-1 hover:bg-gray-200 rounded transition-colors mr-2 cursor-pointer"
                           onClick={(e) => handleDeleteClick(option, e)}
                           tabIndex={-1}
                         >
-                          <MdDelete size={14} />
+                          <MdDelete
+                            size={14}
+                            className="text-gray-600 transition-colors group-hover:text-red-600"
+                          />
                         </button>
                       </Tooltip>
                     )}

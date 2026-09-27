@@ -1,20 +1,24 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import { Tooltip } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-import { Select } from 'antd';
-import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
+import { MdBlock, MdDelete, MdEdit, MdOutlineAdd, MdRestore, MdSearch } from 'react-icons/md';
 import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { useEnterToSubmit } from '../../hooks/useEnterToSubmit';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
   useListMasterDepartmentsQuery,
   useCreateMasterDepartmentMutation,
   useUpdateMasterDepartmentMutation,
   useDeleteMasterDepartmentMutation,
+  useDeactivateMasterDepartmentMutation,
+  useActivateMasterDepartmentMutation,
   MasterDepartment,
 } from '../../api/organization-service/Platform/masterDepartments';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
@@ -33,14 +37,16 @@ const SORT_COMPARATORS: Record<SortKey, (a: MasterDepartment, b: MasterDepartmen
 /**
  * GET/POST/PUT/DELETE /v1/platform/master-departments — the platform's
  * department catalogue. Same shape as IndustriesTab.tsx (code/name/
- * description, code immutable once created); no active/inactive concept —
- * DepartmentView on the backend has no status field.
+ * description, code immutable once created, plus an is_active toggle).
  */
 const DepartmentsTab: React.FC = () => {
   const { data: departments, isLoading } = useListMasterDepartmentsQuery();
   const [createDepartment, { isLoading: isCreating }] = useCreateMasterDepartmentMutation();
   const [updateDepartment, { isLoading: isUpdating }] = useUpdateMasterDepartmentMutation();
   const [deleteDepartment] = useDeleteMasterDepartmentMutation();
+  const [deactivateDepartment, { isLoading: isDeactivating }] =
+    useDeactivateMasterDepartmentMutation();
+  const [activateDepartment] = useActivateMasterDepartmentMutation();
 
   const [modalState, setModalState] = useState<{
     mode: 'add' | 'edit';
@@ -48,6 +54,10 @@ const DepartmentsTab: React.FC = () => {
   } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [departmentToDelete, setDepartmentToDelete] = useState<MasterDepartment | null>(null);
+  const [departmentToDeactivate, setDepartmentToDeactivate] = useState<MasterDepartment | null>(
+    null
+  );
+  const [pendingActivateId, setPendingActivateId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -139,6 +149,10 @@ const DepartmentsTab: React.FC = () => {
     }
   };
 
+  const { onKeyDown: handleEnterToSubmit } = useEnterToSubmit(handleSubmit, {
+    enabled: modalState !== null && !isCreating && !isUpdating && isFormValid,
+  });
+
   const handleDelete = async () => {
     if (!departmentToDelete) return;
     try {
@@ -154,6 +168,41 @@ const DepartmentsTab: React.FC = () => {
       });
     } finally {
       setDepartmentToDelete(null);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!departmentToDeactivate) return;
+    try {
+      await deactivateDepartment(departmentToDeactivate.department_id).unwrap();
+      showToast({
+        message: `"${departmentToDeactivate.name}" was deactivated.`,
+        type: 'success',
+      });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to deactivate department.'),
+        type: 'error',
+      });
+    } finally {
+      setDepartmentToDeactivate(null);
+    }
+  };
+
+  // No confirmation modal, unlike deactivate — restoring visibility is the
+  // low-risk direction.
+  const handleActivate = async (department: MasterDepartment) => {
+    setPendingActivateId(department.department_id);
+    try {
+      await activateDepartment(department.department_id).unwrap();
+      showToast({ message: `"${department.name}" was activated.`, type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to activate department.'),
+        type: 'error',
+      });
+    } finally {
+      setPendingActivateId(null);
     }
   };
 
@@ -194,27 +243,65 @@ const DepartmentsTab: React.FC = () => {
       ),
     },
     {
+      title: 'Status',
+      key: 'status',
+      width: 110,
+      render: (_: unknown, department: DepartmentRow) => (
+        <Badge status={department.is_active ? 'success' : 'neutral'}>
+          {department.is_active ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+    {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 130,
       render: (_: unknown, department: DepartmentRow) => (
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Edit department"
-            className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
-            onClick={() => openEdit(department)}
-          >
-            <MdEdit className="text-gray-600" />
-          </button>
-          <button
-            type="button"
-            aria-label="Delete department"
-            className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-            onClick={() => setDepartmentToDelete(department)}
-          >
-            <MdDelete className="text-red-500" />
-          </button>
+          <Tooltip title="Edit department">
+            <button
+              type="button"
+              aria-label="Edit department"
+              className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+              onClick={() => openEdit(department)}
+            >
+              <MdEdit className="text-gray-600" />
+            </button>
+          </Tooltip>
+          <Tooltip title="Delete department">
+            <button
+              type="button"
+              aria-label="Delete department"
+              className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+              onClick={() => setDepartmentToDelete(department)}
+            >
+              <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+            </button>
+          </Tooltip>
+          {department.is_active ? (
+            <Tooltip title="Deactivate department">
+              <button
+                type="button"
+                aria-label="Deactivate department"
+                className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+                onClick={() => setDepartmentToDeactivate(department)}
+              >
+                <MdBlock className="text-gray-600 transition-colors group-hover:text-red-600" />
+              </button>
+            </Tooltip>
+          ) : (
+            <Tooltip title="Activate department">
+              <button
+                type="button"
+                aria-label="Activate department"
+                className="p-2 hover:bg-green-50 rounded-full disabled:cursor-not-allowed cursor-pointer transition-colors disabled:opacity-50"
+                disabled={pendingActivateId === department.department_id}
+                onClick={() => handleActivate(department)}
+              >
+                <MdRestore className="text-green-600" />
+              </button>
+            </Tooltip>
+          )}
         </div>
       ),
     },
@@ -257,19 +344,14 @@ const DepartmentsTab: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
-        <span>Rows per page</span>
-        <Select
-          size="small"
-          value={pageSize}
-          className="rows-per-page-select"
-          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-          onChange={(size) => {
-            setPageSize(size);
-            setPage(0);
-          }}
-        />
-      </div>
+      <RowsPerPageSelect
+        pageSize={pageSize}
+        options={PAGE_SIZE_OPTIONS}
+        onChange={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable<DepartmentRow>
@@ -296,15 +378,17 @@ const DepartmentsTab: React.FC = () => {
         onClose={() => setModalState(null)}
         title={modalState?.mode === 'edit' ? 'Edit department' : 'Add department'}
       >
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
           <Input
             placeholder="Code *"
+            maxLength={60}
             value={form.code}
             disabled={modalState?.mode === 'edit'}
             onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
           />
           <Input
             placeholder="Name *"
+            maxLength={120}
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           />
@@ -338,6 +422,16 @@ const DepartmentsTab: React.FC = () => {
           confirmText="REMOVE"
           onConfirm={handleDelete}
           onClose={() => setDepartmentToDelete(null)}
+        />
+      )}
+
+      {departmentToDeactivate && (
+        <ConfirmationModal
+          title={`Deactivate "${departmentToDeactivate.name}"? Companies won't be able to use it anymore.`}
+          confirmText="DEACTIVATE"
+          isLoading={isDeactivating}
+          onConfirm={handleDeactivate}
+          onClose={() => setDepartmentToDeactivate(null)}
         />
       )}
     </div>

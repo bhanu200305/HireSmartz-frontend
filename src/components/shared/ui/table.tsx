@@ -16,11 +16,10 @@ interface CustomTableProps<T> {
   /** Overrides AntD's default "No Data" empty state with a custom message/node. */
   emptyText?: ReactNode;
   /**
-   * Off by default (`false`), same as every existing call site relied on
-   * before this prop existed — pass a config object to turn it on for a
-   * given table without changing anyone else's behavior. `paginationConfig`
-   * (below) is a ready-made "10/25/50/100 per page" config most call sites
-   * that want pagination can just pass straight through.
+   * Off by default (`false`) — every paginated list in the app pairs this
+   * with `MasterPagination`/`RowsPerPageSelect` instead of antd's own pager,
+   * so callers should leave this `false` and render those alongside the
+   * table rather than passing a real antd pagination config here.
    */
   pagination?: TableProps<T>['pagination'];
   /**
@@ -31,6 +30,18 @@ interface CustomTableProps<T> {
   enableKeyboardNav?: boolean;
   /** What Enter does on the focused row — usually the same `navigate(...)` call the row's own `onRow.onClick` already makes. */
   onRowEnter?: (record: T, index: number) => void;
+  /**
+   * Caps the table body's height and makes it scroll internally (antd's
+   * `scroll.y`, which also makes the header row sticky within that region)
+   * instead of letting the table grow to fit every row. Needed inside a
+   * modal that renders its own pagination footer below the table — without
+   * this, a modal with many rows has no bounded scroll region of its own,
+   * so the whole modal (including that footer) scrolls together and a long
+   * result list buries the pager at the bottom, several screens of rows
+   * away. Leave unset for a plain page table, where the page itself
+   * scrolling is normal and there's no footer being pushed out of reach.
+   */
+  scrollY?: number | string;
 }
 
 const CustomTable = <T extends object>({
@@ -44,6 +55,7 @@ const CustomTable = <T extends object>({
   pagination = false,
   enableKeyboardNav = false,
   onRowEnter,
+  scrollY,
 }: CustomTableProps<T>) => {
   const { focusedIndex, handleKeyDown } = useRovingFocus({
     items: dataSource,
@@ -96,7 +108,7 @@ const CustomTable = <T extends object>({
         // — it only ever activates the scroll when the columns actually
         // need more room than they have, so a table that already fits
         // (the common case) renders exactly as it did before this.
-        scroll={{ x: 'max-content' }}
+        scroll={{ x: 'max-content', y: scrollY }}
       />
     </div>
   );

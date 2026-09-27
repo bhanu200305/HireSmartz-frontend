@@ -5,7 +5,7 @@ dist
 
 # Never let a developer's local .env (localhost URLs, placeholder values)
 # leak into the build context - the real values must come in as
-# --build-arg from the deploy pipeline. See Dockerfile's build stage.#
-#.env
-#.env.*
+# --build-arg from the deploy pipeline. See Dockerfile's build stage.
+.env
+.env.*
 !.env.example

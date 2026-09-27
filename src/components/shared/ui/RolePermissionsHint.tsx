@@ -37,7 +37,7 @@ const RolePermissionsHint: React.FC<RolePermissionsHintProps> = ({
     <div className="max-h-72 w-64 overflow-y-auto pr-1">
       {modules.map((moduleName) => (
         <div key={moduleName} className="mb-3 last:mb-0">
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
             {moduleName}
           </p>
           <div className="flex flex-wrap gap-1">

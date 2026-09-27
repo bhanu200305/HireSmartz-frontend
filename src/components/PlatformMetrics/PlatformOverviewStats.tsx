@@ -5,8 +5,8 @@ import {
   MdOutlineGroups,
   MdOutlineWifiTethering,
 } from 'react-icons/md';
-import { StatCardRow } from '../shared';
-import type { StatCardData } from '../shared';
+import { StatCardRow } from '../shared/ui/StatCardRow';
+import type { StatCardData } from '../shared/ui/StatCardRow';
 import {
   useGetGrowthMetricsQuery,
   useGetLoginMetricsQuery,

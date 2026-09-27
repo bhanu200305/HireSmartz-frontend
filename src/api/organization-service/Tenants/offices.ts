@@ -30,6 +30,7 @@ export type TenantOffice = {
   state: string | null;
   country: string;
   zip_code: string | null;
+  is_active: boolean;
 };
 
 /** Label for job/role location dropdowns — offices have no separate name
@@ -123,6 +124,22 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'TenantDepartments', id: tenantId },
       ],
     }),
+    deactivateTenantOffice: build.mutation<void, { tenantId: string; officeId: string }>({
+      query: ({ tenantId, officeId }) => ({
+        url: `/v1/tenants/${tenantId}/offices/${officeId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [{ type: 'TenantOffices', id: tenantId }],
+    }),
+    // No confirmation needed by convention — restoring visibility is the
+    // low-risk direction.
+    activateTenantOffice: build.mutation<void, { tenantId: string; officeId: string }>({
+      query: ({ tenantId, officeId }) => ({
+        url: `/v1/tenants/${tenantId}/offices/${officeId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [{ type: 'TenantOffices', id: tenantId }],
+    }),
   }),
 });
 
@@ -131,4 +148,6 @@ export const {
   useAddTenantOfficeMutation,
   useUpdateTenantOfficeMutation,
   useDeleteTenantOfficeMutation,
+  useDeactivateTenantOfficeMutation,
+  useActivateTenantOfficeMutation,
 } = extendedApi;

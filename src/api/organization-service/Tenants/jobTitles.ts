@@ -24,6 +24,7 @@ export type TenantJobTitle = {
   description: string | null;
   source_job_title_id: string | null;
   department_id?: string | null;
+  is_active: boolean;
 };
 
 export type ListTenantJobTitlesArgs = {
@@ -173,6 +174,28 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { tenantId }) => [...tenantJobTitlesTag(tenantId)],
     }),
+    deactivateTenantJobTitle: build.mutation<
+      void,
+      { tenantId: string; jobTitleId: string; isMaster?: boolean }
+    >({
+      query: ({ tenantId, jobTitleId, isMaster }) => ({
+        url: `${tenantJobTitlesBasePath({ tenantId, isMaster })}/${jobTitleId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [...tenantJobTitlesTag(tenantId)],
+    }),
+    // No confirmation needed by convention — restoring visibility is the
+    // low-risk direction.
+    activateTenantJobTitle: build.mutation<
+      void,
+      { tenantId: string; jobTitleId: string; isMaster?: boolean }
+    >({
+      query: ({ tenantId, jobTitleId, isMaster }) => ({
+        url: `${tenantJobTitlesBasePath({ tenantId, isMaster })}/${jobTitleId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _error, { tenantId }) => [...tenantJobTitlesTag(tenantId)],
+    }),
     assignTenantJobTitleToDepartment: build.mutation<
       TenantJobTitle,
       { tenantId: string; departmentId: string; job_title_id: string; isMaster?: boolean }
@@ -209,6 +232,8 @@ export const {
   useImportMasterJobTitleMutation,
   useUpdateTenantJobTitleMutation,
   useDeleteTenantJobTitleMutation,
+  useDeactivateTenantJobTitleMutation,
+  useActivateTenantJobTitleMutation,
   useAssignTenantJobTitleToDepartmentMutation,
   useRemoveTenantJobTitleFromDepartmentMutation,
 } = extendedApi;

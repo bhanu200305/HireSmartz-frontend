@@ -1,5 +1,7 @@
 import { Select, Tabs } from 'antd';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { HiOutlineDocumentText } from 'react-icons/hi';
@@ -48,7 +50,6 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
   });
   const [streamItems, setStreamItems] = useState<FeedItem[]>([]);
   const restItems = activitySearchData?.content ?? [];
-  const pageSize = 10;
   const numberOfElements = activitySearchData?.numberOfElements ?? 0;
   const totalRecords = activitySearchData?.totalElements ?? 0;
   const [activeTab, setActiveTab] = useState<string>('activity');
@@ -89,18 +90,22 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
   const tabItems = [
     {
       key: 'activity',
-      label: <span className="text-[15px] heading-font">Activity</span>,
+      label: <span className="text-base heading-font">Activity</span>,
     },
     // {
     //   key: 'tasks',
     //   label: (
-    //     <span className="text-[15px] heading-font"> Tasks <span className="text-primary"></span></span>
+    //     <span className="text-base heading-font"> Tasks <span className="text-primary"></span></span>
     //   )
     // }
   ];
 
   const handlePageChange = (page: number) => {
     updateFilters({ page: page - 1 });
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    updateFilters({ size, page: 0 });
   };
 
   const handleSearch = useMemo(
@@ -277,7 +282,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
                 style={{ width: 150, fontSize: 14 }}
               />
             </div>
-            <div className="w-full sm:w-[350px]">
+            <div className="w-52">
               <Search
                 appname="candidate"
                 placeholder="Search Activity..."
@@ -291,6 +296,16 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
         </div>
       </div>
 
+      {fullPage && (
+        <div className="flex justify-end">
+          <RowsPerPageSelect
+            pageSize={filters.size}
+            options={PAGE_SIZE_OPTIONS}
+            onChange={handlePageSizeChange}
+          />
+        </div>
+      )}
+
       <div className="mb-2">
         {activeTab === 'tasks' ? (
           <p className="text-sm text-gray-500 text-center py-4">No Tasks available</p>
@@ -303,7 +318,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
         {fullPage && totalRecords > 0 ? (
           <MasterPagination
             current={filters.page + 1}
-            pageSize={pageSize}
+            pageSize={filters.size}
             total={totalRecords}
             itemLabel="Activity Feeds"
             onPageChange={(page) => handlePageChange(page)}

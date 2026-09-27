@@ -61,7 +61,7 @@ export const BackgroundSelector = () => {
             style={{ backgroundImage: `url(${preset.imagePath})` }}
             title={preset.label}
           >
-            <span className="rounded bg-black/50 px-1 text-[10px]">{preset.label}</span>
+            <span className="rounded bg-black/50 px-1 text-xs">{preset.label}</span>
           </button>
         ))}
       </div>

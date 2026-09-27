@@ -3,8 +3,8 @@ import type { PlatformJobTitle } from './jobTitles';
 
 // GET/POST/PUT/DELETE /v1/platform/master-departments — the platform's
 // department catalogue, same shape/permission-model as Platform/industries.ts
-// and Platform/jobTitles.ts (code/name/description, no pagination, no
-// status/active concept — DepartmentView on the backend has none). Plus
+// and Platform/jobTitles.ts (code/name/description, plus is_active — an
+// activate/deactivate toggle, same as those two). No pagination. Plus
 // department<->job-title assignment, which has no bulk endpoint: only
 // per-item assign/remove.
 export type MasterDepartment = {
@@ -12,6 +12,7 @@ export type MasterDepartment = {
   code: string;
   name: string;
   description: string | null;
+  is_active: boolean;
 };
 
 export type CreateDepartmentRequest = {
@@ -57,6 +58,22 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['PlatformDepartments'],
     }),
+    deactivateMasterDepartment: build.mutation<void, string>({
+      query: (departmentId) => ({
+        url: `/v1/platform/master-departments/${departmentId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformDepartments'],
+    }),
+    // No confirmation needed by convention — restoring access/visibility is
+    // the low-risk direction.
+    activateMasterDepartment: build.mutation<void, string>({
+      query: (departmentId) => ({
+        url: `/v1/platform/master-departments/${departmentId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformDepartments'],
+    }),
     listMasterDepartmentJobTitles: build.query<PlatformJobTitle[], string>({
       query: (departmentId) => `/v1/platform/master-departments/${departmentId}/job-titles`,
       transformResponse: (response: { job_titles: PlatformJobTitle[] }) => response.job_titles,
@@ -97,6 +114,8 @@ export const {
   useCreateMasterDepartmentMutation,
   useUpdateMasterDepartmentMutation,
   useDeleteMasterDepartmentMutation,
+  useDeactivateMasterDepartmentMutation,
+  useActivateMasterDepartmentMutation,
   useListMasterDepartmentJobTitlesQuery,
   useAssignJobTitleToDepartmentMutation,
   useRemoveJobTitleFromDepartmentMutation,

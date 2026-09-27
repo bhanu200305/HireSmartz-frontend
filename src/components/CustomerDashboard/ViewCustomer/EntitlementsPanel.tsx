@@ -146,7 +146,7 @@ const EntitlementsPanel: React.FC<EntitlementsPanelProps> = ({
                     {description}
                   </Typography>
                   {isLocked && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 shrink-0">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 shrink-0">
                       <MdLockOutline size={10} /> Locked
                     </span>
                   )}

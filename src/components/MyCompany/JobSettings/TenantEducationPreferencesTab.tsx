@@ -39,8 +39,12 @@ const TenantEducationPreferencesTab: React.FC = () => {
   const [create] = useCreateEducationPreferenceMutation();
   const [update] = useUpdateEducationPreferenceMutation();
   const [remove] = useDeleteEducationPreferenceMutation();
-  const canManage =
-    useHasAccess(Authorities.COMPANY_SETTINGS_EDIT) || useHasAccess(Authorities.JOB_CATALOG_EDIT);
+  // Both hooks must run unconditionally on every render — `||` short-circuits
+  // the second call once the first is true, which varies the hook count
+  // between renders and violates React's rules of hooks.
+  const canManageCompanySettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
+  const canManageJobCatalog = useHasAccess(Authorities.JOB_CATALOG_EDIT);
+  const canManage = canManageCompanySettings || canManageJobCatalog;
 
   return (
     <PlatformCatalogTab<OrganizationEducationPreference, FormValues>

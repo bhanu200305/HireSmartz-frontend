@@ -135,6 +135,7 @@ const InviteTeamMemberForm = ({
               <Input
                 id="inviteName"
                 {...field}
+                maxLength={200}
                 placeholder="Jordan Lee"
                 className="bg-white w-full px-4 py-2 mt-1 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 error={errors.name?.message}
@@ -156,6 +157,7 @@ const InviteTeamMemberForm = ({
                 type="email"
                 noAutoCapitalize
                 {...field}
+                maxLength={320}
                 placeholder="recruiter@acme.com"
                 className="bg-white w-full px-4 py-2 mt-1 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
                 error={errors.email?.message}
@@ -175,6 +177,7 @@ const InviteTeamMemberForm = ({
               <Input
                 id="inviteDesignation"
                 {...field}
+                maxLength={120}
                 placeholder="Senior Recruiter"
                 className="bg-white w-full px-4 py-2 mt-1 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
               />
@@ -195,6 +198,8 @@ const InviteTeamMemberForm = ({
                 {...field}
                 onChange={field.onChange}
                 allowClear
+                showSearch
+                optionFilterProp="label"
                 className="w-full mt-1"
                 placeholder="Select department"
                 options={departments.map((department) => ({

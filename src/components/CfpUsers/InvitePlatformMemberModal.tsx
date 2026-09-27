@@ -13,6 +13,7 @@ import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import { Authorities } from '../../constants/authorities.constant';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import CreateRoleModal from '../RolesManagement/CreateRoleModal';
+import { useEnterToSubmit } from '../../hooks/useEnterToSubmit';
 
 type InvitePlatformMemberModalProps = {
   open: boolean;
@@ -107,9 +108,13 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
     }
   };
 
+  const { onKeyDown: handleEnterToSubmit } = useEnterToSubmit(handleSubmit, {
+    enabled: open && !isLoading && isFormValid,
+  });
+
   return (
     <AntdCommonModal open={open} onClose={handleClose} title="Invite platform member">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
         <Select
           value={kind}
           onChange={setKind}
@@ -121,6 +126,7 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
         <Input
           type="email"
           noAutoCapitalize
+          maxLength={320}
           placeholder="Email *"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -161,6 +167,8 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
               value={departmentId}
               onChange={setDepartmentId}
               allowClear
+              showSearch
+              optionFilterProp="label"
               options={departments.map((d) => ({ label: d.name, value: d.department_id }))}
             />
           </>

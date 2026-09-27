@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { NameValidationOptions } from '../../../types';
-import {
-  FORM_EMAIL_REGEX,
-  MAX_PASSWORD_LENGTH,
-  MIN_PASSWORD_LENGTH,
-} from '../../../constants/app.constants';
+import { FORM_EMAIL_REGEX } from '../../../constants/app.constants';
+import { PASSWORD_REQUIREMENTS } from './passwordPolicy';
 
 // Phone-number entry is handled per-country by
 // `shared/utils/validation/phoneValidation.ts` (`restrictPhoneDigits` for
@@ -189,35 +186,26 @@ export const passwordValidation = () => {
       return;
     }
 
-    const requirements = [
-      {
-        // MIN_PASSWORD_LENGTH/MAX_PASSWORD_LENGTH (app.constants.ts) must
-        // match authentication-service's MIN_PASSWORD_LENGTH/
-        // MAX_PASSWORD_LENGTH (app/modules/auth/domain/services/
-        // password_policy.py) — the backend is the source of truth. Reading
-        // the constant here, instead of a hardcoded number, is what stops
-        // this check and its message from drifting out of sync with each
-        // other or with the backend.
-        check: value.length >= MIN_PASSWORD_LENGTH,
-        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
-      },
-      {
-        check: value.length <= MAX_PASSWORD_LENGTH,
-        message: `Password must be at most ${MAX_PASSWORD_LENGTH} characters.`,
-      },
-      // No character-class (uppercase/lowercase/digit/special) requirements
-      // here on purpose — the backend dropped composition rules entirely in
-      // favor of length + a common-password blocklist (NIST guidance), and
-      // this validator exists only to mirror the backend's actual policy for
-      // early client-side feedback, never to enforce a stricter rule of its
-      // own. A composition check used to live here; it was removed rather
-      // than kept "for extra safety" because it wasn't backed by the API at
-      // all, and with the length cap now at 16 it would have made a
-      // materially narrower set of passwords valid than the backend
-      // actually requires.
-    ];
+    // Catches "        " passing the length check on whitespace alone — same
+    // rule as the backend's `password.strip() != password.strip(" ") or not
+    // password.strip()` (internal/trailing spaces are otherwise allowed).
+    if (!value.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Password must contain more than whitespace.',
+      });
+      return;
+    }
 
-    const failed = requirements.filter((req) => !req.check);
+    // PASSWORD_REQUIREMENTS (passwordPolicy.ts) must match
+    // authentication-service's PasswordPolicy.violations
+    // (app/modules/auth/domain/services/password_policy.py) — the backend
+    // is the source of truth. Reading from that shared list, instead of
+    // hardcoding checks here, is what stops this validator (and the live
+    // checklist next to the password field) from drifting out of sync with
+    // each other or with the backend the way this check once did — it used
+    // to skip composition entirely, back when the backend did too.
+    const failed = PASSWORD_REQUIREMENTS.filter((req) => !req.test(value));
     if (failed.length > 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

@@ -1,18 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import { Tooltip } from 'antd';
 import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
-import {
-  Badge,
-  Button,
-  CustomTable,
-  Input,
-  Typography,
-  paginationConfig,
-  showToast,
-} from '../../../shared';
+import { Badge, Button, CustomTable, Input, Typography, showToast } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import ConfirmationModal from '../../../shared/ui/ConfirmationModal';
 import OfficeFormModal, { OfficeFormValues } from '../../../MyCompany/OfficeFormModal';
+import MasterPagination from '../../../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../../../shared/ui/RowsPerPageSelect';
+import { usePersistedPageSize } from '../../../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../../../constants/app.constants';
 import {
   useListPlatformTenantOfficesQuery,
   useAddPlatformTenantOfficeMutation,
@@ -23,6 +20,7 @@ import type { TenantOffice } from '../../../../api/organization-service/Tenants/
 import { getOrgErrorMessage } from '../../../../shared/utils/auth/orgError.helpers';
 
 type OfficeRow = TenantOffice & { key: string };
+type SortKey = 'address' | 'city' | 'state' | 'country';
 
 /**
  * Super Admin's mirror of MyCompany/CompanyLocationsTab.tsx — same office
@@ -46,6 +44,10 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   } | null>(null);
   const [officeToDelete, setOfficeToDelete] = useState<TenantOffice | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('address');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('customer_dashboard_locations', 10);
 
   const filteredOffices = useMemo(() => {
     const q = searchText.trim().toLowerCase();
@@ -63,6 +65,33 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         .some((field) => (field as string).toLowerCase().includes(q))
     );
   }, [offices, searchText]);
+
+  const sortComparators: Record<SortKey, (a: TenantOffice, b: TenantOffice) => number> = {
+    address: (a, b) => a.address_line_1.localeCompare(b.address_line_1),
+    city: (a, b) => a.city.localeCompare(b.city),
+    state: (a, b) => (a.state ?? '').localeCompare(b.state ?? ''),
+    country: (a, b) => a.country.localeCompare(b.country),
+  };
+
+  const sortedOffices = useMemo(() => {
+    const sorted = [...filteredOffices].sort(sortComparators[sortBy]);
+    return sortOrder === 'desc' ? sorted.reverse() : sorted;
+  }, [filteredOffices, sortBy, sortOrder]);
+
+  const sortOrderFor = (key: SortKey): 'ascend' | 'descend' | undefined =>
+    sortBy === key ? (sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
+
+  const handleTableChange: TableProps<OfficeRow>['onChange'] = (_pagination, _filters, sorter) => {
+    const active = Array.isArray(sorter) ? sorter[0] : sorter;
+    setPage(0);
+    if (!active?.order || !active.columnKey) {
+      setSortBy('address');
+      setSortOrder('asc');
+      return;
+    }
+    setSortBy(active.columnKey as SortKey);
+    setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
+  };
 
   const handleSubmit = async (values: OfficeFormValues) => {
     try {
@@ -106,7 +135,8 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'Address',
       dataIndex: 'address_line_1',
       key: 'address',
-      sorter: (a: OfficeRow, b: OfficeRow) => a.address_line_1.localeCompare(b.address_line_1),
+      sorter: true,
+      sortOrder: sortOrderFor('address'),
       render: (_: unknown, office: OfficeRow) => (
         <span className="font-semibold text-gray-900">
           {[office.address_line_1, office.address_line_2].filter(Boolean).join(', ')}
@@ -117,7 +147,8 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'City',
       dataIndex: 'city',
       key: 'city',
-      sorter: (a: OfficeRow, b: OfficeRow) => a.city.localeCompare(b.city),
+      sorter: true,
+      sortOrder: sortOrderFor('city'),
       render: (_: unknown, office: OfficeRow) => (
         <span className="text-gray-600 text-sm">{office.city || '-'}</span>
       ),
@@ -126,7 +157,8 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'State',
       dataIndex: 'state',
       key: 'state',
-      sorter: (a: OfficeRow, b: OfficeRow) => (a.state ?? '').localeCompare(b.state ?? ''),
+      sorter: true,
+      sortOrder: sortOrderFor('state'),
       render: (_: unknown, office: OfficeRow) => (
         <span className="text-gray-600 text-sm">{office.state || '-'}</span>
       ),
@@ -135,7 +167,8 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       title: 'Country',
       dataIndex: 'country',
       key: 'country',
-      sorter: (a: OfficeRow, b: OfficeRow) => a.country.localeCompare(b.country),
+      sorter: true,
+      sortOrder: sortOrderFor('country'),
       render: (_: unknown, office: OfficeRow) => (
         <Badge status="neutral" dot={false}>
           {office.country}
@@ -156,31 +189,37 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       width: 100,
       render: (_: unknown, office: OfficeRow) => (
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Edit office"
-            className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
-            onClick={() => setModalState({ mode: 'edit', office })}
-          >
-            <MdEdit className="text-gray-600" />
-          </button>
-          <button
-            type="button"
-            aria-label="Delete office"
-            className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-            onClick={() => setOfficeToDelete(office)}
-          >
-            <MdDelete className="text-red-500" />
-          </button>
+          <Tooltip title="Edit office">
+            <button
+              type="button"
+              aria-label="Edit office"
+              className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+              onClick={() => setModalState({ mode: 'edit', office })}
+            >
+              <MdEdit className="text-gray-600" />
+            </button>
+          </Tooltip>
+          <Tooltip title="Delete office">
+            <button
+              type="button"
+              aria-label="Delete office"
+              className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+              onClick={() => setOfficeToDelete(office)}
+            >
+              <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+            </button>
+          </Tooltip>
         </div>
       ),
     },
   ];
 
-  const dataSource: OfficeRow[] = filteredOffices.map((office) => ({
-    ...office,
-    key: office.office_id,
-  }));
+  const dataSource: OfficeRow[] = sortedOffices
+    .slice(page * pageSize, page * pageSize + pageSize)
+    .map((office) => ({
+      ...office,
+      key: office.office_id,
+    }));
 
   return (
     <div className="p-4">
@@ -188,7 +227,7 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <div>
           <Typography variant="body2">Every office this company operates out of.</Typography>
           <span className="text-xs font-medium text-gray-400">
-            {dataSource.length} {dataSource.length === 1 ? 'office' : 'offices'}
+            {filteredOffices.length} {filteredOffices.length === 1 ? 'office' : 'offices'}
             {searchText.trim() && ` of ${offices?.length ?? 0}`}
           </span>
         </div>
@@ -198,7 +237,10 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               prefix={<MdSearch className="text-gray-400" />}
               placeholder="Search locations..."
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setPage(0);
+              }}
             />
           </div>
           <Button
@@ -210,6 +252,15 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         </div>
       </div>
 
+      <RowsPerPageSelect
+        pageSize={pageSize}
+        options={PAGE_SIZE_OPTIONS}
+        onChange={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
+
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable<OfficeRow>
           columns={columns}
@@ -217,9 +268,18 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           emptyText={
             searchText.trim() ? 'No offices match your search.' : 'No office locations yet.'
           }
-          pagination={paginationConfig('offices')}
+          pagination={false}
+          onChange={handleTableChange}
         />
       </div>
+
+      <MasterPagination
+        current={page + 1}
+        pageSize={pageSize}
+        total={sortedOffices.length}
+        itemLabel="offices"
+        onPageChange={(nextPage) => setPage(nextPage - 1)}
+      />
 
       <OfficeFormModal
         open={modalState !== null}

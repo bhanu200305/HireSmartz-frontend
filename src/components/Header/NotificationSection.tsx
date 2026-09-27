@@ -101,7 +101,7 @@ const NotificationSection = ({
                       }}
                     >
                       <CheckOutlined
-                        style={{ fontSize: '10px', color: '#ffffff' }}
+                        style={{ fontSize: '12px', color: '#ffffff' }}
                         className="mark-read-tick opacity-0"
                       />
                     </button>

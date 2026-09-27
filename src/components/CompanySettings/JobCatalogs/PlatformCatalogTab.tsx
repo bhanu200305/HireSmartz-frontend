@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
-import { Select } from 'antd';
 import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
 import { Button, CustomTable, Input, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import MasterPagination from '../../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
@@ -222,9 +222,13 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
     },
   ].filter(Boolean) as TableProps<TItem & { key: string }>['columns'];
 
-  const dataSource = filtered
-    .slice(page * pageSize, page * pageSize + pageSize)
-    .map((item) => ({ ...item, key: idOf(item) }));
+  // Server-driven mode: `filtered` (== `items`) is already exactly one
+  // backend page, so slicing it again by the *local* pageSize state (which
+  // the server-driven UI never updates — only serverQuery.pageSize matters
+  // there) would silently truncate rows whenever the two diverge.
+  const dataSource = (
+    isServerDriven ? filtered : filtered.slice(page * pageSize, page * pageSize + pageSize)
+  ).map((item) => ({ ...item, key: idOf(item) }));
 
   return (
     <div>
@@ -270,19 +274,18 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
         </div>
       </div>
 
-      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
-        <span>Rows per page</span>
-        <Select
-          size="small"
-          value={pageSize}
-          className="rows-per-page-select"
-          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-          onChange={(size) => {
+      <RowsPerPageSelect
+        pageSize={isServerDriven ? serverQuery!.pageSize : pageSize}
+        options={PAGE_SIZE_OPTIONS}
+        onChange={(size) => {
+          if (isServerDriven) {
+            onServerQueryChange!({ ...serverQuery!, pageSize: size, page: 1 });
+          } else {
             setPageSize(size);
             setPage(0);
-          }}
-        />
-      </div>
+          }
+        }}
+      />
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable
@@ -293,26 +296,18 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
               ? `No ${itemNounPlural.toLowerCase()} match your search.`
               : `No ${itemNounPlural.toLowerCase()} yet.`
           }
-          pagination={
-            isServerDriven
-              ? {
-                  current: serverQuery!.page,
-                  pageSize: serverQuery!.pageSize,
-                  total: total ?? 0,
-                }
-              : false
-          }
+          pagination={false}
           onChange={
             isServerDriven
-              ? (pagination, _filters, sorter) => {
+              ? (_pagination, _filters, sorter) => {
                   const sort = Array.isArray(sorter) ? sorter[0] : sorter;
                   const sortDir: 'asc' | 'desc' = sort?.order === 'descend' ? 'desc' : 'asc';
+                  if (!sort?.order) return;
                   onServerQueryChange!({
                     ...serverQuery!,
-                    page: sort?.order ? 1 : (pagination.current ?? 1),
-                    pageSize: pagination.pageSize ?? serverQuery!.pageSize,
-                    sortBy: sort?.order ? 'name' : serverQuery!.sortBy,
-                    sortDir: sort?.order ? sortDir : serverQuery!.sortDir,
+                    page: 1,
+                    sortBy: 'name',
+                    sortDir,
                   });
                 }
               : undefined
@@ -320,7 +315,15 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
         />
       </div>
 
-      {!isServerDriven && (
+      {isServerDriven ? (
+        <MasterPagination
+          current={serverQuery!.page}
+          pageSize={serverQuery!.pageSize}
+          total={total ?? 0}
+          itemLabel={itemNounPlural.toLowerCase()}
+          onPageChange={(nextPage) => onServerQueryChange!({ ...serverQuery!, page: nextPage })}
+        />
+      ) : (
         <MasterPagination
           current={page + 1}
           pageSize={pageSize}

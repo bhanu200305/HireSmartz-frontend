@@ -8,6 +8,8 @@ const createJobTitle = vi
 const updateJobTitle = vi.fn().mockReturnValue({ unwrap: () => Promise.resolve({}) });
 const deleteJobTitle = vi.fn().mockReturnValue({ unwrap: () => Promise.resolve(undefined) });
 const assignJobTitle = vi.fn().mockReturnValue({ unwrap: () => Promise.resolve({}) });
+const deactivateJobTitle = vi.fn().mockReturnValue({ unwrap: () => Promise.resolve(undefined) });
+const activateJobTitle = vi.fn().mockReturnValue({ unwrap: () => Promise.resolve(undefined) });
 
 const jobTitles = [
   {
@@ -25,6 +27,8 @@ vi.mock('../../../../src/api/organization-service/Tenants/jobTitles', () => ({
   useUpdateTenantJobTitleMutation: () => [updateJobTitle, { isLoading: false }],
   useDeleteTenantJobTitleMutation: () => [deleteJobTitle, { isLoading: false }],
   useAssignTenantJobTitleToDepartmentMutation: () => [assignJobTitle, { isLoading: false }],
+  useDeactivateTenantJobTitleMutation: () => [deactivateJobTitle, { isLoading: false }],
+  useActivateTenantJobTitleMutation: () => [activateJobTitle, { isLoading: false }],
   tenantJobTitleFormId: (t: { org_job_title_id: string }) => t.org_job_title_id,
 }));
 
@@ -49,6 +53,8 @@ describe('TenantJobTitlesTab', () => {
     createJobTitle.mockClear();
     updateJobTitle.mockClear();
     deleteJobTitle.mockClear();
+    deactivateJobTitle.mockClear();
+    activateJobTitle.mockClear();
   });
 
   it('lists every job title', () => {

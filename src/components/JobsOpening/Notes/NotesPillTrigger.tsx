@@ -53,7 +53,7 @@ export function NotesPillTrigger({
       <LuSquarePen size={iconSize} strokeWidth={2} className="shrink-0" aria-hidden />
       <span className="whitespace-nowrap">{label}</span>
       {showBadge ? (
-        <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-md bg-[#263d92] px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white tabular-nums">
+        <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-md bg-[#263d92] px-1.5 py-0.5 text-xs font-semibold leading-none text-white tabular-nums">
           {count}
         </span>
       ) : null}

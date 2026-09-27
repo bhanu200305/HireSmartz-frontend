@@ -181,13 +181,15 @@ const CustomerTable = () => {
                 okButtonProps={{ danger: true }}
                 onConfirm={() => void handleDelete(tenant.tenant_id)}
               >
-                <Button
-                  appname="delete draft company"
-                  disabled={isDeleting}
-                  className="!border-none !bg-transparent !shadow-none text-red-600"
-                >
-                  <DeleteOutlined />
-                </Button>
+                <Tooltip title="Delete">
+                  <Button
+                    appname="delete draft company"
+                    disabled={isDeleting}
+                    className="group !border-none !bg-transparent !shadow-none"
+                  >
+                    <DeleteOutlined className="text-gray-600 transition-colors group-hover:text-red-600" />
+                  </Button>
+                </Tooltip>
               </Popconfirm>
             )}
           </span>

@@ -173,7 +173,7 @@ const StatCard = ({
               ? 'text-sm font-medium text-neutral-400 italic'
               : clsx(
                   'leading-none text-neutral-900',
-                  tall ? 'text-[clamp(1rem,7cqh,2rem)]' : 'text-[26px]'
+                  tall ? 'text-[clamp(1rem,7cqh,2rem)]' : 'text-2xl'
                 )
           )}
         >

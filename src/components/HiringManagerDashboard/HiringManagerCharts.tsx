@@ -48,7 +48,7 @@ const truncateAxisLabel =
 // comment on this same pattern (widened Y-axis `width` to fit the title
 // without reintroducing the left-edge clipping `ChartCard`'s
 // `overflow-hidden` causes when an axis element overflows the card).
-const axisTitleStyle = { fontSize: 10, fill: '#8593ac' };
+const axisTitleStyle = { fontSize: 12, fill: '#8593ac' };
 const yAxisLabel = (value: string) => ({
   value,
   angle: -90,
@@ -119,7 +119,7 @@ const HiringManagerCharts: React.FC = () => {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="job"
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               interval={0}
@@ -131,7 +131,7 @@ const HiringManagerCharts: React.FC = () => {
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               width={48}
@@ -154,7 +154,7 @@ const HiringManagerCharts: React.FC = () => {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="job"
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               interval={0}
@@ -167,7 +167,7 @@ const HiringManagerCharts: React.FC = () => {
             <YAxis
               domain={[0, 10]}
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               width={48}
@@ -196,7 +196,7 @@ const HiringManagerCharts: React.FC = () => {
             <XAxis
               type="number"
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               height={30}
@@ -205,7 +205,7 @@ const HiringManagerCharts: React.FC = () => {
             <YAxis
               type="category"
               dataKey="location"
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               width={128}

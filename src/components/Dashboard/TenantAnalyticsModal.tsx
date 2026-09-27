@@ -6,8 +6,11 @@ import {
   MdOutlineEventAvailable,
 } from 'react-icons/md';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
-import { StatCardRow, ChartCard, DonutStat, StatDetailModal } from '../shared';
-import type { StatCardData, DonutSlice } from '../shared';
+import { ChartCard, DonutStat } from '../shared';
+import type { DonutSlice } from '../shared';
+import { StatCardRow } from '../shared/ui/StatCardRow';
+import type { StatCardData } from '../shared/ui/StatCardRow';
+import StatDetailModal from '../shared/ui/StatDetailModal';
 import { Badge } from '../shared/ui/badge';
 import {
   useGetPlatformTenantDashboardQuery,

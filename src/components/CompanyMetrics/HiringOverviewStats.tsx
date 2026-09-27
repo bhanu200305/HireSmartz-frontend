@@ -6,8 +6,9 @@ import {
   MdOutlineEventAvailable,
   MdOutlineGroups,
 } from 'react-icons/md';
-import { StatCardRow, StatDetailModal } from '../shared';
-import type { StatCardData } from '../shared';
+import { StatCardRow } from '../shared/ui/StatCardRow';
+import type { StatCardData } from '../shared/ui/StatCardRow';
+import StatDetailModal from '../shared/ui/StatDetailModal';
 import { RootState } from '../../redux/provider/store';
 import { useGetTenantDashboardQuery } from '../../api/organization-service/Tenants/profile';
 import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
@@ -137,7 +138,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
             label: 'Completed interviews',
             value: isInterviewsLoading ? undefined : completedInterviews?.total?.toLocaleString(),
             footer: (
-              <p className="text-[11px] text-neutral-400">
+              <p className="text-xs text-neutral-400">
                 {completedByType.map((t) => `${t.label} ${t.count}`).join(' · ')}
               </p>
             ),

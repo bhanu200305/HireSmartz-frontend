@@ -11,6 +11,7 @@ import {
   passwordValidation,
   titleHasHtml,
 } from '../../src/shared/utils/validation/input.helpers';
+import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from '../../src/constants/app.constants';
 
 describe('sanitizeInput', () => {
   it('trims leading and trailing whitespace', () => {
@@ -165,19 +166,32 @@ describe('passwordValidation', () => {
     }
   });
 
-  it('accepts a password with no character-class variety, as long as it meets the length policy', () => {
-    // No composition rules (uppercase/number/special) — the backend mirrors
-    // NIST guidance of length + a common-password blocklist only, see
-    // passwordValidation's own comment in input.helpers.ts.
+  it('rejects a password with no character-class variety even if it meets the length policy', () => {
+    // Composition rules (uppercase/lowercase/number/special) were re-added
+    // on top of length when MAX_PASSWORD_LENGTH was capped at 16 — see
+    // passwordPolicy.ts's own comment: NIST's "skip composition" advice
+    // assumes a long passphrase is available as a fallback, and a 16-char
+    // cap removes that option. authentication-service's PasswordPolicy
+    // mirrors this exactly, so a length-only password fails there too.
     const result = schema.safeParse('lowercaseonly');
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain('uppercase letter');
+    }
+  });
+
+  it('accepts a password that satisfies both length and every composition rule', () => {
+    const result = schema.safeParse('Valid1!Pass');
     expect(result.success).toBe(true);
   });
 
   it('rejects a password shorter than MIN_PASSWORD_LENGTH', () => {
-    const result = schema.safeParse('short1!');
+    const result = schema.safeParse('Sh1!');
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toContain('at least');
+      expect(result.error.issues[0].message).toContain(
+        `${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} characters long`
+      );
     }
   });
 
@@ -185,7 +199,12 @@ describe('passwordValidation', () => {
     const result = schema.safeParse('ThisPasswordIsWayTooLong1!');
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toContain('at most');
+      // Same range check both directions — too short and too long fail the
+      // same "length" requirement with the same message, there's no
+      // separate over-length wording.
+      expect(result.error.issues[0].message).toContain(
+        `${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} characters long`
+      );
     }
   });
 

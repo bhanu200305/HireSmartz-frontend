@@ -32,10 +32,10 @@ const InterviewConsentModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
       <div className={`w-full ${panelClassName} rounded-2xl bg-[#F2F2F2] p-7 shadow-2xl`}>
         <h2 className="leading-tight tracking-normal text-[#2D2D2D] text-center">
-          <span className="block text-[24px] sm:text-[28px] font-semibold">{title}</span>
+          <span className="block text-2xl sm:text-3xl font-semibold">{title}</span>
         </h2>
 
-        <div className="mt-5 text-[16px] leading-snug text-[#2D2D2D] sm:text-[17px]">
+        <div className="mt-5 text-base leading-snug text-[#2D2D2D] sm:text-lg">
           {Array.isArray(description) ? (
             <div className="space-y-1">
               {description.map((line) => (
@@ -48,7 +48,7 @@ const InterviewConsentModal = ({
         </div>
 
         {requireCheckbox && consentLabel ? (
-          <label className="mt-6 flex cursor-pointer items-start gap-2 text-[15px] leading-snug text-[#2D2D2D] sm:text-[16px]">
+          <label className="mt-6 flex cursor-pointer items-start gap-2 text-base leading-snug text-[#2D2D2D] sm:text-base">
             <input
               type="checkbox"
               checked={isChecked}
@@ -60,7 +60,7 @@ const InterviewConsentModal = ({
         ) : null}
 
         {disclaimer ? (
-          <div className="mt-4 text-[15px] leading-snug text-[#2D2D2D] sm:text-[16px]">
+          <div className="mt-4 text-base leading-snug text-[#2D2D2D] sm:text-base">
             {disclaimer}
           </div>
         ) : null}

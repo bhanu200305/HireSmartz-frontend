@@ -79,14 +79,14 @@ const ScrollableBarChart: React.FC<ScrollableBarChartProps> = ({
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 11, fill: '#8593ac' }}
+            tick={{ fontSize: 12, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
             interval={0}
           />
           <YAxis
             allowDecimals={false}
-            tick={{ fontSize: 11, fill: '#8593ac' }}
+            tick={{ fontSize: 12, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
             width={36}
@@ -125,14 +125,14 @@ const ScrollableBarChart: React.FC<ScrollableBarChartProps> = ({
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 11, fill: '#8593ac' }}
+            tick={{ fontSize: 12, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
             interval={0}
           />
           <YAxis
             allowDecimals={false}
-            tick={{ fontSize: 11, fill: '#8593ac' }}
+            tick={{ fontSize: 12, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
             width={36}

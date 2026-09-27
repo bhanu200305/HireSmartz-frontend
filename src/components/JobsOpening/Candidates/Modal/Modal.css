@@ -1,30 +1,7 @@
-.custom-scrollbar::-webkit-scrollbar {
-  width: 2px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 16px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 16px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-  background-clip: padding-box;
-}
-
-/* For Firefox */
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #c1c1c1 transparent;
-}
-
+/* Color/track/thumb come from index.css's global scrollbar rule now — this
+   class only still carries the overflow/box-sizing behavior below.
+   (`.preview-modal-scrollbar`, formerly defined here with its own one-off
+   grey, had no remaining call sites and was removed outright.) */
 textarea.custom-scrollbar {
   overflow: auto;
   box-sizing: border-box;
@@ -32,30 +9,6 @@ textarea.custom-scrollbar {
 
 .ant-input.custom-scrollbar {
   overflow: auto !important;
-}
-
-.preview-modal-scrollbar::-webkit-scrollbar {
-  width: 2px;
-}
-
-.preview-modal-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 2px;
-}
-
-.preview-modal-scrollbar::-webkit-scrollbar-thumb {
-  background: #d1d1d1;
-  border-radius: 2px;
-}
-
-.preview-modal-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #b8b8b8;
-}
-
-.preview-modal-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #d1d1d1 #f8f8f8;
-  overflow: auto;
 }
 
 /* Send email modal: Cc/Bcc — tag chips only (no suggestion dropdown), removable × per email */

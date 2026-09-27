@@ -9,11 +9,12 @@ import { Loader } from '../shared/ui/loader';
 import { Badge } from '../shared/ui/badge';
 import CustomTable from '../shared/ui/table';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
+import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import { useListGuestOrganizationsQuery } from '../../api/organization-service/Platform/guestOrganizations';
 import type { GuestOrganization } from '../../api/organization-service/Platform/guestOrganizations';
 import type { GuestOrgPrefill } from '../TenantOnboarding/StepCompanyDetails';
-
-const PAGE_SIZE = 25;
 
 /**
  * GET /v1/platform/guest-organizations — "Book a Demo" leads submitted from
@@ -25,14 +26,19 @@ const toPrefill = (lead: GuestOrganization): GuestOrgPrefill => ({
   companyName: lead.organization_name,
   adminEmail: lead.organization_email,
   contactNumber: lead.contact_number,
+  location: lead.location,
+  companySize: lead.company_size,
+  jobTitle: lead.job_title,
+  referralSource: lead.referral_source,
 });
 
 const GuestOrganizations: React.FC = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('guest_organizations', 25);
   const { data, isLoading } = useListGuestOrganizationsQuery({
-    limit: PAGE_SIZE,
-    offset: page * PAGE_SIZE,
+    limit: pageSize,
+    offset: page * pageSize,
   });
 
   const leads = data?.guest_organizations ?? [];
@@ -128,15 +134,25 @@ const GuestOrganizations: React.FC = () => {
             No demo requests yet.
           </div>
         ) : (
-          <div className="w-full border border-neutral-200 rounded-xl overflow-hidden bg-white">
-            <CustomTable<LeadRow> columns={columns} dataSource={dataSource} />
-          </div>
+          <>
+            <RowsPerPageSelect
+              pageSize={pageSize}
+              options={PAGE_SIZE_OPTIONS}
+              onChange={(size) => {
+                setPageSize(size);
+                setPage(0);
+              }}
+            />
+            <div className="w-full border border-neutral-200 rounded-xl overflow-hidden bg-white">
+              <CustomTable<LeadRow> columns={columns} dataSource={dataSource} />
+            </div>
+          </>
         )}
 
-        {(data?.total ?? 0) > PAGE_SIZE && (
+        {(data?.total ?? 0) > pageSize && (
           <MasterPagination
             current={page + 1}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={data?.total ?? 0}
             itemLabel="Leads"
             onPageChange={(p) => setPage(p - 1)}

@@ -99,7 +99,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
   };
 
   const renderDefaultContent = () => (
-    <div className="-mx-6 h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
+    <div className="-mx-6 max-h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
       <h2 className="text-2xl font-semibold text-center mb-8">{title || 'Scoring Criteria'}</h2>
 
       <section className="mb-6">
@@ -179,7 +179,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
   );
 
   const renderAIFinalFeedbackContent = () => (
-    <div className="-mx-6 h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
+    <div className="-mx-6 max-h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
       <h2 className="text-2xl font-semibold text-center mb-8">
         Scoring Criteria for Overall AI Score
       </h2>
@@ -231,7 +231,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
   );
 
   const renderInterviewerFinalFeedbackContent = () => (
-    <div className="-mx-6 h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
+    <div className="-mx-6 max-h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
       <h2 className="text-2xl font-semibold text-center mb-8">
         Scoring Criteria for Overall Human Score
       </h2>
@@ -271,7 +271,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
     </div>
   );
   const renderInterviewScoringContent = () => (
-    <div className="-mx-6 h-[90vh] overflow-y-auto px-6 py-4">
+    <div className="-mx-6 max-h-[90vh] overflow-y-auto px-6 py-4">
       <h2 className="text-2xl font-semibold text-center">Interview Scoring</h2>
       <p className="text-center text-gray-600">
         {subtitle || 'AI Audio Screening / Video Interview'}

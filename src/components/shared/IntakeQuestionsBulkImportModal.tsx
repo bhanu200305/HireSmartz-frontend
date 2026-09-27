@@ -1,8 +1,16 @@
 import { useRef, useState } from 'react';
 import { Modal } from 'antd';
-import { MdOutlineFileDownload, MdOutlineUploadFile, MdErrorOutline } from 'react-icons/md';
+import {
+  MdOutlineFileDownload,
+  MdOutlineUploadFile,
+  MdErrorOutline,
+  MdOutlineRemoveRedEye,
+} from 'react-icons/md';
 import { Button, showToast } from './index';
 import { Loader } from './ui/loader';
+import SpreadsheetPreviewModal, {
+  type SpreadsheetPreviewSource,
+} from './ui/SpreadsheetPreviewModal';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
 type BulkImportRowError = { row_number: number; message: string };
@@ -65,7 +73,10 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
   const [step, setStep] = useState<'pick' | 'confirm'>('pick');
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isPreviewingTemplate, setIsPreviewingTemplate] = useState(false);
   const [rowErrors, setRowErrors] = useState<BulkImportRowError[] | null>(null);
+  const [previewSource, setPreviewSource] = useState<SpreadsheetPreviewSource | null>(null);
+  const [previewTitle, setPreviewTitle] = useState('Preview');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
@@ -92,6 +103,25 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
       });
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handlePreviewTemplate = async () => {
+    setIsPreviewingTemplate(true);
+    try {
+      const blob = await onDownloadTemplate();
+      setPreviewSource({
+        kind: 'file',
+        file: new File([blob], 'intake_questions_template.xlsx', { type: blob.type }),
+      });
+      setPreviewTitle('Preview: template');
+    } catch (error: unknown) {
+      showToast({
+        message: getOrgErrorMessage(error, "Couldn't load a preview of the template."),
+        type: 'error',
+      });
+    } finally {
+      setIsPreviewingTemplate(false);
     }
   };
 
@@ -152,15 +182,26 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
 
       {step === 'pick' && (
         <div className="flex flex-col gap-3">
-          <Button
-            type="button"
-            onClick={handleDownloadTemplate}
-            disabled={isDownloading}
-            className="flex items-center justify-center gap-2 border border-[var(--border)] bg-white text-gray-700 rounded-3xl px-4 py-2 hover:bg-gray-50"
-          >
-            <MdOutlineFileDownload />
-            {isDownloading ? 'Downloading…' : 'Download template'}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              onClick={handleDownloadTemplate}
+              disabled={isDownloading}
+              className="flex-1 flex items-center justify-center gap-2 border border-[var(--border)] bg-white text-gray-700 rounded-3xl px-4 py-2 hover:bg-gray-50"
+            >
+              <MdOutlineFileDownload />
+              {isDownloading ? 'Downloading…' : 'Download template'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handlePreviewTemplate}
+              disabled={isPreviewingTemplate}
+              className="flex items-center justify-center gap-2 border border-[var(--border)] bg-white text-gray-700 rounded-3xl px-4 py-2 hover:bg-gray-50"
+            >
+              <MdOutlineRemoveRedEye />
+              {isPreviewingTemplate ? 'Loading…' : 'Preview'}
+            </Button>
+          </div>
 
           <input
             ref={fileInputRef}
@@ -187,6 +228,17 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
             <strong>{currentCount}</strong> current question{currentCount === 1 ? '' : 's'} in{' '}
             {targetLabel} with whatever is in this file. This can&apos;t be undone.
           </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              setPreviewSource({ kind: 'file', file: pickedFile });
+              setPreviewTitle('Preview: file to upload');
+            }}
+            className="flex items-center gap-1 text-sm text-primary hover:underline self-start cursor-pointer"
+          >
+            <MdOutlineRemoveRedEye /> Preview this file
+          </button>
 
           {extraWarning && (
             <p className="text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">
@@ -233,6 +285,13 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
           )}
         </div>
       )}
+
+      <SpreadsheetPreviewModal
+        open={!!previewSource}
+        onClose={() => setPreviewSource(null)}
+        title={previewTitle}
+        source={previewSource}
+      />
     </Modal>
   );
 };

@@ -176,8 +176,10 @@ const ResultSection: React.FC<ResultSectionProps> = ({
   focusedFlatIndex,
   sectionStartIndex,
 }) => {
-  if (!show) return null;
-
+  // Must run before the `!show` early return below — all hooks have to
+  // execute unconditionally on every render, or the hook count changes
+  // between renders whenever `show` toggles, which violates React's rules
+  // of hooks.
   const getCount = useCallback((): number => {
     if (sourceType && sourceTypeCounts.length > 0) {
       const countObj = sourceTypeCounts.find((c) => c.sourceType === sourceType);
@@ -185,6 +187,8 @@ const ResultSection: React.FC<ResultSectionProps> = ({
     }
     return items.length || 0;
   }, [sourceType, sourceTypeCounts, items.length]);
+
+  if (!show) return null;
 
   return (
     <div style={{ marginBottom: 20 }}>
@@ -213,7 +217,7 @@ const ResultSection: React.FC<ResultSectionProps> = ({
         </div>
         <button
           className="text-primary font-semibold relative cursor-pointer transition-colors"
-          style={{ fontSize: 12.5, letterSpacing: 0.2 }}
+          style={{ fontSize: 12, letterSpacing: 0.2 }}
           onMouseDown={(e) => {
             e.preventDefault();
             onViewAll();
@@ -383,7 +387,7 @@ const UserResultItem: React.FC<{
               color="purple"
               style={{
                 margin: 0,
-                fontSize: 10,
+                fontSize: 12,
                 lineHeight: '16px',
                 borderRadius: 999,
                 fontWeight: 600,
@@ -397,7 +401,7 @@ const UserResultItem: React.FC<{
               color="orange"
               style={{
                 margin: 0,
-                fontSize: 10,
+                fontSize: 12,
                 lineHeight: '16px',
                 borderRadius: 999,
                 fontWeight: 600,
@@ -904,14 +908,14 @@ export default function GlobalSearch({
       )}
 
       {isSearchLoading ? (
-        <div style={{ textAlign: 'center', padding: '32px 0', color: '#6b7280', fontSize: 13 }}>
+        <div style={{ textAlign: 'center', padding: '32px 0', color: '#6b7280', fontSize: 14 }}>
           Searching…
         </div>
       ) : !hasResults ? (
         <Empty
           style={{ padding: '24px 0' }}
           description={
-            <span style={{ color: '#9ca3af', fontSize: 13 }}>
+            <span style={{ color: '#9ca3af', fontSize: 14 }}>
               {query.query ? 'No results found' : 'Start typing to search'}
               {query.category && ` in ${query.category}`}
             </span>

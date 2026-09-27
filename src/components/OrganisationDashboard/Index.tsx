@@ -11,6 +11,9 @@ import { Button, Input, showToast } from '../shared';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { Loader } from '../shared/ui/loader';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
+import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import { Badge } from '../shared/ui/badge';
 import CustomTable from '../shared/ui/table';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
@@ -34,7 +37,6 @@ import {
 import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 
-const PAGE_SIZE = 20;
 // GET /v1/users has no search param (see the module docstring below) — while
 // actively searching this pulls one larger page instead of the normal 20 at
 // a time and filters it client-side, so a query at least covers this
@@ -78,6 +80,7 @@ const OrganisationUserTable = () => {
   const [includeInactive, setIncludeInactive] = useState<'active' | 'all'>('active');
   const [roleFilter, setRoleFilter] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePersistedPageSize('organisation_users', 20);
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('full_name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -105,8 +108,8 @@ const OrganisationUserTable = () => {
       : {
           includeInactive: includeInactive === 'all',
           role: roleFilter,
-          limit: PAGE_SIZE,
-          offset: page * PAGE_SIZE,
+          limit: pageSize,
+          offset: page * pageSize,
         },
     { skip: !tenantId }
   );
@@ -451,11 +454,11 @@ const OrganisationUserTable = () => {
               <button
                 type="button"
                 aria-label="Revoke invitation"
-                className="p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="group p-2 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 disabled={isRevokingInvite}
                 onClick={() => void handleRevokeInvite(row.invitation_id)}
               >
-                <MdOutlineBlock />
+                <MdOutlineBlock className="text-gray-600 transition-colors group-hover:text-red-600" />
               </button>
             </Tooltip>
           </div>
@@ -540,6 +543,19 @@ const OrganisationUserTable = () => {
         </div>
       </div>
 
+      {!isSearching && (
+        <div className="mt-3 flex justify-end">
+          <RowsPerPageSelect
+            pageSize={pageSize}
+            options={PAGE_SIZE_OPTIONS}
+            onChange={(size) => {
+              setPageSize(size);
+              setPage(0);
+            }}
+          />
+        </div>
+      )}
+
       <div className="w-full border border-neutral-200 rounded-xl overflow-hidden bg-white mt-3">
         <CustomTable<TableRow>
           columns={columns}
@@ -566,7 +582,7 @@ const OrganisationUserTable = () => {
       ) : (
         <MasterPagination
           current={page + 1}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           total={data?.total || 0}
           itemLabel="Users"
           onPageChange={(p) => setPage(p - 1)}

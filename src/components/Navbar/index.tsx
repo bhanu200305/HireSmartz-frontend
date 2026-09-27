@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import MenuItems from './menuItem';
-import useHasAccess from '../../hooks/useHasAccess';
 import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import { Authorities } from '../../constants/authorities.constant';
 import {
@@ -59,6 +58,15 @@ const Navbar: React.FC = () => {
     Authorities.JOB_CATALOG_EDIT,
   ].some((authority) => effectivePermissions.includes(authority));
 
+  // Plain helper, not a hook — `useHasAccess` is just this same
+  // `effectivePermissions.includes(...)` check wrapped around its own
+  // `useEffectivePermissions()` call, which is already fetched once above.
+  // Calling the real hook inside `.filter()`'s callback (once per menu item,
+  // with early returns skipping later ones) varies the hook count between
+  // renders and violates React's rules of hooks.
+  const hasAccess = (authority?: Authorities): boolean =>
+    !!authority && effectivePermissions.includes(authority);
+
   const accessibleMenuItems = MenuItems.filter((item) => {
     if (item.name === 'Companies') {
       // COMPANY_VIEW ('tenant:read') is also a real permission a tenant's
@@ -67,14 +75,14 @@ const Navbar: React.FC = () => {
       // This platform-only screen (lists every company) additionally
       // requires no tenant of their own, same principal-type guard
       // CustomerPage's own route already enforces.
-      return !tenantId && useHasAccess(item.requiredAuthority);
+      return !tenantId && hasAccess(item.requiredAuthority);
     }
 
     if (item.name === 'Company') {
-      return useHasAccess(item.requiredAuthority) || hasCatalogueManageAccess;
+      return hasAccess(item.requiredAuthority) || hasCatalogueManageAccess;
     }
 
-    return useHasAccess(item.requiredAuthority);
+    return hasAccess(item.requiredAuthority);
   });
 
   return (

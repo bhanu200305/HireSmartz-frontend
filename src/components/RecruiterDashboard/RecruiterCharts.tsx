@@ -58,7 +58,7 @@ const cardTooltipStyle = {
 // comment on this same pattern (widened Y-axis `width` to fit the title
 // without reintroducing the left-edge clipping `ChartCard`'s
 // `overflow-hidden` causes when an axis element overflows the card).
-const axisTitleStyle = { fontSize: 10, fill: '#8593ac' };
+const axisTitleStyle = { fontSize: 12, fill: '#8593ac' };
 const yAxisLabel = (value: string) => ({
   value,
   angle: -90,
@@ -146,7 +146,7 @@ const RecruiterCharts: React.FC = () => {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               minTickGap={24}
@@ -155,7 +155,7 @@ const RecruiterCharts: React.FC = () => {
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               width={48}
@@ -198,7 +198,7 @@ const RecruiterCharts: React.FC = () => {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="status"
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               height={30}
@@ -206,14 +206,14 @@ const RecruiterCharts: React.FC = () => {
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               width={48}
               label={yAxisLabel('Interviews')}
             />
             <Tooltip contentStyle={cardTooltipStyle} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
             {ROUND_TYPES.map((type) => (
               <Bar
                 key={type}
@@ -240,7 +240,7 @@ const RecruiterCharts: React.FC = () => {
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="name"
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               height={30}
@@ -248,7 +248,7 @@ const RecruiterCharts: React.FC = () => {
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               width={48}

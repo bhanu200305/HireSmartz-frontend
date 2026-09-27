@@ -4,7 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Drawer, Tooltip } from 'antd';
 import { MdClose, MdExitToApp, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import MenuItems from '../Navbar/menuItem';
-import useHasAccess from '../../hooks/useHasAccess';
+import useEffectivePermissions from '../../hooks/useEffectivePermissions';
+import { Authorities } from '../../constants/authorities.constant';
 import {
   isImpersonationActive,
   setLocalStorageItem,
@@ -17,14 +18,14 @@ import { isMasterSuperAdminRole } from '../../shared/utils/auth/permission.helpe
 import { useGetOwnUserProfileQuery } from '../../api/organization-service/Users/users';
 import { useGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
 
-// Public-folder assets — referenced by URL, not imported (mirrors how Header
-// previously referenced /cfpLogo.svg).
-const WHITE_LOGO_SRC = '/white-logo.svg';
-// The dedicated icon-only mark (also this app's favicon — see index.html),
-// not a shrunk crop of the full wordmark above. Collapsing the sidebar used
-// to just shrink WHITE_LOGO_SRC down to a small square with
-// `objectPosition: 'left'`, which only ever showed a squashed sliver of the
-// wordmark's left edge instead of a real icon.
+// Public-folder asset — referenced by URL, not imported (mirrors how Header
+// previously referenced /cfpLogo.svg). This is the dedicated icon-only mark
+// (also this app's favicon — see index.html), not a shrunk crop of the full
+// wordmark. It keeps its real brand gradient at both collapsed and expanded
+// widths — paired with a plain-text wordmark (below) when expanded, rather
+// than swapping to `/white-logo.svg`, whose flattened all-white rendering
+// stripped the "F" mark's gradient too, so the logo's colors used to change
+// depending on whether the sidebar was collapsed.
 const ICON_LOGO_SRC = '/logoSmall.svg';
 
 // Both widths every page's content column needs to know, to reserve the
@@ -98,6 +99,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   });
   const userData = isPlatformCaller ? platformProfileData : tenantProfileData;
 
+  const effectivePermissions = useEffectivePermissions();
+  // Plain helper, not a hook — `useHasAccess` is just this same
+  // `effectivePermissions.includes(...)` check wrapped around its own
+  // `useEffectivePermissions()` call. Calling the real hook inside
+  // `.filter()`'s callback (once per menu item, with early returns skipping
+  // later ones) varies the hook count between renders and violates React's
+  // rules of hooks.
+  const hasAccess = (authority?: Authorities): boolean =>
+    !!authority && effectivePermissions.includes(authority);
+
   const accessibleMenuItems = MenuItems.filter((item) => {
     // No requiredAuthority by design — see menuItem.tsx's comment on this
     // entry. Always visible to any authenticated session, matching the `/`
@@ -113,7 +124,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       // This platform-only screen (lists every company) additionally
       // requires no tenant of their own, same principal-type guard
       // CustomerPage's own route already enforces.
-      return !tenantId && useHasAccess(item.requiredAuthority);
+      return !tenantId && hasAccess(item.requiredAuthority);
     }
 
     if (
@@ -136,7 +147,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       // same label) shares that display text but must NOT share this gate;
       // see menuItem.tsx's own comment on the tenant entry for the bug this
       // once caused when both were literally named "Audit Log".
-      return Boolean(tenantId) && useHasAccess(item.requiredAuthority);
+      return Boolean(tenantId) && hasAccess(item.requiredAuthority);
     }
 
     // Role-gated, not Authorities-gated — see menuItem.tsx's comment on this
@@ -146,7 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       return isMasterSuperAdminRole(role);
     }
 
-    return useHasAccess(item.requiredAuthority);
+    return hasAccess(item.requiredAuthority);
   });
 
   const handleNavigate = (path: string | string[]) => {
@@ -189,10 +200,16 @@ const Sidebar: React.FC<SidebarProps> = ({
         onClick={() => navigate('/')}
       >
         <img
-          src={isCollapsed ? ICON_LOGO_SRC : WHITE_LOGO_SRC}
+          src={ICON_LOGO_SRC}
           alt="Careerforce Pro"
-          className={isCollapsed ? 'h-8 w-8 object-contain' : 'h-8 w-auto object-contain'}
+          className="h-8 w-8 shrink-0 object-contain"
         />
+        {!isCollapsed && (
+          <span className="font-display text-base font-bold tracking-tight whitespace-nowrap">
+            <span style={{ color: '#11b7dd' }}>careerforce</span>{' '}
+            <span style={{ color: '#0F40A2' }}>pro</span>
+          </span>
+        )}
       </div>
 
       <div className="mx-4 mb-4 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
@@ -237,7 +254,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           className="px-5 mb-2 text-xs font-semibold uppercase tracking-widest"
           style={{ color: 'rgba(255,255,255,0.25)' }}
         >
-          Main Menu
+          Menu
         </p>
       )}
 

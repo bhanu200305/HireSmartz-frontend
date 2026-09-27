@@ -74,7 +74,7 @@ const StatDetailModal: React.FC<StatDetailModalProps> = ({
           <p
             className={clsx(
               'mt-1 font-display font-bold tracking-tight',
-              isPlaceholder ? 'text-base text-neutral-400 italic' : 'text-[28px] text-neutral-900'
+              isPlaceholder ? 'text-base text-neutral-400 italic' : 'text-3xl text-neutral-900'
             )}
           >
             {displayValue}

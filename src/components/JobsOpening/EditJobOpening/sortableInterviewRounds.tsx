@@ -1,6 +1,7 @@
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useState, useEffect } from 'react';
+import { Tooltip } from 'antd';
 import {
   HiOutlineTrash,
   HiDotsVertical,
@@ -161,20 +162,24 @@ export const SortableInterviewRounds = ({
         </div>
         {!isAnchorRound && (
           <div className="flex items-center gap-4 shrink-0">
-            <button
-              onClick={() => onEdit(round)}
-              className="text-neutral-500 hover:text-neutral-700 cursor-pointer"
-              aria-label="Edit round"
-            >
-              <MdEdit size={18} />
-            </button>
-            <button
-              className="text-red-500 hover:text-red-700 cursor-pointer"
-              onClick={() => onDelete(round.id)}
-              aria-label="Delete round"
-            >
-              <HiOutlineTrash size={18} />
-            </button>
+            <Tooltip title="Edit round">
+              <button
+                onClick={() => onEdit(round)}
+                className="text-neutral-500 hover:text-neutral-700 cursor-pointer"
+                aria-label="Edit round"
+              >
+                <MdEdit size={18} />
+              </button>
+            </Tooltip>
+            <Tooltip title="Delete round">
+              <button
+                className="text-gray-600 hover:text-red-600 cursor-pointer transition-colors"
+                onClick={() => onDelete(round.id)}
+                aria-label="Delete round"
+              >
+                <HiOutlineTrash size={18} />
+              </button>
+            </Tooltip>
           </div>
         )}
       </div>

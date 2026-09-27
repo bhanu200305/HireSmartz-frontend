@@ -17,7 +17,7 @@ export const TileLabel = ({ children, className }: TileLabelProps) => (
       borderRadius: 8,
       padding: '6px 12px',
       fontWeight: 600,
-      fontSize: 13,
+      fontSize: 14,
       color: '#f8fafc',
       backdropFilter: 'blur(4px)',
       border: '1px solid rgba(255, 255, 255, 0.1)',

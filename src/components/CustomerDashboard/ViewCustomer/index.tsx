@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Tabs, Tooltip, Upload } from 'antd';
+import { Dropdown, Tabs, Tooltip, Upload, type MenuProps } from 'antd';
 import { BsArrowLeft } from 'react-icons/bs';
 import {
   MdEmail,
@@ -10,10 +10,13 @@ import {
   MdOutlineTune,
   MdLock,
   MdEdit,
+  MdOutlineFileUpload,
+  MdOutlineCropRotate,
 } from 'react-icons/md';
 import MainLayout from '../../../layouts/MainLayout';
 import { Button, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
+import ImageCropModal from '../../shared/ui/ImageCropModal';
 import { Badge, BadgeStatus } from '../../shared/ui/badge';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import CorrectAdminEmailModal from '../CorrectAdminEmailModal';
@@ -67,7 +70,7 @@ const MetaTile: React.FC<{
       {icon}
     </span>
     <div className="min-w-0">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
       <p
         className="text-sm font-medium text-gray-800 truncate"
         title={typeof value === 'string' ? value : undefined}
@@ -127,14 +130,33 @@ const ViewCustomer = () => {
   const [uploadLogo] = useUploadPlatformTenantLogoMutation();
   const [logoPreview, setLogoPreview] = useState('');
   const [isLogoHovered, setIsLogoHovered] = useState(false);
+  // Controlled explicitly — see CompanyProfileTab.tsx's identical comment on
+  // why tying the Dropdown's mount to hover state made the open menu
+  // "vanish" the instant the mouse left the avatar circle on its way to a
+  // menu item (the menu itself renders in a portal outside this div).
+  const [isLogoMenuOpen, setIsLogoMenuOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const logoUploadRef = useRef<HTMLButtonElement>(null);
+  // The crop step sits between "file picked" and "uploaded" — same
+  // ImageCropModal UserProfile's avatar upload and CompanyProfileTab's own
+  // logo upload use, so this header's logo control isn't a third,
+  // uncroppable copy of the same feature.
+  const [isLogoCropModalOpen, setIsLogoCropModalOpen] = useState(false);
+  const [logoCropImageSrc, setLogoCropImageSrc] = useState('');
+  const [pendingCropFileName, setPendingCropFileName] = useState('company-logo.jpg');
+  // Only set when THIS crop session created a fresh blob: URL for a
+  // freshly-picked disk file — that's the only source that needs revoking
+  // on cancel/confirm. Re-adjusting the already-displayed logoPreview (see
+  // handleAdjustCurrentLogo) reuses that string as-is instead, since it's
+  // still needed for the avatar afterward whether or not the crop is
+  // applied.
+  const [logoCropObjectUrl, setLogoCropObjectUrl] = useState<string | null>(null);
 
   useEffect(() => {
     setLogoPreview(profile?.logo_url || '');
   }, [profile?.logo_url]);
 
-  const handleLogoUpload = async (file: File) => {
+  const handleLogoFileSelected = (file: File) => {
     if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
       showToast({ message: LOGO_FILE_TYPE_ERROR_MESSAGE, type: 'error' });
       return Upload.LIST_IGNORE;
@@ -144,11 +166,55 @@ const ViewCustomer = () => {
       return Upload.LIST_IGNORE;
     }
 
-    const previewUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    setLogoCropImageSrc(objectUrl);
+    setLogoCropObjectUrl(objectUrl);
+    setPendingCropFileName(file.name);
+    setIsLogoCropModalOpen(true);
+    return Upload.LIST_IGNORE;
+  };
+
+  // Re-opens the crop step on the logo ALREADY showing instead of requiring
+  // a brand new file first — the "adjust" half of the logo's click menu
+  // below ("Select new image" is the other).
+  const handleAdjustCurrentLogo = () => {
+    if (!logoPreview) return;
+    setLogoCropImageSrc(logoPreview);
+    setLogoCropObjectUrl(null);
+    setPendingCropFileName(pendingCropFileName || 'company-logo.jpg');
+    setIsLogoCropModalOpen(true);
+  };
+
+  const logoMenuItems: MenuProps['items'] = [
+    { key: 'select', label: 'Select new image', icon: <MdOutlineFileUpload /> },
+    { key: 'adjust', label: 'Adjust current logo', icon: <MdOutlineCropRotate /> },
+  ];
+  const handleLogoMenuClick: NonNullable<MenuProps['onClick']> = ({ key }) => {
+    if (key === 'select') logoUploadRef.current?.click();
+    if (key === 'adjust') handleAdjustCurrentLogo();
+  };
+
+  const handleLogoCropCancel = () => {
+    if (logoCropObjectUrl) URL.revokeObjectURL(logoCropObjectUrl);
+    setLogoCropImageSrc('');
+    setLogoCropObjectUrl(null);
+    setIsLogoCropModalOpen(false);
+  };
+
+  const handleLogoCropConfirm = async (croppedBlob: Blob) => {
+    if (logoCropObjectUrl) URL.revokeObjectURL(logoCropObjectUrl);
+    setLogoCropImageSrc('');
+    setLogoCropObjectUrl(null);
+    setIsLogoCropModalOpen(false);
+
+    const croppedFile = new File([croppedBlob], pendingCropFileName || 'company-logo.jpg', {
+      type: croppedBlob.type,
+    });
+    const previewUrl = URL.createObjectURL(croppedFile);
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
+      const { storage_key } = await uploadLogo({ tenantId, file: croppedFile }).unwrap();
       await updateProfile({ tenantId, logo: storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
     } catch (err) {
@@ -157,7 +223,6 @@ const ViewCustomer = () => {
     } finally {
       setIsUploadingLogo(false);
     }
-    return false;
   };
 
   useEffect(() => {
@@ -263,7 +328,7 @@ const ViewCustomer = () => {
             <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
               <div className="flex items-center gap-4">
                 <div
-                  className="relative shrink-0 w-14 h-14 rounded-full overflow-hidden group"
+                  className="relative shrink-0 w-14 h-14 rounded-full overflow-hidden group bg-gray-100"
                   onMouseEnter={() => setIsLogoHovered(true)}
                   onMouseLeave={() => setIsLogoHovered(false)}
                 >
@@ -271,7 +336,10 @@ const ViewCustomer = () => {
                     <img
                       src={logoPreview}
                       alt={`${tenant.company_name} logo`}
-                      className="w-full h-full object-cover"
+                      // object-contain, not object-cover — see
+                      // CompanyProfileTab.tsx's identical fix for why cover
+                      // was cropping most of a non-square scraped logo away.
+                      className="w-full h-full object-contain p-1.5"
                       onError={() => setLogoPreview('')}
                     />
                   ) : (
@@ -280,24 +348,32 @@ const ViewCustomer = () => {
                     </span>
                   )}
                   <Upload
-                    beforeUpload={handleLogoUpload}
+                    beforeUpload={handleLogoFileSelected}
                     showUploadList={false}
                     className="hidden"
                     accept="image/png, image/jpeg"
                   >
                     <button ref={logoUploadRef} className="hidden cursor-pointer"></button>
                   </Upload>
-                  {isLogoHovered && !isUploadingLogo && (
-                    <div
-                      onClick={() => logoUploadRef.current?.click()}
-                      className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer"
+                  {!isUploadingLogo && (
+                    <Dropdown
+                      menu={{ items: logoMenuItems, onClick: handleLogoMenuClick }}
+                      trigger={['click']}
+                      open={isLogoMenuOpen}
+                      onOpenChange={setIsLogoMenuOpen}
                     >
-                      <MdEdit className="text-white text-lg" />
-                    </div>
+                      <div
+                        className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer transition-opacity ${
+                          isLogoHovered || isLogoMenuOpen ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      >
+                        <MdEdit className="text-white text-lg" />
+                      </div>
+                    </Dropdown>
                   )}
                   {isUploadingLogo && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                      <span className="text-white text-[10px]">Uploading…</span>
+                      <span className="text-white text-xs">Uploading…</span>
                     </div>
                   )}
                 </div>
@@ -384,6 +460,16 @@ const ViewCustomer = () => {
           onClose={() => setShowCorrectEmail(false)}
         />
       )}
+
+      <ImageCropModal
+        open={isLogoCropModalOpen}
+        imageSrc={logoCropImageSrc}
+        onCancel={handleLogoCropCancel}
+        onConfirm={handleLogoCropConfirm}
+        isSaving={isUploadingLogo}
+        title="Adjust your logo"
+        subtitle="Drag to reposition, then zoom or rotate to fit the frame"
+      />
     </MainLayout>
   );
 };

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Upload } from 'antd';
-import { MdEdit, MdOutlineFileUpload } from 'react-icons/md';
+import { Dropdown, Upload, type MenuProps } from 'antd';
+import { MdEdit, MdOutlineFileUpload, MdOutlineCropRotate } from 'react-icons/md';
 import { Button, Input, Textarea, Typography, showToast } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
+import ImageCropModal from '../../../shared/ui/ImageCropModal';
 import { Badge, BadgeStatus } from '../../../shared/ui/badge';
 import {
   useGetPlatformTenantProfileQuery,
@@ -101,8 +102,23 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [form, setForm] = useState<ProfileFormState>(toFormState(undefined, ''));
   const [logoPreview, setLogoPreview] = useState('');
   const [isLogoHovered, setIsLogoHovered] = useState(false);
+  // Controlled explicitly — see CompanyProfileTab.tsx's identical comment on
+  // why tying the Dropdown's mount to hover state made the open menu
+  // "vanish" the instant the mouse left the avatar circle on its way to a
+  // menu item (the menu itself renders in a portal outside this div).
+  const [isLogoMenuOpen, setIsLogoMenuOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const logoUploadRef = useRef<HTMLButtonElement>(null);
+  // The crop step sits between "file picked" and "uploaded" — same
+  // ImageCropModal every other logo/avatar upload in the app uses.
+  const [isLogoCropModalOpen, setIsLogoCropModalOpen] = useState(false);
+  const [logoCropImageSrc, setLogoCropImageSrc] = useState('');
+  const [pendingCropFileName, setPendingCropFileName] = useState('company-logo.jpg');
+  // Only set when THIS crop session created a fresh blob: URL for a
+  // freshly-picked disk file — that's the only source that needs revoking
+  // on cancel/confirm. Re-adjusting the already-displayed logoPreview (see
+  // handleAdjustCurrentLogo) reuses that string as-is instead.
+  const [logoCropObjectUrl, setLogoCropObjectUrl] = useState<string | null>(null);
 
   const cultureIntroValue = cultureIntroData?.intro_text ?? (cultureIntroError ? '' : undefined);
 
@@ -128,7 +144,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     setIsEditMode(false);
   };
 
-  const handleLogoUpload = async (file: File) => {
+  const handleLogoFileSelected = (file: File) => {
     if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
       showToast({ message: LOGO_FILE_TYPE_ERROR_MESSAGE, type: 'error' });
       return Upload.LIST_IGNORE;
@@ -138,11 +154,55 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       return Upload.LIST_IGNORE;
     }
 
-    const previewUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    setLogoCropImageSrc(objectUrl);
+    setLogoCropObjectUrl(objectUrl);
+    setPendingCropFileName(file.name);
+    setIsLogoCropModalOpen(true);
+    return Upload.LIST_IGNORE;
+  };
+
+  // Re-opens the crop step on the logo ALREADY showing instead of requiring
+  // a brand new file first — the "adjust" half of the logo's click menu
+  // below ("Select new image" is the other).
+  const handleAdjustCurrentLogo = () => {
+    if (!logoPreview) return;
+    setLogoCropImageSrc(logoPreview);
+    setLogoCropObjectUrl(null);
+    setPendingCropFileName(pendingCropFileName || 'company-logo.jpg');
+    setIsLogoCropModalOpen(true);
+  };
+
+  const logoMenuItems: MenuProps['items'] = [
+    { key: 'select', label: 'Select new image', icon: <MdOutlineFileUpload /> },
+    { key: 'adjust', label: 'Adjust current logo', icon: <MdOutlineCropRotate /> },
+  ];
+  const handleLogoMenuClick: NonNullable<MenuProps['onClick']> = ({ key }) => {
+    if (key === 'select') logoUploadRef.current?.click();
+    if (key === 'adjust') handleAdjustCurrentLogo();
+  };
+
+  const handleLogoCropCancel = () => {
+    if (logoCropObjectUrl) URL.revokeObjectURL(logoCropObjectUrl);
+    setLogoCropImageSrc('');
+    setLogoCropObjectUrl(null);
+    setIsLogoCropModalOpen(false);
+  };
+
+  const handleLogoCropConfirm = async (croppedBlob: Blob) => {
+    if (logoCropObjectUrl) URL.revokeObjectURL(logoCropObjectUrl);
+    setLogoCropImageSrc('');
+    setLogoCropObjectUrl(null);
+    setIsLogoCropModalOpen(false);
+
+    const croppedFile = new File([croppedBlob], pendingCropFileName || 'company-logo.jpg', {
+      type: croppedBlob.type,
+    });
+    const previewUrl = URL.createObjectURL(croppedFile);
     setLogoPreview(previewUrl);
     setIsUploadingLogo(true);
     try {
-      const { storage_key } = await uploadLogo({ tenantId, file }).unwrap();
+      const { storage_key } = await uploadLogo({ tenantId, file: croppedFile }).unwrap();
       await updateProfile({ tenantId, logo: storage_key }).unwrap();
       showToast({ message: 'Company logo updated.', type: 'success' });
       refetch();
@@ -152,7 +212,6 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     } finally {
       setIsUploadingLogo(false);
     }
-    return false;
   };
 
   const handleSave = async () => {
@@ -221,12 +280,15 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             <img
               src={logoPreview}
               alt="Company logo"
-              className="w-full h-full object-cover"
+              // object-contain, not object-cover — see CompanyProfileTab.tsx's
+              // identical fix for why cover was cropping most of a
+              // non-square scraped logo away.
+              className="w-full h-full object-contain p-2"
               onError={() => setLogoPreview('')}
             />
             {isEditMode && (
               <Upload
-                beforeUpload={handleLogoUpload}
+                beforeUpload={handleLogoFileSelected}
                 showUploadList={false}
                 className="hidden"
                 accept="image/png, image/jpeg"
@@ -234,13 +296,21 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                 <button ref={logoUploadRef} className="hidden cursor-pointer"></button>
               </Upload>
             )}
-            {isEditMode && isLogoHovered && !isUploadingLogo && (
-              <div
-                onClick={() => logoUploadRef.current?.click()}
-                className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer"
+            {isEditMode && !isUploadingLogo && (
+              <Dropdown
+                menu={{ items: logoMenuItems, onClick: handleLogoMenuClick }}
+                trigger={['click']}
+                open={isLogoMenuOpen}
+                onOpenChange={setIsLogoMenuOpen}
               >
-                <MdEdit className="text-white text-xl" />
-              </div>
+                <div
+                  className={`absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer transition-opacity ${
+                    isLogoHovered || isLogoMenuOpen ? 'opacity-100' : 'opacity-0'
+                  }`}
+                >
+                  <MdEdit className="text-white text-xl" />
+                </div>
+              </Dropdown>
             )}
             {isUploadingLogo && (
               <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
@@ -250,7 +320,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           </div>
         ) : isEditMode ? (
           <Upload.Dragger
-            beforeUpload={handleLogoUpload}
+            beforeUpload={handleLogoFileSelected}
             listType="picture"
             maxCount={1}
             accept="image/png, image/jpeg"
@@ -340,6 +410,15 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           </Button>
         </div>
       )}
+      <ImageCropModal
+        open={isLogoCropModalOpen}
+        imageSrc={logoCropImageSrc}
+        onCancel={handleLogoCropCancel}
+        onConfirm={handleLogoCropConfirm}
+        isSaving={isUploadingLogo}
+        title="Adjust your logo"
+        subtitle="Drag to reposition, then zoom or rotate to fit the frame"
+      />
     </div>
   );
 };

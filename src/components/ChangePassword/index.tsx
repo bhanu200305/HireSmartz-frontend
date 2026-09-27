@@ -1,8 +1,8 @@
 import MainLayout from '../../layouts/MainLayout';
 import { MdLockOutline, MdOutlineArrowBack } from 'react-icons/md';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Button, PasswordInput, showToast } from '../shared';
-import { Controller, useForm } from 'react-hook-form';
+import { Button, PasswordInput, PasswordRequirementsChecklist, showToast } from '../shared';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { passwordSchema } from './ChangePasswordSchema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from 'antd';
@@ -44,6 +44,7 @@ const ChangePassword = () => {
     },
     mode: 'onChange',
   });
+  const newPassword = useWatch({ control, name: 'newPassword' }) ?? '';
   const getCompanyNameFromToken = () => {
     const token = getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
     if (!token) return null;
@@ -199,6 +200,11 @@ const ChangePassword = () => {
                   <p className="text-red-500 text-sm px-2 py-1 whitespace-pre-line">
                     {errors.newPassword.message}
                   </p>
+                )}
+                {newPassword.length > 0 && (
+                  <div className="px-2">
+                    <PasswordRequirementsChecklist password={newPassword} />
+                  </div>
                 )}
                 {/* </Form.Item> */}
 

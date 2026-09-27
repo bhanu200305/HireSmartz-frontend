@@ -2,27 +2,52 @@ import React, { useCallback, useState } from 'react';
 import Cropper, { Area } from 'react-easy-crop';
 import { Slider } from 'antd';
 import { MdRotateLeft, MdRotateRight, MdZoomIn, MdZoomOut } from 'react-icons/md';
-import AntdCommonModal from '../shared/ui/AntdCommonModal';
-import { Button } from '../shared';
-import { getCroppedImageBlob } from './cropImage';
+import AntdCommonModal from './AntdCommonModal';
+import { Button, showToast } from '..';
+import { getCroppedImageBlob, CrossOriginCropError } from '../../../shared/utils/image/cropImage';
 
-type ProfilePictureCropModalProps = {
+type ImageCropModalProps = {
   open: boolean;
   imageSrc: string;
   onCancel: () => void;
   onConfirm: (blob: Blob) => void;
   isSaving?: boolean;
+  title?: string;
+  subtitle?: string;
+  /** 'round' for a circular avatar-style crop, 'rect' for a rectangular one. */
+  cropShape?: 'round' | 'rect';
+  aspect?: number;
+  outputSize?: number;
 };
 
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 3;
+// Zoom is relative to "the whole image fits the frame" (1), not an absolute
+// scale — MIN_ZOOM below 1 lets the user shrink the image further, adding
+// margin around it, and MAX_ZOOM above 1 lets them crop tighter into it.
+// Both directions matter here specifically because a scraped logo is a
+// third-party asset with no consistent built-in padding: some need
+// shrinking to stop touching the frame's edges, others need zooming in to
+// stop showing mostly empty canvas.
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 5;
 
-const ProfilePictureCropModal: React.FC<ProfilePictureCropModalProps> = ({
+/**
+ * Generic drag/zoom/rotate crop editor — extracted from what used to be
+ * UserProfile's own `ProfilePictureCropModal` (still the same UX for that
+ * avatar case) so a second caller (company logo upload) doesn't hand-copy
+ * the same ~150 lines of react-easy-crop wiring and canvas math with a
+ * different title string.
+ */
+const ImageCropModal: React.FC<ImageCropModalProps> = ({
   open,
   imageSrc,
   onCancel,
   onConfirm,
   isSaving = false,
+  title = 'Adjust your photo',
+  subtitle = 'Drag to reposition, then zoom or rotate to fit the frame',
+  cropShape = 'round',
+  aspect = 1,
+  outputSize = 512,
 }) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -36,9 +61,9 @@ const ProfilePictureCropModal: React.FC<ProfilePictureCropModalProps> = ({
     setCroppedAreaPixels(areaPixels);
   }, []);
 
-  // Every open (a freshly selected file each time — see index.tsx) should
-  // start from a centered, unzoomed, unrotated crop rather than carrying
-  // over whatever the previous photo ended on.
+  // Every open (a freshly selected file/URL each time) should start from a
+  // centered, unzoomed, unrotated crop rather than carrying over whatever
+  // the previous image ended on.
   const resetAdjustments = () => {
     setCrop({ x: 0, y: 0 });
     setZoom(1);
@@ -55,9 +80,21 @@ const ProfilePictureCropModal: React.FC<ProfilePictureCropModalProps> = ({
     if (!croppedAreaPixels) return;
     setIsProcessing(true);
     try {
-      const blob = await getCroppedImageBlob(imageSrc, croppedAreaPixels, rotation);
+      const blob = await getCroppedImageBlob(imageSrc, croppedAreaPixels, rotation, outputSize);
       onConfirm(blob);
       resetAdjustments();
+    } catch (err) {
+      // Cross-origin source (e.g. a logo scraped straight from the
+      // company's own website, never re-hosted by us) — the browser
+      // refuses to read pixel data back off the canvas. Left open so the
+      // user can Cancel and fall back to downloading + re-uploading the
+      // file, which crops fine since that source is same-origin (a local
+      // blob).
+      const message =
+        err instanceof CrossOriginCropError
+          ? "This image can't be adjusted directly from its source — download it and upload it as a file instead."
+          : 'Failed to process image.';
+      showToast({ message, type: 'error' });
     } finally {
       setIsProcessing(false);
     }
@@ -67,22 +104,43 @@ const ProfilePictureCropModal: React.FC<ProfilePictureCropModalProps> = ({
     <AntdCommonModal
       open={open}
       onClose={handleCancel}
-      title="Adjust your photo"
-      subtitle="Drag to reposition, then zoom or rotate to fit the frame"
+      title={title}
+      subtitle={subtitle}
       modalProps={{ width: 'min(480px, 92vw)', keyboard: !isProcessing && !isSaving }}
     >
-      <div className="flex flex-col gap-5">
+      <div className="flex max-h-[85vh] flex-col gap-5 overflow-y-auto pr-1">
         <div
-          className="relative w-full rounded-2xl overflow-hidden bg-[var(--gray-900)]"
-          style={{ height: 'min(320px, 60vh)' }}
+          className="relative mx-auto w-full shrink-0 overflow-hidden rounded-2xl bg-[var(--gray-900)]"
+          // The photo area's own shape must match the crop selection's
+          // aspect ratio (aspect, 1 = square for a round avatar/logo) — it
+          // used to be a wide rectangle (full modal width x a fixed height)
+          // with a SQUARE selection centered inside it, so most of that
+          // rectangle sat outside the circle and was never part of what
+          // could be kept. That's what made a wide/short logo look
+          // pointlessly tiny inside the circle: `contain` was fitting it to
+          // the whole oversized rectangle, not to the circle's own bounds.
+          // Sizing the box itself to the crop's aspect ratio means the
+          // selection now occupies (approximately) the whole box, so
+          // `contain` actually fits the frame the user is looking at.
+          style={{ aspectRatio: aspect, maxWidth: 'min(360px, 100%)' }}
         >
           <Cropper
             image={imageSrc}
             crop={crop}
             zoom={zoom}
             rotation={rotation}
-            aspect={1}
-            cropShape="round"
+            aspect={aspect}
+            cropShape={cropShape}
+            // 'contain' (react-easy-crop's own default) — the complete
+            // image, uncropped, at zoom 1: that has to be the STARTING
+            // point for a third-party scraped logo, never an assumption
+            // baked in by the tool that some of it doesn't matter. Zoom
+            // (now both directions — see MIN_ZOOM/MAX_ZOOM above) is what
+            // lets the person actually setting the logo decide, themselves,
+            // whether to fill the frame more tightly (cropping in) or add
+            // breathing room (shrinking further) — never a default this
+            // component picks for them.
+            objectFit="contain"
             showGrid={false}
             restrictPosition
             onCropChange={setCrop}
@@ -148,4 +206,4 @@ const ProfilePictureCropModal: React.FC<ProfilePictureCropModalProps> = ({
   );
 };
 
-export default ProfilePictureCropModal;
+export default ImageCropModal;

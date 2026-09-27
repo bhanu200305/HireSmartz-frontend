@@ -199,6 +199,8 @@ const AiCallBooking = () => {
                 className="w-full"
                 size="large"
                 popupMatchSelectWidth={false}
+                showSearch
+                optionFilterProp="children"
               >
                 {timezones.map((tz) => (
                   <Option key={tz} value={tz}>

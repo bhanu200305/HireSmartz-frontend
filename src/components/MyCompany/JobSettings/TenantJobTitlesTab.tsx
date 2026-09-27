@@ -1,20 +1,24 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-import { Select as AntSelect } from 'antd';
-import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
-import { Button, CustomTable, Input, Typography, showToast } from '../../shared';
+import { Select as AntSelect, Tooltip } from 'antd';
+import { MdBlock, MdDelete, MdEdit, MdOutlineAdd, MdRestore, MdSearch } from 'react-icons/md';
+import { Badge, Button, CustomTable, Input, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import MasterPagination from '../../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
+import { useEnterToSubmit } from '../../../hooks/useEnterToSubmit';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import {
   useListTenantJobTitlesQuery,
   useCreateTenantJobTitleMutation,
   useUpdateTenantJobTitleMutation,
   useDeleteTenantJobTitleMutation,
+  useDeactivateTenantJobTitleMutation,
+  useActivateTenantJobTitleMutation,
   useAssignTenantJobTitleToDepartmentMutation,
   tenantJobTitleFormId,
   TenantJobTitle,
@@ -46,6 +50,8 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [updateJobTitle, { isLoading: isUpdating }] = useUpdateTenantJobTitleMutation();
   const [deleteJobTitle] = useDeleteTenantJobTitleMutation();
   const [assignJobTitle] = useAssignTenantJobTitleToDepartmentMutation();
+  const [deactivateJobTitle, { isLoading: isDeactivating }] = useDeactivateTenantJobTitleMutation();
+  const [activateJobTitle] = useActivateTenantJobTitleMutation();
 
   const canAdd = useHasAccess(Authorities.TENANT_JOB_TITLE_ADD);
   const canEdit = useHasAccess(Authorities.TENANT_JOB_TITLE_EDIT);
@@ -57,6 +63,8 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [jobTitleToDelete, setJobTitleToDelete] = useState<TenantJobTitle | null>(null);
+  const [jobTitleToDeactivate, setJobTitleToDeactivate] = useState<TenantJobTitle | null>(null);
+  const [pendingActivateId, setPendingActivateId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -161,6 +169,10 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
   };
 
+  const { onKeyDown: handleEnterToSubmit } = useEnterToSubmit(handleSubmit, {
+    enabled: modalState !== null && !isCreating && !isUpdating && isFormValid,
+  });
+
   const handleDelete = async () => {
     if (!jobTitleToDelete) return;
     try {
@@ -176,6 +188,42 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       });
     } finally {
       setJobTitleToDelete(null);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!jobTitleToDeactivate) return;
+    try {
+      await deactivateJobTitle({
+        tenantId,
+        jobTitleId: tenantJobTitleFormId(jobTitleToDeactivate),
+      }).unwrap();
+      showToast({ message: `"${jobTitleToDeactivate.name}" was deactivated.`, type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to deactivate job title.'),
+        type: 'error',
+      });
+    } finally {
+      setJobTitleToDeactivate(null);
+    }
+  };
+
+  // No confirmation modal, unlike deactivate — restoring visibility is the
+  // low-risk direction.
+  const handleActivate = async (jobTitle: TenantJobTitle) => {
+    const jobTitleId = tenantJobTitleFormId(jobTitle);
+    setPendingActivateId(jobTitleId);
+    try {
+      await activateJobTitle({ tenantId, jobTitleId }).unwrap();
+      showToast({ message: `"${jobTitle.name}" was activated.`, type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to activate job title.'),
+        type: 'error',
+      });
+    } finally {
+      setPendingActivateId(null);
     }
   };
 
@@ -201,32 +249,71 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <span className="text-gray-500 text-sm">{jobTitle.description || '-'}</span>
       ),
     },
+    {
+      title: 'Status',
+      key: 'status',
+      width: 110,
+      render: (_: unknown, jobTitle: JobTitleRow) => (
+        <Badge status={jobTitle.is_active ? 'success' : 'neutral'}>
+          {jobTitle.is_active ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
     showActions && {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 130,
       render: (_: unknown, jobTitle: JobTitleRow) => (
         <div className="flex items-center gap-1">
           {canEdit && (
-            <button
-              type="button"
-              aria-label="Edit job title"
-              className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
-              onClick={() => openEdit(jobTitle)}
-            >
-              <MdEdit className="text-gray-600" />
-            </button>
+            <Tooltip title="Edit job title">
+              <button
+                type="button"
+                aria-label="Edit job title"
+                className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+                onClick={() => openEdit(jobTitle)}
+              >
+                <MdEdit className="text-gray-600" />
+              </button>
+            </Tooltip>
           )}
           {canDelete && (
-            <button
-              type="button"
-              aria-label="Delete job title"
-              className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-              onClick={() => setJobTitleToDelete(jobTitle)}
-            >
-              <MdDelete className="text-red-500" />
-            </button>
+            <Tooltip title="Delete job title">
+              <button
+                type="button"
+                aria-label="Delete job title"
+                className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+                onClick={() => setJobTitleToDelete(jobTitle)}
+              >
+                <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+              </button>
+            </Tooltip>
           )}
+          {canEdit &&
+            (jobTitle.is_active ? (
+              <Tooltip title="Deactivate job title">
+                <button
+                  type="button"
+                  aria-label="Deactivate job title"
+                  className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+                  onClick={() => setJobTitleToDeactivate(jobTitle)}
+                >
+                  <MdBlock className="text-gray-600 transition-colors group-hover:text-red-600" />
+                </button>
+              </Tooltip>
+            ) : (
+              <Tooltip title="Activate job title">
+                <button
+                  type="button"
+                  aria-label="Activate job title"
+                  className="p-2 hover:bg-green-50 rounded-full disabled:cursor-not-allowed cursor-pointer transition-colors disabled:opacity-50"
+                  disabled={pendingActivateId === tenantJobTitleFormId(jobTitle)}
+                  onClick={() => handleActivate(jobTitle)}
+                >
+                  <MdRestore className="text-green-600" />
+                </button>
+              </Tooltip>
+            ))}
         </div>
       ),
     },
@@ -271,19 +358,14 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         </div>
       </div>
 
-      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
-        <span>Rows per page</span>
-        <AntSelect
-          size="small"
-          value={pageSize}
-          className="rows-per-page-select"
-          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-          onChange={(size) => {
-            setPageSize(size);
-            setPage(0);
-          }}
-        />
-      </div>
+      <RowsPerPageSelect
+        pageSize={pageSize}
+        options={PAGE_SIZE_OPTIONS}
+        onChange={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable<JobTitleRow>
@@ -308,9 +390,10 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         onClose={() => setModalState(null)}
         title={modalState?.mode === 'edit' ? 'Edit job title' : 'Add job title'}
       >
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
           <Input
             placeholder="Name *"
+            maxLength={150}
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           />
@@ -358,6 +441,16 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           confirmText="REMOVE"
           onConfirm={handleDelete}
           onClose={() => setJobTitleToDelete(null)}
+        />
+      )}
+
+      {jobTitleToDeactivate && (
+        <ConfirmationModal
+          title={`Deactivate "${jobTitleToDeactivate.name}"?`}
+          confirmText="DEACTIVATE"
+          isLoading={isDeactivating}
+          onConfirm={handleDeactivate}
+          onClose={() => setJobTitleToDeactivate(null)}
         />
       )}
     </div>

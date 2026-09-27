@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MdOutlineDescription, MdOutlineWorkOutline } from 'react-icons/md';
-import { StatCardRow } from '../shared';
-import type { StatCardData } from '../shared';
+import { StatCardRow } from '../shared/ui/StatCardRow';
+import type { StatCardData } from '../shared/ui/StatCardRow';
 import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import { useGetTotalApplicationsQuery } from '../../api/candidate-service/Stats/stats';
 import useHasAccess from '../../hooks/useHasAccess';

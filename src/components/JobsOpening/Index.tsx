@@ -38,6 +38,8 @@ import {
   useListTenantOfficesQuery,
 } from '../../api/organization-service/Tenants/offices';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import { setJobOpeningFilters } from '../../redux/slices/jobOpeningFilterSlice';
 import { Col, Dropdown, Modal, Row, Select, MenuProps, Tooltip } from 'antd';
 import clsx from 'clsx';
@@ -577,6 +579,10 @@ const JobsOpening = () => {
 
   const handlePageChange = (page: number) => {
     dispatch(setJobOpeningFilters({ page }));
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    dispatch(setJobOpeningFilters({ size, page: 0 }));
   };
 
   const handleSearch = (query: string) => {
@@ -1124,6 +1130,8 @@ const JobsOpening = () => {
                   placeholder="All Locations"
                   onChange={handleLocationChange}
                   allowClear
+                  showSearch
+                  optionFilterProp="children"
                   className="w-full custom-select"
                   popupMatchSelectWidth={false}
                   variant="borderless"
@@ -1190,6 +1198,13 @@ const JobsOpening = () => {
               <StatCardRow cards={jobStatCards} columns={4} />
             </div>
           )}
+          <div className="flex justify-end px-2">
+            <RowsPerPageSelect
+              pageSize={filters.size || 10}
+              options={PAGE_SIZE_OPTIONS}
+              onChange={handlePageSizeChange}
+            />
+          </div>
           <div className="w-full rounded-xl overflow-hidden border border-neutral-200 bg-white shadow-xs">
             {/* overflow-x-auto + min-w keeps columns readable on narrow viewports. */}
             <div className="overflow-x-auto">
@@ -1701,6 +1716,16 @@ const JobsOpening = () => {
           closable
           width={520}
           destroyOnClose={false}
+          // Same fix as TenantAnalyticsModal/CreateRoleModal/EditRoleModal:
+          // some Windows/Chrome setups render the default scrollbar as a
+          // wide overlay that sits on top of the content (here, right over
+          // antd's own close button) instead of reserving its own track
+          // space. `overflowX: 'hidden'` is required alongside
+          // `overflowY: 'auto'` — leaving overflow-x at its default
+          // `visible` while overflow-y isn't computes overflow-x to `auto`
+          // too, opening a stray horizontal scrollbar of its own.
+          styles={{ body: { overflowX: 'hidden', paddingRight: 14 } }}
+          classNames={{ body: 'thin-scrollbar' }}
         >
           <QrCodeCard
             imageUrl={qrCodeData?.url ?? null}

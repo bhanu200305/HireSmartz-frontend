@@ -31,7 +31,7 @@ const variantClasses: Record<TypographyVariant, string> = {
   subtitle2: 'font-display font-medium text-sm leading-normal',
   caption: 'font-sans font-normal text-xs leading-normal text-neutral-500',
   button: 'font-sans font-semibold text-sm tracking-wider uppercase',
-  overline: 'font-sans font-medium text-[10px] tracking-widest uppercase',
+  overline: 'font-sans font-medium text-xs tracking-widest uppercase',
 };
 
 const colorClasses: Record<TypographyColor, string> = {

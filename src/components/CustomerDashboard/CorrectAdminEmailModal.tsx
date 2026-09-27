@@ -83,7 +83,6 @@ const CorrectAdminEmailModal: React.FC<CorrectAdminEmailModalProps> = ({
           setEmail(e.target.value);
           if (fieldError) setFieldError(null);
         }}
-        autoFocus
       />
 
       <div className="grid grid-cols-2 gap-4 mt-6">

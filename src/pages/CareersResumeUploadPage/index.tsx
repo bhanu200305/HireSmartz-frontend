@@ -142,10 +142,14 @@ export const CareersResumeUploadPage = () => {
           <p className="text-sm text-gray-500 text-center max-w-sm mx-auto">
             {detailsStatusCode === 404
               ? 'This link is invalid or has already expired. Please contact the recruiter directly if you still need to submit your resume.'
-              : getCandidateErrorMessage(
-                  detailsError,
-                  'Could not load this page. Please try again.'
-                )}
+              : detailsStatusCode === 409
+                ? "You've already submitted a resume for this application; no action needed."
+                : detailsStatusCode === 422
+                  ? 'This link has expired (resume uploads close 24 hours after your call). Please contact the recruiter directly.'
+                  : getCandidateErrorMessage(
+                      detailsError,
+                      'Could not load this page. Please try again.'
+                    )}
           </p>
         ) : submitted ? (
           <div className="text-center">

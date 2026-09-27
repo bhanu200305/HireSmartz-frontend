@@ -1,20 +1,24 @@
 import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import { Tooltip } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-import { Select } from 'antd';
-import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
+import { MdBlock, MdDelete, MdEdit, MdOutlineAdd, MdRestore, MdSearch } from 'react-icons/md';
 import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
 import MasterPagination from '../shared/ui/MasterPagination';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
+import { useEnterToSubmit } from '../../hooks/useEnterToSubmit';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
   useListIndustriesQuery,
   useCreateIndustryMutation,
   useUpdateIndustryMutation,
   useDeleteIndustryMutation,
+  useDeactivateIndustryMutation,
+  useActivateIndustryMutation,
   Industry,
 } from '../../api/organization-service/Platform/industries';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
@@ -36,10 +40,16 @@ const SORT_COMPARATORS: Record<SortKey, (a: Industry, b: Industry) => number> = 
  * elsewhere. Code is immutable once created (only name/description PUT).
  */
 const IndustriesTab: React.FC = () => {
+  // Default (omitting includeInactive) shows every industry, active and
+  // inactive — this management table is exactly the screen that needs both,
+  // with the Status toggle below to tell them apart. Only the "Add Company"
+  // picker (StepCompanyDetails.tsx) passes includeInactive: false.
   const { data: industries, isLoading } = useListIndustriesQuery();
   const [createIndustry, { isLoading: isCreating }] = useCreateIndustryMutation();
   const [updateIndustry, { isLoading: isUpdating }] = useUpdateIndustryMutation();
   const [deleteIndustry] = useDeleteIndustryMutation();
+  const [deactivateIndustry, { isLoading: isDeactivating }] = useDeactivateIndustryMutation();
+  const [activateIndustry] = useActivateIndustryMutation();
 
   const [modalState, setModalState] = useState<{
     mode: 'add' | 'edit';
@@ -47,6 +57,11 @@ const IndustriesTab: React.FC = () => {
   } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [industryToDelete, setIndustryToDelete] = useState<Industry | null>(null);
+  const [industryToDeactivate, setIndustryToDeactivate] = useState<Industry | null>(null);
+  // Which row's activate call is mid-flight, if any — disables just that
+  // row's button instead of every row's, same reasoning as
+  // OrganisationDashboard/Index.tsx's pendingUserId.
+  const [pendingActivateId, setPendingActivateId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -134,6 +149,10 @@ const IndustriesTab: React.FC = () => {
     }
   };
 
+  const { onKeyDown: handleEnterToSubmit } = useEnterToSubmit(handleSubmit, {
+    enabled: modalState !== null && !isCreating && !isUpdating && isFormValid,
+  });
+
   const handleDelete = async () => {
     if (!industryToDelete) return;
     try {
@@ -146,6 +165,38 @@ const IndustriesTab: React.FC = () => {
       });
     } finally {
       setIndustryToDelete(null);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!industryToDeactivate) return;
+    try {
+      await deactivateIndustry(industryToDeactivate.industry_id).unwrap();
+      showToast({ message: `"${industryToDeactivate.name}" was deactivated.`, type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to deactivate industry.'),
+        type: 'error',
+      });
+    } finally {
+      setIndustryToDeactivate(null);
+    }
+  };
+
+  // No confirmation modal, unlike deactivate — restoring visibility is the
+  // low-risk direction (same convention as OrganisationDashboard's users list).
+  const handleActivate = async (industry: Industry) => {
+    setPendingActivateId(industry.industry_id);
+    try {
+      await activateIndustry(industry.industry_id).unwrap();
+      showToast({ message: `"${industry.name}" was activated.`, type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to activate industry.'),
+        type: 'error',
+      });
+    } finally {
+      setPendingActivateId(null);
     }
   };
 
@@ -184,27 +235,65 @@ const IndustriesTab: React.FC = () => {
       ),
     },
     {
+      title: 'Status',
+      key: 'status',
+      width: 110,
+      render: (_: unknown, industry: IndustryRow) => (
+        <Badge status={industry.is_active ? 'success' : 'neutral'}>
+          {industry.is_active ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+    {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 130,
       render: (_: unknown, industry: IndustryRow) => (
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Edit industry"
-            className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
-            onClick={() => openEdit(industry)}
-          >
-            <MdEdit className="text-gray-600" />
-          </button>
-          <button
-            type="button"
-            aria-label="Delete industry"
-            className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-            onClick={() => setIndustryToDelete(industry)}
-          >
-            <MdDelete className="text-red-500" />
-          </button>
+          <Tooltip title="Edit industry">
+            <button
+              type="button"
+              aria-label="Edit industry"
+              className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+              onClick={() => openEdit(industry)}
+            >
+              <MdEdit className="text-gray-600" />
+            </button>
+          </Tooltip>
+          <Tooltip title="Delete industry">
+            <button
+              type="button"
+              aria-label="Delete industry"
+              className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+              onClick={() => setIndustryToDelete(industry)}
+            >
+              <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+            </button>
+          </Tooltip>
+          {industry.is_active ? (
+            <Tooltip title="Deactivate industry">
+              <button
+                type="button"
+                aria-label="Deactivate industry"
+                className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+                onClick={() => setIndustryToDeactivate(industry)}
+              >
+                <MdBlock className="text-gray-600 transition-colors group-hover:text-red-600" />
+              </button>
+            </Tooltip>
+          ) : (
+            <Tooltip title="Activate industry">
+              <button
+                type="button"
+                aria-label="Activate industry"
+                className="p-2 hover:bg-green-50 rounded-full disabled:cursor-not-allowed cursor-pointer transition-colors disabled:opacity-50"
+                disabled={pendingActivateId === industry.industry_id}
+                onClick={() => handleActivate(industry)}
+              >
+                <MdRestore className="text-green-600" />
+              </button>
+            </Tooltip>
+          )}
         </div>
       ),
     },
@@ -246,19 +335,14 @@ const IndustriesTab: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-2 flex items-center justify-end gap-2 text-sm text-neutral-500">
-        <span>Rows per page</span>
-        <Select
-          size="small"
-          value={pageSize}
-          className="rows-per-page-select"
-          options={PAGE_SIZE_OPTIONS.map((size) => ({ label: size, value: size }))}
-          onChange={(size) => {
-            setPageSize(size);
-            setPage(0);
-          }}
-        />
-      </div>
+      <RowsPerPageSelect
+        pageSize={pageSize}
+        options={PAGE_SIZE_OPTIONS}
+        onChange={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <CustomTable<IndustryRow>
@@ -283,15 +367,17 @@ const IndustriesTab: React.FC = () => {
         onClose={() => setModalState(null)}
         title={modalState?.mode === 'edit' ? 'Edit industry' : 'Add industry'}
       >
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
           <Input
             placeholder="Code *"
+            maxLength={60}
             value={form.code}
             disabled={modalState?.mode === 'edit'}
             onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
           />
           <Input
             placeholder="Name *"
+            maxLength={120}
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           />
@@ -325,6 +411,16 @@ const IndustriesTab: React.FC = () => {
           confirmText="REMOVE"
           onConfirm={handleDelete}
           onClose={() => setIndustryToDelete(null)}
+        />
+      )}
+
+      {industryToDeactivate && (
+        <ConfirmationModal
+          title={`Deactivate "${industryToDeactivate.name}"? It won't be offered when adding a new company.`}
+          confirmText="DEACTIVATE"
+          isLoading={isDeactivating}
+          onConfirm={handleDeactivate}
+          onClose={() => setIndustryToDeactivate(null)}
         />
       )}
     </div>

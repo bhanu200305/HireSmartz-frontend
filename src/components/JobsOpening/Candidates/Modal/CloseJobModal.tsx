@@ -99,6 +99,8 @@ const CloseJobModal: React.FC<CloseJobProps> = ({
           id="close-job-reason"
           className="w-full mt-1 mb-3"
           placeholder="Select a reason"
+          showSearch
+          optionFilterProp="children"
           value={closureReason || undefined}
           onChange={(value) => {
             setClosureReason(value);

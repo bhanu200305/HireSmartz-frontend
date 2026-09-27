@@ -65,7 +65,7 @@ const DayBookingPill = ({
         e.stopPropagation();
         onSelect(booking.id);
       }}
-      className="flex w-full flex-col items-start gap-0.5 rounded-md border border-neutral-200 bg-white px-1.5 py-1 text-left text-[11px] leading-tight hover:border-brand-300 hover:bg-brand-50 cursor-pointer"
+      className="flex w-full flex-col items-start gap-0.5 rounded-md border border-neutral-200 bg-white px-1.5 py-1 text-left text-xs leading-tight hover:border-brand-300 hover:bg-brand-50 cursor-pointer"
       title={jobTitle || undefined}
     >
       <span className="flex w-full items-center justify-between gap-1">

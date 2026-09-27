@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Select } from 'antd';
+import { Select, Tooltip } from 'antd';
 import { MdClose } from 'react-icons/md';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import { Button, showToast } from '../../shared';
@@ -120,19 +120,21 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
                       · {locationLabel(assignment.location_id)}
                     </span>
                   </span>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${roleName(assignment.role_id)}`}
-                    disabled={isRevoking}
-                    onClick={() => handleRevoke(assignment.assignment_id)}
-                    className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    {revokingId === assignment.assignment_id ? (
-                      <span className="block h-3.5 w-3.5 animate-pulse rounded-full bg-gray-400" />
-                    ) : (
-                      <MdClose size={14} />
-                    )}
-                  </button>
+                  <Tooltip title={`Remove ${roleName(assignment.role_id)}`}>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${roleName(assignment.role_id)}`}
+                      disabled={isRevoking}
+                      onClick={() => handleRevoke(assignment.assignment_id)}
+                      className="p-0.5 rounded-full hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {revokingId === assignment.assignment_id ? (
+                        <span className="block h-3.5 w-3.5 animate-pulse rounded-full bg-gray-400" />
+                      ) : (
+                        <MdClose size={14} />
+                      )}
+                    </button>
+                  </Tooltip>
                 </div>
               ))}
             </div>
@@ -149,6 +151,8 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
             placeholder="Select a role"
             value={roleId ?? undefined}
             onChange={(value) => setRoleId(value)}
+            showSearch
+            optionFilterProp="label"
             options={(roles ?? []).map((role) => ({ label: role.name, value: role.role_id }))}
           />
         </div>
@@ -160,6 +164,8 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
           <Select
             id="assignLocationSelect"
             allowClear
+            showSearch
+            optionFilterProp="label"
             className="w-full mt-1"
             placeholder="Applies everywhere if left blank"
             value={locationId ?? undefined}

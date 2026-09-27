@@ -67,7 +67,7 @@ const cardTooltipStyle = {
 // inside the plot area (rather than past it, where `ChartCard`'s
 // `overflow-hidden` would clip them the same way the bare tick labels used
 // to before the Y-axis `width` was widened here to make room).
-const axisTitleStyle = { fontSize: 10, fill: '#8593ac' };
+const axisTitleStyle = { fontSize: 12, fill: '#8593ac' };
 const yAxisLabel = (value: string) => ({
   value,
   angle: -90,
@@ -187,7 +187,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
           <XAxis
             dataKey="period"
-            tick={{ fontSize: 11, fill: '#8593ac' }}
+            tick={{ fontSize: 12, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
             height={variant === 'compact' ? undefined : 30}
@@ -195,7 +195,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
           />
           <YAxis
             allowDecimals={false}
-            tick={{ fontSize: 11, fill: '#8593ac' }}
+            tick={{ fontSize: 12, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
             width={48}
@@ -263,7 +263,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="period"
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               height={30}
@@ -271,7 +271,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               width={48}
@@ -301,7 +301,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="period"
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               height={30}
@@ -309,7 +309,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               width={48}
@@ -367,7 +367,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
             <XAxis
               type="number"
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               height={30}
@@ -377,7 +377,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
               type="category"
               dataKey="name"
               width={118}
-              tick={{ fontSize: 11.5, fill: '#4c5c78' }}
+              tick={{ fontSize: 12, fill: '#4c5c78' }}
               axisLine={false}
               tickLine={false}
               label={yAxisLabel('Device')}

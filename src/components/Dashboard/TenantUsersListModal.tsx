@@ -111,6 +111,7 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
             <CustomTable<UserRow>
               columns={columns}
               dataSource={dataSource}
+              scrollY="40vh"
               onRow={(row) => ({
                 onClick: () => setViewingUser(row),
                 className: 'cursor-pointer',

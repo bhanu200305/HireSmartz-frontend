@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Upload } from 'antd';
-import { MdOutlineFileUpload, MdOutlineDownload } from 'react-icons/md';
+import { MdOutlineFileUpload, MdOutlineDownload, MdOutlineRemoveRedEye } from 'react-icons/md';
 import { FaCheckCircle } from 'react-icons/fa';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Button, showToast, StepIndicator, type Step } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
+import SpreadsheetPreviewModal, {
+  type SpreadsheetPreviewSource,
+} from '../../../shared/ui/SpreadsheetPreviewModal';
 import {
   useUploadRosterMutation,
   useParseRosterMutation,
@@ -66,6 +69,7 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
     suppressed: number;
     failures: RosterRowFailure[];
   } | null>(null);
+  const [previewSource, setPreviewSource] = useState<SpreadsheetPreviewSource | null>(null);
 
   // This tenant's own role catalog — the role select in the review step
   // offers every role here (system or custom), not a fixed two-option list.
@@ -183,6 +187,16 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
     }
   };
 
+  const handlePreviewTemplate = async () => {
+    try {
+      const fetchTemplateUrl = isMaster ? fetchPlatformTemplateUrl : fetchTenantTemplateUrl;
+      const { download_url } = await fetchTemplateUrl(tenantId).unwrap();
+      setPreviewSource({ kind: 'url', url: download_url });
+    } catch {
+      showToast({ message: 'Failed to load a preview of the template.', type: 'error' });
+    }
+  };
+
   return (
     <AntdCommonModal
       open={open}
@@ -199,13 +213,22 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
 
       {step === 1 && (
         <div>
-          <button
-            type="button"
-            onClick={handleDownloadTemplate}
-            className="flex items-center gap-1 text-sm text-primary hover:underline mb-3 cursor-pointer"
-          >
-            <MdOutlineDownload /> Download the roster template
-          </button>
+          <div className="flex items-center gap-4 mb-3">
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              className="flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"
+            >
+              <MdOutlineDownload /> Download the roster template
+            </button>
+            <button
+              type="button"
+              onClick={handlePreviewTemplate}
+              className="flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"
+            >
+              <MdOutlineRemoveRedEye /> Preview
+            </button>
+          </div>
           <Upload.Dragger
             beforeUpload={handleUpload}
             maxCount={1}
@@ -293,6 +316,13 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
           </Button>
         </div>
       )}
+
+      <SpreadsheetPreviewModal
+        open={!!previewSource}
+        onClose={() => setPreviewSource(null)}
+        title="Preview: roster template"
+        source={previewSource}
+      />
     </AntdCommonModal>
   );
 };

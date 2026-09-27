@@ -66,7 +66,7 @@ const cardTooltipStyle = {
 // Axis titles, not just tick values. Y-axis `width` must stay wide enough
 // to fit the title, or it clips against ChartCard's `overflow-hidden` —
 // same pattern as GrowthAdoptionCharts.tsx.
-const axisTitleStyle = { fontSize: 10, fill: '#8593ac' };
+const axisTitleStyle = { fontSize: 12, fill: '#8593ac' };
 const yAxisLabel = (value: string) => ({
   value,
   angle: -90,
@@ -203,7 +203,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 11, fill: '#8593ac' }}
+            tick={{ fontSize: 12, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
             minTickGap={24}
@@ -212,7 +212,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
           />
           <YAxis
             allowDecimals={false}
-            tick={{ fontSize: 11, fill: '#8593ac' }}
+            tick={{ fontSize: 12, fill: '#8593ac' }}
             axisLine={false}
             tickLine={false}
             width={48}
@@ -303,7 +303,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="name"
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               height={30}
@@ -311,7 +311,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               width={48}
@@ -334,7 +334,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="name"
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               height={30}
@@ -342,7 +342,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#8593ac' }}
+              tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}
               width={48}

@@ -1,5 +1,37 @@
 @import './theme/tailwind-theme.css';
 
+/* One simple scrollbar style for the entire application — every scrollable
+   element gets this by default, full stop. This used to be handled by half
+   a dozen separate opt-in classes scattered across the app
+   (`.thin-scrollbar`, `.custom-scrollbar`, `.preview-modal-scrollbar`,
+   `.customTable`'s own rules, ...), each with its own slightly different
+   grey and its own opt-in class an element either had or didn't — anywhere
+   that class was missing (or didn't match whatever internal element antd
+   actually scrolls, e.g. `.ant-table-body` vs `.ant-table-content`) fell
+   back to the browser's raw native scrollbar, which is the chunky,
+   shadowed-looking bar this replaces. One global rule needs no opt-in and
+   can't be missed. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--gray-300);
+  border-radius: 999px;
+  border: none;
+  box-shadow: none;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gray-400);
+}
+
 /* @font-face {
   font-family: 'Intro Pro';
   src:
@@ -14,27 +46,12 @@
    scroll at in-between desktop widths where it doesn't all fit in one line
    — see Header/index.tsx's own comment on this class. Notifications and the
    profile/logout menu deliberately sit outside this element, in their own
-   `shrink-0` group, so they're never part of what scrolls. Left to the
-   browser default, this would render as a full-width, chunky native
-   scrollbar (arrow buttons and all on Windows' classic theme), which looks
-   like a stray UI element sitting right under the header rather than part
-   of it. A thin, theme-colored bar reads as deliberate instead. */
-.header-controls-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--gray-300) transparent;
-}
+   `shrink-0` group, so they're never part of what scrolls. Color/track/thumb
+   come from the global scrollbar rule above; this only overrides the height
+   to a slimmer 4px, since this is a compact single-row control strip rather
+   than a content area. */
 .header-controls-scroll::-webkit-scrollbar {
   height: 4px;
-}
-.header-controls-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-.header-controls-scroll::-webkit-scrollbar-thumb {
-  background-color: var(--gray-300);
-  border-radius: 999px;
-}
-.header-controls-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: var(--gray-400);
 }
 
 /* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
@@ -283,6 +300,20 @@ canvas[data-agora-recording='true'] {
   overflow-y: auto;
 }
 
+/* Round Recordings modal (RoundArtifactsModal) — the Attempt 1/Attempt 2
+ * tab strip used to scroll away with the rest of the content (recordings,
+ * transcripts) inside `.modal-content` above, forcing a scroll back to the
+ * top just to switch attempts. Pins it to the top of that same scroll
+ * container instead; an opaque background stops the content scrolling
+ * behind it from showing through underneath the tab labels. */
+.round-artifacts-tabs > .ant-tabs-nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background-color: #ffffff;
+  margin-bottom: 16px;
+}
+
 /*
  * Same header/footer-clearance rule as the antd Modal block above, for the
  * app's own hand-rolled `fixed inset-0` confirm/edit dialogs (they don't go
@@ -510,23 +541,29 @@ canvas[data-agora-recording='true'] {
 */
 .rows-per-page-select.ant-select {
   min-height: 36px;
-  width: 68px;
+  width: 56px;
 }
 
 .rows-per-page-select .ant-select-selector {
   border-radius: 9999px !important;
   background-color: #ffffff !important;
   min-height: 36px !important;
-  padding-inline: 10px 22px !important;
+  padding-inline: 10px 20px !important;
   display: flex !important;
   align-items: center !important;
 }
 
-.rows-per-page-select .ant-select-arrow {
+/* antd's own `-show-arrow` rule gives `.ant-select-selection-item` its own
+   paddingInlineEnd (reserving room for the arrow) ON TOP of the padding set
+   on `.ant-select-selector` above — the two stack, which is what was
+   pushing the arrow so far from a bare 1-2 digit value. Zeroing the item's
+   own copy leaves a single, intentional gap (the selector's own padding). */
+.rows-per-page-select .ant-select-selection-item {
   color: var(--gray-800);
+  padding-inline-end: 0 !important;
 }
 
-.rows-per-page-select .ant-select-selection-item {
+.rows-per-page-select .ant-select-arrow {
   color: var(--gray-800);
 }
 
@@ -784,19 +821,12 @@ select:focus {
 }
 .many-tabs .ant-tabs-nav {
   overflow-x: auto !important;
-  scrollbar-width: thin;
-  scrollbar-color: var(--gray-300) transparent;
   padding-bottom: 6px;
 }
+/* Color/track/thumb come from the global scrollbar rule; this only overrides
+   the height to a slimmer 4px for this single-row tab strip. */
 .many-tabs .ant-tabs-nav::-webkit-scrollbar {
   height: 4px;
-}
-.many-tabs .ant-tabs-nav::-webkit-scrollbar-track {
-  background: transparent;
-}
-.many-tabs .ant-tabs-nav::-webkit-scrollbar-thumb {
-  background-color: var(--gray-300);
-  border-radius: 999px;
 }
 .many-tabs .ant-tabs-tab-btn {
   white-space: nowrap !important;
@@ -860,38 +890,28 @@ select:focus {
   cursor: not-allowed;
 }
 
-/* Company Settings' "Default Scoring Weights" company picker — its dropdown
-   options were rendering with a heavy near-black hover/selected fill
-   instead of a light brand tint, so this pins both states explicitly
-   rather than relying on whatever token was producing that. */
-.scoringCompanySelectDropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-  background-color: var(--color-primary-50) !important;
-  color: var(--color-neutral-900) !important;
+/* Every AntD Select renders its option list in a portal appended to
+   `document.body` under `.ant-select-dropdown` regardless of any className
+   on the trigger, so these rules reach every dropdown in the app at once —
+   one uniform look instead of a per-picker `popupClassName` override (this
+   used to vary: a near-black fill on one picker, a brand tint on another,
+   light grey app-wide). The panel and every option row stay pure white in
+   every state; hover/active/selected are signalled with text color/weight
+   only, never a background fill, so the popup never appears to change
+   shade depending on where in the app it was opened from. */
+.ant-select-dropdown,
+.ant-select-dropdown .ant-select-item {
+  background-color: #ffffff !important;
 }
 
-.scoringCompanySelectDropdown
-  .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-  background-color: var(--color-primary-100) !important;
-  color: var(--color-primary-700) !important;
-  font-weight: 600 !important;
-}
-
-/* Same fix, applied app-wide instead of scoped to one dropdown. Every
-   AntD Select renders its option list in a portal appended to
-   `document.body` under `.ant-select-dropdown` regardless of any
-   className on the trigger, so this one rule reaches every dropdown in
-   the app rather than needing a `popupClassName` added per instance.
-   Light grey (not the brand tint above, which is a deliberate, already-
-   fine exception for that one picker) so hovered/selected option text
-   stays readable no matter what color scheme surrounds it. */
 .ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-  background-color: var(--gray-100) !important;
-  color: var(--gray-900) !important;
+  background-color: #ffffff !important;
+  color: var(--primary-600) !important;
 }
 
 .ant-select-dropdown .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-  background-color: var(--gray-100) !important;
-  color: var(--gray-900) !important;
+  background-color: #ffffff !important;
+  color: var(--primary-600) !important;
   font-weight: 600 !important;
 }
 
@@ -910,6 +930,57 @@ select:focus {
   background-color: var(--gray-100) !important;
   color: var(--gray-900) !important;
   font-weight: 600 !important;
+}
+
+/* AntD's default sortable column header (genSorterStyle) wraps the label in
+   `.ant-table-column-title { flex: 1 }` inside a flex row. That flex-grow is
+   what actually pushes the sort icon away from short labels like "NAME" —
+   the title's box stretches to fill the whole header cell (so it can
+   ellipsis long titles), leaving the icon stranded at the far right edge
+   after it; `justify-content` on the row never mattered because the title
+   was already consuming all the space. Capping the title back to its own
+   content width (still shrinkable, so a genuinely long header can still
+   ellipsis) puts the icon right after the text everywhere a `<Table>`
+   column sets `sorter: true`, app-wide — matching the tight spacing already
+   used by the hand-rolled sort icon on the Job Openings list (Columns.tsx). */
+.ant-table-column-sorters {
+  justify-content: flex-start !important;
+  gap: 4px;
+}
+.ant-table-column-sorters .ant-table-column-title {
+  flex: 0 1 auto !important;
+}
+
+/* Explicit fallback for the same classnames, reused by the Job Openings
+   list's hand-rolled header (Columns.tsx) so its sort icon renders
+   identically to a real `<Table>` column's sorter. AntD only injects its
+   own version of these rules once a `<Table>` has actually mounted
+   somewhere in the session; spelling them out here means the Jobs page
+   still looks right even if it's the very first page loaded. */
+.ant-table-column-sorter {
+  margin-inline-start: 4px;
+  color: var(--gray-400);
+  font-size: 0;
+  display: inline-flex;
+}
+.ant-table-column-sorter-inner {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ant-table-column-sorter-up,
+.ant-table-column-sorter-down {
+  font-size: 11px;
+  line-height: 1;
+  color: inherit;
+  transition: color 0.2s;
+}
+.ant-table-column-sorter-up.active,
+.ant-table-column-sorter-down.active {
+  color: var(--primary-600);
+}
+.ant-table-column-sorter-up + .ant-table-column-sorter-down {
+  margin-top: -0.3em;
 }
 
 /* LiveKit floating participant labels */
@@ -1062,7 +1133,7 @@ select:focus {
   border-radius: 8px !important;
   padding: 6px 12px !important;
   font-weight: 600 !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   color: #f8fafc !important;
   backdrop-filter: blur(4px) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -1118,23 +1189,8 @@ select:focus {
   border-radius: 24px !important;
 }
 
-/* Slim scrollbar for scrollable modal bodies (AntdCommonModal's
-   `classNames.body`) — some Windows/Chrome configurations render the
-   default scrollbar as a wide overlay that sits on top of the last column
-   of content instead of reserving its own track space, reading as an
-   overlap. A fixed, narrow track avoids that regardless of OS scrollbar
-   settings. */
-.thin-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: var(--gray-300) transparent;
-}
-.thin-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-.thin-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.thin-scrollbar::-webkit-scrollbar-thumb {
-  background-color: var(--gray-300);
-  border-radius: 999px;
-}
+/* `.thin-scrollbar` (AntdCommonModal's `classNames.body`, TenantAnalyticsModal,
+   etc.) no longer needs its own rule — the global scrollbar style above
+   already covers every scrollable element identically. The class name is
+   left in place at its call sites (harmless — an unused selector, not a
+   missing one) rather than touched here. */

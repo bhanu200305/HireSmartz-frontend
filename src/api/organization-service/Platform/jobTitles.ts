@@ -9,6 +9,7 @@ export type PlatformJobTitle = {
   // mapped to) — null on list/get/update, since a title can sit under
   // several departments (many-to-many). See CreateJobTitleUseCase.
   department_id?: string | null;
+  is_active: boolean;
 };
 
 export type CreateJobTitleRequest = {
@@ -57,6 +58,22 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['JobTitles'],
     }),
+    deactivatePlatformJobTitle: build.mutation<void, string>({
+      query: (jobTitleId) => ({
+        url: `/v1/platform/job-titles/${jobTitleId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['JobTitles'],
+    }),
+    // No confirmation needed by convention — restoring access/visibility is
+    // the low-risk direction.
+    activatePlatformJobTitle: build.mutation<void, string>({
+      query: (jobTitleId) => ({
+        url: `/v1/platform/job-titles/${jobTitleId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['JobTitles'],
+    }),
   }),
 });
 
@@ -65,4 +82,6 @@ export const {
   useCreatePlatformJobTitleMutation,
   useUpdatePlatformJobTitleMutation,
   useDeletePlatformJobTitleMutation,
+  useDeactivatePlatformJobTitleMutation,
+  useActivatePlatformJobTitleMutation,
 } = extendedApi;
