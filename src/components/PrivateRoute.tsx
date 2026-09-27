@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { verifyAuthToken } from '../shared/utils/business-logic';
 import { handleRefreshToken } from '../services/AuthService';
@@ -18,10 +18,11 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
     verifyAuthToken() ? 'authenticated' : 'checking'
   );
 
-  useEffect(() => {
+  // Shared by the mount/location effect and the bfcache listener below.
+  const checkAuth = useCallback(() => {
     if (verifyAuthToken()) {
       setAuthState('authenticated');
-      return;
+      return () => {};
     }
 
     let cancelled = false;
@@ -77,7 +78,19 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
     return () => {
       cancelled = true;
     };
-  }, [location]);
+  }, []);
+
+  useEffect(() => checkAuth(), [location, checkAuth]);
+
+  useEffect(() => {
+    // Re-checks auth when the browser restores this page from bfcache
+    // (e.g. Back after leaving the app) - React doesn't re-run effects for that.
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) checkAuth();
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [checkAuth]);
 
   useEffect(() => {
     if (authState !== 'unauthenticated') return;

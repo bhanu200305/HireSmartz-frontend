@@ -135,6 +135,7 @@ const VideoQuestionsSetup = () => {
   const {
     data: videoQuestionsData,
     isLoading: isLoadingVideoQuestions,
+    isFetching: isFetchingVideoQuestions,
     refetch: refetchVideoQuestions,
   } = useGetAiInterviewQuestionsByRoundQuery(
     { interviewRoundId: activeInterviewRoundId ?? 0, jobOpeningId: activeJobOpeningId || 0 },
@@ -409,6 +410,7 @@ const VideoQuestionsSetup = () => {
     <DndProvider backend={HTML5Backend}>
       <div className="flex flex-col gap-6 py-4">
         {(isLoadingVideoQuestions ||
+          isFetchingVideoQuestions ||
           isLoadingRounds ||
           isGenerating ||
           isUploadingExcel ||
@@ -499,7 +501,7 @@ const VideoQuestionsSetup = () => {
               onInlineChange={(val) => setInlineTexts((prev) => ({ ...prev, [block.id]: val }))}
               onInlineSubmit={() => handleInlineSubmit(block.id)}
               isInlineSubmitting={isInlineSubmitting}
-              isLoading={isLoadingVideoQuestions}
+              isLoading={isLoadingVideoQuestions || isFetchingVideoQuestions}
             />
           ))}
         </div>
@@ -542,6 +544,7 @@ const VideoQuestionsSetup = () => {
           onClose={() => setShowGenerateConsentModal(false)}
           onConfirm={handleGenerateDefaultQuestions}
           isLoading={isGenerating}
+          showQuestionCount={false}
         />
         <div className="mt-6 flex justify-center">
           <Button

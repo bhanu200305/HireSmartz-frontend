@@ -54,8 +54,13 @@ export type PlatformCatalogTabProps<TItem, TFormValues extends Record<string, un
   allowCreate?: boolean;
   /** Hides the row-level Edit action, independent of `onDelete`. Defaults true. */
   allowEdit?: boolean;
+  /** Per-row override on top of `allowEdit`/`onDelete`. Defaults true. */
+  canEditRow?: (item: TItem) => boolean;
+  canDeleteRow?: (item: TItem) => boolean;
   /** Total match count from the backend. Only meaningful with `serverQuery`. */
   total?: number;
+  /** Extra control rendered in the header row, before the search box. */
+  headerExtra?: React.ReactNode;
   /** Current backend search/sort/pagination state. Presence of this prop
    * switches the whole component from client-side filtering to
    * backend-driven search/sort/pagination — `items` is then just the
@@ -83,7 +88,10 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
   deleteConfirmTitle,
   allowCreate = true,
   allowEdit = true,
+  canEditRow = () => true,
+  canDeleteRow = () => true,
   total,
+  headerExtra,
   serverQuery,
   onServerQueryChange,
 }: PlatformCatalogTabProps<TItem, TFormValues>) {
@@ -197,7 +205,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
       width: 100,
       render: (_: unknown, item: TItem & { key: string }) => (
         <div className="flex items-center gap-1">
-          {allowEdit && (
+          {allowEdit && canEditRow(item) && (
             <button
               type="button"
               aria-label={`Edit ${itemNounSingular.toLowerCase()}`}
@@ -207,7 +215,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
               <MdEdit className="text-gray-600" />
             </button>
           )}
-          {onDelete && (
+          {onDelete && canDeleteRow(item) && (
             <button
               type="button"
               aria-label={`Delete ${itemNounSingular.toLowerCase()}`}
@@ -249,6 +257,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
           </span>
         </div>
         <div className="flex items-center gap-3">
+          {headerExtra}
           <Input
             prefix={<MdSearch className="text-gray-400" />}
             placeholder={`Search ${itemNounPlural.toLowerCase()}...`}

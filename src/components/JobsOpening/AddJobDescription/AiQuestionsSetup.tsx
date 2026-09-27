@@ -290,10 +290,21 @@ const AiQuestionsSetup = () => {
     showToast({ message: 'Questions generated', type: 'success' });
   }, [isGeneratingQuestions, questionsSnapshotKey]);
 
-  // Safety net so polling doesn't run forever if generation never visibly finishes.
+  // Safety net so polling doesn't run forever. Does one last refetch before
+  // giving up, in case generation finished right around the timeout.
   useEffect(() => {
     if (!isGeneratingQuestions) return;
-    const timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(async () => {
+      const result = await refetchQuestions();
+      const latestKey = (result.data?.rounds ?? [])
+        .flatMap((round) => round.questions ?? [])
+        .map((q) => q.id)
+        .join(',');
+      if (latestKey !== questionSnapshotBeforeGenerateRef.current) {
+        setIsGeneratingQuestions(false);
+        showToast({ message: 'Questions generated', type: 'success' });
+        return;
+      }
       setIsGeneratingQuestions(false);
       showToast({
         message: "Still generating - refresh in a moment if the questions don't appear shortly.",
@@ -301,7 +312,7 @@ const AiQuestionsSetup = () => {
       });
     }, GENERATION_POLL_TIMEOUT_MS);
     return () => clearTimeout(timeoutId);
-  }, [isGeneratingQuestions]);
+  }, [isGeneratingQuestions, refetchQuestions]);
 
   const isAllSelected =
     visibleQuestions.length > 0 && selectedIds.length === visibleQuestions.length;

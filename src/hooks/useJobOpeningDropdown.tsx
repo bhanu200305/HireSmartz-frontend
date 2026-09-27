@@ -246,16 +246,17 @@ const useJobOpeningDropdown = (
     ? getJobErrorMessage(activeQuery.error, 'Failed to load options.')
     : null;
 
+  // isFetching, not isLoading - isLoading never fires again after a manual refetch().
   const loading =
-    jobTypes.isLoading ||
-    closureReasons.isLoading ||
-    jobModes.isLoading ||
-    roundTypes.isLoading ||
-    educationPreferences.isLoading ||
-    languages.isLoading ||
-    shifts.isLoading ||
-    users.isLoading ||
-    preloadedSkills.isLoading ||
+    jobTypes.isFetching ||
+    closureReasons.isFetching ||
+    jobModes.isFetching ||
+    roundTypes.isFetching ||
+    educationPreferences.isFetching ||
+    languages.isFetching ||
+    shifts.isFetching ||
+    users.isFetching ||
+    preloadedSkills.isFetching ||
     skillsResult.isFetching;
 
   // Awaitable so callers can refetch before setValue, letting the new id
