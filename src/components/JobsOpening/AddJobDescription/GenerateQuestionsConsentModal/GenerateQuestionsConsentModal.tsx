@@ -7,7 +7,7 @@ import clsx from 'clsx';
 
 const DEFAULT_QUESTION_COUNT = 10;
 const MIN_QUESTION_COUNT = 1;
-const MAX_QUESTION_COUNT = 100;
+const MAX_QUESTION_COUNT = 30;
 
 const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
   open,
@@ -15,6 +15,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
   onConfirm,
   isLoading = false,
   hasExistingQuestions = true,
+  showQuestionCount = true,
   scoringSectionOptions = [],
 }) => {
   const [selectedMode, setSelectedMode] = useState<'ADD' | 'REPLACE' | null>(null);
@@ -80,31 +81,40 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
           </Typography>
         </div>
 
-        {/* Question count */}
-        <div className="mb-6">
-          <Typography
-            variant="subtitle2"
-            className="text-gray-800 font-semibold font-sora block mb-2"
-          >
-            Number of questions
-          </Typography>
-          <input
-            type="number"
-            min={MIN_QUESTION_COUNT}
-            max={MAX_QUESTION_COUNT}
-            value={questionCountText}
-            disabled={isLoading}
-            onChange={(e) => {
-              // Let the field go empty or hold a mid-typing value freely —
-              // clamping happens on blur/confirm, not on every keystroke.
-              const raw = e.target.value;
-              if (raw !== '' && !/^\d+$/.test(raw)) return;
-              setQuestionCountText(raw);
-            }}
-            onBlur={() => setQuestionCountText(String(clampedQuestionCount()))}
-            className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-50"
-          />
-        </div>
+        {/* Question count - hidden where the backend has no count parameter */}
+        {showQuestionCount && (
+          <div className="mb-6">
+            <Typography
+              variant="subtitle2"
+              className="text-gray-800 font-semibold font-sora block mb-2"
+            >
+              Number of questions
+            </Typography>
+            <input
+              type="number"
+              min={MIN_QUESTION_COUNT}
+              max={MAX_QUESTION_COUNT}
+              value={questionCountText}
+              disabled={isLoading}
+              onChange={(e) => {
+                // Field can go empty mid-typing, but any complete digit
+                // string outside [MIN,MAX] is rejected outright - never
+                // reaches state, so there's nothing to silently clamp later.
+                const raw = e.target.value;
+                if (raw === '') {
+                  setQuestionCountText(raw);
+                  return;
+                }
+                if (!/^\d+$/.test(raw)) return;
+                const value = Number(raw);
+                if (value > MAX_QUESTION_COUNT || value < MIN_QUESTION_COUNT) return;
+                setQuestionCountText(raw);
+              }}
+              onBlur={() => setQuestionCountText(String(clampedQuestionCount()))}
+              className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-50"
+            />
+          </div>
+        )}
 
         {/* Options Cards */}
         {hasExistingQuestions && (

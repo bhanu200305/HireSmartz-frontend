@@ -892,6 +892,10 @@ const EditJobDetail = () => {
       if (fresh.minExperience != null || fresh.maxExperience != null) {
         void trigger(['minExperience', 'maxExperience']);
       }
+      // Drives the "isn't set up yet" banner - set here so it updates live.
+      if (fresh.unresolvedAiSuggestions !== undefined) {
+        setValue('unresolvedAiSuggestions', fresh.unresolvedAiSuggestions);
+      }
       if (appliedAnything) {
         showToast({
           message: 'Some fields were pre-filled from your job description - review before saving.',
@@ -910,7 +914,7 @@ const EditJobDetail = () => {
     trigger,
   ]);
 
-  // Overwrites fields with fresh backend values, unlike the effect above.
+  // Fills any AI-owned fields still blank - never overwrites a typed value.
   useEffect(() => {
     if (!jdDetailsForSync) return;
     const current = getValues();

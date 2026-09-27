@@ -104,74 +104,49 @@ export type AiOwnedJdFieldUpdates = {
   unresolvedAiSuggestions?: Record<string, string>;
 };
 
-/** Only the fields where the backend's value is real and differs from
- * the form's current one — safe to apply on mount. */
+/** Only the fields still blank — never overwrites a value already there. */
 export const diffAiOwnedFields = (
   fresh: AiOwnedJdFields,
   current: AiOwnedJdFields
 ): AiOwnedJdFieldUpdates => {
   const updates: AiOwnedJdFieldUpdates = {};
-  if (
-    fresh.responsibilities &&
-    normalizeText(fresh.responsibilities) !== normalizeText(current.responsibilities)
-  ) {
+  if (fresh.responsibilities && !normalizeText(current.responsibilities)) {
     updates.responsibilities = fresh.responsibilities;
   }
-  if (
-    fresh.otherRequirements &&
-    normalizeText(fresh.otherRequirements) !== normalizeText(current.otherRequirements)
-  ) {
+  if (fresh.otherRequirements && !normalizeText(current.otherRequirements)) {
     updates.otherRequirements = fresh.otherRequirements;
   }
-  if (fresh.benefits && normalizeText(fresh.benefits) !== normalizeText(current.benefits)) {
+  if (fresh.benefits && !normalizeText(current.benefits)) {
     updates.benefits = fresh.benefits;
   }
-  if (
-    fresh.minExperience != null &&
-    normalizeNumber(fresh.minExperience) !== normalizeNumber(current.minExperience)
-  ) {
+  if (fresh.minExperience != null && normalizeNumber(current.minExperience) == null) {
     updates.minExperience = Number(fresh.minExperience);
   }
-  if (
-    fresh.maxExperience != null &&
-    normalizeNumber(fresh.maxExperience) !== normalizeNumber(current.maxExperience)
-  ) {
+  if (fresh.maxExperience != null && normalizeNumber(current.maxExperience) == null) {
     updates.maxExperience = Number(fresh.maxExperience);
   }
-  if (
-    fresh.minSalary != null &&
-    normalizeNumber(fresh.minSalary) !== normalizeNumber(current.minSalary)
-  ) {
+  if (fresh.minSalary != null && normalizeNumber(current.minSalary) == null) {
     updates.minSalary = String(fresh.minSalary);
   }
-  if (
-    fresh.maxSalary != null &&
-    normalizeNumber(fresh.maxSalary) !== normalizeNumber(current.maxSalary)
-  ) {
+  if (fresh.maxSalary != null && normalizeNumber(current.maxSalary) == null) {
     updates.maxSalary = String(fresh.maxSalary);
   }
-  if (
-    fresh.vacancies != null &&
-    normalizeNumber(fresh.vacancies) !== normalizeNumber(current.vacancies)
-  ) {
+  if (fresh.vacancies != null && normalizeNumber(current.vacancies) == null) {
     updates.vacancies = Number(fresh.vacancies);
   }
-  if (fresh.jobTypeId && normalizeId(fresh.jobTypeId) !== normalizeId(current.jobTypeId)) {
+  if (fresh.jobTypeId && !normalizeId(current.jobTypeId)) {
     updates.jobTypeId = fresh.jobTypeId;
   }
-  if (fresh.jobModeId && normalizeId(fresh.jobModeId) !== normalizeId(current.jobModeId)) {
+  if (fresh.jobModeId && !normalizeId(current.jobModeId)) {
     updates.jobModeId = fresh.jobModeId;
   }
-  if (fresh.shiftId && normalizeId(fresh.shiftId) !== normalizeId(current.shiftId)) {
+  if (fresh.shiftId && !normalizeId(current.shiftId)) {
     updates.shiftId = fresh.shiftId;
   }
-  if (
-    fresh.educationPreferenceId &&
-    normalizeId(fresh.educationPreferenceId) !== normalizeId(current.educationPreferenceId)
-  ) {
+  if (fresh.educationPreferenceId && !normalizeId(current.educationPreferenceId)) {
     updates.educationPreferenceId = fresh.educationPreferenceId;
   }
-  // Replace wholesale, not diffed key by key — it's a full snapshot.
+  // Metadata, not form content - always replaces wholesale.
   if (fresh.unresolvedAiSuggestions !== undefined) {
     updates.unresolvedAiSuggestions = fresh.unresolvedAiSuggestions;
   }

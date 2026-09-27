@@ -23,6 +23,7 @@ import TenantShiftsTab from './JobSettings/TenantShiftsTab';
 import TenantJobModesTab from './JobSettings/TenantJobModesTab';
 import TenantClosureReasonsTab from './JobSettings/TenantClosureReasonsTab';
 import TenantEducationPreferencesTab from './JobSettings/TenantEducationPreferencesTab';
+import TenantSkillsTab from './JobSettings/TenantSkillsTab';
 import TenantJobTitlesTab from './JobSettings/TenantJobTitlesTab';
 import TenantDepartmentSettingsTab from './JobSettings/TenantDepartmentSettingsTab';
 // import TenantAtsIntegrationTab from './JobSettings/TenantAtsIntegrationTab'; // hidden for now
@@ -244,6 +245,11 @@ const MyCompany: React.FC = () => {
           key: '17',
           label: 'Education Preferences',
           children: <TenantEducationPreferencesTab />,
+        },
+        canViewJobSettings && {
+          key: '21',
+          label: 'Skills',
+          children: <TenantSkillsTab />,
         },
         // Hidden for now - ATS integration isn't being rolled out yet.
         // canViewJobSettings && {

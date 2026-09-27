@@ -89,6 +89,7 @@ const JobDescriptionPanel = ({
   const {
     data: response,
     isLoading,
+    isFetching: isFetchingJobDescription,
     refetch,
   } = useGetJobDescriptionByIdQuery({ jobOpeningId }, { skip: !jobOpeningId });
   // Whether Job Details has real saved content (title + department); gates Generate/Refine/Regenerate.
@@ -117,6 +118,8 @@ const JobDescriptionPanel = ({
   // jd_status flipping to READY is the completion signal; refetch picks up the new jobDescription.
   useEffect(() => {
     if (!jobOpeningId) return;
+    // Wait for a real fetch, not a stale cached status from an earlier view.
+    if (jdStatusFetching) return;
     const previousStatus = prevJdStatusRef.current;
     const currentStatus = jdStatus?.status;
     prevJdStatusRef.current = currentStatus;
@@ -135,7 +138,7 @@ const JobDescriptionPanel = ({
         type: 'error',
       });
     }
-  }, [jdStatus?.status, jdStatus?.error_message, jobOpeningId, refetch]);
+  }, [jdStatus?.status, jdStatus?.error_message, jobOpeningId, refetch, jdStatusFetching]);
 
   // Pushes AI-refreshed fields into Redux once the refetch above resolves. Merges, never overwrites.
   useEffect(() => {
@@ -477,7 +480,10 @@ const JobDescriptionPanel = ({
 
   return (
     <div className="w-full">
-      {(isLoading || isGenerating || (!jdStatusTimedOut && isJdStillGenerating)) && <Loader />}
+      {(isLoading ||
+        isGenerating ||
+        isFetchingJobDescription ||
+        (!jdStatusTimedOut && isJdStillGenerating)) && <Loader />}
 
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">✨</span>

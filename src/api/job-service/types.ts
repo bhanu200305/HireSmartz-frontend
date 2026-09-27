@@ -485,6 +485,7 @@ export type Language = {
 export type SkillCatalogEntry = {
   skill_id: string;
   skill_label: string;
+  skill_description?: string | null;
   skill_category_id: string | null;
   category_name: string;
   /** True only for this org's own added skill - gates rename/remove in the UI. */

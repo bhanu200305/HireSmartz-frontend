@@ -14,6 +14,8 @@ export interface GenerateQuestionsConsentModalProps {
   isLoading?: boolean;
   /** False skips the Append/Replace choice (default true). */
   hasExistingQuestions?: boolean;
+  /** False hides the question-count input (default true) - not every backend accepts a count. */
+  showQuestionCount?: boolean;
   /** Scoring-section picker, rendered only when non-empty (Hiring Panel only). */
   scoringSectionOptions?: ScoringSectionOption[];
 }
