@@ -177,6 +177,9 @@ const EditJobDetail = () => {
   const canDeleteJobTitle =
     canManageCatalogueEntries || effectivePermissions.includes(Authorities.TENANT_JOB_TITLE_DELETE);
   const canManageJobTitle = canAddJobTitle || canEditJobTitle || canDeleteJobTitle;
+  // Job Type/Job Mode/Shift/Education Preference also accept job_catalog:write.
+  const canManageJobCatalogues =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.JOB_CATALOG_EDIT);
   const tenantId = useSessionTenantId();
   const [, setSelectedLocationIdForUsers] = useState<string | undefined>(undefined);
   const [dismissedUnresolvedAiFields, setDismissedUnresolvedAiFields] = useState<Set<string>>(
@@ -370,7 +373,9 @@ const EditJobDetail = () => {
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
   // Tracks which job id the READY fallback has already run for.
   const appliedAiFillJobIdRef = useRef<string | null>(null);
-  const { data: jdStatusForHydration } = useJdStatusPolling(parsedJobId ?? undefined);
+  const { data: jdStatusForHydration, isFetching: jdStatusFetching } = useJdStatusPolling(
+    parsedJobId ?? undefined
+  );
 
   const [initialFormValues, setInitialFormValues] = useState<any>(null);
 
@@ -796,6 +801,7 @@ const EditJobDetail = () => {
 
   // AI-fill: applies fields AI wrote once generation finishes. Only fills fields still empty.
   useEffect(() => {
+    if (jdStatusFetching) return;
     const previousStatus = prevJdStatusForHydrationRef.current;
     const currentStatus = jdStatusForHydration?.status;
     prevJdStatusForHydrationRef.current = currentStatus;
@@ -895,6 +901,7 @@ const EditJobDetail = () => {
     });
   }, [
     jdStatusForHydration?.status,
+    jdStatusFetching,
     parsedJobId,
     triggerGetJobDescriptionById,
     refetchSuggestedSkills,
@@ -2125,16 +2132,16 @@ const EditJobDetail = () => {
                   placeholder="Select Job Type"
                   label="Job Type"
                   onAddOption={
-                    canManageCatalogueEntries
+                    canManageJobCatalogues
                       ? (value) => handleAddOption(value, 'jobType')
                       : undefined
                   }
                   type="jobType"
                   error={errors.jobType?.message}
-                  enableEditDelete={canManageCatalogueEntries}
-                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
-                  onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
+                  enableEditDelete={canManageJobCatalogues}
+                  onEditOption={canManageJobCatalogues ? handleEditOption : undefined}
+                  onDeleteOption={canManageJobCatalogues ? handleDeleteOption : undefined}
+                  onReuseOption={canManageJobCatalogues ? handleReuseOption : undefined}
                 />
               </div>
             </Form.Item>
@@ -2157,16 +2164,16 @@ const EditJobDetail = () => {
                   placeholder="Select Job Mode"
                   label="Job Mode"
                   onAddOption={
-                    canManageCatalogueEntries
+                    canManageJobCatalogues
                       ? (value) => handleAddOption(value, 'jobMode')
                       : undefined
                   }
                   type="jobMode"
                   error={errors.jobMode?.message}
-                  enableEditDelete={canManageCatalogueEntries}
-                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
-                  onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
+                  enableEditDelete={canManageJobCatalogues}
+                  onEditOption={canManageJobCatalogues ? handleEditOption : undefined}
+                  onDeleteOption={canManageJobCatalogues ? handleDeleteOption : undefined}
+                  onReuseOption={canManageJobCatalogues ? handleReuseOption : undefined}
                 />
               </div>
             </Form.Item>
@@ -2182,16 +2189,14 @@ const EditJobDetail = () => {
                 placeholder="Select Shift"
                 label="Shift"
                 type="shift"
-                enableEditDelete={canManageCatalogueEntries}
+                enableEditDelete={canManageJobCatalogues}
                 onAddOption={
-                  canManageCatalogueEntries ? (value) => handleAddShiftOption(value) : undefined
+                  canManageJobCatalogues ? (value) => handleAddShiftOption(value) : undefined
                 }
                 onEditOption={
-                  canManageCatalogueEntries ? (id) => handleEditShiftOption(id) : undefined
+                  canManageJobCatalogues ? (id) => handleEditShiftOption(id) : undefined
                 }
-                onDeleteOption={
-                  canManageCatalogueEntries ? (id) => handleDeleteShift(id) : undefined
-                }
+                onDeleteOption={canManageJobCatalogues ? (id) => handleDeleteShift(id) : undefined}
               />
               {errors.shift && (
                 <p className="text-red-500 text-sm mt-1">{errors.shift?.message as string}</p>
@@ -3092,16 +3097,16 @@ const EditJobDetail = () => {
                   placeholder="Select Education Preference"
                   label="Education Preference"
                   onAddOption={
-                    canManageCatalogueEntries
+                    canManageJobCatalogues
                       ? (value) => handleAddOption(value, 'educationPreference')
                       : undefined
                   }
                   type="educationPreference"
                   error={errors.educationPreference?.message}
-                  enableEditDelete={canManageCatalogueEntries}
-                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
-                  onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
+                  enableEditDelete={canManageJobCatalogues}
+                  onEditOption={canManageJobCatalogues ? handleEditOption : undefined}
+                  onDeleteOption={canManageJobCatalogues ? handleDeleteOption : undefined}
+                  onReuseOption={canManageJobCatalogues ? handleReuseOption : undefined}
                 />
               </div>
             </Form.Item>

@@ -25,7 +25,7 @@ export const useJdStatusPolling = (
   const [pollMs, setPollMs] = useState(FAST_POLL_MS);
   const [timedOut, setTimedOut] = useState(false);
 
-  const { data } = useGetJdStatusQuery(jobOpeningId ?? '', {
+  const { data, isFetching } = useGetJdStatusQuery(jobOpeningId ?? '', {
     skip: !jobOpeningId,
     pollingInterval: pollMs,
     refetchOnMountOrArgChange: true,
@@ -58,5 +58,7 @@ export const useJdStatusPolling = (
     };
   }, [jobOpeningId, isDone, notifyOnTimeout]);
 
-  return { data, timedOut };
+  // isFetching: true until this mount's own request settles - data may
+  // still be a stale cached value until then.
+  return { data, timedOut, isFetching };
 };

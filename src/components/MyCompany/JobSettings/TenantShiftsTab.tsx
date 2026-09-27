@@ -10,6 +10,8 @@ import PlatformCatalogTab, {
   type CatalogServerQuery,
 } from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
+import useHasAccess from '../../../hooks/useHasAccess';
+import { Authorities } from '../../../constants/authorities.constant';
 
 type FormValues = {
   name: string;
@@ -61,6 +63,8 @@ const TenantShiftsTab: React.FC = () => {
   const [create] = useCreateOrganizationShiftMutation();
   const [update] = useUpdateOrganizationShiftMutation();
   const [remove] = useDeleteOrganizationShiftMutation();
+  const canManage =
+    useHasAccess(Authorities.COMPANY_SETTINGS_EDIT) || useHasAccess(Authorities.JOB_CATALOG_EDIT);
 
   return (
     <PlatformCatalogTab<OrganizationShift, FormValues>
@@ -71,6 +75,8 @@ const TenantShiftsTab: React.FC = () => {
       total={data?.total}
       serverQuery={query}
       onServerQueryChange={setQuery}
+      allowCreate={canManage}
+      allowEdit={canManage}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.shift_name}
@@ -115,7 +121,7 @@ const TenantShiftsTab: React.FC = () => {
           duration_minutes: computeDurationMinutes(values.start_time, values.end_time) ?? undefined,
         }).unwrap()
       }
-      onDelete={(item) => remove(item.id).unwrap()}
+      onDelete={canManage ? (item) => remove(item.id).unwrap() : undefined}
     />
   );
 };

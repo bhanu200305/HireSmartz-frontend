@@ -93,9 +93,17 @@ const JobDescriptionPanel = ({
   } = useGetJobDescriptionByIdQuery({ jobOpeningId }, { skip: !jobOpeningId });
   // Whether Job Details has real saved content (title + department); gates Generate/Refine/Regenerate.
   const hasSavedDetails = response?.hasSavedDetails ?? false;
-  const { data: jdStatus, timedOut: jdStatusTimedOut } = useJdStatusPolling(jobOpeningId, {
+  const {
+    data: jdStatus,
+    timedOut: jdStatusTimedOut,
+    isFetching: jdStatusFetching,
+  } = useJdStatusPolling(jobOpeningId, {
     notifyOnTimeout: true,
   });
+  // Ignore a stale cached status until this mount's own fetch settles -
+  // otherwise an old GENERATING/PROCESSING briefly overlays an already-ready JD.
+  const isJdStillGenerating =
+    !jdStatusFetching && (jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING');
   const [updateJobDescription, { isLoading: isUpdating }] = useUpdateJobDescriptionMutation();
   const [enhanceJd, { isLoading: isGenerating }] = useEnhanceJdMutation();
 
@@ -467,10 +475,7 @@ const JobDescriptionPanel = ({
 
   return (
     <div className="w-full">
-      {(isLoading ||
-        isGenerating ||
-        (!jdStatusTimedOut &&
-          (jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING'))) && <Loader />}
+      {(isLoading || isGenerating || (!jdStatusTimedOut && isJdStillGenerating)) && <Loader />}
 
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">✨</span>
@@ -492,16 +497,14 @@ const JobDescriptionPanel = ({
       ) : !previewDescription ? (
         <div className="w-full p-6 bg-[#FAFAFA] border border-dashed border-[#E2E2E2] rounded-lg text-center">
           <p className="text-gray-400 text-sm mb-4">
-            {jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING'
+            {isJdStillGenerating
               ? 'Generating your AI job description from the fields you filled in…'
               : "No description yet - generate one from the Job Info, Skills, and Education Preference you've filled in on the left."}
           </p>
           <Button
             className="text-white bg-button rounded-3xl px-6 py-2 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => void handleGenerate()}
-            disabled={
-              isGenerating || jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING'
-            }
+            disabled={isGenerating || isJdStillGenerating}
           >
             <TbReload size={16} />
             GENERATE DESCRIPTION

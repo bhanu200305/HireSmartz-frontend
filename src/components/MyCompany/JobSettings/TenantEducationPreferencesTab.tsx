@@ -10,6 +10,8 @@ import PlatformCatalogTab, {
   type CatalogServerQuery,
 } from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
+import useHasAccess from '../../../hooks/useHasAccess';
+import { Authorities } from '../../../constants/authorities.constant';
 
 type FormValues = { name: string; description: string | null };
 const emptyForm: FormValues = { name: '', description: null };
@@ -37,6 +39,8 @@ const TenantEducationPreferencesTab: React.FC = () => {
   const [create] = useCreateEducationPreferenceMutation();
   const [update] = useUpdateEducationPreferenceMutation();
   const [remove] = useDeleteEducationPreferenceMutation();
+  const canManage =
+    useHasAccess(Authorities.COMPANY_SETTINGS_EDIT) || useHasAccess(Authorities.JOB_CATALOG_EDIT);
 
   return (
     <PlatformCatalogTab<OrganizationEducationPreference, FormValues>
@@ -47,6 +51,8 @@ const TenantEducationPreferencesTab: React.FC = () => {
       total={data?.total}
       serverQuery={query}
       onServerQueryChange={setQuery}
+      allowCreate={canManage}
+      allowEdit={canManage}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.education_preference_name}
@@ -77,7 +83,7 @@ const TenantEducationPreferencesTab: React.FC = () => {
           education_preference_description: values.description,
         }).unwrap()
       }
-      onDelete={(item) => remove(item.id).unwrap()}
+      onDelete={canManage ? (item) => remove(item.id).unwrap() : undefined}
     />
   );
 };

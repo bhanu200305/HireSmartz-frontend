@@ -93,7 +93,8 @@ const MyCompany: React.FC = () => {
   // preferences) is gated on COMPANY_SETTINGS_VIEW ('organization:read')
   // instead — that's what job-service's own catalogue GET routes require.
   const canViewQrManagement = useHasAccess(Authorities.JOB_OPENING_VIEW);
-  const canViewJobSettings = useHasAccess(Authorities.COMPANY_SETTINGS_VIEW);
+  const canViewJobSettings =
+    useHasAccess(Authorities.COMPANY_SETTINGS_VIEW) || useHasAccess(Authorities.JOB_CATALOG_VIEW);
 
   const handleTabChange = (key: string) => {
     setSearchParams({ tab: key });

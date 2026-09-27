@@ -34,14 +34,20 @@ const VideoInterviewQuestions = () => {
     (round) => round.uniqueRoundIdentifier === currentSelectedRound
   );
 
-  const { data: questionsData, isLoading: questionsLoading } =
-    useGetAiInterviewQuestionsByRoundQuery(
-      { interviewRoundId: selectedRoundData?.id || '', jobOpeningId: jobId || 0 },
-      {
-        skip: !selectedRoundData?.id || !jobId,
-        refetchOnMountOrArgChange: true,
-      }
-    );
+  const {
+    data: questionsData,
+    isLoading: questionsLoading,
+    isFetching: questionsFetching,
+  } = useGetAiInterviewQuestionsByRoundQuery(
+    { interviewRoundId: selectedRoundData?.id || '', jobOpeningId: jobId || 0 },
+    {
+      skip: !selectedRoundData?.id || !jobId,
+      refetchOnMountOrArgChange: true,
+    }
+  );
+  // A cached round can show isLoading: false with stale data while a fresh
+  // refetch is still in flight - wait for that too before trusting "empty".
+  const questionsStillResolving = questionsLoading || questionsFetching;
 
   const handleRoundChange = (value: string) => {
     setSelectedRound(value);
@@ -97,7 +103,7 @@ const VideoInterviewQuestions = () => {
       <div className="questions-container">
         {categories.map((category) => {
           const questions = (categoriesMap as Record<string, unknown> | undefined)?.[category.key];
-          if (questionsLoading) {
+          if (questionsStillResolving) {
             return (
               <div key={category.key} className="category-section mb-8">
                 <div className="width-full bg-[#E7E4E4] border border-[var(--border)] px-6 py-4 rounded-full mb-4">
@@ -140,7 +146,7 @@ const VideoInterviewQuestions = () => {
           );
         })}
       </div>
-      {!questionsLoading && !hasQuestions && videoRounds.length > 0 && (
+      {!questionsStillResolving && !hasQuestions && videoRounds.length > 0 && (
         <p style={{ color: '#666', fontStyle: 'italic', paddingLeft: '16px' }}>
           No questions available for selected round.
         </p>

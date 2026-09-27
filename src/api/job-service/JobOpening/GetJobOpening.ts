@@ -21,6 +21,17 @@ type ListJobOpeningsArgs = Partial<JobFilterRequest> & {
   locationId?: string;
 };
 
+// Maps UI sortKeys to job-service's sort_by values. Unmapped keys (e.g.
+// "jobTitleName", not sortable server-side yet) are dropped, not forwarded.
+const SORT_BY_MAP: Record<string, string> = {
+  locationName: 'location_name',
+  candidateCount: 'candidate_count',
+  jobOpenDate: 'job_open_date',
+  createdAt: 'created_at',
+  vacancies: 'vacancies',
+  jobProfileCode: 'job_profile_code',
+};
+
 // Defaults to 'published' when no filter flag is set at all - a new caller
 // wanting every status must pass isAll: true explicitly, or it silently
 // only sees published jobs.
@@ -45,6 +56,7 @@ const extendedApi = jobApi.injectEndpoints({
           args.globalSearchRequestDto?.text?.trim() ||
           undefined;
         const status = resolveListStatus(args);
+        const sortBy = args.sortBy ? SORT_BY_MAP[args.sortBy] : undefined;
 
         return {
           url: '/job-openings',
@@ -56,7 +68,7 @@ const extendedApi = jobApi.injectEndpoints({
             ...(text ? { text } : {}),
             ...(args.startDateTime ? { open_date_from: args.startDateTime } : {}),
             ...(args.endDateTime ? { open_date_to: args.endDateTime } : {}),
-            ...(args.sortBy ? { sort_by: args.sortBy } : {}),
+            ...(sortBy ? { sort_by: sortBy } : {}),
             ...(args.sortDir ? { sort_dir: String(args.sortDir).toLowerCase() } : {}),
             ...(args.assignedToMe ? { assigned_to_me: true } : {}),
             ...(args.locationId ? { location_id: args.locationId } : {}),

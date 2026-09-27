@@ -10,6 +10,8 @@ import PlatformCatalogTab, {
   type CatalogServerQuery,
 } from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
+import useHasAccess from '../../../hooks/useHasAccess';
+import { Authorities } from '../../../constants/authorities.constant';
 
 type FormValues = { name: string; description: string };
 const emptyForm: FormValues = { name: '', description: '' };
@@ -38,6 +40,8 @@ const TenantJobTypesTab: React.FC = () => {
   const [create] = useCreateJobTypeMutation();
   const [update] = useUpdateJobTypeMutation();
   const [remove] = useDeleteJobTypeMutation();
+  const canManage =
+    useHasAccess(Authorities.COMPANY_SETTINGS_EDIT) || useHasAccess(Authorities.JOB_CATALOG_EDIT);
 
   return (
     <PlatformCatalogTab<OrganizationJobType, FormValues>
@@ -48,6 +52,8 @@ const TenantJobTypesTab: React.FC = () => {
       total={data?.total}
       serverQuery={query}
       onServerQueryChange={setQuery}
+      allowCreate={canManage}
+      allowEdit={canManage}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.job_type_name}
@@ -80,7 +86,9 @@ const TenantJobTypesTab: React.FC = () => {
           isMaster: false,
         }).unwrap()
       }
-      onDelete={(item) => remove({ jobTypeId: item.id, isMaster: false }).unwrap()}
+      onDelete={
+        canManage ? (item) => remove({ jobTypeId: item.id, isMaster: false }).unwrap() : undefined
+      }
     />
   );
 };

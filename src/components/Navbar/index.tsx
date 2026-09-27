@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import MenuItems from './menuItem';
 import useHasAccess from '../../hooks/useHasAccess';
+import useEffectivePermissions from '../../hooks/useEffectivePermissions';
+import { Authorities } from '../../constants/authorities.constant';
 import {
   isImpersonationActive,
   setLocalStorageItem,
@@ -44,6 +46,19 @@ const Navbar: React.FC = () => {
     }
   };
 
+  // Catalogue-manage (write-level) permissions that also justify showing
+  // the Company nav item, even without full COMPANY_SETTINGS_EDIT.
+  const effectivePermissions = useEffectivePermissions();
+  const hasCatalogueManageAccess = [
+    Authorities.TENANT_JOB_TITLE_ADD,
+    Authorities.TENANT_JOB_TITLE_EDIT,
+    Authorities.TENANT_JOB_TITLE_DELETE,
+    Authorities.DEPARTMENT_ADD,
+    Authorities.DEPARTMENT_EDIT,
+    Authorities.DEPARTMENT_DELETE,
+    Authorities.JOB_CATALOG_EDIT,
+  ].some((authority) => effectivePermissions.includes(authority));
+
   const accessibleMenuItems = MenuItems.filter((item) => {
     if (item.name === 'Companies') {
       // COMPANY_VIEW ('tenant:read') is also a real permission a tenant's
@@ -53,6 +68,10 @@ const Navbar: React.FC = () => {
       // requires no tenant of their own, same principal-type guard
       // CustomerPage's own route already enforces.
       return !tenantId && useHasAccess(item.requiredAuthority);
+    }
+
+    if (item.name === 'Company') {
+      return useHasAccess(item.requiredAuthority) || hasCatalogueManageAccess;
     }
 
     return useHasAccess(item.requiredAuthority);

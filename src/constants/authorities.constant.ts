@@ -83,6 +83,10 @@ export enum Authorities {
   TENANT_JOB_TITLE_ADD = 'tenant_job_title:write',
   TENANT_JOB_TITLE_EDIT = 'tenant_job_title:update',
   TENANT_JOB_TITLE_DELETE = 'tenant_job_title:delete',
+  // job-service's 4 tenant catalogues (Shifts, Education Preferences, Job
+  // Types, Job Modes) — one read/write pair covering all four.
+  JOB_CATALOG_VIEW = 'job_catalog:read',
+  JOB_CATALOG_EDIT = 'job_catalog:write',
 
   // -- organization-service: team invitations --
   INVITATION_VIEW = 'invitation:read',
@@ -404,6 +408,16 @@ export const PERMISSION_CATALOG: PermissionCatalogEntry[] = [
     label: 'Delete job titles',
     module: 'Departments & Locations',
   },
+  {
+    code: Authorities.JOB_CATALOG_VIEW,
+    label: 'View job catalogs (shifts, job types, job modes, education preferences)',
+    module: 'Departments & Locations',
+  },
+  {
+    code: Authorities.JOB_CATALOG_EDIT,
+    label: 'Add/edit/delete job catalogs (shifts, job types, job modes, education preferences)',
+    module: 'Departments & Locations',
+  },
 
   {
     code: Authorities.INVITATION_VIEW,
@@ -720,6 +734,8 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.COMPANY_SETTINGS_EXPORT,
       Authorities.COMPANY_SETTINGS_VIEW,
       Authorities.COMPANY_SETTINGS_EDIT,
+      Authorities.JOB_CATALOG_VIEW,
+      Authorities.JOB_CATALOG_EDIT,
       Authorities.REPORT_EXPORT,
       Authorities.REPORT_VIEW,
       Authorities.ROLE_DELETE,
@@ -750,6 +766,7 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.JOB_OPENING_VIEW,
       Authorities.LOCATION_VIEW,
       Authorities.COMPANY_SETTINGS_VIEW,
+      Authorities.JOB_CATALOG_VIEW,
       Authorities.REPORT_VIEW,
       Authorities.USER_VIEW,
     ],
@@ -817,6 +834,8 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.TENANT_JOB_TITLE_DELETE,
       Authorities.COMPANY_SETTINGS_VIEW,
       Authorities.COMPANY_SETTINGS_EDIT,
+      Authorities.JOB_CATALOG_VIEW,
+      Authorities.JOB_CATALOG_EDIT,
       Authorities.REPORT_EXPORT,
       Authorities.REPORT_VIEW,
       Authorities.ROLE_APPROVE,
@@ -848,6 +867,7 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.JOB_OPENING_CREATE,
       Authorities.LOCATION_VIEW,
       Authorities.COMPANY_SETTINGS_VIEW,
+      Authorities.JOB_CATALOG_VIEW,
       Authorities.TENANT_JOB_TITLE_VIEW,
       Authorities.TENANT_JOB_TITLE_ADD,
       Authorities.TENANT_JOB_TITLE_EDIT,
@@ -864,6 +884,7 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.JOB_OPENING_VIEW,
       Authorities.LOCATION_VIEW,
       Authorities.COMPANY_SETTINGS_VIEW,
+      Authorities.JOB_CATALOG_VIEW,
       Authorities.TENANT_JOB_TITLE_VIEW,
       Authorities.USER_VIEW,
     ],

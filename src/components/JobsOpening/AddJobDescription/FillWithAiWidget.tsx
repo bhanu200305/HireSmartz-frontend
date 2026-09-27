@@ -27,15 +27,22 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [promptText, setPromptText] = useState('');
   const [enhanceJd, { isLoading: isSubmitting }] = useEnhanceJdMutation();
-  const { data: jdStatus, timedOut: jdStatusTimedOut } = useJdStatusPolling(jobOpeningId);
+  const {
+    data: jdStatus,
+    timedOut: jdStatusTimedOut,
+    isFetching: jdStatusFetching,
+  } = useJdStatusPolling(jobOpeningId);
   const isGenerating =
-    !jdStatusTimedOut && (jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING');
+    !jdStatusFetching &&
+    !jdStatusTimedOut &&
+    (jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING');
   // JobDescriptionPanel's FAILED handling doesn't mount here, so show our own
   // toast; track per-job id so switching jobs doesn't suppress a new failure.
   const failedToastShownForJobRef = useRef<string | null>(null);
   useEffect(() => {
     if (
       jobOpeningId &&
+      !jdStatusFetching &&
       jdStatus?.status === 'FAILED' &&
       failedToastShownForJobRef.current !== jobOpeningId
     ) {
@@ -45,7 +52,7 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
         type: 'error',
       });
     }
-  }, [jobOpeningId, jdStatus?.status, jdStatus?.error_message]);
+  }, [jobOpeningId, jdStatus?.status, jdStatus?.error_message, jdStatusFetching]);
 
   if (!jobOpeningId) return null;
 

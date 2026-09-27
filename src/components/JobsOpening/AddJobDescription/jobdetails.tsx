@@ -203,6 +203,9 @@ const JobDetails = () => {
   const canDeleteJobTitle =
     canManageCatalogueEntries || effectivePermissions.includes(Authorities.TENANT_JOB_TITLE_DELETE);
   const canManageJobTitle = canAddJobTitle || canEditJobTitle || canDeleteJobTitle;
+  // Job Type/Job Mode/Shift/Education Preference also accept job_catalog:write.
+  const canManageJobCatalogues =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.JOB_CATALOG_EDIT);
   const [dismissedUnresolvedAiFields, setDismissedUnresolvedAiFields] = useState<Set<string>>(
     new Set()
   );
@@ -256,7 +259,8 @@ const JobDetails = () => {
   const hasSavedDetails = jdDetailsForGate?.hasSavedDetails ?? false;
   // Polls jd/status to catch a GENERATING/PROCESSING -> READY transition
   // and apply AI-written fields once ready — see the effect below.
-  const { data: jdStatusForHydration } = useJdStatusPolling(resolvedJobId);
+  const { data: jdStatusForHydration, isFetching: jdStatusFetching } =
+    useJdStatusPolling(resolvedJobId);
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
   // Tracks which job id the "already READY on first observation" fallback
   // has run for, so it fires at most once per job.
@@ -807,8 +811,10 @@ const JobDetails = () => {
       refetchMandatorySkills?.();
       refetchOptionalSkills?.();
     } else if (!hasCheckedInitialLocationHydrationRef.current) {
-      hasCheckedInitialLocationHydrationRef.current = true;
+      // Don't lock in until jobDetails has actually arrived - Redux may
+      // still be empty on this first pass if the fetch hasn't resolved yet.
       if (jobDetails && Object.keys(jobDetails).length > 0) {
+        hasCheckedInitialLocationHydrationRef.current = true;
         setValue('country', jobDetails.country || '');
         setValue('state', jobDetails.state || '');
         setValue('officeLocation', jobDetails.officeLocation || []);
@@ -821,6 +827,8 @@ const JobDetails = () => {
 
   // AI-fill counterpart to the ATS hydration above; only fills fields not already typed into.
   useEffect(() => {
+    // Wait for a real fetch, not just a stale cached value from an earlier view.
+    if (jdStatusFetching) return;
     const previousStatus = prevJdStatusForHydrationRef.current;
     const currentStatus = jdStatusForHydration?.status;
     prevJdStatusForHydrationRef.current = currentStatus;
@@ -926,6 +934,7 @@ const JobDetails = () => {
     });
   }, [
     jdStatusForHydration?.status,
+    jdStatusFetching,
     resolvedJobId,
     refetchJdDetailsForGate,
     refetchSuggestedSkills,
@@ -2264,19 +2273,17 @@ const JobDetails = () => {
                           label="Job Type"
                           placeholder="Select Job Type"
                           onAddOption={
-                            canManageCatalogueEntries
+                            canManageJobCatalogues
                               ? (value) => handleAddOption(value, 'jobType')
                               : undefined
                           }
                           type="jobType"
                           error={errors.jobType?.message}
                           emptyMessage={jobTypesError ?? undefined}
-                          enableEditDelete={canManageCatalogueEntries}
-                          onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                          onDeleteOption={
-                            canManageCatalogueEntries ? handleDeleteOption : undefined
-                          }
-                          onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
+                          enableEditDelete={canManageJobCatalogues}
+                          onEditOption={canManageJobCatalogues ? handleEditOption : undefined}
+                          onDeleteOption={canManageJobCatalogues ? handleDeleteOption : undefined}
+                          onReuseOption={canManageJobCatalogues ? handleReuseOption : undefined}
                         />
                       </div>
                     </Form.Item>
@@ -2299,19 +2306,17 @@ const JobDetails = () => {
                           label="Job Mode"
                           placeholder="Select Job Mode"
                           onAddOption={
-                            canManageCatalogueEntries
+                            canManageJobCatalogues
                               ? (value) => handleAddOption(value, 'jobMode')
                               : undefined
                           }
                           type="jobMode"
                           error={errors.jobMode?.message}
                           emptyMessage={jobModesError ?? undefined}
-                          enableEditDelete={canManageCatalogueEntries}
-                          onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                          onDeleteOption={
-                            canManageCatalogueEntries ? handleDeleteOption : undefined
-                          }
-                          onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
+                          enableEditDelete={canManageJobCatalogues}
+                          onEditOption={canManageJobCatalogues ? handleEditOption : undefined}
+                          onDeleteOption={canManageJobCatalogues ? handleDeleteOption : undefined}
+                          onReuseOption={canManageJobCatalogues ? handleReuseOption : undefined}
                         />
                       </div>
                     </Form.Item>
@@ -2325,17 +2330,17 @@ const JobDetails = () => {
                         label="Shift"
                         placeholder="Select Shift"
                         type="shift"
-                        enableEditDelete={canManageCatalogueEntries}
+                        enableEditDelete={canManageJobCatalogues}
                         onAddOption={
-                          canManageCatalogueEntries
+                          canManageJobCatalogues
                             ? (value) => handleAddShiftOption(value)
                             : undefined
                         }
                         onEditOption={
-                          canManageCatalogueEntries ? (id) => handleEditShiftOption(id) : undefined
+                          canManageJobCatalogues ? (id) => handleEditShiftOption(id) : undefined
                         }
                         onDeleteOption={
-                          canManageCatalogueEntries ? (id) => handleDeleteShift(id) : undefined
+                          canManageJobCatalogues ? (id) => handleDeleteShift(id) : undefined
                         }
                       />
                       {errors.shift && (
@@ -3256,18 +3261,16 @@ const JobDetails = () => {
                           placeholder="Select Education Preference"
                           label="Education Preference"
                           onAddOption={
-                            canManageCatalogueEntries
+                            canManageJobCatalogues
                               ? (value) => handleAddOption(value, 'educationPreference')
                               : undefined
                           }
                           type="educationPreference"
                           error={errors.educationPreference?.message}
-                          enableEditDelete={canManageCatalogueEntries}
-                          onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                          onDeleteOption={
-                            canManageCatalogueEntries ? handleDeleteOption : undefined
-                          }
-                          onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
+                          enableEditDelete={canManageJobCatalogues}
+                          onEditOption={canManageJobCatalogues ? handleEditOption : undefined}
+                          onDeleteOption={canManageJobCatalogues ? handleDeleteOption : undefined}
+                          onReuseOption={canManageJobCatalogues ? handleReuseOption : undefined}
                         />
                       </div>
                     </Form.Item>
