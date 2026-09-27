@@ -6,6 +6,7 @@ import type { CandidateInterviewScoreView } from '../../../api/candidate-service
 import {
   CONCLUDED_BOOKING_STATUSES,
   useGetBookingQuery,
+  useGetInterviewerCalendarStatusQuery,
 } from '../../../api/interview-service/client';
 import {
   bucketForStatus,
@@ -15,6 +16,7 @@ import {
   isInterviewerNoShowRound,
   isOverdue,
   isRoundConcluded,
+  normaliseRoundStatus,
   resolveCurrentRound,
   type RoundBucket,
 } from './roundProgress';
@@ -124,6 +126,19 @@ const RoundCard = ({
   const { data: booking } = useGetBookingQuery(round.interview_booking_id ?? '', {
     skip: !round.interview_booking_id || !(isVoiceCallRound || isPanelRound),
   });
+  // A PANEL booking stays `draft` — no Nylas scheduling link, no candidate
+  // notification — until every explicitly-assigned interviewer has a
+  // connected calendar (`try_create_panel_scheduling_link`, interview-service).
+  // Same query BookingDetailDrawer.tsx already uses for its own "Panel
+  // interviewers" list, here to surface the same reason on the card itself.
+  const { data: calendarStatus } = useGetInterviewerCalendarStatusQuery(
+    round.interview_booking_id ?? '',
+    { skip: !round.interview_booking_id || !isPanelRound }
+  );
+  const missingCalendarCount =
+    calendarStatus?.interviewers.filter((i) => !i.calendar_connected).length ?? 0;
+  const isBlockedOnCalendar =
+    isPanelRound && booking?.status === 'draft' && missingCalendarCount > 0;
   const technicalFailure = booking?.call_intent === 'technical_failure';
   // Borrows the 'failed' bucket's danger styling, same as `overdue` already
   // did — a technical failure is exactly as actionable as a real failure,
@@ -186,8 +201,15 @@ const RoundCard = ({
               ? 'Technical Failure'
               : isResumeScored
                 ? 'Completed'
-                : formatRoundStatus(round.status)}
+                : normaliseRoundStatus(round.status) === 'booking_created'
+                  ? 'Booking created — waiting to be scheduled'
+                  : formatRoundStatus(round.status)}
         </Badge>
+        {isBlockedOnCalendar && (
+          <Badge status="warning" dot={false} className="w-fit">
+            {`Calendar pending (${missingCalendarCount})`}
+          </Badge>
+        )}
         {overdue && (
           <span className="text-xs text-danger">
             No update since the scheduled time; may not have gone through.
@@ -386,11 +408,22 @@ const PipelineBoard = ({
           // `id`, which is only ever null-shaped conceptually for the
           // resume stage, so gate the click on stage_type rather than id.
           const isInterviewRound = round.stage_type === 'interview';
-          // Recordings and the transcript only exist once the call has
-          // actually happened — hide the "View recordings" entry point until
-          // the round is completed, so it isn't offered for a round that's
-          // still to_be_scheduled / scheduled / in progress.
-          const hasRecordings = isInterviewRound && bucketForStatus(round.status) === 'done';
+          // Recordings/transcripts only exist once at least one attempt at
+          // this round has actually happened — but `round.status` reflects
+          // only the LATEST attempt, not the round's full history. Gating on
+          // `=== 'done'` used to hide this entry point the moment a
+          // completed round was rescheduled (status flips back to
+          // 'scheduled'/'current'), even though the earlier, concluded
+          // attempt's recording still exists and is still fetchable (the
+          // modal already groups artifacts into "Attempt 1"/"Attempt 2"
+          // tabs by booking — see RoundArtifactsModal.tsx). Excluding only
+          // 'pending' (truly never booked/started) is the correct signal: a
+          // 'current' round may have prior recordings from before its
+          // latest reschedule, a 'failed' one (no-show/cancelled) may still
+          // have a recording from an earlier attempt, and the modal itself
+          // already shows "No recordings yet" gracefully when there truly
+          // are none.
+          const hasRecordings = isInterviewRound && bucketForStatus(round.status) !== 'pending';
           // Same guards `set_panel_interviewers.py` enforces server-side
           // (resume stage / already-finished / already-booked all 409) —
           // this just keeps the trigger from inviting a click that can only

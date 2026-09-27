@@ -19,7 +19,7 @@ const cardTooltipStyle = {
   boxShadow: '0 8px 24px -12px rgba(16,30,54,.18)',
 };
 
-const CHART_HEIGHT = 190;
+const CHART_HEIGHT = 210;
 
 // Job titles are shown at full length in nothing else on this dashboard —
 // rotated (`angle={-20}`) so more fit before overlapping, but with no cap a
@@ -34,8 +34,8 @@ const CHART_HEIGHT = 190;
 // other rather than the card edge, so the cap tightens.
 const axisLabelCharsFor = (barCount: number): number => {
   if (barCount <= 2) return 32;
-  if (barCount <= 4) return 20;
-  return 14;
+  if (barCount <= 4) return 22;
+  return 18;
 };
 const truncateAxisLabel =
   (barCount: number) =>
@@ -123,9 +123,9 @@ const HiringManagerCharts: React.FC = () => {
               axisLine={false}
               tickLine={false}
               interval={0}
-              angle={-20}
+              angle={-35}
               textAnchor="end"
-              height={78}
+              height={96}
               tickFormatter={truncateAxisLabel(panelData.length)}
               label={xAxisLabel('Job')}
             />
@@ -158,9 +158,9 @@ const HiringManagerCharts: React.FC = () => {
               axisLine={false}
               tickLine={false}
               interval={0}
-              angle={-20}
+              angle={-35}
               textAnchor="end"
-              height={78}
+              height={96}
               tickFormatter={truncateAxisLabel(avgScoreData.length)}
               label={xAxisLabel('Job')}
             />

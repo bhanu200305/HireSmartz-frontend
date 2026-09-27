@@ -41,11 +41,7 @@ export const CareersApplyChoicePage = () => {
         </button>
         {logoUrl ? (
           <span className="bg-white rounded-md px-3 py-1.5 flex items-center">
-            <img
-              src={logoUrl}
-              alt={companyName ?? 'Company logo'}
-              className="h-7 object-contain"
-            />
+            <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-7 object-contain" />
           </span>
         ) : (
           <span className="text-white font-bold text-xl tracking-widest">CFP</span>

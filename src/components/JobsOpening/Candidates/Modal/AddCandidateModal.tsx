@@ -139,7 +139,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
       resumeS3Key: resume_s3_key,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      emailId: email.trim() || undefined,
+      emailId: email.trim(),
       contactNo: phone.trim() ? toE164(countryCode, phone) : undefined,
       qualification: qualification.trim() || undefined,
       address: address.trim() || undefined,
@@ -152,7 +152,11 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
     return true;
   };
 
-  const isFormValid = Boolean(file) && firstName.trim().length > 0 && lastName.trim().length > 0;
+  const isFormValid =
+    Boolean(file) &&
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    email.trim().length > 0;
 
   const handleSubmit = async () => {
     if (!jobOpeningId || !organizationId) {
@@ -161,6 +165,10 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
     }
     if (!firstName.trim() || !lastName.trim()) {
       showToast({ message: 'First and last name are required.', type: 'error' });
+      return;
+    }
+    if (!email.trim()) {
+      showToast({ message: 'Email is required.', type: 'error' });
       return;
     }
     if (phone.trim() && !isPhoneValidForCountry(phone, countryCode)) {
@@ -292,7 +300,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="add-candidate-email" className="mb-1 block text-sm text-gray-800">
-                  Email
+                  Email <span className="required-asterisk">*</span>
                 </label>
                 <Input
                   id="add-candidate-email"

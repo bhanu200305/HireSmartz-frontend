@@ -50,6 +50,7 @@ export const CareersInstantCallPage = () => {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const [firstNameError, setFirstNameError] = useState(false);
+  const [emailError, setEmailError] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [smsConsent, setSmsConsent] = useState(false);
   const [tosConsent, setTosConsent] = useState(false);
@@ -60,19 +61,21 @@ export const CareersInstantCallPage = () => {
 
   const handleSubmit = async () => {
     const noFirstName = !firstName.trim();
+    const noEmail = !email.trim();
     const noPhone = !phone.trim();
     const badPhone = !noPhone && !isPhoneValidForCountry(phone, countryCode);
     const noTos = !tosConsent;
     const noCaptcha = !captchaToken;
 
     setFirstNameError(noFirstName);
+    setEmailError(noEmail);
     setPhoneError(
       noPhone ? 'Phone number is required' : badPhone ? PHONE_VALIDATION_MESSAGE : null
     );
     setTosError(noTos);
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
 
-    if (noFirstName || noPhone || badPhone || noTos || noCaptcha) return;
+    if (noFirstName || noEmail || noPhone || badPhone || noTos || noCaptcha) return;
 
     try {
       const res = await startIntakeCall({
@@ -80,7 +83,7 @@ export const CareersInstantCallPage = () => {
         jobOpeningId: jobId ?? '',
         firstName: firstName.trim(),
         lastName: lastName.trim() || undefined,
-        emailId: email.trim() || undefined,
+        emailId: email.trim(),
         contactNo: toE164(countryCode, phone),
         termsAccepted: tosConsent,
         smsConsent,
@@ -229,17 +232,26 @@ export const CareersInstantCallPage = () => {
             </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-2">
-                Email (optional)
+                Email <span className="text-red-500">*</span>
               </label>
               <Input
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (e.target.value.trim()) setEmailError(false);
+                }}
                 placeholder="john.doe@example.com"
                 className="rounded-full"
-                style={{ height: 44, paddingLeft: 16, paddingRight: 16 }}
+                style={{
+                  height: 44,
+                  paddingLeft: 16,
+                  paddingRight: 16,
+                  borderColor: emailError ? '#ef4444' : undefined,
+                }}
               />
+              {emailError && <p className="text-sm text-red-500 mt-1">Email is required</p>}
             </div>
           </div>
 

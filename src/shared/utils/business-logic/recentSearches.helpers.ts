@@ -1,6 +1,9 @@
 export const RECENT_SEARCHES_STORAGE_KEY = 'cfp_recent_global_searches';
 export const MAX_LOCAL_RECENT_SEARCHES = 10;
-export const MIN_RECENT_SEARCH_LENGTH = 1;
+// Below this, a "search" is usually just a keystroke caught mid-type (the
+// debounced fetch fires on a brief pause), not a deliberate query worth
+// resurfacing as a suggestion chip.
+export const MIN_RECENT_SEARCH_LENGTH = 3;
 
 const normalizeStorageScope = (scopeKey?: string): string =>
   scopeKey?.trim().toLowerCase().replace(/\s+/g, '_') || 'anonymous';
@@ -26,14 +29,32 @@ const isValidQuery = (queryText: string): boolean =>
 const dedupeAndLimitRecentSearches = (items: RecentSearchItem[]): RecentSearchItem[] => {
   const seenQueries = new Set<string>();
 
-  return items
-    .filter((item) => {
-      const normalizedQuery = sanitizeQuery(item.queryText).toLowerCase();
-      if (!isValidQuery(item.queryText) || seenQueries.has(normalizedQuery)) return false;
-      seenQueries.add(normalizedQuery);
-      return true;
-    })
-    .slice(0, MAX_LOCAL_RECENT_SEARCHES);
+  const validItems = items.filter((item) => {
+    const normalizedQuery = sanitizeQuery(item.queryText).toLowerCase();
+    if (!isValidQuery(item.queryText) || seenQueries.has(normalizedQuery)) return false;
+    seenQueries.add(normalizedQuery);
+    return true;
+  });
+
+  // Typing "Vedansh" with a pause partway through can get both "ved" and
+  // "Vedansh" saved as separate searches (the debounced fetch fires on the
+  // pause). A shorter entry that's just a prefix of a longer one in this
+  // same list is that same in-progress search, not a distinct one worth
+  // keeping once the fuller term exists — drop it in favor of the longer
+  // term.
+  const collapsedItems = validItems.filter((item) => {
+    const normalizedQuery = sanitizeQuery(item.queryText).toLowerCase();
+    return !validItems.some((other) => {
+      const otherNormalizedQuery = sanitizeQuery(other.queryText).toLowerCase();
+      return (
+        other !== item &&
+        otherNormalizedQuery.length > normalizedQuery.length &&
+        otherNormalizedQuery.startsWith(normalizedQuery)
+      );
+    });
+  });
+
+  return collapsedItems.slice(0, MAX_LOCAL_RECENT_SEARCHES);
 };
 
 export const getStoredRecentSearches = (scopeKey?: string): RecentSearchItem[] => {

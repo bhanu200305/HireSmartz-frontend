@@ -285,9 +285,7 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
                     {isGenerating ? '…' : 'Draft'}
                   </Button>
                 </div>
-                {aiIntentError && (
-                  <p className="text-red-500 text-sm px-2 py-1">{aiIntentError}</p>
-                )}
+                {aiIntentError && <p className="text-red-500 text-sm px-2 py-1">{aiIntentError}</p>}
               </div>
             )}
 

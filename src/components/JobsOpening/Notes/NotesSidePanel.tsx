@@ -666,9 +666,7 @@ const NotesSidePanel = ({
               >
                 <IoPaperPlaneOutline size={isCompact ? 20 : 22} aria-hidden />
               </button>
-              {composerError && (
-                <p className="text-red-500 text-sm px-2 py-1">{composerError}</p>
-              )}
+              {composerError && <p className="text-red-500 text-sm px-2 py-1">{composerError}</p>}
               <p className="text-xs text-gray-400 px-2 py-1">
                 Do not include discriminatory, abusive, or hateful language.
               </p>

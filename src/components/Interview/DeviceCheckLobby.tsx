@@ -43,6 +43,12 @@ export const DeviceCheckLobby = ({ onReady, lockFullscreen = false }: DeviceChec
   const [micLevel, setMicLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Whether getUserMedia has actually succeeded at least once — distinct from
+  // `loading`, which just tracks whether a request is in flight. `loading`
+  // alone used to leave "Join Interview" clickable after a denied prompt
+  // (the request had finished, it just failed), letting a candidate through
+  // with no camera/mic at all. This is the real gate for that button.
+  const [permissionGranted, setPermissionGranted] = useState(false);
 
   const teardownLevelMeter = () => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -88,6 +94,7 @@ export const DeviceCheckLobby = ({ onReady, lockFullscreen = false }: DeviceChec
         video: videoDeviceId ? { deviceId: { exact: videoDeviceId } } : true,
       });
       streamRef.current = stream;
+      setPermissionGranted(true);
       if (videoRef.current) videoRef.current.srcObject = stream;
       startLevelMeter(stream);
 
@@ -112,9 +119,10 @@ export const DeviceCheckLobby = ({ onReady, lockFullscreen = false }: DeviceChec
       stream.getAudioTracks().forEach((t) => (t.enabled = micEnabled));
       stream.getVideoTracks().forEach((t) => (t.enabled = cameraEnabled));
     } catch (e) {
+      setPermissionGranted(false);
       setError(
         e instanceof Error && e.name === 'NotAllowedError'
-          ? 'Camera and microphone access was blocked. Allow access in your browser settings, then reload this page.'
+          ? 'Please allow camera and microphone access to join your interview.'
           : 'Could not access your camera/microphone. Check that no other app is using them.'
       );
     } finally {
@@ -263,7 +271,7 @@ export const DeviceCheckLobby = ({ onReady, lockFullscreen = false }: DeviceChec
         <button
           type="button"
           onClick={handleJoin}
-          disabled={loading}
+          disabled={loading || !permissionGranted}
           className="mt-6 w-full rounded-full bg-white py-3 text-sm font-semibold text-neutral-950 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Join Interview

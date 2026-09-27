@@ -21,7 +21,6 @@ import {
 } from '../../api/interview-service/client';
 import { CandidateNameCell } from './CandidateNameCell';
 import { BookingDetailDrawer } from './BookingDetailDrawer';
-import { MyInterviewCalendar } from './MyInterviewCalendar';
 import { useJobTitleForOpening } from './useJobTitleForOpening';
 import {
   BOOKING_STATUS_OPTIONS,
@@ -50,7 +49,6 @@ const roundLabel = (booking: { sequence_no: number }): string =>
 
 export const InterviewsPage = () => {
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [statusFilter, setStatusFilter] = useState<BookingStatus | undefined>(undefined);
   const [typeFilter, setTypeFilter] = useState<InterviewType | undefined>(undefined);
   // Cursor pagination: one entry per page visited; the last is the current page.
@@ -64,15 +62,12 @@ export const InterviewsPage = () => {
 
   const currentCursor = cursorStack[cursorStack.length - 1];
 
-  const { data, isLoading, isFetching, error, refetch } = useListBookingsQuery(
-    {
-      ...(statusFilter ? { status_filter: statusFilter } : {}),
-      ...(typeFilter ? { interview_type: typeFilter } : {}),
-      limit: PAGE_SIZE,
-      ...(currentCursor ? { cursor: currentCursor } : {}),
-    },
-    { skip: viewMode !== 'list' }
-  );
+  const { data, isLoading, isFetching, error, refetch } = useListBookingsQuery({
+    ...(statusFilter ? { status_filter: statusFilter } : {}),
+    ...(typeFilter ? { interview_type: typeFilter } : {}),
+    limit: PAGE_SIZE,
+    ...(currentCursor ? { cursor: currentCursor } : {}),
+  });
 
   const resolveJobTitle = useJobTitleForOpening();
 
@@ -148,211 +143,184 @@ export const InterviewsPage = () => {
           </div>
         </div>
 
-        <div className="mb-4 inline-flex rounded-full border border-neutral-200 bg-neutral-50 p-1">
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors cursor-pointer ${
-              viewMode === 'list' ? 'bg-white text-brand-700 shadow-xs' : 'text-neutral-500'
-            }`}
-          >
-            List
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('calendar')}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors cursor-pointer ${
-              viewMode === 'calendar' ? 'bg-white text-brand-700 shadow-xs' : 'text-neutral-500'
-            }`}
-          >
-            My Calendar
-          </button>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <Select<BookingStatus>
+            allowClear
+            placeholder="All statuses"
+            className="w-48"
+            value={statusFilter}
+            options={BOOKING_STATUS_OPTIONS}
+            onChange={(value) => {
+              setStatusFilter(value ?? undefined);
+              resetPaging();
+            }}
+          />
+          <Select<InterviewType>
+            allowClear
+            placeholder="All types"
+            className="w-48"
+            value={typeFilter}
+            options={INTERVIEW_TYPE_OPTIONS}
+            onChange={(value) => {
+              setTypeFilter(value ?? undefined);
+              resetPaging();
+            }}
+          />
+          {(statusFilter || typeFilter) && (
+            <button
+              type="button"
+              className="text-sm font-medium text-brand-600 hover:text-brand-700 cursor-pointer"
+              onClick={() => {
+                setStatusFilter(undefined);
+                setTypeFilter(undefined);
+                resetPaging();
+              }}
+            >
+              Clear filters
+            </button>
+          )}
         </div>
 
-        {viewMode === 'calendar' ? (
-          <MyInterviewCalendar onSelectBooking={setSelectedBookingId} />
-        ) : (
-          <>
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <Select<BookingStatus>
-                allowClear
-                placeholder="All statuses"
-                className="w-48"
-                value={statusFilter}
-                options={BOOKING_STATUS_OPTIONS}
-                onChange={(value) => {
-                  setStatusFilter(value ?? undefined);
-                  resetPaging();
-                }}
-              />
-              <Select<InterviewType>
-                allowClear
-                placeholder="All types"
-                className="w-48"
-                value={typeFilter}
-                options={INTERVIEW_TYPE_OPTIONS}
-                onChange={(value) => {
-                  setTypeFilter(value ?? undefined);
-                  resetPaging();
-                }}
-              />
-              {(statusFilter || typeFilter) && (
-                <button
-                  type="button"
-                  className="text-sm font-medium text-brand-600 hover:text-brand-700 cursor-pointer"
-                  onClick={() => {
-                    setStatusFilter(undefined);
-                    setTypeFilter(undefined);
-                    resetPaging();
-                  }}
-                >
-                  Clear filters
-                </button>
-              )}
+        {canUpdate && selectedIds.size > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+            <span className="text-sm font-medium text-neutral-700">
+              {selectedIds.size} selected
+            </span>
+            <Select<BookingStatus>
+              className="w-44"
+              value={bulkStatus}
+              options={BOOKING_STATUS_OPTIONS}
+              onChange={(v) => setBulkStatus(v)}
+            />
+            <Button
+              className={PRIMARY_BTN}
+              disabled={bulkState.isLoading}
+              onClick={applyBulkStatus}
+            >
+              {bulkState.isLoading ? 'Updating…' : `Set status for ${selectedIds.size}`}
+            </Button>
+            <button
+              type="button"
+              className="text-sm font-medium text-neutral-500 hover:text-neutral-700 cursor-pointer"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
+        <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs">
+          {isLoading ? (
+            <div className="flex justify-center py-16">
+              <Loader />
             </div>
-
-            {canUpdate && selectedIds.size > 0 && (
-              <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
-                <span className="text-sm font-medium text-neutral-700">
-                  {selectedIds.size} selected
-                </span>
-                <Select<BookingStatus>
-                  className="w-44"
-                  value={bulkStatus}
-                  options={BOOKING_STATUS_OPTIONS}
-                  onChange={(v) => setBulkStatus(v)}
-                />
-                <Button
-                  className={PRIMARY_BTN}
-                  disabled={bulkState.isLoading}
-                  onClick={applyBulkStatus}
-                >
-                  {bulkState.isLoading ? 'Updating…' : `Set status for ${selectedIds.size}`}
-                </Button>
-                <button
-                  type="button"
-                  className="text-sm font-medium text-neutral-500 hover:text-neutral-700 cursor-pointer"
-                  onClick={() => setSelectedIds(new Set())}
-                >
-                  Clear
-                </button>
-              </div>
-            )}
-
-            <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs">
-              {isLoading ? (
-                <div className="flex justify-center py-16">
-                  <Loader />
-                </div>
-              ) : apiError ? (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                  <p className="text-sm text-neutral-600">
-                    {apiError.message || 'Could not load interviews.'}
-                  </p>
-                  <Button className={PRIMARY_BTN} onClick={() => refetch()}>
-                    Try again
-                  </Button>
-                </div>
-              ) : bookings.length === 0 ? (
-                <div className="py-16 text-center text-sm text-neutral-500">
-                  {statusFilter || typeFilter
-                    ? 'No interviews match these filters.'
-                    : 'No interviews have been booked yet.'}
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-[860px] w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                        {canUpdate && (
-                          <th className="w-10 px-4 py-3">
-                            <input
-                              type="checkbox"
-                              aria-label="Select all on this page"
-                              checked={allOnPageSelected}
-                              onChange={toggleAllOnPage}
-                            />
-                          </th>
-                        )}
-                        <th className="px-4 py-3">Candidate</th>
-                        <th className="px-4 py-3">Job</th>
-                        <th className="px-4 py-3">Round</th>
-                        <th className="px-4 py-3">Type</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Scheduled</th>
-                      </tr>
-                    </thead>
-                    <tbody className={isFetching ? 'opacity-60' : undefined}>
-                      {bookings.map((booking) => (
-                        <tr
-                          key={booking.id}
-                          onClick={() => setSelectedBookingId(booking.id)}
-                          className="cursor-pointer border-b border-neutral-100 last:border-0 hover:bg-neutral-50/60"
-                        >
-                          {canUpdate && (
-                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
-                                aria-label="Select interview"
-                                checked={selectedIds.has(booking.id)}
-                                onChange={() => toggleOne(booking.id)}
-                              />
-                            </td>
-                          )}
-                          <td className="max-w-[220px] px-4 py-3">
-                            <CandidateNameCell candidateId={booking.candidate_id} />
-                          </td>
-                          <td className="max-w-[200px] px-4 py-3">
-                            <span className="block truncate text-neutral-700">
-                              {booking.round_snapshot?.job_title?.trim() ||
-                                resolveJobTitle(booking.job_id) ||
-                                '-'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-neutral-600">{roundLabel(booking)}</td>
-                          <td className="px-4 py-3">
-                            <Badge status="neutral" dot={false}>
-                              {interviewTypeLabel(booking.interview_type)}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge status={bookingStatusBadge(booking.status)}>
-                              {bookingStatusLabel(booking.status)}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-neutral-600">
-                            {formatSchedule(booking.start_time, booking.attendee_timezone)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+          ) : apiError ? (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-sm text-neutral-600">
+                {apiError.message || 'Could not load interviews.'}
+              </p>
+              <Button className={PRIMARY_BTN} onClick={() => refetch()}>
+                Try again
+              </Button>
             </div>
+          ) : bookings.length === 0 ? (
+            <div className="py-16 text-center text-sm text-neutral-500">
+              {statusFilter || typeFilter
+                ? 'No interviews match these filters.'
+                : 'No interviews have been booked yet.'}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-[860px] w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    {canUpdate && (
+                      <th className="w-10 px-4 py-3">
+                        <input
+                          type="checkbox"
+                          aria-label="Select all on this page"
+                          checked={allOnPageSelected}
+                          onChange={toggleAllOnPage}
+                        />
+                      </th>
+                    )}
+                    <th className="px-4 py-3">Candidate</th>
+                    <th className="px-4 py-3">Job</th>
+                    <th className="px-4 py-3">Round</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Scheduled</th>
+                  </tr>
+                </thead>
+                <tbody className={isFetching ? 'opacity-60' : undefined}>
+                  {bookings.map((booking) => (
+                    <tr
+                      key={booking.id}
+                      onClick={() => setSelectedBookingId(booking.id)}
+                      className="cursor-pointer border-b border-neutral-100 last:border-0 hover:bg-neutral-50/60"
+                    >
+                      {canUpdate && (
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            aria-label="Select interview"
+                            checked={selectedIds.has(booking.id)}
+                            onChange={() => toggleOne(booking.id)}
+                          />
+                        </td>
+                      )}
+                      <td className="max-w-[220px] px-4 py-3">
+                        <CandidateNameCell candidateId={booking.candidate_id} />
+                      </td>
+                      <td className="max-w-[200px] px-4 py-3">
+                        <span className="block truncate text-neutral-700">
+                          {booking.round_snapshot?.job_title?.trim() ||
+                            resolveJobTitle(booking.job_id) ||
+                            '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-neutral-600">{roundLabel(booking)}</td>
+                      <td className="px-4 py-3">
+                        <Badge status="neutral" dot={false}>
+                          {interviewTypeLabel(booking.interview_type)}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge status={bookingStatusBadge(booking.status)}>
+                          {bookingStatusLabel(booking.status)}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-neutral-600">
+                        {formatSchedule(booking.start_time, booking.attendee_timezone)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
-            {!isLoading && !apiError && bookings.length > 0 && (
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-sm text-neutral-500">Page {pageNumber}</span>
-                <div className="flex gap-2">
-                  <Button
-                    className={SECONDARY_BTN}
-                    disabled={!hasPrev || isFetching}
-                    onClick={() => setCursorStack((stack) => stack.slice(0, -1))}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    className={SECONDARY_BTN}
-                    disabled={!hasNext || isFetching}
-                    onClick={() => setCursorStack((stack) => [...stack, data?.next_cursor ?? null])}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
+        {!isLoading && !apiError && bookings.length > 0 && (
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-sm text-neutral-500">Page {pageNumber}</span>
+            <div className="flex gap-2">
+              <Button
+                className={SECONDARY_BTN}
+                disabled={!hasPrev || isFetching}
+                onClick={() => setCursorStack((stack) => stack.slice(0, -1))}
+              >
+                Previous
+              </Button>
+              <Button
+                className={SECONDARY_BTN}
+                disabled={!hasNext || isFetching}
+                onClick={() => setCursorStack((stack) => [...stack, data?.next_cursor ?? null])}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         )}
       </div>
 

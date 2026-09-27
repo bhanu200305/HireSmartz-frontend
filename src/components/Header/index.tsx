@@ -1,6 +1,7 @@
 import { Avatar, Dropdown, Modal, Select } from 'antd';
 import { DownOutlined, CheckOutlined } from '@ant-design/icons';
 import { MdMenu } from 'react-icons/md';
+import { BsCalendar4Event } from 'react-icons/bs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RootState } from '../../redux/provider/store';
 import { useDispatch, useSelector } from 'react-redux';
@@ -12,6 +13,8 @@ import {
 import { useGetOwnUserProfileQuery } from '../../api/organization-service/Users/users';
 import { useGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 import './header.css';
 import { Search, showToast } from '../shared';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
@@ -557,6 +560,18 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
   // platform one, both set at login regardless of role resolution.
   const canShowNotificationBell = isPlatformCaller || isOrganizationUser;
 
+  // Same gate the Sidebar's own "Interviews" menu item uses (menuItem.tsx /
+  // Sidebar's requiredAuthority check for that entry) — tenant-only (a
+  // platform caller's static permission set happens to include
+  // INTERVIEW_QUESTIONS_VIEW too, but the underlying endpoint requires a
+  // tenant user) plus the real permission, so this icon only ever shows up
+  // for a role that can actually open the calendar it links to. Hook called
+  // unconditionally, ANDed with the tenant check afterwards — `tenantId`
+  // can flip across renders of the same Header instance (login/logout), and
+  // short-circuiting into the hook call itself would violate Rules of Hooks.
+  const hasInterviewCalendarAuthority = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
+  const canShowInterviewCalendar = Boolean(tenantId) && hasInterviewCalendarAuthority;
+
   const globalSearchNavigationConfig = {
     candidatesViewAllPath: '/candidates',
     jobsViewAllPath: '/jobs',
@@ -742,6 +757,17 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
             divider from the cluster before it — same plain gap spacing as
             every other control here, unchanged from before this split. */}
           <div className="flex shrink-0 items-center gap-3 lg:gap-4">
+            {canShowInterviewCalendar && (
+              <button
+                type="button"
+                onClick={() => navigate('/interviews/calendar')}
+                aria-label="My interview calendar"
+                title="My interview calendar"
+                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100"
+              >
+                <BsCalendar4Event size={18} />
+              </button>
+            )}
             <NotificationBell disabled={!canShowNotificationBell} />
 
             {userData && (

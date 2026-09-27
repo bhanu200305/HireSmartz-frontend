@@ -87,6 +87,7 @@ const FinancesPage = lazy(() => import('./pages/FinancesPage'));
 const InterviewEndedPage = lazy(() => import('./pages/InterviewEnded'));
 const AiCallBookingPage = lazy(() => import('./pages/AiCallBookingPage'));
 const InterviewsPage = lazy(() => import('./pages/InterviewsPage'));
+const InterviewCalendarPage = lazy(() => import('./pages/InterviewsPage/CalendarPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const EditInterviewRoundPage = lazy(() => import('./pages/EditInterviewRoundPage'));
 const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
@@ -766,6 +767,14 @@ export const Routes: RouteType[] = [
     name: 'Interviews',
     path: '/interviews',
     component: InterviewsPage,
+  },
+  {
+    // Header's calendar icon (next to the notification bell) — the "My
+    // Calendar" tab that used to live on the Interviews list page moved
+    // here, its own destination rather than a tab on that page.
+    name: 'InterviewCalendar',
+    path: '/interviews/calendar',
+    component: InterviewCalendarPage,
   },
   {
     name: 'AiCallBooking',

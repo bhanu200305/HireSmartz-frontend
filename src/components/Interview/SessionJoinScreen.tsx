@@ -11,12 +11,37 @@ import {
   getInterviewErrorAction,
   type InterviewApiError,
   type SessionNotYetStartedDetails,
+  type BookingTerminalDetails,
+  type SessionWindowExpiredDetails,
+  type SessionJoinLimitExceededDetails,
   type SessionTokenView,
 } from '../../api/interview-service/client';
 import { DeviceCheckLobby } from './DeviceCheckLobby';
 import { InterviewRoomLayout } from './InterviewRoomLayout';
 
 type JoinRole = 'candidate' | 'interviewer';
+
+/** Candidate-facing copy for `BookingTerminalError`'s (409, BOOKING_TERMINAL)
+ * `status` — the exact table this was speced against; `default` covers any
+ * future BookingStatus value rather than leaving it unhandled. */
+const bookingTerminalCopy = (status: string | undefined): string => {
+  switch (status) {
+    case 'no_show':
+      return 'You were marked as a no-show for this interview.';
+    case 'interviewer_no_show':
+      return "Unfortunately your interviewer wasn't able to join. We're sorry for the inconvenience — our team will follow up to reschedule.";
+    case 'ai_no_show':
+      return "Unfortunately we weren't able to connect you for this AI interview round. We're sorry for the inconvenience — our team will follow up to reschedule.";
+    case 'completed':
+      return 'This interview has already been completed.';
+    case 'cancelled':
+    case 'failed':
+    case 'rescheduled':
+      return 'This interview was cancelled/rescheduled — check your email for details.';
+    default:
+      return 'This interview is no longer available.';
+  }
+};
 
 /**
  * The page a one-click interview join link lands on.
@@ -48,13 +73,16 @@ const useSessionToken = (
   joinAs: JoinRole,
   token: string,
   pollWhileEarly: boolean,
-  hasConsented: boolean
+  canFetchCandidateToken: boolean
 ) => {
   const candidate = useJoinSessionQuery(token, {
     // interview-service refuses to mint a candidate token until consent has
     // been recorded — don't even request one until the candidate has agreed
-    // on the screen below, so the room never silently starts before that.
-    skip: !token || joinAs !== 'candidate' || !hasConsented,
+    // on the screen below. Also gated on the device-check lobby below having
+    // already confirmed camera/mic access: minting a token neither browser
+    // permission ends up backing is the whole class of bug this ordering
+    // exists to prevent (see `needsDeviceCheckFirst` in SessionJoinScreen).
+    skip: !token || joinAs !== 'candidate' || !canFetchCandidateToken,
     pollingInterval: pollWhileEarly ? EARLY_JOIN_POLL_MS : 0,
   });
   const interviewer = useJoinSessionAsInterviewerQuery(token, {
@@ -205,11 +233,13 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
   const navigate = useNavigate();
   const token = searchParams.get('token') ?? '';
 
-  // Device-check lobby gates the actual room connection — shown once the
-  // session token has loaded (below), before `<LiveKitRoom connect>` ever
-  // fires. `deviceChoice` carries whether the candidate/interviewer had
-  // muted themselves in the lobby, so joining the room respects that
-  // instead of always publishing both tracks regardless of what they chose.
+  // Device-check lobby gates the actual room connection — for the candidate
+  // it now runs before the token-mint call even fires (see
+  // `needsDeviceCheckFirst` below); for the interviewer it still runs after,
+  // once the session token has loaded, before `<LiveKitRoom connect>` ever
+  // fires. Either way, `deviceChoice` carries whether they'd muted
+  // themselves in the lobby, so joining the room respects that instead of
+  // always publishing both tracks regardless of what they chose.
   const [deviceChoice, setDeviceChoice] = useState<{
     micEnabled: boolean;
     cameraEnabled: boolean;
@@ -224,11 +254,18 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
   // docstring on why the gate is candidate-only.
   const [hasConsented, setHasConsented] = useState(joinAs !== 'candidate');
 
+  // The actual enforcement point: a candidate must grant camera+mic access
+  // BEFORE this screen ever calls the token-mint endpoint, not after — the
+  // interviewer isn't gated the same way (their device check stays after
+  // minting, further down), only the candidate's own hardware access is
+  // load-bearing here.
+  const needsDeviceCheckFirst = joinAs === 'candidate';
+
   const { data, isLoading, isError, error } = useSessionToken(
     joinAs,
     token,
     pollWhileEarly,
-    hasConsented
+    hasConsented && (!needsDeviceCheckFirst || !!deviceChoice)
   );
 
   const session = data as SessionTokenView | undefined;
@@ -261,6 +298,26 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
         detail: apiError.message,
       };
     }
+    if (action === 'booking-terminal') {
+      const details = apiError.details as BookingTerminalDetails | undefined;
+      return { title: 'Why can’t I join?', detail: bookingTerminalCopy(details?.status) };
+    }
+    if (action === 'session-window-expired') {
+      const details = apiError.details as SessionWindowExpiredDetails | undefined;
+      return {
+        title: 'Why can’t I join?',
+        detail: details?.attended
+          ? 'This interview has already ended — this link can no longer be used to rejoin.'
+          : "Your interview window has closed. Since you didn't join in time, this round will be marked as a no-show.",
+      };
+    }
+    if (action === 'join-limit-exceeded') {
+      const details = apiError.details as SessionJoinLimitExceededDetails | undefined;
+      return {
+        title: 'Why can’t I join?',
+        detail: `You've already used this link the maximum number of times${details?.max_joins != null ? ` (${details.max_joins})` : ''}. Please contact support if you're having trouble joining.`,
+      };
+    }
     return { title: 'Could not connect', detail: apiError.message };
   }, [apiError]);
 
@@ -275,6 +332,12 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
 
   if (!hasConsented) {
     return <RecordingConsentScreen onAgree={() => setHasConsented(true)} />;
+  }
+
+  // Candidate: block here, before the mint call above ever fires. See
+  // `needsDeviceCheckFirst`'s own comment above.
+  if (needsDeviceCheckFirst && !deviceChoice) {
+    return <DeviceCheckLobby onReady={setDeviceChoice} lockFullscreen />;
   }
 
   if (errorAction === 'not-yet-started') {
@@ -305,8 +368,10 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
     );
   }
 
+  // Interviewer only — a candidate is guaranteed to have `deviceChoice` set
+  // by now, having already been through the earlier gate above.
   if (!deviceChoice) {
-    return <DeviceCheckLobby onReady={setDeviceChoice} lockFullscreen={joinAs === 'candidate'} />;
+    return <DeviceCheckLobby onReady={setDeviceChoice} lockFullscreen={false} />;
   }
 
   return (

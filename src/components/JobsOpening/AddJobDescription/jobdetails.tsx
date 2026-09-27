@@ -2434,7 +2434,8 @@ const JobDetails = () => {
                           }}
                         />
                         <span className="text-sm text-gray-700 leading-5">
-                          Play Company Culture Introduction at the start of AI Audio Screening
+                          Play Company Culture Introduction at the start of AI Audio Screening and
+                          AI Video Interview
                         </span>
                       </div>
                     </Form.Item>

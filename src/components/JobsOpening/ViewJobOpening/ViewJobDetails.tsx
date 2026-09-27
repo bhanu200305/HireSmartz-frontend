@@ -141,6 +141,18 @@ const ViewJobDetails = () => {
   const shiftName = jobData?.data.shiftId
     ? shiftOptions.find((option) => idsMatch(option.id, jobData.data.shiftId))?.name || ''
     : '';
+  // `exemptionStatus.statusName` is resolved straight from job-service's own
+  // `is_exempted` boolean (mapJobOpeningToLegacyView.ts: true -> "Exempt",
+  // false -> "Non-Exempt") — the same signal publicJobDisplay.ts's
+  // formatSalary() already uses for the public careers page's "/year" vs
+  // "/hr" suffix. Empty until the status name itself has loaded, rather than
+  // guessing a period for a salary whose exemption status isn't known yet.
+  const salarySuffix =
+    jobData?.data.exemptionStatus?.statusName === 'Exempt'
+      ? '/year'
+      : jobData?.data.exemptionStatus?.statusName === 'Non-Exempt'
+        ? '/hr'
+        : '';
   const locationCode = selectedOffice?.location_code || locationData?.code || '';
   const locationAddressLine1 = selectedOffice?.address_line_1 || locationData?.addressLine1 || '';
   const locationAddressLine2 = selectedOffice?.address_line_2 || locationData?.addressLine2 || '';
@@ -408,7 +420,8 @@ const ViewJobDetails = () => {
                 }}
               />
               <span className="text-sm text-gray-500">
-                Play Company Culture Introduction at the start of AI Audio Screening
+                Play Company Culture Introduction at the start of AI Audio Screening and AI Video
+                Interview
               </span>
             </div>
           </div>
@@ -751,34 +764,33 @@ const ViewJobDetails = () => {
                 </span>
               }
             >
-              <CurrencyInput
-                value={jobData?.data.minSalary || ''}
-                disableGroupSeparators
-                decimalsLimit={2}
-                decimalScale={2}
-                disabled
-                prefix="$"
-                // Always a plain annual figure — no "/hr" suffix.
-                placeholder="Minimum Salary"
-                className="w-full !lowercase"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                }}
-                intlConfig={{ locale: 'en-US', currency: 'USD' }}
-              />
-              {/* <Input
-                type="text"
-                className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
-                value={jobData?.data.minSalary || ''}
-                disabled
-              /> */}
+              <div className="flex items-center gap-1.5">
+                <CurrencyInput
+                  value={jobData?.data.minSalary || ''}
+                  disableGroupSeparators
+                  decimalsLimit={2}
+                  decimalScale={2}
+                  disabled
+                  prefix="$"
+                  placeholder="Minimum Salary"
+                  className="w-full !lowercase"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    boxShadow: 'none',
+                    color: '#111827',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                  }}
+                  intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                />
+                {salarySuffix && (
+                  <span className="shrink-0 text-xs font-semibold text-neutral-500">
+                    {salarySuffix}
+                  </span>
+                )}
+              </div>
             </Form.Item>
             <Form.Item
               label={
@@ -787,34 +799,33 @@ const ViewJobDetails = () => {
                 </span>
               }
             >
-              <CurrencyInput
-                value={jobData?.data.maxSalary || ''}
-                disableGroupSeparators
-                decimalsLimit={2}
-                decimalScale={2}
-                disabled
-                prefix="$"
-                // Always a plain annual figure — no "/hr" suffix.
-                placeholder="Maximum Salary"
-                className="w-full !lowercase"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                }}
-                intlConfig={{ locale: 'en-US', currency: 'USD' }}
-              />
-              {/* <Input
-                type="text"
-                className="w-full mt-1"
-                style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', color: '#111827', fontWeight: 600, fontSize: '13px' }}
-                value={jobData?.data.maxSalary || ''}
-                disabled
-              /> */}
+              <div className="flex items-center gap-1.5">
+                <CurrencyInput
+                  value={jobData?.data.maxSalary || ''}
+                  disableGroupSeparators
+                  decimalsLimit={2}
+                  decimalScale={2}
+                  disabled
+                  prefix="$"
+                  placeholder="Maximum Salary"
+                  className="w-full !lowercase"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    boxShadow: 'none',
+                    color: '#111827',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                  }}
+                  intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                />
+                {salarySuffix && (
+                  <span className="shrink-0 text-xs font-semibold text-neutral-500">
+                    {salarySuffix}
+                  </span>
+                )}
+              </div>
             </Form.Item>
           </div>
         </div>

@@ -19,6 +19,11 @@ const ROUND_STATUS_BUCKET: Record<string, RoundBucket> = {
   scheduled: 'current',
   in_progress: 'current',
   rescheduled: 'current',
+  // A booking exists but hasn't been scheduled to a time yet — already
+  // actionable (there's something to follow up on), not "not reached yet"
+  // the way `to_be_scheduled`/`pending` are, so this buckets with the other
+  // in-progress statuses rather than 'pending'.
+  booking_created: 'current',
   to_be_scheduled: 'pending',
   pending: 'pending',
   no_show: 'failed',
@@ -27,13 +32,14 @@ const ROUND_STATUS_BUCKET: Record<string, RoundBucket> = {
   aborted: 'failed',
 };
 
-export const bucketForStatus = (status: string): RoundBucket => {
-  const key = status
+export const normaliseRoundStatus = (status: string): string =>
+  status
     .trim()
     .toLowerCase()
     .replace(/[-\s]+/g, '_');
-  return ROUND_STATUS_BUCKET[key] ?? 'pending';
-};
+
+export const bucketForStatus = (status: string): RoundBucket =>
+  ROUND_STATUS_BUCKET[normaliseRoundStatus(status)] ?? 'pending';
 
 /** The synthetic resume stage — job-service has no round behind it, so it's
  * matched on `stage_type`, never a name. */

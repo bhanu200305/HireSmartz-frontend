@@ -128,19 +128,41 @@ export interface CreateBookingRequest {
   candidate_interview_round_id?: string | null;
 }
 
-/** `GET /bookings/{id}/audio-screening-questions` — the real set Vapi asked
- * on an AUDIO_SCREENING call, as opposed to job-service's static job-level
- * question bank (`QuestionResponse` in `job-service/types.ts`, which is what
- * the PANEL "Interview questions" card shows — a fixed plan, not what was
- * actually asked). Same field shape as that type on purpose, since both are
- * "a question plus its scoring context": `answer_text` is the reference
- * answer used for scoring, `scoring_sections` ties the question back to the
- * rubric's sections. Only meaningful for AUDIO_SCREENING bookings. */
-export interface AudioScreeningQuestionView {
-  id: string;
+/** `GET /bookings/{id}/questions-asked` — the real questions Vapi asked on
+ * an AUDIO or AUDIO_SCREENING call, as opposed to job-service's static
+ * job-level question bank (`QuestionResponse` in `job-service/types.ts`,
+ * which is what the PANEL "Interview questions" card shows — a fixed plan,
+ * not what was actually asked). Replaces the old `/audio-screening-questions`
+ * route entirely (same path prefix, new name, new response shape) — PANEL
+ * and AI_VIDEO now reject this endpoint with a 422 SESSION_NOT_AVAILABLE, so
+ * it's never called for those two round types. `answer_text` is the
+ * reference answer used for scoring, `scoring_sections` ties the question
+ * back to the rubric's sections. */
+export interface QuestionAskedView {
+  question_id: string;
   question_text: string;
   answer_text: string | null;
   scoring_sections: string[];
+}
+
+/**
+ * - `not_yet_concluded` — round hasn't happened, or just ended and the
+ *   transcript hasn't been processed yet (a short transient window).
+ * - `no_questions_asked` — nothing was ever asked; `reason` explains why
+ *   (no answer, technical failure, cancelled, etc).
+ * - `questions_asked` — at least one question was asked, regardless of how
+ *   the call ended (completed, reschedule-requested, or not-interested all
+ *   show the questions now); `limitation` is a caveat footnote, not an
+ *   error, always populated in practice today.
+ */
+export type QuestionsAskedStatus = 'not_yet_concluded' | 'no_questions_asked' | 'questions_asked';
+
+export interface QuestionsAskedView {
+  booking_id: string;
+  status: QuestionsAskedStatus;
+  questions: QuestionAskedView[];
+  reason: string | null;
+  limitation: string | null;
 }
 
 export interface PaginatedBookings {
@@ -296,7 +318,10 @@ export type InterviewErrorAction =
   | 'unavailable'
   | 'hide-action'
   | 'contact-us'
-  | 'toast';
+  | 'toast'
+  | 'booking-terminal'
+  | 'session-window-expired'
+  | 'join-limit-exceeded';
 
 // `SessionNotYetStartedError`'s own `details` shape — see
 // interview-service's `booking_exceptions.py`. Read via
@@ -312,19 +337,55 @@ export interface SessionNotYetStartedDetails {
   early_join_window_minutes: number;
 }
 
+/** `BookingTerminalError`'s own `details` shape (409, `BOOKING_TERMINAL`) —
+ * see interview-service's `booking_exceptions.py`. */
+export interface BookingTerminalDetails {
+  booking_id: string;
+  status: string; // BookingStatus value: 'no_show' | 'interviewer_no_show' | 'ai_no_show' | 'completed' | 'cancelled' | 'failed' | 'rescheduled' | ...
+}
+
+/** `SessionWindowExpiredError`'s own `details` shape (422,
+ * `SESSION_WINDOW_EXPIRED`) — `attended` lets the frontend tell "you never
+ * joined, this will be a no-show" apart from "you already attended, this
+ * link just isn't good for re-entry" with the same error code. */
+export interface SessionWindowExpiredDetails {
+  booking_id: string;
+  attended: boolean;
+}
+
+/** `SessionJoinLimitExceededError`'s own `details` shape (422,
+ * `SESSION_JOIN_LIMIT_EXCEEDED`). `max_joins` is read from here rather than
+ * hardcoded, same convention as `early_join_window_minutes` above, so a
+ * backend-side config change never silently drifts from the copy. */
+export interface SessionJoinLimitExceededDetails {
+  booking_id: string;
+  max_joins: number;
+}
+
 export const getInterviewErrorAction = (error: InterviewApiError): InterviewErrorAction => {
   if (error.status === 401) return 'login';
   if (error.status === 410) return 'expired-link';
   if (error.status === 425) return 'not-yet-started';
   if (error.status === 500) return 'toast';
-  if (error.status === 409) return error.code === 'SLOT_FULL' ? 'refetch-slots' : 'disable-action';
-  if (error.status === 422)
+  if (error.status === 409) {
+    // BOOKING_TERMINAL belongs here, not in the 422 branch below — it's a
+    // ConflictError (409), not a DomainRuleViolationError like the other
+    // two session errors. Easy mistake: put it under 422 and it silently
+    // never matches.
+    if (error.code === 'BOOKING_TERMINAL') return 'booking-terminal';
+    return error.code === 'SLOT_FULL' ? 'refetch-slots' : 'disable-action';
+  }
+  if (error.status === 422) {
     // FEEDBACK_NOT_AVAILABLE covers the transient "the call just ended,
     // the room_finished webhook hasn't marked the booking COMPLETED yet"
     // race, not just "no feedback step for this round type" — same
     // "not-ready" treatment as RECORDING_NOT_AVAILABLE below, i.e. worth
     // a short poll rather than a dead-end error.
-    return error.code === 'FEEDBACK_NOT_AVAILABLE' ? 'not-ready' : 'inline-error';
+    if (error.code === 'FEEDBACK_NOT_AVAILABLE') return 'not-ready';
+    if (error.code === 'SESSION_WINDOW_EXPIRED') return 'session-window-expired';
+    if (error.code === 'SESSION_JOIN_LIMIT_EXCEEDED') return 'join-limit-exceeded';
+    return 'inline-error';
+  }
   if (error.status === 404)
     return error.code === 'RECORDING_NOT_AVAILABLE' ? 'not-ready' : 'not-found';
   if (error.status === 403)
@@ -487,13 +548,13 @@ export const interviewApi = createApi({
       query: (bookingId) => platform({ url: `/bookings/${bookingId}/history` }),
       providesTags: (_result, _error, id) => [{ type: 'Booking', id }],
     }),
-    // 404 means "not available yet" (the call hasn't concluded, or Vapi's
-    // reply hasn't been processed) — NOT a real error. Callers should check
-    // `error.status === 404` and render a neutral waiting state rather than
-    // an error toast; this endpoint is never called for AUDIO/AI_VIDEO/PANEL,
-    // where it wouldn't exist at all.
-    getAudioScreeningQuestions: build.query<AudioScreeningQuestionView[], string>({
-      query: (bookingId) => platform({ url: `/bookings/${bookingId}/audio-screening-questions` }),
+    // "Not concluded yet" is a real `status` value in the response body
+    // now, not a 404 — only a genuine error (booking not found, or a 422
+    // SESSION_NOT_AVAILABLE if this is ever called for PANEL/AI_VIDEO by
+    // mistake) reaches `error` here. Only call this for AUDIO/AUDIO_SCREENING
+    // rounds — see `isAudioScreeningRound`/`isIntakeCallRound`.
+    getQuestionsAsked: build.query<QuestionsAskedView, string>({
+      query: (bookingId) => platform({ url: `/bookings/${bookingId}/questions-asked` }),
     }),
     // Manually requests a reschedule for a concluded AUDIO/AUDIO_SCREENING
     // call, or a PANEL round whose booking already ran its course — creates
@@ -817,7 +878,7 @@ export const {
   useCreateBookingMutation,
   useGetBookingQuery,
   useGetBookingHistoryQuery,
-  useGetAudioScreeningQuestionsQuery,
+  useGetQuestionsAskedQuery,
   useRequestCallRescheduleMutation,
   useListBookingsQuery,
   useCancelBookingMutation,

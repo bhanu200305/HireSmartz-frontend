@@ -10,7 +10,6 @@ import {
   LuSquarePen,
   LuThumbsDown,
   LuThumbsUp,
-  LuPhone,
   LuMic,
   LuVideo,
   LuUsers,
@@ -43,6 +42,7 @@ import {
   useRequestResumeUploadMutation,
 } from '../../../api/candidate-service/Candidates/scoring';
 import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candidates/notes';
+import { candidateStatusColor } from './candidateDisplay';
 import {
   useCreateBookingMutation,
   useGetBookingQuery,
@@ -53,10 +53,11 @@ import {
   useGetArtifactsQuery,
   useGetInterviewersCalendarStatusQuery,
   useUploadOfflineRecordingMutation,
-  useGetAudioScreeningQuestionsQuery,
+  useGetQuestionsAskedQuery,
   CONCLUDED_BOOKING_STATUSES,
 } from '../../../api/interview-service/client';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
+import { getPlatformErrorCode } from '../../../shared/utils/api/platformErrorEnvelope';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
@@ -407,21 +408,19 @@ const CandidateDetails = () => {
     pollingInterval: 20_000,
     skipPollingIfUnfocused: true,
   });
-  // The real questions Vapi asked on this AUDIO_SCREENING call — distinct
-  // from job-service's static per-round question bank (`roundQuestions`
-  // below), which is a fixed plan, not what actually got asked. Only
-  // meaningful for AUDIO_SCREENING; a 404 means the call hasn't concluded
-  // (or Vapi's reply hasn't been processed) yet, not a real error — handled
-  // where this is rendered, not here.
+  // The real questions Vapi asked on this call — distinct from job-service's
+  // static per-round question bank (`roundQuestions` below), which is a
+  // fixed plan, not what actually got asked. Only called for AUDIO/
+  // AUDIO_SCREENING rounds — PANEL and AI_VIDEO reject this endpoint with a
+  // 422 SESSION_NOT_AVAILABLE, so it's never worth requesting for them.
+  const isVoiceScreeningRound =
+    !!selectedRound && (isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound));
   const {
-    data: audioScreeningQuestions,
-    error: audioScreeningQuestionsError,
-    isLoading: isLoadingAudioScreeningQuestions,
-  } = useGetAudioScreeningQuestionsQuery(selectedRound?.interview_booking_id ?? '', {
-    skip:
-      !selectedRound ||
-      !isAudioScreeningRound(selectedRound) ||
-      !selectedRound.interview_booking_id,
+    data: questionsAsked,
+    error: questionsAskedError,
+    isLoading: isLoadingQuestionsAsked,
+  } = useGetQuestionsAskedQuery(selectedRound?.interview_booking_id ?? '', {
+    skip: !isVoiceScreeningRound || !selectedRound?.interview_booking_id,
   });
   // Every past attempt for this round, not just the current one — see
   // getBookingHistory's own docstring for why interview-service, not
@@ -685,10 +684,15 @@ const CandidateDetails = () => {
         showToast({ message: 'Booking created successfully.', type: 'success' });
       }
     } catch (error) {
-      showToast({
-        message: getCandidateErrorMessage(error, 'Could not create booking.'),
-        type: 'error',
-      });
+      // interview-service's own PREVIOUS_ROUND_NOT_CONCLUDED message is
+      // log-style (round numbers, raw candidate/job UUIDs) — not something to
+      // put in a toast, so this one case gets a hand-written message instead
+      // of the backend's own wording.
+      const message =
+        getPlatformErrorCode(error) === 'PREVIOUS_ROUND_NOT_CONCLUDED'
+          ? 'Please complete the previous round before scheduling this one.'
+          : getCandidateErrorMessage(error, 'Could not create booking.');
+      showToast({ message, type: 'error' });
     } finally {
       setIsCreatingBooking(false);
     }
@@ -728,6 +732,14 @@ const CandidateDetails = () => {
       isAudioScreeningRound(selectedRound) ||
       isAiVideoRound(selectedRound))
   );
+  // Same lookup the Scores tab's summary table uses per round (`scores.find`
+  // inside `summariseRound`, below) — kept as its own value here so the
+  // round drill-down can show this round's own AI Assessment card without
+  // duplicating that table's chart/status branching, which this card
+  // doesn't need.
+  const selectedRoundScore = selectedRound
+    ? scores.find((s) => s.candidate_interview_round_id === selectedRound.id)
+    : undefined;
   // Same "score already sitting here means reviewed and ready to move on"
   // read as PipelineBoard.tsx's own version of this check — the resume
   // stage's status never flips off "to_be_scheduled"/"pending" on its own,
@@ -757,6 +769,14 @@ const CandidateDetails = () => {
     currentRound !== null &&
     currentRound.stage_type === 'interview' &&
     !isRoundConcluded(currentRound);
+  // MARK SELECTED shouldn't be clickable mid-pipeline — `resolveCurrentRound`
+  // returning null means every real round has actually been marked
+  // `completed` (the same "nothing left for ADVANCE to do" signal
+  // `advanceDisabled` above is built on), i.e. the candidate has reached and
+  // concluded the last round. `rounds.length > 0` guards a candidate whose
+  // plan hasn't loaded/has no rounds yet, which would otherwise trivially
+  // satisfy "nothing outstanding".
+  const allRoundsCompleted = rounds.length > 0 && currentRound === null;
 
   // Resume Review and the Intake Call are one unit at the head of any pipeline
   // that has an Intake Call round: the AI scores the resume, then the call's
@@ -917,19 +937,23 @@ const CandidateDetails = () => {
                     ? 'text-green-700'
                     : statusUpper.includes('reject')
                       ? 'text-red-700'
-                      : statusUpper === 'withdrawn'
-                        ? 'text-orange-700'
-                        : 'text-brand-700'
+                      : // Every other status (including withdrawn) reads its color
+                        // from the SAME map CandidatesListing.tsx's status pill
+                        // uses — this used to hardcode its own orange for
+                        // withdrawn, out of sync with that map's pink, so the
+                        // same candidate showed two different colors depending
+                        // on which screen you were looking at.
+                        candidateStatusColor(candidate?.status_code).text
                 }`}
               >
                 {statusUpper === 'selected' ? (
                   <LuThumbsUp size={16} />
                 ) : statusUpper.includes('reject') ? (
                   <LuThumbsDown size={16} />
-                ) : statusUpper === 'withdrawn' ? (
-                  <span className="w-2 h-2 rounded-full bg-orange-500 shadow-lg shadow-orange-400" />
                 ) : (
-                  <span className="w-2 h-2 rounded-full bg-brand-500 shadow-lg shadow-brand-400" />
+                  <span
+                    className={`w-2 h-2 rounded-full ${candidateStatusColor(candidate?.status_code).dot}`}
+                  />
                 )}
                 {candidate?.status_label || 'Applied'}
               </span>
@@ -1004,12 +1028,31 @@ const CandidateDetails = () => {
                 >
                   <span>REJECT</span>
                 </Button>
-                <Button
-                  className="flex items-center justify-center text-sm px-6 h-[34px] gap-2 rounded-full border-2 border-green-500 bg-green-50"
-                  onClick={() => setStatusModal('select')}
-                >
-                  <span className="text-green-700 font-semibold">MARK SELECTED</span>
-                </Button>
+                {allRoundsCompleted && (
+                  <Button
+                    className="flex items-center justify-center text-sm px-6 h-[34px] gap-2 rounded-full border-2 border-green-500 bg-green-50"
+                    onClick={() => setStatusModal('select')}
+                  >
+                    <span className="text-green-700 font-semibold">MARK SELECTED</span>
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Only reachable via bulk resume upload — every other intake
+                path (recruiter Add Candidate, both public apply flows) now
+                requires email server-side. ai-service's resume parsing
+                just didn't find one here. Warn rather than disable: the
+                pipeline actions above don't themselves need an email to
+                function (REJECT/ADVANCE are internal status moves), it's
+                downstream things like scheduling emails that would
+                silently go nowhere. */}
+            {candidate && !candidate.email_id && (
+              <div className="flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-xs text-amber-800">
+                  No email on file for this candidate — actions that email them (scheduling invites,
+                  notifications) won&apos;t work until one is added.
+                </p>
               </div>
             )}
           </div>
@@ -1083,19 +1126,6 @@ const CandidateDetails = () => {
                   </span>
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">{roundLabel(selectedRound)}</h3>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-                      <span>{candidateDisplayName(candidate)}</span>
-                      <span className="flex items-center gap-1">
-                        <LuMail size={13} className="text-gray-400" />
-                        {candidate?.email_id || 'No email on file'}
-                      </span>
-                      {candidate?.contact_no && (
-                        <span className="flex items-center gap-1">
-                          <LuPhone size={13} className="text-gray-400" />
-                          {candidate.contact_no}
-                        </span>
-                      )}
-                    </div>
                   </div>
                 </div>
                 <span className="shrink-0 rounded-full bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700">
@@ -1186,6 +1216,55 @@ const CandidateDetails = () => {
                 </CommonCard>
               ) : (
                 <>
+                  {selectedRoundScore && (
+                    // The round's own AI/recruiter score, including its
+                    // section breakdown and reasoning — previously only
+                    // shown squeezed into the Scores tab's summary table
+                    // (a cross-round comparison, not built to hold a full
+                    // paragraph), which blew out that table's row height.
+                    // Belongs here, in the round it's actually about.
+                    <CommonCard>
+                      <div className="p-5 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold text-gray-900">AI Assessment</h4>
+                          <Button
+                            className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700"
+                            onClick={() =>
+                              setScoreModalFor({
+                                scoreId: selectedRoundScore.id,
+                                roundName: roundLabel(selectedRound),
+                                currentScore: selectedRoundScore.recruiter_score,
+                                currentReason: selectedRoundScore.recruiter_score_reason,
+                              })
+                            }
+                          >
+                            {selectedRoundScore.recruiter_score != null ? 'EDIT' : 'SCORE'}
+                          </Button>
+                        </div>
+                        <div className="text-2xl font-bold text-primary">
+                          {selectedRoundScore.recruiter_score != null
+                            ? `${selectedRoundScore.recruiter_score} / 5`
+                            : selectedRoundScore.score != null
+                              ? `${selectedRoundScore.score} / 10`
+                              : '-'}
+                        </div>
+                        {selectedRoundScore.section_scores &&
+                          selectedRoundScore.section_scores.length > 0 && (
+                            <div className="text-xs text-gray-500">
+                              {selectedRoundScore.section_scores
+                                .map((s) => `${s.key}: ${s.score}/10`)
+                                .join(' · ')}
+                            </div>
+                          )}
+                        {selectedRoundScore.scoring_reason && (
+                          <p className="text-sm text-gray-600">
+                            {selectedRoundScore.scoring_reason}
+                          </p>
+                        )}
+                      </div>
+                    </CommonCard>
+                  )}
+
                   {selectedRoundIsVoiceCall && (
                     // What actually happened on the call — completed,
                     // asked to reschedule, said not interested, never
@@ -1265,7 +1344,7 @@ const CandidateDetails = () => {
                                       ? 'Current attempt'
                                       : `Attempt ${bookingHistory!.length - index}`}
                                   </div>
-                                  {actionTime && (
+                                  {index !== 0 && actionTime && (
                                     <div className="text-xs text-gray-500">
                                       {isOriginal ? 'Created' : 'Rescheduled'} {actionTime}
                                     </div>
@@ -1273,7 +1352,9 @@ const CandidateDetails = () => {
                                   <div className="text-xs text-gray-400">
                                     {formatDateTime(attempt.start_time)
                                       ? `Scheduled for ${formatDateTime(attempt.start_time)}`
-                                      : 'Not yet scheduled'}
+                                      : CONCLUDED_BOOKING_STATUSES.includes(attempt.status)
+                                        ? 'Call placed immediately (no scheduled time)'
+                                        : 'Not yet scheduled'}
                                   </div>
                                 </div>
                                 <span className="shrink-0 text-xs font-semibold text-primary-600">
@@ -1343,7 +1424,7 @@ const CandidateDetails = () => {
                     </CommonCard>
                   )}
 
-                  {isAudioScreeningRound(selectedRound) && (
+                  {isVoiceScreeningRound && (
                     <CommonCard>
                       <div className="p-5 flex flex-col gap-3">
                         <h4 className="font-semibold text-gray-900">Questions asked</h4>
@@ -1351,35 +1432,45 @@ const CandidateDetails = () => {
                           The real questions Vapi asked on this call, not the job&apos;s question
                           plan.
                         </p>
-                        {isLoadingAudioScreeningQuestions ? (
+                        {isLoadingQuestionsAsked ? (
                           <Loader />
-                        ) : audioScreeningQuestionsError ? (
+                        ) : questionsAskedError ? (
                           <p className="text-sm text-gray-400">
-                            {'status' in audioScreeningQuestionsError &&
-                            audioScreeningQuestionsError.status === 404
-                              ? 'Questions will appear once the call completes.'
-                              : 'Could not load the questions for this call right now.'}
+                            Could not load the questions for this call right now.
                           </p>
-                        ) : audioScreeningQuestions && audioScreeningQuestions.length > 0 ? (
-                          <ol className="list-decimal space-y-3 pl-5 text-sm">
-                            {audioScreeningQuestions.map((q) => (
-                              <li key={q.id} className="text-gray-800">
-                                {q.question_text}
-                                {q.answer_text && (
-                                  <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
-                                )}
-                                {q.scoring_sections.length > 0 && (
-                                  <div className="mt-1 flex flex-wrap gap-1">
-                                    {q.scoring_sections.map((section) => (
-                                      <Badge key={section} status="neutral" dot={false}>
-                                        {section}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
-                              </li>
-                            ))}
-                          </ol>
+                        ) : questionsAsked?.status === 'not_yet_concluded' ? (
+                          <p className="text-sm text-gray-400">
+                            This round hasn&apos;t concluded yet.
+                          </p>
+                        ) : questionsAsked?.status === 'no_questions_asked' ? (
+                          <p className="text-sm text-gray-400">
+                            {questionsAsked.reason ?? 'No questions were recorded for this call.'}
+                          </p>
+                        ) : questionsAsked && questionsAsked.questions.length > 0 ? (
+                          <>
+                            <ol className="list-decimal space-y-3 pl-5 text-sm">
+                              {questionsAsked.questions.map((q) => (
+                                <li key={q.question_id} className="text-gray-800">
+                                  {q.question_text}
+                                  {q.answer_text && (
+                                    <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
+                                  )}
+                                  {q.scoring_sections.length > 0 && (
+                                    <div className="mt-1 flex flex-wrap gap-1">
+                                      {q.scoring_sections.map((section) => (
+                                        <Badge key={section} status="neutral" dot={false}>
+                                          {section}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </li>
+                              ))}
+                            </ol>
+                            {questionsAsked.limitation && (
+                              <p className="text-xs text-gray-400">{questionsAsked.limitation}</p>
+                            )}
+                          </>
                         ) : (
                           <p className="text-sm text-gray-400">
                             No questions were recorded for this call.
@@ -1395,8 +1486,15 @@ const CandidateDetails = () => {
                       {selectedRound.interview_booking_id ? (
                         <p className="text-sm text-gray-600">
                           This round has a booking. The candidate uses the booking link to choose a
-                          time; audio and AI Video use available AI slots, while Panel uses the
-                          connected calendar.
+                          time{' '}
+                          {isPanelRound
+                            ? 'from the panel’s connected calendar.'
+                            : isAiVideoRound(selectedRound)
+                              ? 'from the available AI Video slots.'
+                              : isAudioScreeningRound(selectedRound) ||
+                                  isIntakeCallRound(selectedRound)
+                                ? 'from the available AI audio slots.'
+                                : 'from the available slots.'}
                         </p>
                       ) : (
                         <p className="text-sm text-gray-600">
@@ -1627,42 +1725,69 @@ const CandidateDetails = () => {
                 <>
                   <CommonCard>
                     <div className="p-5">
-                      <h3 className="text-sm font-semibold text-gray-900">Scores across rounds</h3>
-                      <div className="mt-4 h-28 rounded-lg bg-gradient-to-b from-primary-50 to-white px-2 pt-2">
-                        <div className="flex h-full items-end gap-2 border-b border-gray-100">
-                          {rounds.map((round, index) => {
-                            // The resume stage / Intake Call rows have no
-                            // `CandidateInterviewScore`; `summariseRound`
-                            // substitutes the AI resume score and the
-                            // consistency score respectively, and resolves
-                            // `pct` against whichever scale that round's
-                            // score actually uses (0-5 recruiter review vs
-                            // 0-100 AI score) so the bar height moves with
-                            // the real value instead of every AI-scored
-                            // round rendering maxed out.
-                            const { chartValue, pct, scoreText } = summariseRound(round);
-                            return (
-                              <div
-                                key={round.id ?? `score-${index}`}
-                                className="relative flex h-full flex-1 flex-col items-center justify-end"
-                              >
-                                <span
-                                  className="w-full max-w-[10px] rounded-t bg-primary/25"
-                                  style={{ height: `${pct}%` }}
-                                />
-                                <span
-                                  className="absolute h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-primary ring-2 ring-white"
-                                  style={{ bottom: `${pct}%` }}
-                                  title={
-                                    chartValue == null ? 'No score recorded' : (scoreText ?? '')
-                                  }
-                                />
-                              </div>
-                            );
-                          })}
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          Scores across rounds
+                        </h3>
+                        <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <span className="h-2 w-2 rounded-full bg-success" /> Strong
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="h-2 w-2 rounded-full bg-warning" /> Fair
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="h-2 w-2 rounded-full bg-danger" /> Weak
+                          </span>
                         </div>
                       </div>
-                      <div className="mt-2 flex gap-2 text-[10px] text-gray-400">
+                      <div className="mt-5 flex items-end gap-4">
+                        {rounds.map((round, index) => {
+                          // The resume stage / Intake Call rows have no
+                          // `CandidateInterviewScore`; `summariseRound`
+                          // substitutes the AI resume score and the
+                          // consistency score respectively, and resolves
+                          // `pct` against whichever scale that round's
+                          // score actually uses (0-5 recruiter review vs
+                          // 0-100 AI score) so the bar height moves with
+                          // the real value instead of every AI-scored
+                          // round rendering maxed out.
+                          const { chartValue, pct, scoreText } = summariseRound(round);
+                          const hasScore = chartValue != null;
+                          const barColorClass = !hasScore
+                            ? 'bg-transparent border-2 border-dashed border-gray-200'
+                            : pct >= 70
+                              ? 'bg-success'
+                              : pct >= 40
+                                ? 'bg-warning'
+                                : 'bg-danger';
+                          return (
+                            <Tooltip
+                              key={round.id ?? `score-${index}`}
+                              title={
+                                hasScore
+                                  ? `${roundLabel(round)}: ${scoreText}`
+                                  : `${roundLabel(round)}: No score recorded`
+                              }
+                            >
+                              <div className="flex flex-1 flex-col items-center gap-2">
+                                <div className="flex h-32 w-full max-w-[56px] flex-col items-center justify-end">
+                                  {hasScore && (
+                                    <span className="mb-1.5 text-xs font-bold text-gray-700">
+                                      {scoreText?.split(' · ')[0]}
+                                    </span>
+                                  )}
+                                  <div
+                                    className={`w-full rounded-t-md transition-all ${barColorClass}`}
+                                    style={{ height: hasScore ? `${Math.max(pct, 6)}%` : '8%' }}
+                                  />
+                                </div>
+                              </div>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-2 flex gap-4 border-t border-gray-100 pt-2 text-[10px] text-gray-400">
                         {rounds.map((round, index) => (
                           <span
                             key={round.id ?? `label-${index}`}
@@ -1702,27 +1827,13 @@ const CandidateDetails = () => {
                                   {roundScore?.recruiter_scored_by ?? 'Not assigned'}
                                 </td>
                                 <td className="max-w-[260px] px-2 py-3 text-gray-700">
+                                  {/* Section breakdown and the AI's own reasoning
+                                      (CandidateInterviewScoreView.section_scores/
+                                      scoring_reason) now live on the round's own
+                                      "AI Assessment" card in the Pipeline drill-down
+                                      instead — a cross-round comparison table isn't
+                                      built to hold a full paragraph per row. */}
                                   {scoreText ?? statusText}
-                                  {roundScore?.section_scores &&
-                                    roundScore.section_scores.length > 0 && (
-                                      <div className="mt-0.5 text-[11px] text-gray-400">
-                                        {roundScore.section_scores
-                                          .map((s) => `${s.key}: ${s.score}/10`)
-                                          .join(' · ')}
-                                      </div>
-                                    )}
-                                  {/* The AI's own reasoning behind `score` — same
-                                      field/pairing as the Resume Assessment card's
-                                      `candidate.scoring_reason` under
-                                      `candidate.resume_score` above, just never
-                                      carried over to this per-round table despite
-                                      candidate-service returning it here too
-                                      (CandidateInterviewScoreView.scoring_reason). */}
-                                  {roundScore?.scoring_reason && (
-                                    <div className="mt-0.5 text-[11px] text-gray-400">
-                                      {roundScore.scoring_reason}
-                                    </div>
-                                  )}
                                 </td>
                                 <td className="px-2 py-3">
                                   {outcomeLabel ? (

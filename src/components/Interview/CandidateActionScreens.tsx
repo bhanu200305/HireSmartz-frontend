@@ -12,7 +12,6 @@ import {
   useGetRecordingQuery,
   getInterviewErrorAction,
   type InterviewApiError,
-  type InterviewErrorAction,
 } from '../../api/interview-service/client';
 import { interviewTypeLabel } from '../../pages/InterviewsPage/interviewLabels';
 
@@ -41,17 +40,17 @@ const linkErrorText = (error: InterviewApiError | undefined, fallback: string): 
 // SessionJoinScreen's `onDisconnected`, reusing the same SESSION_PURPOSE
 // token — the round's booking is marked COMPLETED by LiveKit's own
 // `room_finished` webhook, which can genuinely still be in flight for a few
-// seconds after the candidate's browser itself disconnects. The very first
-// request in that window can come back as `FEEDBACK_NOT_AVAILABLE`
-// ('not-ready'), or — since the browser's network stack is often still
-// settling right after the WebRTC teardown — as a bare network failure or a
-// transient 500 (both classified 'toast'). Retrying only on 'not-ready' left
-// the other two shapes as a dead-end error screen that never resolved on its
-// own (only a manual reload, which just got lucky by retrying later once the
-// webhook had caught up). Treat both shapes as retryable for a bounded
-// window instead.
-const RETRYABLE_FEEDBACK_ERROR_ACTIONS = new Set<InterviewErrorAction>(['not-ready', 'toast']);
-const FEEDBACK_RETRY_WINDOW_MS = 20000;
+// seconds after the candidate's browser itself disconnects. Branch on the
+// backend's own `error_code` rather than retrying on any error shape:
+//   - 425 FEEDBACK_PENDING  — booking not COMPLETED *yet*, will resolve on
+//     its own once the webhook lands. Keep showing the same waiting state
+//     and poll silently in the background.
+//   - 422 FEEDBACK_NOT_AVAILABLE / 404 BOOKING_NOT_FOUND — permanent: the
+//     booking is in a status that will never produce feedback, or doesn't
+//     exist at all. Stop immediately, no retry — these were never going to
+//     resolve on their own, so retrying them only delayed a dead-end screen.
+const FEEDBACK_PENDING_POLL_MS = 1200;
+const FEEDBACK_PENDING_TIMEOUT_MS = 20000;
 
 // ---------------------------------------------------------------------------
 // Candidate feedback  —  /feedback?token=
@@ -60,33 +59,39 @@ export const CandidateFeedbackPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
-  // Set (once) the moment a retryable error is first seen, and cleared once
-  // the fetch stops erroring. `withinRetryWindow` is derived from this state
-  // (set on a *previous* render) before the query hook is called below, so
-  // `pollingInterval` reacts to it correctly; the `isError`/`isRetryableError`
-  // check further down (using *this* render's fresh result) only decides
-  // whether to schedule the state update that will turn polling on/off from
-  // the next render on — see the "adjust state during rendering" pattern.
-  const [firstRetryableErrorAt, setFirstRetryableErrorAt] = useState<number | null>(null);
-  const withinRetryWindow =
-    firstRetryableErrorAt !== null && Date.now() - firstRetryableErrorAt < FEEDBACK_RETRY_WINDOW_MS;
+  // Set (once) the moment a FEEDBACK_PENDING response is first seen, and
+  // cleared once the fetch stops erroring. `withinPendingWindow` is derived
+  // from this state (set on a *previous* render) before the query hook is
+  // called below, so `pollingInterval` reacts to it correctly; the
+  // `isPending` check further down (using *this* render's fresh result) only
+  // decides whether to schedule the state update that will turn polling
+  // on/off from the next render on — see the "adjust state during
+  // rendering" pattern.
+  const [firstPendingAt, setFirstPendingAt] = useState<number | null>(null);
+  const withinPendingWindow =
+    firstPendingAt !== null && Date.now() - firstPendingAt < FEEDBACK_PENDING_TIMEOUT_MS;
 
   const { data, isLoading, isError, error } = useGetCandidateFeedbackLinkQuery(token, {
     skip: !token,
-    pollingInterval: withinRetryWindow ? 2000 : 0,
+    pollingInterval: withinPendingWindow ? FEEDBACK_PENDING_POLL_MS : 0,
   });
 
-  const errorAction = isError ? getInterviewErrorAction(error as InterviewApiError) : null;
-  const isRetryableError =
-    errorAction !== null && RETRYABLE_FEEDBACK_ERROR_ACTIONS.has(errorAction);
+  const apiError = isError ? (error as InterviewApiError) : undefined;
+  const isPending = apiError?.status === 425 && apiError.code === 'FEEDBACK_PENDING';
 
-  if (!isError && firstRetryableErrorAt !== null) {
-    setFirstRetryableErrorAt(null);
-  } else if (isError && isRetryableError && firstRetryableErrorAt === null) {
-    setFirstRetryableErrorAt(Date.now());
+  if (!isPending && firstPendingAt !== null) {
+    setFirstPendingAt(null);
+  } else if (isPending && firstPendingAt === null) {
+    setFirstPendingAt(Date.now());
   }
 
-  const isWaitingForCompletion = isError && isRetryableError && withinRetryWindow;
+  // Same waiting state for the very first fetch and every silent retry
+  // while pending — no visible transition between them, by construction.
+  const isWaitingForCompletion = isLoading || (isPending && withinPendingWindow);
+  const hasPendingTimedOut = isPending && !withinPendingWindow;
+  // FEEDBACK_NOT_AVAILABLE, BOOKING_NOT_FOUND, or anything else — never
+  // retried, shown immediately.
+  const isPermanentError = isError && !isPending;
 
   const [submit, { isLoading: isSubmitting }] = useSubmitCandidateFeedbackMutation();
 
@@ -121,32 +126,30 @@ export const CandidateFeedbackPage = () => {
       </Shell>
     );
   }
-  if (isLoading) {
+  if (isWaitingForCompletion) {
     return (
       <Shell>
         <div className="flex justify-center py-6">
           <Loader />
         </div>
+        <p className="mt-2 text-center text-sm text-gray-500">Finishing up your interview…</p>
       </Shell>
     );
   }
-  if (isError && isWaitingForCompletion) {
+  if (hasPendingTimedOut) {
     return (
       <Shell>
-        <div className="flex justify-center py-6">
-          <Loader />
-        </div>
-        <p className="mt-2 text-center text-sm text-gray-500">
-          Wrapping up your interview — this will just take a moment…
+        <p className="text-center text-sm text-gray-600">
+          This is taking longer than expected — please refresh in a moment.
         </p>
       </Shell>
     );
   }
-  if (isError) {
+  if (isPermanentError) {
     return (
       <Shell>
         <p className="text-center text-sm text-gray-600">
-          {linkErrorText(error as InterviewApiError, 'This feedback link is not valid.')}
+          {linkErrorText(apiError, 'This feedback link is not valid.')}
         </p>
       </Shell>
     );

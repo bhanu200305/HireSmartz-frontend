@@ -14,7 +14,7 @@ import {
 } from 'react-icons/lu';
 import { TbBriefcase2 } from 'react-icons/tb';
 import { IoArrowRedoOutline } from 'react-icons/io5';
-import { MdClose, MdOutlineRemoveRedEye } from 'react-icons/md';
+import { MdClose } from 'react-icons/md';
 import { CommonCard, Button, Badge, showToast } from '../../shared';
 import MasterPagination from '../../shared/ui/MasterPagination';
 import { Search } from '../../shared/ui/search';
@@ -35,7 +35,10 @@ import {
   type CandidateView,
   type ListCandidatesArgs,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
-import { useListCandidateStatusesQuery } from '../../../api/candidate-service/Master/master';
+import {
+  useListCandidateStatusesQuery,
+  useListApplicationSourcesQuery,
+} from '../../../api/candidate-service/Master/master';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
 import AddCandidateModal from './Modal/AddCandidateModal';
@@ -44,10 +47,8 @@ import BulkScheduleInterviewsModal from './Modal/BulkScheduleInterviewsModal';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
-import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
 import {
-  candidateDisplayName,
   candidateInitials,
   candidateStatusColor,
   candidateStatusTooltip,
@@ -83,7 +84,6 @@ const CandidatesListing = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isAddCandidateModalOpen, setIsAddCandidateModalOpen] = useState(false);
   const [isJobNotesPanelOpen, setIsJobNotesPanelOpen] = useState(false);
-  const [notesCandidate, setNotesCandidate] = useState<{ id: string; name: string } | null>(null);
   const [isBulkEmailOpen, setIsBulkEmailOpen] = useState(false);
   const [isBulkScheduleOpen, setIsBulkScheduleOpen] = useState(false);
   const [statusModal, setStatusModal] = useState<{
@@ -174,6 +174,15 @@ const CandidatesListing = () => {
     () => new Map(statuses.map((s) => [s.code, s.label])),
     [statuses]
   );
+  // `candidate.source` is the raw master-data code (e.g. "qr_self_apply") —
+  // same code/label split as candidate statuses above, resolved through the
+  // same master endpoint FilterMenu.tsx's Source dropdown already uses,
+  // rather than showing the snake_case code as-is.
+  const { data: applicationSources = [] } = useListApplicationSourcesQuery();
+  const sourceLabelByCode = useMemo(
+    () => new Map(applicationSources.map((s) => [s.code, s.label])),
+    [applicationSources]
+  );
   const candidates = data?.items ?? [];
   const selectedIds = Object.keys(selected).filter((cid) => selected[cid]);
   const selectedCount = selectedIds.length;
@@ -235,8 +244,6 @@ const CandidatesListing = () => {
   const buildDetailsPath = (candidateId: string) =>
     `/jobs/view/${parsedJobId}/candidates/${candidateId}/details`;
 
-  const actionIconRowClass =
-    'flex items-center gap-3 [&_svg]:!h-5 [&_svg]:!w-5 [&_svg]:!min-h-5 [&_svg]:!min-w-5 [&_svg]:!max-h-5 [&_svg]:!max-w-5';
   const notesPillIconClass =
     '[&_svg]:!h-5 [&_svg]:!w-5 [&_.anticon]:!inline-flex [&_.anticon]:!h-5 [&_.anticon]:!w-5 [&_.anticon]:!items-center [&_.anticon]:!justify-center';
 
@@ -390,11 +397,8 @@ const CandidatesListing = () => {
                 >
                   APPLIED DATE
                 </COL>
-                <COL span={6}>
+                <COL span={9}>
                   <span>STATUS</span>
-                </COL>
-                <COL span={2}>
-                  <span>ACTIONS</span>
                 </COL>
               </Row>
             </div>
@@ -489,7 +493,7 @@ const CandidatesListing = () => {
                                 : 'N/A'}
                             </p>
                           </Col>
-                          <Col span={6}>
+                          <Col span={9}>
                             <Tooltip title={candidateStatusTooltip(candidate.status_code)}>
                               <Link
                                 to={buildDetailsPath(candidate.id)}
@@ -512,39 +516,9 @@ const CandidatesListing = () => {
                               </Link>
                             </Tooltip>
                           </Col>
-                          <Col span={2} className="flex items-center justify-center">
-                            <div className={actionIconRowClass}>
-                              <Tooltip title="View Assessment">
-                                <MdOutlineRemoveRedEye
-                                  className="block cursor-pointer"
-                                  onClick={() => navigate(buildDetailsPath(candidate.id))}
-                                />
-                              </Tooltip>
-                              <Tooltip title="Candidate Notes">
-                                <LuSquarePen
-                                  size={18}
-                                  className="block cursor-pointer"
-                                  onClick={() =>
-                                    setNotesCandidate({
-                                      id: candidate.id,
-                                      name: candidateDisplayName(candidate),
-                                    })
-                                  }
-                                />
-                              </Tooltip>
-                            </div>
-                          </Col>
                         </Row>
                         {expandedId === candidate.id && (
-                          <div className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-1.5 rounded-lg bg-neutral-50 p-3 text-xs sm:grid-cols-3 lg:grid-cols-5">
-                            <p className="truncate">
-                              <span className="font-semibold text-neutral-500">
-                                Qualification:{' '}
-                              </span>
-                              <span className="text-neutral-700">
-                                {candidate.qualification || 'N/A'}
-                              </span>
-                            </p>
+                          <div className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-1.5 rounded-lg bg-neutral-50 p-3 text-xs sm:grid-cols-3">
                             <p className="truncate">
                               <span className="font-semibold text-neutral-500">Email: </span>
                               <span className="text-neutral-700">
@@ -558,12 +532,12 @@ const CandidatesListing = () => {
                               </span>
                             </p>
                             <p className="truncate">
-                              <span className="font-semibold text-neutral-500">Location: </span>
-                              <span className="text-neutral-700">{candidate.address || 'N/A'}</span>
-                            </p>
-                            <p className="truncate">
                               <span className="font-semibold text-neutral-500">Source: </span>
-                              <span className="text-neutral-700">{candidate.source || 'N/A'}</span>
+                              <span className="text-neutral-700">
+                                {(candidate.source && sourceLabelByCode.get(candidate.source)) ||
+                                  candidate.source ||
+                                  'N/A'}
+                              </span>
                             </p>
                           </div>
                         )}
@@ -692,12 +666,6 @@ const CandidatesListing = () => {
         jobTitle={jobTitleName}
         jobOpeningId={parsedJobId}
         canWrite={canWriteJobNotes}
-      />
-      <CandidateRecruiterNotesPanel
-        open={Boolean(notesCandidate)}
-        onClose={() => setNotesCandidate(null)}
-        title={`Candidate Notes - ${notesCandidate?.name || ''}`.trim()}
-        candidateId={notesCandidate?.id}
       />
       <AddCandidateModal
         open={isAddCandidateModalOpen}

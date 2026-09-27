@@ -288,7 +288,14 @@ const CandidateResultItem: React.FC<{
       <InfoRow label="Email:" value={(item?.extraJson?.email as string) || 'N/A'} />
       <InfoRow
         label="Phone Number:"
-        value={`${(item?.extraJson?.country_code as string) || ''}${formatPhoneNumber(item?.extraJson?.phone_number as string) || 'N/A'}`}
+        // A candidate's contact_no has no separate country-code field (it's
+        // already a complete, dialable number) — unlike the USER result
+        // below, running it through formatPhoneNumber's fixed US-style
+        // (XXX) XXX-XXXX grouping mangles anything longer than 10 digits
+        // (an international number's country code gets sliced up as if it
+        // were a US area code). Shown as-is instead, same as CandidateDetails.tsx
+        // already does for this same contact_no field.
+        value={(item?.extraJson?.phone_number as string) || 'N/A'}
       />
     </div>
   </div>
