@@ -136,6 +136,28 @@ const JOB_DETAILS_FIELD_ORDER = [
   'responsibilities',
 ];
 
+// Shared by updateFormWithJobData (initial load) and the JD-parsing refresh
+// below — job-service returns these as raw ids or nested catalog objects
+// depending on endpoint, so both call sites normalize the same way.
+const asCatalogId = (value: unknown): string | null => {
+  if (value == null || value === '') return null;
+  if (typeof value === 'object') {
+    const id = (value as { id?: unknown }).id;
+    if (id == null || id === '') return null;
+    return String(id);
+  }
+  return String(value);
+};
+
+const catalogIdArray = (values: unknown[]): string[] =>
+  values.map(asCatalogId).filter((id): id is string => Boolean(id));
+
+const asLocationId = (value: unknown): string | null => {
+  if (value == null || value === '') return null;
+  const id = String(value);
+  return id === 'undefined' || id === 'null' ? null : id;
+};
+
 const EditJobDetail = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -631,30 +653,12 @@ const EditJobDetail = () => {
   const updateFormWithJobData = (jobData: any) => {
     if (!jobData?.data) return;
 
-    const asCatalogId = (value: unknown): string | null => {
-      if (value == null || value === '') return null;
-      if (typeof value === 'object') {
-        const id = (value as { id?: unknown }).id;
-        if (id == null || id === '') return null;
-        return String(id);
-      }
-      return String(value);
-    };
-
-    const catalogIdArray = (values: unknown[]): string[] =>
-      values.map(asCatalogId).filter((id): id is string => Boolean(id));
-
     dispatch(setEditJobOpeningId(asJobId(jobData.data.id)));
     dispatch(setAtsJobOpeningId(jobData.data.atsJobOpeningId || ''));
 
     const locationData = jobData.data.location;
     const countryName = locationData?.country || '';
     const stateName = locationData?.state || '';
-    const asLocationId = (value: unknown): string | null => {
-      if (value == null || value === '') return null;
-      const id = String(value);
-      return id === 'undefined' || id === 'null' ? null : id;
-    };
     const resolvedOfficeLocation =
       asLocationId(locationData?.id) !== null
         ? [asLocationId(locationData?.id) as string]
@@ -833,93 +837,145 @@ const EditJobDetail = () => {
     // Re-check permissions now rather than waiting for the next mount.
     void refetchEffectivePermissions();
 
-    void triggerGetJobDescriptionById({ jobOpeningId: parsedJobId }).then((result) => {
-      const fresh = result.data;
-      if (!fresh) return;
+    // Job title/department/office location aren't AI-composed text — job-service
+    // resolves them against the org catalogue directly on the job opening record
+    // while parsing an uploaded JD, so they only arrive via a GetJobOpeningById
+    // refetch, not the `/jd` details endpoint above. Without this, they stayed
+    // blank until the recruiter manually refreshed the page.
+    void Promise.all([triggerGetJobDescriptionById({ jobOpeningId: parsedJobId }), refetch()]).then(
+      ([jdResult, jobResult]) => {
+        const fresh = jdResult.data;
+        const freshJobDetails = jobResult.data?.data;
 
-      const current = getValues();
-      let appliedAnything = false;
-      if (fresh.responsibilities && !current.responsibilities) {
-        setValue('responsibilities', fresh.responsibilities, { shouldValidate: true });
-        appliedAnything = true;
-      }
-      if (fresh.otherRequirements && !current.otherRequirements) {
-        setValue('otherRequirements', fresh.otherRequirements, { shouldValidate: true });
-        appliedAnything = true;
-      }
-      if (fresh.benefits && !current.benefits) {
-        setValue('benefits', fresh.benefits, { shouldValidate: true });
-        appliedAnything = true;
-      }
-      if (fresh.minExperience != null && current.minExperience == null) {
-        setValue('minExperience', fresh.minExperience, { shouldValidate: true });
-        appliedAnything = true;
-      }
-      if (fresh.maxExperience != null && current.maxExperience == null) {
-        setValue('maxExperience', fresh.maxExperience, { shouldValidate: true });
-        appliedAnything = true;
-      }
-      if (fresh.minSalary != null && !current.minSalary) {
-        setValue('minSalary', String(fresh.minSalary), { shouldValidate: true });
-        appliedAnything = true;
-      }
-      if (fresh.maxSalary != null && !current.maxSalary) {
-        setValue('maxSalary', String(fresh.maxSalary), { shouldValidate: true });
-        appliedAnything = true;
-      }
-      // Merge in AI-suggested skills not already selected, split by type.
-      if (fresh.skills && fresh.skills.length > 0) {
-        const currentMandatory = (current.mandatorySkills || []).map(String);
-        const currentOptional = (current.optionalSkills || []).map(String);
-        const newMandatory: string[] = [];
-        const newOptional: string[] = [];
-        const newOptions: JobOpeningDropdownOption[] = [];
-        for (const skill of fresh.skills) {
-          const id = String(skill.skill_id);
-          if (currentMandatory.includes(id) || currentOptional.includes(id)) continue;
-          if (newMandatory.includes(id) || newOptional.includes(id)) continue;
-          if (skill.skill_type.toLowerCase() === 'required') {
-            newMandatory.push(id);
-          } else {
-            newOptional.push(id);
+        const current = getValues();
+        let appliedAnything = false;
+
+        if (freshJobDetails) {
+          if (!current.department || current.department.length === 0) {
+            const freshDepartment = catalogIdArray(freshJobDetails.department || []);
+            if (freshDepartment.length > 0) {
+              setValue('department', freshDepartment, { shouldValidate: true });
+              appliedAnything = true;
+            }
           }
-          newOptions.push({ id: skill.skill_id, name: skill.skill_label });
+          if (!current.jobTitle || current.jobTitle.length === 0) {
+            const freshJobTitle = catalogIdArray(freshJobDetails.jobTitle || []);
+            if (freshJobTitle.length > 0) {
+              setValue('jobTitle', freshJobTitle, { shouldValidate: true });
+              appliedAnything = true;
+            }
+          }
+          if (!current.officeLocation || current.officeLocation.length === 0) {
+            const freshLocationData = freshJobDetails.location;
+            const freshOfficeLocation =
+              asLocationId(freshLocationData?.id) !== null
+                ? [asLocationId(freshLocationData?.id) as string]
+                : (freshJobDetails.officeLocation ?? [])
+                    .map((item: any) => asLocationId(item?.id ?? item?.city?.id))
+                    .filter((locId: string | null): locId is string => locId !== null);
+            if (freshOfficeLocation.length > 0) {
+              setValue('officeLocation', freshOfficeLocation, { shouldValidate: true });
+              setValue('country', freshLocationData?.country || '', { shouldValidate: true });
+              setValue('state', freshLocationData?.state || '', { shouldValidate: true });
+              appliedAnything = true;
+            }
+          }
         }
-        if (newMandatory.length > 0) {
-          setValue('mandatorySkills', [...currentMandatory, ...newMandatory], {
-            shouldValidate: true,
-          });
+
+        if (!fresh) {
+          if (appliedAnything) {
+            showToast({
+              message:
+                'Some fields were pre-filled from your job description - review before saving.',
+              type: 'success',
+            });
+          }
+          return;
+        }
+        if (fresh.responsibilities && !current.responsibilities) {
+          setValue('responsibilities', fresh.responsibilities, { shouldValidate: true });
           appliedAnything = true;
         }
-        if (newOptional.length > 0) {
-          setValue('optionalSkills', [...currentOptional, ...newOptional], {
-            shouldValidate: true,
-          });
+        if (fresh.otherRequirements && !current.otherRequirements) {
+          setValue('otherRequirements', fresh.otherRequirements, { shouldValidate: true });
           appliedAnything = true;
         }
-        if (newOptions.length > 0) {
-          setExtraSuggestedSkillOptions((prev) => [...prev, ...newOptions]);
+        if (fresh.benefits && !current.benefits) {
+          setValue('benefits', fresh.benefits, { shouldValidate: true });
+          appliedAnything = true;
+        }
+        if (fresh.minExperience != null && current.minExperience == null) {
+          setValue('minExperience', fresh.minExperience, { shouldValidate: true });
+          appliedAnything = true;
+        }
+        if (fresh.maxExperience != null && current.maxExperience == null) {
+          setValue('maxExperience', fresh.maxExperience, { shouldValidate: true });
+          appliedAnything = true;
+        }
+        if (fresh.minSalary != null && !current.minSalary) {
+          setValue('minSalary', String(fresh.minSalary), { shouldValidate: true });
+          appliedAnything = true;
+        }
+        if (fresh.maxSalary != null && !current.maxSalary) {
+          setValue('maxSalary', String(fresh.maxSalary), { shouldValidate: true });
+          appliedAnything = true;
+        }
+        // Merge in AI-suggested skills not already selected, split by type.
+        if (fresh.skills && fresh.skills.length > 0) {
+          const currentMandatory = (current.mandatorySkills || []).map(String);
+          const currentOptional = (current.optionalSkills || []).map(String);
+          const newMandatory: string[] = [];
+          const newOptional: string[] = [];
+          const newOptions: JobOpeningDropdownOption[] = [];
+          for (const skill of fresh.skills) {
+            const id = String(skill.skill_id);
+            if (currentMandatory.includes(id) || currentOptional.includes(id)) continue;
+            if (newMandatory.includes(id) || newOptional.includes(id)) continue;
+            if (skill.skill_type.toLowerCase() === 'required') {
+              newMandatory.push(id);
+            } else {
+              newOptional.push(id);
+            }
+            newOptions.push({ id: skill.skill_id, name: skill.skill_label });
+          }
+          if (newMandatory.length > 0) {
+            setValue('mandatorySkills', [...currentMandatory, ...newMandatory], {
+              shouldValidate: true,
+            });
+            appliedAnything = true;
+          }
+          if (newOptional.length > 0) {
+            setValue('optionalSkills', [...currentOptional, ...newOptional], {
+              shouldValidate: true,
+            });
+            appliedAnything = true;
+          }
+          if (newOptions.length > 0) {
+            setExtraSuggestedSkillOptions((prev) => [...prev, ...newOptions]);
+          }
+        }
+        if (fresh.minExperience != null || fresh.maxExperience != null) {
+          void trigger(['minExperience', 'maxExperience']);
+        }
+        // Drives the "isn't set up yet" banner - set here so it updates live.
+        if (fresh.unresolvedAiSuggestions !== undefined) {
+          setValue('unresolvedAiSuggestions', fresh.unresolvedAiSuggestions);
+        }
+        if (appliedAnything) {
+          showToast({
+            message:
+              'Some fields were pre-filled from your job description - review before saving.',
+            type: 'success',
+          });
         }
       }
-      if (fresh.minExperience != null || fresh.maxExperience != null) {
-        void trigger(['minExperience', 'maxExperience']);
-      }
-      // Drives the "isn't set up yet" banner - set here so it updates live.
-      if (fresh.unresolvedAiSuggestions !== undefined) {
-        setValue('unresolvedAiSuggestions', fresh.unresolvedAiSuggestions);
-      }
-      if (appliedAnything) {
-        showToast({
-          message: 'Some fields were pre-filled from your job description - review before saving.',
-          type: 'success',
-        });
-      }
-    });
+    );
   }, [
     jdStatusForHydration?.status,
     jdStatusFetching,
     parsedJobId,
     triggerGetJobDescriptionById,
+    refetch,
     refetchSuggestedSkills,
     refetchEffectivePermissions,
     getValues,
@@ -2144,9 +2200,8 @@ const EditJobDetail = () => {
               aria-hidden="true"
             />
             <span>
-              Reading your job description and filling in details below - this usually
-              takes under a minute. Feel free to keep filling in fields yourself in the
-              meantime.
+              Reading your job description and filling in details below - this usually takes under a
+              minute. Feel free to keep filling in fields yourself in the meantime.
             </span>
           </div>
         )}
@@ -2202,9 +2257,7 @@ const EditJobDetail = () => {
                   placeholder="Select Department"
                   label="Department"
                   onAddOption={
-                    canAddDepartment
-                      ? (value) => handleAddOption(value, 'department')
-                      : undefined
+                    canAddDepartment ? (value) => handleAddOption(value, 'department') : undefined
                   }
                   type="department"
                   error={errors.department?.message}

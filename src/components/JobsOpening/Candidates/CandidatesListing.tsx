@@ -15,7 +15,7 @@ import {
 import { TbBriefcase2 } from 'react-icons/tb';
 import { IoArrowRedoOutline } from 'react-icons/io5';
 import { MdClose } from 'react-icons/md';
-import { CommonCard, Button, Badge, showToast } from '../../shared';
+import { CommonCard, Button, Badge, type BadgeStatus, showToast } from '../../shared';
 import MasterPagination from '../../shared/ui/MasterPagination';
 import { RowsPerPageSelect } from '../../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
@@ -57,6 +57,19 @@ import {
   candidateStatusColor,
   candidateStatusTooltip,
 } from './candidateDisplay';
+import { bucketForStatus, normaliseRoundStatus, type RoundBucket } from './roundProgress';
+import { formatRoundStatus } from './roundDisplay';
+
+// Mirrors PipelineBoard.tsx's own `BUCKET_META` badge-color mapping — kept
+// local here rather than imported since that map isn't exported and this
+// listing only ever needs the badge color, never the border/step styling
+// that map also carries for the round cards themselves.
+const ROUND_BUCKET_BADGE_STATUS: Record<RoundBucket, BadgeStatus> = {
+  done: 'success',
+  current: 'warning',
+  pending: 'neutral',
+  failed: 'danger',
+};
 
 // Candidate list is job-scoped; there is no cross-job list route.
 // `resume_score` of null means "not scored yet", not an error.
@@ -529,27 +542,53 @@ const CandidatesListing = () => {
                             </p>
                           </Col>
                           <Col span={9}>
-                            <Tooltip title={candidateStatusTooltip(candidate.status_code)}>
-                              <Link
-                                to={buildDetailsPath(candidate.id)}
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-block"
-                              >
-                                {(() => {
-                                  const color = candidateStatusColor(candidate.status_code);
-                                  return (
-                                    <span
-                                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${color.bg} ${color.text}`}
-                                    >
-                                      <span className={`h-1.5 w-1.5 rounded-full ${color.dot}`} />
-                                      {candidate.status_label ||
-                                        statusLabelByCode.get(candidate.status_code ?? '') ||
-                                        'Not yet screened'}
-                                    </span>
-                                  );
-                                })()}
-                              </Link>
-                            </Tooltip>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Tooltip title={candidateStatusTooltip(candidate.status_code)}>
+                                <Link
+                                  to={buildDetailsPath(candidate.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-block"
+                                >
+                                  {(() => {
+                                    const color = candidateStatusColor(candidate.status_code);
+                                    return (
+                                      <span
+                                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${color.bg} ${color.text}`}
+                                      >
+                                        <span className={`h-1.5 w-1.5 rounded-full ${color.dot}`} />
+                                        {candidate.status_label ||
+                                          statusLabelByCode.get(candidate.status_code ?? '') ||
+                                          'Not yet screened'}
+                                      </span>
+                                    );
+                                  })()}
+                                </Link>
+                              </Tooltip>
+                              {candidate.current_round_status && (
+                                <Link
+                                  to={buildDetailsPath(candidate.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-block"
+                                >
+                                  <Badge
+                                    status={
+                                      ROUND_BUCKET_BADGE_STATUS[
+                                        bucketForStatus(candidate.current_round_status)
+                                      ]
+                                    }
+                                    className="w-fit"
+                                  >
+                                    {normaliseRoundStatus(candidate.current_round_status) ===
+                                    'booking_created'
+                                      ? 'Booking created — waiting to be scheduled'
+                                      : normaliseRoundStatus(candidate.current_round_status) ===
+                                          'awaiting_resume_upload'
+                                        ? 'Awaiting resume upload'
+                                        : formatRoundStatus(candidate.current_round_status)}
+                                  </Badge>
+                                </Link>
+                              )}
+                            </div>
                           </Col>
                         </Row>
                         {expandedId === candidate.id && (

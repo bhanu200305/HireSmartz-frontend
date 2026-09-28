@@ -83,6 +83,14 @@ export type CandidateView = {
    * `scoring_reason`. */
   consistency_score: number | null;
   consistency_score_reason: string | null;
+
+  /** Raw status of whichever round `_current_round.resolve_current_round`
+   * (candidate-service) currently resolves to for this candidate — the same
+   * vocabulary `roundProgress.ts`'s `bucketForStatus`/`normaliseRoundStatus`
+   * already bucket for a live round object (see `PipelineBoard.tsx`'s round
+   * cards). `null` once there's no outstanding round left to resolve (every
+   * round concluded, or none exist yet). */
+  current_round_status: string | null;
 };
 
 export type PaginatedCandidates = {

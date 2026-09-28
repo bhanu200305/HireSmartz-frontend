@@ -1,5 +1,4 @@
 import {
-  ALL_AUTHORITIES,
   Authorities,
   PERMISSION_CATALOG,
   PermissionCatalogEntry,
@@ -30,32 +29,30 @@ export const resolveEffectivePermissions = (
 };
 
 /**
- * What a role-creation/edit form is allowed to grant: the intersection of
- * the fixed catalog and the acting user's own effective permissions. This
- * is the escalation ceiling — a super admin or company admin can uncheck
- * items to narrow a new role, but can never check something they don't
- * themselves hold (mirrors the backend's PrivilegeEscalationError).
+ * What a role-creation/edit form is allowed to grant: the acting user's own
+ * effective permissions, deduplicated. This is the escalation ceiling — a
+ * super admin or company admin can uncheck items to narrow a new role, but
+ * can never check something they don't themselves hold (mirrors the
+ * backend's PrivilegeEscalationError).
+ *
+ * Used to also intersect this with the fixed `ALL_AUTHORITIES` catalog —
+ * but that catalog is a ~114-entry frontend snapshot of a live backend
+ * catalog that has since grown past it (organization-service's
+ * `master_permission` table is an open set: any service can add a grantable
+ * resource via its own migration). Intersecting against it silently dropped
+ * any permission the acting user genuinely held that this snapshot hadn't
+ * caught up to yet — e.g. a Super Admin holding a newly-added platform
+ * catalogue permission would never see it offered to grant to anyone,
+ * despite holding it themselves. `PermissionMatrix` is what actually decides
+ * which of these are offered as a checkbox (against the live catalog), so
+ * this only needs to answer "what does the acting user hold."
  */
 export const getAssignablePermissionCeiling = (
   actingUserPermissions: Authorities[]
-): Authorities[] => {
-  const held = new Set(actingUserPermissions);
-  return ALL_AUTHORITIES.filter((code) => held.has(code));
-};
+): Authorities[] => Array.from(new Set(actingUserPermissions));
 
 export const isWithinCeiling = (code: Authorities, ceiling: Authorities[]): boolean =>
   ceiling.includes(code);
-
-/** Groups the fixed catalog by module, in catalog order — for the permission-picker UI. */
-export const groupCatalogByModule = (): Record<PermissionModule, PermissionCatalogEntry[]> => {
-  return PERMISSION_CATALOG.reduce(
-    (groups, entry) => {
-      (groups[entry.module] ||= []).push(entry);
-      return groups;
-    },
-    {} as Record<PermissionModule, PermissionCatalogEntry[]>
-  );
-};
 
 /** `code -> catalog entry` — built once per call site via `useMemo`, not
  * module scope, since `PERMISSION_CATALOG` itself is a plain array and this
