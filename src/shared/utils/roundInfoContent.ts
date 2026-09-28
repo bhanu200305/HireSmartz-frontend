@@ -76,13 +76,18 @@ const VARIANT_INFO: Record<KnownVariant, RoundInfoContent> = {
 };
 
 // Resume and Intake Call are auto seeded with these exact names (see
-// AddNewRound.tsx), so a name match is a reliable stand in for
-// `special_kind` wherever the saved round instance does not carry that
-// field (`InterviewRoundResponse` only has `round_name`, not `special_kind`).
+// AddNewRound.tsx and job-service's INTERVIEW_ROUNDS seed data), so a name
+// match is a reliable stand in for `special_kind` wherever the saved round
+// instance does not carry that field (`InterviewRoundResponse` only has
+// `round_name`, not `special_kind`). Keys must match the seeded
+// `round_name` values verbatim (lowercased) — "Resume Round"/"Intake Call
+// Round"/"Identity Verification", not the bare special_kind strings
+// ("resume"/"intake_call"/"verification") those rows carry in the seed
+// tuple, which is a different column and never appears in `round_name`.
 const NAME_TO_SPECIAL_KIND: Record<string, SpecialKind> = {
-  resume: 'resume',
-  'intake call': 'intake_call',
-  verification: 'verification',
+  'resume round': 'resume',
+  'intake call round': 'intake_call',
+  'identity verification': 'verification',
 };
 
 // Lets callers branch on round kind (e.g. to source Intake Call's questions

@@ -11,6 +11,22 @@ export type CommonModalProps = {
   subtitle?: string | React.ReactNode;
   children?: React.ReactNode;
   modalProps?: Omit<ModalProps, 'open' | 'onCancel' | 'footer' | 'title'>;
+  /**
+   * For a caller whose body is one bounded, self-scrolling region (a
+   * CustomTable capped via `scrollY="100%"`) alongside its own fixed
+   * search/filter controls and pagination footer — those stay pinned in
+   * place and only the table scrolls, with the table's own height
+   * resolving against whatever vertical space is actually left in the
+   * modal (computed by the browser's own layout) rather than a flat `vh`
+   * guess that can still be too tall on a shorter window. Without this,
+   * `.modal-content` defaults to its natural content height and lets
+   * `.ant-modal-body`'s own fallback scrollbar take over the instant that
+   * height doesn't fit — a second, OUTER scrollbar stacked on top of the
+   * table's own, which also visually collides with the close button since
+   * neither reserves room for it. See index.css's
+   * `.modal-content.cfp-modal-fill` rule.
+   */
+  fillHeight?: boolean;
 };
 
 const AntdCommonModal: React.FC<CommonModalProps> = ({
@@ -20,6 +36,7 @@ const AntdCommonModal: React.FC<CommonModalProps> = ({
   subtitle,
   children,
   modalProps = {},
+  fillHeight = false,
 }) => {
   const withCloseAttention = useModalCloseAttention();
   // The underlying antd Modal always gets maskClosable=true so a mask click
@@ -72,7 +89,7 @@ const AntdCommonModal: React.FC<CommonModalProps> = ({
           (rather than using this component's `title`/`subtitle`) needs its
           own right-side gutter to stay clear of it — see
           `TenantAnalyticsModal`'s header row for the pattern. */}
-      <div className="modal-content">{children}</div>
+      <div className={clsx('modal-content', fillHeight && 'cfp-modal-fill')}>{children}</div>
     </Modal>
   );
 };
