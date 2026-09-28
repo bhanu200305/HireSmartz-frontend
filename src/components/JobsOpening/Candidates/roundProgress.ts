@@ -130,6 +130,17 @@ export const orderRoundsForFlow = (
  * action to act on until a resume is attached, even though its `status`
  * literally reads `to_be_scheduled` same as a real pending round.
  *
+ * Excludes both `completed` AND `skipped` — mirroring candidate-service's
+ * own `is_finished` (`CandidateInterviewRound.is_finished = is_completed OR
+ * is_skipped`, `candidate_interview_round.py`), which `_round_progression.py`
+ * filters outstanding rounds on for exactly this reason: "a skipped round is
+ * just as done, for progression purposes, as a completed one." Missing the
+ * `skipped` exclusion here (this function used to check `status !==
+ * 'completed'` alone) meant a candidate whose last round was skipped never
+ * resolved to `null`, so `allRoundsCompleted` (CandidateDetails.tsx) stayed
+ * false and MARK SELECTED never appeared — even though `bucketForStatus`
+ * below already correctly shows that same round's card as "done".
+ *
  * Assumes `rounds` already arrives in the order the candidate walks them —
  * the `GET .../interview-rounds` response, optionally after
  * `orderRoundsForFlow` has moved the resume stage for an instant-call
@@ -147,6 +158,7 @@ export const resolveCurrentRound = (
     (r) =>
       !isStaleResumeRound(r) &&
       r.status !== 'completed' &&
+      r.status !== 'skipped' &&
       (r.stage_type !== 'resume' || r.due_at !== null)
   );
   return outstanding[0] ?? null;

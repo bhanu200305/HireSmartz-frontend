@@ -5,11 +5,14 @@ import { useState } from 'react';
 import { Loader } from '../../shared/ui/loader';
 import CollapseToggle from '../../shared/ui/CollapseToggle';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
-import { useGetAudioQuestionsQuery } from '../../../api/job-service/JobOpening/jobQuestions';
+import { useGetJobIntakeQuestionsQuery } from '../../../api/job-service/JobOpening/jobQuestions';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getVariantBadge } from '../EditJobOpening/sortableInterviewRounds';
 import RoundInfoModal from '../../shared/ui/RoundInfoModal';
-import { getRoundInfoContent, getSpecialKindFromRoundName } from '../../../shared/utils/roundInfoContent';
+import {
+  getRoundInfoContent,
+  getSpecialKindFromRoundName,
+} from '../../../shared/utils/roundInfoContent';
 
 const ViewInterviewRound = () => {
   const [collapsedRounds, setCollapsedRounds] = useState<string[]>([]);
@@ -25,8 +28,14 @@ const ViewInterviewRound = () => {
     { jobOpeningId: jobId },
     { skip: !jobId }
   );
-  const { data: audioData } = useGetAudioQuestionsQuery(jobId, { skip: !jobId });
-  const audioQuestions = audioData?.questions ?? [];
+  // Same endpoint the Edit screen's "Intake Call Questions" section
+  // (JobIntakeQuestionsSection.tsx) reads and writes — `/intake-questions`,
+  // not the older, write-less `/intake-call-questions` (getAudioQuestions)
+  // this used to read from. Nothing in the app has ever written to that
+  // endpoint, so whatever a recruiter actually set up under Edit never
+  // showed up here.
+  const { data: intakeData } = useGetJobIntakeQuestionsQuery(jobId, { skip: !jobId });
+  const intakeQuestions = intakeData?.questions ?? [];
   const generalQuestions = jobData?.data.generalQuestions ?? [];
 
   const toggleRound = (roundId: string) => {
@@ -56,12 +65,17 @@ const ViewInterviewRound = () => {
           const BadgeIcon = badge?.icon;
           const summary = round.duration ? `${round.duration} min` : '';
           const roundIdStr = round.id.toString();
+          const specialKind = getSpecialKindFromRoundName(round.round?.name);
           // Intake Call's questions live behind a separate endpoint (they're
           // not part of the JD question bank), so source them from there
           // instead of `generalQuestions`.
-          const isIntakeCall = getSpecialKindFromRoundName(round.round?.name) === 'intake_call';
+          const isIntakeCall = specialKind === 'intake_call';
+          // Resume Round is AI resume screening against the JD, not a Q&A
+          // round — there's no question bank for it, so the section is
+          // hidden below rather than always rendering an empty "Questions".
+          const isResume = specialKind === 'resume';
           const roundQuestions = isIntakeCall
-            ? audioQuestions.map((q) => ({ id: q.question_id, text: q.question_text }))
+            ? intakeQuestions.map((q) => ({ id: q.job_intake_question_id, text: q.question_text }))
             : generalQuestions
                 .filter((q) => String(q.interviewRoundId) === roundIdStr)
                 .map((q) => ({ id: String(q.id), text: q.question }));
@@ -133,31 +147,34 @@ const ViewInterviewRound = () => {
                       )}
                     </div>
 
-                    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => toggleQuestions(roundIdStr)}
-                        className="w-full flex items-center justify-between px-5 py-3 text-left cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition-colors"
-                        aria-expanded={isQuestionsOpen}
-                      >
-                        <span className="font-semibold text-sm text-gray-800">
-                          Questions{roundQuestions.length > 0 ? ` (${roundQuestions.length})` : ''}
-                        </span>
-                        <CollapseToggle open={isQuestionsOpen} />
-                      </button>
-                      {isQuestionsOpen && (
-                        <div className="px-5 py-4 flex flex-col gap-2">
-                          {roundQuestions.map((q) => (
-                            <div
-                              key={q.id}
-                              className="bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 text-sm text-gray-700"
-                            >
-                              {q.text}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    {!isResume && (
+                      <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => toggleQuestions(roundIdStr)}
+                          className="w-full flex items-center justify-between px-5 py-3 text-left cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition-colors"
+                          aria-expanded={isQuestionsOpen}
+                        >
+                          <span className="font-semibold text-sm text-gray-800">
+                            Questions
+                            {roundQuestions.length > 0 ? ` (${roundQuestions.length})` : ''}
+                          </span>
+                          <CollapseToggle open={isQuestionsOpen} />
+                        </button>
+                        {isQuestionsOpen && (
+                          <div className="px-5 py-4 flex flex-col gap-2">
+                            {roundQuestions.map((q) => (
+                              <div
+                                key={q.id}
+                                className="bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 text-sm text-gray-700"
+                              >
+                                {q.text}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

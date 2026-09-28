@@ -322,6 +322,35 @@ canvas[data-agora-recording='true'] {
   overflow-y: auto;
 }
 
+/*
+ * Opt-in modifier (AntdCommonModal's `fillHeight` prop) for a caller whose
+ * body is exactly one CustomTable capped via `scrollY="100%"`, alongside
+ * its own fixed search/filter row and pagination footer — those need to
+ * stay pinned in view with ONLY the table scrolling, rather than the
+ * `flex-shrink: 0` default above (right for a plain modal, since letting
+ * `.ant-modal-body`'s own overflow be the one fallback scrollbar is
+ * correct there) which here just relocates the same problem one level up:
+ * once this modal's natural content height (title + search row + filter
+ * row + a *flat* `scrollY` guess + pagination) exceeds what's actually
+ * available on a shorter window, `.ant-modal-body` scrolls the whole
+ * modal — a second, OUTER scrollbar on top of the table's own, sitting
+ * right where the close button is (nothing reserves room for it there).
+ *
+ * `flex-shrink: 1` here (back to the default, overriding the rule above)
+ * lets `.modal-content` itself be bounded to whatever `.ant-modal-body`
+ * actually has available; `overflow: hidden` stops it from *also* trying
+ * to scroll (that job now belongs entirely to the table's own
+ * `scrollY="100%"` region — see each caller's `flex-1 min-h-0` table
+ * wrapper). Every sibling row (search, filters, pagination) still needs
+ * its own `shrink-0` at the call site so only the table actually shrinks.
+ */
+.ant-modal-body .modal-content.cfp-modal-fill {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
 /* Round Recordings modal (RoundArtifactsModal) — the Attempt 1/Attempt 2
  * tab strip used to scroll away with the rest of the content (recordings,
  * transcripts) inside `.modal-content` above, forcing a scroll back to the
