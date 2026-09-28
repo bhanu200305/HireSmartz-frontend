@@ -10,6 +10,8 @@ import PlatformCatalogTab, {
   type CatalogServerQuery,
 } from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
+import useHasAccess from '../../../hooks/useHasAccess';
+import { Authorities } from '../../../constants/authorities.constant';
 
 type FormValues = { reason: string; description: string | null };
 const emptyForm: FormValues = { reason: '', description: null };
@@ -39,6 +41,8 @@ const TenantClosureReasonsTab: React.FC = () => {
   const [create] = useCreateClosureReasonMutation();
   const [update] = useUpdateClosureReasonMutation();
   const [remove] = useDeleteClosureReasonMutation();
+  const canManage =
+    useHasAccess(Authorities.COMPANY_SETTINGS_EDIT) || useHasAccess(Authorities.JOB_CATALOG_EDIT);
 
   return (
     <PlatformCatalogTab<OrganizationClosureReason, FormValues>
@@ -59,6 +63,8 @@ const TenantClosureReasonsTab: React.FC = () => {
       fields={fields}
       emptyForm={emptyForm}
       toFormValues={(item) => ({ reason: item.reason, description: item.description ?? null })}
+      allowCreate={canManage}
+      allowEdit={canManage}
       onCreate={(values) =>
         create({ reason: values.reason.trim(), description: values.description }).unwrap()
       }
@@ -69,7 +75,7 @@ const TenantClosureReasonsTab: React.FC = () => {
           description: values.description,
         }).unwrap()
       }
-      onDelete={(item) => remove(item.id).unwrap()}
+      onDelete={canManage ? (item) => remove(item.id).unwrap() : undefined}
       deleteConfirmTitle={(item) =>
         `Remove "${item.reason}"? Blocked if a job's closure still references it.`
       }

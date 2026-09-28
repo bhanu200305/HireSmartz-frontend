@@ -133,6 +133,7 @@ export const jobApi = createApi({
     'JobScoringCriteria',
     'JobInterviewSequence',
     'JobAudioQuestions',
+    'JobIntakeQuestions',
     'JobJdStatus',
     'JobJdEnhancement',
     'JobWizardState',

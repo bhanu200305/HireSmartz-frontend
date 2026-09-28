@@ -30,7 +30,9 @@ const useEffectivePermissions = (): Authorities[] => {
     !resolvedRole && !!userId && callerKind === 'tenant' && !isUnscopedRole;
   const { data: dashboard } = useGetUserDashboardQuery(
     { userId: userId as string, locationId: activeLocationId ?? undefined },
-    { skip: !isLiveTenantSession }
+    // Refetch on mount - a mid-session permission grant must be picked up
+    // without a full page refresh.
+    { skip: !isLiveTenantSession, refetchOnMountOrArgChange: true }
   );
 
   return useMemo(() => {
@@ -59,6 +61,26 @@ const useEffectivePermissions = (): Authorities[] => {
     dashboard,
     isUnscopedRole,
   ]);
+};
+
+/** Forces a live permission re-check without waiting for the next mount. */
+export const useEffectivePermissionsRefetch = (): (() => void) => {
+  const { role, resolvedRole, activeLocationId, userId, callerKind } = useSelector(
+    (state: RootState) => state.LoginSlice
+  );
+  const isUnscopedRole = _UNSCOPED_ROLE_NAMES.has(normalizeRoleName(role?.name));
+  const isLiveTenantSession =
+    !resolvedRole && !!userId && callerKind === 'tenant' && !isUnscopedRole;
+  const { refetch } = useGetUserDashboardQuery(
+    { userId: userId as string, locationId: activeLocationId ?? undefined },
+    { skip: !isLiveTenantSession, refetchOnMountOrArgChange: true }
+  );
+  // refetch() throws if the query was skipped - guard for non-live sessions.
+  return () => {
+    if (isLiveTenantSession) {
+      refetch();
+    }
+  };
 };
 
 export default useEffectivePermissions;
