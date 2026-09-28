@@ -2,6 +2,7 @@ import React from 'react';
 import { Spin } from 'antd';
 import { Button } from '../index';
 import type { TemplatePreview } from '../../../api/notification-service/TemplateSettings/index';
+import { disableLinksInEmailPreview } from '../../../shared/utils/notifications/disableLinksInEmailPreview';
 
 interface EmailLivePreviewPanelProps {
   isLoading: boolean;
@@ -29,7 +30,7 @@ const EmailLivePreviewPanel: React.FC<EmailLivePreviewPanelProps> = ({
     if (!preview?.body_html) return;
     const win = window.open('', '_blank');
     if (win) {
-      win.document.write(preview.body_html);
+      win.document.write(disableLinksInEmailPreview(preview.body_html));
       win.document.close();
     }
   };
@@ -75,7 +76,7 @@ const EmailLivePreviewPanel: React.FC<EmailLivePreviewPanelProps> = ({
             <iframe
               title="Live email preview"
               sandbox=""
-              srcDoc={preview.body_html}
+              srcDoc={disableLinksInEmailPreview(preview.body_html)}
               className="h-full w-full border-0"
             />
           ) : (

@@ -193,17 +193,20 @@ const RolesManagement: React.FC = () => {
 
   const tabItems = [
     { key: 'roles', label: 'Roles', children: rolesTabContent },
-    {
-      key: 'reference',
-      label: 'Permission Reference',
-      children: (
-        <PermissionReferenceTab
-          isMaster={isMaster}
-          tenantId={context.tenantId}
-          canLookupCompany={canLookupCompany}
-        />
-      ),
-    },
+    // Temporarily disabled — the category/description backend gap on
+    // GET /v1/roles/permissions needs a real fix first. Re-enable by
+    // uncommenting this entry once that's sorted.
+    // {
+    //   key: 'reference',
+    //   label: 'Permission Reference',
+    //   children: (
+    //     <PermissionReferenceTab
+    //       isMaster={isMaster}
+    //       tenantId={context.tenantId}
+    //       canLookupCompany={canLookupCompany}
+    //     />
+    //   ),
+    // },
   ];
 
   return (

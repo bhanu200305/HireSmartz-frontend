@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
 import { Select as AntSelect, Tooltip } from 'antd';
-import { MdBlock, MdDelete, MdEdit, MdOutlineAdd, MdRestore, MdSearch } from 'react-icons/md';
+import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
 import { Badge, Button, CustomTable, Input, Select, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import StatusToggle from '../shared/ui/StatusToggle';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
@@ -53,8 +54,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     useAddTenantDepartmentOfficeMutation();
   const [removeDepartmentOffice, { isLoading: isRemovingOffice }] =
     useRemoveTenantDepartmentOfficeMutation();
-  const [deactivateDepartment, { isLoading: isDeactivating }] =
-    useDeactivateTenantDepartmentMutation();
+  const [deactivateDepartment] = useDeactivateTenantDepartmentMutation();
   const [activateDepartment] = useActivateTenantDepartmentMutation();
   const canAdd = useHasAccess(Authorities.DEPARTMENT_ADD);
   const canEdit = useHasAccess(Authorities.DEPARTMENT_EDIT);
@@ -65,10 +65,6 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     department?: TenantDepartment;
   } | null>(null);
   const [name, setName] = useState('');
-  const [departmentToDeactivate, setDepartmentToDeactivate] = useState<TenantDepartment | null>(
-    null
-  );
-  const [pendingActivateId, setPendingActivateId] = useState<string | null>(null);
   const [officeId, setOfficeId] = useState<string | undefined>(undefined);
   // Every OTHER office this department also operates out of — separate from
   // (and additive to) `officeId` above, its single primary office. Staged
@@ -240,31 +236,22 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
   };
 
-  const handleDeactivate = async () => {
-    if (!departmentToDeactivate) return;
+  const handleDeactivate = async (department: TenantDepartment) => {
     try {
       await deactivateDepartment({
         tenantId,
-        departmentId: departmentToDeactivate.org_department_id,
+        departmentId: department.org_department_id,
       }).unwrap();
-      showToast({
-        message: `"${departmentToDeactivate.name}" was deactivated.`,
-        type: 'success',
-      });
+      showToast({ message: `"${department.name}" was deactivated.`, type: 'success' });
     } catch (err) {
       showToast({
         message: getOrgErrorMessage(err, 'Failed to deactivate department.'),
         type: 'error',
       });
-    } finally {
-      setDepartmentToDeactivate(null);
     }
   };
 
-  // No confirmation modal, unlike deactivate — restoring visibility is the
-  // low-risk direction.
   const handleActivate = async (department: TenantDepartment) => {
-    setPendingActivateId(department.org_department_id);
     try {
       await activateDepartment({ tenantId, departmentId: department.org_department_id }).unwrap();
       showToast({ message: `"${department.name}" was activated.`, type: 'success' });
@@ -273,8 +260,6 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         message: getOrgErrorMessage(err, 'Failed to activate department.'),
         type: 'error',
       });
-    } finally {
-      setPendingActivateId(null);
     }
   };
 
@@ -310,15 +295,21 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       key: 'status',
       width: 110,
       render: (_: unknown, department: DepartmentRow) => (
-        <Badge status={department.is_active ? 'success' : 'neutral'}>
-          {department.is_active ? 'Active' : 'Inactive'}
-        </Badge>
+        <StatusToggle
+          isActive={department.is_active}
+          disabled={!canEdit}
+          activateLabel="Activate department"
+          deactivateLabel="Deactivate department"
+          deactivateConfirmTitle={`Deactivate "${department.name}"? This isn't checked against active job postings or candidates yet, so make sure nothing depends on it.`}
+          onActivate={() => handleActivate(department)}
+          onDeactivate={() => handleDeactivate(department)}
+        />
       ),
     },
     (canEdit || canDelete) && {
       title: 'Actions',
       key: 'actions',
-      width: 130,
+      width: 90,
       render: (_: unknown, department: DepartmentRow) => (
         <div className="flex items-center gap-1">
           {canEdit && (
@@ -345,31 +336,6 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               </button>
             </Tooltip>
           )}
-          {canEdit &&
-            (department.is_active ? (
-              <Tooltip title="Deactivate department">
-                <button
-                  type="button"
-                  aria-label="Deactivate department"
-                  className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-                  onClick={() => setDepartmentToDeactivate(department)}
-                >
-                  <MdBlock className="text-gray-600 transition-colors group-hover:text-red-600" />
-                </button>
-              </Tooltip>
-            ) : (
-              <Tooltip title="Activate department">
-                <button
-                  type="button"
-                  aria-label="Activate department"
-                  className="p-2 hover:bg-green-50 rounded-full disabled:cursor-not-allowed cursor-pointer transition-colors disabled:opacity-50"
-                  disabled={pendingActivateId === department.org_department_id}
-                  onClick={() => handleActivate(department)}
-                >
-                  <MdRestore className="text-green-600" />
-                </button>
-              </Tooltip>
-            ))}
         </div>
       ),
     },
@@ -407,7 +373,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           </div>
           {canAdd && (
             <Button
-              className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+              className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
               onClick={openAddModal}
             >
               <MdOutlineAdd /> Add department
@@ -518,16 +484,6 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           confirmText="DELETE"
           onConfirm={handleDelete}
           onClose={() => setDepartmentToDelete(null)}
-        />
-      )}
-
-      {departmentToDeactivate && (
-        <ConfirmationModal
-          title={`Deactivate "${departmentToDeactivate.name}"?`}
-          confirmText="DEACTIVATE"
-          isLoading={isDeactivating}
-          onConfirm={handleDeactivate}
-          onClose={() => setDepartmentToDeactivate(null)}
         />
       )}
     </div>

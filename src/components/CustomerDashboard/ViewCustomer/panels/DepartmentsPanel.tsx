@@ -204,7 +204,7 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             />
           </div>
           <Button
-            className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+            className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
             onClick={() => setIsAddOpen(true)}
           >
             <MdOutlineAdd /> Add department

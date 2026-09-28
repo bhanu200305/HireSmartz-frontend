@@ -2,10 +2,11 @@ import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import { Tooltip } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-import { MdBlock, MdDelete, MdEdit, MdOutlineAdd, MdRestore, MdSearch } from 'react-icons/md';
+import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
 import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import StatusToggle from '../shared/ui/StatusToggle';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
@@ -50,7 +51,7 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [addOffice, { isLoading: isAdding }] = useAddTenantOfficeMutation();
   const [updateOffice, { isLoading: isUpdating }] = useUpdateTenantOfficeMutation();
   const [deleteOffice] = useDeleteTenantOfficeMutation();
-  const [deactivateOffice, { isLoading: isDeactivating }] = useDeactivateTenantOfficeMutation();
+  const [deactivateOffice] = useDeactivateTenantOfficeMutation();
   const [activateOffice] = useActivateTenantOfficeMutation();
   const canAdd = useHasAccess(Authorities.LOCATION_ADD);
   const canEdit = useHasAccess(Authorities.LOCATION_EDIT);
@@ -61,8 +62,6 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     office?: TenantOffice;
   } | null>(null);
   const [officeToDelete, setOfficeToDelete] = useState<TenantOffice | null>(null);
-  const [officeToDeactivate, setOfficeToDeactivate] = useState<TenantOffice | null>(null);
-  const [pendingActivateId, setPendingActivateId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('address');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -150,32 +149,24 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
   };
 
-  const handleDeactivate = async () => {
-    if (!officeToDeactivate) return;
+  const handleDeactivate = async (office: TenantOffice) => {
     try {
-      await deactivateOffice({ tenantId, officeId: officeToDeactivate.office_id }).unwrap();
-      showToast({ message: `${officeToDeactivate.city} was deactivated.`, type: 'success' });
+      await deactivateOffice({ tenantId, officeId: office.office_id }).unwrap();
+      showToast({ message: `${office.city} was deactivated.`, type: 'success' });
     } catch (err) {
       showToast({
         message: getOrgErrorMessage(err, 'Failed to deactivate office.'),
         type: 'error',
       });
-    } finally {
-      setOfficeToDeactivate(null);
     }
   };
 
-  // No confirmation modal, unlike deactivate — restoring visibility is the
-  // low-risk direction.
   const handleActivate = async (office: TenantOffice) => {
-    setPendingActivateId(office.office_id);
     try {
       await activateOffice({ tenantId, officeId: office.office_id }).unwrap();
       showToast({ message: `${office.city} was activated.`, type: 'success' });
     } catch (err) {
       showToast({ message: getOrgErrorMessage(err, 'Failed to activate office.'), type: 'error' });
-    } finally {
-      setPendingActivateId(null);
     }
   };
 
@@ -239,15 +230,21 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       key: 'status',
       width: 110,
       render: (_: unknown, office: OfficeRow) => (
-        <Badge status={office.is_active ? 'success' : 'neutral'}>
-          {office.is_active ? 'Active' : 'Inactive'}
-        </Badge>
+        <StatusToggle
+          isActive={office.is_active}
+          disabled={!canEdit}
+          activateLabel="Activate office"
+          deactivateLabel="Deactivate office"
+          deactivateConfirmTitle={`Deactivate ${office.city}?`}
+          onActivate={() => handleActivate(office)}
+          onDeactivate={() => handleDeactivate(office)}
+        />
       ),
     },
     (canEdit || canDelete) && {
       title: 'Actions',
       key: 'actions',
-      width: 130,
+      width: 90,
       render: (_: unknown, office: OfficeRow) => (
         <div className="flex items-center gap-1">
           {canEdit && (
@@ -274,31 +271,6 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               </button>
             </Tooltip>
           )}
-          {canEdit &&
-            (office.is_active ? (
-              <Tooltip title="Deactivate office">
-                <button
-                  type="button"
-                  aria-label="Deactivate office"
-                  className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-                  onClick={() => setOfficeToDeactivate(office)}
-                >
-                  <MdBlock className="text-gray-600 transition-colors group-hover:text-red-600" />
-                </button>
-              </Tooltip>
-            ) : (
-              <Tooltip title="Activate office">
-                <button
-                  type="button"
-                  aria-label="Activate office"
-                  className="p-2 hover:bg-green-50 rounded-full disabled:cursor-not-allowed cursor-pointer transition-colors disabled:opacity-50"
-                  disabled={pendingActivateId === office.office_id}
-                  onClick={() => handleActivate(office)}
-                >
-                  <MdRestore className="text-green-600" />
-                </button>
-              </Tooltip>
-            ))}
         </div>
       ),
     },
@@ -335,7 +307,7 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           </div>
           {canAdd && (
             <Button
-              className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+              className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
               onClick={() => setModalState({ mode: 'add' })}
             >
               <MdOutlineAdd /> Add Location
@@ -388,16 +360,6 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           confirmText="REMOVE"
           onConfirm={handleDelete}
           onClose={() => setOfficeToDelete(null)}
-        />
-      )}
-
-      {officeToDeactivate && (
-        <ConfirmationModal
-          title={`Deactivate ${officeToDeactivate.city}?`}
-          confirmText="DEACTIVATE"
-          isLoading={isDeactivating}
-          onConfirm={handleDeactivate}
-          onClose={() => setOfficeToDeactivate(null)}
         />
       )}
     </div>

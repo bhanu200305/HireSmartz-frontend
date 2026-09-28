@@ -1,7 +1,7 @@
 import { Col, ColProps as AntdColProps } from 'antd';
-import { CaretUpOutlined, CaretDownOutlined } from '@ant-design/icons';
 import React from 'react';
 import { SortDirection } from '../../../types';
+import { SortCaretIcon } from './SortCaretIcon';
 
 type ColProps = AntdColProps & {
   children: React.ReactNode;
@@ -31,33 +31,19 @@ export const COL = ({
   const handleSort = () => {
     if (!sortable || !sortKey || !onSort) return;
 
-    let newDirection: SortDirection = 'asc';
-    if (isActiveSort) {
-      newDirection = currentSortDirection === 'asc' ? 'desc' : null;
-    }
+    // Toggles ascending/descending forever rather than cancelling to
+    // unsorted on a 3rd click — matches CustomTable's own `sortDirections`
+    // (table.tsx), so every sortable list in the app behaves the same way:
+    // there's no "click to cancel sorting" step anywhere.
+    const newDirection: SortDirection =
+      isActiveSort && currentSortDirection === 'asc' ? 'desc' : 'asc';
 
     onSort(sortKey, newDirection);
   };
 
   const renderSortIcons = () => {
     if (!sortable) return null;
-
-    // Reuses AntD Table's own sorter markup/classes (already loaded app-wide
-    // wherever a real `<Table>` renders) instead of a hand-rolled icon, so
-    // this plain-div "table" looks identical to every other sortable list
-    // in the app rather than showing its own arrow style.
-    return (
-      <span className="ant-table-column-sorter">
-        <span className="ant-table-column-sorter-inner">
-          <CaretUpOutlined
-            className={`ant-table-column-sorter-up ${currentSortDirection === 'asc' ? 'active' : ''}`}
-          />
-          <CaretDownOutlined
-            className={`ant-table-column-sorter-down ${currentSortDirection === 'desc' ? 'active' : ''}`}
-          />
-        </span>
-      </span>
-    );
+    return <SortCaretIcon direction={currentSortDirection} />;
   };
 
   return (

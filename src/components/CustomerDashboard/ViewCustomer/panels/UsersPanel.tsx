@@ -8,8 +8,6 @@ import {
   MdOutlineEdit,
   MdOutlineFileUpload,
   MdOutlineRefresh,
-  MdPersonOff,
-  MdRestore,
   MdSearch,
 } from 'react-icons/md';
 import {
@@ -25,7 +23,7 @@ import {
 } from '../../../shared';
 import { Loader } from '../../../shared/ui/loader';
 import MasterPagination from '../../../shared/ui/MasterPagination';
-import ConfirmationModal from '../../../shared/ui/ConfirmationModal';
+import StatusToggle from '../../../shared/ui/StatusToggle';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { RowsPerPageSelect } from '../../../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../../../hooks/usePersistedPageSize';
@@ -170,7 +168,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const { roles, createRole } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: true });
 
   const [createUser, { isLoading: isCreating }] = useCreatePlatformTenantUserMutation();
-  const [deactivateUser, { isLoading: isDeactivating }] = useDeactivatePlatformTenantUserMutation();
+  const [deactivateUser] = useDeactivatePlatformTenantUserMutation();
   const [reactivateUser, { isLoading: isReactivating }] = useReactivatePlatformTenantUserMutation();
   const [resendInvite, { isLoading: isResendingInvite }] =
     useResendPlatformTenantInvitationMutation();
@@ -191,7 +189,6 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
   const [viewingUser, setViewingUser] = useState<OrgUser | null>(null);
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('full_name');
@@ -447,15 +444,12 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     }
   };
 
-  const handleDeactivate = async () => {
-    if (!userToDeactivate) return;
+  const handleDeactivate = async (user: OrgUser) => {
     try {
-      await deactivateUser({ tenantId, userId: userToDeactivate.user_id }).unwrap();
+      await deactivateUser({ tenantId, userId: user.user_id }).unwrap();
       showToast({ message: 'User deactivated.', type: 'success' });
     } catch (err) {
       showToast({ message: getOrgErrorMessage(err, 'Failed to deactivate user.'), type: 'error' });
-    } finally {
-      setUserToDeactivate(null);
     }
   };
 
@@ -620,13 +614,30 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       sortOrder: sortOrderFor('status'),
       render: (_: unknown, row: TableRow) => {
         if (row.kind === 'pending') return <Badge status="warning">Pending</Badge>;
-        if (!row.is_active) return <Badge status="neutral">Deactivated</Badge>;
         // is_active is set true immediately on creation, regardless of
         // whether this person has actually finished setup — has_set_password
         // is what tells "invited, hasn't logged in yet" apart from a real
-        // active user.
-        if (!row.has_set_password) return <Badge status="warning">Pending setup</Badge>;
-        return <Badge status="success">Active</Badge>;
+        // active user. The toggle only ever reflects `is_active` (it has no
+        // third position), so the badge stays alongside it to carry that
+        // finer distinction — same pairing as OrganisationDashboard/Index.tsx's
+        // identical tenant-side Status column.
+        return (
+          <div className="flex items-center gap-2.5">
+            <StatusToggle
+              isActive={row.is_active}
+              activateLabel="Reactivate user"
+              deactivateLabel="Deactivate user"
+              deactivateConfirmTitle={`Deactivate "${row.full_name}"? They'll immediately lose access.`}
+              onActivate={() => handleReactivate(row)}
+              onDeactivate={() => handleDeactivate(row)}
+            />
+            <Badge
+              status={!row.is_active ? 'neutral' : row.has_set_password ? 'success' : 'warning'}
+            >
+              {!row.is_active ? 'Deactivated' : row.has_set_password ? 'Active' : 'Pending setup'}
+            </Badge>
+          </div>
+        );
       },
     },
     {
@@ -678,28 +689,9 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             </div>
           );
         }
-        return row.is_active ? (
-          <Tooltip title="Deactivate user">
-            <button
-              type="button"
-              aria-label="Deactivate user"
-              className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-              onClick={() => setUserToDeactivate(row)}
-            >
-              <MdPersonOff className="text-gray-600 transition-colors group-hover:text-red-600" />
-            </button>
-          </Tooltip>
-        ) : (
-          <button
-            type="button"
-            aria-label="Reactivate user"
-            className="p-2 hover:bg-green-50 rounded-full disabled:cursor-not-allowed cursor-pointer transition-colors disabled:opacity-50"
-            disabled={isReactivating}
-            onClick={() => handleReactivate(row)}
-          >
-            <MdRestore className="text-green-600" />
-          </button>
-        );
+        // Deactivate/Reactivate now lives in the Status column's toggle —
+        // nothing else here for a real user row.
+        return null;
       },
     },
   ];
@@ -752,7 +744,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             <MdOutlineFileUpload /> Import team
           </Button>
           <Button
-            className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+            className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
             onClick={() => setIsAddOpen(true)}
           >
             <MdOutlineAdd /> Add user
@@ -872,16 +864,6 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           </div>
         </div>
       </AntdCommonModal>
-
-      {userToDeactivate && (
-        <ConfirmationModal
-          title={`Deactivate "${userToDeactivate.full_name}"? They'll immediately lose access.`}
-          confirmText="DEACTIVATE"
-          isLoading={isDeactivating}
-          onConfirm={handleDeactivate}
-          onClose={() => setUserToDeactivate(null)}
-        />
-      )}
 
       <AntdCommonModal
         open={changeEmailTarget !== null}

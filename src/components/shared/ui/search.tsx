@@ -44,8 +44,13 @@ export const Search = forwardRef<HTMLInputElement, SearchProps>(
     };
 
     return (
-      <div className={clsx('relative', className)}>
-        <div className="search-input-wrapper relative flex items-center border border-[var(--border)] rounded-3xl px-4 py-2 w-full">
+      <div className="relative">
+        <div
+          className={clsx(
+            'search-input-wrapper relative flex items-center border border-[var(--border)] rounded-3xl px-4 py-2 w-full',
+            className
+          )}
+        >
           <MdOutlineSearch className="text-primary text-lg" />
           <input
             ref={ref}

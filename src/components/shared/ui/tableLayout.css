@@ -52,10 +52,10 @@
 }
 
 /* CustomTable's `scroll={{ x: 'max-content' }}` (and, when `scrollY` is also
-   set, rc-table's separate `.ant-table-body` scroll region) no longer needs
-   its own scrollbar rule here — the global scrollbar style in index.css
-   already covers every scrollable element in the app identically, whichever
-   internal element antd actually scrolls. */
+   set, the outer `.customTable` wrapper div's own `overflow-y: auto`, see
+   table.tsx) no longer needs its own scrollbar rule here — the global
+   scrollbar style in index.css already covers every scrollable element in
+   the app identically, whichever element actually scrolls. */
 
 /* AntD's own "ping" shadow — a dark inset fade AntD draws on
    `.ant-table-container::before`/`::after` (see antd/es/table/style/fixed.js)

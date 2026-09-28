@@ -637,6 +637,159 @@ export const PERMISSION_CATALOG: PermissionCatalogEntry[] = [
   { code: Authorities.ROLE_EXPORT, label: 'Export roles', module: 'Roles & Permissions' },
 ];
 
+/**
+ * One-line explanation of what holding each permission actually lets someone
+ * do — shown under its label on the Roles & Permissions → Permission
+ * Reference screen, which otherwise has only a code and a label to go on.
+ * Keyed by the underlying `Authorities` code (not by catalog row), since a
+ * few codes back more than one `PERMISSION_CATALOG` row under different
+ * labels/modules (`USER_VIEW` under both "CFP Users" and "Organization
+ * Users", `JOB_OPENING_CREATE` under both "Create" and "Duplicate") — one
+ * real permission, so one description regardless of which row is showing.
+ * Not exhaustive over the live backend's full ~176-code catalog on purpose:
+ * `permissionExplorer.helpers.ts` only consults this for the 114 codes
+ * PERMISSION_CATALOG already knows about, and generates a generic fallback
+ * for anything else the backend reports that isn't in either list yet.
+ */
+export const PERMISSION_DESCRIPTIONS: Partial<Record<Authorities, string>> = {
+  [Authorities.COMPANY_VIEW]: 'See every company on the platform and their profile details.',
+  [Authorities.COMPANY_ADD]: 'Register a new company on the platform.',
+  [Authorities.COMPANY_EDIT]: "Update a company's profile details.",
+  [Authorities.COMPANY_ARCHIVE]: "Suspend a company, revoking its access to the platform.",
+  [Authorities.COMPANY_APPROVE]:
+    'Confirm a scraped or self-signed-up company and send its Company Admin invite.',
+  [Authorities.COMPANY_EXPORT]: 'Download the company list as a file.',
+
+  [Authorities.COMPANY_SETTINGS_VIEW]: "View a company's own profile and settings.",
+  [Authorities.COMPANY_SETTINGS_ADD]: 'Add a new company settings record.',
+  [Authorities.COMPANY_SETTINGS_EDIT]: "Update a company's own profile and settings.",
+  [Authorities.COMPANY_SETTINGS_DELETE]: 'Delete a company settings record.',
+  [Authorities.COMPANY_SETTINGS_APPROVE]: 'Approve a change made to a company\'s settings.',
+  [Authorities.COMPANY_SETTINGS_EXPORT]: "Download a company's settings as a file.",
+
+  [Authorities.USER_VIEW]: "See who's in the directory — their name, email, phone, and role.",
+  [Authorities.USER_ADD]: 'Add a new person to the directory.',
+  [Authorities.USER_EDIT]: "Update a person's directory profile.",
+  [Authorities.USER_ARCHIVE]: "Deactivate a person's account, revoking their access.",
+  [Authorities.USER_APPROVE]: 'Approve a pending user account.',
+  [Authorities.USER_EXPORT]: 'Download the user directory as a file.',
+
+  [Authorities.DEPARTMENT_VIEW]: "View a company's departments.",
+  [Authorities.DEPARTMENT_ADD]: 'Create a new department.',
+  [Authorities.DEPARTMENT_EDIT]: 'Rename or reassign a department.',
+  [Authorities.DEPARTMENT_DELETE]: 'Delete a department.',
+  [Authorities.DEPARTMENT_APPROVE]: 'Approve a change made to a department.',
+  [Authorities.DEPARTMENT_EXPORT]: 'Download the department list as a file.',
+  [Authorities.LOCATION_VIEW]: "View a company's office locations.",
+  [Authorities.LOCATION_ADD]: 'Add a new office location.',
+  [Authorities.LOCATION_EDIT]: 'Update an office location.',
+  [Authorities.LOCATION_DELETE]: 'Delete an office location.',
+  [Authorities.LOCATION_APPROVE]: 'Approve a change made to an office location.',
+  [Authorities.LOCATION_EXPORT]: 'Download the location list as a file.',
+  [Authorities.TENANT_JOB_TITLE_VIEW]: "View a company's own job title catalogue.",
+  [Authorities.TENANT_JOB_TITLE_ADD]: 'Add a new job title.',
+  [Authorities.TENANT_JOB_TITLE_EDIT]: 'Rename an existing job title.',
+  [Authorities.TENANT_JOB_TITLE_DELETE]: 'Delete a job title.',
+  [Authorities.JOB_CATALOG_VIEW]:
+    'View job catalogues — shifts, job types, job modes, and education preferences.',
+  [Authorities.JOB_CATALOG_EDIT]:
+    'Add, edit, or delete job catalogue entries — shifts, job types, job modes, and education preferences.',
+
+  [Authorities.INVITATION_VIEW]: 'See who has been invited to join, and the status of each invite.',
+  [Authorities.INVITATION_SEND]: 'Send a new invite, or resend one that has not been accepted yet.',
+  [Authorities.INVITATION_UPDATE]:
+    "Change an invite's details (role, department) before it is accepted.",
+  [Authorities.INVITATION_REVOKE]: 'Cancel a pending invite before it is accepted.',
+  [Authorities.INVITATION_APPROVE]: 'Approve a pending invite.',
+  [Authorities.INVITATION_EXPORT]: 'Download the invite list as a file.',
+
+  [Authorities.PLATFORM_VIEW]: "View the platform's internal administration area.",
+  [Authorities.PLATFORM_INVITE]: 'Invite a new Super Admin or internal Careerforce Pro staff member.',
+  [Authorities.PLATFORM_MANAGE_DEPARTMENTS]: "Manage Careerforce Pro's own internal departments.",
+  [Authorities.PLATFORM_OFFBOARD_STAFF]: 'Offboard an internal Careerforce Pro staff member.',
+  [Authorities.PLATFORM_APPROVE]: 'Approve a platform administration action.',
+  [Authorities.PLATFORM_EXPORT]: 'Download platform administration data as a file.',
+
+  [Authorities.INDUSTRY_VIEW]: 'View the platform-wide industry catalogue.',
+  [Authorities.INDUSTRY_ADD]: 'Add a new industry to the catalogue.',
+  [Authorities.INDUSTRY_EDIT]: 'Rename an existing industry.',
+  [Authorities.INDUSTRY_DELETE]: 'Delete an industry from the catalogue.',
+  [Authorities.INDUSTRY_APPROVE]: 'Approve a change to the industry catalogue.',
+  [Authorities.INDUSTRY_EXPORT]: 'Download the industry catalogue as a file.',
+  [Authorities.JOB_TITLE_CATALOG_VIEW]: 'View the platform-wide job title catalogue.',
+  [Authorities.JOB_TITLE_CATALOG_ADD]: 'Add a new job title to the platform catalogue.',
+  [Authorities.JOB_TITLE_CATALOG_EDIT]: 'Rename a job title in the platform catalogue.',
+  [Authorities.JOB_TITLE_CATALOG_DELETE]: 'Delete a job title from the platform catalogue.',
+  [Authorities.JOB_TITLE_CATALOG_APPROVE]: 'Approve a change to the platform job title catalogue.',
+  [Authorities.JOB_TITLE_CATALOG_EXPORT]: 'Download the platform job title catalogue as a file.',
+  [Authorities.MASTER_DEPARTMENT_VIEW]: 'View the platform-wide department catalogue.',
+  [Authorities.MASTER_DEPARTMENT_ADD]: 'Add a new department to the platform catalogue.',
+  [Authorities.MASTER_DEPARTMENT_EDIT]: 'Rename a department in the platform catalogue.',
+  [Authorities.MASTER_DEPARTMENT_DELETE]: 'Delete a department from the platform catalogue.',
+  [Authorities.MASTER_DEPARTMENT_APPROVE]: 'Approve a change to the platform department catalogue.',
+  [Authorities.MASTER_DEPARTMENT_EXPORT]: 'Download the platform department catalogue as a file.',
+
+  [Authorities.INTERVIEW_QUESTIONS_VIEW]: "View a company's interview question bank.",
+  [Authorities.INTERVIEW_QUESTIONS_EDIT]: 'Add a new interview question.',
+  [Authorities.INTERVIEW_QUESTIONS_UPDATE]: 'Update an existing interview question.',
+  [Authorities.INTERVIEW_QUESTIONS_DELETE]: 'Delete an interview question.',
+  [Authorities.INTERVIEW_QUESTIONS_APPROVE]: 'Approve an interview question before it goes live.',
+  [Authorities.INTERVIEW_QUESTIONS_EXPORT]: 'Download the interview question bank as a file.',
+
+  [Authorities.EMAIL_TEMPLATE_VIEW]: "View a company's notification email templates.",
+  [Authorities.EMAIL_TEMPLATE_ADD]: 'Create a new email template.',
+  [Authorities.EMAIL_TEMPLATE_EDIT]: 'Edit an existing email template.',
+  [Authorities.EMAIL_TEMPLATE_DELETE]: 'Delete an email template.',
+  [Authorities.EMAIL_TEMPLATE_APPROVE]: 'Approve an email template before it goes live.',
+  [Authorities.EMAIL_TEMPLATE_EXPORT]: 'Download email templates as a file.',
+
+  [Authorities.CANDIDATE_VIEW]: "View a job's candidates and their applications.",
+  [Authorities.CANDIDATE_ADD]:
+    'Manage candidates — edit their details, change status, add notes, score them, and message them.',
+
+  [Authorities.BILLING_VIEW]: 'View billing records and invoices.',
+  [Authorities.BILLING_ADD]: 'Add a new billing record.',
+  [Authorities.BILLING_EDIT]: 'Edit an existing billing record.',
+  [Authorities.BILLING_DELETE]: 'Delete a billing record.',
+  [Authorities.BILLING_APPROVE]: 'Approve a billing record.',
+  [Authorities.BILLING_EXPORT]: 'Download billing records as a file.',
+
+  [Authorities.REPORT_VIEW]: 'View reports.',
+  [Authorities.REPORT_ADD]: 'Create a new report.',
+  [Authorities.REPORT_EDIT]: 'Edit an existing report.',
+  [Authorities.REPORT_DELETE]: 'Delete a report.',
+  [Authorities.REPORT_APPROVE]: 'Approve a report.',
+  [Authorities.REPORT_EXPORT]: 'Download a report as a file.',
+
+  [Authorities.AUTH_VIEW]: "View a person's authentication records.",
+  [Authorities.AUTH_ADD]: 'Add a new authentication record.',
+  [Authorities.AUTH_EDIT]: "Edit a person's authentication record — e.g. reset a password.",
+  [Authorities.AUTH_DELETE]: 'Delete an authentication record.',
+  [Authorities.AUTH_APPROVE]: 'Approve an authentication change.',
+  [Authorities.AUTH_EXPORT]: 'Download authentication records as a file.',
+  [Authorities.SESSION_VIEW]: "View a person's active login sessions.",
+  [Authorities.SESSION_ADD]: 'Start a new session record.',
+  [Authorities.SESSION_EDIT]: 'Edit a session record.',
+  [Authorities.SESSION_DELETE]: "Revoke someone's active login session, signing them out.",
+  [Authorities.SESSION_APPROVE]: 'Approve a session change.',
+  [Authorities.SESSION_EXPORT]: 'Download session records as a file.',
+
+  [Authorities.JOB_OPENING_VIEW]: 'View job openings and their candidate pipelines.',
+  [Authorities.JOB_OPENING_CREATE]:
+    'Create a new job opening, from scratch or by duplicating an existing one.',
+  [Authorities.JOB_OPENING_EDIT]: "Edit a job opening's details.",
+  [Authorities.JOB_OPENING_CLOSE]: 'Close a job opening.',
+  [Authorities.JOB_OPENING_DELETE]: 'Delete a job opening.',
+  [Authorities.JOB_OPENING_EXPORT]: 'Download job openings as a file.',
+
+  [Authorities.ROLE_VIEW]: 'View roles and what each one can do.',
+  [Authorities.ROLE_CREATE]: 'Create a new role, or assign an existing one to someone.',
+  [Authorities.ROLE_EDIT]: "Change a role's permissions.",
+  [Authorities.ROLE_DELETE]: 'Delete a role.',
+  [Authorities.ROLE_APPROVE]: 'Approve a role change.',
+  [Authorities.ROLE_EXPORT]: 'Download the role list as a file.',
+};
+
 // ============================================
 // SEEDED SYSTEM ROLES (fallback only)
 // ============================================

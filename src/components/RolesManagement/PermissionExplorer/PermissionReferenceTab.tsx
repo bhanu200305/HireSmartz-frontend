@@ -165,7 +165,15 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
           <CollapsibleSection key={category} title={category} defaultOpen>
             <div className="flex flex-col divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden bg-white">
               {entries.map((entry) => (
-                <div key={entry.code} className="flex items-start justify-between gap-3 px-4 py-3">
+                // Not just `entry.code` — a couple of codes are deliberately
+                // listed twice in the same category with different labels
+                // (e.g. "Create job openings" / "Duplicate job openings" both
+                // map to the one real `job:write` permission), which would
+                // otherwise collide as React keys within this one list.
+                <div
+                  key={`${entry.code}-${entry.label}`}
+                  className="flex items-start justify-between gap-3 px-4 py-3"
+                >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold text-gray-900">{entry.label}</span>

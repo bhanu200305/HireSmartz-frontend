@@ -54,7 +54,21 @@ const cfpAntdTheme = {
     InputNumber: { borderRadius: 8 },
     Select: { borderRadius: 8 },
     DatePicker: { borderRadius: 8 },
-    Table: { borderRadiusLG: 12, headerBg: 'var(--gray-50)', headerColor: 'var(--gray-600)' },
+    // `headerSortActiveBg`/`headerSortHoverBg` default to a shade AntD picks
+    // independently of `headerBg` — without pinning them here, whichever
+    // column is currently sorted (or hovered while sortable) gets a visibly
+    // different header cell background/text color than its siblings in the
+    // same row (see index.css's neighboring `.ant-table-column-sort` note
+    // for the matching body-cell version of this same bug). Pinned to the
+    // same tokens as every other header cell so a sorted column's header
+    // looks identical to an unsorted one.
+    Table: {
+      borderRadiusLG: 12,
+      headerBg: 'var(--gray-50)',
+      headerColor: 'var(--gray-600)',
+      headerSortActiveBg: 'var(--gray-50)',
+      headerSortHoverBg: 'var(--gray-50)',
+    },
     Card: { borderRadiusLG: 12 },
     Modal: { borderRadiusLG: 16 },
     Tag: { borderRadiusSM: 6 },

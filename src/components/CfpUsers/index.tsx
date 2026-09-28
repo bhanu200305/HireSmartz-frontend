@@ -249,13 +249,13 @@ const CfpUsers: React.FC = () => {
             />
           </div>
           <Button
-            className="rounded-full border border-gray-300 px-4 py-2 flex items-center gap-1 text-sm font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-colors"
+            className="w-52 rounded-full border border-gray-300 px-4 py-2 flex items-center justify-center gap-1 text-sm font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-colors"
             onClick={() => setIsBulkImportOpen(true)}
           >
             <MdOutlineUploadFile /> Import staff
           </Button>
           <Button
-            className="rounded-full bg-primary-600 text-white px-4 py-2 flex items-center gap-1 text-sm font-semibold cfp-hover-lift"
+            className="w-52 rounded-full bg-primary-600 text-white px-4 py-2 flex items-center justify-center gap-1 text-sm font-semibold cfp-hover-lift"
             onClick={() => setIsInviteOpen(true)}
           >
             <MdOutlinePersonAdd /> Invite

@@ -507,9 +507,12 @@ const CandidatesListing = () => {
                           <Col span={3} className="min-w-0 overflow-hidden">
                             <Link
                               to={buildDetailsPath(candidate.id)}
-                              className="block min-w-0 truncate whitespace-nowrap text-sm text-neutral-700 roboto-font"
+                              onClick={(e) => e.stopPropagation()}
+                              className="block min-w-0 overflow-hidden text-[var(--primary)] roboto-font"
                             >
-                              {candidate.last_name || 'N/A'}
+                              <span className="block min-w-0 truncate whitespace-nowrap font-semibold underline text-[var(--primary)] leading-5">
+                                {candidate.last_name || 'N/A'}
+                              </span>
                             </Link>
                           </Col>
                           <Col span={4}>

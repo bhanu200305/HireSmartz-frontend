@@ -1,5 +1,4 @@
-import { Button, Input, showToast } from '..';
-import loginImage from '../../assets/svgs/LoginNew.svg';
+import { AuthPageShell, Button, Input, showToast } from '..';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 import {
@@ -9,7 +8,6 @@ import {
 import { useReducer, useRef } from 'react';
 import { z } from 'zod';
 import { Loader } from '../shared/ui/loader';
-import Footer from '../Footer';
 import { getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
 
 const forgotPasswordSchema = z.object({
@@ -136,97 +134,57 @@ const ForgotPassword = () => {
     }
   };
   return (
-    <div className="flex flex-wrap h-screen w-full font-['DM Sans'] bg-[var(--login-background)]">
+    <AuthPageShell>
       {(isLoading || isSubmitting.current) && <Loader />}
-      {/* Left Side Image - flex-2 to take more space */}
-      <div className="flex-2 h-full flex flex-col justify-center items-center px-10">
-        <h3 className="font-display text-5xl font-extrabold">
-          <span className="text-primary-600">Careerforce Pro</span>
-        </h3>
-        <span className="ai-recruitment-text mb-8 mt-2 ">AI POWERED RECRUITMENT SOLUTIONS</span>
-        <img
-          src={loginImage}
-          alt="Login"
-          className="max-w-[450px] h-auto object-cover rounded-3xl"
+
+      <div className="mb-6 text-center">
+        <h2 className="text-xl font-semibold text-gray-900">Forgot password</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Enter your email to request a temporary password.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Input
+          name="email"
+          type="email"
+          // Sole input on this page — focusing it on load is the expected UX.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus
+          noAutoCapitalize
+          error={errors.email}
+          value={email}
+          onChange={onHandleChange}
+          onKeyDown={handleKeyDown}
+          placeholder="Email"
+          className="border-[var(--border)] px-4 focus:ring focus:ring-brand-300"
         />
-        <div className="flex flex-col items-center mt-4 text-center">
-          <span className="font-display text-gray-900 text-lg font-semibold">
-            Revolutionizing Talent Acquisition with AI Precision
-          </span>
-          <span className="text-gray-600 text-sm mt-4">
-            Careerforce Pro is an end-to-end AI-powered recruitment platform that empowers
-            organizations to streamline hiring processes, reduce manual effort, and secure top
-            talent with unparalleled efficiency.
-          </span>
-        </div>
-      </div>
 
-      {/* Right Side Content - flex-1 to take less space */}
-      <div className="flex-1 flex flex-col justify-center items-center px-10 py-8">
-        {/* Logo Section */}
-        {/* <div className="text-center">
-          <h3 className="text-4xl font-bold">
-            <span className="text-primary">Career</span>
-            <span className="text-black">Force Pro</span>
-          </h3>
-        </div> */}
-
-        {/* Login Form Section */}
-        <form
-          onSubmit={handleSubmit}
-          className="cfp-hover-lift w-full max-w-md flex flex-col items-center bg-white rounded-3xl px-8 py-16 shadow-lg ring-1 ring-black/5"
+        <Button
+          type="submit"
+          appname="forgot password"
+          disabled={!isFormValid || isLoading || isSubmitting.current}
+          className="w-full rounded-3xl bg-button py-2.5 font-medium text-white transition-all duration-150 hover:brightness-105 hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
         >
-          <div className="text-center">
-            <h3 className="font-display text-3xl font-bold text-gray-900 mb-2">Forgot Password</h3>
-            <p className="w-80 text-sm text-gray-500 mb-6">
-              Enter your email to request a temporary password.
-            </p>
-          </div>
-          <div className="mb-4 w-full">
-            <Input
-              name="email"
-              type="email"
-              // Sole input on this page — focusing it on load is the expected UX.
-              // eslint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
-              noAutoCapitalize
-              error={errors.email}
-              value={email}
-              onChange={onHandleChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Email"
-              className="w-90 px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
-            />
-          </div>
-          <Button
-            type="submit"
-            appname="test"
-            disabled={!isFormValid || isLoading || isSubmitting.current}
-            className="w-90 text-white bg-button rounded-3xl px-4 py-2.5 font-medium transition-all duration-150 hover:brightness-105 hover:shadow-md active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
-          >
-            {isLoading ? 'SUBMITTING...' : 'SUBMIT'}
-          </Button>
+          {isLoading ? 'Submitting…' : 'Submit'}
+        </Button>
 
-          <Link
-            to="/login"
-            className="flex items-center justify-center text-gray-600 text-sm hover:text-primary-600 hover:underline mt-4 transition-colors"
-          >
-            <FaArrowLeft className="mr-2 inline-block" />
-            Back
-          </Link>
+        <Link
+          to="/login"
+          className="flex items-center justify-center text-sm text-gray-500 hover:underline"
+        >
+          <FaArrowLeft className="mr-2 inline-block text-xs" />
+          Back
+        </Link>
 
-          <Link
-            to="/account-recovery"
-            className="mt-2 text-center text-xs text-gray-400 hover:text-gray-600 hover:underline"
-          >
-            Can&apos;t access this email?
-          </Link>
-        </form>
-
-        {/* Copyright Section */}
-        <Footer className="fixed bottom-0 left-0 z-10 text-[var(--primary)]" />
-      </div>
-    </div>
+        <Link
+          to="/account-recovery"
+          className="text-center text-xs text-gray-400 hover:text-gray-600 hover:underline"
+        >
+          Can&apos;t access this email?
+        </Link>
+      </form>
+    </AuthPageShell>
   );
 };
 

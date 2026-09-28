@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Select, Tooltip } from 'antd';
 import {
@@ -36,6 +36,7 @@ import AssignRoleModal from './AssignRoleModal';
  * GET /v1/roles/users/{id}/permissions for the real effective-permissions view. */
 const ViewOrgUser = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const userId = searchParams.get('orgUserId') || '';
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
@@ -140,7 +141,15 @@ const ViewOrgUser = () => {
         style={{ paddingBottom: 'calc(var(--app-footer-height, 84px) + 2rem)' }}
       >
         <button
-          onClick={() => navigate('/organisation-users')}
+          // `location.key` is 'default' when there's no in-app history to
+          // return to (a direct link/refresh) — falls back to the users
+          // list rather than navigating out of the app. Otherwise this
+          // returns to wherever actually linked here (the Users list, but
+          // also e.g. CompanyMetrics' "Recently offboarded members" card),
+          // instead of hardcoding one assumed origin.
+          onClick={() =>
+            location.key !== 'default' ? navigate(-1) : navigate('/organisation-users')
+          }
           className="flex items-center text-gray-600 hover:text-gray-800 mb-4 cursor-pointer"
         >
           <MdOutlineArrowBack className="mr-2" /> Back

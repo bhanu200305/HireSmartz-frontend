@@ -187,10 +187,21 @@ h6 {
   font-family: var(--font-sans) !important;
 }
 
-/* Remove highlight from sorted table columns */
-.ant-table-column-sort {
-  background: transparent !important;
-}
+/* Remove AntD's default highlight tint from a sorted column's BODY cells
+   only. Scoped to `.ant-table-tbody` on purpose — an earlier, unscoped
+   version of this rule (`.ant-table-column-sort { background: transparent
+   !important }`) matched the sorted column's HEADER cell too (AntD puts
+   this same class on the `<th>` while it's the active sort column), wiping
+   out the header row's own `var(--gray-50)` background (the `Table.headerBg`
+   token, main.tsx) there and nowhere else in the row — the sorted header
+   went white while its siblings stayed grey. The header side of this same
+   bug (AntD's separate `headerSortActiveBg`/`headerSortHoverBg` tokens
+   defaulting to something other than `headerBg`) is fixed instead by
+   pinning those tokens to `headerBg` in main.tsx's `Table` theme override —
+   no CSS override needed here since the header background comes from
+   AntD's own token-driven styles, not a class this stylesheet can safely
+   blank out (blanking it would also erase the unsorted headers' shared
+   background, same failure this comment describes). */
 .ant-table-tbody > tr.ant-table-row:hover > .ant-table-column-sort,
 .ant-table-tbody > tr > .ant-table-column-sort {
   background: transparent !important;
@@ -284,17 +295,30 @@ canvas[data-agora-recording='true'] {
   flex: 1 1 auto;
   min-height: 0;
   /* Fallback scroll container for modals that dump content straight into
-     the body instead of managing their own inner scroll region (like
-     AntdCommonModal's `.modal-content` or CreateRoleModal's own scroll div
-     below) — those already opt out of overflow via their own inner
-     wrapper's `overflow: auto`, which zeroes their flex-shrink minimum size
-     and lets them absorb the squeeze first, so this never double-scrolls
-     against them. */
+     the body instead of managing their own inner scroll region — the only
+     scrollbar that ever actually shows for those. */
   overflow-y: auto;
 }
 
+/*
+ * `flex-shrink: 0` (rather than the default 1) keeps this block at its full
+ * natural content height instead of letting the flex layout squeeze it to
+ * fit `.ant-modal-body`'s available space. A squeezed `.modal-content` used
+ * to reveal its own `overflow-y: auto` scrollbar for being smaller than its
+ * content — stacking a second, inner scrollbar on top of any scroll region
+ * a caller already manages itself (e.g. AntdCommonModal-based list modals
+ * capping their table body at a max height via `CustomTable`'s `scrollY`,
+ * see table.tsx) even though that inner content already fit within the
+ * viewport on its own. With the squeeze disabled, `.modal-content` only
+ * ever renders at its real height, so this rule now only matters as an
+ * `overflow: hidden` — it stops `.modal-content` clipping through its
+ * flex-column siblings (the title/subtitle block) rather than doing any
+ * scrolling of its own; `.ant-modal-body` above is the sole remaining
+ * fallback scrollbar for the rare case where content still doesn't fit.
+ */
 .ant-modal-body .modal-content {
   min-height: 0;
+  flex-shrink: 0;
   overflow-y: auto;
 }
 

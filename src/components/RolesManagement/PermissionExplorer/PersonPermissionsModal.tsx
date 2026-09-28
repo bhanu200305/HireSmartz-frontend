@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
+import CollapsibleSection from '../../shared/ui/CollapsibleSection';
 import { Badge } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import {
@@ -19,11 +20,57 @@ type PersonPermissionsModalProps = {
   userName: string;
 };
 
-const groupByCategory = (details: PermissionDetail[]): Record<string, PermissionDetail[]> => {
-  const groups: Record<string, PermissionDetail[]> = {};
+/** A held permission, shown under whichever catalog category it resolves to
+ * — carrying its own `label`/`description` from the catalog rather than
+ * `PermissionDetail`'s own (currently always-blank) fields, same fix as
+ * `PermissionReferenceTab`'s. */
+type GroupedDetail = PermissionDetail & { label: string; description: string };
+
+/**
+ * Groups this person's held permissions by category. Unlike `GET
+ * /v1/roles/permissions` (the plain catalog, whose `category`/`description`
+ * come back blank — see `permissionExplorer.helpers.ts`'s own note on that),
+ * `GET /v1/roles/permission-matrix?explain=true` populates
+ * `Permission_Details[].category`/`.label`/`.description` for real, from
+ * organization-service's own curated `permission_definitions.py` — so those
+ * are trusted first here. The static `PERMISSION_CATALOG` fallback (via
+ * `flattenPermissionCatalog`) only kicks in for the rare permission this
+ * endpoint doesn't have real text for; in that fallback path, a code the
+ * catalog lists under more than one category (e.g. a user permission under
+ * both "CFP Users" and "Organization Users") is deliberately shown under
+ * EACH — holding it really does grant both.
+ */
+type CatalogLookup = Pick<
+  ReturnType<typeof flattenPermissionCatalog>[number],
+  'category' | 'label' | 'description'
+>;
+
+const groupByCategory = (
+  details: PermissionDetail[],
+  catalog: ReturnType<typeof flattenPermissionCatalog>
+): Record<string, GroupedDetail[]> => {
+  const groups: Record<string, GroupedDetail[]> = {};
   details.forEach((detail) => {
-    if (!groups[detail.category]) groups[detail.category] = [];
-    groups[detail.category].push(detail);
+    if (detail.category && detail.label && detail.description) {
+      if (!groups[detail.category]) groups[detail.category] = [];
+      groups[detail.category].push(detail as GroupedDetail);
+      return;
+    }
+    const matches = catalog.filter((entry) => entry.code === detail.code);
+    const rows: CatalogLookup[] =
+      matches.length > 0
+        ? matches
+        : [
+            {
+              category: detail.category || 'Other',
+              label: detail.label || detail.code,
+              description: detail.description || '',
+            },
+          ];
+    rows.forEach((match) => {
+      if (!groups[match.category]) groups[match.category] = [];
+      groups[match.category].push({ ...detail, label: match.label, description: match.description });
+    });
   });
   return groups;
 };
@@ -52,14 +99,18 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
   );
 
   const person = data?.Organization_User_Permissions?.[0]?.Users_Permission?.[0];
-  const groups = useMemo(() => groupByCategory(person?.Permission_Details ?? []), [person]);
 
   const { data: catalog } = useGetPermissionCatalogQuery();
+  const flatCatalog = useMemo(() => flattenPermissionCatalog(catalog), [catalog]);
+  const groups = useMemo(
+    () => groupByCategory(person?.Permission_Details ?? [], flatCatalog),
+    [person, flatCatalog]
+  );
   const catalogByCode = useMemo(() => {
     const map = new Map<string, string>();
-    flattenPermissionCatalog(catalog).forEach((entry) => map.set(entry.code, entry.label));
+    flatCatalog.forEach((entry) => map.set(entry.code, entry.label));
     return map;
-  }, [catalog]);
+  }, [flatCatalog]);
 
   return (
     <AntdCommonModal
@@ -87,13 +138,17 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
               <p className="text-sm text-gray-500">This person holds no permissions.</p>
             ) : (
               Object.keys(groups).map((category) => (
-                <div key={category}>
-                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                    {category}
-                  </h4>
-                  <div className="flex flex-col divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
+                <CollapsibleSection key={category} title={category} defaultOpen>
+                  <div className="flex flex-col divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden bg-white">
                     {groups[category].map((detail) => (
-                      <div key={detail.code} className="flex flex-col gap-1.5 px-4 py-3">
+                      // Not just `detail.code` — a code held once can list
+                      // twice under the same category with different labels
+                      // (e.g. job:write as both "Create" and "Duplicate job
+                      // openings"), which would otherwise collide as keys.
+                      <div
+                        key={`${detail.code}-${detail.label}`}
+                        className="flex flex-col gap-1.5 px-4 py-3"
+                      >
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-gray-900">
                             {detail.label}
@@ -102,6 +157,9 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
                             {detail.code}
                           </code>
                         </div>
+                        {detail.description && (
+                          <p className="text-xs text-gray-500">{detail.description}</p>
+                        )}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {(detail.via_roles ?? []).map((role) => (
                             <Badge key={role} status="neutral" dot={false}>
@@ -123,7 +181,7 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
                       </div>
                     ))}
                   </div>
-                </div>
+                </CollapsibleSection>
               ))
             )}
 

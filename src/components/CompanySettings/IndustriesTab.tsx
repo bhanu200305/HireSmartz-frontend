@@ -2,11 +2,12 @@ import React, { useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import { Tooltip } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
-import { MdBlock, MdDelete, MdEdit, MdOutlineAdd, MdRestore, MdSearch } from 'react-icons/md';
+import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
 import { Badge, Button, CustomTable, Input, Typography, showToast } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import StatusToggle from '../shared/ui/StatusToggle';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
@@ -48,7 +49,7 @@ const IndustriesTab: React.FC = () => {
   const [createIndustry, { isLoading: isCreating }] = useCreateIndustryMutation();
   const [updateIndustry, { isLoading: isUpdating }] = useUpdateIndustryMutation();
   const [deleteIndustry] = useDeleteIndustryMutation();
-  const [deactivateIndustry, { isLoading: isDeactivating }] = useDeactivateIndustryMutation();
+  const [deactivateIndustry] = useDeactivateIndustryMutation();
   const [activateIndustry] = useActivateIndustryMutation();
 
   const [modalState, setModalState] = useState<{
@@ -57,11 +58,6 @@ const IndustriesTab: React.FC = () => {
   } | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [industryToDelete, setIndustryToDelete] = useState<Industry | null>(null);
-  const [industryToDeactivate, setIndustryToDeactivate] = useState<Industry | null>(null);
-  // Which row's activate call is mid-flight, if any — disables just that
-  // row's button instead of every row's, same reasoning as
-  // OrganisationDashboard/Index.tsx's pendingUserId.
-  const [pendingActivateId, setPendingActivateId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -168,25 +164,19 @@ const IndustriesTab: React.FC = () => {
     }
   };
 
-  const handleDeactivate = async () => {
-    if (!industryToDeactivate) return;
+  const handleDeactivate = async (industry: Industry) => {
     try {
-      await deactivateIndustry(industryToDeactivate.industry_id).unwrap();
-      showToast({ message: `"${industryToDeactivate.name}" was deactivated.`, type: 'success' });
+      await deactivateIndustry(industry.industry_id).unwrap();
+      showToast({ message: `"${industry.name}" was deactivated.`, type: 'success' });
     } catch (err) {
       showToast({
         message: getOrgErrorMessage(err, 'Failed to deactivate industry.'),
         type: 'error',
       });
-    } finally {
-      setIndustryToDeactivate(null);
     }
   };
 
-  // No confirmation modal, unlike deactivate — restoring visibility is the
-  // low-risk direction (same convention as OrganisationDashboard's users list).
   const handleActivate = async (industry: Industry) => {
-    setPendingActivateId(industry.industry_id);
     try {
       await activateIndustry(industry.industry_id).unwrap();
       showToast({ message: `"${industry.name}" was activated.`, type: 'success' });
@@ -195,8 +185,6 @@ const IndustriesTab: React.FC = () => {
         message: getOrgErrorMessage(err, 'Failed to activate industry.'),
         type: 'error',
       });
-    } finally {
-      setPendingActivateId(null);
     }
   };
 
@@ -239,15 +227,20 @@ const IndustriesTab: React.FC = () => {
       key: 'status',
       width: 110,
       render: (_: unknown, industry: IndustryRow) => (
-        <Badge status={industry.is_active ? 'success' : 'neutral'}>
-          {industry.is_active ? 'Active' : 'Inactive'}
-        </Badge>
+        <StatusToggle
+          isActive={industry.is_active}
+          activateLabel="Activate industry"
+          deactivateLabel="Deactivate industry"
+          deactivateConfirmTitle={`Deactivate "${industry.name}"? It won't be offered when adding a new company.`}
+          onActivate={() => handleActivate(industry)}
+          onDeactivate={() => handleDeactivate(industry)}
+        />
       ),
     },
     {
       title: 'Actions',
       key: 'actions',
-      width: 130,
+      width: 90,
       render: (_: unknown, industry: IndustryRow) => (
         <div className="flex items-center gap-1">
           <Tooltip title="Edit industry">
@@ -270,30 +263,6 @@ const IndustriesTab: React.FC = () => {
               <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
             </button>
           </Tooltip>
-          {industry.is_active ? (
-            <Tooltip title="Deactivate industry">
-              <button
-                type="button"
-                aria-label="Deactivate industry"
-                className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-                onClick={() => setIndustryToDeactivate(industry)}
-              >
-                <MdBlock className="text-gray-600 transition-colors group-hover:text-red-600" />
-              </button>
-            </Tooltip>
-          ) : (
-            <Tooltip title="Activate industry">
-              <button
-                type="button"
-                aria-label="Activate industry"
-                className="p-2 hover:bg-green-50 rounded-full disabled:cursor-not-allowed cursor-pointer transition-colors disabled:opacity-50"
-                disabled={pendingActivateId === industry.industry_id}
-                onClick={() => handleActivate(industry)}
-              >
-                <MdRestore className="text-green-600" />
-              </button>
-            </Tooltip>
-          )}
         </div>
       ),
     },
@@ -327,7 +296,7 @@ const IndustriesTab: React.FC = () => {
             }}
           />
           <Button
-            className="rounded-full bg-button text-white px-4 py-2 flex items-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0"
+            className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
             onClick={openAdd}
           >
             <MdOutlineAdd /> Add industry
@@ -411,16 +380,6 @@ const IndustriesTab: React.FC = () => {
           confirmText="REMOVE"
           onConfirm={handleDelete}
           onClose={() => setIndustryToDelete(null)}
-        />
-      )}
-
-      {industryToDeactivate && (
-        <ConfirmationModal
-          title={`Deactivate "${industryToDeactivate.name}"? It won't be offered when adding a new company.`}
-          confirmText="DEACTIVATE"
-          isLoading={isDeactivating}
-          onConfirm={handleDeactivate}
-          onClose={() => setIndustryToDeactivate(null)}
         />
       )}
     </div>

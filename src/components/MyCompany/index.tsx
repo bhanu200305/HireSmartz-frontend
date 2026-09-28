@@ -350,11 +350,11 @@ const MyCompany: React.FC = () => {
                 </h1>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
                   <span className="flex items-center gap-1.5">
-                    <MdEmail size={14} />
+                    <MdPhone size={14} />
                     {profile?.admin_contact || '-'}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <MdPhone size={14} />
+                    <MdEmail size={14} />
                     {profile?.website_url || '-'}
                   </span>
                 </div>

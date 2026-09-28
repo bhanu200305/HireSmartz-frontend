@@ -79,7 +79,7 @@ const HiringPipeline: React.FC<HiringPipelineProps> = ({ stages }) => {
   const outcomeBase = lastMainStage.value || 1;
 
   return (
-    <div className="flex h-full flex-col justify-center gap-4 py-1">
+    <div className="flex h-full flex-col justify-center gap-3 py-1">
       <div className="flex flex-col items-stretch gap-2 sm:flex-row">
         {mainStages.map((stage, i) => {
           const tint = STAGE_TINTS[i % STAGE_TINTS.length];
@@ -111,11 +111,12 @@ const HiringPipeline: React.FC<HiringPipelineProps> = ({ stages }) => {
       </div>
 
       {outcomeStages.length > 0 && (
-        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
-          <span className="hidden shrink-0 text-neutral-400 sm:block" aria-hidden>
-            ↳
-          </span>
-          <div className="flex flex-col gap-2 sm:min-w-[280px]">
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+            <span className="h-px w-4 bg-neutral-300" aria-hidden />
+            {lastMainStage.label} outcome
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:w-[22rem]">
             {outcomeStages.map((stage) => {
               const key = stage.label.trim().toLowerCase();
               const style = OUTCOME_STYLES[key] ?? OUTCOME_STYLES.selected;
@@ -123,7 +124,7 @@ const HiringPipeline: React.FC<HiringPipelineProps> = ({ stages }) => {
               return (
                 <div
                   key={stage.label}
-                  className={`flex items-center gap-3 rounded-xl border px-3.5 py-2 ${style.wrap}`}
+                  className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 ${style.wrap}`}
                 >
                   <div
                     className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs ${style.iconWrap}`}
@@ -131,15 +132,13 @@ const HiringPipeline: React.FC<HiringPipelineProps> = ({ stages }) => {
                     {style.icon}
                   </div>
                   <div className="min-w-0">
-                    <div className="truncate text-xs font-bold uppercase tracking-wide text-neutral-500">
+                    <div className="truncate text-[11px] font-bold uppercase tracking-wide text-neutral-500">
                       {stage.label}
                     </div>
                     <div className="font-display text-sm font-semibold text-neutral-900">
                       {stage.value.toLocaleString()}
                     </div>
-                    <div className="truncate text-xs text-neutral-400">
-                      {pct}% of {lastMainStage.label}
-                    </div>
+                    <div className="truncate text-[11px] text-neutral-400">{pct}% of stage</div>
                   </div>
                 </div>
               );

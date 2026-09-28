@@ -264,15 +264,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         ))}
 
-      {!isCollapsed && (
-        <p
-          className="px-5 mb-2 text-xs font-semibold uppercase tracking-widest"
-          style={{ color: 'rgba(255,255,255,0.25)' }}
-        >
-          Menu
-        </p>
-      )}
-
       {/* Nav items — overflow-y-auto so a short browser window (or a role
           with a long menu) scrolls the item list internally rather than
           pushing the "Welcome"/role footer below off-screen. Left at the

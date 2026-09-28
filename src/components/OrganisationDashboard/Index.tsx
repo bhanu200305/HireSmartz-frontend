@@ -3,7 +3,7 @@ import type { TableProps } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
 import { LuUsersRound } from 'react-icons/lu';
 import { PlusOutlined } from '@ant-design/icons';
-import { MdSearch, MdOutlineFileUpload, MdOutlineRefresh, MdOutlineBlock } from 'react-icons/md';
+import { MdSearch, MdOutlineFileUpload, MdOutlineRefresh, MdOutlineEdit } from 'react-icons/md';
 import { Select, Switch, Tooltip } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -16,7 +16,7 @@ import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import { Badge } from '../shared/ui/badge';
 import CustomTable from '../shared/ui/table';
-import ConfirmationModal from '../shared/ui/ConfirmationModal';
+import StatusToggle from '../shared/ui/StatusToggle';
 import BulkImport from '../MyCompany/Team/BulkImport';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
@@ -32,7 +32,6 @@ import {
   InvitationSummary,
   useListTenantInvitationsQuery,
   useResendTenantInvitationMutation,
-  useRevokeTenantInvitationMutation,
 } from '../../api/organization-service/Tenants/teamInvitations';
 import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
@@ -45,10 +44,15 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 // model and the repository enforce it), so this can't ask for more anyway.
 const SEARCH_PAGE_SIZE = 200;
 
-// The five columns this table can sort by — matches each column's own `key`
+// The columns this table can sort by — matches each column's own `key`
 // below (comparators live inside the component, since they close over the
 // `TableRow` union, which itself depends on the query's own row shape).
-type SortKey = 'full_name' | 'email' | 'role' | 'phone' | 'status';
+type SortKey = 'full_name' | 'email' | 'role' | 'phone' | 'status' | 'onboarded';
+
+/** Onboarding-state rank for sorting the "Onboarded" column — lower sorts
+ * first. Deactivated sorts last: it's a dead end, not progress toward
+ * onboarding. */
+const ONBOARDED_RANK = { onboarded: 0, pending: 1, deactivated: 2 } as const;
 
 /** §"Users — Organization Directory": GET /v1/users. Tenant comes from the
  * caller's own session — no company/tenant selector, unlike the Super
@@ -84,16 +88,8 @@ const OrganisationUserTable = () => {
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('full_name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [userToDeactivate, setUserToDeactivate] = useState<OrgUser | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const canArchive = useHasAccess(Authorities.USER_ARCHIVE);
-  // Which row's Switch is mid-mutation, if any — `isDeactivating`/
-  // `isReactivating` below are per-HOOK, not per-row: without this, toggling
-  // one user disabled every OTHER row's switch too (deactivate's flag wasn't
-  // even wired into `disabled` at all, so it did nothing there; reactivate's
-  // was, so it disabled the whole table's switches at once, active and
-  // inactive rows alike, while any single reactivation was in flight).
-  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
 
   const isSearching = searchText.trim().length > 0;
 
@@ -127,7 +123,7 @@ const OrganisationUserTable = () => {
   const roleOptions = (rolesData || [])
     .map((role) => ({ label: systemRoleLabel(role.name), value: role.name }))
     .sort((a, b) => a.label.localeCompare(b.label));
-  const [deactivateUser, { isLoading: isDeactivating }] = useDeactivateUserMutation();
+  const [deactivateUser] = useDeactivateUserMutation();
   const [reactivateUser] = useReactivateUserMutation();
 
   // Bulk import (and a single invite) only ever creates an `Invite` row —
@@ -142,7 +138,6 @@ const OrganisationUserTable = () => {
     { skip: !tenantId }
   );
   const [resendInvite, { isLoading: isResendingInvite }] = useResendTenantInvitationMutation();
-  const [revokeInvite, { isLoading: isRevokingInvite }] = useRevokeTenantInvitationMutation();
 
   const handleResendInvite = async (invitationId: string) => {
     if (!tenantId) return;
@@ -157,36 +152,18 @@ const OrganisationUserTable = () => {
     }
   };
 
-  const handleRevokeInvite = async (invitationId: string) => {
-    if (!tenantId) return;
-    try {
-      await revokeInvite({ tenantId, invitationId }).unwrap();
-      showToast({ message: 'Invitation revoked.', type: 'success' });
-    } catch (err) {
-      showToast({
-        message: getOrgErrorMessage(err, 'Failed to revoke invitation.'),
-        type: 'error',
-      });
-    }
-  };
-
   useEffect(() => {
     if (error) {
       showToast({ message: getOrgErrorMessage(error, 'Failed to load users.'), type: 'error' });
     }
   }, [error]);
 
-  const handleDeactivate = async () => {
-    if (!userToDeactivate) return;
-    setPendingUserId(userToDeactivate.user_id);
+  const handleDeactivate = async (user: OrgUser) => {
     try {
-      await deactivateUser(userToDeactivate.user_id).unwrap();
-      showToast({ message: `${userToDeactivate.full_name} was deactivated.`, type: 'success' });
+      await deactivateUser(user.user_id).unwrap();
+      showToast({ message: `${user.full_name} was deactivated.`, type: 'success' });
     } catch (err) {
       showToast({ message: getOrgErrorMessage(err, 'Failed to deactivate user.'), type: 'error' });
-    } finally {
-      setUserToDeactivate(null);
-      setPendingUserId(null);
     }
   };
 
@@ -195,24 +172,33 @@ const OrganisationUserTable = () => {
   // freed the user's email, so re-adding them via "Add user" 409s with
   // "already exists." This is the actual way back.
   const handleReactivate = async (user: OrgUser) => {
-    setPendingUserId(user.user_id);
     try {
       await reactivateUser(user.user_id).unwrap();
       showToast({ message: `${user.full_name} was reactivated.`, type: 'success' });
     } catch (err) {
       showToast({ message: getOrgErrorMessage(err, 'Failed to reactivate user.'), type: 'error' });
-    } finally {
-      setPendingUserId(null);
     }
   };
 
   const users = data?.items || [];
-  type UserRow = (typeof users)[number] & { key: string; kind: 'user' };
+  // `invitation` is only ever set for a user still mid-setup (`!has_set_password`)
+  // whose invite (organization-service keeps `users`/`invitations` as
+  // entirely separate tables, joined here only by email — see below) is
+  // still live — it's what lets THIS row's own Resend/Revoke act on that
+  // invite, instead of that invite also rendering as a second, separate row
+  // for the same person.
+  type UserRow = (typeof users)[number] & {
+    key: string;
+    kind: 'user';
+    invitation: InvitationSummary | undefined;
+  };
 
-  // A bulk-imported (or "Add user"-invited) person before they accept — an
-  // `Invite` row, not a `User` row (organization-service keeps these as
-  // entirely separate tables). Shown in the SAME table as real users, with a
-  // "Pending" status, until accepted — at which point their invite's status
+  // An invited person with no `users` row of their own yet — the normal
+  // shape for "Invite Team Member"/bulk import, which (unlike "+ ADD USER",
+  // whose CreateUserUseCase writes a `users` row and an `Invite` together in
+  // one transaction) only ever creates the `Invite`, nothing else, until
+  // accepted. Shown in the SAME table as real users, with a "Pending setup"
+  // Onboarded state, until accepted — at which point the invite's status
   // flips to "accepted" (so it drops out of this filter) and their real User
   // row appears via `users` above instead. Same shape UsersPanel.tsx already
   // established for the Super-Admin-side mirror of this table.
@@ -235,22 +221,45 @@ const OrganisationUserTable = () => {
     [invitationsData]
   );
 
+  // Keyed by lowercased email — the only field both `users` and
+  // `invitations` actually share (neither response links the other's id;
+  // confirmed against organization-service's ListUsersUseCase/
+  // ListTenantInvitationsUseCase, which query entirely separate tables with
+  // no cross-reference). A "+ ADD USER"-created person shows up in BOTH
+  // `users` (immediately, `has_set_password: false`) and `invitations`
+  // (`status: 'pending'`) for the same email — this is what lets that
+  // invite attach to their existing user row below instead of also
+  // rendering as a ghost duplicate beside it.
+  const pendingInvitationByEmail = useMemo(() => {
+    const map = new Map<string, InvitationSummary>();
+    for (const invitation of pendingInvitations) {
+      map.set(invitation.invited_email.trim().toLowerCase(), invitation);
+    }
+    return map;
+  }, [pendingInvitations]);
+
   const rows: TableRow[] = useMemo(() => {
     const userRows: UserRow[] = users.map((user) => ({
       ...user,
       key: user.user_id,
       kind: 'user',
+      invitation: pendingInvitationByEmail.get(user.email.trim().toLowerCase()),
     }));
-    const pendingRows: PendingRow[] = pendingInvitations.map((invitation: InvitationSummary) => ({
-      key: `invite-${invitation.invitation_id}`,
-      kind: 'pending',
-      invitation_id: invitation.invitation_id,
-      invited_email: invitation.invited_email,
-      role: invitation.role,
-      expires_at: invitation.expires_at,
-    }));
+    // A pending invitation whose email already matched a `users` row above
+    // isn't a separate person to list — it's that row's `invitation` now.
+    const matchedEmails = new Set(users.map((u) => u.email.trim().toLowerCase()));
+    const pendingRows: PendingRow[] = pendingInvitations
+      .filter((invitation) => !matchedEmails.has(invitation.invited_email.trim().toLowerCase()))
+      .map((invitation: InvitationSummary) => ({
+        key: `invite-${invitation.invitation_id}`,
+        kind: 'pending',
+        invitation_id: invitation.invitation_id,
+        invited_email: invitation.invited_email,
+        role: invitation.role,
+        expires_at: invitation.expires_at,
+      }));
     return [...userRows, ...pendingRows];
-  }, [users, pendingInvitations]);
+  }, [users, pendingInvitations, pendingInvitationByEmail]);
 
   const filteredUsers = useMemo(() => {
     const q = searchText.trim().toLowerCase();
@@ -261,6 +270,15 @@ const OrganisationUserTable = () => {
         : row.invited_email.toLowerCase().includes(q) || row.role.toLowerCase().includes(q)
     );
   }, [rows, searchText]);
+
+  const onboardedRank = (row: TableRow): number =>
+    row.kind === 'pending'
+      ? ONBOARDED_RANK.pending
+      : !row.is_active
+        ? ONBOARDED_RANK.deactivated
+        : row.has_set_password
+          ? ONBOARDED_RANK.onboarded
+          : ONBOARDED_RANK.pending;
 
   // Client-side, over whatever rows are already on the page — same
   // DepartmentsTab.tsx pattern (controlled sortBy/sortOrder + a
@@ -281,6 +299,7 @@ const OrganisationUserTable = () => {
     status: (a, b) =>
       Number(a.kind === 'user' ? a.is_active : false) -
       Number(b.kind === 'user' ? b.is_active : false),
+    onboarded: (a, b) => onboardedRank(a) - onboardedRank(b),
   };
 
   const sortedUsers = useMemo(() => {
@@ -394,82 +413,94 @@ const OrganisationUserTable = () => {
         ),
     },
     {
+      // Just the on/off switch now — whether this account is set up yet
+      // lives in the separate "Onboarded" column below, so this column
+      // means one thing only: can they currently sign in.
       title: 'Status',
       key: 'status',
       sorter: true,
       sortOrder: sortOrderFor('status'),
       render: (_: unknown, row: TableRow) =>
         row.kind === 'pending' ? (
-          <Badge status="warning">Pending</Badge>
+          <Tooltip title="No account yet — nothing to activate or deactivate until this invite is accepted.">
+            <Switch checked={false} disabled />
+          </Tooltip>
         ) : (
-          <div className="flex items-center gap-2.5">
-            <Tooltip
-              title={
-                !canArchive
-                  ? "You don't have permission to change a user's status."
-                  : row.is_active
-                    ? 'Deactivate this user'
-                    : 'Reactivate this user'
-              }
-            >
-              <Switch
-                size="small"
-                checked={row.is_active}
-                disabled={!canArchive || pendingUserId === row.user_id}
-                onChange={() =>
-                  row.is_active ? setUserToDeactivate(row) : void handleReactivate(row)
-                }
-              />
-            </Tooltip>
-            {/* is_active alone can't tell a real, logged-in user apart from
-                someone still sitting on an unaccepted invite — see
-                OrgUser.has_set_password's own docstring. */}
-            <Badge
-              status={!row.is_active ? 'neutral' : row.has_set_password ? 'success' : 'warning'}
-            >
-              {!row.is_active ? 'Deactivated' : row.has_set_password ? 'Active' : 'Pending setup'}
-            </Badge>
-          </div>
+          <StatusToggle
+            isActive={row.is_active}
+            disabled={!canArchive}
+            activateLabel="Reactivate this user"
+            deactivateLabel="Deactivate this user"
+            deactivateConfirmTitle={`Deactivate "${row.full_name}"? They'll immediately lose access.`}
+            onActivate={() => handleReactivate(row)}
+            onDeactivate={() => handleDeactivate(row)}
+          />
+        ),
+    },
+    {
+      // Just the badge now — Resend moved into Actions below (alongside
+      // Edit, this row's other action), and Revoke was removed outright.
+      title: 'Onboarded',
+      key: 'onboarded',
+      sorter: true,
+      sortOrder: sortOrderFor('onboarded'),
+      render: (_: unknown, row: TableRow) =>
+        // is_active alone can't tell a real, logged-in user apart from
+        // someone still sitting on an unaccepted invite — see
+        // OrgUser.has_set_password's own docstring.
+        row.kind === 'pending' ? (
+          <Badge status="warning">Pending setup</Badge>
+        ) : !row.is_active ? (
+          <Badge status="neutral">Deactivated</Badge>
+        ) : row.has_set_password ? (
+          <Badge status="success">Onboarded</Badge>
+        ) : (
+          <Badge status="warning">Pending setup</Badge>
         ),
     },
     {
       title: 'Actions',
       key: 'actions',
       align: 'right',
-      render: (_: unknown, row: TableRow) =>
-        row.kind === 'pending' ? (
-          <div className="flex gap-1 justify-end">
-            <Tooltip title="Resend invitation">
-              <button
-                type="button"
-                aria-label="Resend invitation"
-                className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                disabled={isResendingInvite}
-                onClick={() => void handleResendInvite(row.invitation_id)}
-              >
-                <MdOutlineRefresh />
-              </button>
-            </Tooltip>
-            <Tooltip title="Revoke invitation">
-              <button
-                type="button"
-                aria-label="Revoke invitation"
-                className="group p-2 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                disabled={isRevokingInvite}
-                onClick={() => void handleRevokeInvite(row.invitation_id)}
-              >
-                <MdOutlineBlock className="text-gray-600 transition-colors group-hover:text-red-600" />
-              </button>
-            </Tooltip>
+      render: (_: unknown, row: TableRow) => {
+        // The invite to resend — this row's own (a pure invitation row) or
+        // the one matched onto it by email (a "+ ADD USER"-created row
+        // still mid-setup). Neither exists for an onboarded/deactivated
+        // user, and occasionally not even for a still-pending one — see
+        // UserRow.invitation's own comment on the orphan case (companion
+        // invite revoked/expired without the user row being cleaned up) —
+        // nothing to resend against then.
+        const invitationId =
+          row.kind === 'pending' ? row.invitation_id : row.invitation?.invitation_id;
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {invitationId && (
+              <Tooltip title="Resend invitation">
+                <button
+                  type="button"
+                  aria-label="Resend invitation"
+                  className="p-2 rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  disabled={isResendingInvite}
+                  onClick={() => void handleResendInvite(invitationId)}
+                >
+                  <MdOutlineRefresh size={16} />
+                </button>
+              </Tooltip>
+            )}
+            {row.kind === 'user' && (
+              <Tooltip title="Edit">
+                <Link
+                  to={`/edit-organisation-user?orgUserId=${row.user_id}`}
+                  aria-label="Edit"
+                  className="p-2 rounded-full text-gray-600 hover:bg-gray-100 hover:text-primary-600 transition-colors"
+                >
+                  <MdOutlineEdit size={16} />
+                </Link>
+              </Tooltip>
+            )}
           </div>
-        ) : (
-          <Link
-            to={`/edit-organisation-user?orgUserId=${row.user_id}`}
-            className="text-sm font-semibold text-primary-600 hover:underline"
-          >
-            Edit
-          </Link>
-        ),
+        );
+      },
     },
   ];
 
@@ -586,16 +617,6 @@ const OrganisationUserTable = () => {
           total={data?.total || 0}
           itemLabel="Users"
           onPageChange={(p) => setPage(p - 1)}
-        />
-      )}
-
-      {userToDeactivate && (
-        <ConfirmationModal
-          title={`Deactivate "${userToDeactivate.full_name}"? They'll immediately lose access.`}
-          confirmText="DEACTIVATE"
-          isLoading={isDeactivating}
-          onConfirm={handleDeactivate}
-          onClose={() => setUserToDeactivate(null)}
         />
       )}
 

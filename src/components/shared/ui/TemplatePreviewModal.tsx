@@ -2,6 +2,7 @@ import React from 'react';
 import { Spin } from 'antd';
 import AntdCommonModal from './AntdCommonModal';
 import type { TemplatePreview } from '../../../api/notification-service/TemplateSettings/index';
+import { disableLinksInEmailPreview } from '../../../shared/utils/notifications/disableLinksInEmailPreview';
 
 type TemplatePreviewModalProps = {
   open: boolean;
@@ -66,7 +67,7 @@ const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
           <iframe
             title="Notification preview"
             sandbox=""
-            srcDoc={preview.body_html}
+            srcDoc={disableLinksInEmailPreview(preview.body_html)}
             className="w-full flex-1 min-h-0 rounded-lg border border-gray-200"
           />
         ) : (

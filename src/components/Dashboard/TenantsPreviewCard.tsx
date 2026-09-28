@@ -7,6 +7,7 @@ import { Search } from '../shared';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { Badge } from '../shared/ui/badge';
 import { Loader } from '../shared/ui/loader';
+import { SortCaretIcon } from '../shared/ui/SortCaretIcon';
 import MasterPagination from '../shared/ui/MasterPagination';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import {
@@ -90,8 +91,8 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
     setPage(0);
   };
 
-  const sortIndicator = (column: 'created_at' | 'company_name') =>
-    sort.sortBy === column ? (sort.sortOrder === 'asc' ? ' ↑' : ' ↓') : '';
+  const sortDirectionFor = (column: 'created_at' | 'company_name') =>
+    sort.sortBy === column ? sort.sortOrder : null;
 
   const [selectedTenant, setSelectedTenant] = useState<PlatformTenantSummary | null>(null);
 
@@ -176,7 +177,10 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
                   className="cursor-pointer select-none py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap hover:text-neutral-700"
                   onClick={() => toggleSort('company_name')}
                 >
-                  Company{sortIndicator('company_name')}
+                  <span className="inline-flex items-center">
+                    Company
+                    <SortCaretIcon direction={sortDirectionFor('company_name')} />
+                  </span>
                 </th>
                 <th className="py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
                   Status
@@ -188,7 +192,10 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
                   className="cursor-pointer select-none py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap hover:text-neutral-700"
                   onClick={() => toggleSort('created_at')}
                 >
-                  Created{sortIndicator('created_at')}
+                  <span className="inline-flex items-center">
+                    Created
+                    <SortCaretIcon direction={sortDirectionFor('created_at')} />
+                  </span>
                 </th>
               </tr>
             </thead>

@@ -3,10 +3,11 @@ import type { TableProps } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
 import { Select as AntSelect } from 'antd';
 import { MdSearch } from 'react-icons/md';
-import { CustomTable, Input, Typography, Button, showToast } from '../../shared';
+import { Badge, CustomTable, Input, Typography, Button, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import MasterPagination from '../../shared/ui/MasterPagination';
 import { RowsPerPageSelect } from '../../shared/ui/RowsPerPageSelect';
+import { FilterSelectIcon } from '../../shared/ui/FilterSelectIcon';
 import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
@@ -39,6 +40,7 @@ const SORT_COMPARATORS: Record<SortKey, (a: TenantJobTitle, b: TenantJobTitle) =
 const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [showAssignedOnly, setShowAssignedOnly] = useState(false);
   const [stagedMappedIds, setStagedMappedIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>('name');
@@ -66,12 +68,29 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
     tenantId,
     { skip: !tenantId }
   );
+
+  const {
+    data: mappedJobTitles,
+    isLoading: isMappedLoading,
+    isFetching: isMappedFetching,
+  } = useListTenantDepartmentJobTitlesQuery(
+    { tenantId, departmentId: selectedDepartmentId ?? '' },
+    { skip: !selectedDepartmentId }
+  );
+  const mappedIds = useMemo(
+    () => new Set((mappedJobTitles ?? []).map((jt) => tenantJobTitleFormId(jt))),
+    [mappedJobTitles]
+  );
+
   const filteredJobTitles = useMemo(() => {
-    const list = allJobTitles ?? [];
+    let list = allJobTitles ?? [];
+    if (showAssignedOnly) {
+      list = list.filter((jt) => mappedIds.has(tenantJobTitleFormId(jt)));
+    }
     if (!searchText.trim()) return list;
     const q = searchText.trim().toLowerCase();
     return list.filter((jt) => jt.name.toLowerCase().includes(q));
-  }, [allJobTitles, searchText]);
+  }, [allJobTitles, searchText, showAssignedOnly, mappedIds]);
 
   // Sorted+paginated client-side, same "Rows per page" + MasterPagination UI
   // every list-drilldown modal already uses, rather than antd Table's own
@@ -99,19 +118,6 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
     setSortBy(active.columnKey as SortKey);
     setSortOrder(active.order === 'ascend' ? 'asc' : 'desc');
   };
-
-  const {
-    data: mappedJobTitles,
-    isLoading: isMappedLoading,
-    isFetching: isMappedFetching,
-  } = useListTenantDepartmentJobTitlesQuery(
-    { tenantId, departmentId: selectedDepartmentId ?? '' },
-    { skip: !selectedDepartmentId }
-  );
-  const mappedIds = useMemo(
-    () => new Set((mappedJobTitles ?? []).map((jt) => tenantJobTitleFormId(jt))),
-    [mappedJobTitles]
-  );
 
   useEffect(() => {
     setStagedMappedIds(new Set(mappedIds));
@@ -198,9 +204,16 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
       sorter: true,
       sortOrder: sortOrderFor('name'),
       render: (_: unknown, row: JobTitleAssignRow) => (
-        <span className={row.isMapped ? 'font-semibold text-primary-700' : 'text-gray-700'}>
-          {row.name}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={row.isMapped ? 'font-semibold text-primary-700' : 'text-gray-700'}>
+            {row.name}
+          </span>
+          {row.isMapped && (
+            <Badge status="success" dot={false}>
+              Assigned
+            </Badge>
+          )}
+        </div>
       ),
     },
   ];
@@ -233,9 +246,9 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
           filterOption={(input, option) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
           }
-          className="w-64"
+          className="w-56"
         />
-        <div className="w-52">
+        <div className="w-56">
           <Input
             prefix={<MdSearch className="text-gray-400" />}
             placeholder="Search job titles..."
@@ -244,6 +257,22 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
               setSearchText(e.target.value);
               setPage(0);
             }}
+          />
+        </div>
+        <div className="cfp-dropdown-trigger w-56">
+          <FilterSelectIcon />
+          <AntSelect
+            className="w-full custom-select"
+            variant="borderless"
+            value={showAssignedOnly ? 'assigned' : 'all'}
+            onChange={(value) => {
+              setShowAssignedOnly(value === 'assigned');
+              setPage(0);
+            }}
+            options={[
+              { label: 'All job titles', value: 'all' },
+              { label: 'Assigned only', value: 'assigned' },
+            ]}
           />
         </div>
       </div>
@@ -270,9 +299,9 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
               </div>
             )}
             <div className="px-4 py-3 flex justify-between items-center border-b border-neutral-200 bg-gray-50">
-              <Typography variant="body1">{activeDepartmentName}: job titles</Typography>
+              <Typography variant="body1">Select job titles for {activeDepartmentName}</Typography>
               <span className="text-xs font-medium text-gray-400">
-                {stagedMappedIds.size} of {(allJobTitles ?? []).length} selected
+                {stagedMappedIds.size} of {(allJobTitles ?? []).length} assigned
               </span>
             </div>
 

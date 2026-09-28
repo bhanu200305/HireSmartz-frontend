@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MdOutlineWorkOutline } from 'react-icons/md';
 import { Badge, Search } from '../shared';
 import { Loader } from '../shared/ui/loader';
+import { SortCaretIcon } from '../shared/ui/SortCaretIcon';
 import { useGetJobOpeningsListLegacyQuery as useGetJobOpeningsQuery } from '../../api/job-service/JobOpenings/jobOpenings';
 import type { JobListArgs, JobSummary } from '../../api/job-service/JobOpenings/types';
 import { jobStatus, daysOpen } from './jobOpeningListHelpers';
@@ -26,11 +27,20 @@ type OpenJobsSectionProps = {
  */
 const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
   const [search, setSearch] = useState('');
+  // The only column job-service can actually sort by that this table also
+  // shows — see JobOpeningsListModal's own comment on `daysOpenSortDir`;
+  // "Days open" is derived FROM job_open_date, so sorting by that (inverted
+  // — an older open date means MORE days open) is the one honest
+  // server-side sort available here.
+  const [daysOpenSortDir, setDaysOpenSortDir] = useState<'asc' | 'desc' | null>(null);
   const { data, isLoading } = useGetJobOpeningsQuery({
     page: 1,
     page_size: 10,
     status,
     text: search || undefined,
+    ...(daysOpenSortDir
+      ? { sort_by: 'job_open_date', sort_dir: daysOpenSortDir === 'asc' ? 'desc' : 'asc' }
+      : {}),
   });
   const [selectedJob, setSelectedJob] = useState<JobSummary | null>(null);
   // Always just the first page of up to 10 — "View all" (below) is the
@@ -43,6 +53,12 @@ const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
   const { titleMap } = useJobTitleNameMap();
   const jobTitle = (job: JobSummary): string =>
     (job.job_title_id && titleMap[job.job_title_id]) || 'Untitled job';
+
+  // Toggles ascending/descending forever once a first click sets it — no
+  // 3rd "cancel back to unsorted" step, matching CustomTable's own
+  // `sortDirections` (table.tsx) and COL's `handleSort` (Columns.tsx), so
+  // every sortable list in the app behaves the same way.
+  const toggleDaysOpenSort = () => setDaysOpenSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4">
@@ -76,7 +92,15 @@ const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
                 <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Status</th>
                 <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Applicants</th>
                 <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Interviews</th>
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Days open</th>
+                <th
+                  className="cursor-pointer select-none pb-2 text-xs font-semibold uppercase tracking-wide hover:text-neutral-600"
+                  onClick={toggleDaysOpenSort}
+                >
+                  <span className="inline-flex items-center">
+                    Days open
+                    <SortCaretIcon direction={daysOpenSortDir} />
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
