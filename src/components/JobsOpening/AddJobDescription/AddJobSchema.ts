@@ -205,7 +205,12 @@ export const jobDetailsSchema = z
       .array(catalogId)
       .max(30, 'You can select up to 30 optional skills.')
       .optional(),
-    responsibilities: z.string().nonempty('Responsibilities is required.'),
+    responsibilities: z
+      .string()
+      .nonempty('Responsibilities is required.')
+      .refine((val) => val.length <= 2000, {
+        message: 'Responsibilities cannot exceed 2000 characters.',
+      }),
     otherRequirements: z
       .string()
       .transform((val) => {
@@ -218,9 +223,9 @@ export const jobDetailsSchema = z
       .refine(
         (val) => {
           if (!val) return true;
-          return val.length <= 1000;
+          return val.length <= 2000;
         },
-        { message: 'Other requirements cannot exceed 1000 characters.' }
+        { message: 'Other requirements cannot exceed 2000 characters.' }
       )
       .optional(),
     benefits: z
@@ -235,9 +240,9 @@ export const jobDetailsSchema = z
       .refine(
         (val) => {
           if (!val) return true;
-          return val.length <= 1000;
+          return val.length <= 2000;
         },
-        { message: 'Benefits cannot exceed 1000 characters.' }
+        { message: 'Benefits cannot exceed 2000 characters.' }
       )
       .optional(),
   })
@@ -330,9 +335,9 @@ export const jobDescriptionSchema = z.object({
     .refine(
       (val) => {
         if (!val) return true;
-        return val.length <= 1000;
+        return val.length <= 2000;
       },
-      { message: 'Other requirements cannot exceed 1000 characters.' }
+      { message: 'Other requirements cannot exceed 2000 characters.' }
     )
     .optional(),
   benefits: z
@@ -347,9 +352,9 @@ export const jobDescriptionSchema = z.object({
     .refine(
       (val) => {
         if (!val) return true;
-        return val.length <= 1000;
+        return val.length <= 2000;
       },
-      { message: 'Benefits cannot exceed 1000 characters.' }
+      { message: 'Benefits cannot exceed 2000 characters.' }
     )
     .optional(),
 });

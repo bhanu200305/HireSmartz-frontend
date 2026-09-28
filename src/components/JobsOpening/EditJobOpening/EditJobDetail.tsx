@@ -3325,7 +3325,7 @@ const EditJobDetail = () => {
                     id="field-responsibilities"
                     placeholder="Enter responsibilities"
                     rows={4}
-                    maxLength={1000}
+                    maxLength={2000}
                     showCount={{
                       formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
                     }}
@@ -3351,7 +3351,7 @@ const EditJobDetail = () => {
                     {...field}
                     placeholder="Enter other requirements"
                     rows={4}
-                    maxLength={1000}
+                    maxLength={2000}
                     showCount={{
                       formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
                     }}
@@ -3375,7 +3375,7 @@ const EditJobDetail = () => {
                     {...field}
                     placeholder="Enter benefits offered"
                     rows={4}
-                    maxLength={1000}
+                    maxLength={2000}
                     showCount={{
                       formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
                     }}

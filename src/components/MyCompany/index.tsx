@@ -332,43 +332,47 @@ const MyCompany: React.FC = () => {
             {isProfileLoading && <Loader />}
 
             <div className="flex items-center gap-4 mb-6">
-              <div
-                className={`relative w-14 h-14 shrink-0 text-white rounded-full flex items-center justify-center shadow-sm text-xl font-bold overflow-hidden ${
-                  profile?.logo_url
-                    ? 'bg-gray-100'
-                    : 'bg-gradient-to-br from-primary-600 to-accent-500'
-                }`}
-              >
-                {profile?.logo_url ? (
-                  <img
-                    src={profile.logo_url}
-                    alt={profile.company_name}
-                    // object-contain, not object-cover — see
-                    // CompanyProfileTab.tsx's identical fix for why cover was
-                    // cropping most of a non-square scraped logo away. This
-                    // header is display-only (no upload control of its own —
-                    // the logo is edited from the Company Profile tab), so
-                    // just the framing fix, no crop modal here.
-                    className="w-full h-full object-contain p-1.5"
-                  />
-                ) : (
-                  <span>{profile?.company_name?.toUpperCase()?.[0] || ''}</span>
-                )}
-              </div>
+              {isCompanyAdmin && (
+                <div
+                  className={`relative w-14 h-14 shrink-0 text-white rounded-full flex items-center justify-center shadow-sm text-xl font-bold overflow-hidden ${
+                    profile?.logo_url
+                      ? 'bg-gray-100'
+                      : 'bg-gradient-to-br from-primary-600 to-accent-500'
+                  }`}
+                >
+                  {profile?.logo_url ? (
+                    <img
+                      src={profile.logo_url}
+                      alt={profile.company_name}
+                      // object-contain, not object-cover — see
+                      // CompanyProfileTab.tsx's identical fix for why cover was
+                      // cropping most of a non-square scraped logo away. This
+                      // header is display-only (no upload control of its own —
+                      // the logo is edited from the Company Profile tab), so
+                      // just the framing fix, no crop modal here.
+                      className="w-full h-full object-contain p-1.5"
+                    />
+                  ) : (
+                    <span>{profile?.company_name?.toUpperCase()?.[0] || ''}</span>
+                  )}
+                </div>
+              )}
               <div className="min-w-0">
                 <h1 className="font-display text-2xl font-bold text-gray-900">
                   {profile?.company_name}
                 </h1>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
-                  <span className="flex items-center gap-1.5">
-                    <MdPhone size={14} />
-                    {profile?.admin_contact || '-'}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <MdEmail size={14} />
-                    {profile?.website_url || '-'}
-                  </span>
-                </div>
+                {isCompanyAdmin && (
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
+                    <span className="flex items-center gap-1.5">
+                      <MdPhone size={14} />
+                      {profile?.admin_contact || '-'}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <MdEmail size={14} />
+                      {profile?.website_url || '-'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
