@@ -69,7 +69,11 @@ const groupByCategory = (
           ];
     rows.forEach((match) => {
       if (!groups[match.category]) groups[match.category] = [];
-      groups[match.category].push({ ...detail, label: match.label, description: match.description });
+      groups[match.category].push({
+        ...detail,
+        label: match.label,
+        description: match.description,
+      });
     });
   });
   return groups;

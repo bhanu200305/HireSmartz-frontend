@@ -41,8 +41,14 @@ const TenantClosureReasonsTab: React.FC = () => {
   const [create] = useCreateClosureReasonMutation();
   const [update] = useUpdateClosureReasonMutation();
   const [remove] = useDeleteClosureReasonMutation();
-  const canManage =
-    useHasAccess(Authorities.COMPANY_SETTINGS_EDIT) || useHasAccess(Authorities.JOB_CATALOG_EDIT);
+  // Two separate `useHasAccess` calls, not `a || b` inline — the `||` would
+  // short-circuit and skip the second hook call entirely whenever the first
+  // is truthy, changing how many hooks render between renders (a real rules-
+  // of-hooks violation, not just a lint nag: it can throw "Rendered fewer
+  // hooks than expected" the moment permissions change between renders).
+  const canManageSettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
+  const canManageCatalog = useHasAccess(Authorities.JOB_CATALOG_EDIT);
+  const canManage = canManageSettings || canManageCatalog;
 
   return (
     <PlatformCatalogTab<OrganizationClosureReason, FormValues>

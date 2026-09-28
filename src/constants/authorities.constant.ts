@@ -655,7 +655,7 @@ export const PERMISSION_DESCRIPTIONS: Partial<Record<Authorities, string>> = {
   [Authorities.COMPANY_VIEW]: 'See every company on the platform and their profile details.',
   [Authorities.COMPANY_ADD]: 'Register a new company on the platform.',
   [Authorities.COMPANY_EDIT]: "Update a company's profile details.",
-  [Authorities.COMPANY_ARCHIVE]: "Suspend a company, revoking its access to the platform.",
+  [Authorities.COMPANY_ARCHIVE]: 'Suspend a company, revoking its access to the platform.',
   [Authorities.COMPANY_APPROVE]:
     'Confirm a scraped or self-signed-up company and send its Company Admin invite.',
   [Authorities.COMPANY_EXPORT]: 'Download the company list as a file.',
@@ -664,7 +664,7 @@ export const PERMISSION_DESCRIPTIONS: Partial<Record<Authorities, string>> = {
   [Authorities.COMPANY_SETTINGS_ADD]: 'Add a new company settings record.',
   [Authorities.COMPANY_SETTINGS_EDIT]: "Update a company's own profile and settings.",
   [Authorities.COMPANY_SETTINGS_DELETE]: 'Delete a company settings record.',
-  [Authorities.COMPANY_SETTINGS_APPROVE]: 'Approve a change made to a company\'s settings.',
+  [Authorities.COMPANY_SETTINGS_APPROVE]: "Approve a change made to a company's settings.",
   [Authorities.COMPANY_SETTINGS_EXPORT]: "Download a company's settings as a file.",
 
   [Authorities.USER_VIEW]: "See who's in the directory — their name, email, phone, and role.",
@@ -704,7 +704,8 @@ export const PERMISSION_DESCRIPTIONS: Partial<Record<Authorities, string>> = {
   [Authorities.INVITATION_EXPORT]: 'Download the invite list as a file.',
 
   [Authorities.PLATFORM_VIEW]: "View the platform's internal administration area.",
-  [Authorities.PLATFORM_INVITE]: 'Invite a new Super Admin or internal Careerforce Pro staff member.',
+  [Authorities.PLATFORM_INVITE]:
+    'Invite a new Super Admin or internal Careerforce Pro staff member.',
   [Authorities.PLATFORM_MANAGE_DEPARTMENTS]: "Manage Careerforce Pro's own internal departments.",
   [Authorities.PLATFORM_OFFBOARD_STAFF]: 'Offboard an internal Careerforce Pro staff member.',
   [Authorities.PLATFORM_APPROVE]: 'Approve a platform administration action.',

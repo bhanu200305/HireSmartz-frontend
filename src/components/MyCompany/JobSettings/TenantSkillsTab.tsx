@@ -35,8 +35,12 @@ const TenantSkillsTab: React.FC = () => {
   const [create] = useCreateOrganizationSkillMutation();
   const [update] = useUpdateOrganizationSkillMutation();
   const [remove] = useDeleteOrganizationSkillMutation();
-  const canManage =
-    useHasAccess(Authorities.COMPANY_SETTINGS_EDIT) || useHasAccess(Authorities.JOB_CATALOG_EDIT);
+  // Two separate `useHasAccess` calls, not `a || b` inline — see
+  // TenantClosureReasonsTab's identical fix for why the short-circuit
+  // version is a real rules-of-hooks violation, not just a lint nag.
+  const canManageSettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
+  const canManageCatalog = useHasAccess(Authorities.JOB_CATALOG_EDIT);
+  const canManage = canManageSettings || canManageCatalog;
 
   const filterToggle = (
     <div className="inline-flex h-11 shrink-0 items-center rounded-full border border-neutral-200 bg-neutral-50 p-1">

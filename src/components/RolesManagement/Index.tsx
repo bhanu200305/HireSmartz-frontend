@@ -18,7 +18,7 @@ import RoleTable from './RoleTable';
 import CreateRoleModal from './CreateRoleModal';
 import EditRoleModal from './EditRoleModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
-import PermissionReferenceTab from './PermissionExplorer/PermissionReferenceTab';
+// import PermissionReferenceTab from './PermissionExplorer/PermissionReferenceTab'; // Temporarily disabled — see tabItems below.
 import type { RoleManagementContext } from './types';
 import type { Role } from '../../types';
 
@@ -113,7 +113,8 @@ const RolesManagement: React.FC = () => {
   // actually picked which company they mean. A Company Admin session always
   // satisfies this the moment `context` above resolves (their own tenant,
   // from their token — no picker needed).
-  const canLookupCompany = context.scope === 'tenant' && Boolean(context.tenantId);
+  // Unused while the Permission Reference tab (below) is commented out.
+  // const canLookupCompany = context.scope === 'tenant' && Boolean(context.tenantId);
 
   const handleTabChange = (key: string) => {
     setSearchParams((prev) => {
