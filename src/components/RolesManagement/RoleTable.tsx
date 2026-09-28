@@ -169,15 +169,6 @@ const RoleTable: React.FC<RoleTableProps> = ({
         </span>
       ),
     },
-    {
-      title: 'Tier',
-      key: 'tier',
-      render: (_: unknown, role: RoleRow) => (
-        <Badge status={role.scope === 'platform' ? 'info' : 'neutral'} dot={false}>
-          {role.scope === 'platform' ? 'Platform' : 'Company'}
-        </Badge>
-      ),
-    },
     ...(hideTypeColumn ? [] : [typeColumn]),
     ...(showBaseRole ? [baseRoleColumn] : []),
     {
