@@ -1177,14 +1177,14 @@ const EditJobDetail = () => {
                 tenantId,
                 departmentId: String(selectedDepartmentId),
                 job_title_id: existingOrgId,
-                isMaster,
+                isMaster: false,
               }).unwrap();
             } else {
               await importMasterJobTitle({
                 tenantId,
                 master_job_title_id: existingTitleFormId,
                 department_id: String(selectedDepartmentId),
-                isMaster,
+                isMaster: false,
               }).unwrap();
             }
           }

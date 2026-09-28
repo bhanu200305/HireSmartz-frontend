@@ -34,6 +34,7 @@ import { useListTenantDepartmentsQuery } from '../../api/organization-service/Te
 import { useListTenantInvitationsQuery } from '../../api/organization-service/Tenants/teamInvitations';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
+import { normalizeRoleName } from '../../shared/utils/auth/getAccess';
 
 /**
  * Company Admin's own company management — every tab reads/writes
@@ -47,7 +48,16 @@ const MyCompany: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
+  const roleName = useSelector((state: RootState) => state.LoginSlice.role?.name);
   const currentTab = searchParams.get('tab') || '1';
+
+  // Several tabs below are gated on broad authorities (interview:read,
+  // job:read, organization:read, job_catalog:read) that Hiring Manager also
+  // holds for its own job/interview workflow - not because it should see
+  // these tenant-wide admin screens. Those tabs need this role check in
+  // addition to the permission check below. Departments/Job Titles/
+  // Department Settings stay permission-only - those ARE meant for HM.
+  const isCompanyAdmin = normalizeRoleName(roleName) === 'companyadmin';
 
   const { data: profile, isLoading: isProfileLoading } = useGetTenantProfileQuery(tenantId ?? '', {
     skip: !tenantId,
@@ -77,23 +87,24 @@ const MyCompany: React.FC = () => {
   // still-admin-exclusive update permission instead. Same gate as
   // MyCompanyPage's own.
   const canViewCompanyDetails = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
-  const canViewLocations = useHasAccess(Authorities.LOCATION_VIEW);
+  const canViewLocations = useHasAccess(Authorities.LOCATION_VIEW) && isCompanyAdmin;
   const canViewDepartments = useHasAccess(Authorities.DEPARTMENT_VIEW);
   const canViewJobTitles = useHasAccess(Authorities.TENANT_JOB_TITLE_VIEW);
-  const canViewFeatureSettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
-  const canViewTeam = useHasAccess(Authorities.INVITATION_VIEW);
-  const canViewActivity = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
-  const canViewInterviewQuestions = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
+  const canViewFeatureSettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT) && isCompanyAdmin;
+  const canViewTeam = useHasAccess(Authorities.INVITATION_VIEW) && isCompanyAdmin;
+  const canViewActivity = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT) && isCompanyAdmin;
+  const canViewInterviewQuestions =
+    useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW) && isCompanyAdmin;
   // Same permission string culture-intro's backend routes gate on
   // (`interview:read`) — organization-service reuses INTERVIEW_QUESTIONS_VIEW's
   // pair rather than minting a dedicated one, see CultureIntroTab.tsx.
-  const canViewCultureIntro = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW);
-  const canViewEmailTemplates = useHasAccess(Authorities.EMAIL_TEMPLATE_VIEW);
+  const canViewCultureIntro = useHasAccess(Authorities.INTERVIEW_QUESTIONS_VIEW) && isCompanyAdmin;
+  const canViewEmailTemplates = useHasAccess(Authorities.EMAIL_TEMPLATE_VIEW) && isCompanyAdmin;
   // QR Management has no dedicated catalog permission — job-workflow-adjacent,
   // so it shares JOB_OPENING_VIEW. Job Settings (job types/shifts/education
   // preferences) is gated on COMPANY_SETTINGS_VIEW ('organization:read')
   // instead — that's what job-service's own catalogue GET routes require.
-  const canViewQrManagement = useHasAccess(Authorities.JOB_OPENING_VIEW);
+  const canViewQrManagement = useHasAccess(Authorities.JOB_OPENING_VIEW) && isCompanyAdmin;
   // Both hooks must run unconditionally on every render — `||` short-circuits
   // the second call once the first is true, which varies the hook count
   // between renders and violates React's rules of hooks.
@@ -216,7 +227,7 @@ const MyCompany: React.FC = () => {
           label: 'Culture Intro',
           children: <CultureIntroTab tenantId={tenantId} />,
         },
-        {
+        isCompanyAdmin && {
           key: '8',
           label: 'Scoring Criteria',
           children: <ScoringCriteriaOwnerTab />,
@@ -361,18 +372,20 @@ const MyCompany: React.FC = () => {
               </div>
             </div>
 
-            <OnboardingChecklist
-              companyId={tenantId}
-              status={{
-                // `description` is a real field on this profile response,
-                // same-spirit signal as `logo_url` for "has content".
-                profileReviewed: Boolean(profile?.logo_url || profile?.description),
-                hasOffice: (offices?.length ?? 0) > 0,
-                hasDepartment: (departments?.length ?? 0) > 0,
-                hasInvitedTeam: (invitations?.total ?? 0) > 0,
-              }}
-              onNavigateToTab={handleTabChange}
-            />
+            {isCompanyAdmin && (
+              <OnboardingChecklist
+                companyId={tenantId}
+                status={{
+                  // `description` is a real field on this profile response,
+                  // same-spirit signal as `logo_url` for "has content".
+                  profileReviewed: Boolean(profile?.logo_url || profile?.description),
+                  hasOffice: (offices?.length ?? 0) > 0,
+                  hasDepartment: (departments?.length ?? 0) > 0,
+                  hasInvitedTeam: (invitations?.total ?? 0) > 0,
+                }}
+                onNavigateToTab={handleTabChange}
+              />
+            )}
 
             <Tabs
               activeKey={activeGroup.key}
