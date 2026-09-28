@@ -2,11 +2,13 @@ import { useCallback, useState } from 'react';
 
 const STORAGE_PREFIX = 'cfp_page_size_';
 
-const readStoredPageSize = (key: string, fallback: number): number => {
+const clamp = (size: number, max?: number): number => (max ? Math.min(size, max) : size);
+
+const readStoredPageSize = (key: string, fallback: number, max?: number): number => {
   try {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${key}`);
     const parsed = raw ? Number(raw) : NaN;
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+    return Number.isFinite(parsed) && parsed > 0 ? clamp(parsed, max) : fallback;
   } catch {
     return fallback;
   }
@@ -20,24 +22,33 @@ const readStoredPageSize = (key: string, fallback: number): number => {
  * UI convenience, not account data, so it doesn't need a round trip or a
  * schema of its own. See `recentSearches.helpers.ts` for the same
  * try/catch-and-fall-back-quietly shape applied to a different local value.
+ *
+ * `max`, when given, caps both the stored read and any new value against a
+ * backend's own page-size limit — a value persisted before that limit
+ * existed (or shrank) would otherwise keep failing every request until
+ * someone clears localStorage by hand.
  */
 export const usePersistedPageSize = (
   key: string,
-  fallback: number
+  fallback: number,
+  max?: number
 ): [number, (size: number) => void] => {
-  const [pageSize, setPageSizeState] = useState<number>(() => readStoredPageSize(key, fallback));
+  const [pageSize, setPageSizeState] = useState<number>(() =>
+    readStoredPageSize(key, fallback, max)
+  );
 
   const setPageSize = useCallback(
     (size: number) => {
-      setPageSizeState(size);
+      const clamped = clamp(size, max);
+      setPageSizeState(clamped);
       try {
-        localStorage.setItem(`${STORAGE_PREFIX}${key}`, String(size));
+        localStorage.setItem(`${STORAGE_PREFIX}${key}`, String(clamped));
       } catch {
         // Best-effort only — a private window or a full quota just means the
         // choice doesn't survive a refresh, not that pagination breaks.
       }
     },
-    [key]
+    [key, max]
   );
 
   return [pageSize, setPageSize];

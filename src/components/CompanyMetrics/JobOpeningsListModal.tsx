@@ -47,7 +47,7 @@ const JobOpeningsListModal: React.FC<{
   assignedToMe?: boolean;
 }> = ({ onClose, title = 'Active job openings', assignedToMe }) => {
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = usePersistedPageSize('active_job_openings_modal', 10);
+  const [pageSize, setPageSize] = usePersistedPageSize('active_job_openings_modal', 10, 100);
   const [selectedJob, setSelectedJob] = useState<JobSummary | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<JobStatusFilter | 'all'>('published');
