@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { configureStore } from '@reduxjs/toolkit';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import { Provider } from 'react-redux';
 import { renderHook } from '@testing-library/react';
@@ -32,8 +32,9 @@ import { useEffectivePermissionsRefetch } from '../../src/hooks/useEffectivePerm
 function setup(loginState: Record<string, unknown>) {
   testApi.current = makeApi();
   const api = testApi.current;
+  const rootReducer = combineReducers({ api: api.reducer, LoginSlice: loginReducer });
   const store = configureStore({
-    reducer: { [api.reducerPath]: api.reducer, LoginSlice: loginReducer },
+    reducer: rootReducer,
     middleware: (g) => g().concat(api.middleware),
     preloadedState: {
       LoginSlice: {
@@ -43,7 +44,7 @@ function setup(loginState: Record<string, unknown>) {
         role: { name: 'hiringmanager', type: 'hiringmanager' },
         ...loginState,
       },
-    } as never,
+    } as Partial<ReturnType<typeof rootReducer>>,
   });
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <Provider store={store}>{children}</Provider>
