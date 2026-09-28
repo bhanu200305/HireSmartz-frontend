@@ -11,7 +11,7 @@ import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
  * own fallback rather than showing a raw id.
  */
 export const useJobTitleForOpening = (): ((jobId: string) => string) => {
-  const { data } = useGetJobOpeningsQuery({ isAll: true, size: 200 });
+  const { data } = useGetJobOpeningsQuery({ isAll: true, size: 100 });
   const { titleMap } = useJobTitleNameMap();
 
   const openingMap = useMemo(() => {
