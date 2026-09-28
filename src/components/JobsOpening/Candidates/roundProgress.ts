@@ -24,6 +24,13 @@ const ROUND_STATUS_BUCKET: Record<string, RoundBucket> = {
   // the way `to_be_scheduled`/`pending` are, so this buckets with the other
   // in-progress statuses rather than 'pending'.
   booking_created: 'current',
+  // The resume stage's own status for an instant-call candidate: the intake
+  // call already happened and the candidate still needs to submit a resume
+  // — actionable (there's someone to follow up with), not "not reached yet",
+  // same reasoning as `booking_created` above. Pairs with the separate
+  // `resume_upload_expired` status (not yet built) that this can flip to
+  // after 24h with nothing uploaded.
+  awaiting_resume_upload: 'current',
   to_be_scheduled: 'pending',
   pending: 'pending',
   no_show: 'failed',

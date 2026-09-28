@@ -116,6 +116,8 @@ export const orgApi = createApi({
     'CultureIntro',
     'PlatformCultureIntro',
     'ResumeTemplateFields',
+    'PermissionCatalog',
+    'PermissionMatrix',
   ],
   endpoints: () => ({}),
 });

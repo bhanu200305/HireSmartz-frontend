@@ -635,16 +635,6 @@ const AiQuestionsSetup = () => {
           </Typography>
         </div>
 
-<<<<<<< Updated upstream
-        {activeJobOpeningId && (
-          <JobIntakeQuestionsSection
-            jobOpeningId={activeJobOpeningId}
-            canManage={isAssignedToThisJob}
-          />
-        )}
-
-=======
->>>>>>> Stashed changes
         <div className="flex justify-between items-center px-2">
           <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
             Interview Questions
@@ -712,40 +702,14 @@ const AiQuestionsSetup = () => {
         />
 
         <div className="flex flex-col gap-4">
-          <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
-            <button
-              type="button"
-              onClick={() => handleToggleSection('intake')}
-              className="w-full flex items-center justify-between px-6 py-4 text-left cursor-pointer"
-              aria-expanded={effectiveOpenKey === 'intake'}
-            >
-              <div className="flex items-center gap-3">
-                <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-                  Intake Questions
-                </Typography>
-                <span className="text-xs font-semibold text-neutral-500 bg-neutral-100 rounded-full px-3 py-1">
-                  View only
-                </span>
-              </div>
-              <CollapseToggle open={effectiveOpenKey === 'intake'} />
-            </button>
-            {effectiveOpenKey === 'intake' && (
-              <div className="px-6 pb-6 space-y-3">
-                {audioQuestions.length === 0 ? (
-                  <p className="text-gray-400 italic text-sm">No intake questions configured.</p>
-                ) : (
-                  audioQuestions.map((question) => (
-                    <div
-                      key={question.question_id}
-                      className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700"
-                    >
-                      {question.question_text}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
+          {activeJobOpeningId && (
+            <JobIntakeQuestionsSection
+              jobOpeningId={activeJobOpeningId}
+              canManage={isAssignedToThisJob}
+              isOpen={effectiveOpenKey === 'intake'}
+              onToggle={() => handleToggleSection('intake')}
+            />
+          )}
 
           {jdRounds.map((round) => {
             const isOpen = effectiveOpenKey === round.round_instance_id;

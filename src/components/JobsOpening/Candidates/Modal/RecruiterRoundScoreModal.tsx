@@ -90,7 +90,7 @@ const RecruiterRoundScoreModal = ({
           <div className="mb-1 text-sm text-gray-800">
             Score <span className="required-asterisk">*</span>
           </div>
-          <Rate value={score} onChange={setScore} />
+          <Rate count={10} value={score} onChange={setScore} />
         </div>
         <div>
           <label htmlFor="round-score-reason" className="mb-1 block text-sm text-gray-800">

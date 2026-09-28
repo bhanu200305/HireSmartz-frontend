@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Tabs } from 'antd';
+import { Tabs, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import { IoStar, IoStarOutline, IoOpenOutline } from 'react-icons/io5';
 import { Badge, InfoHint, type BadgeStatus } from '../../../shared';
@@ -155,11 +155,19 @@ const OpenInNewTabLink = ({ url, label }: { url: string; label: string }) => (
  * `preload="metadata"` (already needed so the native player shows a
  * scrubbable duration without downloading the whole file) also lets this
  * read `duration` off the element itself the moment it loads — surfaced
- * both as a `title` (hovering the player shows it, the ask this was built
- * for) and as a small always-visible label underneath, since a tooltip
- * alone is easy to miss and duration is exactly the kind of thing you want
- * to see before pressing play, not after hovering long enough to notice
- * one exists. */
+ * both on hover and as a small always-visible label underneath, since a
+ * tooltip alone is easy to miss and duration is exactly the kind of thing
+ * you want to see before pressing play, not after hovering long enough to
+ * notice one exists.
+ *
+ * The hover affordance is an antd `Tooltip` wrapping the player, not a bare
+ * `title` on the `<video>`/`<audio>` element — native media controls are a
+ * browser-rendered shadow DOM that eats the whole hit area (especially the
+ * compact audio bar), so the pointer is essentially always over an inner
+ * control widget and the outer element's `title` tooltip never gets a
+ * chance to fire. Wrapping the container sidesteps that: the tooltip
+ * listens on the wrapper's own mouse events, which still bubble up from the
+ * native controls underneath. */
 const RecordingPlayer = ({ url, isVideo }: { url: string; isVideo: boolean }) => {
   const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
 
@@ -174,38 +182,35 @@ const RecordingPlayer = ({ url, isVideo }: { url: string; isVideo: boolean }) =>
       ? `Duration: ${durationLabel} (${Math.round(durationSeconds)} seconds)`
       : undefined;
 
+  const player = isVideo ? (
+    <div className="overflow-hidden rounded-xl bg-neutral-900">
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists to attach; interview-service produces the recording alone. */}
+      <video
+        controls
+        preload="metadata"
+        onLoadedMetadata={handleLoadedMetadata}
+        className="aspect-video w-full"
+      >
+        <source src={url} />
+      </video>
+    </div>
+  ) : (
+    // eslint-disable-next-line jsx-a11y/media-has-caption -- audio-only call recording, nothing to caption.
+    <audio controls preload="metadata" onLoadedMetadata={handleLoadedMetadata} className="w-full">
+      <source src={url} />
+    </audio>
+  );
+
   return (
     <div className="flex flex-col gap-1">
-      {isVideo ? (
-        <div className="overflow-hidden rounded-xl bg-neutral-900">
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists to attach; interview-service produces the recording alone. */}
-          <video
-            controls
-            preload="metadata"
-            title={hoverTitle}
-            onLoadedMetadata={handleLoadedMetadata}
-            className="aspect-video w-full"
-          >
-            <source src={url} />
-          </video>
-        </div>
+      {hoverTitle ? (
+        <Tooltip title={hoverTitle} placement="top">
+          {player}
+        </Tooltip>
       ) : (
-        // eslint-disable-next-line jsx-a11y/media-has-caption -- audio-only call recording, nothing to caption.
-        <audio
-          controls
-          preload="metadata"
-          title={hoverTitle}
-          onLoadedMetadata={handleLoadedMetadata}
-          className="w-full"
-        >
-          <source src={url} />
-        </audio>
+        player
       )}
-      {durationLabel && (
-        <span className="text-xs text-neutral-400" title={hoverTitle}>
-          Duration: {durationLabel}
-        </span>
-      )}
+      {durationLabel && <span className="text-xs text-neutral-400">Duration: {durationLabel}</span>}
     </div>
   );
 };

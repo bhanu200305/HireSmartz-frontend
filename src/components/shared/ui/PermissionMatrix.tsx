@@ -1,8 +1,11 @@
 import React, { useMemo } from 'react';
+import { MdWarningAmber } from 'react-icons/md';
 import { CustomCheckbox } from './checkbox';
+import { Badge } from './badge';
 import InfoHint from './InfoHint';
 import { Authorities, PermissionModule } from '../../../constants/authorities.constant';
 import { groupCatalogByModule } from '../../../shared/utils/auth/rbac.helpers';
+import { useGetPermissionCatalogQuery } from '../../../api/organization-service/Roles/permissionCatalog';
 import type { RoleScope } from '../../../types';
 
 /** One short sentence per module — hover text for the ⓘ next to each module
@@ -90,6 +93,28 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
   const selected = useMemo(() => new Set(value), [value]);
   const ceilingSet = useMemo(() => new Set(ceiling), [ceiling]);
 
+  // Real backend label/description/sensitive/enforced metadata, layered onto
+  // the existing static PERMISSION_CATALOG checkboxes below — enrichment
+  // only, never a source of new checkboxes: what's grantable is still
+  // decided entirely by `ceiling`/PERMISSION_CATALOG above. A failed or
+  // still-loading fetch just means every row falls back to its existing
+  // static MODULE_DESCRIPTIONS tooltip, so this component works the same as
+  // before if the catalog call isn't warm yet.
+  const { data: liveCatalog } = useGetPermissionCatalogQuery();
+  const liveByCode = useMemo(() => {
+    const map = new Map<string, { description: string; sensitive: boolean; enforced: boolean }>();
+    (liveCatalog?.resources ?? []).forEach((resource) => {
+      resource.actions.forEach((action) => {
+        map.set(action.code, {
+          description: action.description,
+          sensitive: action.sensitive,
+          enforced: action.enforced,
+        });
+      });
+    });
+    return map;
+  }, [liveCatalog]);
+
   const togglePermission = (code: Authorities, checked: boolean) => {
     const next = new Set(value);
     if (checked) next.add(code);
@@ -142,15 +167,33 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
-              {grantable.map((entry) => (
-                <CustomCheckbox
-                  key={entry.code}
-                  label={entry.label}
-                  checked={selected.has(entry.code)}
-                  disabled={disabled}
-                  onChange={(e) => togglePermission(entry.code, e.target.checked)}
-                />
-              ))}
+              {grantable.map((entry) => {
+                const live = liveByCode.get(entry.code);
+                return (
+                  <div key={entry.code} className="inline-flex items-center gap-1">
+                    <CustomCheckbox
+                      label={entry.label}
+                      checked={selected.has(entry.code)}
+                      disabled={disabled}
+                      onChange={(e) => togglePermission(entry.code, e.target.checked)}
+                    />
+                    {live && <InfoHint content={live.description} />}
+                    {live?.sensitive && (
+                      <span
+                        title="Sensitive: deletes, exports, role changes, or invites."
+                        className="inline-flex items-center text-warning-text"
+                      >
+                        <MdWarningAmber size={13} />
+                      </span>
+                    )}
+                    {live && !live.enforced && (
+                      <Badge status="neutral" dot={false} className="!px-1.5 !py-0.5 !text-[10px]">
+                        Not in use yet
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );

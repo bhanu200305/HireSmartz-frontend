@@ -37,12 +37,40 @@ const axisLabelCharsFor = (barCount: number): number => {
   if (barCount <= 4) return 22;
   return 18;
 };
-const truncateAxisLabel =
-  (barCount: number) =>
-  (value: string): string => {
-    const max = axisLabelCharsFor(barCount);
-    return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+const truncateAxisLabel = (value: string, max: number): string =>
+  value.length > max ? `${value.slice(0, max - 1)}…` : value;
+
+/**
+ * Rotated X-axis job-name tick, used instead of `tickFormatter` so a
+ * truncated label can carry the untruncated name as a native SVG `<title>`
+ * — hovering the tick text itself (not just its bar) pops the browser's own
+ * tooltip with the full job title. `tickFormatter` alone (the previous
+ * approach) can't do this: it only ever produces a plain string, with
+ * nowhere to attach a hover target.
+ */
+const RotatedAxisTick = (barCount: number) => {
+  const Tick = ({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) => {
+    const value = payload?.value ?? '';
+    const truncated = truncateAxisLabel(value, axisLabelCharsFor(barCount));
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text
+          x={0}
+          y={0}
+          dy={10}
+          textAnchor="end"
+          transform="rotate(-35)"
+          fontSize={12}
+          fill="#8593ac"
+        >
+          {truncated}
+          {truncated !== value && <title>{value}</title>}
+        </text>
+      </g>
+    );
   };
+  return Tick;
+};
 
 // Axis titles, not just tick values — see GrowthAdoptionCharts.tsx's own
 // comment on this same pattern (widened Y-axis `width` to fit the title
@@ -115,18 +143,15 @@ const HiringManagerCharts: React.FC = () => {
         available={panelData.length > 0}
       >
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <BarChart data={panelData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+          <BarChart data={panelData} margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="job"
-              tick={{ fontSize: 12, fill: '#8593ac' }}
+              tick={RotatedAxisTick(panelData.length)}
               axisLine={false}
               tickLine={false}
               interval={0}
-              angle={-35}
-              textAnchor="end"
               height={96}
-              tickFormatter={truncateAxisLabel(panelData.length)}
               label={xAxisLabel('Job')}
             />
             <YAxis
@@ -150,23 +175,20 @@ const HiringManagerCharts: React.FC = () => {
         available={avgScoreData.length > 0}
       >
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <BarChart data={avgScoreData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+          <BarChart data={avgScoreData} margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="job"
-              tick={{ fontSize: 12, fill: '#8593ac' }}
+              tick={RotatedAxisTick(avgScoreData.length)}
               axisLine={false}
               tickLine={false}
               interval={0}
-              angle={-35}
-              textAnchor="end"
               height={96}
-              tickFormatter={truncateAxisLabel(avgScoreData.length)}
               label={xAxisLabel('Job')}
             />
             <YAxis
               domain={[0, 10]}
-              allowDecimals={false}
+              ticks={[0, 2, 4, 6, 8, 10]}
               tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}

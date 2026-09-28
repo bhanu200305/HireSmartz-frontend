@@ -70,7 +70,7 @@ const ResumeReviewModal = ({
       <div className="flex flex-col gap-4">
         <div>
           <div className="mb-1 text-sm text-gray-800">Rating</div>
-          <Rate value={rating} onChange={setRating} />
+          <Rate count={10} value={rating} onChange={setRating} />
         </div>
         <div>
           <label htmlFor="resume-review-comment" className="mb-1 block text-sm text-gray-800">

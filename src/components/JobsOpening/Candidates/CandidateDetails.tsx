@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Rate, Select, Tabs, Tooltip } from 'antd';
@@ -16,7 +16,7 @@ import {
   LuFileText,
 } from 'react-icons/lu';
 import { IoChatbubbleEllipses } from 'react-icons/io5';
-import { CommonCard, Button, Badge, showToast } from '../../shared';
+import { CommonCard, Button, Badge, InfoHint, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import CollapseToggle from '../../shared/ui/CollapseToggle';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
@@ -152,8 +152,9 @@ const PanelInterviewerPicker = ({
   helperText?: string;
 }) => (
   <div>
-    <label htmlFor={id} className="mb-1 block text-sm text-gray-800">
+    <label htmlFor={id} className="mb-1 flex items-center gap-1.5 text-sm text-gray-800">
       Interviewer(s) <span className="required-asterisk">*</span>
+      <InfoHint content="Dot color shows calendar status: green = calendar connected, red = calendar not connected, gray = status not loaded yet." />
     </label>
     <Select
       id={id}
@@ -261,6 +262,12 @@ const CandidateDetails = () => {
   // PipelineBoard's own Panel Interviewers picker) whenever the selected
   // round changes, below.
   const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<string[]>([]);
+  // Which attempt's booking the "Questions asked" card (and its Reschedule
+  // History row highlight) should read from — null means "the current
+  // attempt", i.e. `selectedRound.interview_booking_id`. Set by clicking a
+  // row in Reschedule History; reset below whenever the round changes so a
+  // stale attempt from a previously-viewed round can't leak in.
+  const [selectedAttemptBookingId, setSelectedAttemptBookingId] = useState<string | null>(null);
   // Confirmation gate before requesting a reschedule — the candidate's
   // resume-consistency score is recalculated from whatever call actually
   // ends up happening, so a recruiter needs to know the current score (if
@@ -403,6 +410,12 @@ const CandidateDetails = () => {
   useEffect(() => {
     setSelectedInterviewerIds(selectedRound?.interviewer_ids ?? []);
   }, [selectedRound?.id]);
+  // Reschedule History defaults to showing the current attempt whenever a
+  // different round is opened, rather than carrying over whichever past
+  // attempt was selected on the last round drilled into.
+  useEffect(() => {
+    setSelectedAttemptBookingId(null);
+  }, [selectedRound?.id]);
   const { data: selectedBooking } = useGetBookingQuery(selectedRound?.interview_booking_id ?? '', {
     skip: !selectedRound?.interview_booking_id,
     // The candidate's scheduling email (and, for PANEL, the round flipping
@@ -420,12 +433,17 @@ const CandidateDetails = () => {
   // 422 SESSION_NOT_AVAILABLE, so it's never worth requesting for them.
   const isVoiceScreeningRound =
     !!selectedRound && (isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound));
+  // Whichever attempt is selected in Reschedule History, falling back to the
+  // current attempt's booking — the endpoint takes any booking id, not just
+  // the current one, so past attempts' questions are just as reachable.
+  const questionsAskedBookingId =
+    selectedAttemptBookingId ?? selectedRound?.interview_booking_id ?? '';
   const {
     data: questionsAsked,
     error: questionsAskedError,
     isLoading: isLoadingQuestionsAsked,
-  } = useGetQuestionsAskedQuery(selectedRound?.interview_booking_id ?? '', {
-    skip: !isVoiceScreeningRound || !selectedRound?.interview_booking_id,
+  } = useGetQuestionsAskedQuery(questionsAskedBookingId, {
+    skip: !isVoiceScreeningRound || !questionsAskedBookingId,
   });
   // Every past attempt for this round, not just the current one — see
   // getBookingHistory's own docstring for why interview-service, not
@@ -434,6 +452,16 @@ const CandidateDetails = () => {
     selectedRound?.interview_booking_id ?? '',
     { skip: !selectedRound?.interview_booking_id }
   );
+  // Same "Current attempt" / "Attempt N" labeling as the Reschedule History
+  // rows below, so the Questions Asked card can say which attempt it's
+  // showing — same reversed, newest-first numbering those rows use.
+  const questionsAskedAttemptLabel = useMemo(() => {
+    if (!selectedAttemptBookingId) return null;
+    const reversed = [...(bookingHistory ?? [])].reverse();
+    const index = reversed.findIndex((attempt) => attempt.id === selectedAttemptBookingId);
+    if (index <= 0) return null;
+    return `Attempt ${reversed.length - index}`;
+  }, [selectedAttemptBookingId, bookingHistory]);
   const [requestCallReschedule, { isLoading: isRequestingReschedule }] =
     useRequestCallRescheduleMutation();
   const [getCalendarConnectUrl] = useLazyGetCalendarConnectUrlQuery();
@@ -841,29 +869,30 @@ const CandidateDetails = () => {
         outcomeLabel: checked ? 'Checked' : null,
       };
     }
-    // Scores are on two different scales depending on who produced them —
-    // a recruiter's manual review is 0-5, the AI round score is 0-10 as of
-    // 2026-09-14 (score_interview_round.py's scale unification — matches
-    // resume/consistency scoring above, was 0-100 before) — so the bar
-    // height must scale by whichever is actually present, not a fixed /5,
-    // or every AI-scored round renders maxed out regardless of its real
-    // value.
+    // Both scores are 0-10 as of 2026-09-14 (score_interview_round.py's
+    // scale unification, matching resume/consistency scoring above — the
+    // recruiter's own review used to be capped at 0-5 by the <Rate> widget
+    // defaulting to 5 stars, since fixed to count={10}). Same scale now, so
+    // the bar height can scale off whichever score is present without a
+    // separate multiplier per source.
     const pct =
-      roundScore?.recruiter_score != null
-        ? Math.max(0, Math.min(100, (roundScore.recruiter_score / 5) * 100))
-        : roundScore?.score != null
-          ? Math.max(0, Math.min(100, roundScore.score * 10))
-          : 0;
+      recruiterOrAiScore != null ? Math.max(0, Math.min(100, recruiterOrAiScore * 10)) : 0;
+    // The AI score is never replaced by a recruiter score - the backend
+    // deliberately keeps both (a disagreement is worth keeping, not
+    // discarding) - so show both when both exist instead of picking one.
+    const scoreText =
+      roundScore?.score != null && roundScore?.recruiter_score != null
+        ? `AI: ${roundScore.score} / 10 · Recruiter: ${roundScore.recruiter_score} / 10`
+        : roundScore?.recruiter_score != null
+          ? `Recruiter: ${roundScore.recruiter_score} / 10`
+          : roundScore?.score != null
+            ? `AI: ${roundScore.score} / 10`
+            : null;
     return {
       roundScore,
       chartValue: recruiterOrAiScore,
       pct,
-      scoreText:
-        roundScore?.recruiter_score != null
-          ? `${roundScore.recruiter_score} / 5`
-          : roundScore?.score != null
-            ? `${roundScore.score} / 10 · AI score`
-            : null,
+      scoreText,
       statusText: formatRoundStatus(round.status),
       outcomeLabel: roundScore
         ? roundScore.recruiter_score != null
@@ -1257,15 +1286,39 @@ const CandidateDetails = () => {
                                 })
                               }
                             >
-                              {selectedRoundScore.recruiter_score != null ? 'EDIT' : 'SCORE'}
+                              {selectedRoundScore.recruiter_score != null
+                                ? 'EDIT RECRUITER SCORE'
+                                : 'RATE THIS ROUND'}
                             </Button>
                           </div>
-                          <div className="text-2xl font-bold text-primary">
-                            {selectedRoundScore.recruiter_score != null
-                              ? `${selectedRoundScore.recruiter_score} / 5`
-                              : selectedRoundScore.score != null
-                                ? `${selectedRoundScore.score} / 10`
-                                : '-'}
+                          <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
+                            {selectedRoundScore.score == null &&
+                            selectedRoundScore.recruiter_score == null ? (
+                              <span className="text-2xl font-bold text-primary">-</span>
+                            ) : (
+                              <>
+                                {selectedRoundScore.score != null && (
+                                  <div>
+                                    <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                                      AI
+                                    </span>{' '}
+                                    <span className="text-2xl font-bold text-primary">
+                                      {selectedRoundScore.score} / 10
+                                    </span>
+                                  </div>
+                                )}
+                                {selectedRoundScore.recruiter_score != null && (
+                                  <div>
+                                    <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                                      Recruiter
+                                    </span>{' '}
+                                    <span className="text-2xl font-bold text-primary">
+                                      {selectedRoundScore.recruiter_score} / 10
+                                    </span>
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </div>
                           {selectedRoundScore.section_scores &&
                             selectedRoundScore.section_scores.length > 0 && (
@@ -1343,6 +1396,9 @@ const CandidateDetails = () => {
                           <div className="text-xs font-semibold uppercase text-gray-400">
                             Reschedule History
                           </div>
+                          <p className="mt-1 text-xs text-gray-400">
+                            Select an attempt to view its Questions Asked below.
+                          </p>
                           <div className="mt-3 flex flex-col gap-3">
                             {[...(bookingHistory ?? [])].reverse().map((attempt, index) => {
                               // Positional, not a real field — `BookingView`
@@ -1352,10 +1408,23 @@ const CandidateDetails = () => {
                               // original (never itself a reschedule).
                               const isOriginal = index === (bookingHistory?.length ?? 1) - 1;
                               const actionTime = formatDateTime(attempt.created_at);
+                              // index 0 (current attempt) maps to `null`, same as
+                              // `selectedAttemptBookingId`'s own "current" default.
+                              const isSelected =
+                                index === 0
+                                  ? selectedAttemptBookingId === null
+                                  : selectedAttemptBookingId === attempt.id;
                               return (
-                                <div
+                                <button
                                   key={attempt.id}
-                                  className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedAttemptBookingId(index === 0 ? null : attempt.id)
+                                  }
+                                  aria-pressed={isSelected}
+                                  className={`flex w-full items-start justify-between gap-3 rounded-lg border-b border-gray-100 pb-3 pt-1 text-left last:border-0 last:pb-0 cursor-pointer hover:bg-gray-50 ${
+                                    isSelected ? 'bg-primary-50' : ''
+                                  }`}
                                 >
                                   <div>
                                     <div className="text-sm font-semibold text-gray-900">
@@ -1379,7 +1448,7 @@ const CandidateDetails = () => {
                                   <span className="shrink-0 text-xs font-semibold text-primary-600">
                                     {formatCallIntent(attempt.call_intent)}
                                   </span>
-                                </div>
+                                </button>
                               );
                             })}
                           </div>
@@ -1466,7 +1535,14 @@ const CandidateDetails = () => {
                     {isVoiceScreeningRound && (
                       <CommonCard>
                         <div className="p-5 flex flex-col gap-3">
-                          <h4 className="font-semibold text-gray-900">Questions asked</h4>
+                          <div className="flex items-center justify-between gap-2">
+                            <h4 className="font-semibold text-gray-900">Questions asked</h4>
+                            {questionsAskedAttemptLabel && (
+                              <span className="shrink-0 rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-600">
+                                {questionsAskedAttemptLabel}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-600">
                             The real questions Vapi asked on this call, not the job&apos;s question
                             plan.
@@ -1788,12 +1864,10 @@ const CandidateDetails = () => {
                           // The resume stage / Intake Call rows have no
                           // `CandidateInterviewScore`; `summariseRound`
                           // substitutes the AI resume score and the
-                          // consistency score respectively, and resolves
-                          // `pct` against whichever scale that round's
-                          // score actually uses (0-5 recruiter review vs
-                          // 0-100 AI score) so the bar height moves with
-                          // the real value instead of every AI-scored
-                          // round rendering maxed out.
+                          // consistency score respectively. All three
+                          // sources (resume, consistency, round score/
+                          // recruiter_score) are 0-10, so `pct` scales the
+                          // same way regardless of which one a round uses.
                           const { chartValue, pct, scoreText } = summariseRound(round);
                           const hasScore = chartValue != null;
                           const barColorClass = !hasScore
@@ -1899,7 +1973,9 @@ const CandidateDetails = () => {
                                         })
                                       }
                                     >
-                                      {roundScore.recruiter_score ? 'EDIT' : 'SCORE'}
+                                      {roundScore.recruiter_score
+                                        ? 'EDIT RECRUITER SCORE'
+                                        : 'RATE THIS ROUND'}
                                     </Button>
                                   )}
                                 </td>

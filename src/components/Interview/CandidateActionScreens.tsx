@@ -49,6 +49,11 @@ const linkErrorText = (error: InterviewApiError | undefined, fallback: string): 
 //     booking is in a status that will never produce feedback, or doesn't
 //     exist at all. Stop immediately, no retry — these were never going to
 //     resolve on their own, so retrying them only delayed a dead-end screen.
+// Once a 425 has been seen at least once, any OTHER error on a later poll
+// (timeout, a 502 off a container restart, a dropped connection — not a
+// real answer from the endpoint at all) is treated as "still waiting", not
+// as a third, permanent outcome — see the state machine below for why that
+// distinction matters.
 const FEEDBACK_PENDING_POLL_MS = 1200;
 const FEEDBACK_PENDING_TIMEOUT_MS = 20000;
 
@@ -60,13 +65,14 @@ export const CandidateFeedbackPage = () => {
   const token = searchParams.get('token') ?? '';
 
   // Set (once) the moment a FEEDBACK_PENDING response is first seen, and
-  // cleared once the fetch stops erroring. `withinPendingWindow` is derived
-  // from this state (set on a *previous* render) before the query hook is
-  // called below, so `pollingInterval` reacts to it correctly; the
-  // `isPending` check further down (using *this* render's fresh result) only
-  // decides whether to schedule the state update that will turn polling
-  // on/off from the next render on — see the "adjust state during
-  // rendering" pattern.
+  // cleared only once we get a REAL answer (success, or one of the two
+  // definitively-permanent error codes below) — NOT on just any error tick.
+  // `withinPendingWindow` is derived from this state (set on a *previous*
+  // render) before the query hook is called below, so `pollingInterval`
+  // reacts to it correctly; the checks further down (using *this* render's
+  // fresh result) only decide whether to schedule the state update that
+  // will turn polling on/off from the next render on — see the "adjust
+  // state during rendering" pattern.
   const [firstPendingAt, setFirstPendingAt] = useState<number | null>(null);
   const withinPendingWindow =
     firstPendingAt !== null && Date.now() - firstPendingAt < FEEDBACK_PENDING_TIMEOUT_MS;
@@ -77,21 +83,46 @@ export const CandidateFeedbackPage = () => {
   });
 
   const apiError = isError ? (error as InterviewApiError) : undefined;
-  const isPending = apiError?.status === 425 && apiError.code === 'FEEDBACK_PENDING';
+  // Matched on the error CODE first, not just the HTTP status number — 425
+  // is an unusual status (tied to TLS 0-RTT semantics at the spec level)
+  // that some proxies/CDNs/gateways are known to mangle in transit; the
+  // JSON body's own `error_code` survives that even when the numeric
+  // status doesn't.
+  const isPendingResponse = apiError?.code === 'FEEDBACK_PENDING' || apiError?.status === 425;
+  // The ONLY two outcomes the backend ever raises for a booking that will
+  // truly never produce feedback (see interview-service's
+  // resolve_candidate_feedback_link.py). Deliberately narrow: anything
+  // else — a network blip, a 502/503 off a container restart, a timeout —
+  // must NOT be treated the same way once we're already in the pending
+  // window.
+  const isDefinitivePermanentError =
+    apiError?.code === 'FEEDBACK_NOT_AVAILABLE' || apiError?.code === 'BOOKING_NOT_FOUND';
 
-  if (!isPending && firstPendingAt !== null) {
-    setFirstPendingAt(null);
-  } else if (isPending && firstPendingAt === null) {
+  // BUG THIS REPLACES: the window used to clear on ANY error tick that
+  // wasn't exactly FEEDBACK_PENDING — so one transient failure mid-poll
+  // (a timeout, a 502 from a rolling deploy/container restart, a dropped
+  // connection) got treated as a definitive "no", silently killed all
+  // future polling (pollingInterval falls to 0 once the window closes),
+  // and stranded the candidate on a dead-end "link not valid" screen with
+  // no way back except a manual page reload — the exact "flicker, then
+  // needs a reload" this was reported as, and something a real
+  // multi-service docker-compose box hits often. Now the window only ends
+  // on a REAL answer: a genuine success, or one of the two definitive
+  // codes above. Any other error while already inside the window leaves
+  // the window running, so polling just quietly retries instead.
+  if (isPendingResponse && firstPendingAt === null) {
     setFirstPendingAt(Date.now());
+  } else if (firstPendingAt !== null && (!isError || isDefinitivePermanentError)) {
+    setFirstPendingAt(null);
   }
 
-  // Same waiting state for the very first fetch and every silent retry
-  // while pending — no visible transition between them, by construction.
-  const isWaitingForCompletion = isLoading || (isPending && withinPendingWindow);
-  const hasPendingTimedOut = isPending && !withinPendingWindow;
-  // FEEDBACK_NOT_AVAILABLE, BOOKING_NOT_FOUND, or anything else — never
-  // retried, shown immediately.
-  const isPermanentError = isError && !isPending;
+  // Same waiting state for the very first fetch, every FEEDBACK_PENDING
+  // retry, AND any transient error while already waiting — no visible
+  // transition between any of those, by construction.
+  const isWaitingForCompletion = isLoading || (withinPendingWindow && !isDefinitivePermanentError);
+  const hasPendingTimedOut = firstPendingAt !== null && !withinPendingWindow;
+  const isPermanentError =
+    isDefinitivePermanentError || (isError && !isWaitingForCompletion && !hasPendingTimedOut);
 
   const [submit, { isLoading: isSubmitting }] = useSubmitCandidateFeedbackMutation();
 
