@@ -1196,7 +1196,34 @@ const JobDetails = () => {
           (jobTitle) => jobTitle.name.toLowerCase() === formattedValue.toLowerCase()
         );
         if (existingTitle) {
-          setValue('jobTitle', [tenantJobTitleFormId(existingTitle)], { shouldValidate: true });
+          const existingTitleFormId = tenantJobTitleFormId(existingTitle);
+          const alreadyMappedToDepartment = departmentJobTitlesData.some((jobTitle) =>
+            idsMatch(tenantJobTitleFormId(jobTitle), existingTitleFormId)
+          );
+          if (!alreadyMappedToDepartment) {
+            const existingOrgId = resolveOrgJobTitleId(existingTitleFormId);
+            if (existingOrgId) {
+              await assignTenantJobTitleToDepartment({
+                tenantId,
+                departmentId: String(selectedDepartmentId),
+                job_title_id: existingOrgId,
+                isMaster,
+              }).unwrap();
+            } else {
+              await importMasterJobTitle({
+                tenantId,
+                master_job_title_id: existingTitleFormId,
+                department_id: String(selectedDepartmentId),
+                isMaster,
+              }).unwrap();
+            }
+          }
+          setExtraJobTitleOptions((prev) =>
+            prev.some((opt) => idsMatch(opt.id, existingTitleFormId))
+              ? prev
+              : [...prev, { id: existingTitleFormId, name: existingTitle.name }]
+          );
+          setValue('jobTitle', [existingTitleFormId], { shouldValidate: true });
           setJobTitleSearchText('');
           setDebouncedJobTitleSearch('');
           return;
