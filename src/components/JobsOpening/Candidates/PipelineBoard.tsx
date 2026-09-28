@@ -203,7 +203,9 @@ const RoundCard = ({
                 ? 'Completed'
                 : normaliseRoundStatus(round.status) === 'booking_created'
                   ? 'Booking created — waiting to be scheduled'
-                  : formatRoundStatus(round.status)}
+                  : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
+                    ? 'Awaiting resume upload'
+                    : formatRoundStatus(round.status)}
         </Badge>
         {isBlockedOnCalendar && (
           <Badge status="warning" dot={false} className="w-fit">
@@ -232,9 +234,11 @@ const RoundCard = ({
         )}
         {isInterviewRound && !isIntakeCallRound(round) && roundScoreValue != null && (
           <span className="text-xs font-semibold text-primary-600">
-            {roundScore?.recruiter_score != null
-              ? `Score: ${roundScoreValue} / 5`
-              : `Score: ${roundScoreValue} / 10 · AI score`}
+            {roundScore?.score != null && roundScore?.recruiter_score != null
+              ? `AI: ${roundScore.score} / 10 · Recruiter: ${roundScore.recruiter_score} / 10`
+              : roundScore?.recruiter_score != null
+                ? `Score: ${roundScore.recruiter_score} / 10`
+                : `Score: ${roundScore?.score} / 10 · AI score`}
           </span>
         )}
         {hasRecordings && (
@@ -371,6 +375,10 @@ const PipelineBoard = ({
     ? (formatWhen(nextRound.scheduled_at) ?? formatWhen(nextRound.due_at))
     : null;
 
+  // resumeScore, recruiter_score and score are all 0-10 (the recruiter
+  // <Rate> widget used to cap at 5 stars, silently mixing a capped value in
+  // here — fixed to count={10} in RecruiterRoundScoreModal/ResumeReviewModal
+  // so this average is now like-for-like across every source).
   const scoreValues = [resumeScore, ...scores.map((s) => s.recruiter_score ?? s.score)].filter(
     (v): v is number => v !== null && v !== undefined
   );

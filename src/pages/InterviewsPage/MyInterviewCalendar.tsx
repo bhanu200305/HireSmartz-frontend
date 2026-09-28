@@ -10,6 +10,7 @@ import { useGetCandidateQuery } from '../../api/candidate-service/Candidates/Can
 import { useListBookingsQuery, type BookingView } from '../../api/interview-service/client';
 import { useJobTitleForOpening } from './useJobTitleForOpening';
 import { bookingStatusBadge, interviewTypeLabel } from './interviewLabels';
+import './MyInterviewCalendar.css';
 
 // Same dot colors as the shared Badge component (badge.tsx's own
 // `dotClasses`) — reimplemented as a bare dot here since a full pill (label
@@ -143,6 +144,7 @@ export const MyInterviewCalendar = ({ onSelectBooking }: MyInterviewCalendarProp
     <div className="w-full overflow-x-auto rounded-xl border border-neutral-200 bg-white p-2 shadow-xs">
       <div className="min-w-[720px]">
         <Calendar
+          className="interview-calendar"
           cellRender={(date: Dayjs, info) => {
             if (info.type !== 'date') return info.originNode;
             const dayBookings = bookingsByDate.get(date.format('YYYY-MM-DD')) ?? [];

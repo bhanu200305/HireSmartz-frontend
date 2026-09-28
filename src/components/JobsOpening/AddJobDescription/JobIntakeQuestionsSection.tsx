@@ -4,6 +4,7 @@ import { MdCheck } from 'react-icons/md';
 import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
 import { Button, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
+import CollapseToggle from '../../shared/ui/CollapseToggle';
 import {
   useGetJobIntakeQuestionsQuery,
   useImportJobIntakeQuestionsMutation,
@@ -20,6 +21,8 @@ import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers'
 type Props = {
   jobOpeningId: string;
   canManage: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
 };
 
 type FieldOption = { value: string; label: string };
@@ -119,7 +122,12 @@ const QuestionRow: React.FC<{
   );
 };
 
-const JobIntakeQuestionsSection: React.FC<Props> = ({ jobOpeningId, canManage }) => {
+const JobIntakeQuestionsSection: React.FC<Props> = ({
+  jobOpeningId,
+  canManage,
+  isOpen,
+  onToggle,
+}) => {
   const { data, isFetching } = useGetJobIntakeQuestionsQuery(jobOpeningId, {
     skip: !jobOpeningId,
   });
@@ -184,47 +192,58 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({ jobOpeningId, canManage })
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-      <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-        <div className="flex items-center gap-2">
-          <div>
-            <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-              Intake Call Questions
-            </Typography>
-            <Typography variant="body2" className="text-gray-500 m-0">
-              Asked during the candidate's intake call.
-            </Typography>
-          </div>
+    <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-6 py-4 text-left cursor-pointer"
+        aria-expanded={isOpen}
+      >
+        <div>
+          <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
+            Intake Call Questions
+          </Typography>
+          <Typography variant="body2" className="text-gray-500 m-0">
+            Asked during the candidate's intake call.
+          </Typography>
         </div>
-        {questions.length > 0 && canManage && (
-          <button
-            className="text-primary hover:text-brand-600 text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={checkingRelevance}
-            onClick={handleCheckRelevance}
-          >
-            {checkingRelevance ? 'Checking...' : 'Check relevance to JD'}
-          </button>
-        )}
-      </div>
+        <CollapseToggle open={isOpen} />
+      </button>
 
-      {isFetching ? (
-        <Loader />
-      ) : questions.length === 0 ? (
-        <div className="py-6 text-center">
-          <p className="text-gray-400 italic text-sm">No intake questions set up for this job yet.</p>
-          {canManage && (
-            <Button
-              className="text-white bg-button rounded-3xl px-6 py-2 mt-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={importing}
-              onClick={handleImport}
-            >
-              {importing ? 'Importing...' : 'Import from Company Questions'}
-            </Button>
+      {isOpen && (
+        <div className="px-6 pb-6">
+          {questions.length > 0 && canManage && (
+            <div className="flex justify-end mb-4">
+              <button
+                className="text-primary hover:text-brand-600 text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={checkingRelevance}
+                onClick={handleCheckRelevance}
+              >
+                {checkingRelevance ? 'Checking...' : 'Check relevance to JD'}
+              </button>
+            </div>
           )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {questions.map((q) => (
+
+          {isFetching ? (
+            <Loader />
+          ) : questions.length === 0 ? (
+            <div className="py-6 text-center">
+              <p className="text-gray-400 italic text-sm">
+                No intake questions set up for this job yet.
+              </p>
+              {canManage && (
+                <Button
+                  className="text-white bg-button rounded-3xl px-6 py-2 mt-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={importing}
+                  onClick={handleImport}
+                >
+                  {importing ? 'Importing...' : 'Import from Company Questions'}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {questions.map((q) => (
             <QuestionRow
               key={q.job_intake_question_id}
               question={q}
@@ -302,6 +321,8 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({ jobOpeningId, canManage })
                   </button>
                 </div>
               </div>
+            </div>
+          )}
             </div>
           )}
         </div>

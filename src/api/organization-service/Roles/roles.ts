@@ -126,7 +126,10 @@ const extendedApi = orgApi.injectEndpoints({
         method: 'PUT',
         body: { entries },
       }),
-      invalidatesTags: (_result, _error, ctx) => [{ type: 'Roles', id: catalogTagId(ctx) }],
+      invalidatesTags: (_result, _error, ctx) => [
+        { type: 'Roles', id: catalogTagId(ctx) },
+        'PermissionMatrix',
+      ],
     }),
     deleteRole: build.mutation<void, DeleteRoleRequest>({
       query: ({ scope, tenantId, isMaster, roleId }) => ({

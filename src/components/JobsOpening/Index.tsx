@@ -1100,7 +1100,6 @@ const JobsOpening = () => {
                 <Select
                   placeholder="Status"
                   onChange={handleStatusChange}
-                  allowClear
                   className="w-full custom-select"
                   popupMatchSelectWidth={false}
                   variant="borderless"

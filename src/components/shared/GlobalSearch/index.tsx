@@ -25,6 +25,7 @@ import {
 } from '../../../api/search-service/Dashboard/GlobalSearch';
 import { RootState } from '../../../redux/provider/store';
 import { useRovingFocus } from '../../../hooks/useRovingFocus';
+import { useJobTitleForOpening } from '../../../pages/InterviewsPage/useJobTitleForOpening';
 
 const SEARCH_RESULT_WIDTH = 700;
 const SEARCH_RESULT_MAX_HEIGHT = 700;
@@ -270,40 +271,54 @@ const CandidateResultItem: React.FC<{
   item: SearchResult;
   onClose: (clearSearch?: boolean) => void;
   getCandidateDetailPath: (item: SearchResult) => string;
-}> = ({ item, onClose, getCandidateDetailPath }) => (
-  <div style={{ display: 'flex', gap: 10 }}>
-    <Avatar
-      size={32}
-      style={{ backgroundColor: 'var(--primary)', pointerEvents: 'none', flexShrink: 0 }}
-      icon={<UserOutlined />}
-    />
-    <div style={{ pointerEvents: 'none', flex: 1 }}>
-      <Link
-        to={getCandidateDetailPath(item)}
-        className="font-semibold text-primary hover:text-primary hover:underline roboto-font inline-block cursor-pointer"
-        style={{ pointerEvents: 'auto' }}
-        onClick={() => onClose(false)}
-      >
-        <p className="font-semibold text-primary roboto-font" style={{ margin: 0 }}>
-          {item.title}
-        </p>
-      </Link>
-      <InfoRow label="Job Title:" value={(item?.extraJson?.job_title as string) || 'N/A'} />
-      <InfoRow label="Email:" value={(item?.extraJson?.email as string) || 'N/A'} />
-      <InfoRow
-        label="Phone Number:"
-        // A candidate's contact_no has no separate country-code field (it's
-        // already a complete, dialable number) — unlike the USER result
-        // below, running it through formatPhoneNumber's fixed US-style
-        // (XXX) XXX-XXXX grouping mangles anything longer than 10 digits
-        // (an international number's country code gets sliced up as if it
-        // were a US area code). Shown as-is instead, same as CandidateDetails.tsx
-        // already does for this same contact_no field.
-        value={(item?.extraJson?.phone_number as string) || 'N/A'}
+}> = ({ item, onClose, getCandidateDetailPath }) => {
+  const resolveJobTitle = useJobTitleForOpening();
+  // search-service's CANDIDATE index never denormalizes the job title text
+  // itself (only simple candidate-native fields like email/phone come
+  // through `extraJson`, hence those two always resolving while this one
+  // reads 'N/A') — but `job_opening_id` IS on every candidate result
+  // (`getCandidateDetailPath` above already depends on it to link out), so
+  // it's resolved client-side here instead, the same "job id -> title text"
+  // lookup MyInterviewCalendar's booking pills already use for the same gap.
+  const jobOpeningId = item?.extraJson?.job_opening_id;
+  const resolvedJobTitle = jobOpeningId ? resolveJobTitle(String(jobOpeningId)) : '';
+  const jobTitle = resolvedJobTitle || (item?.extraJson?.job_title as string) || 'N/A';
+
+  return (
+    <div style={{ display: 'flex', gap: 10 }}>
+      <Avatar
+        size={32}
+        style={{ backgroundColor: 'var(--primary)', pointerEvents: 'none', flexShrink: 0 }}
+        icon={<UserOutlined />}
       />
+      <div style={{ pointerEvents: 'none', flex: 1 }}>
+        <Link
+          to={getCandidateDetailPath(item)}
+          className="font-semibold text-primary hover:text-primary hover:underline roboto-font inline-block cursor-pointer"
+          style={{ pointerEvents: 'auto' }}
+          onClick={() => onClose(false)}
+        >
+          <p className="font-semibold text-primary roboto-font" style={{ margin: 0 }}>
+            {item.title}
+          </p>
+        </Link>
+        <InfoRow label="Job Title:" value={jobTitle} />
+        <InfoRow label="Email:" value={(item?.extraJson?.email as string) || 'N/A'} />
+        <InfoRow
+          label="Phone Number:"
+          // A candidate's contact_no has no separate country-code field (it's
+          // already a complete, dialable number) — unlike the USER result
+          // below, running it through formatPhoneNumber's fixed US-style
+          // (XXX) XXX-XXXX grouping mangles anything longer than 10 digits
+          // (an international number's country code gets sliced up as if it
+          // were a US area code). Shown as-is instead, same as CandidateDetails.tsx
+          // already does for this same contact_no field.
+          value={(item?.extraJson?.phone_number as string) || 'N/A'}
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const JobResultItem: React.FC<{
   item: SearchResult;

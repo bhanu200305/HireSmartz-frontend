@@ -46,8 +46,8 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: (result) =>
         result
-          ? [{ type: 'UserPermissions', id: result.user_id }, 'RoleAssignments']
-          : ['RoleAssignments'],
+          ? [{ type: 'UserPermissions', id: result.user_id }, 'RoleAssignments', 'PermissionMatrix']
+          : ['RoleAssignments', 'PermissionMatrix'],
     }),
   }),
 });

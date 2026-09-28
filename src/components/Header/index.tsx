@@ -42,6 +42,7 @@ import { api } from '../../api';
 import NotificationBell from './NotificationBell';
 import LocationSwitcher from '../Navbar/LocationSwitcher';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
+import { MyInterviewCalendarModal } from '../../pages/InterviewsPage/MyInterviewCalendarModal';
 
 const { Option, OptGroup } = Select;
 
@@ -115,6 +116,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
   const [shouldFetchCategories, setShouldFetchCategories] = useState(false);
   const [showSwitchCalendarModal, setShowSwitchCalendarModal] = useState(false);
   const [showDisconnectCalendarModal, setShowDisconnectCalendarModal] = useState(false);
+  const [showInterviewCalendar, setShowInterviewCalendar] = useState(false);
   const withCloseAttention = useModalCloseAttention();
 
   // getLocalStorageItem now falls back to sessionStorage for this key (see
@@ -760,7 +762,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
             {canShowInterviewCalendar && (
               <button
                 type="button"
-                onClick={() => navigate('/interviews/calendar')}
+                onClick={() => setShowInterviewCalendar(true)}
                 aria-label="My interview calendar"
                 title="My interview calendar"
                 className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100"
@@ -907,6 +909,11 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
         </p>
         <p className="text-gray-500 text-sm mt-2">Are you sure you want to disconnect?</p>
       </Modal>
+
+      <MyInterviewCalendarModal
+        open={showInterviewCalendar}
+        onClose={() => setShowInterviewCalendar(false)}
+      />
     </>
   );
 };

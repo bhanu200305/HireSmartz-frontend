@@ -75,6 +75,7 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'UserPermissions', id: user_id },
         'RoleAssignments',
         'OrgUsers',
+        'PermissionMatrix',
       ],
     }),
     revokeRole: build.mutation<RevokeRoleResponse, { assignmentId: string; userId: string }>({
@@ -86,6 +87,7 @@ const extendedApi = orgApi.injectEndpoints({
         { type: 'UserPermissions', id: userId },
         'RoleAssignments',
         'OrgUsers',
+        'PermissionMatrix',
       ],
     }),
     // Super Admin's mirror of assignRole/revokeRole above — same
@@ -104,6 +106,7 @@ const extendedApi = orgApi.injectEndpoints({
       invalidatesTags: (_result, _error, { user_id }) => [
         { type: 'UserPermissions', id: user_id },
         'RoleAssignments',
+        'PermissionMatrix',
       ],
     }),
     revokeRoleAsPlatform: build.mutation<
@@ -117,6 +120,7 @@ const extendedApi = orgApi.injectEndpoints({
       invalidatesTags: (_result, _error, { userId }) => [
         { type: 'UserPermissions', id: userId },
         'RoleAssignments',
+        'PermissionMatrix',
       ],
     }),
     listUserRoleAssignmentsAsPlatform: build.query<

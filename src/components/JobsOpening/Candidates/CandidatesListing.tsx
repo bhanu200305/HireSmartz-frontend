@@ -38,6 +38,7 @@ import {
   type CandidateView,
   type ListCandidatesArgs,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
+import { useListCandidateInterviewScoresQuery } from '../../../api/candidate-service/Candidates/scoring';
 import {
   useListCandidateStatusesQuery,
   useListApplicationSourcesQuery,
@@ -64,6 +65,42 @@ type SelectedMap = Record<string, boolean>;
 
 const buildCurrentSortKey = (sortBy: string, sortOrder: 'asc' | 'desc') =>
   sortOrder === 'desc' ? `-${sortBy}` : sortBy;
+
+// Same "Avg. score so far" figure as PipelineBoard.tsx's candidate
+// drill-down - the resume score plus every interview round's own score
+// (recruiter's if one was recorded, else the AI's), averaged together. Its
+// own component (not inlined in the row .map() below) because it needs a
+// per-candidate scores query - can't call a hook from inside a loop body.
+// No backend list endpoint returns this pre-aggregated, so it's one query
+// per visible row rather than a single bulk fetch; frontend-only change,
+// same tradeoff PipelineBoard.tsx already accepts per round.
+const CandidateAverageScoreCell = ({
+  candidateId,
+  resumeScore,
+}: {
+  candidateId: string;
+  resumeScore: number | null;
+}) => {
+  const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId);
+  const scoreValues = [resumeScore, ...scores.map((s) => s.recruiter_score ?? s.score)].filter(
+    (v): v is number => v !== null && v !== undefined
+  );
+  const avgScore =
+    scoreValues.length > 0
+      ? Number((scoreValues.reduce((sum, v) => sum + v, 0) / scoreValues.length).toFixed(1))
+      : null;
+
+  if (avgScore === null) {
+    return <span className="text-sm text-neutral-400">—</span>;
+  }
+  // Both scores are 0-10 (see CandidateDetails.tsx's scoring fix) - same
+  // relative cut points the old resume-only badge used (70/40 out of 100).
+  return (
+    <Badge dot={false} status={avgScore >= 7 ? 'success' : avgScore >= 4 ? 'warning' : 'danger'}>
+      {avgScore}
+    </Badge>
+  );
+};
 
 const CandidatesListing = () => {
   const navigate = useNavigate();
@@ -389,14 +426,11 @@ const CandidatesListing = () => {
                 >
                   LAST NAME
                 </COL>
-                <COL
-                  sortable
-                  sortKey="resume_score"
-                  currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
-                  onSort={handleSort}
-                  span={4}
-                >
-                  RESUME SCORE
+                {/* Not sortable - "average score" is computed client-side
+                    per row (see CandidateAverageScoreCell), so there's no
+                    single backend field to sort by. */}
+                <COL span={4}>
+                  <span>AVG. SCORE</span>
                 </COL>
                 <COL
                   sortable
@@ -479,22 +513,10 @@ const CandidatesListing = () => {
                             </Link>
                           </Col>
                           <Col span={4}>
-                            {candidate.resume_score === null ? (
-                              <span className="text-sm text-neutral-400">—</span>
-                            ) : (
-                              <Badge
-                                dot={false}
-                                status={
-                                  candidate.resume_score >= 70
-                                    ? 'success'
-                                    : candidate.resume_score >= 40
-                                      ? 'warning'
-                                      : 'danger'
-                                }
-                              >
-                                {candidate.resume_score}
-                              </Badge>
-                            )}
+                            <CandidateAverageScoreCell
+                              candidateId={candidate.id}
+                              resumeScore={candidate.resume_score}
+                            />
                           </Col>
                           <Col span={4}>
                             <p className="text-sm text-neutral-600 roboto-font">

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Upload } from 'antd';
-import TextArea from 'antd/es/input/TextArea';
 import { FiUploadCloud, FiFilePlus } from 'react-icons/fi';
 import { RiDeleteBin6Line } from 'react-icons/ri';
 import { Button, Input, PhoneNumberField, showToast } from '../../../shared';
@@ -35,13 +34,13 @@ const DEFAULT_COUNTRY_CODE = '+1';
 //     resume` first (gets a `resume_s3_key`), then `POST /candidates` with
 //     that key plus whatever the recruiter typed. Every field below except
 //     the resume itself is optional on the real contract (`ApplyRequest`) —
-//     first/last name are required here only as a client-side UX floor, not
-//     because the backend rejects their absence. Also attempts an instant
-//     Intake Call right after the candidate is created, same as the QR
-//     apply page's resume-first path, when a phone number was given
+//     first name and phone are required here only as a client-side UX floor
+//     (last name is not), not because the backend rejects their absence.
+//     Also attempts an instant Intake Call right after the candidate is
+//     created, same as the QR apply page's resume-first path — the phone
+//     number required below means one always gets started automatically
 //     (`ApplyResultView.call_placed`) — the standalone Intake Call tab this
-//     modal used to have is gone, but a phone number typed here still gets
-//     one started automatically.
+//     modal used to have is gone.
 //   * Bulk Import Resume — many candidates at once, parsed from their
 //     resumes by ai-service, no manual entry. See BulkResumeUploadPanel.
 //
@@ -78,8 +77,6 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
   const [email, setEmail] = useState('');
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState('');
-  const [qualification, setQualification] = useState('');
-  const [address, setAddress] = useState('');
 
   const [uploadResume, { isLoading: isUploading }] = useUploadCandidateResumeMutation();
   const [createCandidate, { isLoading: isCreating }] = useCreateCandidateMutation();
@@ -93,8 +90,6 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
     setEmail('');
     setCountryCode(DEFAULT_COUNTRY_CODE);
     setPhone('');
-    setQualification('');
-    setAddress('');
   };
 
   const handleClose = () => {
@@ -138,11 +133,9 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
       jobOpeningId,
       resumeS3Key: resume_s3_key,
       firstName: firstName.trim(),
-      lastName: lastName.trim(),
+      lastName: lastName.trim() || undefined,
       emailId: email.trim(),
-      contactNo: phone.trim() ? toE164(countryCode, phone) : undefined,
-      qualification: qualification.trim() || undefined,
-      address: address.trim() || undefined,
+      contactNo: toE164(countryCode, phone),
     }).unwrap();
 
     showToast({
@@ -155,23 +148,27 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
   const isFormValid =
     Boolean(file) &&
     firstName.trim().length > 0 &&
-    lastName.trim().length > 0 &&
-    email.trim().length > 0;
+    email.trim().length > 0 &&
+    phone.trim().length > 0;
 
   const handleSubmit = async () => {
     if (!jobOpeningId || !organizationId) {
       showToast({ message: 'Job opening or organization is missing.', type: 'error' });
       return;
     }
-    if (!firstName.trim() || !lastName.trim()) {
-      showToast({ message: 'First and last name are required.', type: 'error' });
+    if (!firstName.trim()) {
+      showToast({ message: 'First name is required.', type: 'error' });
       return;
     }
     if (!email.trim()) {
       showToast({ message: 'Email is required.', type: 'error' });
       return;
     }
-    if (phone.trim() && !isPhoneValidForCountry(phone, countryCode)) {
+    if (!phone.trim()) {
+      showToast({ message: 'Phone number is required.', type: 'error' });
+      return;
+    }
+    if (!isPhoneValidForCountry(phone, countryCode)) {
       showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
       return;
     }
@@ -286,7 +283,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
                   htmlFor="add-candidate-last-name"
                   className="mb-1 block text-sm text-gray-800"
                 >
-                  Last name <span className="required-asterisk">*</span>
+                  Last name
                 </label>
                 <Input
                   id="add-candidate-last-name"
@@ -312,7 +309,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
               </div>
               <div>
                 <label htmlFor="add-candidate-phone" className="mb-1 block text-sm text-gray-800">
-                  Phone
+                  Phone <span className="required-asterisk">*</span>
                 </label>
                 <PhoneNumberField
                   countryCode={countryCode}
@@ -322,34 +319,6 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
                   className="h-10 rounded-lg"
                 />
               </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="add-candidate-qualification"
-                className="mb-1 block text-sm text-gray-800"
-              >
-                Qualification
-              </label>
-              <Input
-                id="add-candidate-qualification"
-                value={qualification}
-                onChange={(e) => setQualification(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 text-sm"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="add-candidate-address" className="mb-1 block text-sm text-gray-800">
-                Address
-              </label>
-              <TextArea
-                id="add-candidate-address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                rows={2}
-                className="resize-y rounded-lg text-sm"
-              />
             </div>
 
             <Button
