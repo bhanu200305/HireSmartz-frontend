@@ -54,6 +54,17 @@ export const getAssignablePermissionCeiling = (
 export const isWithinCeiling = (code: Authorities, ceiling: Authorities[]): boolean =>
   ceiling.includes(code);
 
+/** Groups the fixed catalog by module, in catalog order — for the permission-picker UI. */
+export const groupCatalogByModule = (): Record<PermissionModule, PermissionCatalogEntry[]> => {
+  return PERMISSION_CATALOG.reduce(
+    (groups, entry) => {
+      (groups[entry.module] ||= []).push(entry);
+      return groups;
+    },
+    {} as Record<PermissionModule, PermissionCatalogEntry[]>
+  );
+};
+
 /** `code -> catalog entry` — built once per call site via `useMemo`, not
  * module scope, since `PERMISSION_CATALOG` itself is a plain array and this
  * is cheap to derive on demand. */
