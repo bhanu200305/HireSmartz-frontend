@@ -3,14 +3,21 @@ import { MdInfoOutline } from 'react-icons/md';
 import { Outlet, useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { Loader } from '../../shared/ui/loader';
+import CollapseToggle from '../../shared/ui/CollapseToggle';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
+import { useGetAudioQuestionsQuery } from '../../../api/job-service/JobOpening/jobQuestions';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getVariantBadge } from '../EditJobOpening/sortableInterviewRounds';
 import RoundInfoModal from '../../shared/ui/RoundInfoModal';
-import { getRoundInfoContent } from '../../../shared/utils/roundInfoContent';
+import { getRoundInfoContent, getSpecialKindFromRoundName } from '../../../shared/utils/roundInfoContent';
 
 const ViewInterviewRound = () => {
   const [collapsedRounds, setCollapsedRounds] = useState<string[]>([]);
+  // Description starts open (membership = collapsed); Questions starts
+  // closed (membership = expanded) - keeps the card compact by default
+  // while still surfacing the description at a glance, same as before.
+  const [collapsedDescriptions, setCollapsedDescriptions] = useState<string[]>([]);
+  const [expandedQuestionSections, setExpandedQuestionSections] = useState<string[]>([]);
   const [infoRoundId, setInfoRoundId] = useState<string | null>(null);
   const { id } = useParams();
   const jobId = asJobId(id);
@@ -18,9 +25,24 @@ const ViewInterviewRound = () => {
     { jobOpeningId: jobId },
     { skip: !jobId }
   );
+  const { data: audioData } = useGetAudioQuestionsQuery(jobId, { skip: !jobId });
+  const audioQuestions = audioData?.questions ?? [];
+  const generalQuestions = jobData?.data.generalQuestions ?? [];
 
   const toggleRound = (roundId: string) => {
     setCollapsedRounds((prev) =>
+      prev.includes(roundId) ? prev.filter((id) => id !== roundId) : [...prev, roundId]
+    );
+  };
+
+  const toggleDescription = (roundId: string) => {
+    setCollapsedDescriptions((prev) =>
+      prev.includes(roundId) ? prev.filter((id) => id !== roundId) : [...prev, roundId]
+    );
+  };
+
+  const toggleQuestions = (roundId: string) => {
+    setExpandedQuestionSections((prev) =>
       prev.includes(roundId) ? prev.filter((id) => id !== roundId) : [...prev, roundId]
     );
   };
@@ -33,6 +55,18 @@ const ViewInterviewRound = () => {
           const badge = getVariantBadge(round.variant);
           const BadgeIcon = badge?.icon;
           const summary = round.duration ? `${round.duration} min` : '';
+          const roundIdStr = round.id.toString();
+          // Intake Call's questions live behind a separate endpoint (they're
+          // not part of the JD question bank), so source them from there
+          // instead of `generalQuestions`.
+          const isIntakeCall = getSpecialKindFromRoundName(round.round?.name) === 'intake_call';
+          const roundQuestions = isIntakeCall
+            ? audioQuestions.map((q) => ({ id: q.question_id, text: q.question_text }))
+            : generalQuestions
+                .filter((q) => String(q.interviewRoundId) === roundIdStr)
+                .map((q) => ({ id: String(q.id), text: q.question }));
+          const isDescriptionOpen = !collapsedDescriptions.includes(roundIdStr);
+          const isQuestionsOpen = expandedQuestionSections.includes(roundIdStr);
           return (
             <div key={round.id} className="relative mt-6">
               <div
@@ -80,9 +114,50 @@ const ViewInterviewRound = () => {
                     </button>
                   </div>
                 </div>
-                {!collapsedRounds.includes(round.id.toString()) && (
-                  <div className="border border-[var(--border)] p-6 mt-2 rounded-lg shadow-md">
-                    <p>{round.description || 'No description provided.'}</p>
+                {!collapsedRounds.includes(roundIdStr) && (
+                  <div className="mt-3 flex flex-col gap-3">
+                    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => toggleDescription(roundIdStr)}
+                        className="w-full flex items-center justify-between px-5 py-3 text-left cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition-colors"
+                        aria-expanded={isDescriptionOpen}
+                      >
+                        <span className="font-semibold text-sm text-gray-800">Description</span>
+                        <CollapseToggle open={isDescriptionOpen} />
+                      </button>
+                      {isDescriptionOpen && (
+                        <div className="px-5 py-4 text-sm text-gray-700 leading-relaxed">
+                          {round.description || 'No description provided.'}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => toggleQuestions(roundIdStr)}
+                        className="w-full flex items-center justify-between px-5 py-3 text-left cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition-colors"
+                        aria-expanded={isQuestionsOpen}
+                      >
+                        <span className="font-semibold text-sm text-gray-800">
+                          Questions{roundQuestions.length > 0 ? ` (${roundQuestions.length})` : ''}
+                        </span>
+                        <CollapseToggle open={isQuestionsOpen} />
+                      </button>
+                      {isQuestionsOpen && (
+                        <div className="px-5 py-4 flex flex-col gap-2">
+                          {roundQuestions.map((q) => (
+                            <div
+                              key={q.id}
+                              className="bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 text-sm text-gray-700"
+                            >
+                              {q.text}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

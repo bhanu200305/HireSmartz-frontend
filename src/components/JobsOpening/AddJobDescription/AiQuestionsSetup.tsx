@@ -10,6 +10,7 @@ import { setIsDraft } from '../../../redux/slices/editJobOpeningSlice';
 import { Loader } from '../../shared/ui/loader';
 import { Button, showToast, Typography } from '../../shared';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
+import CollapseToggle from '../../shared/ui/CollapseToggle';
 import QuestionFormModal from './QuestionFormModal';
 import JobIntakeQuestionsSection from './JobIntakeQuestionsSection';
 import {
@@ -589,6 +590,30 @@ const AiQuestionsSetup = () => {
     }
   }, [activeJobOpeningId, refetchQuestions]);
 
+  // Accordion: one section open at a time. '__default__' defers to the
+  // active round so a round's questions are visible without an extra click;
+  // '' means every section is explicitly collapsed.
+  const [openSectionKey, setOpenSectionKey] = useState<string>('__default__');
+  const effectiveOpenKey =
+    openSectionKey === '__default__' ? (activeRoundInstanceId ?? '') : openSectionKey;
+
+  const handleToggleSection = (key: string) => {
+    if (effectiveOpenKey === key) {
+      setOpenSectionKey('');
+      return;
+    }
+    setOpenSectionKey(key);
+    if (key !== 'intake') {
+      setSelectedRoundInstanceId(key);
+      setSelectedIds([]);
+      setUploadedFileName('');
+      setImportedCount(0);
+      setFailedRowCount(0);
+      setDuplicateRowCount(0);
+      setImportWarnings([]);
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col gap-6 py-4">
@@ -610,6 +635,7 @@ const AiQuestionsSetup = () => {
           </Typography>
         </div>
 
+<<<<<<< Updated upstream
         {activeJobOpeningId && (
           <JobIntakeQuestionsSection
             jobOpeningId={activeJobOpeningId}
@@ -617,6 +643,8 @@ const AiQuestionsSetup = () => {
           />
         )}
 
+=======
+>>>>>>> Stashed changes
         <div className="flex justify-between items-center px-2">
           <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
             Interview Questions
@@ -639,6 +667,7 @@ const AiQuestionsSetup = () => {
               value={activeRoundInstanceId ?? undefined}
               onChange={(value) => {
                 setSelectedRoundInstanceId(value);
+                setOpenSectionKey(value);
                 setSelectedIds([]);
                 setUploadedFileName('');
                 setImportedCount(0);
@@ -682,68 +711,131 @@ const AiQuestionsSetup = () => {
           isDownloading={isDownloadingTemplate}
         />
 
-        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={(e) => handleSelectAll(e.target.checked)}
-                className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
-              />
-              <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-                All Questions ({visibleQuestions.length})
-              </Typography>
-            </div>
-            {(selectedIds.length > 0 || visibleQuestions.length > 0) && (
-              <button
-                className="flex items-center gap-1.5 text-red-500 hover:text-red-700 text-sm font-semibold cursor-pointer"
-                onClick={() => {
-                  if (selectedIds.length === 0) setSelectedIds(visibleQuestions.map((q) => q.id));
-                  setShowDeleteModal(true);
-                }}
-              >
-                <HiOutlineTrash size={15} />
-                {selectedIds.length > 0 ? `Delete selected (${selectedIds.length})` : 'Delete all'}
-              </button>
+        <div className="flex flex-col gap-4">
+          <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => handleToggleSection('intake')}
+              className="w-full flex items-center justify-between px-6 py-4 text-left cursor-pointer"
+              aria-expanded={effectiveOpenKey === 'intake'}
+            >
+              <div className="flex items-center gap-3">
+                <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
+                  Intake Questions
+                </Typography>
+                <span className="text-xs font-semibold text-neutral-500 bg-neutral-100 rounded-full px-3 py-1">
+                  View only
+                </span>
+              </div>
+              <CollapseToggle open={effectiveOpenKey === 'intake'} />
+            </button>
+            {effectiveOpenKey === 'intake' && (
+              <div className="px-6 pb-6 space-y-3">
+                {audioQuestions.length === 0 ? (
+                  <p className="text-gray-400 italic text-sm">No intake questions configured.</p>
+                ) : (
+                  audioQuestions.map((question) => (
+                    <div
+                      key={question.question_id}
+                      className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700"
+                    >
+                      {question.question_text}
+                    </div>
+                  ))
+                )}
+              </div>
             )}
           </div>
 
-          {isLoadingQuestions ? (
-            <p className="text-gray-400 py-6 text-center italic text-sm">Loading...</p>
-          ) : visibleQuestions.length === 0 ? (
-            <p className="text-gray-400 py-6 text-center italic text-sm">
-              No questions. Add questions manually, import via Excel, or generate with AI.
-            </p>
-          ) : (
-            <div className="space-y-3 mb-6">
-              {visibleQuestions.map((q) => (
-                <QuestionRowItem
-                  key={q.id}
-                  question={{ id: q.id, question: q.question_text }}
-                  checked={selectedIds.includes(q.id)}
-                  onCheckChange={(checked) => handleSelectOne(q.id, checked)}
-                  onEdit={() => {
-                    setEditingQuestion(q);
-                    setEditedQuestionText(q.question_text);
-                    setIsEditModalOpen(true);
-                  }}
-                  onDelete={() => {
-                    setSelectedQuestionId(q.id);
-                    setShowDeleteModal(true);
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          {jdRounds.map((round) => {
+            const isOpen = effectiveOpenKey === round.round_instance_id;
+            return (
+              <div
+                key={round.round_instance_id}
+                className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden"
+              >
+                <button
+                  type="button"
+                  onClick={() => handleToggleSection(round.round_instance_id)}
+                  className="w-full flex items-center justify-between px-6 py-4 text-left cursor-pointer"
+                  aria-expanded={isOpen}
+                >
+                  <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
+                    {round.round_name}
+                  </Typography>
+                  <CollapseToggle open={isOpen} />
+                </button>
+                {isOpen && (
+                  <div className="px-6 pb-6">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isAllSelected}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                          className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
+                        />
+                        <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
+                          All Questions ({visibleQuestions.length})
+                        </Typography>
+                      </div>
+                      {(selectedIds.length > 0 || visibleQuestions.length > 0) && (
+                        <button
+                          className="flex items-center gap-1.5 text-red-500 hover:text-red-700 text-sm font-semibold cursor-pointer"
+                          onClick={() => {
+                            if (selectedIds.length === 0)
+                              setSelectedIds(visibleQuestions.map((q) => q.id));
+                            setShowDeleteModal(true);
+                          }}
+                        >
+                          <HiOutlineTrash size={15} />
+                          {selectedIds.length > 0
+                            ? `Delete selected (${selectedIds.length})`
+                            : 'Delete all'}
+                        </button>
+                      )}
+                    </div>
 
-          <InlineQuestionInput
-            value={inlineInputText}
-            onChange={setInlineInputText}
-            onSubmit={handleInlineSubmit}
-            isSubmitting={isInlineSubmitting || isLoadingQuestions}
-            disabled={noEligibleRound}
-          />
+                    {isLoadingQuestions ? (
+                      <p className="text-gray-400 py-6 text-center italic text-sm">Loading...</p>
+                    ) : visibleQuestions.length === 0 ? (
+                      <p className="text-gray-400 py-6 text-center italic text-sm">
+                        No questions. Add questions manually, import via Excel, or generate with AI.
+                      </p>
+                    ) : (
+                      <div className="space-y-3 mb-6">
+                        {visibleQuestions.map((q) => (
+                          <QuestionRowItem
+                            key={q.id}
+                            question={{ id: q.id, question: q.question_text }}
+                            checked={selectedIds.includes(q.id)}
+                            onCheckChange={(checked) => handleSelectOne(q.id, checked)}
+                            onEdit={() => {
+                              setEditingQuestion(q);
+                              setEditedQuestionText(q.question_text);
+                              setIsEditModalOpen(true);
+                            }}
+                            onDelete={() => {
+                              setSelectedQuestionId(q.id);
+                              setShowDeleteModal(true);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    <InlineQuestionInput
+                      value={inlineInputText}
+                      onChange={setInlineInputText}
+                      onSubmit={handleInlineSubmit}
+                      isSubmitting={isInlineSubmitting || isLoadingQuestions}
+                      disabled={noEligibleRound}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {showDeleteModal && (

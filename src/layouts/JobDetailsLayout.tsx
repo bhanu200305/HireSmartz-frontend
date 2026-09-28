@@ -69,7 +69,13 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     'Questions',
   ];
   // const allSteps = isViewMode ? viewSteps : baseSteps
-  const allSteps = isViewMode || isEditMode ? viewSteps : baseSteps;
+  // View mode drops the Questions tab - it's shown inline under each round
+  // in Interview Setup instead; Edit/Create keep it as its own step.
+  const allSteps = isViewMode
+    ? viewSteps.filter((step) => step !== 'Questions')
+    : isEditMode
+      ? viewSteps
+      : baseSteps;
 
   const currentPaths = useMemo(() => {
     const basePaths = {

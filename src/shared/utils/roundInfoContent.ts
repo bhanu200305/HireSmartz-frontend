@@ -85,6 +85,14 @@ const NAME_TO_SPECIAL_KIND: Record<string, SpecialKind> = {
   verification: 'verification',
 };
 
+// Lets callers branch on round kind (e.g. to source Intake Call's questions
+// from the intake-call-questions endpoint instead of the JD question bank)
+// without duplicating the name-matching table above.
+export const getSpecialKindFromRoundName = (roundName?: string | null): SpecialKind | undefined => {
+  const normalized = roundName?.trim().toLowerCase();
+  return normalized ? NAME_TO_SPECIAL_KIND[normalized] : undefined;
+};
+
 export const getRoundInfoContent = (round: {
   specialKind?: SpecialKind | null;
   variant?: string | null;

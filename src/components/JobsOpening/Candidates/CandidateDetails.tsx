@@ -18,6 +18,7 @@ import {
 import { IoChatbubbleEllipses } from 'react-icons/io5';
 import { CommonCard, Button, Badge, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
+import CollapseToggle from '../../shared/ui/CollapseToggle';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import WidgetErrorBoundary from '../../shared/ui/WidgetErrorBoundary';
@@ -251,6 +252,9 @@ const CandidateDetails = () => {
   const [isResumeViewerOpen, setIsResumeViewerOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedRound, setSelectedRound] = useState<CandidateInterviewRoundView | null>(null);
+  // Hiring Panel's reference question list defaults open (it's the main
+  // reason a panelist opens this card) but can be collapsed once reviewed.
+  const [isPanelQuestionsOpen, setIsPanelQuestionsOpen] = useState(true);
   const [isCreatingBooking, setIsCreatingBooking] = useState(false);
   // PANEL round interviewer picker, inline above Create Booking — seeded
   // from whatever's already saved on the round (e.g. set earlier from
@@ -1415,26 +1419,46 @@ const CandidateDetails = () => {
                     {isPanelRound && (
                       <CommonCard>
                         <div className="p-5 flex flex-col gap-3">
-                          <h4 className="font-semibold text-gray-900">Interview questions</h4>
-                          <p className="text-sm text-gray-600">
-                            Visible to whoever is preparing for or sitting on this panel.
-                          </p>
-                          {roundQuestions && roundQuestions.questions.length > 0 ? (
-                            <ol className="list-decimal space-y-3 pl-5 text-sm">
-                              {roundQuestions.questions.map((q) => (
-                                <li key={q.id} className="text-gray-800">
-                                  {q.question_text}
-                                  {q.answer_text && (
-                                    <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
-                                  )}
-                                </li>
-                              ))}
-                            </ol>
-                          ) : (
-                            <p className="text-sm text-gray-400">
-                              No questions have been added for this round yet.
-                            </p>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setIsPanelQuestionsOpen((prev) => !prev)}
+                            className="w-full flex items-center justify-between text-left cursor-pointer"
+                            aria-expanded={isPanelQuestionsOpen}
+                          >
+                            <div>
+                              <h4 className="font-semibold text-gray-900">Interview questions</h4>
+                              <p className="text-sm text-gray-600 mt-0.5">
+                                Visible to whoever is preparing for or sitting on this panel.
+                              </p>
+                            </div>
+                            <CollapseToggle open={isPanelQuestionsOpen} />
+                          </button>
+                          <div
+                            className={`grid transition-all duration-300 ease-in-out ${
+                              isPanelQuestionsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                            }`}
+                          >
+                            <div className="overflow-hidden">
+                              {roundQuestions && roundQuestions.questions.length > 0 ? (
+                                <ol className="list-decimal space-y-3 pl-5 text-sm pt-1">
+                                  {roundQuestions.questions.map((q) => (
+                                    <li key={q.id} className="text-gray-800">
+                                      {q.question_text}
+                                      {q.answer_text && (
+                                        <p className="mt-0.5 text-xs text-gray-400">
+                                          {q.answer_text}
+                                        </p>
+                                      )}
+                                    </li>
+                                  ))}
+                                </ol>
+                              ) : (
+                                <p className="text-sm text-gray-400 pt-1">
+                                  No questions have been added for this round yet.
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </CommonCard>
                     )}
