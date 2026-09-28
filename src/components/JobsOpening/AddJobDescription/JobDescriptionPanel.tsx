@@ -101,10 +101,11 @@ const JobDescriptionPanel = ({
   } = useJdStatusPolling(jobOpeningId, {
     notifyOnTimeout: true,
   });
-  // Ignore a stale cached status until this mount's own fetch settles -
-  // otherwise an old GENERATING/PROCESSING briefly overlays an already-ready JD.
+  // `!== undefined` stays stable across background polls; `!jdStatusFetching`
+  // flickered false on every poll tick instead of just the first one.
   const isJdStillGenerating =
-    !jdStatusFetching && (jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING');
+    jdStatus !== undefined &&
+    (jdStatus.status === 'GENERATING' || jdStatus.status === 'PROCESSING');
   const [updateJobDescription, { isLoading: isUpdating }] = useUpdateJobDescriptionMutation();
   const [enhanceJd, { isLoading: isGenerating }] = useEnhanceJdMutation();
 

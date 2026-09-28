@@ -63,7 +63,9 @@ import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJo
 import { asJobId } from '../../../api/job-service/jobId';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import { hasFeatureAccess, isAssignedToJob } from '../../../shared/utils/auth/getAccess';
-import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
+import useEffectivePermissions, {
+  useEffectivePermissionsRefetch,
+} from '../../../hooks/useEffectivePermissions';
 import { Authorities } from '../../../constants/authorities.constant';
 import {
   officeDisplayName,
@@ -163,10 +165,19 @@ const EditJobDetail = () => {
   );
   const { role, userId } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
   const effectivePermissions = useEffectivePermissions();
+  const refetchEffectivePermissions = useEffectivePermissionsRefetch();
   // Backed by organization:update, job-service's real "manage" permission.
   const canManageCatalogueEntries = effectivePermissions.includes(
     Authorities.COMPANY_SETTINGS_EDIT
   );
+  // Department gets its own narrower grant, same reasoning as Job Title below.
+  const canAddDepartment =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.DEPARTMENT_ADD);
+  const canEditDepartment =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.DEPARTMENT_EDIT);
+  const canDeleteDepartment =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.DEPARTMENT_DELETE);
+  const canManageDepartment = canAddDepartment || canEditDepartment || canDeleteDepartment;
   // Job Title gets its own narrower grant (tenant_job_title:write/update/
   // delete) so a Hiring Manager can add/rename/remove titles inline without
   // the broader company-settings permission the other catalogue fields need.
@@ -451,9 +462,7 @@ const EditJobDetail = () => {
           title.name.toLowerCase().includes(search)
         )
       : selectedDepartmentId
-        ? departmentJobTitles.length > 0
-          ? departmentJobTitles
-          : catalogueJobTitles
+        ? departmentJobTitles
         : [];
     // extraJobTitleOptions goes last so a real list entry wins over the temporary local one.
     return [...merged, ...extraJobTitleOptions]
@@ -821,6 +830,9 @@ const EditJobDetail = () => {
       void refetchSuggestedSkills();
     }
 
+    // Re-check permissions now rather than waiting for the next mount.
+    void refetchEffectivePermissions();
+
     void triggerGetJobDescriptionById({ jobOpeningId: parsedJobId }).then((result) => {
       const fresh = result.data;
       if (!fresh) return;
@@ -909,6 +921,7 @@ const EditJobDetail = () => {
     parsedJobId,
     triggerGetJobDescriptionById,
     refetchSuggestedSkills,
+    refetchEffectivePermissions,
     getValues,
     setValue,
     trigger,
@@ -1699,12 +1712,30 @@ const EditJobDetail = () => {
         break;
     }
   };
+  // Once the mapped form field has a real value, its banner row auto-clears
+  // - not just on explicit dismiss.
+  const UNRESOLVED_AI_FIELD_TO_FORM_FIELD: Record<string, keyof JobDetailsState> = {
+    job_type: 'jobType',
+    work_mode: 'jobMode',
+    shift: 'shift',
+    education_preference: 'educationPreference',
+    job_title: 'jobTitle',
+    department: 'department',
+    // location intentionally excluded - no single form field to check.
+  };
   // Dismissal is keyed by job id + field, not just field - otherwise
   // dismissing "shift" on one job would silently hide it for every other
   // job in the same browser session too.
   const visibleUnresolvedAiSuggestions = Object.entries(
     jobData?.data?.unresolvedAiSuggestions ?? {}
-  ).filter(([fieldKey]) => !dismissedUnresolvedAiFields.has(`${parsedJobId}:${fieldKey}`));
+  ).filter(([fieldKey]) => {
+    if (dismissedUnresolvedAiFields.has(`${parsedJobId}:${fieldKey}`)) return false;
+    const formField = UNRESOLVED_AI_FIELD_TO_FORM_FIELD[fieldKey];
+    if (!formField) return true;
+    const currentValue = watch(formField);
+    const isFilled = Array.isArray(currentValue) ? currentValue.length > 0 : !!currentValue;
+    return !isFilled;
+  });
 
   const handleJobTitleChange = async (value: number | string | undefined) => {
     if (!value) {
@@ -2078,6 +2109,20 @@ const EditJobDetail = () => {
             ))}
           </div>
         )}
+        {(jdStatusForHydration?.status === 'PROCESSING' ||
+          jdStatusForHydration?.status === 'GENERATING') && (
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            <span
+              className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"
+              aria-hidden="true"
+            />
+            <span>
+              Reading your job description and filling in details below - this usually
+              takes under a minute. Feel free to keep filling in fields yourself in the
+              meantime.
+            </span>
+          </div>
+        )}
         <div className="mt-2">
           <div className="w-full">
             <span className="text-lg font-semibold">Job Info</span>
@@ -2130,16 +2175,16 @@ const EditJobDetail = () => {
                   placeholder="Select Department"
                   label="Department"
                   onAddOption={
-                    canManageCatalogueEntries
+                    canAddDepartment
                       ? (value) => handleAddOption(value, 'department')
                       : undefined
                   }
                   type="department"
                   error={errors.department?.message}
-                  enableEditDelete={canManageCatalogueEntries}
-                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
-                  onReuseOption={canManageCatalogueEntries ? handleReuseOption : undefined}
+                  enableEditDelete={canManageDepartment}
+                  onEditOption={canEditDepartment ? handleEditOption : undefined}
+                  onDeleteOption={canDeleteDepartment ? handleDeleteOption : undefined}
+                  onReuseOption={canManageDepartment ? handleReuseOption : undefined}
                 />
               </div>
             </Form.Item>

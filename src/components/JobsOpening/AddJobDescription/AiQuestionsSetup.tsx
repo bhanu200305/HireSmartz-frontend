@@ -11,9 +11,9 @@ import { Loader } from '../../shared/ui/loader';
 import { Button, showToast, Typography } from '../../shared';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import QuestionFormModal from './QuestionFormModal';
+import JobIntakeQuestionsSection from './JobIntakeQuestionsSection';
 import {
   useGetJobQuestionsQuery,
-  useGetAudioQuestionsQuery,
   useSaveJobQuestionsMutation,
   useGenerateJobQuestionsMutation,
   useRegenerateJobQuestionsMutation,
@@ -190,10 +190,6 @@ const AiQuestionsSetup = () => {
     pollingInterval: isGeneratingQuestions ? GENERATION_POLL_INTERVAL_MS : 0,
   });
 
-  const { data: audioData } = useGetAudioQuestionsQuery(activeJobOpeningId, {
-    skip: !activeJobOpeningId,
-  });
-
   const [saveJobQuestions] = useSaveJobQuestionsMutation();
   const [generateJobQuestions, { isLoading: isGenerateRequestPending }] =
     useGenerateJobQuestionsMutation();
@@ -228,7 +224,6 @@ const AiQuestionsSetup = () => {
     () => questions.filter((q) => q.interview_round_id === activeRoundInstanceId),
     [questions, activeRoundInstanceId]
   );
-  const audioQuestions = audioData?.questions ?? [];
   // Content fingerprint rather than a count, since REPLACE can reduce the count.
   const questionsSnapshotKey = useMemo(() => questions.map((q) => q.id).join(','), [questions]);
 
@@ -615,30 +610,12 @@ const AiQuestionsSetup = () => {
           </Typography>
         </div>
 
-        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-            <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-              Intake Questions
-            </Typography>
-            <span className="text-xs font-semibold text-neutral-500 bg-neutral-100 rounded-full px-3 py-1">
-              View only
-            </span>
-          </div>
-          <div className="space-y-3">
-            {audioQuestions.length === 0 ? (
-              <p className="text-gray-400 italic text-sm">No intake questions configured.</p>
-            ) : (
-              audioQuestions.map((question) => (
-                <div
-                  key={question.question_id}
-                  className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700"
-                >
-                  {question.question_text}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        {activeJobOpeningId && (
+          <JobIntakeQuestionsSection
+            jobOpeningId={activeJobOpeningId}
+            canManage={isAssignedToThisJob}
+          />
+        )}
 
         <div className="flex justify-between items-center px-2">
           <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">

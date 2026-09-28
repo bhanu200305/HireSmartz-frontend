@@ -201,15 +201,24 @@ const AI_JD_GLUED_HEADING_RE = /(\*\*)?\b([A-Z][A-Za-z]*(?:[ \t]+[A-Za-z()/-]+){
 /** A bare (no markdown syntax) line that reads like a section label rather
  * than prose — short, doesn't trail off mid-sentence, and either matches a
  * common JD-section keyword or is mostly Title Case. */
+// A colon followed by real content on the same line ("Job Type: Full-Time")
+// is a metadata pair, already answered inline — never a heading.
+const AI_JD_INLINE_VALUE_RE = /:\s*\S/;
+
 const isLikelyAiJdHeading = (line: string): boolean => {
   if (!line || AI_JD_BULLET_RE.test(line) || AI_JD_NUMBERED_RE.test(line)) return false;
   if (/[.,;]$/.test(line)) return false; // ends mid-sentence — prose, not a label
   if (line.length > 60) return false; // headings read short
+  if (AI_JD_INLINE_VALUE_RE.test(line)) return false; // "Label: value" already answered inline
 
   const withoutColon = line.replace(/:\s*$/, '');
-  if (AI_JD_HEADING_KEYWORD_RE.test(withoutColon)) return true;
-
   const words = withoutColon.split(/\s+/).filter(Boolean);
+  // Keyword must be near the start, not anywhere — else ordinary prose
+  // mentioning "experience"/"skill" deep in a sentence gets misread.
+  if (AI_JD_HEADING_KEYWORD_RE.test(words.slice(0, 3).join(' '))) return true;
+  // Known gap: a skill named with a keyword up front ("Bilingual
+  // communication skills") still misreads as a heading. Narrowing further
+  // broke real headings ("About the Role"), so left as-is.
   if (words.length === 0 || words.length > 8) return false;
   const capitalizedWords = words.filter((w) => /^[A-Z(]/.test(w));
   return capitalizedWords.length / words.length >= 0.7;
@@ -394,7 +403,11 @@ export const formatAiJobDescription = (text: string): string => {
 
     if (inListSection) {
       const prev = processedLines[processedLines.length - 1];
-      const prevEndsMidSentence = prev && prev.startsWith('- ') && !/[.!?:]$/.test(prev);
+      // A real hard-wrap continuation resumes lowercase; a new list item
+      // (a skill name) starts capitalized even with no terminal punctuation.
+      const startsLowercase = /^[a-z]/.test(line);
+      const prevEndsMidSentence =
+        prev && prev.startsWith('- ') && !/[.!?:]$/.test(prev) && startsLowercase;
       if (prevEndsMidSentence) {
         // A hard line-wrap, not a new item — pypdf/docx split one sentence
         // across two lines; the previous one didn't end in terminal

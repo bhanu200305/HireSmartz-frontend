@@ -109,6 +109,18 @@ const Sidebar: React.FC<SidebarProps> = ({
   const hasAccess = (authority?: Authorities): boolean =>
     !!authority && effectivePermissions.includes(authority);
 
+  // Also justifies showing Company without full COMPANY_SETTINGS_EDIT -
+  // same list Navbar/index.tsx uses.
+  const hasCatalogueManageAccess = [
+    Authorities.TENANT_JOB_TITLE_ADD,
+    Authorities.TENANT_JOB_TITLE_EDIT,
+    Authorities.TENANT_JOB_TITLE_DELETE,
+    Authorities.DEPARTMENT_ADD,
+    Authorities.DEPARTMENT_EDIT,
+    Authorities.DEPARTMENT_DELETE,
+    Authorities.JOB_CATALOG_EDIT,
+  ].some((authority) => effectivePermissions.includes(authority));
+
   const accessibleMenuItems = MenuItems.filter((item) => {
     // No requiredAuthority by design — see menuItem.tsx's comment on this
     // entry. Always visible to any authenticated session, matching the `/`
@@ -127,8 +139,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       return !tenantId && hasAccess(item.requiredAuthority);
     }
 
+    if (item.name === 'Company') {
+      return Boolean(tenantId) && (hasAccess(item.requiredAuthority) || hasCatalogueManageAccess);
+    }
+
     if (
-      item.name === 'Company' ||
       item.name === 'Company Metrics' ||
       item.name === 'Tenant Audit Log' ||
       item.name === 'Interviews'
