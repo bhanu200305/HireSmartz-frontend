@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Tooltip } from 'antd';
 import { MdWarningAmber, MdChevronRight } from 'react-icons/md';
+import { LuUsers } from 'react-icons/lu';
 import { Search, Badge } from '../../shared';
 import CollapsibleSection from '../../shared/ui/CollapsibleSection';
 import { Loader } from '../../shared/ui/loader';
@@ -69,7 +71,8 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
   }, [canLookupCompany, debouncedSearch, tenantId, isMaster, searchPeople]);
 
   const matchedPeople = useMemo(
-    () => peopleData?.Organization_User_Permissions.flatMap((org) => org.Users_Permission) ?? [],
+    () =>
+      peopleData?.Organization_User_Permissions?.flatMap((org) => org.Users_Permission ?? []) ?? [],
     [peopleData]
   );
 
@@ -128,7 +131,7 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
             <div className="flex flex-col divide-y divide-gray-100">
               {matchedPeople.map((user) => {
                 const roleNames = Array.from(
-                  new Set(user.Location_Permission.flatMap((lp) => lp.Roles))
+                  new Set((user.Location_Permission ?? []).flatMap((lp) => lp.Roles ?? []))
                 );
                 return (
                   <button
@@ -161,61 +164,48 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
         return (
           <CollapsibleSection key={category} title={category} defaultOpen>
             <div className="flex flex-col divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden bg-white">
-              {entries.map((entry) => {
-                const clickable = canLookupCompany;
-                return (
-                  <div
-                    key={entry.code}
-                    role={clickable ? 'button' : undefined}
-                    tabIndex={clickable ? 0 : undefined}
-                    onClick={
-                      clickable
-                        ? () => setSelectedPermission({ code: entry.code, label: entry.label })
-                        : undefined
-                    }
-                    onKeyDown={
-                      clickable
-                        ? (e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              setSelectedPermission({ code: entry.code, label: entry.label });
-                            }
-                          }
-                        : undefined
-                    }
-                    className={`flex items-start gap-3 px-4 py-3 ${
-                      clickable ? 'cursor-pointer hover:bg-gray-50' : ''
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-gray-900">{entry.label}</span>
-                        <code className="text-[11px] font-mono text-gray-400 bg-gray-50 rounded px-1.5 py-0.5">
-                          {entry.code}
-                        </code>
-                        {entry.sensitive && (
-                          <span
-                            title="Sensitive: deletes, exports, role changes, or invites."
-                            className="inline-flex items-center text-warning-text"
-                          >
-                            <MdWarningAmber size={14} />
-                          </span>
-                        )}
-                        {!entry.enforced && (
-                          <Badge status="neutral" dot={false}>
-                            Not in use yet
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-0.5">{entry.description}</p>
+              {entries.map((entry) => (
+                <div key={entry.code} className="flex items-start justify-between gap-3 px-4 py-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-gray-900">{entry.label}</span>
+                      <code className="text-[11px] font-mono text-gray-400 bg-gray-50 rounded px-1.5 py-0.5">
+                        {entry.code}
+                      </code>
+                      {entry.sensitive && (
+                        <span
+                          title="Sensitive: deletes, exports, role changes, or invites."
+                          className="inline-flex items-center text-warning-text"
+                        >
+                          <MdWarningAmber size={14} />
+                        </span>
+                      )}
+                      {!entry.enforced && (
+                        <Badge status="neutral" dot={false}>
+                          Not in use yet
+                        </Badge>
+                      )}
                     </div>
-                    {clickable && (
-                      <span className="text-xs font-semibold text-primary-600 whitespace-nowrap shrink-0">
-                        See who has this
-                      </span>
+                    {entry.description && (
+                      <p className="text-xs text-gray-500 mt-0.5">{entry.description}</p>
                     )}
                   </div>
-                );
-              })}
+                  {canLookupCompany && (
+                    <Tooltip title="See who has this permission">
+                      <button
+                        type="button"
+                        aria-label={`See who has ${entry.label}`}
+                        onClick={() =>
+                          setSelectedPermission({ code: entry.code, label: entry.label })
+                        }
+                        className="shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-full text-gray-400 hover:text-primary-600 hover:bg-primary-50 cursor-pointer transition-colors"
+                      >
+                        <LuUsers size={16} strokeWidth={2} />
+                      </button>
+                    </Tooltip>
+                  )}
+                </div>
+              ))}
             </div>
           </CollapsibleSection>
         );

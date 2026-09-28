@@ -6,8 +6,9 @@ import {
   useGetPermissionMatrixQuery,
   type PermissionDetail,
 } from '../../../api/organization-service/Roles/permissionMatrix';
+import { useGetPermissionCatalogQuery } from '../../../api/organization-service/Roles/permissionCatalog';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
-import { roleDisplayName } from './permissionExplorer.helpers';
+import { flattenPermissionCatalog, roleDisplayName } from './permissionExplorer.helpers';
 
 type PersonPermissionsModalProps = {
   open: boolean;
@@ -50,11 +51,23 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
     { skip: !open }
   );
 
-  const person = data?.Organization_User_Permissions[0]?.Users_Permission[0];
+  const person = data?.Organization_User_Permissions?.[0]?.Users_Permission?.[0];
   const groups = useMemo(() => groupByCategory(person?.Permission_Details ?? []), [person]);
 
+  const { data: catalog } = useGetPermissionCatalogQuery();
+  const catalogByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    flattenPermissionCatalog(catalog).forEach((entry) => map.set(entry.code, entry.label));
+    return map;
+  }, [catalog]);
+
   return (
-    <AntdCommonModal open={open} onClose={onClose} title={`Permissions for ${userName}`}>
+    <AntdCommonModal
+      open={open}
+      onClose={onClose}
+      title={`Permissions for ${userName}`}
+      modalProps={{ width: 640, maskClosable: true }}
+    >
       <div className="max-h-[65vh] overflow-y-auto flex flex-col gap-4">
         {isLoading ? (
           <div className="py-10 flex items-center justify-center">
@@ -90,7 +103,7 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
                           </code>
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {detail.via_roles.map((role) => (
+                          {(detail.via_roles ?? []).map((role) => (
                             <Badge key={role} status="neutral" dot={false}>
                               via {roleDisplayName(role)}
                             </Badge>
@@ -103,7 +116,8 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
                           <Badge status="neutral" dot={false}>
                             {detail.all_locations
                               ? 'All offices'
-                              : detail.locations.map((l) => l.label).join(', ') || 'No offices'}
+                              : (detail.locations ?? []).map((l) => l.label).join(', ') ||
+                                'No offices'}
                           </Badge>
                         </div>
                       </div>
@@ -121,7 +135,7 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
                 <div className="flex items-center gap-1.5 flex-wrap bg-danger-bg/40 border border-danger-bg rounded-xl px-4 py-3">
                   {person.Denied_Permissions?.map((code) => (
                     <Badge key={code} status="danger" dot={false}>
-                      {code}
+                      {catalogByCode.get(code) ?? code}
                     </Badge>
                   ))}
                 </div>

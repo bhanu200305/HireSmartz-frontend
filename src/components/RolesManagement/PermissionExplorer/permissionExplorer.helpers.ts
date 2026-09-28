@@ -17,18 +17,32 @@ export type FlatPermissionEntry = {
   audience: 'tenant' | 'platform';
 };
 
+/** Humanizes a `resource:action` code into a fallback title — `job:approve`
+ * -> `Job Approve` — used only when the catalog entry itself carries no
+ * label (a defensive fallback, never the normal path). */
+const humanizeCode = (code: string): string =>
+  code
+    .replace(/[:_]/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
 const flattenCatalog = (catalog: PermissionCatalogResponse | undefined): FlatPermissionEntry[] =>
   (catalog?.resources ?? []).flatMap((resource) =>
-    resource.actions.map((action) => ({
+    (resource.actions ?? []).map((action) => ({
       code: action.code,
-      label: action.label,
-      description: action.description,
+      label: action.label || humanizeCode(action.code),
+      description: action.description || '',
       resource: resource.resource,
       resourceLabel: resource.label,
-      category: resource.category,
+      // Falls back to 'Other' rather than leaving this undefined — an
+      // undefined category becomes the literal string "undefined" once used
+      // as an object key below, which would render as a real heading.
+      category: resource.category || 'Other',
       action: action.action,
-      sensitive: action.sensitive,
-      enforced: action.enforced,
+      sensitive: Boolean(action.sensitive),
+      enforced: Boolean(action.enforced),
       audience: resource.audience,
     }))
   );

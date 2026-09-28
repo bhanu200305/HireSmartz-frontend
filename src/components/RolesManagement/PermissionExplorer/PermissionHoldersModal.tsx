@@ -1,10 +1,17 @@
 import React, { useMemo } from 'react';
+import type { TableProps } from 'antd';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
+import CustomTable from '../../shared/ui/table';
 import { Badge } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
-import { useGetPermissionMatrixQuery } from '../../../api/organization-service/Roles/permissionMatrix';
+import {
+  useGetPermissionMatrixQuery,
+  type MatrixUser,
+} from '../../../api/organization-service/Roles/permissionMatrix';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { roleDisplayName } from './permissionExplorer.helpers';
+
+type HolderRow = MatrixUser & { key: string };
 
 type PermissionHoldersModalProps = {
   open: boolean;
@@ -20,7 +27,9 @@ type PermissionHoldersModalProps = {
  * reference list. GET /v1/roles/permission-matrix scoped to a single code;
  * `tenantId` is only ever sent for a Super Admin session (a Company Admin's
  * own company is read off their token server-side, same rule every other
- * permission-matrix call in this app follows).
+ * permission-matrix call in this app follows). Same list-in-a-modal shape as
+ * `TeamMembersListModal` (a bordered `CustomTable`), rather than hand-rolled
+ * rows, so this reads like the rest of the app.
  */
 const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
   open,
@@ -40,9 +49,58 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
   );
 
   const users = useMemo(
-    () => data?.Organization_User_Permissions.flatMap((org) => org.Users_Permission) ?? [],
+    () => data?.Organization_User_Permissions?.flatMap((org) => org.Users_Permission ?? []) ?? [],
     [data]
   );
+
+  const columns: TableProps<HolderRow>['columns'] = [
+    {
+      title: 'Name',
+      key: 'name',
+      render: (_: unknown, row: HolderRow) => (
+        <span className="font-semibold text-gray-900">{row.User_Name}</span>
+      ),
+    },
+    {
+      title: 'Email',
+      dataIndex: 'Email',
+      key: 'email',
+      render: (email: string | undefined) => email ?? '-',
+    },
+    {
+      title: 'Roles',
+      key: 'roles',
+      render: (_: unknown, row: HolderRow) => {
+        const roleNames = Array.from(
+          new Set((row.Location_Permission ?? []).flatMap((lp) => lp.Roles ?? []))
+        );
+        return (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {roleNames.length === 0 ? (
+              <span className="text-gray-300">-</span>
+            ) : (
+              roleNames.map((name) => (
+                <Badge key={name} status="neutral" dot={false}>
+                  {roleDisplayName(name)}
+                </Badge>
+              ))
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      render: (_: unknown, row: HolderRow) => (
+        <Badge status={row.Is_Active ? 'success' : 'neutral'}>
+          {row.Is_Active ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+  ];
+
+  const dataSource: HolderRow[] = users.map((user) => ({ ...user, key: user.User_Id }));
 
   return (
     <AntdCommonModal
@@ -50,59 +108,36 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
       onClose={onClose}
       title={`Who has "${label}"`}
       subtitle={<code className="text-xs font-mono text-gray-400">{code}</code>}
+      modalProps={{ width: 720, maskClosable: true }}
     >
-      <div className="max-h-[60vh] overflow-y-auto">
-        {isLoading ? (
-          <div className="py-10 flex items-center justify-center">
-            <Loader />
-          </div>
-        ) : error ? (
-          <p className="text-sm text-danger-solid text-center py-6">
-            {getOrgErrorMessage(error, 'Failed to load who has this permission.')}
+      {isLoading ? (
+        <div className="py-10 flex items-center justify-center">
+          <Loader />
+        </div>
+      ) : error ? (
+        <p className="text-sm text-danger-solid text-center py-6">
+          {getOrgErrorMessage(error, 'Failed to load who has this permission.')}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-gray-400">
+            {data?.total_users ?? users.length}{' '}
+            {(data?.total_users ?? users.length) === 1 ? 'person' : 'people'}
           </p>
-        ) : users.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-6">Nobody currently has this.</p>
-        ) : (
-          <>
-            <p className="text-xs text-gray-400 mb-3">
-              {data?.total_users ?? users.length}{' '}
-              {(data?.total_users ?? users.length) === 1 ? 'person' : 'people'}
-            </p>
-            <div className="flex flex-col divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
-              {users.map((user) => {
-                const roleNames = Array.from(
-                  new Set(user.Location_Permission.flatMap((lp) => lp.Roles))
-                );
-                return (
-                  <div
-                    key={user.User_Id}
-                    className="flex items-center justify-between gap-3 px-4 py-2.5"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-gray-900 truncate">
-                        {user.User_Name}
-                      </div>
-                      {user.Email && (
-                        <div className="text-xs text-gray-500 truncate">{user.Email}</div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                      {roleNames.map((name) => (
-                        <Badge key={name} status="neutral" dot={false}>
-                          {roleDisplayName(name)}
-                        </Badge>
-                      ))}
-                      <Badge status={user.Is_Active ? 'success' : 'neutral'}>
-                        {user.Is_Active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
+          <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <CustomTable<HolderRow>
+              columns={columns}
+              dataSource={dataSource}
+              scrollY="45vh"
+              emptyText={
+                <div className="py-8 text-center text-sm text-gray-400">
+                  Nobody currently has this.
+                </div>
+              }
+            />
+          </div>
+        </div>
+      )}
     </AntdCommonModal>
   );
 };

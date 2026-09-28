@@ -57,9 +57,9 @@ import {
   useUploadOfflineRecordingMutation,
   useGetQuestionsAskedQuery,
   CONCLUDED_BOOKING_STATUSES,
+  type InterviewApiError,
 } from '../../../api/interview-service/client';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
-import { getPlatformErrorCode } from '../../../shared/utils/api/platformErrorEnvelope';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
@@ -126,6 +126,16 @@ const formatDateTime = (value: string | null | undefined) =>
 
 const formatStatus = (status: string) =>
   status.replace(/[_-]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+
+/** interview-service's client throws its own `InterviewApiError` (message/
+ * code as plain properties on the error itself), NOT the `{status, data}`
+ * shape `getCandidateErrorMessage`/`getPlatformErrorCode` are built to read
+ * off candidate-service/other platform services — those helpers always read
+ * `undefined` against it and silently fall back to the generic message, no
+ * matter what the backend actually said. Every catch block below a call
+ * imported from `api/interview-service/client` must use this instead. */
+const getInterviewErrorMessage = (error: unknown, fallback: string): string =>
+  (error as InterviewApiError)?.message || fallback;
 
 /** The interviewer-picker `Select` — colored dropdown dots and selected-chip
  * backgrounds by calendar-connected status, identical UI/behavior whether
@@ -557,7 +567,7 @@ const CandidateDetails = () => {
       showToast({ message: 'Recording uploaded.', type: 'success' });
     } catch (error) {
       showToast({
-        message: getCandidateErrorMessage(error, 'Could not upload the recording.'),
+        message: getInterviewErrorMessage(error, 'Could not upload the recording.'),
         type: 'error',
       });
     }
@@ -624,7 +634,7 @@ const CandidateDetails = () => {
       }
     } catch (e) {
       showToast({
-        message: getCandidateErrorMessage(e, 'Could not request a reschedule'),
+        message: getInterviewErrorMessage(e, 'Could not request a reschedule'),
         type: 'error',
       });
     } finally {
@@ -720,11 +730,14 @@ const CandidateDetails = () => {
       // interview-service's own PREVIOUS_ROUND_NOT_CONCLUDED message is
       // log-style (round numbers, raw candidate/job UUIDs) — not something to
       // put in a toast, so this one case gets a hand-written message instead
-      // of the backend's own wording.
+      // of the backend's own wording. `error.code`/`error.message` directly
+      // — this is an `InterviewApiError` (see getInterviewErrorMessage's own
+      // comment), not the `{status, data}` shape `getPlatformErrorCode`
+      // reads, which silently never matched here.
       const message =
-        getPlatformErrorCode(error) === 'PREVIOUS_ROUND_NOT_CONCLUDED'
+        (error as InterviewApiError)?.code === 'PREVIOUS_ROUND_NOT_CONCLUDED'
           ? 'Please complete the previous round before scheduling this one.'
-          : getCandidateErrorMessage(error, 'Could not create booking.');
+          : getInterviewErrorMessage(error, 'Could not create booking.');
       showToast({ message, type: 'error' });
     } finally {
       setIsCreatingBooking(false);
@@ -1543,10 +1556,6 @@ const CandidateDetails = () => {
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600">
-                            The real questions Vapi asked on this call, not the job&apos;s question
-                            plan.
-                          </p>
                           {isLoadingQuestionsAsked ? (
                             <Loader />
                           ) : questionsAskedError ? (
