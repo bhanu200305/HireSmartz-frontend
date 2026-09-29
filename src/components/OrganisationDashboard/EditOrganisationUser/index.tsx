@@ -28,6 +28,7 @@ import {
   useRevokeRoleMutation,
 } from '../../../api/organization-service/Roles/assignments';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import { systemRoleLabel } from '../../RolesManagement/data/roleTemplates';
 import {
   isPhoneValidForCountry,
   PHONE_VALIDATION_MESSAGE,
@@ -91,7 +92,8 @@ const EditOrgUser = () => {
   const [assignRoleId, setAssignRoleId] = useState<string | undefined>(undefined);
   const [assignLocationId, setAssignLocationId] = useState<string | undefined>(undefined);
 
-  const roleName = (roleId: string) => roles?.find((r) => r.role_id === roleId)?.name ?? roleId;
+  const roleName = (roleId: string) =>
+    systemRoleLabel(roles?.find((r) => r.role_id === roleId)?.name ?? roleId);
   const locationLabel = (locationId: string | null) => {
     if (!locationId) return 'Everywhere';
     const office = offices?.find((o) => o.office_id === locationId);
@@ -345,7 +347,10 @@ const EditOrgUser = () => {
                 onChange={(value) => setAssignRoleId(value)}
                 showSearch
                 optionFilterProp="label"
-                options={(roles ?? []).map((role) => ({ label: role.name, value: role.role_id }))}
+                options={(roles ?? []).map((role) => ({
+                  label: systemRoleLabel(role.name),
+                  value: role.role_id,
+                }))}
               />
             </div>
             <div>

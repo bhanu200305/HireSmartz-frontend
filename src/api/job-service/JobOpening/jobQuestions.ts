@@ -139,9 +139,7 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
         url: `/job-openings/${jobOpeningId}/intake-questions`,
         method: 'GET',
       }),
-      providesTags: (_r, _e, jobOpeningId) => [
-        { type: 'JobIntakeQuestions', id: jobOpeningId },
-      ],
+      providesTags: (_r, _e, jobOpeningId) => [{ type: 'JobIntakeQuestions', id: jobOpeningId }],
     }),
 
     importJobIntakeQuestions: build.mutation<JobIntakeQuestionsResponse, string>({
@@ -149,9 +147,7 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
         url: `/job-openings/${jobOpeningId}/intake-questions/import`,
         method: 'POST',
       }),
-      invalidatesTags: (_r, _e, jobOpeningId) => [
-        { type: 'JobIntakeQuestions', id: jobOpeningId },
-      ],
+      invalidatesTags: (_r, _e, jobOpeningId) => [{ type: 'JobIntakeQuestions', id: jobOpeningId }],
     }),
 
     createJobIntakeQuestion: build.mutation<
@@ -200,10 +196,7 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
       ],
     }),
 
-    deleteJobIntakeQuestion: build.mutation<
-      void,
-      { jobOpeningId: string; questionId: string }
-    >({
+    deleteJobIntakeQuestion: build.mutation<void, { jobOpeningId: string; questionId: string }>({
       query: ({ jobOpeningId, questionId }) => ({
         url: `/job-openings/${jobOpeningId}/intake-questions/${questionId}`,
         method: 'DELETE',
@@ -218,9 +211,7 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
         url: `/job-openings/${jobOpeningId}/intake-questions/check-relevance`,
         method: 'POST',
       }),
-      invalidatesTags: (_r, _e, jobOpeningId) => [
-        { type: 'JobIntakeQuestions', id: jobOpeningId },
-      ],
+      invalidatesTags: (_r, _e, jobOpeningId) => [{ type: 'JobIntakeQuestions', id: jobOpeningId }],
     }),
   }),
 });

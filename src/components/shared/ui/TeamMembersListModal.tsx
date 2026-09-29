@@ -13,6 +13,7 @@ import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
 import { useListUsersQuery, type OrgUser } from '../../../api/organization-service/Users/users';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { useRolesCatalog } from '../../../hooks/useRolesCatalog';
+import { systemRoleLabel } from '../../RolesManagement/data/roleTemplates';
 
 const humanizeRole = (baseRoleName: string): string =>
   baseRoleName
@@ -43,14 +44,24 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   });
   const { roles } = useRolesCatalog({ scope: 'tenant', isMaster: false });
 
+  // One option per BASE role, matching `ListUsersArgs.role`'s own semantics
+  // ("the backend also matches any of this tenant's own roles derived from
+  // that base") — a custom role's `baseRoleName` groups it under the system
+  // role it was derived from (e.g. a "Senior Hiring Manager" custom role
+  // groups under "hiring_manager"), so selecting one option still finds
+  // every holder of both. A SYSTEM role has no `baseRoleName` of its own —
+  // it IS the base — so it falls back to its own `roleName` here instead of
+  // being dropped outright: the previous `.filter((r) => r.baseRoleName)`
+  // excluded every plain system-role assignment from this list entirely
+  // (company_admin, recruiter, interviewer, viewer — anyone holding one of
+  // those directly, not a custom role derived from it, had no way to be
+  // filtered for at all).
   const roleOptions = Array.from(
     new Map(
-      roles
-        .filter((r) => r.baseRoleName)
-        .map((r) => [
-          r.baseRoleName as string,
-          { label: humanizeRole(r.baseRoleName as string), value: r.baseRoleName as string },
-        ])
+      roles.map((r) => {
+        const key = r.baseRoleName ?? r.roleName;
+        return [key, { label: humanizeRole(key), value: key }];
+      })
     ).values()
   );
 
@@ -93,7 +104,9 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
       title: 'Role',
       key: 'role',
       minWidth: 160,
-      render: (_: unknown, row: UserRow) => <Badge status="info">{row.role ?? '-'}</Badge>,
+      render: (_: unknown, row: UserRow) => (
+        <Badge status="info">{row.role ? systemRoleLabel(row.role) : '-'}</Badge>
+      ),
     },
     {
       title: 'Phone',

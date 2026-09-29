@@ -13,9 +13,11 @@ function makeApi() {
     baseQuery: fakeBaseQuery(),
     tagTypes: ['UserPermissions'],
     endpoints: (b) => ({
-      getUserDashboard: b.query<{ permissions: string[] }, { userId: string; locationId?: string }>({
-        queryFn: async () => ({ data: { permissions: ['job:read'] } }),
-      }),
+      getUserDashboard: b.query<{ permissions: string[] }, { userId: string; locationId?: string }>(
+        {
+          queryFn: async () => ({ data: { permissions: ['job:read'] } }),
+        }
+      ),
     }),
   });
 }

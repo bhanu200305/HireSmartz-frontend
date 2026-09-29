@@ -12,6 +12,7 @@ import { useListPlatformTenantUsersQuery } from '../../api/organization-service/
 import type { OrgUser } from '../../api/organization-service/Users/users';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import ViewPlatformUserModal from '../CustomerDashboard/ViewCustomer/panels/ViewPlatformUserModal';
+import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 
 type UserRow = OrgUser & { key: string };
 
@@ -73,7 +74,9 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
       title: 'Role',
       key: 'role',
       minWidth: 180,
-      render: (_: unknown, row: UserRow) => <Badge status="info">{row.role ?? '-'}</Badge>,
+      render: (_: unknown, row: UserRow) => (
+        <Badge status="info">{row.role ? systemRoleLabel(row.role) : '-'}</Badge>
+      ),
     },
   ];
 

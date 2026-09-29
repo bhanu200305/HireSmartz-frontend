@@ -90,10 +90,10 @@ const QuestionRow: React.FC<{
       </div>
       {flagged && (
         <div className="mt-2 ml-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <div className="font-medium">Unrelated to this job's JD</div>
+          <div className="font-medium">Unrelated to this job&apos;s JD</div>
           {question.ai_suggested_replacement_text && (
             <div className="mt-1">
-              Suggested replacement: "{question.ai_suggested_replacement_text}"
+              Suggested replacement: &quot;{question.ai_suggested_replacement_text}&quot;
             </div>
           )}
           {canManage && (
@@ -204,7 +204,7 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
             Intake Call Questions
           </Typography>
           <Typography variant="body2" className="text-gray-500 m-0">
-            Asked during the candidate's intake call.
+            Asked during the candidate&apos;s intake call.
           </Typography>
         </div>
         <CollapseToggle open={isOpen} />
@@ -244,85 +244,85 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
           ) : (
             <div className="space-y-4">
               {questions.map((q) => (
-            <QuestionRow
-              key={q.job_intake_question_id}
-              question={q}
-              canManage={canManage}
-              fieldOptions={fieldOptions}
-              onSave={async (text, fieldId) => {
-                try {
-                  await updateQuestion({
-                    jobOpeningId,
-                    questionId: q.job_intake_question_id,
-                    question_text: text,
-                    field_id: fieldId,
-                  }).unwrap();
-                } catch (err) {
-                  showToast({
-                    message: getJobErrorMessage(err, 'Failed to save question.'),
-                    type: 'error',
-                  });
-                }
-              }}
-              onDelete={async () => {
-                try {
-                  await deleteQuestion({
-                    jobOpeningId,
-                    questionId: q.job_intake_question_id,
-                  }).unwrap();
-                } catch (err) {
-                  showToast({
-                    message: getJobErrorMessage(err, 'Failed to remove question.'),
-                    type: 'error',
-                  });
-                }
-              }}
-              onDismissFlag={async () => {
-                try {
-                  await dismissFlag({
-                    jobOpeningId,
-                    questionId: q.job_intake_question_id,
-                  }).unwrap();
-                } catch (err) {
-                  showToast({
-                    message: getJobErrorMessage(err, 'Failed to dismiss flag.'),
-                    type: 'error',
-                  });
-                }
-              }}
-            />
-          ))}
+                <QuestionRow
+                  key={q.job_intake_question_id}
+                  question={q}
+                  canManage={canManage}
+                  fieldOptions={fieldOptions}
+                  onSave={async (text, fieldId) => {
+                    try {
+                      await updateQuestion({
+                        jobOpeningId,
+                        questionId: q.job_intake_question_id,
+                        question_text: text,
+                        field_id: fieldId,
+                      }).unwrap();
+                    } catch (err) {
+                      showToast({
+                        message: getJobErrorMessage(err, 'Failed to save question.'),
+                        type: 'error',
+                      });
+                    }
+                  }}
+                  onDelete={async () => {
+                    try {
+                      await deleteQuestion({
+                        jobOpeningId,
+                        questionId: q.job_intake_question_id,
+                      }).unwrap();
+                    } catch (err) {
+                      showToast({
+                        message: getJobErrorMessage(err, 'Failed to remove question.'),
+                        type: 'error',
+                      });
+                    }
+                  }}
+                  onDismissFlag={async () => {
+                    try {
+                      await dismissFlag({
+                        jobOpeningId,
+                        questionId: q.job_intake_question_id,
+                      }).unwrap();
+                    } catch (err) {
+                      showToast({
+                        message: getJobErrorMessage(err, 'Failed to dismiss flag.'),
+                        type: 'error',
+                      });
+                    }
+                  }}
+                />
+              ))}
 
-          {canManage && questions.length < 8 && (
-            <div className="bg-white border border-dashed border-[var(--border)] px-6 py-3 rounded-full">
-              <div className="grid grid-cols-[1fr_11rem_3.25rem] items-center gap-3 w-full">
-                <input
-                  className="min-w-0 bg-transparent text-sm text-gray-800 focus:outline-none placeholder:text-gray-400"
-                  placeholder="Add a question..."
-                  value={newQuestionText}
-                  onChange={(e) => setNewQuestionText(e.target.value)}
-                />
-                <Select
-                  className="w-full"
-                  placeholder="Resume Field"
-                  allowClear
-                  options={fieldOptions}
-                  value={newQuestionFieldId ?? undefined}
-                  onChange={(value) => setNewQuestionFieldId(value ?? null)}
-                />
-                <div className="flex items-center justify-end">
-                  <button
-                    className="text-primary hover:text-brand-600 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                    disabled={creating || !newQuestionText.trim()}
-                    onClick={handleAdd}
-                    aria-label="Add question"
-                  >
-                    <HiOutlinePlus size={18} />
-                  </button>
+              {canManage && questions.length < 8 && (
+                <div className="bg-white border border-dashed border-[var(--border)] px-6 py-3 rounded-full">
+                  <div className="grid grid-cols-[1fr_11rem_3.25rem] items-center gap-3 w-full">
+                    <input
+                      className="min-w-0 bg-transparent text-sm text-gray-800 focus:outline-none placeholder:text-gray-400"
+                      placeholder="Add a question..."
+                      value={newQuestionText}
+                      onChange={(e) => setNewQuestionText(e.target.value)}
+                    />
+                    <Select
+                      className="w-full"
+                      placeholder="Resume Field"
+                      allowClear
+                      options={fieldOptions}
+                      value={newQuestionFieldId ?? undefined}
+                      onChange={(value) => setNewQuestionFieldId(value ?? null)}
+                    />
+                    <div className="flex items-center justify-end">
+                      <button
+                        className="text-primary hover:text-brand-600 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        disabled={creating || !newQuestionText.trim()}
+                        onClick={handleAdd}
+                        aria-label="Add question"
+                      >
+                        <HiOutlinePlus size={18} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
             </div>
           )}
         </div>

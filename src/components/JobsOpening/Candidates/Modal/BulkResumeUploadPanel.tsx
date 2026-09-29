@@ -86,22 +86,52 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
     onDoneRef.current = onDone;
   });
 
+  // Holds the pending auto-close timer's id, not local effect state — see
+  // the unmount-only cleanup and the completion effect below for why it
+  // can't be a plain `const timer = setTimeout(...); return () =>
+  // clearTimeout(timer)` inside that effect.
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cancels a still-pending auto-close timer only when this panel actually
+  // unmounts (parent modal closed some other way, or navigated away) —
+  // deliberately NOT tied to the completion effect's own re-runs, which is
+  // exactly the bug this used to have when the timer lived in that effect's
+  // cleanup instead: see the comment below.
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
   // Once parsing finishes: tell the parent so it can refetch the candidate
   // list (guarded by completedBatchId so this fires exactly once per batch,
   // not on every 3s poll after done), then close the parent modal on its own
   // after a brief delay — the "Done" message above is enough of a hand-off,
   // no need to make the user click away themselves, but it should still be
   // readable for a moment before it disappears.
+  //
+  // The timer id lives in `closeTimerRef`, not this effect's own `return ()
+  // => clearTimeout(timer)` cleanup. Polling keeps running for the full
+  // AUTO_CLOSE_DELAY_MS window (nothing stops it until the timer below
+  // itself clears batchId), so `batchProgress` keeps getting a new object
+  // identity every ~3s tick even after completion — re-running this effect.
+  // The completedBatchId guard above already makes every one of those
+  // re-runs a no-op before reaching the timer, but a `clearTimeout`
+  // returned as THIS effect's cleanup runs on every re-run regardless of
+  // the guard (React always runs the previous cleanup before the next
+  // effect body, whether or not that body does anything) — it cancelled
+  // the correct, already-scheduled timer, and with the guard now blocking
+  // a replacement, nothing ever rescheduled it: onDone() never fired, so
+  // the "Done, you can close this now." message just sat there forever.
   useEffect(() => {
     if (!batchId || !batchProgress || isProcessing || completedBatchId === batchId) return;
     onCompletedRef.current();
     setCompletedBatchId(batchId);
-    const timer = setTimeout(() => {
+    closeTimerRef.current = setTimeout(() => {
       setFiles([]);
       setBatchId(null);
       onDoneRef.current();
     }, AUTO_CLOSE_DELAY_MS);
-    return () => clearTimeout(timer);
   }, [batchId, batchProgress, isProcessing, completedBatchId]);
 
   const handleFileSelect = (selectedFiles: File[]) => {

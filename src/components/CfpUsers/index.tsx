@@ -21,6 +21,7 @@ import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
+import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 import {
   useListPlatformStaffQuery,
   useListPlatformDepartmentsQuery,
@@ -181,7 +182,7 @@ const CfpUsers: React.FC = () => {
       sorter: true,
       sortOrder: sortOrderFor('role'),
       render: (_: unknown, member) => (
-        <span className="text-sm text-gray-600 capitalize">{member.role}</span>
+        <span className="text-sm text-gray-600">{systemRoleLabel(member.role)}</span>
       ),
     },
     {

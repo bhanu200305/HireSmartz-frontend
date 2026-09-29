@@ -59,6 +59,7 @@ import {
 } from '../../../../shared/utils/validation/phoneValidation';
 import BulkImport from '../../../MyCompany/Team/BulkImport';
 import ViewPlatformUserModal from './ViewPlatformUserModal';
+import { systemRoleLabel } from '../../../RolesManagement/data/roleTemplates';
 import RoleLocationPicker from './RoleLocationPicker';
 
 type UserRow = OrgUser & { key: string; kind: 'user' };
@@ -605,7 +606,7 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
       sortOrder: sortOrderFor('role'),
       render: (_: unknown, row: TableRow) =>
         row.role ? (
-          <span className="text-gray-600 text-sm">{row.role}</span>
+          <span className="text-gray-600 text-sm">{systemRoleLabel(row.role)}</span>
         ) : (
           <span className="text-gray-300 text-sm">Unassigned</span>
         ),

@@ -11,6 +11,7 @@ import {
   useRevokeRoleMutation,
 } from '../../../api/organization-service/Roles/assignments';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import { systemRoleLabel } from '../../RolesManagement/data/roleTemplates';
 
 type AssignRoleModalProps = {
   open: boolean;
@@ -50,7 +51,8 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
   const [revokeRole, { isLoading: isRevoking }] = useRevokeRoleMutation();
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
-  const roleName = (id: string) => roles?.find((r) => r.role_id === id)?.name ?? id;
+  const roleName = (id: string) =>
+    systemRoleLabel(roles?.find((r) => r.role_id === id)?.name ?? id);
   const locationLabel = (id: string | null) => {
     if (!id) return 'Everywhere';
     const office = offices?.find((o) => o.office_id === id);
@@ -153,7 +155,10 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
             onChange={(value) => setRoleId(value)}
             showSearch
             optionFilterProp="label"
-            options={(roles ?? []).map((role) => ({ label: role.name, value: role.role_id }))}
+            options={(roles ?? []).map((role) => ({
+              label: systemRoleLabel(role.name),
+              value: role.role_id,
+            }))}
           />
         </div>
 

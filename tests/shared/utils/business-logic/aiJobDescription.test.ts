@@ -80,9 +80,12 @@ describe('formatAiJobDescription — bullet-list continuation vs. new item', () 
 
   // Known, deliberately-accepted gap - see isLikelyAiJdHeading's comment.
   it('KNOWN GAP: a skill line starting with a heading keyword still misreads as a heading', () => {
-    const text = ['## Key Skills', '', '- Inventory management', 'Bilingual communication skills'].join(
-      '\n'
-    );
+    const text = [
+      '## Key Skills',
+      '',
+      '- Inventory management',
+      'Bilingual communication skills',
+    ].join('\n');
     const result = formatAiJobDescription(text);
     expect(result).toContain('## Bilingual communication skills');
   });

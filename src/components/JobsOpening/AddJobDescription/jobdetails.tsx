@@ -2224,9 +2224,8 @@ const JobDetails = () => {
                       aria-hidden="true"
                     />
                     <span>
-                      Reading your job description and filling in details below - this
-                      usually takes under a minute. Feel free to keep filling in fields
-                      yourself in the meantime.
+                      Reading your job description and filling in details below - this usually takes
+                      under a minute. Feel free to keep filling in fields yourself in the meantime.
                     </span>
                   </div>
                 )}

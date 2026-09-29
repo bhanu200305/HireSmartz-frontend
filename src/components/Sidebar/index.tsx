@@ -103,14 +103,20 @@ const Sidebar: React.FC<SidebarProps> = ({
     skip: !isPlatformCaller,
   });
   const userData = isPlatformCaller ? platformProfileData : tenantProfileData;
-  // The real role (org-service's own `/platform/staff/me`), not the
-  // Redux `role.name` every platform login hardcodes to 'Master Super
+  // Platform: the real role (org-service's own `/platform/staff/me`), not
+  // the Redux `role.name` every platform login hardcodes to 'Master Super
   // Admin' regardless of actual role (see isMasterSuperAdminRole's comment
   // in permission.helpers.ts) — super_admin/cfp_admin/cfp_support all
   // reach this footer today, and previously all displayed identically.
-  const footerRoleLabel = isPlatformCaller
-    ? systemRoleLabel(platformProfileData?.role ?? '')
-    : role?.name || '';
+  // Tenant: `role.name` IS already the real role (Login/index.tsx's
+  // completeRealLogin sets it from the JWT's own `roles` claim), but as the
+  // raw system-role KEY ('company_admin', 'hiring_manager', ...) — same
+  // systemRoleLabel() humanizer platform roles need, just fed a different
+  // real source; a custom tenant role's own name (not a fixed key) passes
+  // through unchanged, see that helper's own fallback.
+  const footerRoleLabel = systemRoleLabel(
+    (isPlatformCaller ? platformProfileData?.role : role?.name) ?? ''
+  );
 
   const effectivePermissions = useEffectivePermissions();
   // Plain helper, not a hook — `useHasAccess` is just this same

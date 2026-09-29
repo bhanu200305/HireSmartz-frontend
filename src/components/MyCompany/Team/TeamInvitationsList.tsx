@@ -18,6 +18,7 @@ import {
   useUpdateUserMutation,
 } from '../../../api/organization-service/Users/users';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import { systemRoleLabel } from '../../RolesManagement/data/roleTemplates';
 
 const STATUS_BADGE_BG: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-600',
@@ -145,7 +146,9 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                       {invitation.invited_email}
                     </Typography>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <span className="text-xs text-gray-400">{invitation.role}</span>
+                      <span className="text-xs text-gray-400">
+                        {systemRoleLabel(invitation.role)}
+                      </span>
                       <span
                         className={`inline-flex items-center rounded-full text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 ${
                           STATUS_BADGE_BG[invitation.status] || 'bg-gray-100 text-gray-500'

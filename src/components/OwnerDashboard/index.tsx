@@ -25,6 +25,7 @@ import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
 import { MdOutlineInsights } from 'react-icons/md';
 import HiringOverviewSlide from '../Dashboard/HiringOverviewSlide';
+import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 
 // One dashboard "team member" card row, mapped from organization-service's
 // real `GET /v1/users` shape. Replaces the old `analytics-service`
@@ -46,7 +47,7 @@ const toTeamRow = (user: OrgUser): TeamRow => ({
   id: user.user_id,
   fullName: user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || '-',
   email: user.email,
-  roleLabel: user.role ?? '-',
+  roleLabel: user.role ? systemRoleLabel(user.role) : '-',
 });
 
 const OwnerDashboard = () => {
