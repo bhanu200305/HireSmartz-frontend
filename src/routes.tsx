@@ -53,6 +53,8 @@ const NotificationSettingsPage = lazy(() => import('./pages/NotificationSettings
 const AdminToolsPage = lazy(() => import('./pages/AdminToolsPage'));
 const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
 const ActivityFeedPage = lazy(() => import('./pages/ActivityFeedPage'));
+const MyActivityPage = lazy(() => import('./pages/MyActivityPage'));
+const MySupportAccessPage = lazy(() => import('./pages/MySupportAccessPage'));
 const JobsOpeningPage = lazyImport(() => import('./pages/JobsOpening'), 'JobsOpeningPage');
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const LogOutPage = lazy(() => import('./pages/LogOutPage'));
@@ -766,6 +768,16 @@ export const Routes: RouteType[] = [
     name: 'Interviews',
     path: '/interviews',
     component: InterviewsPage,
+  },
+  {
+    name: 'MyActivity',
+    path: '/my-activity',
+    component: MyActivityPage,
+  },
+  {
+    name: 'MySupportAccess',
+    path: '/my-support-access',
+    component: MySupportAccessPage,
   },
   {
     name: 'AiCallBooking',

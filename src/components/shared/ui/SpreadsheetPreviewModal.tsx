@@ -2,6 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Modal } from 'antd';
 import * as XLSX from 'xlsx';
 import { MdClose } from 'react-icons/md';
+// `.cfp-h-scroll` (bold, always-visible horizontal scrollbar) — see this
+// file's own table wrapper below for why: an arbitrary uploaded spreadsheet
+// can run many columns wide, and the app's normal subtle/thin scrollbar
+// style left that horizontal overflow undiscoverable, same fix CustomTable
+// already applies to every other wide table in the app.
+import './tableLayout.css';
 
 const MAX_PREVIEW_ROWS = 50;
 
@@ -93,7 +99,7 @@ const SpreadsheetPreviewModal: React.FC<SpreadsheetPreviewModalProps> = ({
 
       {rows && rows.length > 0 && (
         <>
-          <div className="max-h-[60vh] overflow-auto border rounded-lg">
+          <div className="max-h-[60vh] overflow-y-auto cfp-h-scroll border rounded-lg">
             <table className="min-w-full text-xs border-collapse">
               <thead>
                 <tr>

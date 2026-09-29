@@ -316,10 +316,34 @@ export const PERMISSION_CATALOG: PermissionCatalogEntry[] = [
     module: 'Company Settings',
   },
 
-  { code: Authorities.USER_VIEW, label: 'View CFP users', module: 'CFP Users' },
-  { code: Authorities.USER_ADD, label: 'Add CFP users', module: 'CFP Users' },
-  { code: Authorities.USER_EDIT, label: 'Edit CFP users', module: 'CFP Users' },
-  { code: Authorities.USER_ARCHIVE, label: 'Archive CFP users', module: 'CFP Users' },
+  // CFP Users (Careerforce Pro's own internal staff roster) is a DIFFERENT
+  // backend resource from Organization Users below, despite both modules
+  // historically being labeled with the same USER_* codes here — confirmed
+  // directly against organization-service's real route decorators
+  // (directory/api/platform_router.py): list_platform_staff,
+  // invite_platform_staff, update_platform_staff and offboard_platform_staff
+  // all gate on `Permission.PLATFORM_READ/WRITE/UPDATE/DELETE`, never on any
+  // `user:*` permission — those only govern directory/api/
+  // users_platform_router.py's ORGANIZATION-users routes (see below). A
+  // custom platform role built from this picker with "View CFP users"
+  // checked previously granted USER_VIEW ('user:read'), which the real
+  // /platform/staff route never checks — the checkbox did nothing.
+  // USER_APPROVE/USER_EXPORT stay as-is: cfp_admin's live role genuinely
+  // holds `user:approve`/`user:export` (confirmed against the database),
+  // and no backend route enforces either action for ANY resource yet, so
+  // there's no more-correct code to point them at.
+  { code: Authorities.PLATFORM_VIEW, label: 'View CFP users', module: 'CFP Users' },
+  { code: Authorities.PLATFORM_INVITE, label: 'Add CFP users', module: 'CFP Users' },
+  {
+    code: Authorities.PLATFORM_MANAGE_DEPARTMENTS,
+    label: 'Edit CFP users',
+    module: 'CFP Users',
+  },
+  {
+    code: Authorities.PLATFORM_OFFBOARD_STAFF,
+    label: 'Archive CFP users',
+    module: 'CFP Users',
+  },
   { code: Authorities.USER_APPROVE, label: 'Approve CFP users', module: 'CFP Users' },
   { code: Authorities.USER_EXPORT, label: 'Export CFP users', module: 'CFP Users' },
 

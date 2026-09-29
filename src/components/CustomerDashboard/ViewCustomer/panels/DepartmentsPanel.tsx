@@ -30,7 +30,10 @@ type SortKey = 'name' | 'office';
  * Table + search/sort/filter/pagination matches CompanySettings' master-data
  * tabs instead of the plain divided list this used to be.
  */
-const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
+const DepartmentsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
+  tenantId,
+  readOnly = false,
+}) => {
   const { data: departments, isLoading } = useListPlatformTenantDepartmentsQuery(tenantId);
   const { data: offices } = useListPlatformTenantOfficesQuery(tenantId);
   const [addDepartment, { isLoading: isAdding }] = useAddPlatformTenantDepartmentMutation();
@@ -154,23 +157,27 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           <span className="text-gray-300 text-sm">Unassigned</span>
         ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 80,
-      render: (_: unknown, department: DepartmentRow) => (
-        <Tooltip title="Delete department">
-          <button
-            type="button"
-            aria-label="Delete department"
-            className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-            onClick={() => setDepartmentToDelete(department)}
-          >
-            <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
-          </button>
-        </Tooltip>
-      ),
-    },
+    ...(readOnly
+      ? []
+      : [
+          {
+            title: 'Actions',
+            key: 'actions',
+            width: 80,
+            render: (_: unknown, department: DepartmentRow) => (
+              <Tooltip title="Delete department">
+                <button
+                  type="button"
+                  aria-label="Delete department"
+                  className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+                  onClick={() => setDepartmentToDelete(department)}
+                >
+                  <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+                </button>
+              </Tooltip>
+            ),
+          },
+        ]),
   ];
 
   const dataSource: DepartmentRow[] = sortedDepartments
@@ -203,12 +210,14 @@ const DepartmentsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               }}
             />
           </div>
-          <Button
-            className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
-            onClick={() => setIsAddOpen(true)}
-          >
-            <MdOutlineAdd /> Add department
-          </Button>
+          {!readOnly && (
+            <Button
+              className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
+              onClick={() => setIsAddOpen(true)}
+            >
+              <MdOutlineAdd /> Add department
+            </Button>
+          )}
         </div>
       </div>
 

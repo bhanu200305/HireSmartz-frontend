@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import CustomTable from '../shared/ui/table';
 import { Loader } from '../shared/ui/loader';
 import { Button } from '../shared';
+import { Search } from '../shared/ui/search';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
   useLazyGetLoginUsersQuery,
   type LoginUserItem,
@@ -14,7 +17,7 @@ import { formattedDateTime } from '../../shared/utils/methods';
 type UserRow = LoginUserItem & { key: string };
 
 const WINDOW_DAYS = 30;
-const PAGE_LIMIT = 25;
+const DEFAULT_PAGE_SIZE = 10;
 
 /**
  * "Monthly active users" KPI card's real drill-down — the actual list of
@@ -25,6 +28,8 @@ const PAGE_LIMIT = 25;
  */
 const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [fetchPage, { isFetching }] = useLazyGetLoginUsersQuery();
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [search, setSearch] = useState('');
   const [rows, setRows] = useState<UserRow[]>([]);
   const [meta, setMeta] = useState<LoginUsersResponse | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -32,7 +37,9 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
   useEffect(() => {
     let cancelled = false;
-    void fetchPage({ windowDays: WINDOW_DAYS, limit: PAGE_LIMIT })
+    setHasLoadedOnce(false);
+    setLoadError(false);
+    void fetchPage({ windowDays: WINDOW_DAYS, limit: pageSize })
       .unwrap()
       .then((result) => {
         if (cancelled) return;
@@ -49,21 +56,38 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     return () => {
       cancelled = true;
     };
-    // Fetches exactly once per modal open — `fetchPage` is stable (RTK
-    // Query's lazy trigger), and every subsequent load goes through
-    // `handleLoadMore` instead, not a re-run of this effect.
-  }, []);
+    // Re-fetches a fresh first page whenever `pageSize` changes (the "Rows
+    // per page" control) — `fetchPage` is stable (RTK Query's lazy
+    // trigger), and every subsequent load goes through `handleLoadMore`
+    // instead, not a re-run of this effect.
+  }, [pageSize]);
 
   const handleLoadMore = async () => {
     if (!meta?.next_cursor) return;
     try {
-      const result = await fetchPage({ limit: PAGE_LIMIT, cursor: meta.next_cursor }).unwrap();
+      const result = await fetchPage({ limit: pageSize, cursor: meta.next_cursor }).unwrap();
       setRows((prev) => [...prev, ...result.items.map((item) => ({ ...item, key: item.user_id }))]);
       setMeta(result);
     } catch (error) {
       console.error('Failed to load more monthly active users', error);
     }
   };
+
+  // Client-side only, over rows already loaded via "Load more" — the
+  // backend's own `/platform/metrics/logins/users` has no search param yet
+  // (auth-service's login-event rows carry only a `user_id`; this service
+  // enriches each with a name/email from its OWN directory AFTER the page
+  // comes back, so a real search needs backend work: resolving a name/email
+  // match against that directory FIRST, then asking auth-service to page
+  // within just those ids). This searches what's on screen honestly rather
+  // than pretending to search everything until that lands.
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (row) => row.name?.toLowerCase().includes(q) || row.email?.toLowerCase().includes(q)
+    );
+  }, [rows, search]);
 
   const columns: TableProps<UserRow>['columns'] = [
     {
@@ -106,6 +130,7 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           : undefined
       }
       modalProps={{ width: 780, maskClosable: true }}
+      fillHeight
     >
       {!hasLoadedOnce ? (
         <Loader />
@@ -118,22 +143,46 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           This data is currently unavailable.
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <div className="flex min-h-0 flex-auto flex-col gap-3">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Search
+                appname="monthly active users modal"
+                placeholder="Search loaded rows..."
+                value={search}
+                allowClear
+                onSearch={setSearch}
+              />
+            </div>
+          </div>
+
+          <div className="shrink-0">
+            <RowsPerPageSelect
+              pageSize={pageSize}
+              options={PAGE_SIZE_OPTIONS}
+              onChange={setPageSize}
+            />
+          </div>
+
+          <div className="w-full min-h-0 flex-auto overflow-hidden rounded-xl border border-neutral-200 bg-white flex">
             <CustomTable<UserRow>
               columns={columns}
-              dataSource={rows}
+              dataSource={filteredRows}
+              scrollY="100%"
+              scrollX={false}
               emptyText={
                 <div className="py-10 text-center text-sm text-neutral-400">
-                  No sign-ins in this window.
+                  {search ? 'No loaded rows match that search.' : 'No sign-ins in this window.'}
                 </div>
               }
             />
           </div>
 
-          <div className="flex items-center justify-between text-sm text-neutral-500">
+          <div className="flex shrink-0 items-center justify-between text-sm text-neutral-500">
             <span>
-              Showing {rows.length} of {meta?.total ?? 0}
+              {search
+                ? `Showing ${filteredRows.length} of ${rows.length} loaded`
+                : `Showing ${rows.length} of ${meta?.total ?? 0}`}
             </span>
             {meta?.next_cursor && (
               <Button

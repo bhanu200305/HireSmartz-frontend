@@ -10,10 +10,20 @@ import PlatformOverviewSlide from './PlatformOverviewSlide';
 import HiringOverviewSlide from './HiringOverviewSlide';
 import TenantsPreviewCard from './TenantsPreviewCard';
 import WidgetErrorBoundary from '../shared/ui/WidgetErrorBoundary';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 
 const Dashboard = () => {
   const { role, tenantId, callerKind } = useSelector((state: RootState) => state.LoginSlice);
   const isPlatformCaller = callerKind === 'platform';
+  // Same authority the Platform Metrics/Audit Log/Book a Demo Leads nav
+  // items already gate on (menuItem.tsx) — this slide calls the exact same
+  // GET /v1/platform/metrics/* routes those pages do, so a caller who can't
+  // see those pages shouldn't see this slide either. Previously shown to
+  // EVERY platform caller unconditionally, which is what made it always
+  // read "Not enough data yet" for cfp_admin/cfp_support (a real 403, not
+  // actually missing data) rather than a permission problem.
+  const canViewPlatformOverview = useHasAccess(Authorities.PLATFORM_VIEW);
 
   const greeting = (() => {
     const hour = new Date().getHours();
@@ -27,8 +37,12 @@ const Dashboard = () => {
   // A no-tenant caller is platform staff (Super Admin/internal) — same test
   // `CustomerPage`/`CompanyMetrics` already use to tell the two apart. Each
   // sees their own top-line KPI slide first, before the existing
-  // CFP-company/revenue slides.
-  const overviewSlide: DashboardSlide = tenantId
+  // CFP-company/revenue slides. A platform caller without PLATFORM_VIEW
+  // (cfp_admin/cfp_support) gets neither — there's no tenant-scoped hiring
+  // data for them to show instead, so the slide is dropped from the
+  // carousel entirely rather than rendered to always show a permission
+  // error.
+  const overviewSlide: DashboardSlide | null = tenantId
     ? {
         key: 'hiring-overview',
         label: 'Hiring Overview',
@@ -39,16 +53,18 @@ const Dashboard = () => {
           </WidgetErrorBoundary>
         ),
       }
-    : {
-        key: 'platform-overview',
-        label: 'Platform Overview',
-        icon: <MdOutlineInsights />,
-        content: (
-          <WidgetErrorBoundary label="Platform Overview">
-            <PlatformOverviewSlide fillHeight />
-          </WidgetErrorBoundary>
-        ),
-      };
+    : canViewPlatformOverview
+      ? {
+          key: 'platform-overview',
+          label: 'Platform Overview',
+          icon: <MdOutlineInsights />,
+          content: (
+            <WidgetErrorBoundary label="Platform Overview">
+              <PlatformOverviewSlide fillHeight />
+            </WidgetErrorBoundary>
+          ),
+        }
+      : null;
 
   // Each slide gets its OWN WidgetErrorBoundary — the whole point of the
   // isolation is per-widget, not one boundary around the carousel as a
@@ -56,7 +72,7 @@ const Dashboard = () => {
   // out every OTHER slide along with it, since React unmounts everything
   // under the nearest boundary above the crash, not just the offending node.
   const slides: DashboardSlide[] = [
-    overviewSlide,
+    ...(overviewSlide ? [overviewSlide] : []),
     // "CFP Company" lists every tenant on the platform (GET
     // /v1/platform/tenants) — Super Admin's own view, per
     // TenantsPreviewCard's own docstring. It was previously shown to every

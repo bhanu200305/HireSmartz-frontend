@@ -30,6 +30,7 @@ const PendingDecisionsListModal: React.FC<{ onClose: () => void }> = ({ onClose 
       onClose={onClose}
       title="Pending Decision"
       modalProps={{ width: 900, maskClosable: true }}
+      fillHeight
     >
       <CandidatePoolTable
         items={data?.items ?? []}
@@ -49,6 +50,7 @@ const PendingDecisionsListModal: React.FC<{ onClose: () => void }> = ({ onClose 
         }}
         linkToCandidate
         emptyText="No pending decisions."
+        fillHeight
       />
     </AntdCommonModal>
   );

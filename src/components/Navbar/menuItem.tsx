@@ -9,6 +9,7 @@ import {
   MdOutlineAdminPanelSettings,
   MdOutlineDashboard,
   MdOutlineInsights,
+  MdOutlineSupportAgent,
 } from 'react-icons/md';
 import { PiMoneyFill } from 'react-icons/pi';
 import { HiOutlineSpeakerphone } from 'react-icons/hi';
@@ -198,6 +199,17 @@ const MenuItems = [
     requiredAuthority: Authorities.COMPANY_SETTINGS_EDIT,
   },
   {
+    // Not authority-gated, same reasoning as "Admin" below — there's no
+    // Authorities catalog entry scoped to exactly {hiring_manager,
+    // recruiter} and no one else, so Sidebar filters this one on role
+    // directly (isHiringManagerOrRecruiterRole). Shows this user's own
+    // activity — see MyActivityPage — distinct from Company Admin's
+    // tenant-wide "Audit Log"/"Activity" (Tenant Audit Log entry above).
+    name: 'Activity',
+    icon: <LuSquareActivity size={18} />,
+    path: '/my-activity',
+  },
+  {
     // Not authority-gated like the rest of this list — Sidebar filters this
     // one on role directly (isMasterSuperAdminRole), since unlocking an
     // account / rotating the signing key isn't something any Authorities
@@ -205,6 +217,17 @@ const MenuItems = [
     name: 'Admin',
     icon: <MdAdminPanelSettings size={18} />,
     path: ['/settings/admin'],
+  },
+  {
+    // Not authority-gated, same reasoning as "Admin" above — cfp_support's
+    // real role is checked directly (isCfpSupportRole), since every real
+    // platform login's Redux role.name is hardcoded identically regardless
+    // of super_admin/cfp_admin/cfp_support (see isPlatformSuperAdminRole's
+    // comment). A cfp_support user's own list of tenants they currently
+    // have a live, time-limited grant into — see MySupportAccessPage.
+    name: 'My Support Access',
+    icon: <MdOutlineSupportAgent size={18} />,
+    path: '/my-support-access',
   },
   {
     name: 'Finances',

@@ -5,15 +5,29 @@ import type { RoleManagementContext } from './types';
 type RoleContextSwitcherProps = {
   context: RoleManagementContext;
   onChange: (next: RoleManagementContext) => void;
+  /** False for a platform caller who isn't a real Super Admin (cfp_admin/
+   * cfp_support) — they hold no platform-role-management permission at all
+   * (the backend 403s that tab outright), so the "Careerforce Pro (CFP
+   * staff)" toggle is dropped entirely rather than offering a choice that
+   * always fails. Only the company picker renders; there's nothing left to
+   * toggle between. */
+  allowPlatformTier: boolean;
 };
 
 /**
- * Master Super Admin only — lets them locally step into a client
- * organization's Company-tier role catalog without switching their actual
- * logged-in role (which would also change the sidebar/dashboard/etc). Mirrors
- * the wireframe's "Manage roles for" toggle.
+ * Lets a platform caller locally step into a client organization's
+ * Company-tier role catalog without switching their actual logged-in role
+ * (which would also change the sidebar/dashboard/etc). Mirrors the
+ * wireframe's "Manage roles for" toggle — Master Super Admin gets the full
+ * toggle (their own CFP-staff catalog, or any client organization's);
+ * cfp_admin/cfp_support (allowPlatformTier=false) only ever get the company
+ * picker, no CFP-staff option to select in the first place.
  */
-const RoleContextSwitcher: React.FC<RoleContextSwitcherProps> = ({ context, onChange }) => {
+const RoleContextSwitcher: React.FC<RoleContextSwitcherProps> = ({
+  context,
+  onChange,
+  allowPlatformTier,
+}) => {
   const { data } = useListPlatformTenantsQuery({ limit: 100 });
   const tenants = data?.tenants ?? [];
   const mode: 'owner' | 'organization' = context.scope === 'platform' ? 'owner' : 'organization';
@@ -35,26 +49,35 @@ const RoleContextSwitcher: React.FC<RoleContextSwitcherProps> = ({ context, onCh
         Manage roles for
       </span>
 
-      <div className="inline-flex gap-1 bg-gray-100 rounded-lg p-1">
-        <button
-          type="button"
-          onClick={() => handleModeChange('owner')}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors cursor-pointer whitespace-nowrap ${
-            mode === 'owner' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500'
-          }`}
-        >
-          Careerforce Pro (CFP staff)
-        </button>
-        <button
-          type="button"
-          onClick={() => handleModeChange('organization')}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors cursor-pointer whitespace-nowrap ${
-            mode === 'organization' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500'
-          }`}
-        >
+      {allowPlatformTier ? (
+        <div className="inline-flex gap-1 bg-gray-100 rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => handleModeChange('owner')}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+              mode === 'owner' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            Careerforce Pro (CFP staff)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('organization')}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+              mode === 'organization' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            A client organization
+          </button>
+        </div>
+      ) : (
+        // No toggle — a platform caller without platform-role-management
+        // permission (cfp_admin/cfp_support) has exactly one place these
+        // roles can come from, so there's nothing to choose between.
+        <span className="text-xs font-semibold px-3 py-1.5 rounded-md bg-gray-100 text-primary-700 whitespace-nowrap">
           A client organization
-        </button>
-      </div>
+        </span>
+      )}
 
       {mode === 'organization' && (
         <select

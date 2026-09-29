@@ -1,4 +1,5 @@
 import React from 'react';
+import clsx from 'clsx';
 import { Select } from 'antd';
 import type { TableProps } from 'antd';
 import { Link } from 'react-router-dom';
@@ -38,6 +39,14 @@ type CandidatePoolTableProps = {
    * reports the choice back up. */
   jobOpeningId?: string;
   onJobOpeningIdChange: (jobOpeningId: string | undefined) => void;
+  /** Set by a caller that renders this inside a modal using
+   * `AntdCommonModal`'s own `fillHeight` (`PendingDecisionsListModal`) — the
+   * filter row, rows-per-page, and pagination footer stay pinned in view and
+   * only the table rows scroll, capped to whatever space the modal actually
+   * has. The plain inline page usage (`QualifiedCandidatePoolSection`/
+   * `PendingDecisionsSection`) leaves this off and keeps letting the page
+   * itself grow/scroll around a naturally-sized table, same as before. */
+  fillHeight?: boolean;
 };
 
 /**
@@ -59,12 +68,21 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
   emptyText,
   jobOpeningId,
   onJobOpeningIdChange,
+  fillHeight = false,
 }) => {
   const jobOptions = Object.entries(jobNameMap).map(([id, name]) => ({ label: name, value: id }));
+  // Explicit per-column widths — see CandidatesListModal.tsx's identical
+  // comment: `scroll.x: 'max-content'` alone wasn't reliably sizing an
+  // 8-column table wider than its container inside a fill-height modal
+  // (`PendingDecisionsListModal`), so the right-hand columns just got
+  // squeezed/clipped instead of actually triggering the horizontal
+  // scrollbar. The plain inline page usage isn't as tight on width, but
+  // fixed widths are harmless there too.
   const columns: TableProps<CandidatePoolItem>['columns'] = [
     {
       title: 'Candidate',
       key: 'candidate',
+      minWidth: 180,
       render: (_, row) =>
         linkToCandidate ? (
           <Link
@@ -80,18 +98,21 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
     {
       title: 'Job',
       key: 'job',
+      minWidth: 160,
       render: (_, row) => jobDisplayName(jobNameMap, row.job_opening_id),
     },
     {
       title: 'Location',
       dataIndex: 'location',
       key: 'location',
+      minWidth: 140,
       render: (value: string | null) => value || '-',
     },
     {
       title: 'Resume score',
       dataIndex: 'resume_score',
       key: 'resume_score',
+      minWidth: 130,
       align: 'center',
       render: (value: number | null) => value ?? '-',
     },
@@ -99,6 +120,7 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
       title: 'Interview score',
       dataIndex: 'interview_score',
       key: 'interview_score',
+      minWidth: 140,
       align: 'center',
       render: (value: number | null) => value ?? '-',
     },
@@ -106,10 +128,12 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
       title: 'Stage',
       dataIndex: 'stage',
       key: 'stage',
+      minWidth: 130,
     },
     {
       title: 'Status',
       key: 'status',
+      minWidth: 130,
       render: (_, row) => (
         <Badge status="neutral">{row.status_label ?? row.status_code ?? '-'}</Badge>
       ),
@@ -118,13 +142,14 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
       title: 'Applied date',
       dataIndex: 'applied_date',
       key: 'applied_date',
+      minWidth: 140,
       render: (value: string | null) => formatDate(value),
     },
   ];
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-end">
+    <div className={clsx('flex flex-col gap-3', fillHeight && 'min-h-0 flex-auto')}>
+      <div className="flex shrink-0 items-center justify-end">
         <div className="cfp-dropdown-trigger w-56">
           <FilterSelectIcon />
           <Select
@@ -141,24 +166,31 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
           />
         </div>
       </div>
-      <RowsPerPageSelect
-        pageSize={pageSize}
-        options={PAGE_SIZE_OPTIONS}
-        onChange={(size) => onPageChange(1, size)}
-      />
-      <CustomTable<CandidatePoolItem>
-        columns={columns}
-        dataSource={items}
-        emptyText={loading ? 'Loading…' : emptyText}
-        pagination={false}
-      />
-      <MasterPagination
-        current={page}
-        pageSize={pageSize}
-        total={total}
-        itemLabel="candidates"
-        onPageChange={(nextPage) => onPageChange(nextPage, pageSize)}
-      />
+      <div className="shrink-0">
+        <RowsPerPageSelect
+          pageSize={pageSize}
+          options={PAGE_SIZE_OPTIONS}
+          onChange={(size) => onPageChange(1, size)}
+        />
+      </div>
+      <div className={clsx(fillHeight && 'min-h-0 flex-auto overflow-hidden flex')}>
+        <CustomTable<CandidatePoolItem>
+          columns={columns}
+          dataSource={items}
+          emptyText={loading ? 'Loading…' : emptyText}
+          pagination={false}
+          scrollY={fillHeight ? '100%' : undefined}
+        />
+      </div>
+      <div className="shrink-0">
+        <MasterPagination
+          current={page}
+          pageSize={pageSize}
+          total={total}
+          itemLabel="candidates"
+          onPageChange={(nextPage) => onPageChange(nextPage, pageSize)}
+        />
+      </div>
     </div>
   );
 };

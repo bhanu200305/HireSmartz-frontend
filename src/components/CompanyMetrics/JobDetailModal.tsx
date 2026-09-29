@@ -109,8 +109,17 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
       title={jobTitle}
       subtitle={job.job_profile_code}
       modalProps={{ width: 820, maskClosable: true }}
+      fillHeight
     >
-      <div className="flex flex-col gap-4">
+      {/* Scrolls on this plain div, not `.ant-modal-body` — same
+          fillHeight convention every other list modal already uses (see
+          AntdCommonModal's own comment on the prop), so this scroll region
+          picks up the app's global thin-scrollbar styling the same
+          reliable way theirs does, rather than falling back to
+          `.ant-modal-body`'s own scroll (antd's bundled styles contest the
+          global scrollbar rule there, which is where the native/arrow
+          scrollbar was showing through). */}
+      <div className="flex min-h-0 flex-auto flex-col gap-4 overflow-y-auto">
         <StatCardRow cards={statusCards} columns={4} />
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">

@@ -63,10 +63,13 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   // full-list sort. `GET /v1/users` has no sort param to back a real one;
   // `role` and `includeInactive` (below) are the filters it actually
   // supports.
+  // Explicit per-column widths — see CandidatesListModal.tsx's identical
+  // comment on why `scroll.x: 'max-content'` alone isn't reliable here.
   const columns: TableProps<UserRow>['columns'] = [
     {
       title: 'Name',
       key: 'name',
+      minWidth: 220,
       render: (_: unknown, row: UserRow) => (
         <Link
           to={`/view-organisation-user?orgUserId=${row.user_id}`}
@@ -84,15 +87,18 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
+      minWidth: 260,
     },
     {
       title: 'Role',
       key: 'role',
+      minWidth: 160,
       render: (_: unknown, row: UserRow) => <Badge status="info">{row.role ?? '-'}</Badge>,
     },
     {
       title: 'Phone',
       key: 'phone',
+      minWidth: 170,
       render: (_: unknown, row: UserRow) =>
         row.phone_no ? `${row.country_code ?? ''} ${row.phone_no}` : '-',
     },
@@ -106,7 +112,7 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
       modalProps={{ width: 780, maskClosable: true }}
       fillHeight
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex min-h-0 flex-auto flex-col gap-3">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="cfp-dropdown-trigger w-40">
@@ -154,7 +160,7 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
           />
         </div>
 
-        <div className="w-full min-h-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <div className="w-full min-h-0 flex-auto overflow-hidden rounded-xl border border-neutral-200 bg-white flex">
           {isLoading ? (
             <Loader />
           ) : (

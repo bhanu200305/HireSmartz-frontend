@@ -33,6 +33,7 @@ import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import { jwtDecode } from 'jwt-decode';
 import { useLazyGetUserDashboardQuery } from '../../api/organization-service/Roles/dashboard';
+import { useLazyGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
 import {
   isDevAuthBypassEnabled,
   createDevBypassToken,
@@ -175,6 +176,7 @@ const Login = () => {
   const { email, password, errors, rememberMe, isFormValid } = localState;
   const [login, { isLoading }] = useLoginMutation();
   const [fetchUserDashboard] = useLazyGetUserDashboardQuery();
+  const [fetchOwnPlatformProfile] = useLazyGetOwnPlatformProfileQuery();
 
   useEffect(() => {
     if (rememberMe) {
@@ -372,19 +374,71 @@ const Login = () => {
     const tenantRoleName = decodedToken.roles?.includes('company_admin')
       ? 'company_admin'
       : decodedToken.roles?.[0] || '';
-    const role = {
-      name: callerKind === 'platform' ? PLATFORM_CALLER_ROLE_NAME : tenantRoleName,
-      type: callerKind === 'platform' ? 'owner' : 'organization',
-    };
     const canManageCompanySettings = extractCanManageCompanySettings(token);
 
     clearImpersonationStorage();
 
+    // Tokens need to be in storage before the platform-profile fetch below —
+    // orgApi's own prepareHeaders reads the access token from here.
     sessionStorage.setItem(LOCALSTORAGE_KEYS.ACCESS, token);
     sessionStorage.setItem(LOCALSTORAGE_KEYS.REFRESH, refreshToken);
+    setTokens(token, refreshToken);
 
+    // `role.name` used to be hardcoded to PLATFORM_CALLER_ROLE_NAME
+    // ('Master Super Admin') for every platform login regardless of actual
+    // role — organization-service's PLATFORM_SCOPED_ROLES invariant really
+    // was once exactly {SUPER_ADMIN}, but cfp_admin/cfp_support are real,
+    // distinct platform-staff roles now (see isPlatformSuperAdminRole's own
+    // comment in permission.helpers.ts), and every one of them got treated
+    // as a full Super Admin client-side — wrong nav items shown
+    // (Platform Metrics, Audit Log, Company Settings, ...), and every one of
+    // those screens then 403'd against the real backend, which already
+    // correctly enforces each role's real, narrower permissions. The JWT's
+    // own `roles` claim is still empty for a platform caller (same
+    // authentication-service limitation isMasterSuperAdminRole's comment
+    // documents), so this resolves it from org-service's own
+    // GET /v1/platform/staff/me instead — the same real source Sidebar/
+    // RolesManagement already fetch reactively to work around this same gap
+    // one screen at a time. Resolving it here, at login, fixes every other
+    // Authorities-gated nav item/screen this session touches, in one place,
+    // rather than needing an isXRole helper + a reactive refetch bolted onto
+    // each one individually as each gets reported.
+    //
+    // Failure here (backend unreachable, endpoint not yet deployed) must not
+    // block the login already completed — falls back to the pre-fix
+    // behavior (full Super Admin static permissions) exactly as today,
+    // never something narrower than before.
+    let platformRoleName = PLATFORM_CALLER_ROLE_NAME;
+    if (callerKind === 'platform') {
+      try {
+        const profile = await fetchOwnPlatformProfile().unwrap();
+        // 'super_admin' keeps PLATFORM_CALLER_ROLE_NAME as-is — it's what
+        // ROLE_AUTHORITIES.owner's `masterSuperAdmin` key already matches
+        // (normalizeRoleName strips non-letters, so 'super_admin' itself
+        // would NOT match that key — renaming the key is the bigger,
+        // separate RBAC-catalog change noted elsewhere, not done here).
+        // cfp_admin/cfp_support pass through verbatim — normalizeRoleName
+        // already matches those directly against the `cfpAdmin`/`cfpSupport`
+        // keys with no translation needed.
+        if (profile.role === 'cfp_admin' || profile.role === 'cfp_support') {
+          platformRoleName = profile.role;
+        }
+      } catch {
+        // Degrade to PLATFORM_CALLER_ROLE_NAME (today's behavior), silently
+        // — same "don't block a completed login over this" reasoning the
+        // tenant branch's permissions fetch below already uses, and this
+        // one has no narrower fallback to offer anyway.
+      }
+    }
+    const role = {
+      name: callerKind === 'platform' ? platformRoleName : tenantRoleName,
+      type: callerKind === 'platform' ? 'owner' : 'organization',
+    };
+
+    // Tokens themselves are already written above (unconditionally, before
+    // the platform-profile fetch needed them) — only the remember-me flags
+    // differ by branch here.
     if (rememberMe) {
-      setTokens(token, refreshToken);
       setLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME, 'true');
       setLocalStorageItem(LOCALSTORAGE_KEYS.ROLE, role);
       setLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS, {
@@ -392,7 +446,6 @@ const Login = () => {
         password: encrypt(password),
       });
     } else {
-      setTokens(token, refreshToken);
       setLocalStorageItem(LOCALSTORAGE_KEYS.ROLE, role);
       removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME);
       removeLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS);

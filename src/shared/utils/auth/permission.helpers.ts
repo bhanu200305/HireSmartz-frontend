@@ -22,45 +22,90 @@ const normalizeRoleIdentifier = (value: string | undefined): string => {
 
 /**
  * The platform-wide ("owner" scope) seeded role — see types/rbac.d.ts's
- * comment on the historical 6 system roles. Gates the sidebar's Admin
- * section (authentication-service's /admin/* actions), which is a
- * role check rather than an Authorities check like everything else in
- * MenuItems: unlocking an account or rotating the signing key has no
- * natural place in the fixed permission catalog, and matches the backend's
- * own guard on POST /admin/signing-keys/rotate, which is platform-only
- * outright rather than granted by a permission a tenant could ever hold
- * (docs/API_CONTRACT.md §8).
+ * comment on the historical 6 system roles. `role.name` for a real platform
+ * login now correctly resolves to the caller's actual role
+ * (Login/index.tsx's completeRealLogin fetches GET /platform/staff/me at
+ * login and threads it through) — cfp_admin/cfp_support pass through as
+ * those literal strings, only a genuine Super Admin resolves to
+ * PLATFORM_CALLER_ROLE_NAME ('Master Super Admin', matching
+ * `ROLE_AUTHORITIES.owner.masterSuperAdmin`'s key) — so this now means what
+ * its name says, both for RolesManagement's platform-vs-own-tier catalog
+ * switch and as the static ROLE_AUTHORITIES fallback key for a platform
+ * caller's effective permissions app-wide (useEffectivePermissions ->
+ * findRoleAuthorities(role.type, role.name)).
  *
- * For a real (non-dev-bypass) platform login, `role.name` is set to
- * PLATFORM_CALLER_ROLE_NAME below — see its comment for why that's a
- * justified assignment, not a guess — so this resolves true for a real
- * platform session the same as it always has for the dev-bypass fixtures.
+ * isPlatformSuperAdminRole/isCfpSupportRole below still exist and still work
+ * correctly (each re-fetches the same real role reactively, redundant with
+ * but consistent with this) — kept rather than removed now that Redux is
+ * also correct, since they were already shipped, verified, and several
+ * screens depend on them; not worth the churn to collapse into one source
+ * for its own sake.
  */
 export const isMasterSuperAdminRole = (role?: Role): boolean => {
   return normalizeRoleIdentifier(role?.name) === 'mastersuperadmin';
 };
 
 /**
- * The `role.name` a platform (no-`tenant_id`) caller's real session stores
- * — see Login/index.tsx's completeRealLogin — so the static
- * ROLE_AUTHORITIES fallback (the only source of effective permissions a
- * platform caller has client-side today; GET /v1/roles/users/{id}/permissions
- * is tenant-only, confirmed 403ing a real Super Admin token with "this
- * endpoint requires a tenant user") can resolve instead of silently denying
- * everything.
+ * The REAL platform role (org-service's GET /platform/staff/me — `role`).
+ * Gates the sidebar's Admin section (unlocking an account, signing-key
+ * rotation) — cfp_admin/cfp_support must not pass this.
  *
- * This is NOT a guess and deliberately does NOT come from the JWT's `roles`
- * claim: organization-service's `PLATFORM_SCOPED_ROLES` invariant
- * (system_role.py) is exactly `{SUPER_ADMIN}` — a platform-scoped
- * (no-tenant) account cannot be anything else, enforced at the schema level
- * (`OrganizationRole` rejects any other role assignment lacking a tenant).
- * The `roles` claim would be the "right" source in principle, but
- * authentication-service's own docs (API_CONTRACT.md §11.3) say it's empty
- * until a role-snapshot publisher ships and warn against building UI on it
- * until then — confirmed empty on a real bootstrapped Super Admin's token
- * even though organization-service's own (Redis-backed, not JWT-based)
- * authorization already correctly treats that same account as fully
- * platform-authorized.
+ * Backend still blocks the actual privileged actions server-side either way
+ * (auth:update/auth:approve, docs/API_CONTRACT.md §8) — this only controls
+ * whether the nav entry/page is shown to begin with.
+ */
+export const isPlatformSuperAdminRole = (realPlatformRole?: string | null): boolean => {
+  return normalizeRoleIdentifier(realPlatformRole ?? undefined) === 'superadmin';
+};
+
+/**
+ * The REAL platform role, same source and reasoning as
+ * isPlatformSuperAdminRole above — gates the sidebar's "My Support Access"
+ * nav item (a cfp_support staff member's own list of tenants they currently
+ * have a time-limited grant into) and switches CustomerDashboard/ViewCustomer
+ * into its read-only, grant-restricted mode for that role. cfp_admin/
+ * super_admin must not pass this.
+ */
+export const isCfpSupportRole = (realPlatformRole?: string | null): boolean => {
+  return normalizeRoleIdentifier(realPlatformRole ?? undefined) === 'cfpsupport';
+};
+
+/**
+ * Gates the sidebar's "Activity" nav item — a role check rather than an
+ * Authorities check, same reasoning as isMasterSuperAdminRole above: there's
+ * no Authorities catalog entry scoped to exactly {hiring_manager, recruiter}
+ * and no one else (the real permissions both roles hold, e.g.
+ * JOB_OPENING_VIEW, are also held by company_admin, who already has their
+ * own "Audit Log"/"Activity" surfaces under My Company).
+ *
+ * For a real (non-dev-bypass) tenant login, `role.name` is the raw JWT
+ * `roles` claim (Login/index.tsx's completeRealLogin) — organization-service's
+ * seeded system roles are fixed keys ('hiring_manager', 'recruiter'), so this
+ * resolves correctly for a real session. A tenant that renames/customizes a
+ * role would break this the same way it would any other role-name check.
+ */
+export const isHiringManagerOrRecruiterRole = (role?: Role): boolean => {
+  const normalized = normalizeRoleIdentifier(role?.name);
+  return normalized === 'hiringmanager' || normalized === 'recruiter';
+};
+
+/**
+ * `role.name` for a genuine Super Admin platform login, and the fallback
+ * value Login/index.tsx's completeRealLogin uses for ANY platform caller
+ * when GET /platform/staff/me can't be reached (backend down, endpoint not
+ * yet deployed) — degrading to "treat as Super Admin" rather than to
+ * nothing, so a completed login is never blocked or narrowed below what it
+ * showed before that endpoint existed. In the normal case (the fetch
+ * succeeds) this is only actually assigned when the real role IS
+ * 'super_admin' — cfp_admin/cfp_support get their own literal role strings
+ * instead, which already correctly key into `ROLE_AUTHORITIES.owner`'s
+ * `cfpAdmin`/`cfpSupport` entries via normalizeRoleIdentifier.
+ *
+ * Deliberately still NOT sourced from the JWT's `roles` claim even now that
+ * a real source exists elsewhere: authentication-service's own docs
+ * (API_CONTRACT.md §11.3) say that claim is empty until a role-snapshot
+ * publisher ships, confirmed still empty on a real bootstrapped platform
+ * token — GET /platform/staff/me is the one real source today.
  */
 export const PLATFORM_CALLER_ROLE_NAME = 'Master Super Admin';
 

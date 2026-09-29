@@ -8,9 +8,57 @@
 .ant-table-tbody > tr:last-child > td {
   border-bottom: none !important;
 }
+/* `width: 100%` matters more than it looks like it should: every
+   `scrollY="100%"` caller's bordered wrapper is `flex` (row) so THIS div
+   stretches vertically via `align-items: stretch` (see table.tsx's
+   `fillsParent` comment) — but `align-items: stretch` is a CROSS-axis
+   default, and for a row-direction flex container the cross axis is
+   height, not width. Along the MAIN axis (width, for a row), a flex item
+   with no `flex-grow` defaults to shrink-to-fit its own content, same as
+   `display: inline-block` would — so without this, this div (and the
+   table inside it, and that table's OWN `width: 100%` below, which then
+   has nothing definite to resolve against) shrinks to whatever the
+   columns' combined `minWidth` adds up to, leaving a gap between it and
+   the bordered card's true right edge, with this div's own vertical
+   scrollbar sitting at the edge of that shrunk box instead of the card's. */
 .customTable {
+  width: 100%;
   padding: 4px !important;
   border: none !important;
+}
+
+/* `scrollY="100%"` call sites only (table.tsx's `fillsParent`): the table's
+   height is already stretched to exactly fill its bordered wrapper (see
+   table.tsx's comment on `fillsParent`), so every pixel of vertical padding
+   here is a pixel taken away from that already-exact fit. That's what was
+   silently costing this table's own bottom edge — where its horizontal
+   scrollbar lives — to an ancestor's `overflow: hidden`, measured on the
+   real page as a 3px shortfall between this div's content and the space its
+   wrapper actually had. Dropping the top/bottom padding (keeping left/right,
+   for the same small inset from the rounded border everywhere else) buys
+   back more slack than that measured gap needs, so it holds even as the
+   real scrollbar's own height varies slightly by OS/browser. */
+.customTable.customTable-fill {
+  padding: 0 4px !important;
+}
+
+/* Without an explicit width, `table-layout: auto` (this table's default —
+   nothing here ever sets `width` on the antd Table, only `minWidth` per
+   column) sizes the `<table>` to its own CONTENT, not its container: real
+   data with only a few narrow columns (e.g. "Monthly active users" — Name/
+   Email/Sign-ins/Last sign-in) renders noticeably narrower than the modal,
+   leaving a dead gap of empty white space between the last column and the
+   card's right edge, with the scroll region's own bounding box (and its
+   scrollbar) still spanning the full card width above/below it — visually
+   misaligned, even though nothing is functionally broken. `width: 100%`
+   fixes that WITHOUT giving up the overflow behavior other tables here rely
+   on: `table-layout: auto` still respects each column's own `minWidth` as a
+   floor, so a table whose columns' combined `minWidth` exceeds the
+   container still overflows and scrolls exactly as before — this only
+   changes what happens when they DON'T, stretching to fill instead of
+   leaving a gap. */
+.customTable table {
+  width: 100%;
 }
 
 /* Wireframe-matched table chrome: uppercase/tracked headers + a brand-tinted
@@ -51,11 +99,42 @@
   box-shadow: inset 0 0 0 1px var(--color-primary-200, #c7d2fe);
 }
 
-/* CustomTable's `scroll={{ x: 'max-content' }}` (and, when `scrollY` is also
-   set, the outer `.customTable` wrapper div's own `overflow-y: auto`, see
-   table.tsx) no longer needs its own scrollbar rule here — the global
-   scrollbar style in index.css already covers every scrollable element in
-   the app identically, whichever element actually scrolls. */
+/* `.cfp-h-scroll` is on the SAME div as `.customTable` (see table.tsx) —
+   this only sets the horizontal axis; `overflow-y` is left to table.tsx's
+   own inline style (auto+capped when `scrollY` is set, unset/visible
+   otherwise) rather than fixed here, since a `scrollY`-less plain page
+   table must NOT get a vertical clip.
+
+   `overflow-x: auto` (not `scroll`): paired with the bold, higher-contrast,
+   opaque-track scrollbar below (not this app's normal thin/subtle global
+   style), real-browser measurement confirmed that's enough on its own to be
+   noticeable whenever the table genuinely overflows — an earlier version of
+   this forced `overflow-x: scroll` instead, on the theory that even a bold
+   scrollbar might go unnoticed unless its track was always reserved, but
+   that meant a table whose columns DON'T overflow (fits its container
+   exactly, e.g. "Monthly active users") still showed a flat, fully-filled,
+   functionally-inert scrollbar track for no reason — its own kind of
+   visual bug. `auto` shows nothing when there's nothing to scroll, and the
+   same bold bar as before the moment there actually is. */
+.cfp-h-scroll {
+  overflow-x: auto;
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-neutral-400, #9ca3af) var(--color-neutral-100, #f3f4f6);
+}
+.cfp-h-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+.cfp-h-scroll::-webkit-scrollbar-track {
+  background: var(--color-neutral-100, #f3f4f6);
+  border-radius: 6px;
+}
+.cfp-h-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-400, #9ca3af);
+  border-radius: 6px;
+}
+.cfp-h-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-500, #6b7280);
+}
 
 /* AntD's own "ping" shadow — a dark inset fade AntD draws on
    `.ant-table-container::before`/`::after` (see antd/es/table/style/fixed.js)

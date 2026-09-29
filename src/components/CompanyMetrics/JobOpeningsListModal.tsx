@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Select } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
 import type { TableProps } from 'antd';
@@ -46,6 +47,7 @@ const JobOpeningsListModal: React.FC<{
   title?: string;
   assignedToMe?: boolean;
 }> = ({ onClose, title = 'Active job openings', assignedToMe }) => {
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('active_job_openings_modal', 10, 100);
   const [selectedJob, setSelectedJob] = useState<JobSummary | null>(null);
@@ -78,11 +80,17 @@ const JobOpeningsListModal: React.FC<{
   const jobTitle = (job: JobRow): string =>
     (job.job_title_id && titleMap[job.job_title_id]) || 'Untitled job';
 
+  // Explicit per-column widths — see CandidatesListModal.tsx's identical
+  // comment: `scroll.x: 'max-content'` alone wasn't reliably sizing this
+  // table wider than its container inside this modal's flex-fill layout,
+  // so extra columns just got squeezed/clipped at the modal's edge with no
+  // scrollbar to reach them instead of actually triggering one.
   const columns: TableProps<JobRow>['columns'] = [
     {
       title: 'Job title',
       dataIndex: 'title',
       key: 'title',
+      minWidth: 320,
       render: (_: unknown, job: JobRow) => (
         <div>
           <span className="block font-semibold text-primary-600">{jobTitle(job)}</span>
@@ -93,6 +101,7 @@ const JobOpeningsListModal: React.FC<{
     {
       title: 'Status',
       key: 'status',
+      minWidth: 140,
       render: (_: unknown, job: JobRow) => {
         const status = jobStatus(job);
         return <Badge status={status.badge}>{status.label}</Badge>;
@@ -102,15 +111,18 @@ const JobOpeningsListModal: React.FC<{
       title: 'Applicants',
       dataIndex: 'total_candidate_count',
       key: 'total_candidate_count',
+      minWidth: 130,
     },
     {
       title: 'Interviews',
       dataIndex: 'interviewed_count',
       key: 'interviewed_count',
+      minWidth: 130,
     },
     {
       title: 'Days open',
       key: 'days_open',
+      minWidth: 140,
       sorter: true,
       sortOrder:
         daysOpenSortDir === 'asc' ? 'ascend' : daysOpenSortDir === 'desc' ? 'descend' : undefined,
@@ -126,7 +138,7 @@ const JobOpeningsListModal: React.FC<{
       modalProps={{ width: 820, maskClosable: true }}
       fillHeight
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex min-h-0 flex-auto flex-col gap-3">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <Search
@@ -154,6 +166,17 @@ const JobOpeningsListModal: React.FC<{
               />
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              navigate('/jobs');
+            }}
+            className="text-sm font-medium text-primary-600 hover:text-primary-700 cursor-pointer"
+          >
+            View all job openings
+          </button>
         </div>
 
         <div className="shrink-0">
@@ -167,7 +190,7 @@ const JobOpeningsListModal: React.FC<{
           />
         </div>
 
-        <div className="w-full min-h-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <div className="w-full min-h-0 flex-auto overflow-hidden rounded-xl border border-neutral-200 bg-white flex">
           {isLoading ? (
             <Loader />
           ) : (

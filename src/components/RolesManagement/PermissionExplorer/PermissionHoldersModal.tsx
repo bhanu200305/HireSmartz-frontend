@@ -53,10 +53,13 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
     [data]
   );
 
+  // Explicit per-column widths — see CandidatesListModal.tsx's identical
+  // comment on why `scroll.x: 'max-content'` alone isn't reliable here.
   const columns: TableProps<HolderRow>['columns'] = [
     {
       title: 'Name',
       key: 'name',
+      minWidth: 180,
       render: (_: unknown, row: HolderRow) => (
         <span className="font-semibold text-gray-900">{row.User_Name}</span>
       ),
@@ -65,11 +68,13 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
       title: 'Email',
       dataIndex: 'Email',
       key: 'email',
+      minWidth: 220,
       render: (email: string | undefined) => email ?? '-',
     },
     {
       title: 'Roles',
       key: 'roles',
+      minWidth: 220,
       render: (_: unknown, row: HolderRow) => {
         const roleNames = Array.from(
           new Set((row.Location_Permission ?? []).flatMap((lp) => lp.Roles ?? []))
@@ -92,6 +97,7 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
     {
       title: 'Status',
       key: 'status',
+      minWidth: 130,
       render: (_: unknown, row: HolderRow) => (
         <Badge status={row.Is_Active ? 'success' : 'neutral'}>
           {row.Is_Active ? 'Active' : 'Inactive'}
@@ -109,6 +115,7 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
       title={`Who has "${label}"`}
       subtitle={<code className="text-xs font-mono text-gray-400">{code}</code>}
       modalProps={{ width: 720, maskClosable: true }}
+      fillHeight
     >
       {isLoading ? (
         <div className="py-10 flex items-center justify-center">
@@ -119,16 +126,16 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
           {getOrgErrorMessage(error, 'Failed to load who has this permission.')}
         </p>
       ) : (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-gray-400">
+        <div className="flex min-h-0 flex-auto flex-col gap-2">
+          <p className="shrink-0 text-xs text-gray-400">
             {data?.total_users ?? users.length}{' '}
             {(data?.total_users ?? users.length) === 1 ? 'person' : 'people'}
           </p>
-          <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="w-full min-h-0 flex-auto overflow-hidden rounded-xl border border-gray-200 bg-white flex">
             <CustomTable<HolderRow>
               columns={columns}
               dataSource={dataSource}
-              scrollY="45vh"
+              scrollY="100%"
               emptyText={
                 <div className="py-8 text-center text-sm text-gray-400">
                   Nobody currently has this.

@@ -85,7 +85,10 @@ const ReadOnlyPill: React.FC<{ children: React.ReactNode }> = ({ children }) => 
  * field — the plain text input this used to have couldn't produce a value
  * organization-service could actually serve back.
  */
-const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
+const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
+  tenantId,
+  readOnly = false,
+}) => {
   const { data: profile, isLoading, refetch } = useGetPlatformTenantProfileQuery(tenantId);
   const [updateProfile, { isLoading: isSaving }] = useUpdatePlatformTenantProfileMutation();
   const [uploadLogo] = useUploadPlatformTenantLogoMutation();
@@ -253,7 +256,12 @@ const CompanyProfilePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     <div className="p-4">
       <div className="flex items-center justify-between mb-7">
         <Typography variant="h5">Company profile</Typography>
-        {!isEditMode && (
+        {/* isEditMode can only ever become true via this button, so hiding
+            it when readOnly (a cfp_support grant, which has no matching
+            write route) keeps every other write control below — the logo
+            upload/adjust menu, the editable fields, Cancel/Save — off too,
+            for free. */}
+        {!isEditMode && !readOnly && (
           <Button
             className="rounded-full border border-gray-300 px-4 py-1.5 hover:bg-gray-50 transition-colors"
             onClick={() => setIsEditMode(true)}

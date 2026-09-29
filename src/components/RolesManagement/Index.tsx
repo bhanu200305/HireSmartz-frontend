@@ -9,7 +9,8 @@ import { RootState } from '../../redux/provider/store';
 import { Authorities } from '../../constants/authorities.constant';
 import useEffectivePermissions from '../../hooks/useEffectivePermissions';
 import { useRolesCatalog } from '../../hooks/useRolesCatalog';
-import { isMasterSuperAdminRole } from '../../shared/utils/auth/permission.helpers';
+import { isPlatformSuperAdminRole } from '../../shared/utils/auth/permission.helpers';
+import { useGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import { Loader } from '../shared/ui/loader';
 import { useListTenantOfficesQuery } from '../../api/organization-service/Tenants/offices';
@@ -37,21 +38,49 @@ const RolesManagement: React.FC = () => {
   const activeTab = searchParams.get('tab') || DEFAULT_TAB;
   const session = useSelector((state: RootState) => state.LoginSlice);
   const effectivePermissions = useEffectivePermissions();
-  const isMaster = isMasterSuperAdminRole(session.role);
+
+  // ANY owner-type/platform session (super_admin, cfp_admin, cfp_support) —
+  // every one of them reaches tenant data exclusively through the
+  // platform-mirror routes (their token carries no tenant_id of their own
+  // to fall back to), so this drives which API surface useRolesCatalog/
+  // useListTenantOfficesQuery hit. Deliberately NOT the same thing as "is
+  // this the Super Admin role" below — see useRolesCatalog's own isMaster
+  // docstring ("True for ANY owner-type session, not just Master Super
+  // Admin"). Getting this wrong for cfp_admin/cfp_support would send their
+  // "a client organization" picks through endpoints that require a tenant
+  // token they don't have.
+  const isPlatformCaller = session.callerKind === 'platform';
+  const { data: platformProfileData } = useGetOwnPlatformProfileQuery(undefined, {
+    skip: !isPlatformCaller,
+  });
+  // The REAL role (org-service's own /platform/staff/me), not the Redux
+  // role.name every platform login hardcodes to 'Master Super Admin'
+  // regardless of actual role — cfp_admin/cfp_support hold no
+  // platform-role-management permission at all (confirmed by the backend's
+  // own 403 on that tab), so only a genuine Super Admin should be offered
+  // the "Careerforce Pro (CFP staff)" tier at all.
+  const canManagePlatformRoles = isPlatformSuperAdminRole(platformProfileData?.role);
 
   const [switcherContext, setSwitcherContext] = useState<RoleManagementContext>({
     scope: 'platform',
   });
 
-  // Non-Master-Super-Admin sessions are always scoped to their own tier —
-  // owner-type sessions (Master/Admin/User) see the CFP platform catalog,
-  // organization-type sessions see their own tenant's catalog. Only Master
-  // Super Admin can locally switch this via RoleContextSwitcher above.
-  const context: RoleManagementContext = isMaster
-    ? switcherContext
-    : session.role.type === 'organization'
-      ? { scope: 'tenant', tenantId: session.tenantId ?? undefined }
-      : { scope: 'platform' };
+  // A tenant caller (Company Admin) is always scoped to their own tenant —
+  // unchanged. A platform caller who ISN'T a real Super Admin is force-kept
+  // in tenant scope regardless of `switcherContext`'s own state — which
+  // still only ever offers 'platform' as its default/initial value, since
+  // canManagePlatformRoles isn't known for certain until platformProfileData
+  // loads a beat after mount. Only a confirmed Super Admin gets the free
+  // switcherContext-driven choice RoleContextSwitcher offers.
+  const context: RoleManagementContext = !isPlatformCaller
+    ? { scope: 'tenant', tenantId: session.tenantId ?? undefined }
+    : canManagePlatformRoles
+      ? switcherContext
+      : {
+          scope: 'tenant',
+          tenantId: switcherContext.tenantId,
+          tenantName: switcherContext.tenantName,
+        };
 
   const {
     roles,
@@ -63,11 +92,11 @@ const RolesManagement: React.FC = () => {
   } = useRolesCatalog({
     scope: context.scope,
     tenantId: context.tenantId,
-    isMaster,
+    isMaster: isPlatformCaller,
   });
 
   const { data: offices } = useListTenantOfficesQuery(
-    { tenantId: context.tenantId ?? '', isMaster },
+    { tenantId: context.tenantId ?? '', isMaster: isPlatformCaller },
     { skip: !context.tenantId }
   );
   const availableLocations = useMemo(
@@ -103,9 +132,11 @@ const RolesManagement: React.FC = () => {
     setRoleBeingDeleted(null);
   };
 
-  // Master Super Admin picked "a client organization" but hasn't chosen a
-  // company yet — nothing to show or act on until one is selected.
-  const awaitingCompanySelection = isMaster && context.scope === 'tenant' && !context.tenantId;
+  // A platform caller (Super Admin, or cfp_admin/cfp_support now forced
+  // into tenant scope) picked/landed on "a client organization" but hasn't
+  // chosen a company yet — nothing to show or act on until one is selected.
+  const awaitingCompanySelection =
+    isPlatformCaller && context.scope === 'tenant' && !context.tenantId;
 
   // "Who has this permission" / "what can this person do" lookups inside the
   // Permission Reference tab only ever apply to a COMPANY's users — never
@@ -247,8 +278,12 @@ const RolesManagement: React.FC = () => {
           )}
         </div>
 
-        {isMaster && (
-          <RoleContextSwitcher context={switcherContext} onChange={setSwitcherContext} />
+        {isPlatformCaller && (
+          <RoleContextSwitcher
+            context={context}
+            onChange={setSwitcherContext}
+            allowPlatformTier={canManagePlatformRoles}
+          />
         )}
 
         <Tabs activeKey={activeTab} onChange={handleTabChange} items={tabItems} />

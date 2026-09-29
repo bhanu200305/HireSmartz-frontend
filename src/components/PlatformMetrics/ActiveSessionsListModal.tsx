@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import CustomTable from '../shared/ui/table';
 import { Loader } from '../shared/ui/loader';
 import { Button } from '../shared';
+import { Search } from '../shared/ui/search';
+import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
+import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 import {
   useLazyGetSessionsListQuery,
   type SessionListItem,
@@ -13,7 +16,7 @@ import { formattedDateTime, formatEnumString } from '../../shared/utils/methods'
 
 type SessionRow = SessionListItem & { key: string };
 
-const PAGE_LIMIT = 25;
+const DEFAULT_PAGE_SIZE = 10;
 
 /**
  * "Active sessions" KPI card's real drill-down — the actual list of live
@@ -24,6 +27,8 @@ const PAGE_LIMIT = 25;
  */
 const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [fetchPage, { isFetching }] = useLazyGetSessionsListQuery();
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [search, setSearch] = useState('');
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [meta, setMeta] = useState<SessionsListResponse | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -31,7 +36,9 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
 
   useEffect(() => {
     let cancelled = false;
-    void fetchPage({ limit: PAGE_LIMIT })
+    setHasLoadedOnce(false);
+    setLoadError(false);
+    void fetchPage({ limit: pageSize })
       .unwrap()
       .then((result) => {
         if (cancelled) return;
@@ -48,12 +55,15 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
     return () => {
       cancelled = true;
     };
-  }, []);
+    // Re-fetches a fresh first page whenever `pageSize` changes (the "Rows
+    // per page" control) — every subsequent load goes through
+    // `handleLoadMore` instead, not a re-run of this effect.
+  }, [pageSize]);
 
   const handleLoadMore = async () => {
     if (!meta?.next_cursor) return;
     try {
-      const result = await fetchPage({ limit: PAGE_LIMIT, cursor: meta.next_cursor }).unwrap();
+      const result = await fetchPage({ limit: pageSize, cursor: meta.next_cursor }).unwrap();
       setRows((prev) => [
         ...prev,
         ...result.items.map((item) => ({ ...item, key: item.session_id })),
@@ -63,6 +73,18 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
       console.error('Failed to load more active sessions', error);
     }
   };
+
+  // Client-side only, over rows already loaded — same backend limitation
+  // and same reasoning as `LoginUsersListModal`'s own `filteredRows` (see
+  // its comment): `/platform/metrics/sessions/list` has no search param
+  // yet either.
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (row) => row.name?.toLowerCase().includes(q) || row.email?.toLowerCase().includes(q)
+    );
+  }, [rows, search]);
 
   const columns: TableProps<SessionRow>['columns'] = [
     {
@@ -112,6 +134,7 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
       onClose={onClose}
       title="Active sessions"
       modalProps={{ width: 880, maskClosable: true }}
+      fillHeight
     >
       {!hasLoadedOnce ? (
         <Loader />
@@ -124,22 +147,46 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
           This data is currently unavailable.
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          <div className="w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <div className="flex min-h-0 flex-auto flex-col gap-3">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Search
+                appname="active sessions modal"
+                placeholder="Search loaded rows..."
+                value={search}
+                allowClear
+                onSearch={setSearch}
+              />
+            </div>
+          </div>
+
+          <div className="shrink-0">
+            <RowsPerPageSelect
+              pageSize={pageSize}
+              options={PAGE_SIZE_OPTIONS}
+              onChange={setPageSize}
+            />
+          </div>
+
+          <div className="w-full min-h-0 flex-auto overflow-hidden rounded-xl border border-neutral-200 bg-white flex">
             <CustomTable<SessionRow>
               columns={columns}
-              dataSource={rows}
+              dataSource={filteredRows}
+              scrollY="100%"
+              scrollX={false}
               emptyText={
                 <div className="py-10 text-center text-sm text-neutral-400">
-                  No active sessions right now.
+                  {search ? 'No loaded rows match that search.' : 'No active sessions right now.'}
                 </div>
               }
             />
           </div>
 
-          <div className="flex items-center justify-between text-sm text-neutral-500">
+          <div className="flex shrink-0 items-center justify-between text-sm text-neutral-500">
             <span>
-              Showing {rows.length} of {meta?.total ?? 0}
+              {search
+                ? `Showing ${filteredRows.length} of ${rows.length} loaded`
+                : `Showing ${rows.length} of ${meta?.total ?? 0}`}
             </span>
             {meta?.next_cursor && (
               <Button

@@ -118,6 +118,7 @@ export const orgApi = createApi({
     'ResumeTemplateFields',
     'PermissionCatalog',
     'PermissionMatrix',
+    'SupportAccess',
   ],
   endpoints: () => ({}),
 });

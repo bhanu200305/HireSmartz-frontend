@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Spin, Upload } from 'antd';
 import { RiDeleteBin6Line } from 'react-icons/ri';
@@ -61,6 +61,31 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   const isProcessing =
     !!batchId && !!batchProgress && batchProgress.parsed_files < batchProgress.valid_files;
 
+  // `onCompleted`/`onDone` come from `AddCandidateModal` as inline
+  // functions (`onDone={handleClose}`, `onCompleted={() =>
+  // onBulkImportCompleted?.()}`), neither wrapped in `useCallback` — so
+  // they get a new reference on literally every render of that modal, for
+  // any reason, not just ones related to this panel. Kept out of the
+  // effect below via refs (updated every render, but never a dependency)
+  // rather than put directly in its dependency array: `onCompleted` itself
+  // calls `refetch()` on the candidate list, which re-renders the modal,
+  // which changes `onDone`'s identity — if that identity were a
+  // dependency, the effect would re-run, its cleanup would cancel the
+  // pending auto-close timer below, and the `completedBatchId === batchId`
+  // guard would then block scheduling a new one, since as far as this
+  // effect can tell, "the completion already happened." The result: the
+  // "Done" message shows (it isn't gated on this effect), but the modal
+  // never actually closes on its own — exactly the reported symptom,
+  // reliably reproducible any time something else in the tree happens to
+  // re-render this modal in the 1.5s window, which real usage's live
+  // polling/notification queries elsewhere on the page make routine.
+  const onCompletedRef = useRef(onCompleted);
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    onCompletedRef.current = onCompleted;
+    onDoneRef.current = onDone;
+  });
+
   // Once parsing finishes: tell the parent so it can refetch the candidate
   // list (guarded by completedBatchId so this fires exactly once per batch,
   // not on every 3s poll after done), then close the parent modal on its own
@@ -69,15 +94,15 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   // readable for a moment before it disappears.
   useEffect(() => {
     if (!batchId || !batchProgress || isProcessing || completedBatchId === batchId) return;
-    onCompleted();
+    onCompletedRef.current();
     setCompletedBatchId(batchId);
     const timer = setTimeout(() => {
       setFiles([]);
       setBatchId(null);
-      onDone();
+      onDoneRef.current();
     }, AUTO_CLOSE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [batchId, batchProgress, isProcessing, completedBatchId, onCompleted, onDone]);
+  }, [batchId, batchProgress, isProcessing, completedBatchId]);
 
   const handleFileSelect = (selectedFiles: File[]) => {
     const accepted: File[] = [];

@@ -171,6 +171,7 @@ export const {
   useInvitePlatformStaffMutation,
   useOffboardPlatformStaffMutation,
   useGetOwnPlatformProfileQuery,
+  useLazyGetOwnPlatformProfileQuery,
   useUpdateOwnPlatformProfileMutation,
   useUploadOwnPlatformAvatarMutation,
   useClearOwnPlatformAvatarMutation,

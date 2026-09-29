@@ -196,9 +196,7 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
       onClose={handleClose}
       title="Add Candidate"
       subtitle={
-        mode === 'bulk'
-          ? 'Upload multiple resumes at once; ai-service parses each one into a candidate'
-          : 'Manually add a candidate to this job'
+        mode === 'bulk' ? 'Upload multiple resumes at once' : 'Manually add a candidate to this job'
       }
       modalProps={{ width: 560 }}
     >

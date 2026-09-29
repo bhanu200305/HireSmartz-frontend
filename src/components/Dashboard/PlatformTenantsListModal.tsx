@@ -87,11 +87,14 @@ const PlatformTenantsListModal: React.FC<{
   ): 'ascend' | 'descend' | undefined =>
     sort.sortBy === columnKey ? (sort.sortOrder === 'asc' ? 'ascend' : 'descend') : undefined;
 
+  // Explicit per-column widths — see CandidatesListModal.tsx's identical
+  // comment on why `scroll.x: 'max-content'` alone isn't reliable here.
   const columns: TableProps<TenantRow>['columns'] = [
     {
       title: 'Company',
       dataIndex: 'company_name',
       key: 'company_name',
+      minWidth: 280,
       sorter: true,
       sortOrder: sortOrderFor('company_name'),
       render: (_: unknown, tenant: TenantRow) => (
@@ -101,6 +104,7 @@ const PlatformTenantsListModal: React.FC<{
     {
       title: 'Status',
       key: 'status',
+      minWidth: 150,
       render: (_: unknown, tenant: TenantRow) => (
         <Badge status={TENANT_STATUS_BADGE[tenant.status] ?? 'neutral'}>
           {formatTenantStatusLabel(tenant.status)}
@@ -111,6 +115,7 @@ const PlatformTenantsListModal: React.FC<{
       title: 'Admin email',
       dataIndex: 'admin_email',
       key: 'admin_email',
+      minWidth: 300,
       render: (_: unknown, tenant: TenantRow) => (
         <span className="text-neutral-600">{tenant.admin_email || '-'}</span>
       ),
@@ -118,6 +123,7 @@ const PlatformTenantsListModal: React.FC<{
     {
       title: 'Created',
       key: 'created_at',
+      minWidth: 150,
       sorter: true,
       sortOrder: sortOrderFor('created_at'),
       render: (_: unknown, tenant: TenantRow) => (
@@ -137,7 +143,7 @@ const PlatformTenantsListModal: React.FC<{
       modalProps={{ width: 820, maskClosable: true }}
       fillHeight
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex min-h-0 flex-auto flex-col gap-3">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <Search
@@ -178,7 +184,7 @@ const PlatformTenantsListModal: React.FC<{
           />
         </div>
 
-        <div className="w-full min-h-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <div className="w-full min-h-0 flex-auto overflow-hidden rounded-xl border border-neutral-200 bg-white flex">
           {isLoading ? (
             <Loader />
           ) : (

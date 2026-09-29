@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { Dropdown, Tabs, Tooltip, Upload, type MenuProps } from 'antd';
 import { BsArrowLeft } from 'react-icons/bs';
 import {
@@ -12,6 +13,7 @@ import {
   MdEdit,
   MdOutlineFileUpload,
   MdOutlineCropRotate,
+  MdOutlineSupportAgent,
 } from 'react-icons/md';
 import MainLayout from '../../../layouts/MainLayout';
 import { Button, Typography, showToast } from '../../shared';
@@ -20,6 +22,7 @@ import ImageCropModal from '../../shared/ui/ImageCropModal';
 import { Badge, BadgeStatus } from '../../shared/ui/badge';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import CorrectAdminEmailModal from '../CorrectAdminEmailModal';
+import SupportAccessModal from './SupportAccessModal';
 import {
   useGetPlatformTenantQuery,
   useGetPlatformTenantEntitlementsQuery,
@@ -31,7 +34,12 @@ import {
   useUploadPlatformTenantLogoMutation,
 } from '../../../api/organization-service/Platform/tenantProfile';
 import { useSuspendTenantMutation } from '../../../api/organization-service/Tenants/tenants';
+import { useListMySupportAccessGrantsQuery } from '../../../api/organization-service/Platform/supportAccess';
+import { useGetOwnPlatformProfileQuery } from '../../../api/organization-service/Platform/staff';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import { isCfpSupportRole } from '../../../shared/utils/auth/permission.helpers';
+import { useExpiryCountdown } from '../../../hooks/useExpiryCountdown';
+import { RootState } from '../../../redux/provider/store';
 import {
   ALLOWED_LOGO_TYPES,
   MAX_LOGO_FILE_SIZE_BYTES,
@@ -44,6 +52,8 @@ import CompanyProfilePanel from './panels/CompanyProfilePanel';
 import LocationsPanel from './panels/LocationsPanel';
 import DepartmentsPanel from './panels/DepartmentsPanel';
 import UsersPanel from './panels/UsersPanel';
+import DesignationsPanel from './panels/DesignationsPanel';
+import AudioQuestionsPanel from './panels/AudioQuestionsPanel';
 import ScoringCriteriaPanel from './panels/ScoringCriteriaPanel';
 import QrCodePanel from './panels/QrCodePanel';
 import EmailTemplatesPanel from './panels/EmailTemplatesPanel';
@@ -111,6 +121,50 @@ const ViewCustomer = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tenantId = searchParams.get('companyId') || '';
   const currentTab = searchParams.get('tab') || '1';
+  const [showSupportAccess, setShowSupportAccess] = useState(false);
+
+  const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
+  const { data: platformProfileData } = useGetOwnPlatformProfileQuery(undefined, {
+    skip: callerKind !== 'platform',
+  });
+  // Real role (org-service's own /platform/staff/me), not the Redux
+  // role.name every platform login hardcodes identically — see
+  // isCfpSupportRole's own comment. Switches this whole page into a
+  // read-only, grant-restricted mode below rather than the Super Admin's
+  // normal full read/write view.
+  const isSupportViewer = isCfpSupportRole(platformProfileData?.role);
+
+  // Only fetched for a cfp_support viewer — this is how they reach this
+  // page at all (My Support Access's own list), and re-fetched here too so
+  // a direct/bookmarked `?companyId=` link still finds (or fails to find) a
+  // live grant rather than trusting whatever the previous screen believed.
+  const { data: myGrants, isFetching: isLoadingMyGrants } = useListMySupportAccessGrantsQuery(
+    undefined,
+    { skip: !isSupportViewer }
+  );
+  const myGrantForThisTenant = myGrants?.find((g) => g.tenant_id === tenantId);
+
+  const exitSupportedTenant = (message: string) => {
+    showToast({ message, type: 'error' });
+    navigate('/my-support-access', { replace: true });
+  };
+
+  // Redirects out the moment this specific grant lapses — see
+  // useExpiryCountdown's own comment on why the redirect is driven by a
+  // setTimeout keyed on the deadline itself, not the display tick.
+  const { label: supportTimeRemaining } = useExpiryCountdown(myGrantForThisTenant?.expires_at, () =>
+    exitSupportedTenant('Your support access to this company has expired.')
+  );
+
+  useEffect(() => {
+    if (!isSupportViewer || isLoadingMyGrants) return;
+    if (!myGrantForThisTenant) {
+      exitSupportedTenant('You do not have support access to this company.');
+    }
+    // Only re-run when the grant itself (or the tenant being viewed)
+    // changes — re-running on every render would fire the redirect twice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupportViewer, isLoadingMyGrants, myGrantForThisTenant, tenantId]);
 
   const { data: tenant, isLoading } = useGetPlatformTenantQuery(tenantId, { skip: !tenantId });
   const { data: entitlements, isLoading: isEntitlementsLoading } =
@@ -253,12 +307,46 @@ const ViewCustomer = () => {
   if (isLoading) return <Loader />;
   if (!tenant) return <div className="p-8 text-gray-500">Company not found.</div>;
 
+  // A cfp_support grant only authorizes org-service's platform-mirror
+  // profile/departments/offices/designations/users/dashboard/activity/
+  // audio-questions/qr-code routes — Feature Settings/Scoring Criteria/
+  // Email Templates/Notification copy (keys '4'/'5'/'7'/'10') have no
+  // matching grant at all, so they're filtered out of `items` entirely
+  // below for a support viewer rather than merely disabled.
+  const SUPPORT_ALLOWED_TAB_KEYS = new Set([
+    '0', // Metrics -> dashboard
+    '1', // Company Details -> profile
+    '2', // Locations -> offices
+    '3', // Departments -> departments
+    '8', // Users -> users
+    '9', // Activity -> activity
+    '6', // QR Management -> qr-code
+    '11', // Designations -> designations
+    '12', // Audio Questions -> audio-questions
+  ]);
+
   const items = [
     { key: '0', label: 'Metrics', children: <MetricsPanel tenantId={tenantId} /> },
-    { key: '1', label: 'Company Details', children: <CompanyProfilePanel tenantId={tenantId} /> },
-    { key: '2', label: 'Locations', children: <LocationsPanel tenantId={tenantId} /> },
-    { key: '3', label: 'Departments', children: <DepartmentsPanel tenantId={tenantId} /> },
-    { key: '8', label: 'Users', children: <UsersPanel tenantId={tenantId} /> },
+    {
+      key: '1',
+      label: 'Company Details',
+      children: <CompanyProfilePanel tenantId={tenantId} readOnly={isSupportViewer} />,
+    },
+    {
+      key: '2',
+      label: 'Locations',
+      children: <LocationsPanel tenantId={tenantId} readOnly={isSupportViewer} />,
+    },
+    {
+      key: '3',
+      label: 'Departments',
+      children: <DepartmentsPanel tenantId={tenantId} readOnly={isSupportViewer} />,
+    },
+    {
+      key: '8',
+      label: 'Users',
+      children: <UsersPanel tenantId={tenantId} readOnly={isSupportViewer} />,
+    },
     {
       key: '4',
       label: 'Feature Settings',
@@ -310,7 +398,17 @@ const ViewCustomer = () => {
       label: 'Activity',
       children: <TenantActivityFeedTab tenantId={tenantId} isMaster />,
     },
-  ];
+    {
+      key: '11',
+      label: 'Designations',
+      children: <DesignationsPanel tenantId={tenantId} />,
+    },
+    {
+      key: '12',
+      label: 'Audio Questions',
+      children: <AudioQuestionsPanel tenantId={tenantId} />,
+    },
+  ].filter((item) => !isSupportViewer || SUPPORT_ALLOWED_TAB_KEYS.has(item.key));
 
   return (
     <MainLayout>
@@ -355,7 +453,7 @@ const ViewCustomer = () => {
                   >
                     <button ref={logoUploadRef} className="hidden cursor-pointer"></button>
                   </Upload>
-                  {!isUploadingLogo && (
+                  {!isUploadingLogo && !isSupportViewer && (
                     <Dropdown
                       menu={{ items: logoMenuItems, onClick: handleLogoMenuClick }}
                       trigger={['click']}
@@ -387,21 +485,40 @@ const ViewCustomer = () => {
                   <p className="text-xs text-gray-400 mt-0.5">Company overview and management</p>
                 </div>
               </div>
-              {(tenant.status === 'draft' || tenant.status === 'pre_approved') && (
-                <Button
-                  className="rounded-full border border-primary-300 text-primary-600 px-5 py-2 hover:bg-primary-50 transition-colors shrink-0"
-                  onClick={() => setShowCorrectEmail(true)}
-                >
-                  Correct admin email
-                </Button>
-              )}
-              {tenant.status === 'active' && (
-                <Button
-                  className="rounded-full border border-red-300 text-red-600 px-5 py-2 hover:bg-red-50 transition-colors shrink-0"
-                  onClick={() => setShowSuspendConfirm(true)}
-                >
-                  Suspend company
-                </Button>
+              {isSupportViewer ? (
+                <div className="shrink-0 flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+                  <MdOutlineAccessTime size={16} />
+                  <span>
+                    Support access — <span className="font-mono">{supportTimeRemaining}</span>{' '}
+                    remaining
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    className="rounded-full border border-gray-300 text-gray-700 px-5 py-2 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                    onClick={() => setShowSupportAccess(true)}
+                  >
+                    <MdOutlineSupportAgent size={16} />
+                    Support access
+                  </Button>
+                  {(tenant.status === 'draft' || tenant.status === 'pre_approved') && (
+                    <Button
+                      className="rounded-full border border-primary-300 text-primary-600 px-5 py-2 hover:bg-primary-50 transition-colors"
+                      onClick={() => setShowCorrectEmail(true)}
+                    >
+                      Correct admin email
+                    </Button>
+                  )}
+                  {tenant.status === 'active' && (
+                    <Button
+                      className="rounded-full border border-red-300 text-red-600 px-5 py-2 hover:bg-red-50 transition-colors"
+                      onClick={() => setShowSuspendConfirm(true)}
+                    >
+                      Suspend company
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -433,7 +550,16 @@ const ViewCustomer = () => {
             </div>
 
             <Tabs
-              activeKey={currentTab}
+              // Falls back to this (possibly support-filtered) item list's
+              // own first tab when `currentTab` isn't actually in it (e.g.
+              // a `?tab=4` link a support viewer has no Feature Settings
+              // grant for) — same blank-tab-strip bug MyCompany/index.tsx
+              // had from an unconditional default with no such fallback.
+              activeKey={
+                items.some((item) => item.key === currentTab)
+                  ? currentTab
+                  : String(items[0]?.key ?? currentTab)
+              }
               onChange={handleTabChange}
               items={items}
               className="view-customer-tabs"
@@ -458,6 +584,14 @@ const ViewCustomer = () => {
           companyName={tenant.company_name}
           currentEmail={tenant.admin_email}
           onClose={() => setShowCorrectEmail(false)}
+        />
+      )}
+
+      {showSupportAccess && (
+        <SupportAccessModal
+          tenantId={tenantId}
+          companyName={tenant.company_name}
+          onClose={() => setShowSupportAccess(false)}
         />
       )}
 

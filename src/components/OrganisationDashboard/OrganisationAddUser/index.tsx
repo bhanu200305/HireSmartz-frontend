@@ -238,35 +238,95 @@ const AddOrganisationUser = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input placeholder="First name *" {...field('first_name')} />
-          <Input placeholder="Last name" {...field('last_name')} />
-          <Input placeholder="Email *" type="email" {...field('email')} />
-          <NameTitleSelect
-            value={form.title}
-            onChange={(value) => setForm((prev) => ({ ...prev, title: value ?? '' }))}
-          />
-          <PhoneNumberField
-            countryCode={form.country_code}
-            onCountryCodeChange={(value) => setForm((prev) => ({ ...prev, country_code: value }))}
-            phoneNumber={form.phone_no}
-            onPhoneNumberChange={(value) => setForm((prev) => ({ ...prev, phone_no: value }))}
-          />
-          <Select
-            placeholder="Department (optional)"
-            value={form.department_id}
-            onChange={(value) => setForm((prev) => ({ ...prev, department_id: value }))}
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            options={(departments || []).map((d) => ({
-              label: d.name,
-              value: d.org_department_id,
-            }))}
-          />
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <Typography variant="h6" className="block mb-4">
+            Profile details
+          </Typography>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+            <div>
+              <label htmlFor="add-user-first-name" className="text-sm text-gray-600">
+                First name <span className="required-asterisk">*</span>
+              </label>
+              <Input
+                id="add-user-first-name"
+                placeholder="First name"
+                className="mt-1"
+                {...field('first_name')}
+              />
+            </div>
+            <div>
+              <label htmlFor="add-user-last-name" className="text-sm text-gray-600">
+                Last name
+              </label>
+              <Input
+                id="add-user-last-name"
+                placeholder="Last name"
+                className="mt-1"
+                {...field('last_name')}
+              />
+            </div>
+            <div>
+              <label htmlFor="add-user-email" className="text-sm text-gray-600">
+                Email <span className="required-asterisk">*</span>
+              </label>
+              <Input
+                id="add-user-email"
+                type="email"
+                placeholder="Email"
+                className="mt-1"
+                {...field('email')}
+              />
+            </div>
+            <div>
+              <label htmlFor="add-user-title" className="text-sm text-gray-600">
+                Title
+              </label>
+              <NameTitleSelect
+                id="add-user-title"
+                className="w-full mt-1"
+                value={form.title}
+                onChange={(value) => setForm((prev) => ({ ...prev, title: value ?? '' }))}
+              />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Phone number</p>
+              <PhoneNumberField
+                className="mt-1"
+                countryCode={form.country_code}
+                onCountryCodeChange={(value) =>
+                  setForm((prev) => ({ ...prev, country_code: value }))
+                }
+                phoneNumber={form.phone_no}
+                onPhoneNumberChange={(value) => setForm((prev) => ({ ...prev, phone_no: value }))}
+              />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Department</p>
+              <Select
+                className="w-full mt-1"
+                placeholder="Department (optional)"
+                value={form.department_id}
+                onChange={(value) => setForm((prev) => ({ ...prev, department_id: value }))}
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                options={(departments || []).map((d) => ({
+                  label: d.name,
+                  value: d.org_department_id,
+                }))}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <Typography variant="h6" className="block">
+            Role &amp; access
+          </Typography>
+          <p className="text-xs text-gray-500 mt-1 mb-4">
+            Optional — a role can also be assigned later from their profile.
+          </p>
           <RoleLocationPicker
             roles={roles}
             offices={offices ?? []}

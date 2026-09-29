@@ -14,9 +14,14 @@ import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
 import { exitImpersonation } from '../../services/AuthService';
 import { showToast } from '../shared';
 import { RootState } from '../../redux/provider/store';
-import { isMasterSuperAdminRole } from '../../shared/utils/auth/permission.helpers';
+import {
+  isPlatformSuperAdminRole,
+  isCfpSupportRole,
+  isHiringManagerOrRecruiterRole,
+} from '../../shared/utils/auth/permission.helpers';
 import { useGetOwnUserProfileQuery } from '../../api/organization-service/Users/users';
 import { useGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
+import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 
 // Public-folder asset — referenced by URL, not imported (mirrors how Header
 // previously referenced /cfpLogo.svg). This is the dedicated icon-only mark
@@ -98,6 +103,14 @@ const Sidebar: React.FC<SidebarProps> = ({
     skip: !isPlatformCaller,
   });
   const userData = isPlatformCaller ? platformProfileData : tenantProfileData;
+  // The real role (org-service's own `/platform/staff/me`), not the
+  // Redux `role.name` every platform login hardcodes to 'Master Super
+  // Admin' regardless of actual role (see isMasterSuperAdminRole's comment
+  // in permission.helpers.ts) — super_admin/cfp_admin/cfp_support all
+  // reach this footer today, and previously all displayed identically.
+  const footerRoleLabel = isPlatformCaller
+    ? systemRoleLabel(platformProfileData?.role ?? '')
+    : role?.name || '';
 
   const effectivePermissions = useEffectivePermissions();
   // Plain helper, not a hook — `useHasAccess` is just this same
@@ -143,6 +156,25 @@ const Sidebar: React.FC<SidebarProps> = ({
       return Boolean(tenantId) && (hasAccess(item.requiredAuthority) || hasCatalogueManageAccess);
     }
 
+    if (item.name === 'CFP Users') {
+      // One nav entry serves two different backend resources depending on
+      // caller kind (see this item's own path list, and the "Users"/"CFP
+      // Users" label swap below): a tenant caller's own team roster
+      // (organization-service's GET /v1/organisation-users, gated on
+      // USER_ADD — 'user:write' correctly implies "can manage this team"),
+      // vs a platform caller's internal CFP staff roster
+      // (GET /v1/platform/staff + /v1/platform/departments, both
+      // `require_platform_permission(Permission.PLATFORM_READ)` on the
+      // backend — see platform_router.py). USER_ADD has no relationship to
+      // that second resource at all; a platform caller who holds it but not
+      // PLATFORM_VIEW (cfp_admin, confirmed against a real login) saw this
+      // item and landed on a page that just 403'd on every row, the same
+      // "shown but broken" shape every other PLATFORM_VIEW-gated nav item
+      // had before Login/index.tsx started resolving a platform caller's
+      // real role.
+      return tenantId ? hasAccess(item.requiredAuthority) : hasAccess(Authorities.PLATFORM_VIEW);
+    }
+
     if (
       item.name === 'Company Metrics' ||
       item.name === 'Tenant Audit Log' ||
@@ -165,11 +197,28 @@ const Sidebar: React.FC<SidebarProps> = ({
       return Boolean(tenantId) && hasAccess(item.requiredAuthority);
     }
 
-    // Role-gated, not Authorities-gated — see menuItem.tsx's comment on this
-    // entry and isMasterSuperAdminRole's own comment on why this reads
-    // false for every real login today, not just non-admins.
+    // Role-gated, not Authorities-gated — see menuItem.tsx's comment on
+    // this entry. Checked against the REAL platform role
+    // (platformProfileData, org-service's own /platform/staff/me), not the
+    // Redux role.name every platform login hardcodes to 'Master Super
+    // Admin' regardless of actual role — cfp_admin/cfp_support used to
+    // wrongly pass this too. See isPlatformSuperAdminRole's own comment.
     if (item.name === 'Admin') {
-      return isMasterSuperAdminRole(role);
+      return isPlatformCaller && isPlatformSuperAdminRole(platformProfileData?.role);
+    }
+
+    // Role-gated, not Authorities-gated — same pattern and reasoning as
+    // "Admin" just above. See isCfpSupportRole's own comment.
+    if (item.name === 'My Support Access') {
+      return isPlatformCaller && isCfpSupportRole(platformProfileData?.role);
+    }
+
+    // Role-gated, not Authorities-gated — see menuItem.tsx's comment on this
+    // entry and isHiringManagerOrRecruiterRole's own comment. Tenant-only
+    // (own activity has nowhere to come from for a platform caller), same
+    // guard as "Company Metrics"/"Tenant Audit Log"/"Interviews" above.
+    if (item.name === 'Activity') {
+      return Boolean(tenantId) && isHiringManagerOrRecruiterRole(role);
     }
 
     return hasAccess(item.requiredAuthority);
@@ -333,7 +382,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className={isCollapsed ? 'px-3 pb-5' : 'px-4 pb-5'}>
         {isCollapsed ? (
           <Tooltip
-            title={`Welcome${userData?.first_name ? `, ${userData.first_name}` : ''} · ${role?.name || ''}`}
+            title={`Welcome${userData?.first_name ? `, ${userData.first_name}` : ''} · ${footerRoleLabel}`}
             placement="right"
           >
             <div className="flex justify-center">
@@ -358,7 +407,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 Welcome{userData?.first_name ? `, ${userData.first_name}` : ''}
               </p>
               <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                {role?.name || ''}
+                {footerRoleLabel}
               </p>
             </div>
           </div>

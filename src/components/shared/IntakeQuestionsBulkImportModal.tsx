@@ -252,7 +252,7 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
                 <MdErrorOutline />
                 This file couldn&apos;t be imported; nothing was changed:
               </div>
-              <ul className="list-disc list-inside space-y-0.5">
+              <ul className="list-disc list-inside space-y-0.5 max-h-40 overflow-y-auto">
                 {rowErrors.map((rowError, index) => (
                   <li key={index}>
                     {rowError.row_number > 0 ? `Row ${rowError.row_number}: ` : ''}

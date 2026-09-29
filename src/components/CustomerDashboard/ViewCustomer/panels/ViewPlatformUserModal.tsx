@@ -43,6 +43,7 @@ type ViewPlatformUserModalProps = {
   tenantId: string;
   user: OrgUser | null;
   onClose: () => void;
+  readOnly?: boolean;
 };
 
 const DEFAULT_COUNTRY_CODE = '+1';
@@ -135,6 +136,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
   tenantId,
   user,
   onClose,
+  readOnly = false,
 }) => {
   const { roles, createRole } = useRolesCatalog({ scope: 'tenant', tenantId, isMaster: true });
   const { data: offices } = useListPlatformTenantOfficesQuery(tenantId, {
@@ -412,7 +414,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
             TenantAnalyticsModal's own header row for the same gutter. */}
         <div className="flex items-center justify-between pr-10">
           <Typography variant="h4">{displayUser.full_name}</Typography>
-          {displayUser.is_active && !isEditing && (
+          {displayUser.is_active && !isEditing && !readOnly && (
             <Button
               className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1 text-sm"
               onClick={startEditing}
@@ -528,7 +530,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
         <div className="pt-4 border-t border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <Typography variant="subtitle1">Current role(s)</Typography>
-            {displayUser.is_active && !showAssign && (
+            {displayUser.is_active && !showAssign && !readOnly && (
               <Button
                 className="text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5"
                 onClick={() => setShowAssign(true)}
@@ -555,7 +557,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                       {officeLabel(assignment.location_id)}
                     </span>
                   </div>
-                  {displayUser.is_active && (
+                  {displayUser.is_active && !readOnly && (
                     <button
                       type="button"
                       aria-label={`Revoke ${roleName(assignment.role_id)}`}
@@ -634,7 +636,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                     className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 pl-3 pr-1.5 py-1 text-sm text-gray-700"
                   >
                     {officeLabel(id)}
-                    {displayUser.is_active && (
+                    {displayUser.is_active && !readOnly && (
                       <button
                         type="button"
                         aria-label={`Detach ${officeLabel(id)}`}
@@ -651,7 +653,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
             </div>
           )}
 
-          {displayUser.is_active && (
+          {displayUser.is_active && !readOnly && (
             <div className="flex items-center gap-2 flex-wrap">
               <Select
                 allowClear

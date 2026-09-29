@@ -137,7 +137,10 @@ const emptyForm: FormState = {
  * separate screen — resend/revoke are real actions here, not just a pointer
  * to "go manage it elsewhere".
  */
-const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
+const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
+  tenantId,
+  readOnly = false,
+}) => {
   const [includeInactive, setIncludeInactive] = useState<'active' | 'all'>('active');
   const { data, isLoading } = useListPlatformTenantUsersQuery({
     tenantId,
@@ -623,14 +626,16 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         // identical tenant-side Status column.
         return (
           <div className="flex items-center gap-2.5">
-            <StatusToggle
-              isActive={row.is_active}
-              activateLabel="Reactivate user"
-              deactivateLabel="Deactivate user"
-              deactivateConfirmTitle={`Deactivate "${row.full_name}"? They'll immediately lose access.`}
-              onActivate={() => handleReactivate(row)}
-              onDeactivate={() => handleDeactivate(row)}
-            />
+            {!readOnly && (
+              <StatusToggle
+                isActive={row.is_active}
+                activateLabel="Reactivate user"
+                deactivateLabel="Deactivate user"
+                deactivateConfirmTitle={`Deactivate "${row.full_name}"? They'll immediately lose access.`}
+                onActivate={() => handleReactivate(row)}
+                onDeactivate={() => handleDeactivate(row)}
+              />
+            )}
             <Badge
               status={!row.is_active ? 'neutral' : row.has_set_password ? 'success' : 'warning'}
             >
@@ -645,6 +650,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       key: 'actions',
       width: 115,
       render: (_: unknown, row: TableRow) => {
+        if (readOnly) return null;
         if (row.kind === 'pending') {
           const matchedUserId = userIdByEmail.get(row.invited_email.trim().toLowerCase());
           return (
@@ -737,18 +743,22 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               ]}
             />
           </div>
-          <Button
-            className="rounded-full border border-gray-300 px-4 py-2 flex items-center gap-1 hover:bg-gray-50 transition-colors shrink-0"
-            onClick={() => setIsBulkImportOpen(true)}
-          >
-            <MdOutlineFileUpload /> Import team
-          </Button>
-          <Button
-            className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
-            onClick={() => setIsAddOpen(true)}
-          >
-            <MdOutlineAdd /> Add user
-          </Button>
+          {!readOnly && (
+            <>
+              <Button
+                className="rounded-full border border-gray-300 px-4 py-2 flex items-center gap-1 hover:bg-gray-50 transition-colors shrink-0"
+                onClick={() => setIsBulkImportOpen(true)}
+              >
+                <MdOutlineFileUpload /> Import team
+              </Button>
+              <Button
+                className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
+                onClick={() => setIsAddOpen(true)}
+              >
+                <MdOutlineAdd /> Add user
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -912,6 +922,7 @@ const UsersPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         tenantId={tenantId}
         user={viewingUser}
         onClose={() => setViewingUser(null)}
+        readOnly={readOnly}
       />
     </div>
   );

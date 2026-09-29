@@ -309,6 +309,21 @@ const MyCompany: React.FC = () => {
   const activeGroup =
     groups.find((group) => group.tabs?.some((tab) => tab.key === currentTab)) ?? groups[0];
 
+  // `currentTab` defaults to '1' ("General") whenever the URL carries no
+  // `?tab=` — but '1' is gated on canViewCompanyDetails (admin-only) and
+  // filtered out of `groups` entirely for anyone without it. A Hiring
+  // Manager/Recruiter landing here with no `?tab=` then had `activeGroup`
+  // correctly fall back to `groups[0]` above, while this inner Tabs kept
+  // `activeKey="1"` — a key that matches none of `activeGroup.tabs`, so
+  // antd rendered the tab strip with nothing selected and blank content.
+  // Falling back to this group's own first tab keeps every existing
+  // `?tab=<n>` deep link (OnboardingChecklist included) working exactly as
+  // before, since it only changes behavior when `currentTab` isn't actually
+  // one of this group's tabs.
+  const effectiveCurrentTab = activeGroup.tabs?.some((tab) => tab.key === currentTab)
+    ? currentTab
+    : String(activeGroup.tabs?.[0]?.key ?? currentTab);
+
   const handleGroupChange = (groupKey: string) => {
     const firstLeafTab = groups.find((group) => group.key === groupKey)?.tabs?.[0];
     if (firstLeafTab) {
@@ -402,7 +417,7 @@ const MyCompany: React.FC = () => {
               className="my-company-group-tabs many-tabs"
             />
             <Tabs
-              activeKey={currentTab}
+              activeKey={effectiveCurrentTab}
               onChange={handleTabChange}
               items={activeGroup.tabs}
               className="my-company-tabs many-tabs mt-1"

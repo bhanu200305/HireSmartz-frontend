@@ -90,10 +90,23 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         : 'descend'
       : undefined;
 
+  // Explicit per-column `minWidth`, not `width` — with this table's
+  // `tableLayout: 'auto'` (the default whenever a CustomTable has no
+  // `scroll.y`/sticky column/`ellipsis`, see rc-table's own
+  // `mergedTableLayout`), rc-table's `<ColGroup>` only ever reads
+  // `column.minWidth` to build each `<col>`'s CSS; a plain `column.width`
+  // is silently ignored in this mode (it's only honored under
+  // `tableLayout: 'fixed'`). Setting `width` here first still let every
+  // column get squeezed down to fit the modal with no real minimum, so
+  // nothing ever overflowed for `scroll.x: 'max-content'`'s scrollbar to
+  // appear — the columns just clipped at the modal's edge instead of
+  // scrolling to reach them. `minWidth` is what rc-table actually applies
+  // in `auto` layout, so the table now has a real floor to grow past.
   const columns: TableProps<CandidateRow>['columns'] = [
     {
       title: 'Candidate',
       key: 'candidate',
+      minWidth: 190,
       sorter: true,
       sortOrder: sortOrderFor('candidate'),
       render: (_: unknown, row: CandidateRow) => (
@@ -108,11 +121,13 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     {
       title: 'Job',
       key: 'job',
+      minWidth: 150,
       render: (_: unknown, row: CandidateRow) => jobDisplayName(jobNameMap, row.job_opening_id),
     },
     {
       title: 'Status',
       key: 'status',
+      minWidth: 130,
       render: (_: unknown, row: CandidateRow) => (
         <Badge status="neutral">{row.status_label ?? row.status_code ?? 'Applied'}</Badge>
       ),
@@ -121,6 +136,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       title: 'Resume score',
       dataIndex: 'resume_score',
       key: 'resume_score',
+      minWidth: 140,
       align: 'center',
       sorter: true,
       sortOrder: sortOrderFor('resume_score'),
@@ -130,12 +146,14 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       title: 'Source',
       dataIndex: 'source',
       key: 'source',
+      minWidth: 150,
       render: (value: string | null) => value || '-',
     },
     {
       title: 'Applied date',
       dataIndex: 'applied_date',
       key: 'applied_date',
+      minWidth: 140,
       sorter: true,
       sortOrder: sortOrderFor('applied_date'),
       render: (value: string) => formatDate(value),
@@ -150,7 +168,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       modalProps={{ width: 860, maskClosable: true }}
       fillHeight
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex min-h-0 flex-auto flex-col gap-3">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
             <Search
@@ -184,7 +202,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           />
         </div>
 
-        <div className="w-full min-h-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <div className="w-full min-h-0 flex-auto overflow-hidden rounded-xl border border-neutral-200 bg-white flex">
           {isLoading ? (
             <Loader />
           ) : (

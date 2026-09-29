@@ -43,15 +43,13 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
   });
   const navigate = useNavigate();
   const [activitySearchData, setActivitySearchData] = useState<ActivitySearchResponse>({
-    content: [],
-    numberOfElements: 0,
-    totalElements: 0,
-    totalPages: 0,
+    items: [],
+    total: 0,
   });
   const [streamItems, setStreamItems] = useState<FeedItem[]>([]);
-  const restItems = activitySearchData?.content ?? [];
-  const numberOfElements = activitySearchData?.numberOfElements ?? 0;
-  const totalRecords = activitySearchData?.totalElements ?? 0;
+  const restItems = activitySearchData?.items ?? [];
+  const numberOfElements = restItems.length;
+  const totalRecords = activitySearchData?.total ?? 0;
   const [activeTab, setActiveTab] = useState<string>('activity');
   const [activitySearch, { isLoading }] = useDashboardActivitySearchMutation();
 

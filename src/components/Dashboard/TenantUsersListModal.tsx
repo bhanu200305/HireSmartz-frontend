@@ -43,10 +43,13 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
   const users = data?.items ?? [];
   const dataSource: UserRow[] = users.map((u) => ({ ...u, key: u.user_id }));
 
+  // Explicit per-column widths — see CandidatesListModal.tsx's identical
+  // comment on why `scroll.x: 'max-content'` alone isn't reliable here.
   const columns: TableProps<UserRow>['columns'] = [
     {
       title: 'Name',
       key: 'name',
+      minWidth: 240,
       render: (_: unknown, row: UserRow) => (
         <button
           type="button"
@@ -64,10 +67,12 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
+      minWidth: 280,
     },
     {
       title: 'Role',
       key: 'role',
+      minWidth: 180,
       render: (_: unknown, row: UserRow) => <Badge status="info">{row.role ?? '-'}</Badge>,
     },
   ];
@@ -80,7 +85,7 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
       modalProps={{ width: 780, maskClosable: true }}
       fillHeight
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex min-h-0 flex-auto flex-col gap-3">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <Select
             className="w-48"
@@ -107,7 +112,7 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
           />
         </div>
 
-        <div className="w-full min-h-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <div className="w-full min-h-0 flex-auto overflow-hidden rounded-xl border border-neutral-200 bg-white flex">
           {isLoading ? (
             <Loader />
           ) : (

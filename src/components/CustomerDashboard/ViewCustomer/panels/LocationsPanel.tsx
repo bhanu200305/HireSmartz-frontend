@@ -32,7 +32,10 @@ type SortKey = 'address' | 'city' | 'state' | 'country';
  * to be — a company with more than a handful of offices had no way to find
  * one besides scrolling.
  */
-const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
+const LocationsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
+  tenantId,
+  readOnly = false,
+}) => {
   const { data: offices, isLoading } = useListPlatformTenantOfficesQuery(tenantId);
   const [addOffice, { isLoading: isAdding }] = useAddPlatformTenantOfficeMutation();
   const [updateOffice, { isLoading: isUpdating }] = useUpdatePlatformTenantOfficeMutation();
@@ -183,35 +186,39 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <span className="text-gray-500 text-sm font-mono">{office.zip_code || '-'}</span>
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 100,
-      render: (_: unknown, office: OfficeRow) => (
-        <div className="flex items-center gap-1">
-          <Tooltip title="Edit office">
-            <button
-              type="button"
-              aria-label="Edit office"
-              className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
-              onClick={() => setModalState({ mode: 'edit', office })}
-            >
-              <MdEdit className="text-gray-600" />
-            </button>
-          </Tooltip>
-          <Tooltip title="Delete office">
-            <button
-              type="button"
-              aria-label="Delete office"
-              className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-              onClick={() => setOfficeToDelete(office)}
-            >
-              <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
-            </button>
-          </Tooltip>
-        </div>
-      ),
-    },
+    ...(readOnly
+      ? []
+      : [
+          {
+            title: 'Actions',
+            key: 'actions',
+            width: 100,
+            render: (_: unknown, office: OfficeRow) => (
+              <div className="flex items-center gap-1">
+                <Tooltip title="Edit office">
+                  <button
+                    type="button"
+                    aria-label="Edit office"
+                    className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+                    onClick={() => setModalState({ mode: 'edit', office })}
+                  >
+                    <MdEdit className="text-gray-600" />
+                  </button>
+                </Tooltip>
+                <Tooltip title="Delete office">
+                  <button
+                    type="button"
+                    aria-label="Delete office"
+                    className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+                    onClick={() => setOfficeToDelete(office)}
+                  >
+                    <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+                  </button>
+                </Tooltip>
+              </div>
+            ),
+          },
+        ]),
   ];
 
   const dataSource: OfficeRow[] = sortedOffices
@@ -243,12 +250,14 @@ const LocationsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               }}
             />
           </div>
-          <Button
-            className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
-            onClick={() => setModalState({ mode: 'add' })}
-          >
-            <MdOutlineAdd /> Add office
-          </Button>
+          {!readOnly && (
+            <Button
+              className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
+              onClick={() => setModalState({ mode: 'add' })}
+            >
+              <MdOutlineAdd /> Add office
+            </Button>
+          )}
         </div>
       </div>
 

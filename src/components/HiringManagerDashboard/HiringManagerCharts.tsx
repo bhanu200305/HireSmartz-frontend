@@ -143,7 +143,7 @@ const HiringManagerCharts: React.FC = () => {
         available={panelData.length > 0}
       >
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <BarChart data={panelData} margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
+          <BarChart data={panelData} margin={{ top: 8, right: 12, left: 8, bottom: 14 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="job"
@@ -175,7 +175,7 @@ const HiringManagerCharts: React.FC = () => {
         available={avgScoreData.length > 0}
       >
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <BarChart data={avgScoreData} margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
+          <BarChart data={avgScoreData} margin={{ top: 8, right: 12, left: 8, bottom: 14 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
               dataKey="job"
