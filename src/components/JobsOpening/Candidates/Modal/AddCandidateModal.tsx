@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Upload } from 'antd';
 import { FiUploadCloud, FiFilePlus } from 'react-icons/fi';
@@ -15,6 +15,7 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 import {
   isPhoneValidForCountry,
   PHONE_VALIDATION_MESSAGE,
+  splitE164,
   toE164,
 } from '../../../../shared/utils/validation/phoneValidation';
 import { useEnterToSubmit } from '../../../../hooks/useEnterToSubmit';
@@ -78,6 +79,17 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState('');
 
+  // The resume is uploaded the moment it's picked (not on submit): the
+  // upload response carries the name/email/phone candidate-service parsed
+  // off it, which pre-fill any field the recruiter hasn't typed yet. The
+  // stored key is reused on submit so the file isn't uploaded twice.
+  const [uploaded, setUploaded] = useState<{ file: File; resumeS3Key: string } | null>(null);
+  const latestFileRef = useRef<File | null>(null);
+  // Latest typed phone, read after the async upload resolves (the closure's
+  // `phone` would be whatever it was when the file was picked).
+  const phoneRef = useRef(phone);
+  phoneRef.current = phone;
+
   const [uploadResume, { isLoading: isUploading }] = useUploadCandidateResumeMutation();
   const [createCandidate, { isLoading: isCreating }] = useCreateCandidateMutation();
   const isSubmitting = isUploading || isCreating;
@@ -85,6 +97,8 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
   const reset = () => {
     setMode('resume');
     setFile(null);
+    setUploaded(null);
+    latestFileRef.current = null;
     setFirstName('');
     setLastName('');
     setEmail('');
@@ -111,6 +125,36 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
       return;
     }
     setFile(selected);
+    setUploaded(null);
+    latestFileRef.current = selected;
+    void prefillFromResume(selected);
+  };
+
+  /** Uploads `selected` and fills EMPTY fields from what the backend parsed
+   * off it — never overwrites something already typed. Best-effort: a failed
+   * parse just leaves the form as it was (submit uploads again). */
+  const prefillFromResume = async (selected: File) => {
+    if (!jobOpeningId || !organizationId) return;
+    try {
+      const result = await uploadResume({ organizationId, jobOpeningId, file: selected }).unwrap();
+      // A newer file was picked (or this one removed) while this ran.
+      if (latestFileRef.current !== selected) return;
+      setUploaded({ file: selected, resumeS3Key: result.resume_s3_key });
+      const keepOrFill = (value: string | null) => (prev: string) =>
+        prev.trim() || !value ? prev : value.trim();
+      setFirstName(keepOrFill(result.first_name));
+      setLastName(keepOrFill(result.last_name));
+      setEmail(keepOrFill(result.email_id));
+      if (result.contact_no && !phoneRef.current.trim()) {
+        const split = splitE164(result.contact_no);
+        if (split.phoneNumber) {
+          if (split.countryCode) setCountryCode(split.countryCode);
+          setPhone(split.phoneNumber);
+        }
+      }
+    } catch {
+      // Upload/parse failed — handleSubmitResume retries the upload.
+    }
   };
 
   /** `false` means validation failed and a toast was already shown — the
@@ -122,11 +166,10 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
     }
     if (!jobOpeningId || !organizationId) return false;
 
-    const { resume_s3_key } = await uploadResume({
-      organizationId,
-      jobOpeningId,
-      file,
-    }).unwrap();
+    const resume_s3_key =
+      uploaded && uploaded.file === file
+        ? uploaded.resumeS3Key
+        : (await uploadResume({ organizationId, jobOpeningId, file }).unwrap()).resume_s3_key;
 
     const { call_placed } = await createCandidate({
       organizationId,
@@ -241,9 +284,16 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
               {file ? (
                 <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm text-green-600">
                   <span className="truncate">{file.name}</span>
+                  {isUploading && !uploaded && (
+                    <span className="ml-2 shrink-0 text-xs text-gray-400">Reading resume…</span>
+                  )}
                   <RiDeleteBin6Line
                     className="ml-2 shrink-0 cursor-pointer text-red-500"
-                    onClick={() => setFile(null)}
+                    onClick={() => {
+                      setFile(null);
+                      setUploaded(null);
+                      latestFileRef.current = null;
+                    }}
                   />
                 </div>
               ) : (

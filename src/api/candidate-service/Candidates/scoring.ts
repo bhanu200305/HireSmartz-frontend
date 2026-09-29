@@ -153,23 +153,25 @@ const extendedApi = candidateApi.injectEndpoints({
       query: (candidateId) => `/candidates/${candidateId}/resume`,
     }),
 
-    // Recruiter/HM-triggered "Request Resume" — added 2026-09-14. Backend
-    // (candidate-service, NOT YET BUILT — see the interview-service handoff)
-    // is expected to mint and email a fresh resume-upload link on demand,
-    // the same email `CandidateResumeUploadRequested` already sends
-    // automatically today after a completed Intake Call. This is the
-    // explicit, recruiter-driven counterpart: once candidate-service stops
-    // auto-sending on every completed AUDIO booking (including reschedule
-    // re-attempts — the reported double-send bug), this button becomes the
-    // only way to (re-)request a resume. `POST /candidates/{id}/
-    // request-resume-upload`, no request body, `null` on success — mirrors
-    // `deleteResumeReview`'s shape immediately above.
-    requestResumeUpload: build.mutation<null, string>({
+    // Recruiter's "resend the resume upload link" — candidate-service's
+    // `POST /candidates/{id}/resend-resume-upload-link` (was wired to a
+    // `request-resume-upload` route the backend never built). Deliberately
+    // narrow on the backend: only for a candidate with NO resume whose 24h
+    // upload window has EXPIRED (409 `ResumeUploadWindowStillActive`
+    // otherwise, 409 `CandidateAlreadyHasResume` once one is on file). Mints
+    // a genuinely new link with a renewed 24h window and emails it. No body,
+    // `null` data on success. Callers gate the button on the resume stage's
+    // own `resume_upload_expired` round status, the same check the backend
+    // makes.
+    resendResumeUploadLink: build.mutation<null, string>({
       query: (candidateId) => ({
-        url: `/candidates/${candidateId}/request-resume-upload`,
+        url: `/candidates/${candidateId}/resend-resume-upload-link`,
         method: 'POST',
       }),
-      invalidatesTags: (_result, _error, candidateId) => [{ type: 'Candidate', id: candidateId }],
+      invalidatesTags: (_result, _error, candidateId) => [
+        { type: 'Candidate', id: candidateId },
+        { type: 'CandidateInterviewRounds', id: candidateId },
+      ],
     }),
   }),
   overrideExisting: false,
@@ -183,5 +185,5 @@ export const {
   useDeleteRecruiterRoundScoreMutation,
   useGetCandidateResumeDownloadQuery,
   useLazyGetCandidateResumeDownloadQuery,
-  useRequestResumeUploadMutation,
+  useResendResumeUploadLinkMutation,
 } = extendedApi;

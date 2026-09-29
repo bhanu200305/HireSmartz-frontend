@@ -122,6 +122,12 @@ export type ListCandidatesArgs = {
 export type ResumeUploadView = {
   /** Pass this straight into `ApplyRequest.resume_s3_key` — the only field of `POST /candidates` that must come from this call first. */
   resume_s3_key: string;
+  /** Parsed off the uploaded resume (candidate-service, 2026-09-29) so the
+   * Add Candidate form can pre-fill them; null when not found. */
+  first_name: string | null;
+  last_name: string | null;
+  email_id: string | null;
+  contact_no: string | null;
 };
 
 export type UploadCandidateResumeArgs = {
@@ -160,10 +166,9 @@ export type ApplyRequest = {
  * given). */
 export type ApplyResultView = { id: string; call_placed: boolean };
 
-/** `UpdateCandidateRequest` — every field optional (partial update); real
- * editable fields inferred from `CandidateView`'s own writable columns.
- * Verify against a real 422 response before assuming a field is rejected.
- */
+/** `UpdateCandidateRequest` — every field optional (partial update).
+ * Exactly the six fields candidate-service's own `UpdateCandidateRequest`
+ * accepts; it is `extra="forbid"`, so any other key 422s the whole save. */
 export type UpdateCandidateRequest = Partial<{
   first_name: string;
   last_name: string;
@@ -171,11 +176,6 @@ export type UpdateCandidateRequest = Partial<{
   contact_no: string;
   qualification: string;
   address: string;
-  applied_job_location_id: string;
-  is_referal: boolean;
-  referred_by: string;
-  referal_code: string;
-  referal_note: string;
 }>;
 
 export type UpdateCandidateResultView = { id: string };

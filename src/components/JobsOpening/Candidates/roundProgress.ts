@@ -27,12 +27,18 @@ const ROUND_STATUS_BUCKET: Record<string, RoundBucket> = {
   // The resume stage's own status for an instant-call candidate: the intake
   // call already happened and the candidate still needs to submit a resume
   // — actionable (there's someone to follow up with), not "not reached yet",
-  // same reasoning as `booking_created` above. Pairs with the separate
-  // `resume_upload_expired` status (not yet built) that this can flip to
-  // after 24h with nothing uploaded.
+  // same reasoning as `booking_created` above. candidate-service now uses
+  // `awaiting_resume_upload` as a CANDIDATE status code rather than a round
+  // status; kept here for any older round rows. After 24h with nothing
+  // uploaded the resume stage reads `resume_upload_expired` (below).
   awaiting_resume_upload: 'current',
   to_be_scheduled: 'pending',
   pending: 'pending',
+  // candidate-service computes this on read for the resume stage once the
+  // candidate's 24h upload window closed with no resume (`build_round_view`,
+  // RESUME_UPLOAD_EXPIRED) — stuck until a recruiter resends the link, so it
+  // reads as needing attention, not as "not reached yet".
+  resume_upload_expired: 'failed',
   no_show: 'failed',
   interviewer_no_show: 'failed',
   cancelled: 'failed',

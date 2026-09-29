@@ -63,6 +63,34 @@ export type BulkCandidateMessageResult = {
   skipped_reason: string | null;
 };
 
+/** candidate-service `MessageHistoryItemView` — one delivered (or failed)
+ * email/SMS. `channel` is notification-service's channel code ("sms",
+ * "email"); `status` its delivery status. */
+export type MessageHistoryItemView = {
+  id: string;
+  notification_id: string;
+  notification_type: string;
+  category: string;
+  channel: string;
+  recipient_address: string;
+  subject: string | null;
+  body_html: string | null;
+  body_text: string | null;
+  status: string;
+  failure_reason: string | null;
+  created_at: string;
+  sent_at: string | null;
+  delivered_at: string | null;
+  failed_at: string | null;
+  read_at: string | null;
+};
+
+export type MessageHistoryView = {
+  items: MessageHistoryItemView[];
+  /** Cursor for the next (older) page; null when there is none. */
+  next_before: string | null;
+};
+
 export type BulkCandidateMessageResponse = {
   results: BulkCandidateMessageResult[];
 };
@@ -81,6 +109,9 @@ const extendedApi = candidateApi.injectEndpoints({
         method: 'POST',
         body,
       }),
+      invalidatesTags: (_r, _e, { candidateId }) => [
+        { type: 'CandidateMessageHistory', id: candidateId },
+      ],
     }),
 
     sendCandidateSms: build.mutation<
@@ -92,6 +123,9 @@ const extendedApi = candidateApi.injectEndpoints({
         method: 'POST',
         body: { sms_body: body.smsBody },
       }),
+      invalidatesTags: (_r, _e, { candidateId }) => [
+        { type: 'CandidateMessageHistory', id: candidateId },
+      ],
     }),
 
     previewCandidateEmail: build.mutation<
@@ -125,6 +159,8 @@ const extendedApi = candidateApi.injectEndpoints({
         method: 'POST',
         body: { candidate_ids: candidateIds, subject, header, body },
       }),
+      invalidatesTags: (_r, _e, { candidateIds }) =>
+        candidateIds.map((id) => ({ type: 'CandidateMessageHistory' as const, id })),
     }),
 
     sendBulkCandidateSms: build.mutation<BulkCandidateMessageResponse, SendBulkCandidateSmsRequest>(
@@ -134,6 +170,8 @@ const extendedApi = candidateApi.injectEndpoints({
           method: 'POST',
           body: { candidate_ids: candidateIds, sms_body: smsBody },
         }),
+        invalidatesTags: (_r, _e, { candidateIds }) =>
+          candidateIds.map((id) => ({ type: 'CandidateMessageHistory' as const, id })),
       }
     ),
 
@@ -147,6 +185,24 @@ const extendedApi = candidateApi.injectEndpoints({
         body,
       }),
     }),
+
+    // GET /candidates/{id}/messages/history — everything already sent to one
+    // candidate (recruiter ad-hoc AND system mails/SMS), newest first,
+    // keyset-paged: pass the previous page's `next_before` as `before`.
+    // `notificationType: 'candidate_adhoc_message'` narrows to messages a
+    // recruiter typed. 502 when notification-service can't be reached.
+    listCandidateMessageHistory: build.query<
+      MessageHistoryView,
+      { candidateId: string; notificationType?: string; limit?: number; before?: string }
+    >({
+      query: ({ candidateId, notificationType, limit, before }) => ({
+        url: `/candidates/${candidateId}/messages/history`,
+        params: { notification_type: notificationType, limit, before },
+      }),
+      providesTags: (_r, _e, { candidateId }) => [
+        { type: 'CandidateMessageHistory', id: candidateId },
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -159,4 +215,5 @@ export const {
   useSendBulkCandidateEmailMutation,
   useSendBulkCandidateSmsMutation,
   useGenerateSmsContentMutation,
+  useListCandidateMessageHistoryQuery,
 } = extendedApi;

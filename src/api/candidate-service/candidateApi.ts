@@ -123,6 +123,7 @@ export const candidateApi = createApi({
     'EligibleInterviewers',
     'CandidateResumeReview',
     'CandidateNotes',
+    'CandidateMessageHistory',
     'MasterCandidateStatuses',
     'MasterApplicationSources',
     'CandidateStats',

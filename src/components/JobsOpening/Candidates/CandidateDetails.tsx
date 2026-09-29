@@ -7,7 +7,6 @@ import dayjs from 'dayjs';
 import {
   LuMail,
   LuPencil,
-  LuSquarePen,
   LuThumbsDown,
   LuThumbsUp,
   LuMic,
@@ -41,7 +40,7 @@ import {
   useListCandidateInterviewScoresQuery,
   useDeleteResumeReviewMutation,
   useLazyGetCandidateResumeDownloadQuery,
-  useRequestResumeUploadMutation,
+  useResendResumeUploadLinkMutation,
 } from '../../../api/candidate-service/Candidates/scoring';
 import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candidates/notes';
 import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
@@ -85,6 +84,7 @@ import {
   interviewTypeForRound,
 } from './roundPipeline';
 import ResumeInlinePreview from './ResumeInlinePreview';
+import CandidateMessageHistory from './CandidateMessageHistory';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import {
@@ -102,6 +102,7 @@ import {
   isIntakeCallRound,
   isResumeStageRound,
   isStaleResumeRound,
+  normaliseRoundStatus,
   orderRoundsForFlow,
 } from './roundProgress';
 
@@ -459,6 +460,12 @@ const CandidateDetails = () => {
   // candidate's pipeline reads Intake Call → Resume Review.
   const rounds = orderRoundsForFlow(rawRounds).filter((r) => !isStaleResumeRound(r));
   const hasResumeStageRound = rounds.some(isResumeStageRound);
+  // candidate-service reports the resume stage as `resume_upload_expired`
+  // once the candidate's 24h upload window closed with no resume — the one
+  // case its resend-upload-link endpoint accepts (409 otherwise).
+  const resumeUploadLinkExpired = rounds.some(
+    (r) => isResumeStageRound(r) && normaliseRoundStatus(r.status) === 'resume_upload_expired'
+  );
 
   // Latest polled copy of the picked round, keeping the optimistic booking /
   // interviewer fields `handleCreateBooking` set until the poll catches up.
@@ -516,8 +523,8 @@ const CandidateDetails = () => {
   const [deleteResumeReview] = useDeleteResumeReviewMutation();
   const [getResumeDownload, { isLoading: isResumeUrlLoading }] =
     useLazyGetCandidateResumeDownloadQuery();
-  const [requestResumeUpload, { isLoading: isRequestingResumeUpload }] =
-    useRequestResumeUploadMutation();
+  const [resendResumeUploadLink, { isLoading: isResendingUploadLink }] =
+    useResendResumeUploadLinkMutation();
   const [createBooking] = useCreateBookingMutation();
   // `round_type` first (candidate-service's real classification), round
   // name only for an unclassifiable round — same rule as
@@ -754,17 +761,17 @@ const CandidateDetails = () => {
     }
   };
 
-  const handleRequestResumeUpload = async () => {
+  const handleResendUploadLink = async () => {
     if (!candidateId) return;
     try {
-      await requestResumeUpload(candidateId).unwrap();
+      await resendResumeUploadLink(candidateId).unwrap();
       showToast({
-        message: 'Resume requested — the candidate has been emailed an upload link.',
+        message: 'A new upload link has been emailed to the candidate, valid for 24 hours.',
         type: 'success',
       });
     } catch (e) {
       showToast({
-        message: getCandidateErrorMessage(e, 'Could not request a resume'),
+        message: getCandidateErrorMessage(e, 'Could not resend the upload link'),
         type: 'error',
       });
     }
@@ -2080,13 +2087,23 @@ const CandidateDetails = () => {
                         </Button>
                       </>
                     ) : (
-                      <Button
-                        className="box-border inline-flex h-8 items-center justify-center whitespace-nowrap rounded-full bg-primary px-3 text-xs font-semibold leading-none text-white cursor-pointer disabled:opacity-50"
-                        onClick={() => void handleRequestResumeUpload()}
-                        disabled={isRequestingResumeUpload}
+                      <Tooltip
+                        title={
+                          resumeUploadLinkExpired
+                            ? undefined
+                            : "Available once the candidate's 24-hour upload link has expired"
+                        }
                       >
-                        {isRequestingResumeUpload ? 'REQUESTING…' : 'REQUEST RESUME'}
-                      </Button>
+                        <span className="inline-flex">
+                          <Button
+                            className="box-border inline-flex h-8 items-center justify-center whitespace-nowrap rounded-full bg-primary px-3 text-xs font-semibold leading-none text-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={() => void handleResendUploadLink()}
+                            disabled={!resumeUploadLinkExpired || isResendingUploadLink}
+                          >
+                            {isResendingUploadLink ? 'SENDING…' : 'RESEND UPLOAD LINK'}
+                          </Button>
+                        </span>
+                      </Tooltip>
                     )}
                   </div>
                 </div>
@@ -2099,7 +2116,11 @@ const CandidateDetails = () => {
                       heightClassName="h-[400px]"
                     />
                   ) : (
-                    <p className="py-4 text-center text-sm text-gray-500">No resume on file yet.</p>
+                    <p className="py-4 text-center text-sm text-gray-500">
+                      {resumeUploadLinkExpired
+                        ? "No resume yet — the candidate's upload link expired."
+                        : 'No resume on file yet.'}
+                    </p>
                   )}
                 </div>
               </section>
@@ -2527,23 +2548,12 @@ const CandidateDetails = () => {
             </div>
           )}
 
-          {activeTab === 'sms' && (
-            <CommonCard>
-              <div className="p-4 flex flex-col items-center gap-3 text-center">
-                <p className="text-sm text-gray-500 max-w-md">
-                  Message history isn&apos;t available yet; this sends a new SMS, it doesn&apos;t
-                  show a conversation thread.
-                </p>
-                <Button
-                  className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                  onClick={() => setIsSmsOpen(true)}
-                  disabled={!candidate?.contact_no}
-                >
-                  <LuSquarePen size={14} className="inline mr-2" />
-                  SEND SMS
-                </Button>
-              </div>
-            </CommonCard>
+          {activeTab === 'sms' && candidateId && (
+            <CandidateMessageHistory
+              candidateId={candidateId}
+              canSms={Boolean(candidate?.contact_no)}
+              onSendSms={() => setIsSmsOpen(true)}
+            />
           )}
         </div>
       </div>

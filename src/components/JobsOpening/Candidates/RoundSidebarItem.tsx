@@ -136,9 +136,11 @@ const RoundSidebarItem = ({
                   ? 'Completed'
                   : normaliseRoundStatus(round.status) === 'booking_created'
                     ? 'Booking created — waiting to be scheduled'
-                    : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
-                      ? 'Awaiting resume upload'
-                      : formatRoundStatus(round.status)}
+                    : normaliseRoundStatus(round.status) === 'resume_upload_expired'
+                      ? 'Resume upload link expired'
+                      : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
+                        ? 'Awaiting resume upload'
+                        : formatRoundStatus(round.status)}
           </Badge>
           {isBlockedOnCalendar && (
             <Badge status="warning" dot={false}>
