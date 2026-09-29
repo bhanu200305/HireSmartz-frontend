@@ -105,22 +105,30 @@ const buildBucketsForUnit = (
   ];
 };
 
-/** Separate bucket sets for annual vs. hourly jobs — never combined. */
+/** Separate bucket sets for Exempt (annual) vs. Non-Exempt (hourly) jobs —
+ * never combined. A job with both ranges contributes values to both sets;
+ * it isn't "one or the other" anymore. */
 const buildSalaryBuckets = (
-  jobs: { salary_min: number | null; salary_max: number | null; is_exempted: boolean }[]
+  jobs: {
+    exempt_salary_min: number | null;
+    exempt_salary_max: number | null;
+    non_exempt_salary_min: number | null;
+    non_exempt_salary_max: number | null;
+  }[]
 ): SalaryBucket[] => {
-  const valuesFor = (isExempted: boolean): number[] =>
-    jobs
-      .filter((job) => job.is_exempted === isExempted)
-      .flatMap((job) => [job.salary_min, job.salary_max])
-      .filter((value): value is number => value !== null && value > 0);
+  const annualValues = jobs
+    .flatMap((job) => [job.exempt_salary_min, job.exempt_salary_max])
+    .filter((value): value is number => value !== null && value > 0);
+  const hourlyValues = jobs
+    .flatMap((job) => [job.non_exempt_salary_min, job.non_exempt_salary_max])
+    .filter((value): value is number => value !== null && value > 0);
 
-  const annualBuckets = buildBucketsForUnit(valuesFor(true), {
+  const annualBuckets = buildBucketsForUnit(annualValues, {
     isExempted: true,
     round: niceRoundSalary,
     suffix: '/year',
   });
-  const hourlyBuckets = buildBucketsForUnit(valuesFor(false), {
+  const hourlyBuckets = buildBucketsForUnit(hourlyValues, {
     isExempted: false,
     round: niceRoundHourly,
     suffix: '/hr',
@@ -229,7 +237,12 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
   };
 
   const experience = formatExperience(job.min_experience_req, job.max_experience_req);
-  const salary = formatSalary(job.salary_min, job.salary_max, job.is_exempted);
+  const salary = formatSalary(
+    job.exempt_salary_min,
+    job.exempt_salary_max,
+    job.non_exempt_salary_min,
+    job.non_exempt_salary_max
+  );
   const postedAgo = formatPostedAgo(job.job_open_date);
   const label = job.job_title ?? job.job_profile_code;
   const variant = avatarVariant(job.id);
@@ -434,9 +447,13 @@ export const CareersListingPage = () => {
         return false;
       }
       if (salary) {
-        // Only match jobs in the same unit as the bucket.
-        if (job.is_exempted !== salary.isExempted) return false;
-        if (!rangesOverlap(job.salary_min, job.salary_max, salary.min, salary.max)) return false;
+        // Match against whichever of the job's two ranges the bucket's
+        // unit corresponds to — a job with both ranges can match either
+        // an annual or hourly bucket, not just one or the other.
+        const [jobMin, jobMax] = salary.isExempted
+          ? [job.exempt_salary_min, job.exempt_salary_max]
+          : [job.non_exempt_salary_min, job.non_exempt_salary_max];
+        if (!rangesOverlap(jobMin, jobMax, salary.min, salary.max)) return false;
       }
       if (datePosted && !postedWithinDays(job.job_open_date, datePosted.days)) {
         return false;

@@ -1,7 +1,8 @@
 // Shared display formatting for the public, unauthenticated careers pages
 // (CareersListingPage, CareersJobDetailPage) — pulled out to a single file
 // so a fix (or a bug) doesn't have to be made twice. Both pages read
-// `min_experience_req`/`max_experience_req`/`salary_min`/`salary_max` off
+// `min_experience_req`/`max_experience_req`/`exempt_salary_min`/
+// `exempt_salary_max`/`non_exempt_salary_min`/`non_exempt_salary_max` off
 // `api/job-service/PublicCareers/index.ts`'s queries, which already
 // normalize those to real numbers (job-service serializes the Decimal
 // experience fields as JSON strings on the wire — see that file's own
@@ -9,16 +10,26 @@
 
 const fmtAmount = (n: number): string => (n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${n}`);
 
-/** isExempted: true = annual, false = hourly. */
-export const formatSalary = (
-  min: number | null,
-  max: number | null,
-  isExempted: boolean
-): string | null => {
+const formatOneRange = (min: number | null, max: number | null, suffix: string): string | null => {
   if (min === null && max === null) return null;
-  const suffix = isExempted ? '/year' : '/hr';
   if (min !== null && max !== null) return `${fmtAmount(min)} - ${fmtAmount(max)}${suffix}`;
   return `${fmtAmount((min ?? max) as number)}${suffix}`;
+};
+
+/** A job may offer an Exempt (annual) range, a Non-Exempt (hourly) range,
+ * or both — this joins whichever are present into one display string, so
+ * every existing caller that just wants "the salary line" keeps working
+ * unchanged even though a job can now have two ranges. */
+export const formatSalary = (
+  exemptMin: number | null,
+  exemptMax: number | null,
+  nonExemptMin: number | null,
+  nonExemptMax: number | null
+): string | null => {
+  const exempt = formatOneRange(exemptMin, exemptMax, '/year');
+  const nonExempt = formatOneRange(nonExemptMin, nonExemptMax, '/hr');
+  if (exempt && nonExempt) return `${exempt}  •  ${nonExempt}`;
+  return exempt ?? nonExempt;
 };
 
 /** `0` is a real, meaningful value here ("no experience required"), not

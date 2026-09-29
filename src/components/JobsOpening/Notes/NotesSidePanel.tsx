@@ -163,19 +163,17 @@ const NotesSidePanel = ({
     }
   }, [open, layout]);
   const isCompact = open ? layout === 'compact' : layoutWhileOpenRef.current === 'compact';
-  const { loginToken, role } = useSelector((state: any) => state.LoginSlice);
+  const { loginToken, role, userId: sessionUserId } = useSelector(
+    (state: any) => state.LoginSlice
+  );
   const roleName = typeof role?.name === 'string' ? role.name.trim() : '';
   const currentUser = safeDecodeToken<{
-    userId?: number | string;
     firstName?: string;
     lastName?: string;
     userName?: string;
   }>(loginToken);
-  // Compared by string equality against `note.authorId` below — the
-  // JWT's `userId` is a UUID for every real session in this app, so
-  // running it through `Number()` (as this used to) was always `NaN` and
-  // "is this my note" never matched.
-  const currentUserId = currentUser?.userId != null ? String(currentUser.userId) : '';
+  // Read from LoginSlice, not the JWT (its user-id claim is `sub`, not `userId`).
+  const currentUserId = sessionUserId != null ? String(sessionUserId) : '';
   const currentUserName =
     `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim() || 'You';
   const currentUserNameNorm = normalizeIdentityText(currentUserName);
@@ -368,7 +366,7 @@ const NotesSidePanel = ({
             ? {
                 ...n,
                 content,
-                createdAt: nowIso,
+                editedAt: nowIso,
               }
             : n
         )
@@ -605,6 +603,7 @@ const NotesSidePanel = ({
                             className={`text-right text-[#828282] whitespace-nowrap ${isCompact ? 'mt-2 pt-0.5 text-xs' : 'mt-3 pt-1 text-xs'}`}
                           >
                             {timeStr}
+                            {note.editedAt ? ' (edited)' : ''}
                           </div>
                         ) : null}
                       </div>
@@ -644,28 +643,30 @@ const NotesSidePanel = ({
             </div>
           ) : null}
           {canWrite ? (
-            <div className="relative z-10">
-              <textarea
-                className={`relative z-10 w-full border border-gray-300 rounded-lg pr-12 pb-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-600/40 ${
-                  isCompact ? 'p-2 min-h-[64px]' : 'p-2.5'
-                }`}
-                rows={isCompact ? 2 : 3}
-                placeholder={composerPlaceholder}
-                value={newNoteContent}
-                onChange={(e) => {
-                  setNewNoteContent(e.target.value);
-                  if (composerError) setComposerError(null);
-                }}
-              />
-              <button
-                type="button"
-                className="absolute z-20 text-primary-600 hover:text-primary-700 disabled:opacity-50 disabled:cursor-not-allowed bottom-2.5 right-3 pointer-events-auto p-0.5 rounded-md hover:bg-primary-600/10 transition-colors"
-                onClick={() => void handlePost()}
-                disabled={!newNoteContent.trim() || isPosting}
-                aria-label="Post note"
-              >
-                <IoPaperPlaneOutline size={isCompact ? 20 : 22} aria-hidden />
-              </button>
+            <div className="z-10">
+              <div className="relative">
+                <textarea
+                  className={`relative z-10 w-full border border-gray-300 rounded-lg pr-12 pb-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-600/40 ${
+                    isCompact ? 'p-2 min-h-[64px]' : 'p-2.5'
+                  }`}
+                  rows={isCompact ? 2 : 3}
+                  placeholder={composerPlaceholder}
+                  value={newNoteContent}
+                  onChange={(e) => {
+                    setNewNoteContent(e.target.value);
+                    if (composerError) setComposerError(null);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="absolute z-20 text-primary-600 hover:text-primary-700 disabled:opacity-50 disabled:cursor-not-allowed bottom-2.5 right-3 pointer-events-auto p-0.5 rounded-md hover:bg-primary-600/10 transition-colors"
+                  onClick={() => void handlePost()}
+                  disabled={!newNoteContent.trim() || isPosting}
+                  aria-label="Post note"
+                >
+                  <IoPaperPlaneOutline size={isCompact ? 20 : 22} aria-hidden />
+                </button>
+              </div>
               {composerError && <p className="text-red-500 text-sm px-2 py-1">{composerError}</p>}
               <p className="text-xs text-gray-400 px-2 py-1">
                 Do not include discriminatory, abusive, or hateful language.

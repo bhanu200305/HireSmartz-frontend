@@ -20,7 +20,6 @@ import {
   useLazyGetJobDescriptionByIdQuery,
   useGetJobDescriptionByIdQuery,
 } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
-import { useRegenerateJobDescriptionMutation } from '../../../api/job-service/JobOpening/RegenerateJd';
 import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
 import { useJdStatusPolling } from '../../../hooks/useJdStatusPolling';
 import {
@@ -126,9 +125,10 @@ const JOB_DETAILS_FIELD_ORDER = [
   'hiringManagers',
   'openDate',
   'openings',
-  'exemptionStatus',
-  'minSalary',
-  'maxSalary',
+  'exemptMinSalary',
+  'exemptMaxSalary',
+  'nonExemptMinSalary',
+  'nonExemptMaxSalary',
   'minExperience',
   'maxExperience',
   'mandatorySkills',
@@ -267,11 +267,6 @@ const EditJobDetail = () => {
       })),
     [organizationShifts]
   );
-  const { jobOpeningDropdown: exemptionStatus, loading: exemptionLoading } = useJobOpeningDropdown(
-    'EXEMPTION_STATUS',
-    'edit',
-    parsedJobId
-  );
   const {
     jobOpeningDropdown: educationPreference,
     loading: educationPreferenceLoading,
@@ -329,9 +324,8 @@ const EditJobDetail = () => {
   >(null);
   const [allowNavigation, setAllowNavigation] = useState(false);
   const [showRegenerateConfirmModal, setShowRegenerateConfirmModal] = useState(false);
-  const [pendingNavigationData, setPendingNavigationData] = useState<any>(null);
+  const [pendingContinueJobId, setPendingContinueJobId] = useState<string | null>(null);
   const [isAddingToDropdown, setIsAddingToDropdown] = useState<string | null>(null);
-  const [suggestedSkillsDismissed, setSuggestedSkillsDismissed] = useState(false);
   // Local labels for AI-suggested skills the catalogue dropdown hasn't cached yet.
   const [extraSuggestedSkillOptions, setExtraSuggestedSkillOptions] = useState<
     JobOpeningDropdownOption[]
@@ -352,9 +346,7 @@ const EditJobDetail = () => {
     { jobOpeningId: parsedJobId },
     { skip: !parsedJobId }
   );
-  const [regenerateJobDescription, { isLoading: isRegenerating }] =
-    useRegenerateJobDescriptionMutation();
-  const [enhanceJd] = useEnhanceJdMutation();
+  const [enhanceJd, { isLoading: isRegenerating }] = useEnhanceJdMutation();
   const {
     data: jobData,
     refetch,
@@ -578,12 +570,17 @@ const EditJobDetail = () => {
       ...prev,
       ...unaddedSuggestedSkills.map((skill) => ({ id: skill.skill_id, name: skill.skill_label })),
     ]);
-    setSuggestedSkillsDismissed(true);
     showToast({
       message: `Added ${unaddedSuggestedSkills.length} AI-suggested skill${unaddedSuggestedSkills.length === 1 ? '' : 's'}`,
       type: 'success',
     });
   };
+
+  useEffect(() => {
+    if (unaddedSuggestedSkills.length === 0) return;
+    handleAddAllSuggestedSkills();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unaddedSuggestedSkills]);
 
   const getOptionName = (option: Record<string, unknown> | null | undefined): string => {
     if (!option) return '';
@@ -676,7 +673,6 @@ const EditJobDetail = () => {
       country: countryName,
       state: stateName,
       officeLocation: resolvedOfficeLocation,
-      exemptionStatus: jobData.data.exemptionStatus?.id || null,
       hiringManagers: catalogIdArray(
         Array.isArray(jobData.data.hiringManagers)
           ? jobData.data.hiringManagers
@@ -698,8 +694,14 @@ const EditJobDetail = () => {
       shift: jobData.data.shiftId ? [String(jobData.data.shiftId)] : [],
       languages: jobData.data.languages || [],
       openings: jobData.data.openings ? Number(jobData.data.openings) : null,
-      minSalary: jobData.data.minSalary ? String(jobData.data.minSalary) : null,
-      maxSalary: jobData.data.maxSalary ? String(jobData.data.maxSalary) : null,
+      exemptMinSalary:
+        jobData.data.exemptMinSalary != null ? String(jobData.data.exemptMinSalary) : null,
+      exemptMaxSalary:
+        jobData.data.exemptMaxSalary != null ? String(jobData.data.exemptMaxSalary) : null,
+      nonExemptMinSalary:
+        jobData.data.nonExemptMinSalary != null ? String(jobData.data.nonExemptMinSalary) : null,
+      nonExemptMaxSalary:
+        jobData.data.nonExemptMaxSalary != null ? String(jobData.data.nonExemptMaxSalary) : null,
       minExperience: jobData.data.minExperience != null ? Number(jobData.data.minExperience) : null,
       maxExperience: jobData.data.maxExperience != null ? Number(jobData.data.maxExperience) : null,
       responsibilities: jobData.data.responsibilities || '',
@@ -912,12 +914,20 @@ const EditJobDetail = () => {
           setValue('maxExperience', fresh.maxExperience, { shouldValidate: true });
           appliedAnything = true;
         }
-        if (fresh.minSalary != null && !current.minSalary) {
-          setValue('minSalary', String(fresh.minSalary), { shouldValidate: true });
+        if (fresh.exemptMinSalary != null && !current.exemptMinSalary) {
+          setValue('exemptMinSalary', String(fresh.exemptMinSalary), { shouldValidate: true });
           appliedAnything = true;
         }
-        if (fresh.maxSalary != null && !current.maxSalary) {
-          setValue('maxSalary', String(fresh.maxSalary), { shouldValidate: true });
+        if (fresh.exemptMaxSalary != null && !current.exemptMaxSalary) {
+          setValue('exemptMaxSalary', String(fresh.exemptMaxSalary), { shouldValidate: true });
+          appliedAnything = true;
+        }
+        if (fresh.nonExemptMinSalary != null && !current.nonExemptMinSalary) {
+          setValue('nonExemptMinSalary', String(fresh.nonExemptMinSalary), { shouldValidate: true });
+          appliedAnything = true;
+        }
+        if (fresh.nonExemptMaxSalary != null && !current.nonExemptMaxSalary) {
+          setValue('nonExemptMaxSalary', String(fresh.nonExemptMaxSalary), { shouldValidate: true });
           appliedAnything = true;
         }
         // Merge in AI-suggested skills not already selected, split by type.
@@ -1907,52 +1917,43 @@ const EditJobDetail = () => {
     }
   };
 
-  const handleConfirmRegenerate = async () => {
-    if (!pendingNavigationData) return;
-    const { aiJdId } = pendingNavigationData;
-    let finalAiJobDescription = { ...aiJobDescription };
-    try {
-      const regenResult = await regenerateJobDescription({
-        aiJobDescriptionId: aiJdId,
-        text: '',
-        generateFromScratch: true,
-      }).unwrap();
-
-      if (regenResult?.success && regenResult.data) {
-        finalAiJobDescription = {
-          id: regenResult.data.id || aiJdId,
-          jobDescription: regenResult.data.jobDescription || '',
-          jobOpeningId: parsedJobId || jobOpeningId,
-        };
-      }
-    } catch (regenErr) {
-      console.error('Failed to regenerate AI job description:', regenErr);
-      showToast({
-        message:
-          'Failed to automatically generate AI Job Description. You can try regenerating it on the next page.',
-        type: 'warning',
-      });
-    }
+  const goToDescriptionPage = (jobId: string) => {
+    const finalAiJobDescription = {
+      id: jobId,
+      jobDescription: aiJobDescription.jobDescription || '',
+      jobOpeningId: jobId,
+    };
     dispatch(updateEditAiJobDescription(finalAiJobDescription));
-    setShowRegenerateConfirmModal(false);
-    setPendingNavigationData(null);
     setAllowNavigation(true);
     navigate(`/jobs/edit/${id}/AiJobDescription/${finalAiJobDescription.id}`);
   };
 
-  const handleCancelRegenerate = (close?: boolean) => {
-    if (close) {
-      setShowRegenerateConfirmModal(false);
-      setPendingNavigationData(null);
-      setAllowNavigation(false);
-      return;
-    }
-    if (!pendingNavigationData) return;
-    dispatch(updateEditAiJobDescription(pendingNavigationData.finalAiJobDescription));
+  const handleCancelRegenerate = () => {
+    if (!pendingContinueJobId) return;
+    const jobId = pendingContinueJobId;
     setShowRegenerateConfirmModal(false);
-    setPendingNavigationData(null);
-    setAllowNavigation(true);
-    navigate(`/jobs/edit/${id}/AiJobDescription/${pendingNavigationData.finalAiJobDescription.id}`);
+    setPendingContinueJobId(null);
+    goToDescriptionPage(jobId);
+  };
+
+  const handleConfirmRegenerate = async () => {
+    if (!pendingContinueJobId) return;
+    const jobId = pendingContinueJobId;
+    try {
+      await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
+      showToast({ message: 'Regenerating the AI description…', type: 'success' });
+    } catch (enhanceError) {
+      showToast({
+        message: getJobErrorMessage(
+          enhanceError,
+          'Could not start regeneration - use Regenerate on the next step.'
+        ),
+        type: 'warning',
+      });
+    }
+    setShowRegenerateConfirmModal(false);
+    setPendingContinueJobId(null);
+    goToDescriptionPage(jobId);
   };
 
   const onSubmit = async (data: JobDetailsState) => {
@@ -2017,7 +2018,14 @@ const EditJobDetail = () => {
       dispatch(updateEditJobDescription(jobDescriptionPayload));
       dispatch(updateEditInterviewRounds(interViewRound));
 
-      // Regenerate only if a description-source field changed.
+      const isUploadedJdPath =
+        jdBeforeSave?.source === 'UPLOADED' || jdBeforeSave?.entryPath === 'upload_jd';
+      if (isUploadedJdPath && jdBeforeSave?.jobDescription?.trim()) {
+        setPendingContinueJobId(jobId);
+        setShowRegenerateConfirmModal(true);
+        return;
+      }
+
       const descriptionInputs = {
         ...data,
         shiftId: data.shift?.[0] != null ? String(data.shift[0]) : undefined,
@@ -2050,16 +2058,7 @@ const EditJobDetail = () => {
         }
       }
 
-      const aiJdId = jobId;
-      const finalAiJobDescription = {
-        id: aiJdId,
-        jobDescription: aiJobDescription.jobDescription || '',
-        jobOpeningId: jobId,
-      };
-
-      dispatch(updateEditAiJobDescription(finalAiJobDescription));
-      setAllowNavigation(true);
-      navigate(`/jobs/edit/${id}/AiJobDescription/${finalAiJobDescription.id}`);
+      goToDescriptionPage(jobId);
     } catch (error) {
       setAllowNavigation(false);
       showToast({
@@ -2340,13 +2339,7 @@ const EditJobDetail = () => {
                 />
               </div>
             </Form.Item>
-            <Form.Item
-              label={
-                <span>
-                  Job Mode <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
+            <Form.Item label={<span>Job Mode</span>}>
               <div id="field-jobMode">
                 <DropdownWithAddOption
                   className="w-full custom-select-jobs placeholder-style"
@@ -2861,131 +2854,139 @@ const EditJobDetail = () => {
         </div>
         <div className="mt-2">
           <div className="w-full">
-            <span className="text-lg font-semibold">Salary Status</span>
+            <span className="text-lg font-semibold">Salary</span>
+            <p className="text-sm text-[#717171] mt-1">
+              Provide at least one range — this job can offer Exempt - annual, Non-Exempt
+              - hourly, or both.
+            </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-            <Form.Item
-              label={
-                <span>
-                  Exemption Status <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <Controller
-                name="exemptionStatus"
-                control={control}
-                render={({ field }) => (
-                  <div
-                    id="field-exemptionStatus"
-                    className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl "
-                  >
-                    <Select
-                      {...field}
-                      value={field.value}
-                      onChange={(value) => {
-                        setValue('exemptionStatus', value ?? null, { shouldValidate: true });
-                      }}
-                      className="w-full custom-select-jobs placeholder-style"
-                      placeholder="Select Exemption Status"
-                      loading={exemptionLoading}
-                      allowClear
-                    >
-                      {exemptionStatus.length > 0 ? (
-                        exemptionStatus.map((status) => (
-                          <Option key={status.id} value={status.id}>
-                            {status.name}
-                          </Option>
-                        ))
-                      ) : (
-                        <Option value="No Status Found" disabled>
-                          No Status Found
-                        </Option>
-                      )}
-                    </Select>
-                  </div>
-                )}
-              />
-              {errors.exemptionStatus && (
-                <p className="text-red-500 text-sm mt-1">{errors.exemptionStatus.message}</p>
-              )}
-            </Form.Item>
-            <Form.Item
-              label={
-                <span>
-                  Minimum Salary (in USD) <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <Controller
-                name="minSalary"
-                control={control}
-                render={() => (
-                  <CurrencyInput
-                    // Remount so the suffix updates on status change.
-                    key={`minSalary-${watch('exemptionStatus')}`}
-                    id="field-minSalary"
-                    value={watch('minSalary') ?? ''}
-                    onValueChange={(value) => {
-                      setValue('minSalary', value ?? null, {
-                        shouldValidate: true,
-                      });
-                      trigger(['maxSalary', 'minSalary']);
-                    }}
-                    decimalsLimit={2}
-                    decimalScale={2}
-                    prefix="$"
-                    suffix={
-                      watch('exemptionStatus') === 'false'
-                        ? '/hr'
-                        : watch('exemptionStatus') === 'true'
-                          ? '/year'
-                          : undefined
-                    }
-                    placeholder="Minimum Salary"
-                    className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
-                    intlConfig={{ locale: 'en-US', currency: 'USD' }}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 mt-2">
+            <div>
+              <span className="font-medium text-[#4f4f4f]">Exempt - Annual</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
+                <Form.Item label={<span>Minimum Salary (in USD)</span>}>
+                  <Controller
+                    name="exemptMinSalary"
+                    control={control}
+                    render={() => (
+                      <CurrencyInput
+                        id="field-exemptMinSalary"
+                        value={watch('exemptMinSalary') ?? ''}
+                        onValueChange={(value) => {
+                          setValue('exemptMinSalary', value ?? null, { shouldValidate: true });
+                          trigger(['exemptMinSalary', 'exemptMaxSalary']);
+                        }}
+                        decimalsLimit={2}
+                        decimalScale={2}
+                        prefix="$"
+                        suffix="/year"
+                        placeholder="Minimum Salary"
+                        className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                      />
+                    )}
                   />
-                )}
-              />
-              {errors.minSalary && (
-                <p className="text-red-500 text-sm mt-1">{errors.minSalary.message}</p>
-              )}
-            </Form.Item>
-            <Form.Item label={<span>Maximum Salary (in USD)</span>}>
-              <Controller
-                name="maxSalary"
-                control={control}
-                render={() => (
-                  <CurrencyInput
-                    key={`maxSalary-${watch('exemptionStatus')}`}
-                    id="field-maxSalary"
-                    value={watch('maxSalary') ?? ''}
-                    onValueChange={(value) => {
-                      setValue('maxSalary', value ?? null, {
-                        shouldValidate: true,
-                      });
-                      trigger(['maxSalary', 'minSalary']);
-                    }}
-                    decimalsLimit={2}
-                    decimalScale={2}
-                    prefix="$"
-                    suffix={
-                      watch('exemptionStatus') === 'false'
-                        ? '/hr'
-                        : watch('exemptionStatus') === 'true'
-                          ? '/year'
-                          : undefined
-                    }
-                    placeholder="Maximum Salary"
-                    className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
-                    intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                  {errors.exemptMinSalary && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.exemptMinSalary.message}
+                    </p>
+                  )}
+                </Form.Item>
+                <Form.Item label={<span>Maximum Salary (in USD)</span>}>
+                  <Controller
+                    name="exemptMaxSalary"
+                    control={control}
+                    render={() => (
+                      <CurrencyInput
+                        id="field-exemptMaxSalary"
+                        value={watch('exemptMaxSalary') ?? ''}
+                        onValueChange={(value) => {
+                          setValue('exemptMaxSalary', value ?? null, { shouldValidate: true });
+                          trigger(['exemptMinSalary', 'exemptMaxSalary']);
+                        }}
+                        decimalsLimit={2}
+                        decimalScale={2}
+                        prefix="$"
+                        suffix="/year"
+                        placeholder="Maximum Salary"
+                        className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                      />
+                    )}
                   />
-                )}
-              />
-              {errors.maxSalary && (
-                <p className="text-red-500 text-sm mt-1">{errors.maxSalary.message}</p>
-              )}
-            </Form.Item>
+                  {errors.exemptMaxSalary && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.exemptMaxSalary.message}
+                    </p>
+                  )}
+                </Form.Item>
+              </div>
+            </div>
+            <div>
+              <span className="font-medium text-[#4f4f4f]">Non-Exempt - Hourly</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
+                <Form.Item label={<span>Minimum Rate (in USD)</span>}>
+                  <Controller
+                    name="nonExemptMinSalary"
+                    control={control}
+                    render={() => (
+                      <CurrencyInput
+                        id="field-nonExemptMinSalary"
+                        value={watch('nonExemptMinSalary') ?? ''}
+                        onValueChange={(value) => {
+                          setValue('nonExemptMinSalary', value ?? null, {
+                            shouldValidate: true,
+                          });
+                          trigger(['nonExemptMinSalary', 'nonExemptMaxSalary']);
+                        }}
+                        decimalsLimit={2}
+                        decimalScale={2}
+                        prefix="$"
+                        suffix="/hr"
+                        placeholder="Minimum Rate"
+                        className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                      />
+                    )}
+                  />
+                  {errors.nonExemptMinSalary && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.nonExemptMinSalary.message}
+                    </p>
+                  )}
+                </Form.Item>
+                <Form.Item label={<span>Maximum Rate (in USD)</span>}>
+                  <Controller
+                    name="nonExemptMaxSalary"
+                    control={control}
+                    render={() => (
+                      <CurrencyInput
+                        id="field-nonExemptMaxSalary"
+                        value={watch('nonExemptMaxSalary') ?? ''}
+                        onValueChange={(value) => {
+                          setValue('nonExemptMaxSalary', value ?? null, {
+                            shouldValidate: true,
+                          });
+                          trigger(['nonExemptMinSalary', 'nonExemptMaxSalary']);
+                        }}
+                        decimalsLimit={2}
+                        decimalScale={2}
+                        prefix="$"
+                        suffix="/hr"
+                        placeholder="Maximum Rate"
+                        className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                      />
+                    )}
+                  />
+                  {errors.nonExemptMaxSalary && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.nonExemptMaxSalary.message}
+                    </p>
+                  )}
+                </Form.Item>
+              </div>
+            </div>
           </div>
         </div>
         <div className="form-grid-equal-labels grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
@@ -3072,33 +3073,6 @@ const EditJobDetail = () => {
           <div className="w-full">
             <span className="text-lg font-semibold">Job Skills</span>
           </div>
-          {!suggestedSkillsDismissed && unaddedSuggestedSkills.length > 0 && (
-            <div className="mt-2 flex items-center justify-between gap-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
-              <span className="text-sm text-brand-800">
-                <span className="mr-1.5">✨</span>
-                AI suggested {unaddedSuggestedSkills.length} skill
-                {unaddedSuggestedSkills.length === 1 ? '' : 's'} for this role, based on the job
-                description.
-              </span>
-              <div className="flex items-center gap-3 shrink-0">
-                <Button
-                  type="button"
-                  className="text-white bg-button rounded-3xl px-4 py-1.5 text-xs font-semibold cursor-pointer"
-                  onClick={handleAddAllSuggestedSkills}
-                >
-                  ADD ALL
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => setSuggestedSkillsDismissed(true)}
-                  className="text-brand-500 hover:text-brand-700 cursor-pointer"
-                  aria-label="Dismiss suggestion"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
             <Form.Item
               label={

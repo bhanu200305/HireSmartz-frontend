@@ -28,11 +28,7 @@ export function mapApiNoteToCandidateNoteItem(
   note: Record<string, unknown>,
   index: number
 ): CandidateNoteItem | null {
-  // `note_text` is the real job-service field (JobNoteResponse — no
-  // camelCase alias, job-service returns plain snake_case JSON). Without
-  // it here, every job note's content resolved to '' and got silently
-  // dropped by the `if (!content) return null` below — notes saved fine
-  // on the backend, they just never made it back onto screen.
+  // `note_text` is the real job-service field — snake_case, no camelCase alias.
   const content = String(
     note.note_text ??
       note.noteText ??
@@ -47,16 +43,8 @@ export function mapApiNoteToCandidateNoteItem(
   const idRaw = note.id ?? note.noteId;
   const id = idRaw != null && idRaw !== '' ? String(idRaw) : `note-${index}`;
 
-  // job-service's JobNoteResponse only ever returns `created_by` — a raw
-  // user UUID, never a display name (see its own docstring: "the frontend
-  // resolves the author's display name ... itself"). Not a name source, so
-  // it's deliberately NOT in this chain — a UUID rendered as `authorName`
-  // would just be a differently-wrong display than "Unknown User". The old
-  // `note.createdBy` (camelCase) entry here never matched anything anyway
-  // (the real field is snake_case) and, even if it had, would have shown a
-  // raw id as a name. Real name resolution for job notes happens in
-  // JobListingNotesPanel.tsx, which looks `authorId` up against this
-  // tenant's user list after this mapper runs.
+  // job-service only ever returns `created_by`, a UUID — never a display
+  // name. Name resolution happens in JobListingNotesPanel.tsx from `authorId`.
   const authorName = String(
     note.authorName ?? note.createdByName ?? note.userName ?? note.createdByUserName ?? ''
   ).trim();
@@ -66,10 +54,7 @@ export function mapApiNoteToCandidateNoteItem(
       ? String(note.authorRole ?? note.createdByRole ?? note.role ?? note.userRole)
       : undefined;
 
-  // `created_by` (snake_case) is job-service's real field — a UUID, not a
-  // number, so this is kept as a string rather than run through `Number()`
-  // (which silently turned every job-note author id into `NaN` ->
-  // `undefined`, the same class of bug `note_text` above had for content).
+  // `created_by` is a UUID, not a number — kept as a string, never Number().
   const authorIdRaw =
     note.authorId ??
     note.createdById ??
@@ -83,6 +68,10 @@ export function mapApiNoteToCandidateNoteItem(
     (note.createdAt ?? note.updatedAt ?? note.timestamp ?? note.created_at) != null
       ? String(note.createdAt ?? note.updatedAt ?? note.timestamp ?? note.created_at)
       : undefined;
+
+  // `modified_at` null means "never edited", a real distinct meaning.
+  const editedAtRaw = note.editedAt ?? note.modifiedAt ?? note.modified_at;
+  const editedAt = editedAtRaw != null ? String(editedAtRaw) : undefined;
 
   const roundObj = note.round as { id?: unknown; name?: string } | undefined;
   const roundNameRaw =
@@ -132,11 +121,7 @@ export function mapApiNoteToCandidateNoteItem(
     content,
     parentType,
     createdAt,
-    // Empty when nothing on the wire names the author (job notes, always,
-    // per the comment above `authorName` — enriched from `authorId`
-    // against this tenant's user list by JobListingNotesPanel.tsx after
-    // this mapper runs; only falls back to 'Unknown User' if THAT lookup
-    // also comes up empty).
+    editedAt,
     authorName,
     authorRole: authorRole || undefined,
     authorId,

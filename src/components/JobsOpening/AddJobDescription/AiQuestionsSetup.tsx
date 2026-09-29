@@ -59,7 +59,7 @@ const GENERATION_POLL_TIMEOUT_MS = 90_000;
 const PUBLISH_CHECK_LABELS: Record<string, string> = {
   jd_missing: 'Job description is missing',
   mandatory_fields_incomplete:
-    'Some required Job Details fields are missing - check Job Title, Department, Job Mode, Job Type, Open Date, Vacancies, Minimum Experience, Salary Range, and Hiring Manager',
+    'Some required Job Details fields are missing - check Job Title, Department, Job Type, Open Date, Vacancies, Minimum Experience, Salary Range, and Hiring Manager',
   no_education_preference: 'Education preference is not set',
   no_location: 'At least one job location is required',
   no_skill: 'At least one skill is required',

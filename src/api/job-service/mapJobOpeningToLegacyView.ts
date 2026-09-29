@@ -46,8 +46,10 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
     // Id only, name resolved separately against the shift catalogue.
     shiftId: details?.shift_id ?? null,
     openings: details?.vacancies ?? 0,
-    minSalary: details?.lower_salary_range ?? 0,
-    maxSalary: details?.upper_salary_range ?? 0,
+    exemptMinSalary: details?.exempt_lower_salary_range ?? null,
+    exemptMaxSalary: details?.exempt_upper_salary_range ?? null,
+    nonExemptMinSalary: details?.non_exempt_lower_salary_range ?? null,
+    nonExemptMaxSalary: details?.non_exempt_upper_salary_range ?? null,
     minExperience: details?.min_experience_req != null ? Number(details.min_experience_req) : null,
     maxExperience: details?.max_experience_req != null ? Number(details.max_experience_req) : null,
     languages: (details?.language_ids ?? []) as unknown as number[],
@@ -69,10 +71,6 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
       id: job.org_job_opening_id as unknown as number,
       jobDescription: details?.jd ?? '',
       jobOpeningId: job.org_job_opening_id as unknown as number,
-    },
-    exemptionStatus: {
-      id: (details?.is_exempted ? 'true' : 'false') as unknown as number,
-      statusName: details?.is_exempted ? 'Exempt' : 'Non-Exempt',
     },
     mandatorySkills: mandatory.map((s) => ({
       id: s.skill_id as unknown as number,
@@ -155,8 +153,22 @@ export const mapDetailsToJobDetailsState = (
     country: details.locations?.[0]?.country ?? '',
     state: details.locations?.[0]?.state ?? '',
     openings: details.vacancies,
-    minSalary: details.lower_salary_range != null ? String(details.lower_salary_range) : null,
-    maxSalary: details.upper_salary_range != null ? String(details.upper_salary_range) : null,
+    exemptMinSalary:
+      details.exempt_lower_salary_range != null
+        ? String(details.exempt_lower_salary_range)
+        : null,
+    exemptMaxSalary:
+      details.exempt_upper_salary_range != null
+        ? String(details.exempt_upper_salary_range)
+        : null,
+    nonExemptMinSalary:
+      details.non_exempt_lower_salary_range != null
+        ? String(details.non_exempt_lower_salary_range)
+        : null,
+    nonExemptMaxSalary:
+      details.non_exempt_upper_salary_range != null
+        ? String(details.non_exempt_upper_salary_range)
+        : null,
     minExperience: details.min_experience_req != null ? Number(details.min_experience_req) : null,
     maxExperience: details.max_experience_req != null ? Number(details.max_experience_req) : null,
     openDate: details.job_open_date ?? '',
@@ -177,7 +189,6 @@ export const mapDetailsToJobDetailsState = (
     otherRequirements: details.other_requirements ?? '',
     benefits: details.benefits ?? '',
     unresolvedAiSuggestions: details.unresolved_ai_suggestions ?? {},
-    exemptionStatus: (details.is_exempted ? 'true' : 'false') as unknown as number,
     referralBonus: details.referral_bonus,
     useCultureIntro: details.use_culture_intro,
   };

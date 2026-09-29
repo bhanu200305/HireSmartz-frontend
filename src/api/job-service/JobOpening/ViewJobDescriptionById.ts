@@ -21,9 +21,10 @@ type ViewJobDescriptionResponse = {
   /** True once Job Details has been saved with title + department — false
    * for a bare draft shell with nothing for AI to compose from yet. */
   hasSavedDetails: boolean;
-  /** 'MANUAL' | 'UPLOAD_JD' | 'AI_PROMPT' | 'ATS_IMPORT'. Only Manual/Upload
-   * jobs can call `/jd/enhance`; only AI Prompt jobs can call
-   * `/jd/regenerate` — the JD panel needs this to pick the right endpoint.
+  /** 'manual' | 'upload_jd' | 'ai_prompt' | 'ats_import' — lowercase, as sent
+   * by backend's EntryPath enum. Only Manual/Upload jobs can call
+   * `/jd/enhance`; only AI Prompt jobs can call `/jd/regenerate` — the JD
+   * panel needs this to pick the right endpoint.
    * Undefined on `updateJobDescription`'s response. */
   entryPath?: string;
   /** Structured fields AI writes alongside the JD text on generate/parse.
@@ -33,8 +34,10 @@ type ViewJobDescriptionResponse = {
   benefits?: string | null;
   minExperience?: number | null;
   maxExperience?: number | null;
-  minSalary?: number | null;
-  maxSalary?: number | null;
+  exemptMinSalary?: number | null;
+  exemptMaxSalary?: number | null;
+  nonExemptMinSalary?: number | null;
+  nonExemptMaxSalary?: number | null;
   // Extraction-only, never AI-composed — safe to sync back.
   vacancies?: number | null;
   /** The job's full current skill list. `skill_type` is matched
@@ -91,8 +94,10 @@ const extendedApi = jobApi.injectEndpoints({
           response.min_experience_req != null ? Number(response.min_experience_req) : null,
         maxExperience:
           response.max_experience_req != null ? Number(response.max_experience_req) : null,
-        minSalary: response.lower_salary_range,
-        maxSalary: response.upper_salary_range,
+        exemptMinSalary: response.exempt_lower_salary_range,
+        exemptMaxSalary: response.exempt_upper_salary_range,
+        nonExemptMinSalary: response.non_exempt_lower_salary_range,
+        nonExemptMaxSalary: response.non_exempt_upper_salary_range,
         vacancies: response.vacancies,
         skills: response.skills?.map((skill) => ({
           skill_id: skill.skill_id,

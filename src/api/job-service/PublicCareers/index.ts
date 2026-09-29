@@ -31,10 +31,11 @@ export type PublicJobListing = {
   job_open_date: string | null;
   min_experience_req: number | null;
   max_experience_req: number | null;
-  salary_min: number | null;
-  salary_max: number | null;
-  // true = annual salary, false = hourly.
-  is_exempted: boolean;
+  // A job may offer either classification, or both.
+  exempt_salary_min: number | null;
+  exempt_salary_max: number | null;
+  non_exempt_salary_min: number | null;
+  non_exempt_salary_max: number | null;
   job_type_name: string | null;
   job_mode_name: string | null;
 };
@@ -54,9 +55,10 @@ export type PublicJobDetail = {
   job_open_date: string | null;
   min_experience_req: number | null;
   max_experience_req: number | null;
-  salary_min: number | null;
-  salary_max: number | null;
-  is_exempted: boolean;
+  exempt_salary_min: number | null;
+  exempt_salary_max: number | null;
+  non_exempt_salary_min: number | null;
+  non_exempt_salary_max: number | null;
   jd: string | null;
   responsibilities: string | null;
   requirements: string | null;
@@ -90,10 +92,10 @@ const normalizePublicJobListing = (job: PublicJobListing): PublicJobListing => (
   ...job,
   min_experience_req: toNumber(job.min_experience_req),
   max_experience_req: toNumber(job.max_experience_req),
-  // salary_min/max are already real numbers, normalized too as cheap
-  // insurance against the same class of bug.
-  salary_min: toNumber(job.salary_min),
-  salary_max: toNumber(job.salary_max),
+  exempt_salary_min: toNumber(job.exempt_salary_min),
+  exempt_salary_max: toNumber(job.exempt_salary_max),
+  non_exempt_salary_min: toNumber(job.non_exempt_salary_min),
+  non_exempt_salary_max: toNumber(job.non_exempt_salary_max),
 });
 
 // Company name/logo for the QR-board pages' header. `logo_url` may be a
@@ -122,8 +124,10 @@ const extendedApi = jobApi.injectEndpoints({
         ...response,
         min_experience_req: toNumber(response.min_experience_req),
         max_experience_req: toNumber(response.max_experience_req),
-        salary_min: toNumber(response.salary_min),
-        salary_max: toNumber(response.salary_max),
+        exempt_salary_min: toNumber(response.exempt_salary_min),
+        exempt_salary_max: toNumber(response.exempt_salary_max),
+        non_exempt_salary_min: toNumber(response.non_exempt_salary_min),
+        non_exempt_salary_max: toNumber(response.non_exempt_salary_max),
       }),
       providesTags: (_result, _error, { jobId }) => [{ type: 'PublicJobs', id: jobId }],
     }),

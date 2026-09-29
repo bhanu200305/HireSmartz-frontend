@@ -143,7 +143,14 @@ export const CareersJobDetailPage = () => {
   );
 
   const experience = job ? formatExperience(job.min_experience_req, job.max_experience_req) : null;
-  const salary = job ? formatSalary(job.salary_min, job.salary_max, job.is_exempted) : null;
+  const salary = job
+    ? formatSalary(
+        job.exempt_salary_min,
+        job.exempt_salary_max,
+        job.non_exempt_salary_min,
+        job.non_exempt_salary_max
+      )
+    : null;
   const primaryLocation = job?.locations?.[0] ? formatLocation(job.locations[0]) : null;
   const postedAgo = job ? formatPostedAgo(job.job_open_date) : null;
 

@@ -9,7 +9,9 @@ export const editJobDetailsSchema = z
     department: z.array(catalogId).min(1, 'Department is required.'),
     officeLocation: z.array(catalogId).min(1, 'Location is required.'),
     jobType: z.array(catalogId).min(1, 'Job Type is required.'),
-    jobMode: z.array(catalogId).min(1, 'Job Mode is required.'),
+    // Not in PUBLISH_CHECK_LABELS' mandatory-fields list, so optional —
+    // same convention as shift below.
+    jobMode: z.array(catalogId).optional(),
     shift: z.array(catalogId).optional(),
     isMultilingual: z.boolean().optional(),
     useCultureIntro: z.boolean().optional(),
@@ -25,66 +27,42 @@ export const editJobDetailsSchema = z
           message: 'Opening(s) are required.',
         })
     ),
-    exemptionStatus: z
-      .union([z.string(), z.number(), z.boolean()])
-      .nullable()
-      .refine((val) => val !== null && val !== undefined && val !== '', {
-        message: 'Exemption Status is required.',
-      }),
-    minSalary: z.preprocess(
-      (val) => {
-        const parsed = val === '' || val === undefined || val === null ? null : val;
-        return parsed;
-      },
+    // Range-completeness rules live in the superRefine below.
+    exemptMinSalary: z.preprocess(
+      (val) => (val === '' || val === undefined || val === null ? null : val),
       z
         .string()
         .nullable()
-        .refine((val) => val === null || !isNaN(Number(val)), {
+        .refine((val) => val === null || (!isNaN(Number(val)) && Number(val) >= 0), {
           message: 'Enter a valid minimum salary.',
-        })
-        .refine((val) => val === null || Number(val) > 0, {
-          message: 'Enter a valid minimum salary.',
-        })
-        .refine(
-          (val) => {
-            if (Number(val) < 0 || isNaN(Number(val))) {
-              return false;
-            }
-            return true;
-          },
-          {
-            message: 'Enter a valid minimum salary.',
-          }
-        )
-        .refine((val) => !!val, {
-          message: 'Minimum salary is required.',
         })
     ),
-    maxSalary: z.preprocess(
-      (val) => {
-        const parsed = val === '' || val === undefined || val === null ? null : val;
-        return parsed;
-      },
+    exemptMaxSalary: z.preprocess(
+      (val) => (val === '' || val === undefined || val === null ? null : val),
       z
         .string()
         .nullable()
-        .refine((val) => val === null || !isNaN(Number(val)), {
+        .refine((val) => val === null || (!isNaN(Number(val)) && Number(val) >= 0), {
           message: 'Enter a valid maximum salary.',
         })
-        .refine((val) => val === null || Number(val) > 0, {
-          message: 'Enter a valid maximum salary.',
+    ),
+    nonExemptMinSalary: z.preprocess(
+      (val) => (val === '' || val === undefined || val === null ? null : val),
+      z
+        .string()
+        .nullable()
+        .refine((val) => val === null || (!isNaN(Number(val)) && Number(val) >= 0), {
+          message: 'Enter a valid minimum rate.',
         })
-        .refine(
-          (val) => {
-            if (Number(val) < 0 || isNaN(Number(val))) {
-              return false;
-            }
-            return true;
-          },
-          {
-            message: 'Enter a valid maximum salary.',
-          }
-        )
+    ),
+    nonExemptMaxSalary: z.preprocess(
+      (val) => (val === '' || val === undefined || val === null ? null : val),
+      z
+        .string()
+        .nullable()
+        .refine((val) => val === null || (!isNaN(Number(val)) && Number(val) >= 0), {
+          message: 'Enter a valid maximum rate.',
+        })
     ),
     referralBonus: z.preprocess(
       (val) => {
@@ -181,19 +159,14 @@ export const editJobDetailsSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    const min = data.minSalary ? Number(data.minSalary) : null;
-    const max = data.maxSalary ? Number(data.maxSalary) : null;
+    const exemptMin = data.exemptMinSalary ? Number(data.exemptMinSalary) : null;
+    const exemptMax = data.exemptMaxSalary ? Number(data.exemptMaxSalary) : null;
+    const nonExemptMin = data.nonExemptMinSalary ? Number(data.nonExemptMinSalary) : null;
+    const nonExemptMax = data.nonExemptMaxSalary ? Number(data.nonExemptMaxSalary) : null;
 
     const minExp = data.minExperience;
     const maxExp = data.maxExperience;
 
-    if (min === null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Minimum salary is required.',
-        path: ['minSalary'],
-      });
-    }
     if (data.minExperience === null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -211,22 +184,58 @@ export const editJobDetailsSchema = z
       }
     }
 
-    if (min !== null && max !== null) {
-      if (max < min) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Maximum salary cannot be less than minimum salary.',
-          path: ['maxSalary'],
-        });
-      }
+    const exemptComplete = exemptMin !== null && exemptMax !== null;
+    const nonExemptComplete = nonExemptMin !== null && nonExemptMax !== null;
+    if (!exemptComplete && !nonExemptComplete) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Provide at least one complete salary range — Exempt, Non-Exempt, or both.',
+        path: ['exemptMinSalary'],
+      });
+    }
 
-      if (min > max) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Minimum salary cannot exceed maximum salary.',
-          path: ['minSalary'],
-        });
-      }
+    if (exemptMin !== null && exemptMax === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter a maximum salary for the Exempt range.',
+        path: ['exemptMaxSalary'],
+      });
+    }
+    if (exemptMax !== null && exemptMin === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter a minimum salary for the Exempt range.',
+        path: ['exemptMinSalary'],
+      });
+    }
+    if (exemptMin !== null && exemptMax !== null && exemptMin > exemptMax) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Minimum salary cannot exceed maximum salary.',
+        path: ['exemptMinSalary'],
+      });
+    }
+
+    if (nonExemptMin !== null && nonExemptMax === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter a maximum rate for the Non-Exempt range.',
+        path: ['nonExemptMaxSalary'],
+      });
+    }
+    if (nonExemptMax !== null && nonExemptMin === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter a minimum rate for the Non-Exempt range.',
+        path: ['nonExemptMinSalary'],
+      });
+    }
+    if (nonExemptMin !== null && nonExemptMax !== null && nonExemptMin > nonExemptMax) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Minimum rate cannot exceed maximum rate.',
+        path: ['nonExemptMinSalary'],
+      });
     }
 
     if (data.department && data.department.length > 0) {
@@ -306,9 +315,10 @@ export const editJobDetailsDraftSchema = z.object({
   isMultilingual: z.boolean().optional(),
   useCultureIntro: z.boolean().optional(),
   openings: z.number().optional().nullable(),
-  exemptionStatus: z.union([z.string(), z.number(), z.boolean()]).optional().nullable(),
-  minSalary: z.string().optional().nullable(),
-  maxSalary: z.string().optional().nullable(),
+  exemptMinSalary: z.string().optional().nullable(),
+  exemptMaxSalary: z.string().optional().nullable(),
+  nonExemptMinSalary: z.string().optional().nullable(),
+  nonExemptMaxSalary: z.string().optional().nullable(),
   referralBonus: z.union([z.number(), z.string()]).optional().nullable(),
   minExperience: z.number().optional().nullable(),
   maxExperience: z.number().optional().nullable(),

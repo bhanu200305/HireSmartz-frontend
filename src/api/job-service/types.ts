@@ -117,8 +117,12 @@ export type JobDetailsResponse = {
   vacancies: number | null;
   min_experience_req: string | number | null;
   max_experience_req: string | number | null;
-  lower_salary_range: number | null;
-  upper_salary_range: number | null;
+  // A job may offer either classification, or both — two independent
+  // ranges, not one range plus a boolean flag.
+  exempt_lower_salary_range: number | null;
+  exempt_upper_salary_range: number | null;
+  non_exempt_lower_salary_range: number | null;
+  non_exempt_upper_salary_range: number | null;
   referral_bonus: number | null;
   responsibilities: string | null;
   requirements: string | null;
@@ -130,7 +134,6 @@ export type JobDetailsResponse = {
   education_preference_id: string | null;
   use_culture_intro: boolean;
   language_ids: string[];
-  is_exempted: boolean;
   jd: string | null;
   locations: JobLocationResponse[];
   skills: JobSkillResponse[];
@@ -150,8 +153,10 @@ export type SaveJobDetailsRequest = {
   vacancies?: number | null;
   min_experience_req?: number | string | null;
   max_experience_req?: number | string | null;
-  lower_salary_range?: number | null;
-  upper_salary_range?: number | null;
+  exempt_lower_salary_range?: number | null;
+  exempt_upper_salary_range?: number | null;
+  non_exempt_lower_salary_range?: number | null;
+  non_exempt_upper_salary_range?: number | null;
   referral_bonus?: number | null;
   responsibilities?: string | null;
   requirements?: string | null;
@@ -160,7 +165,6 @@ export type SaveJobDetailsRequest = {
   education_preference_id?: string | null;
   use_culture_intro?: boolean;
   language_ids?: string[];
-  is_exempted?: boolean;
   locations?: JobLocationPayload[];
   skills?: JobSkillPayload[];
 };
@@ -366,8 +370,10 @@ export type JobSummaryResponse = {
   job_open_date: string | null;
   min_experience_req: string | number | null;
   max_experience_req: string | number | null;
-  salary_min: number | null;
-  salary_max: number | null;
+  exempt_salary_min: number | null;
+  exempt_salary_max: number | null;
+  non_exempt_salary_min: number | null;
+  non_exempt_salary_max: number | null;
   is_remote: boolean | null;
   location_city: string | null;
   hiring_manager_ids: string[];
@@ -425,6 +431,7 @@ export type JobNoteResponse = {
   note_text: string;
   created_by: string;
   created_at: string | null;
+  modified_at: string | null;
 };
 
 export type ClosureReason = {

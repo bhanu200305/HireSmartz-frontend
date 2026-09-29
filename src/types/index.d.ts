@@ -192,9 +192,12 @@ export type JobDetailsState = {
   // Single catalogue id, held as an array-of-one — the org's configured shift, not a free-typed time range.
   shift?: Array<string | number>;
   openings: number | null;
-  exemptionStatus: string | number | boolean | null;
-  minSalary: string | null;
-  maxSalary: string | null;
+  // A job may offer either classification, or both — two independent
+  // ranges, not one range picked by a dropdown.
+  exemptMinSalary: string | null;
+  exemptMaxSalary: string | null;
+  nonExemptMinSalary: string | null;
+  nonExemptMaxSalary: string | null;
   referralBonus?: number | string | null;
   minExperience: number | null;
   maxExperience?: number | null;
@@ -414,8 +417,10 @@ export type JobOpeningByIdResponse = {
     // Id only, name resolved separately against the shift catalogue.
     shiftId?: string | null;
     openings: number;
-    minSalary: number;
-    maxSalary: number;
+    exemptMinSalary: number | null;
+    exemptMaxSalary: number | null;
+    nonExemptMinSalary: number | null;
+    nonExemptMaxSalary: number | null;
     minExperience: number | null;
     maxExperience: number | null;
     /** @deprecated backend no longer accepts this (job-service migration 0016) — see `languages` */
@@ -450,10 +455,6 @@ export type JobOpeningByIdResponse = {
       id: number;
       jobDescription: string;
       jobOpeningId: number;
-    };
-    exemptionStatus: {
-      id: number;
-      statusName: string;
     };
     mandatorySkills: {
       id: number;

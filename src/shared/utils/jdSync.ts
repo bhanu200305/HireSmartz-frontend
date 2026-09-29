@@ -7,8 +7,10 @@
 export type JdDescriptionInputs = {
   minExperience?: number | string | null;
   maxExperience?: number | string | null;
-  minSalary?: number | string | null;
-  maxSalary?: number | string | null;
+  exemptMinSalary?: number | string | null;
+  exemptMaxSalary?: number | string | null;
+  nonExemptMinSalary?: number | string | null;
+  nonExemptMaxSalary?: number | string | null;
   responsibilities?: string | null;
   otherRequirements?: string | null;
   benefits?: string | null;
@@ -48,8 +50,10 @@ export const haveDescriptionInputsChanged = (
 ): boolean =>
   normalizeNumber(next.minExperience) !== normalizeNumber(current.minExperience) ||
   normalizeNumber(next.maxExperience) !== normalizeNumber(current.maxExperience) ||
-  normalizeNumber(next.minSalary) !== normalizeNumber(current.minSalary) ||
-  normalizeNumber(next.maxSalary) !== normalizeNumber(current.maxSalary) ||
+  normalizeNumber(next.exemptMinSalary) !== normalizeNumber(current.exemptMinSalary) ||
+  normalizeNumber(next.exemptMaxSalary) !== normalizeNumber(current.exemptMaxSalary) ||
+  normalizeNumber(next.nonExemptMinSalary) !== normalizeNumber(current.nonExemptMinSalary) ||
+  normalizeNumber(next.nonExemptMaxSalary) !== normalizeNumber(current.nonExemptMaxSalary) ||
   normalizeText(next.responsibilities) !== normalizeText(current.responsibilities) ||
   normalizeText(next.otherRequirements) !== normalizeText(current.otherRequirements) ||
   normalizeText(next.benefits) !== normalizeText(current.benefits) ||
@@ -73,8 +77,10 @@ export type AiOwnedJdFields = {
   benefits?: string | null;
   minExperience?: number | string | null;
   maxExperience?: number | string | null;
-  minSalary?: number | string | null;
-  maxSalary?: number | string | null;
+  exemptMinSalary?: number | string | null;
+  exemptMaxSalary?: number | string | null;
+  nonExemptMinSalary?: number | string | null;
+  nonExemptMaxSalary?: number | string | null;
   // Extraction-only, never AI-composed — don't add to JdDescriptionInputs above.
   vacancies?: number | string | null;
   // Form fields allow a numeric platform id alongside a string UUID (see
@@ -94,8 +100,10 @@ export type AiOwnedJdFieldUpdates = {
   benefits?: string;
   minExperience?: number;
   maxExperience?: number;
-  minSalary?: string;
-  maxSalary?: string;
+  exemptMinSalary?: string;
+  exemptMaxSalary?: string;
+  nonExemptMinSalary?: string;
+  nonExemptMaxSalary?: string;
   vacancies?: number;
   jobTypeId?: string | number;
   jobModeId?: string | number;
@@ -125,11 +133,17 @@ export const diffAiOwnedFields = (
   if (fresh.maxExperience != null && normalizeNumber(current.maxExperience) == null) {
     updates.maxExperience = Number(fresh.maxExperience);
   }
-  if (fresh.minSalary != null && normalizeNumber(current.minSalary) == null) {
-    updates.minSalary = String(fresh.minSalary);
+  if (fresh.exemptMinSalary != null && normalizeNumber(current.exemptMinSalary) == null) {
+    updates.exemptMinSalary = String(fresh.exemptMinSalary);
   }
-  if (fresh.maxSalary != null && normalizeNumber(current.maxSalary) == null) {
-    updates.maxSalary = String(fresh.maxSalary);
+  if (fresh.exemptMaxSalary != null && normalizeNumber(current.exemptMaxSalary) == null) {
+    updates.exemptMaxSalary = String(fresh.exemptMaxSalary);
+  }
+  if (fresh.nonExemptMinSalary != null && normalizeNumber(current.nonExemptMinSalary) == null) {
+    updates.nonExemptMinSalary = String(fresh.nonExemptMinSalary);
+  }
+  if (fresh.nonExemptMaxSalary != null && normalizeNumber(current.nonExemptMaxSalary) == null) {
+    updates.nonExemptMaxSalary = String(fresh.nonExemptMaxSalary);
   }
   if (fresh.vacancies != null && normalizeNumber(current.vacancies) == null) {
     updates.vacancies = Number(fresh.vacancies);

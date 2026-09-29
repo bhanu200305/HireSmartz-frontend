@@ -8,7 +8,6 @@ type BuildSaveDetailsArgs = {
     locationId?: string | number;
     shiftId?: string;
     modeId?: string;
-    isExempted?: boolean;
     requirements?: string;
   };
   offices?: TenantOffice[];
@@ -121,13 +120,6 @@ export const buildSaveJobDetailsPayload = ({
       source: suggestionSourceFor(skill_id, 'optional', suggestedSkills),
     }));
 
-  const isExempted =
-    typeof data.isExempted === 'boolean'
-      ? data.isExempted
-      : data.exemptionStatus === true ||
-        String(data.exemptionStatus) === 'true' ||
-        Number(data.exemptionStatus) === 1;
-
   return {
     job_title_id: uuidOrNull(data.jobTitle),
     department_id: uuidOrNull(data.department),
@@ -144,8 +136,10 @@ export const buildSaveJobDetailsPayload = ({
     vacancies: data.openings ?? null,
     min_experience_req: data.minExperience ?? null,
     max_experience_req: data.maxExperience ?? null,
-    lower_salary_range: toIntOrNull(data.minSalary),
-    upper_salary_range: toIntOrNull(data.maxSalary),
+    exempt_lower_salary_range: toIntOrNull(data.exemptMinSalary),
+    exempt_upper_salary_range: toIntOrNull(data.exemptMaxSalary),
+    non_exempt_lower_salary_range: toIntOrNull(data.nonExemptMinSalary),
+    non_exempt_upper_salary_range: toIntOrNull(data.nonExemptMaxSalary),
     referral_bonus: toIntOrNull(data.referralBonus),
     responsibilities: data.responsibilities || null,
     requirements: data.requirements || null,
@@ -154,7 +148,6 @@ export const buildSaveJobDetailsPayload = ({
     education_preference_id: uuidOrNull(data.educationPreference),
     use_culture_intro: Boolean(data.useCultureIntro),
     language_ids: toIdList(data.languages).filter(isUuid),
-    is_exempted: Boolean(isExempted),
     locations,
     skills: [...mandatory, ...optional],
   };

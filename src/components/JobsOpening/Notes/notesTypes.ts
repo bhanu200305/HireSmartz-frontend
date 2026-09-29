@@ -3,6 +3,8 @@ export type CandidateNoteItem = {
   content: string;
   parentType?: string;
   createdAt?: string;
+  /** Set only once a note has actually been edited (job-service's `modified_at`, null until then) — drives the "(edited)" label. */
+  editedAt?: string;
   authorName: string;
   authorRole?: string;
   // A user id, whatever shape the source service actually uses — a UUID
