@@ -136,6 +136,9 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
       lastName: lastName.trim() || undefined,
       emailId: email.trim(),
       contactNo: toE164(countryCode, phone),
+      // A recruiter adding someone by hand — without this the candidate's
+      // Source stayed empty ("N/A"), unlike QR and bulk-upload candidates.
+      source: 'recruiter_upload',
     }).unwrap();
 
     showToast({

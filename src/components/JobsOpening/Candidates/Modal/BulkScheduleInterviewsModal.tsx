@@ -4,10 +4,10 @@ import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 import { useListCandidateInterviewRoundsQuery } from '../../../../api/candidate-service/Candidates/interviewRounds';
 import { bucketForStatus, resolveCurrentRound } from '../roundProgress';
+import { interviewTypeForRound } from '../roundPipeline';
 import {
   useBulkCreateBookingsMutation,
   type CreateBookingRequest,
-  type InterviewType,
 } from '../../../../api/interview-service/client';
 import type { CandidateView } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
 import { candidateDisplayName } from '../candidateDisplay';
@@ -27,14 +27,6 @@ type BulkScheduleInterviewsModalProps = {
   candidates: CandidateView[];
   jobId: string | null;
   onScheduled?: () => void;
-};
-
-/** Same inference CandidateDetails.tsx uses for its per-round booking. */
-const interviewTypeForRound = (roundName: string): InterviewType => {
-  const name = roundName.toLowerCase();
-  if (name.includes('panel')) return 'panel';
-  if (name.includes('video')) return 'ai_video';
-  return 'audio_screening';
 };
 
 type RowState =
@@ -73,7 +65,8 @@ const CandidateRoundRow = ({
         job_id: jobId,
         round_id: current.round_id,
         sequence_no: current.sequence,
-        interview_type: interviewTypeForRound(current.round_name),
+        // Shared with CandidateDetails.tsx's single Create Booking.
+        interview_type: interviewTypeForRound(current),
         interviewer_id: null,
         immediate: false,
         // Without this, interview-service has no way to report this

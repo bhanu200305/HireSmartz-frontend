@@ -126,10 +126,10 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
         onClose={onClose}
         title="Send Email"
         subtitle={`${candidates.length} candidate${candidates.length === 1 ? '' : 's'} selected`}
-        modalProps={{ width: 640 }}
+        modalProps={{ width: 520 }}
       >
         {results.length === 0 ? (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <div>
               <label htmlFor="bulk-email-subject" className="mb-1 block text-sm text-gray-800">
                 Subject <span className="required-asterisk">*</span>
@@ -166,7 +166,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
                   if (bodyError) setBodyError(null);
                 }}
                 placeholder="Type your message"
-                rows={8}
+                rows={5}
                 className="resize-y rounded-lg text-sm"
               />
               {bodyError && <p className="text-red-500 text-sm px-2 py-1">{bodyError}</p>}

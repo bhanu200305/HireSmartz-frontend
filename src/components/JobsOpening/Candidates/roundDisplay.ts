@@ -1,6 +1,6 @@
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 
-// Shared by PipelineBoard.tsx (the pipeline cards) and CandidateDetails.tsx
+// Shared by RoundSidebarItem.tsx (the Assessment round tabs) and CandidateDetails.tsx
 // (the round drill-down a card click opens) so a round is never labeled one
 // thing on the card and something else once you're inside it — both used to
 // compute this independently ("Resume Screening" on the card vs. the raw

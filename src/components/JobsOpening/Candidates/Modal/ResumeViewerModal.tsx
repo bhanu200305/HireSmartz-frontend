@@ -1,16 +1,15 @@
-import { useEffect, useState } from 'react';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Loader } from '../../../shared/ui/loader';
-import { useGetCandidateResumeDownloadQuery } from '../../../../api/candidate-service/Candidates/scoring';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
+import { useResumeBlobUrl } from '../useResumeBlobUrl';
 
 // Views the candidate's resume IN PLACE instead of downloading it.
 //
 // `GET /candidates/{id}/resume` returns a short-lived presigned S3 URL whose
 // stored `Content-Disposition` is `attachment` — pointing a link or
 // `window.open` at it makes the browser download the file rather than render
-// it. So the bytes are fetched here and handed to an <iframe> as a `blob:`
-// URL, which the browser's built-in PDF viewer renders inline.
+// it. So the bytes are fetched (useResumeBlobUrl) and handed to an <iframe>
+// as a `blob:` URL, which the browser's built-in PDF viewer renders inline.
 //
 // The fetch is cross-origin (S3), so it only succeeds if the bucket's CORS
 // policy allows this origin for GET. When it doesn't — or the file is a
@@ -31,46 +30,12 @@ const ResumeViewerModal = ({
   candidateId,
   candidateName,
 }: ResumeViewerModalProps) => {
-  const { data, isFetching, error } = useGetCandidateResumeDownloadQuery(candidateId, {
-    skip: !open,
-  });
-  const downloadUrl = data?.download_url ?? null;
-
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [inlineFailed, setInlineFailed] = useState(false);
+  const { downloadUrl, blobUrl, inlineFailed, isFetching, error } = useResumeBlobUrl(
+    candidateId,
+    open
+  );
 
   const downloadName = `${candidateName.replace(/[^\w.-]+/g, '_') || 'candidate'}-resume.pdf`;
-
-  useEffect(() => {
-    if (!downloadUrl) return;
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    setBlobUrl(null);
-    setInlineFailed(false);
-
-    fetch(downloadUrl)
-      .then((res) => {
-        if (!res.ok) throw new Error(`resume fetch failed: ${res.status}`);
-        return res.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        // S3 sometimes serves resumes as application/octet-stream, which an
-        // <iframe> won't render — retype the blob as PDF so the viewer opens.
-        const pdfBlob =
-          blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
-        objectUrl = URL.createObjectURL(pdfBlob);
-        setBlobUrl(objectUrl);
-      })
-      .catch(() => {
-        if (!cancelled) setInlineFailed(true);
-      });
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [downloadUrl]);
 
   return (
     <AntdCommonModal

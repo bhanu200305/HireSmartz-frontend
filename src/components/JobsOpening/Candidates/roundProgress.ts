@@ -1,6 +1,6 @@
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 
-// Shared between PipelineBoard.tsx (visual pipeline) and
+// Shared between roundPipeline.ts / RoundSidebarItem.tsx (Assessment round tabs) and
 // CandidateDetails.tsx (the ADVANCE button's disabled state) — one
 // definition of "what round is this candidate really on" and "is that
 // round's real-world outcome already known", so the two can never disagree

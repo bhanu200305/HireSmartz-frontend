@@ -39,7 +39,8 @@ const toNoteItem = (note: RecruiterNoteView, currentUserId?: string | null): Can
   content: note.note,
   parentType: 'CANDIDATE',
   createdAt: note.created_at,
-  authorName: currentUserId && note.author_id === currentUserId ? 'You' : 'Team member',
+  authorName:
+    currentUserId && note.author_id === currentUserId ? 'You' : (note.author_name ?? 'Team member'),
   authorId: note.author_id,
   contextLabel: 'Candidate Note',
 });

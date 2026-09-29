@@ -34,7 +34,7 @@ import type { CandidateView } from '../../../../api/candidate-service/Candidates
 //   "Send Invite" action (`POST /candidates/{id}/send-invite`,
 //   send_round_invite.py's own docstring: "advance/skip alone do not do
 //   this"), and today it only exists single-candidate, in
-//   `PipelineBoard.tsx`'s Pipeline tab — there is no bulk-send-invite
+//   the Assessment tab's per-round actions — there is no bulk-send-invite
 //   endpoint, so it can't be offered from here. (Earlier revisions of this
 //   comment/the confirm copy below claimed advance auto-schedules the next
 //   round — that stopped being true once send-invite became a required,

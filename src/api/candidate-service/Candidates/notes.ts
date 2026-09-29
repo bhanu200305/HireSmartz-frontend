@@ -15,6 +15,8 @@ export type RecruiterNoteView = {
   id: string;
   candidate_id: string;
   author_id: string;
+  /** Resolved server-side; null when the author can't be looked up. */
+  author_name: string | null;
   note: string;
   created_at: string;
 };

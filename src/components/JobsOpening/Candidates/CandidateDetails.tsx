@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Rate, Select, Tabs, Tooltip } from 'antd';
@@ -44,6 +44,7 @@ import {
   useRequestResumeUploadMutation,
 } from '../../../api/candidate-service/Candidates/scoring';
 import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candidates/notes';
+import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
 import { candidateStatusColor } from './candidateDisplay';
 import {
   useCreateBookingMutation,
@@ -70,7 +71,27 @@ import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import ResumeReviewModal from './Modal/ResumeReviewModal';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import ResumeViewerModal from './Modal/ResumeViewerModal';
-import PipelineBoard from './PipelineBoard';
+import RoundSidebarItem from './RoundSidebarItem';
+import RoundArtifactsModal from './Modal/RoundArtifactsModal';
+import PanelInterviewersModal from './Modal/PanelInterviewersModal';
+import {
+  summarisePipeline,
+  isResumeScored,
+  hasRoundRecordings,
+  canManageRoundInterviewers,
+  HUMAN_SCORE_MAX,
+  humanScoreOutOf10,
+  interviewTypeForRound,
+} from './roundPipeline';
+import ResumeInlinePreview from './ResumeInlinePreview';
+import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
+import {
+  idsMatch,
+  tenantJobTitleFormId,
+  useListTenantDepartmentJobTitlesQuery,
+  useListTenantJobTitleCatalogueQuery,
+} from '../../../api/organization-service/Tenants/jobTitles';
 import { roundLabel, formatRoundStatus, formatCallIntent } from './roundDisplay';
 import {
   resolveCurrentRound,
@@ -112,8 +133,21 @@ import {
 // - Round-type-specific rich evaluation panels (AI transcript, avatar/voice
 //   call detail) — that's interview-service's data, not yet surfaced
 //   through candidate-service.
+//
+// Layout (2026-09-29) follows the old app's page shape again: a header card
+// with info / "Scored" (one row per real round) / actions columns, the
+// then the old four tabs — Candidate
+// Details (the former Resume tab, plus read-only candidate fields and an
+// inline preview), Assessment (old round sidebar + the same round detail the
+// round sidebar), Interview Scheduling (the former Interview
+// Summary tab) and SMS Communication.
 
-type TabKey = 'assessment' | 'resume' | 'summary' | 'sms';
+type TabKey = 'details' | 'assessment' | 'scheduling' | 'sms';
+
+// Sidebar entry shown when the pipeline has no resume-stage round of its own
+// (e.g. rounds not loaded / plan without one), so the Resume Assessment card
+// is always reachable from the Assessment tab.
+const RESUME_FALLBACK_KEY = 'resume-fallback';
 
 const candidateHeaderIconCircle =
   'inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--primary)] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40';
@@ -126,6 +160,22 @@ const formatDateTime = (value: string | null | undefined) =>
 
 const formatStatus = (status: string) =>
   status.replace(/[_-]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+
+/** "Scored" table cell — AI scores (resume, consistency, round) are out of
+ * 10, the recruiter's Human score out of 5 (`outOf`). `undefined` means the
+ * column doesn't apply to
+ * that round at all (e.g. no human score exists for the Intake Call's
+ * consistency check), `null` means it applies but nothing's recorded yet. */
+const formatScoredCell = (value: number | null | undefined, outOf = 10) =>
+  value === undefined ? '-' : value === null ? 'N/A' : `${value}/${outOf}`;
+
+/** One label/value line in the header card's info column. */
+const HeaderInfoRow = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div className="flex items-start gap-2 text-sm">
+    <p className="shrink-0 font-bold">{label}</p>
+    <div className="min-w-0 break-words text-gray-500">{children}</div>
+  </div>
+);
 
 /** interview-service's client throws its own `InterviewApiError` (message/
  * code as plain properties on the error itself), NOT the `{status, data}`
@@ -243,16 +293,18 @@ const CandidateDetails = () => {
 
   // Deep link from the post-interview "Complete Full Feedback" flow
   // (InterviewLiveKit.tsx's handleFeedbackFullSelect, ?tab=summary) — lands
-  // the interviewer straight on Interview Summary instead of always
-  // defaulting to Assessment. Read once via useState's lazy initializer so
-  // the page never flashes the wrong tab before switching. `'3'` covers a
-  // legacy numeric value that predates this page's tab strip being rewritten
-  // to string keys (kept in case anything already-sent still links with it).
+  // the interviewer straight on the scores/feedback tab (now "Interview
+  // Scheduling") instead of always defaulting to Assessment. Read once via
+  // useState's lazy initializer so the page never flashes the wrong tab
+  // before switching. `'3'` covers a legacy numeric value (ActivityFeed.tsx
+  // still sends it); `summary`/`resume` are the pre-2026-09-29 tab keys,
+  // mapped onto the tabs that now hold that content.
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     const tabParam = searchParams.get('tab');
-    const validTabs: TabKey[] = ['assessment', 'resume', 'summary', 'sms'];
+    const validTabs: TabKey[] = ['details', 'assessment', 'scheduling', 'sms'];
     if (tabParam && validTabs.includes(tabParam as TabKey)) return tabParam as TabKey;
-    if (tabParam === '3') return 'summary';
+    if (tabParam === 'summary' || tabParam === '3') return 'scheduling';
+    if (tabParam === 'resume') return 'details';
     return 'assessment';
   });
   const [statusModal, setStatusModal] = useState<ChangeCandidateStatusMode | null>(null);
@@ -262,14 +314,25 @@ const CandidateDetails = () => {
   const [isResumeReviewOpen, setIsResumeReviewOpen] = useState(false);
   const [isResumeViewerOpen, setIsResumeViewerOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [selectedRound, setSelectedRound] = useState<CandidateInterviewRoundView | null>(null);
+  // The round picked in the Assessment tab's sidebar. Stored as picked (and
+  // updated optimistically after Create Booking), but read through
+  // `selectedRound` below, which swaps in the latest polled copy of the same
+  // round so the detail panel never lags the sidebar's live status.
+  const [pickedRound, setSelectedRound] = useState<CandidateInterviewRoundView | null>(null);
+  const [isResumeFallbackSelected, setIsResumeFallbackSelected] = useState(false);
+  // Round-card actions that now live in the round detail's action row.
+  const [artifactsModalFor, setArtifactsModalFor] = useState<CandidateInterviewRoundView | null>(
+    null
+  );
+  const [interviewersModalFor, setInterviewersModalFor] =
+    useState<CandidateInterviewRoundView | null>(null);
   // Hiring Panel's reference question list defaults open (it's the main
   // reason a panelist opens this card) but can be collapsed once reviewed.
   const [isPanelQuestionsOpen, setIsPanelQuestionsOpen] = useState(true);
   const [isCreatingBooking, setIsCreatingBooking] = useState(false);
   // PANEL round interviewer picker, inline above Create Booking — seeded
   // from whatever's already saved on the round (e.g. set earlier from
-  // PipelineBoard's own Panel Interviewers picker) whenever the selected
+  // the action row's Set Interviewers modal) whenever the selected
   // round changes, below.
   const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<string[]>([]);
   // Which attempt's booking the "Questions asked" card (and its Reschedule
@@ -285,16 +348,16 @@ const CandidateDetails = () => {
   const [isRescheduleConfirmOpen, setIsRescheduleConfirmOpen] = useState(false);
   // Which round the confirm modal/mutation actually act on — deliberately
   // separate from `selectedRound`. The Call Outcome card's own button sets
-  // this to `selectedRound` (same round already open), but PipelineBoard's
+  // this to `selectedRound` (same round already open), but the reschedule
   // per-card "Request reschedule" button needs to trigger the exact same
-  // flow WITHOUT first navigating into that round's drill-down view.
+  // flow is shared by every entry point.
   const [rescheduleRound, setRescheduleRound] = useState<CandidateInterviewRoundView | null>(null);
   // PANEL reschedules get an extra "keep the same roster, or pick a new
   // one?" step the generic ConfirmationModal below doesn't ask — backend
   // carries the original roster forward automatically on an empty body, so
   // this is purely a UI decision point, not something the API requires an
   // answer to. `rescheduleRound.round_type`, not `isPanelRound` — this can
-  // open straight from a PipelineBoard card for a round that isn't the
+  // open for a round that isn't the
   // currently drilled-into `selectedRound` at all.
   const isRescheduleRoundPanel = rescheduleRound?.round_type === 'PANEL';
   const [rescheduleStep, setRescheduleStep] = useState<'choice' | 'picker'>('choice');
@@ -326,21 +389,66 @@ const CandidateDetails = () => {
     skipPollingIfUnfocused: true,
   });
 
+  // `candidate.source` is the raw master-data code (e.g. "qr_self_apply");
+  // shown as its label from candidate-service's own list, same lookup
+  // CandidatesListing.tsx uses, falling back to the code itself.
+  const { data: applicationSources = [] } = useListApplicationSourcesQuery();
+  const sourceLabel = candidate?.source
+    ? (applicationSources.find((s) => s.code === candidate.source)?.label ?? candidate.source)
+    : null;
+
   const { data: jobOpeningData } = useGetJobOpeningByIdQuery(
     { jobOpeningId: parsedJobId },
     { skip: !parsedJobId }
   );
 
-  const { data: rawRounds = [] } = useListCandidateInterviewRoundsQuery(candidateId ?? '', {
-    skip: !candidateId,
-    // A round's own status (e.g. PANEL flipping to "Scheduled" once the
-    // candidate actually books a time after every interviewer connects
-    // their calendar) changes from a backend event chain, not from
-    // anything clicked on this screen — poll so the Pipeline board catches
-    // up without a manual refresh, same reasoning as useGetCandidateQuery.
-    pollingInterval: 20_000,
-    skipPollingIfUnfocused: true,
+  // Header's Job Title / Hiring Manager lines. job-service only stores ids
+  // for both, so names are resolved the same way ViewJobDetails.tsx does:
+  // tenant job-title catalogue (falling back to the department's own
+  // titles) and the tenant user list behind the Hiring Manager dropdown.
+  const tenantId = useSessionTenantId();
+  const jobTitleId = jobOpeningData?.data?.jobTitle?.[0]?.id;
+  const jobDepartmentId = jobOpeningData?.data?.department?.[0]?.id;
+  const { data: jobTitleCatalogue = [] } = useListTenantJobTitleCatalogueQuery(tenantId ?? '', {
+    skip: !tenantId || !jobTitleId,
   });
+  const { data: departmentJobTitles = [] } = useListTenantDepartmentJobTitlesQuery(
+    { tenantId: tenantId ?? '', departmentId: String(jobDepartmentId) },
+    { skip: !tenantId || !jobDepartmentId || !jobTitleId }
+  );
+  const jobTitleName = jobTitleId
+    ? jobTitleCatalogue.find((jt) => idsMatch(jt.job_title_id, jobTitleId))?.name ||
+      departmentJobTitles.find(
+        (jt) =>
+          idsMatch(tenantJobTitleFormId(jt), jobTitleId) ||
+          idsMatch(jt.org_job_title_id, jobTitleId)
+      )?.name ||
+      null
+    : null;
+  const hiringManagerIds = (jobOpeningData?.data?.hiringManagers ?? []).map(String);
+  const { jobOpeningDropdown: hiringManagerOptions } = useJobOpeningDropdown(
+    'HIRING_MANAGER',
+    'view',
+    undefined,
+    hiringManagerIds.length === 0
+  );
+  const hiringManagerNames = hiringManagerOptions
+    .filter((option) => hiringManagerIds.some((id) => idsMatch(option.id, id)))
+    .map((option) => option.name);
+
+  const { data: rawRounds = [], isSuccess: roundsLoaded } = useListCandidateInterviewRoundsQuery(
+    candidateId ?? '',
+    {
+      skip: !candidateId,
+      // A round's own status (e.g. PANEL flipping to "Scheduled" once the
+      // candidate actually books a time after every interviewer connects
+      // their calendar) changes from a backend event chain, not from
+      // anything clicked on this screen — poll so the Pipeline board catches
+      // up without a manual refresh, same reasoning as useGetCandidateQuery.
+      pollingInterval: 20_000,
+      skipPollingIfUnfocused: true,
+    }
+  );
   // The instant-call flow (Intake Call first, resume within 24h) and the
   // resume-first flow get the SAME plan-level round order from the backend —
   // it places the resume stage at the job plan's single Resume Round
@@ -349,11 +457,59 @@ const CandidateDetails = () => {
   // migration 0023 — the per-candidate fact for this), so an instant-call
   // candidate's pipeline reads Intake Call → Resume Review.
   const rounds = orderRoundsForFlow(rawRounds).filter((r) => !isStaleResumeRound(r));
+  const hasResumeStageRound = rounds.some(isResumeStageRound);
+
+  // Latest polled copy of the picked round, keeping the optimistic booking /
+  // interviewer fields `handleCreateBooking` set until the poll catches up.
+  const liveRound = pickedRound ? rounds.find((r) => r.id === pickedRound.id) : undefined;
+  const selectedRound = useMemo<CandidateInterviewRoundView | null>(() => {
+    if (!pickedRound) return null;
+    if (!liveRound) return pickedRound;
+    return {
+      ...liveRound,
+      interview_booking_id: liveRound.interview_booking_id ?? pickedRound.interview_booking_id,
+      interviewer_ids:
+        (liveRound.interviewer_ids ?? []).length > 0
+          ? liveRound.interviewer_ids
+          : pickedRound.interviewer_ids,
+    };
+  }, [pickedRound, liveRound]);
+
+  // Assessment tab always has something selected in its sidebar, like the
+  // old app (which opened on Resume Screening): the first round, or the
+  // Resume Assessment fallback entry when there's no resume-stage round.
+  // Only runs while nothing is picked, so it never overrides a real choice.
+  useEffect(() => {
+    if (activeTab !== 'assessment' || !roundsLoaded) return;
+    // The fallback entry only exists while there's no resume-stage round.
+    if (isResumeFallbackSelected && hasResumeStageRound) {
+      setIsResumeFallbackSelected(false);
+      return;
+    }
+    if (selectedRound || isResumeFallbackSelected) return;
+    if (!hasResumeStageRound) {
+      setIsResumeFallbackSelected(true);
+    } else if (rounds.length > 0) {
+      setSelectedRound(rounds[0]);
+    }
+  }, [
+    activeTab,
+    roundsLoaded,
+    selectedRound,
+    isResumeFallbackSelected,
+    hasResumeStageRound,
+    rounds,
+  ]);
   const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId ?? '', {
     skip: !candidateId,
   });
+  // Same args as CandidateRecruiterNotesPanel's own list query (limit 100),
+  // so both share one cached request. Used for the header Notes badge count
+  // (the API returns no total, so the count is the list's length — was
+  // `limit: 1`, which capped the badge at 1) and the latest note shown on
+  // the Interview Scheduling tab (`items[0]`).
   const { data: notesData } = useListRecruiterNotesQuery(
-    { candidateId: candidateId ?? '', limit: 1 },
+    { candidateId: candidateId ?? '', limit: 100 },
     { skip: !candidateId }
   );
   const [deleteResumeReview] = useDeleteResumeReviewMutation();
@@ -362,7 +518,14 @@ const CandidateDetails = () => {
   const [requestResumeUpload, { isLoading: isRequestingResumeUpload }] =
     useRequestResumeUploadMutation();
   const [createBooking] = useCreateBookingMutation();
-  const isPanelRound = Boolean(selectedRound?.round_name?.toLowerCase().includes('panel'));
+  // `round_type` first (candidate-service's real classification), round
+  // name only for an unclassifiable round — same rule as
+  // `interviewTypeForRound`.
+  const isPanelRound = selectedRound
+    ? selectedRound.round_type
+      ? selectedRound.round_type === 'PANEL'
+      : Boolean(selectedRound.round_name?.toLowerCase().includes('panel'))
+    : false;
   // Job Service's question bank, grouped by round — matched back to the
   // SELECTED round by `sequence`, not `round_id`: a round TYPE (e.g.
   // "Hiring Panel") can repeat more than once in one job's plan and every
@@ -378,7 +541,7 @@ const CandidateDetails = () => {
   // Needed both for the Create Booking picker (pre-booking, driven off
   // `selectedRound`) and the "choose different interviewers" reschedule
   // step (post-booking, can be driven off a DIFFERENT round entirely —
-  // `rescheduleRound` — opened straight from a PipelineBoard card without
+  // `rescheduleRound` — opened for a round without
   // ever drilling into that round). Eligibility itself is candidate-scoped,
   // not round-scoped, so one query correctly serves both.
   const showsReschedulePicker =
@@ -649,13 +812,16 @@ const CandidateDetails = () => {
     if (!candidateId) return;
     try {
       await deleteResumeReview(candidateId).unwrap();
-      showToast({ message: 'Review removed.', type: 'success' });
+      showToast({ message: 'Scoring removed.', type: 'success' });
       // Explicit on top of `deleteResumeReview`'s own tag invalidation —
       // same belt-and-suspenders reasoning as `refetchCandidate` after
       // saving a review below.
       refetchCandidate();
     } catch (e) {
-      showToast({ message: getCandidateErrorMessage(e, 'Could not remove review'), type: 'error' });
+      showToast({
+        message: getCandidateErrorMessage(e, 'Could not remove scoring'),
+        type: 'error',
+      });
     }
   };
 
@@ -669,14 +835,9 @@ const CandidateDetails = () => {
     if (isPanelRound && selectedInterviewerIds.length === 0) return;
 
     setIsCreatingBooking(true);
-    const name = selectedRound.round_name?.toLowerCase() ?? '';
-    const interviewType = name.includes('panel')
-      ? 'panel'
-      : name.includes('video')
-        ? 'ai_video'
-        : 'audio_screening';
+    const interviewType = interviewTypeForRound(selectedRound);
     try {
-      // Saved to the round FIRST — same data `PipelineBoard`'s own Panel
+      // Saved to the round FIRST — same data the Set Interviewers
       // Interviewers picker writes — so the selection is a real, visible
       // fact about this round (wherever `interviewer_ids` is already shown)
       // rather than something only this one booking call ever learns about.
@@ -764,7 +925,7 @@ const CandidateDetails = () => {
   // duplicate that check inline via a `round_name` string match instead of
   // reusing it, which was also the older, fragile version of the check
   // (see that helper's own doc comment for why `round_type` replaced it).
-  // Reusing the one shared definition means this file's drill-down and
+  // Reusing the one shared definition means this file's round detail and
   // `planHasIntakeCall`/`currentRoundInIntakePair` below can never disagree
   // about which round is the Intake Call.
   const selectedRoundIsIntakeCall = Boolean(selectedRound && isIntakeCallRound(selectedRound));
@@ -780,14 +941,14 @@ const CandidateDetails = () => {
   );
   // Same lookup the Scores tab's summary table uses per round (`scores.find`
   // inside `summariseRound`, below) — kept as its own value here so the
-  // round drill-down can show this round's own AI Assessment card without
+  // round detail can show this round's own AI Assessment card without
   // duplicating that table's chart/status branching, which this card
   // doesn't need.
   const selectedRoundScore = selectedRound
     ? scores.find((s) => s.candidate_interview_round_id === selectedRound.id)
     : undefined;
   // Same "score already sitting here means reviewed and ready to move on"
-  // read as PipelineBoard.tsx's own version of this check — the resume
+  // read as roundPipeline.ts's `isResumeScored` — the resume
   // stage's status never flips off "to_be_scheduled"/"pending" on its own,
   // only an explicit Advance does, so a score present is what actually
   // means "ready", not the raw status text.
@@ -823,6 +984,12 @@ const CandidateDetails = () => {
   // plan hasn't loaded/has no rounds yet, which would otherwise trivially
   // satisfy "nothing outstanding".
   const allRoundsCompleted = rounds.length > 0 && currentRound === null;
+  // MARK AS SELECTED also appears once the candidate is ON their last round
+  // (2026-09-29 product decision) — no need to ADVANCE past it first.
+  // `rounds` is already in walk order (orderRoundsForFlow), so "last" is
+  // the final entry.
+  const isOnLastRound =
+    currentRound !== null && rounds.length > 0 && currentRound.id === rounds[rounds.length - 1].id;
 
   // Resume Review and the Intake Call are one unit at the head of any pipeline
   // that has an Intake Call round: the AI scores the resume, then the call's
@@ -838,6 +1005,8 @@ const CandidateDetails = () => {
     currentRound !== null && (isResumeStageRound(currentRound) || isIntakeCallRound(currentRound));
   const actionsLockedForIntakePair =
     planHasIntakeCall && currentRoundInIntakePair && consistencyScorePending;
+  const intakeLockReason =
+    'Unlocks once the Intake Call consistency check completes (comparing the call transcript against the resume).';
 
   // Interview Summary tab helper. The resume stage and the Intake Call round
   // never produce a `CandidateInterviewScore` — their real outputs are the AI
@@ -882,22 +1051,22 @@ const CandidateDetails = () => {
         outcomeLabel: checked ? 'Checked' : null,
       };
     }
-    // Both scores are 0-10 as of 2026-09-14 (score_interview_round.py's
-    // scale unification, matching resume/consistency scoring above — the
-    // recruiter's own review used to be capped at 0-5 by the <Rate> widget
-    // defaulting to 5 stars, since fixed to count={10}). Same scale now, so
-    // the bar height can scale off whichever score is present without a
-    // separate multiplier per source.
-    const pct =
-      recruiterOrAiScore != null ? Math.max(0, Math.min(100, recruiterOrAiScore * 10)) : 0;
+    // The AI score is 0-10; the recruiter's score is 1-5 stars (see
+    // roundPipeline.ts's HUMAN_SCORE_MAX) — converted to 0-10 before
+    // scaling the bar so both sources read on the same height scale.
+    const barScoreOutOf10 =
+      roundScore?.recruiter_score != null
+        ? humanScoreOutOf10(roundScore.recruiter_score)
+        : (roundScore?.score ?? null);
+    const pct = barScoreOutOf10 != null ? Math.max(0, Math.min(100, barScoreOutOf10 * 10)) : 0;
     // The AI score is never replaced by a recruiter score - the backend
     // deliberately keeps both (a disagreement is worth keeping, not
     // discarding) - so show both when both exist instead of picking one.
     const scoreText =
       roundScore?.score != null && roundScore?.recruiter_score != null
-        ? `AI: ${roundScore.score} / 10 · Recruiter: ${roundScore.recruiter_score} / 10`
+        ? `AI: ${roundScore.score} / 10 · Recruiter: ${roundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
         : roundScore?.recruiter_score != null
-          ? `Recruiter: ${roundScore.recruiter_score} / 10`
+          ? `Recruiter: ${roundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
           : roundScore?.score != null
             ? `AI: ${roundScore.score} / 10`
             : null;
@@ -909,10 +1078,82 @@ const CandidateDetails = () => {
       statusText: formatRoundStatus(round.status),
       outcomeLabel: roundScore
         ? roundScore.recruiter_score != null
-          ? 'Reviewed'
-          : 'Scored'
+          ? 'Recruiter scored'
+          : 'AI scored'
         : null,
     };
+  };
+
+  // Header card's "Scored" table — one row per real round, same per-round
+  // sources `summariseRound` reads (resume stage: AI resume score + the
+  // recruiter's resume review; Intake Call: the consistency check, which has
+  // no human counterpart; every other round: its AI score + recruiter score).
+  const scoredRows: {
+    key: string;
+    label: string;
+    ai: number | null;
+    human: number | null | undefined;
+    aiHint?: string;
+    /** Left out of the Overall Score average — see `overallScore` below. */
+    excludeFromOverall?: boolean;
+  }[] = [
+    ...(roundsLoaded && !hasResumeStageRound
+      ? [
+          {
+            key: RESUME_FALLBACK_KEY,
+            label: 'Resume Screening',
+            ai: candidate?.resume_score ?? null,
+            human: candidate?.resume_rating ?? null,
+          },
+        ]
+      : []),
+    ...rounds.map((round) => {
+      if (isResumeStageRound(round)) {
+        return {
+          key: round.id,
+          label: roundLabel(round),
+          ai: candidate?.resume_score ?? null,
+          human: candidate?.resume_rating ?? null,
+        };
+      }
+      if (isIntakeCallRound(round)) {
+        return {
+          key: round.id,
+          label: roundLabel(round),
+          ai: candidate?.consistency_score ?? null,
+          human: undefined,
+          aiHint: 'Resume consistency score (call transcript vs. resume)',
+          excludeFromOverall: true,
+        };
+      }
+      const roundScore = scores.find((s) => s.candidate_interview_round_id === round.id);
+      return {
+        key: round.id,
+        label: roundLabel(round),
+        ai: roundScore?.score ?? null,
+        human: roundScore?.recruiter_score ?? null,
+      };
+    }),
+  ];
+
+  // Assessment tab's round sidebar + summary bar (was the round-card row).
+  const pipeline = summarisePipeline(rounds, scores, candidate?.resume_score ?? null);
+
+  // "Overall Score" row — per column, the average of every round that has a
+  // score in that column (rounds with nothing recorded yet don't drag it
+  // down). The Intake Call's consistency check is left out: it's a
+  // transcript-vs-resume authenticity signal, not a performance score, and
+  // the Assessment tab's "Avg. score so far" excludes it for the same reason.
+  const averageOf = (values: (number | null | undefined)[]) => {
+    const scored = values.filter((v): v is number => typeof v === 'number');
+    return scored.length > 0
+      ? Number((scored.reduce((sum, v) => sum + v, 0) / scored.length).toFixed(1))
+      : null;
+  };
+  const overallRows = scoredRows.filter((row) => !row.excludeFromOverall);
+  const overallScore = {
+    ai: averageOf(overallRows.map((row) => row.ai)),
+    human: averageOf(overallRows.map((row) => row.human)),
   };
 
   if (candidateError) {
@@ -923,28 +1164,622 @@ const CandidateDetails = () => {
     );
   }
 
+  // The selected round's full detail (score, call outcome, reschedule
+  // history, questions, booking/calendar/recording actions). Rendered in
+  // the Assessment tab's right panel, for the round picked in its sidebar.
+  const roundDetailBody = selectedRound ? (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
+            {isResumeStage ? (
+              <LuFileText size={18} />
+            ) : isPanelRound ? (
+              <LuUsers size={18} />
+            ) : isAiVideoRound(selectedRound) ? (
+              <LuVideo size={18} />
+            ) : (
+              <LuMic size={18} />
+            )}
+          </span>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">{roundLabel(selectedRound)}</h3>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700">
+          {isResumeAwaitingAdvance
+            ? 'Score ready'
+            : formatRoundStatus(selectedBooking?.status ?? selectedRound.status)}
+        </span>
+      </div>
+
+      {isResumeStage ? (
+        // The resume stage is "upload a resume, get it scored" —
+        // there is no separate interview to schedule or book for
+        // it (send_round_invite.py/skip_interview_round.py both
+        // refuse this stage on the backend for the same reason).
+        // What actually belongs here is the resume's own AI score
+        // plus the recruiter's own review of it — previously only
+        // reachable from the Assessment tab, so adding one here
+        // never showed up on the "Resume Screening" pipeline card
+        // a recruiter actually clicks into.
+        <CommonCard>
+          <div className="p-4 grid gap-4 sm:grid-cols-3">
+            <div>
+              <div className="text-xs font-semibold uppercase text-gray-400">AI Score</div>
+              <div className="mt-2 text-2xl font-bold text-primary">
+                {candidate?.resume_score ?? '-'}
+              </div>
+              {candidate?.scoring_reason && (
+                <p className="mt-1 text-sm text-gray-600">{candidate.scoring_reason}</p>
+              )}
+            </div>
+            <div>
+              {/* Intake Call consistency — transcript-vs-resume authenticity
+                check, distinct from the AI Score beside it (that's the resume
+                judged against the job; this is whether the call sounds like
+                the same person). candidate-service started projecting both
+                fields onto CandidateView 2026-09-08 (see CandidateLifecycle.ts's
+                own note) — null here now genuinely means "not scored yet"
+                (ai-service hasn't reported one, or one of the two artifacts
+                — resume/call transcript — isn't in yet), not "field doesn't
+                exist." Doesn't have a "recruiter review" of its own the way
+                resume score does — it's a fraud signal to weigh, not something
+                a recruiter re-scores. */}
+              <div className="text-xs font-semibold uppercase text-gray-400">
+                Intake Call Consistency
+              </div>
+              <div className="mt-2 text-2xl font-bold text-primary">
+                {candidate?.consistency_score ?? '-'}
+              </div>
+              {candidate?.consistency_score_reason && (
+                <p className="mt-1 text-sm text-gray-600">{candidate.consistency_score_reason}</p>
+              )}
+            </div>
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-semibold uppercase text-gray-400">
+                  Recruiter Scoring
+                </div>
+                <Button
+                  className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700"
+                  onClick={() => setIsResumeReviewOpen(true)}
+                >
+                  {candidate?.resume_rating ? 'EDIT SCORING' : 'ADD SCORING'}
+                </Button>
+              </div>
+              {candidate?.resume_rating ? (
+                <>
+                  <Rate disabled value={candidate.resume_rating} className="mt-2" />
+                  {candidate.resume_review_comment && (
+                    <p className="mt-1 text-sm text-gray-600">{candidate.resume_review_comment}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteResumeReview()}
+                    className="mt-2 block text-xs font-semibold text-red-500 hover:underline cursor-pointer"
+                  >
+                    Remove scoring
+                  </button>
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-gray-400">No scoring yet.</p>
+              )}
+            </div>
+          </div>
+        </CommonCard>
+      ) : (
+        <>
+          {/* Scheduling actions sit directly under the round title — every
+              button a recruiter acts on here (book, connect calendar,
+              reschedule, upload audio) is reachable without scrolling past
+              the scores and question lists below. */}
+          <CommonCard>
+            <div className="flex flex-col gap-3 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 basis-64">
+                  <h4 className="font-semibold text-gray-900">Interview scheduling</h4>
+                  {selectedRound.interview_booking_id ? (
+                    <p className="mt-0.5 text-sm text-gray-600">
+                      This round has a booking. The candidate uses the booking link to choose a time{' '}
+                      {isPanelRound
+                        ? 'from the panel’s connected calendar.'
+                        : isAiVideoRound(selectedRound)
+                          ? 'from the available AI Video slots.'
+                          : isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound)
+                            ? 'from the available AI audio slots.'
+                            : 'from the available slots.'}
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-sm text-gray-600">
+                      Create a booking to start scheduling this round.
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
+                      selectedRound.interview_booking_id
+                        ? 'border border-green-200 bg-green-50 text-green-700'
+                        : 'bg-primary text-white'
+                    }`}
+                    disabled={
+                      Boolean(selectedRound.interview_booking_id) ||
+                      isCreatingBooking ||
+                      isSavingInterviewers ||
+                      (isPanelRound && selectedInterviewerIds.length === 0)
+                    }
+                    onClick={() => void handleCreateBooking()}
+                  >
+                    {isCreatingBooking || isSavingInterviewers
+                      ? 'CREATING…'
+                      : selectedRound.interview_booking_id
+                        ? 'INVITATION CREATED'
+                        : 'CREATE BOOKING'}
+                  </Button>
+                  {canManageRoundInterviewers(selectedRound) && (
+                    // Saves the panel roster straight to the round
+                    // (PanelInterviewersModal) — was the round card's
+                    // "Set interviewers ›" link.
+                    <Button
+                      className="rounded-full border border-primary-300 bg-white px-4 py-1.5 text-sm font-semibold text-primary-700"
+                      onClick={() => setInterviewersModalFor(selectedRound)}
+                    >
+                      {(selectedRound.interviewer_ids ?? []).length > 0
+                        ? `INTERVIEWERS (${(selectedRound.interviewer_ids ?? []).length})`
+                        : 'SET INTERVIEWERS'}
+                    </Button>
+                  )}
+                  {isPanelRound &&
+                    (showsOwnConnectCalendarAction && calendarGrantStatus?.connected ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 py-1.5 text-sm font-semibold text-green-700">
+                        Calendar Connected
+                        {calendarGrantStatus.email ? `: ${calendarGrantStatus.email}` : ''}
+                      </span>
+                    ) : (
+                      <Button
+                        className="rounded-full border border-primary-300 bg-white px-4 py-1.5 text-sm font-semibold text-primary-700"
+                        onClick={handleConnectCalendar}
+                      >
+                        CONNECT CALENDAR
+                      </Button>
+                    ))}
+                  {isPanelRound &&
+                    selectedBooking != null &&
+                    CONCLUDED_BOOKING_STATUSES.includes(selectedBooking.status) && (
+                      // Same eligibility interview-service's own
+                      // request-reschedule endpoint enforces for a
+                      // PANEL booking (already concluded) — mirrors
+                      // the Call Outcome card's button below, just
+                      // gated on booking status instead of
+                      // call_intent (PANEL has no call_intent).
+                      <Button
+                        className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-sm font-semibold text-primary-700 disabled:opacity-50"
+                        disabled={isRequestingReschedule}
+                        onClick={() => {
+                          setRescheduleRound(selectedRound);
+                          setIsRescheduleConfirmOpen(true);
+                        }}
+                      >
+                        {isRequestingReschedule ? 'Sending…' : 'Request reschedule'}
+                      </Button>
+                    )}
+                  {/* Offline-PANEL only — an online PANEL round already
+                    gets its recording automatically via LiveKit
+                    egress, so manually attaching one there would just
+                    create a second, conflicting artifact. Mirrors
+                    BookingDetailDrawer.tsx's own `isOfflinePanel`. */}
+                  {selectedRound.round_type === 'PANEL' &&
+                    selectedRound.interview_booking_id &&
+                    selectedBooking?.round_snapshot?.delivery_mode === 'offline' && (
+                      <>
+                        <input
+                          ref={audioFileInputRef}
+                          type="file"
+                          accept="audio/*"
+                          className="hidden"
+                          onChange={(e) => void handleAudioFileSelected(e)}
+                        />
+                        <Button
+                          className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
+                            hasRecording
+                              ? 'border border-green-200 bg-green-50 text-green-700'
+                              : 'border border-primary-300 bg-white text-primary-700'
+                          }`}
+                          disabled={isUploadingAudio || hasRecording}
+                          onClick={() => audioFileInputRef.current?.click()}
+                        >
+                          {isUploadingAudio
+                            ? 'UPLOADING…'
+                            : hasRecording
+                              ? 'RECORDING UPLOADED'
+                              : 'UPLOAD AUDIO'}
+                        </Button>
+                      </>
+                    )}
+                  {selectedRoundIsVoiceCall && selectedBooking?.call_intent != null && (
+                    // Only offered once the call has actually
+                    // concluded (a `call_intent` exists) — matches
+                    // interview-service's own eligibility check on
+                    // POST /bookings/{id}/request-reschedule, so this
+                    // is never offered somewhere the backend would
+                    // just reject it. Lives in this top action row
+                    // (not the Call Outcome card) so it needs no scrolling.
+                    <Button
+                      className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-sm font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+                      disabled={isRequestingReschedule}
+                      onClick={() => {
+                        setRescheduleRound(selectedRound);
+                        setIsRescheduleConfirmOpen(true);
+                      }}
+                    >
+                      {isRequestingReschedule ? 'Sending…' : 'Create Booking (Reschedule Call)'}
+                    </Button>
+                  )}
+                  {/* Every attempt's recording + transcript and the
+                      candidate's own feedback (RoundArtifactsModal) — was the
+                      round card's "View recording & transcript ›" link.
+                      Always shown on interview rounds so recruiters know
+                      where to find it; disabled until the round has been
+                      booked or attempted (nothing can be recorded before). */}
+                  <Tooltip
+                    title={
+                      hasRoundRecordings(selectedRound)
+                        ? undefined
+                        : 'Available once this round has been booked'
+                    }
+                  >
+                    <span className="inline-flex">
+                      <Button
+                        className="rounded-full border border-primary-300 bg-white px-4 py-1.5 text-sm font-semibold text-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={!hasRoundRecordings(selectedRound)}
+                        onClick={() => setArtifactsModalFor(selectedRound)}
+                      >
+                        VIEW RECORDING &amp; TRANSCRIPT
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </div>
+              </div>
+              {isPanelRound && !selectedRound.interview_booking_id && (
+                <PanelInterviewerPicker
+                  id="panel-interviewer-select"
+                  value={selectedInterviewerIds}
+                  onChange={setSelectedInterviewerIds}
+                  options={eligibleInterviewers ?? []}
+                  loading={isLoadingInterviewers}
+                  calendarConnectedById={interviewerCalendarConnectedById}
+                  helperText="Pick at least one panel interviewer to enable Create Booking."
+                />
+              )}
+            </div>
+          </CommonCard>
+
+          {(selectedRoundScore || selectedRoundIsVoiceCall || selectedRoundIsIntakeCall) && (
+            // Short summary cards side by side instead of stacked full-width.
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
+              {selectedRoundScore && (
+                // The round's own AI/recruiter score, including its
+                // section breakdown and reasoning — previously only
+                // shown squeezed into the Scores tab's summary table
+                // (a cross-round comparison, not built to hold a full
+                // paragraph), which blew out that table's row height.
+                // Belongs here, in the round it's actually about.
+                <CommonCard>
+                  <div className="p-4 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-gray-900">AI Assessment</h4>
+                      <Button
+                        className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700"
+                        onClick={() =>
+                          setScoreModalFor({
+                            scoreId: selectedRoundScore.id,
+                            roundName: roundLabel(selectedRound),
+                            currentScore: selectedRoundScore.recruiter_score,
+                            currentReason: selectedRoundScore.recruiter_score_reason,
+                          })
+                        }
+                      >
+                        {selectedRoundScore.recruiter_score != null
+                          ? 'EDIT RECRUITER SCORE'
+                          : 'RATE THIS ROUND'}
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
+                      {selectedRoundScore.score == null &&
+                      selectedRoundScore.recruiter_score == null ? (
+                        <span className="text-2xl font-bold text-primary">-</span>
+                      ) : (
+                        <>
+                          {selectedRoundScore.score != null && (
+                            <div>
+                              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                                AI
+                              </span>{' '}
+                              <span className="text-2xl font-bold text-primary">
+                                {selectedRoundScore.score} / 10
+                              </span>
+                            </div>
+                          )}
+                          {selectedRoundScore.recruiter_score != null && (
+                            <div>
+                              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                                Recruiter
+                              </span>{' '}
+                              <span className="text-2xl font-bold text-primary">
+                                {selectedRoundScore.recruiter_score} / {HUMAN_SCORE_MAX}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {selectedRoundScore.section_scores &&
+                      selectedRoundScore.section_scores.length > 0 && (
+                        <div className="text-xs text-gray-500">
+                          {selectedRoundScore.section_scores
+                            .map((s) => `${s.key}: ${s.score}/10`)
+                            .join(' · ')}
+                        </div>
+                      )}
+                    {selectedRoundScore.scoring_reason && (
+                      <p className="text-sm text-gray-600">{selectedRoundScore.scoring_reason}</p>
+                    )}
+                  </div>
+                </CommonCard>
+              )}
+
+              {selectedRoundIsVoiceCall && (
+                // What actually happened on the call — completed,
+                // asked to reschedule, said not interested, never
+                // picked up, or cut off with no clear reason. Backed by
+                // interview-service's own `GET /bookings/{id}`
+                // (`selectedBooking`, already fetched above), not
+                // candidate-service — this field doesn't exist there.
+                <CommonCard>
+                  <div className="p-4">
+                    <div className="text-xs font-semibold uppercase text-gray-400">
+                      Call Outcome
+                    </div>
+                    <div className="mt-2 text-lg font-bold text-primary">
+                      {formatCallIntent(selectedBooking?.call_intent ?? null)}
+                    </div>
+                    {selectedBooking?.call_intent_reason ? (
+                      <p className="mt-1 text-sm text-gray-600">
+                        {selectedBooking.call_intent_reason}
+                      </p>
+                    ) : selectedBooking?.call_intent == null ? (
+                      <p className="mt-1 text-sm text-gray-400">
+                        Not available yet — updates once this call has ended.
+                      </p>
+                    ) : null}
+                  </div>
+                </CommonCard>
+              )}
+
+              {selectedRoundIsIntakeCall && (
+                // Same transcript-vs-resume authenticity signal shown on
+                // the Resume stage card (see that card's own comment) —
+                // surfaced here too since it's specifically about THIS
+                // round's call, not just the resume. Recruiters who land
+                // on the Intake Call round directly (its Pipeline card,
+                // not the Resume one) should see it without a detour.
+                <CommonCard>
+                  <div className="p-4">
+                    <div className="text-xs font-semibold uppercase text-gray-400">
+                      Resume Consistency
+                    </div>
+                    <div className="mt-2 text-2xl font-bold text-primary">
+                      {candidate?.consistency_score ?? '-'}
+                    </div>
+                    {candidate?.consistency_score_reason ? (
+                      <p className="mt-1 text-sm text-gray-600">
+                        {candidate.consistency_score_reason}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm text-gray-400">
+                        Not available yet; reported by ai-service once it has both the resume and
+                        this call&apos;s transcript.
+                      </p>
+                    )}
+                  </div>
+                </CommonCard>
+              )}
+            </div>
+          )}
+
+          {selectedRoundIsVoiceCall && (bookingHistory?.length ?? 0) > 1 && (
+            // Only shown once there's actually more than one
+            // attempt — a single-entry "history" would just repeat
+            // the Call Outcome card above. `bookingHistory` is
+            // oldest-first; render it newest-first so the most
+            // recent (and most relevant) attempt reads first.
+            <CommonCard>
+              <div className="p-4">
+                <div className="text-xs font-semibold uppercase text-gray-400">
+                  Reschedule History
+                </div>
+                <p className="mt-1 text-xs text-gray-400">
+                  Select an attempt to view its Questions Asked below.
+                </p>
+                <div className="mt-3 flex flex-col gap-3">
+                  {[...(bookingHistory ?? [])].reverse().map((attempt, index) => {
+                    // Positional, not a real field — `BookingView`
+                    // doesn't expose `attempt_of`. `bookingHistory`
+                    // is oldest-first before this reverse(), so the
+                    // LAST entry after reversing is always the
+                    // original (never itself a reschedule).
+                    const isOriginal = index === (bookingHistory?.length ?? 1) - 1;
+                    const actionTime = formatDateTime(attempt.created_at);
+                    // index 0 (current attempt) maps to `null`, same as
+                    // `selectedAttemptBookingId`'s own "current" default.
+                    const isSelected =
+                      index === 0
+                        ? selectedAttemptBookingId === null
+                        : selectedAttemptBookingId === attempt.id;
+                    return (
+                      <button
+                        key={attempt.id}
+                        type="button"
+                        onClick={() => setSelectedAttemptBookingId(index === 0 ? null : attempt.id)}
+                        aria-pressed={isSelected}
+                        className={`flex w-full items-start justify-between gap-3 rounded-lg border-b border-gray-100 pb-3 pt-1 text-left last:border-0 last:pb-0 cursor-pointer hover:bg-gray-50 ${
+                          isSelected ? 'bg-primary-50' : ''
+                        }`}
+                      >
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">
+                            {index === 0
+                              ? 'Current attempt'
+                              : `Attempt ${bookingHistory!.length - index}`}
+                          </div>
+                          {index !== 0 && actionTime && (
+                            <div className="text-xs text-gray-500">
+                              {isOriginal ? 'Created' : 'Rescheduled'} {actionTime}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-400">
+                            {formatDateTime(attempt.start_time)
+                              ? `Scheduled for ${formatDateTime(attempt.start_time)}`
+                              : CONCLUDED_BOOKING_STATUSES.includes(attempt.status)
+                                ? 'Call placed immediately (no scheduled time)'
+                                : 'Not yet scheduled'}
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-xs font-semibold text-primary-600">
+                          {formatCallIntent(attempt.call_intent)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </CommonCard>
+          )}
+
+          {isPanelRound && (
+            <CommonCard>
+              <div className="p-4 flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPanelQuestionsOpen((prev) => !prev)}
+                  className="w-full flex items-center justify-between text-left cursor-pointer"
+                  aria-expanded={isPanelQuestionsOpen}
+                >
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Interview questions</h4>
+                    <p className="text-sm text-gray-600 mt-0.5">
+                      Visible to whoever is preparing for or sitting on this panel.
+                    </p>
+                  </div>
+                  <CollapseToggle open={isPanelQuestionsOpen} />
+                </button>
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${
+                    isPanelQuestionsOpen
+                      ? 'grid-rows-[1fr] opacity-100'
+                      : 'grid-rows-[0fr] opacity-0'
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    {roundQuestions && roundQuestions.questions.length > 0 ? (
+                      <ol className="list-decimal space-y-3 pl-5 text-sm pt-1">
+                        {roundQuestions.questions.map((q) => (
+                          <li key={q.id} className="text-gray-800">
+                            {q.question_text}
+                            {q.answer_text && (
+                              <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className="text-sm text-gray-400 pt-1">
+                        No questions have been added for this round yet.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CommonCard>
+          )}
+
+          {isVoiceScreeningRound && (
+            <CommonCard>
+              <div className="p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-semibold text-gray-900">Questions asked</h4>
+                  {questionsAskedAttemptLabel && (
+                    <span className="shrink-0 rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-600">
+                      {questionsAskedAttemptLabel}
+                    </span>
+                  )}
+                </div>
+                {isLoadingQuestionsAsked ? (
+                  <Loader />
+                ) : questionsAskedError ? (
+                  <p className="text-sm text-gray-400">
+                    Could not load the questions for this call right now.
+                  </p>
+                ) : questionsAsked?.status === 'not_yet_concluded' ? (
+                  <p className="text-sm text-gray-400">This round hasn&apos;t concluded yet.</p>
+                ) : questionsAsked?.status === 'no_questions_asked' ? (
+                  <p className="text-sm text-gray-400">
+                    {questionsAsked.reason ?? 'No questions were recorded for this call.'}
+                  </p>
+                ) : questionsAsked && questionsAsked.questions.length > 0 ? (
+                  <>
+                    <ol className="list-decimal space-y-3 pl-5 text-sm">
+                      {questionsAsked.questions.map((q) => (
+                        <li key={q.question_id} className="text-gray-800">
+                          {q.question_text}
+                          {q.answer_text && (
+                            <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
+                          )}
+                          {q.scoring_sections.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {q.scoring_sections.map((section) => (
+                                <Badge key={section} status="neutral" dot={false}>
+                                  {section}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                    {questionsAsked.limitation && (
+                      <p className="text-xs text-gray-400">{questionsAsked.limitation}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400">No questions were recorded for this call.</p>
+                )}
+              </div>
+            </CommonCard>
+          )}
+        </>
+      )}
+    </>
+  ) : null;
+
   return (
     <>
       {isCandidateLoading && <Loader />}
-      <div className="flex flex-col mb-6 gap-2">
+      <div className="flex flex-col mb-4 gap-2">
         <div className="flex-1 bg-white px-6 py-4 shadow-sm rounded-xl">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-200">
             <h2 className="text-2xl font-bold">{candidateDisplayName(candidate)}</h2>
 
             <div className="flex items-center gap-3 flex-wrap">
-              <Tooltip title="Edit candidate details">
-                <span className="inline-flex">
-                  <button
-                    type="button"
-                    className={candidateHeaderIconCircle}
-                    disabled={!candidate}
-                    aria-label="Edit candidate"
-                    onClick={() => setIsEditOpen(true)}
-                  >
-                    <LuPencil size={18} strokeWidth={2} aria-hidden />
-                  </button>
-                </span>
-              </Tooltip>
+              <button
+                type="button"
+                className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full border border-[var(--border)] bg-white px-4 text-sm font-medium text-[var(--primary)] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={!candidate}
+                onClick={() => setIsEditOpen(true)}
+              >
+                Edit Candidate Details
+              </button>
               <Tooltip
                 title={candidate?.email_id ? `Email ${candidate.email_id}` : 'No email on file'}
               >
@@ -977,7 +1812,23 @@ const CandidateDetails = () => {
                 count={notesData?.items.length ?? 0}
                 onClick={() => setIsNotesOpen(true)}
                 tooltip="Candidate notes"
+                size="compact"
               />
+              {/* Opens the same full-size viewer as the Candidate Details
+                  tab's preview — reachable from any tab. */}
+              <Tooltip title={candidate?.resume_s3_key ? undefined : 'No resume on file yet'}>
+                <span className="inline-flex">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--border)] bg-white px-2.5 py-1 text-xs font-medium text-[var(--primary)] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={!candidate?.resume_s3_key}
+                    onClick={() => setIsResumeViewerOpen(true)}
+                  >
+                    <LuFileText size={15} className="shrink-0" aria-hidden />
+                    View Resume
+                  </button>
+                </span>
+              </Tooltip>
               <span
                 className={`text-sm font-medium px-4 py-1.5 rounded-full flex items-center gap-2 ${
                   statusUpper === 'selected'
@@ -1007,506 +1858,335 @@ const CandidateDetails = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[220px] space-y-1">
-              <div className="flex items-center text-sm gap-2">
-                <p className="font-bold">Job ID:</p>
-                <span className="text-gray-500">
-                  {jobOpeningData?.data?.jobProfileCode ?? 'N/A'}
-                </span>
-              </div>
-              <div className="flex items-center text-sm gap-2">
-                <p className="font-bold">Applied:</p>
-                <span className="text-gray-500">
-                  {formatDateTime(candidate?.applied_date) ?? 'N/A'}
-                </span>
-              </div>
-              <div className="flex items-center text-sm gap-2">
-                <p className="font-bold">Source:</p>
-                <span className="text-gray-500">{candidate?.source ?? 'N/A'}</span>
-              </div>
-              <div className="flex items-center text-sm gap-2">
-                <p className="font-bold">Resume Score:</p>
-                <span className="text-gray-500">
-                  {candidate?.resume_score === null || candidate?.resume_score === undefined
-                    ? '-'
-                    : candidate.resume_score}
-                </span>
-              </div>
+          {/* Old app's three-column header: info / Scored / actions. Stacks
+              on narrow screens, dividers only appear side by side. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)_minmax(0,0.9fr)] lg:gap-0">
+            <div className="min-w-0 space-y-1.5 lg:pr-6">
+              <HeaderInfoRow label="Job ID:">
+                {jobOpeningData?.data?.jobProfileCode || 'N/A'}
+              </HeaderInfoRow>
+              <HeaderInfoRow label="Job Title:">{jobTitleName ?? 'N/A'}</HeaderInfoRow>
+              <HeaderInfoRow label="Hiring Manager:">
+                {hiringManagerNames.length > 0
+                  ? hiringManagerNames.map((name, index) => (
+                      <div key={`${name}-${index}`}>
+                        {name}
+                        {index < hiringManagerNames.length - 1 ? ',' : ''}
+                      </div>
+                    ))
+                  : 'N/A'}
+              </HeaderInfoRow>
+              <HeaderInfoRow label="Applied:">
+                {formatDateTime(candidate?.applied_date) ?? 'N/A'}
+              </HeaderInfoRow>
+              <HeaderInfoRow label="Source:">{sourceLabel ?? 'N/A'}</HeaderInfoRow>
+              <HeaderInfoRow label="Email:">{candidate?.email_id ?? 'N/A'}</HeaderInfoRow>
+              <HeaderInfoRow label="Phone:">{candidate?.contact_no ?? 'N/A'}</HeaderInfoRow>
             </div>
 
-            <div className="flex-1 min-w-[220px] space-y-1">
-              <div className="flex items-center text-sm gap-2">
-                <p className="font-bold">Email:</p>
-                <span className="text-gray-500">{candidate?.email_id ?? 'N/A'}</span>
+            <div className="min-w-0 border-t border-gray-200 pt-4 text-sm lg:border-t-0 lg:border-l lg:border-gray-300 lg:px-6 lg:pt-0">
+              <div className="mb-2 grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] border-b border-gray-300 pb-1">
+                <div className="text-[16px] font-bold">Scored</div>
+                <div className="text-right text-[16px] font-bold text-primary">AI</div>
+                <div className="text-right text-[16px] font-bold text-green-700">Human</div>
               </div>
-              <div className="flex items-center text-sm gap-2">
-                <p className="font-bold">Phone:</p>
-                <span className="text-gray-500">{candidate?.contact_no ?? 'N/A'}</span>
-              </div>
+              {scoredRows.length === 0 ? (
+                <p className="text-gray-400">No rounds yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] items-center font-semibold">
+                    <div
+                      className="truncate pr-2"
+                      title="Average across rounds with a score (Intake Call consistency check not included)"
+                    >
+                      Overall Score
+                    </div>
+                    <div className="text-right text-primary">
+                      {formatScoredCell(overallScore.ai)}
+                    </div>
+                    <div className="text-right text-green-700">
+                      {formatScoredCell(overallScore.human, HUMAN_SCORE_MAX)}
+                    </div>
+                  </div>
+                  {scoredRows.map((row) => (
+                    <div
+                      key={row.key}
+                      className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] items-center"
+                    >
+                      <div className="truncate pr-2" title={row.label}>
+                        {row.label}
+                      </div>
+                      <div className="text-right text-primary" title={row.aiHint}>
+                        {formatScoredCell(row.ai)}
+                      </div>
+                      <div className="text-right text-green-700">
+                        {formatScoredCell(row.human, HUMAN_SCORE_MAX)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {!isTerminal && actionsLockedForIntakePair && (
-              <div className="flex max-w-[18rem] items-center">
-                <p className="text-xs text-gray-500">
-                  ADVANCE and REJECT unlock once the Intake Call consistency check completes
-                  (comparing the call transcript against the resume).
-                </p>
-              </div>
-            )}
-
-            {!isTerminal && !actionsLockedForIntakePair && (
-              <div className="flex items-center gap-3">
-                <Button
-                  className="flex items-center justify-center text-sm px-6 h-[34px] gap-2 rounded-full bg-primary disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={() => setStatusModal('advance')}
-                  disabled={advanceDisabled}
-                  title={
-                    advanceDisabled
-                      ? `Waiting for ${currentRound?.round_name ?? 'this round'} to conclude`
-                      : undefined
-                  }
-                >
-                  <span className="text-white">ADVANCE</span>
-                </Button>
-                <Button
-                  className="flex items-center justify-center text-sm px-6 h-[34px] gap-2 rounded-full border-2 border-red-600 bg-red-50 text-red-600 font-semibold hover:bg-red-100"
-                  onClick={() => setStatusModal('reject')}
-                >
-                  <span>REJECT</span>
-                </Button>
-                {allRoundsCompleted && (
-                  <Button
-                    className="flex items-center justify-center text-sm px-6 h-[34px] gap-2 rounded-full border-2 border-green-500 bg-green-50"
-                    onClick={() => setStatusModal('select')}
+            <div className="flex min-w-0 flex-col justify-center gap-3 border-t border-gray-200 pt-4 lg:border-t-0 lg:border-l lg:border-gray-300 lg:pl-6 lg:pt-0">
+              {!isTerminal && (
+                // Always visible while the candidate is still in the
+                // pipeline. During the Intake Call consistency check they
+                // stay on screen, greyed out, with the reason on hover.
+                // MARK AS SELECTED appears once the candidate reaches their
+                // last round (or every round is done), beside ADVANCE.
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Tooltip
+                    title={
+                      actionsLockedForIntakePair
+                        ? intakeLockReason
+                        : advanceDisabled
+                          ? `Waiting for ${currentRound?.round_name ?? 'this round'} to conclude`
+                          : undefined
+                    }
                   >
-                    <span className="text-green-700 font-semibold">MARK SELECTED</span>
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {/* Only reachable via bulk resume upload — every other intake
-                path (recruiter Add Candidate, both public apply flows) now
-                requires email server-side. ai-service's resume parsing
-                just didn't find one here. Warn rather than disable: the
-                pipeline actions above don't themselves need an email to
-                function (REJECT/ADVANCE are internal status moves), it's
-                downstream things like scheduling emails that would
-                silently go nowhere. */}
-            {candidate && !candidate.email_id && (
-              <div className="flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                <p className="text-xs text-amber-800">
-                  No email on file for this candidate — actions that email them (scheduling invites,
-                  notifications) won&apos;t work until one is added.
+                    <span className="flex">
+                      <Button
+                        className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => setStatusModal('advance')}
+                        disabled={advanceDisabled || actionsLockedForIntakePair}
+                      >
+                        <span className="text-white">ADVANCE</span>
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <Tooltip title={actionsLockedForIntakePair ? intakeLockReason : undefined}>
+                    <span className="flex">
+                      <Button
+                        className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full border-2 border-red-600 bg-red-50 text-red-600 font-semibold hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => setStatusModal('reject')}
+                        disabled={actionsLockedForIntakePair}
+                      >
+                        <span>REJECT</span>
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  {(isOnLastRound || allRoundsCompleted) && (
+                    <Tooltip title={actionsLockedForIntakePair ? intakeLockReason : undefined}>
+                      <span className="flex sm:col-span-2">
+                        <Button
+                          className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full border-2 border-green-500 bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => setStatusModal('select')}
+                          disabled={actionsLockedForIntakePair}
+                        >
+                          <span className="text-green-700 font-semibold">MARK AS SELECTED</span>
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  )}
+                </div>
+              )}
+              {isTerminal && (
+                <p className="text-xs text-gray-500">
+                  No pipeline actions: this candidate is{' '}
+                  {(candidate?.status_label || 'closed').toLowerCase()}.
                 </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
+
+          {/* Only reachable via bulk resume upload — every other intake
+              path (recruiter Add Candidate, both public apply flows) now
+              requires email server-side. ai-service's resume parsing
+              just didn't find one here. Warn rather than disable: the
+              pipeline actions above don't themselves need an email to
+              function (REJECT/ADVANCE are internal status moves), it's
+              downstream things like scheduling emails that would
+              silently go nowhere. */}
+          {candidate && !candidate.email_id && (
+            <div className="mt-4 flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <p className="text-xs text-amber-800">
+                No email on file for this candidate — actions that email them (scheduling invites,
+                notifications) won&apos;t work until one is added.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Pipeline stays visible above the tab strip regardless of which tab
-          is selected — previously it was itself just another tab, so
-          switching to Resume/Assessment/etc. hid it entirely. Still hidden
-          during the round drill-down below (selectedRound), same as the
-          tab strip, since that view is reached BY clicking a card here and
-          showing the whole board again above it would be redundant. */}
-      {!selectedRound && candidateId && (
-        <div className="mb-6 bg-white px-6 py-4 shadow-sm rounded-xl">
-          <PipelineBoard
-            rounds={rounds}
-            scores={scores}
-            resumeScore={candidate?.resume_score ?? null}
-            consistencyScore={candidate?.consistency_score ?? null}
-            candidateId={candidateId}
-            onRoundClick={(round) => {
-              setSelectedRound(round);
-            }}
-            onRequestReschedule={(round) => {
-              setRescheduleRound(round);
-              setIsRescheduleConfirmOpen(true);
-            }}
-          />
-        </div>
-      )}
-
       <div className="flex flex-col bg-[#FAFAFA] rounded-2xl overflow-hidden">
         <div className="px-6">
-          {!selectedRound && (
-            <Tabs
-              activeKey={activeTab}
-              onChange={(key) => setActiveTab(key as TabKey)}
-              className="view-candidate-tabs"
-              items={[
-                { key: 'assessment', label: 'Assessment' },
-                { key: 'resume', label: 'Resume' },
-                { key: 'summary', label: 'Interview Summary' },
-                { key: 'sms', label: 'SMS Communication' },
-              ]}
-            />
-          )}
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => setActiveTab(key as TabKey)}
+            className="view-candidate-tabs"
+            items={[
+              { key: 'details', label: 'Candidate Details' },
+              { key: 'assessment', label: 'Assessment' },
+              { key: 'scheduling', label: 'Interview Scheduling' },
+              { key: 'sms', label: 'SMS Communication' },
+            ]}
+          />
         </div>
 
-        <div className="p-6">
-          {selectedRound ? (
-            <div className="flex flex-col gap-4">
-              <button
-                type="button"
-                className="self-start text-sm text-primary hover:underline cursor-pointer"
-                onClick={() => setSelectedRound(null)}
-              >
-                ← Back to {candidateDisplayName(candidate)} Pipeline
-              </button>
-              {/* This drill-down renders a lot of round-type-specific data
-                  (job questions, eligible interviewers, calendar/booking
-                  status) the moment a round is selected — an edge-case shape
-                  in any one of those queries throwing here used to blank the
-                  whole page with no way back (see WidgetErrorBoundary's own
-                  docstring: this app has no boundary above it otherwise).
-                  Boundary starts AFTER the Back button above, not around it,
-                  so a crash still leaves a working way out instead of taking
-                  that with it too. */}
-              <WidgetErrorBoundary label="Round details">
-                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-5">
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
-                      {isResumeStage ? (
-                        <LuFileText size={18} />
-                      ) : isPanelRound ? (
-                        <LuUsers size={18} />
-                      ) : isAiVideoRound(selectedRound) ? (
-                        <LuVideo size={18} />
-                      ) : (
-                        <LuMic size={18} />
+        <div className="p-4">
+          {activeTab === 'details' && (
+            // Candidate fields on the left, a small resume preview on the
+            // right (old app's layout). Each section carries its own actions
+            // in its header row and sizes to its own content (items-start),
+            // so neither is stretched into an empty box to match the other.
+            <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
+              <section className="rounded-xl border border-neutral-200 bg-white">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 px-4 py-2.5">
+                  <h3 className="text-sm font-semibold text-gray-900">Candidate information</h3>
+                  <Button
+                    className="box-border inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-gray-300 bg-white px-3 text-xs font-medium leading-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => setIsEditOpen(true)}
+                    disabled={!candidate}
+                  >
+                    <LuPencil size={13} className="shrink-0" aria-hidden />
+                    <span>EDIT DETAILS</span>
+                  </Button>
+                </div>
+                {/* Read-only view of the same fields EditCandidateModal
+                    edits, plus the intake facts shown in the header. */}
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-3 px-4 py-3 text-sm sm:grid-cols-2">
+                  {[
+                    { label: 'First name', value: candidate?.first_name },
+                    { label: 'Last name', value: candidate?.last_name },
+                    { label: 'Email', value: candidate?.email_id },
+                    { label: 'Phone', value: candidate?.contact_no },
+                    { label: 'Qualification', value: candidate?.qualification },
+                    { label: 'Source', value: sourceLabel },
+                    { label: 'Applied', value: formatDateTime(candidate?.applied_date) },
+                    { label: 'Address', value: candidate?.address },
+                  ].map((field) => (
+                    <div key={field.label} className="min-w-0">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        {field.label}
+                      </dt>
+                      <dd className="mt-0.5 break-words text-gray-800">{field.value || 'N/A'}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+
+              <section className="rounded-xl border border-neutral-200 bg-white">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 px-4 py-2.5">
+                  <h3 className="text-sm font-semibold text-gray-900">Resume</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {candidate?.resume_s3_key ? (
+                      <>
+                        <Button
+                          className="box-border inline-flex h-8 items-center justify-center whitespace-nowrap rounded-full border border-primary-200 bg-primary-50 px-3 text-xs font-semibold leading-none text-primary-700 cursor-pointer"
+                          onClick={() => setIsResumeViewerOpen(true)}
+                        >
+                          VIEW
+                        </Button>
+                        <Button
+                          className="box-border inline-flex h-8 items-center justify-center whitespace-nowrap rounded-full bg-primary px-3 text-xs font-semibold leading-none text-white cursor-pointer disabled:opacity-50"
+                          onClick={() => void handleDownloadResume()}
+                          disabled={isResumeUrlLoading}
+                        >
+                          {isResumeUrlLoading ? 'PREPARING…' : 'DOWNLOAD'}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        className="box-border inline-flex h-8 items-center justify-center whitespace-nowrap rounded-full bg-primary px-3 text-xs font-semibold leading-none text-white cursor-pointer disabled:opacity-50"
+                        onClick={() => void handleRequestResumeUpload()}
+                        disabled={isRequestingResumeUpload}
+                      >
+                        {isRequestingResumeUpload ? 'REQUESTING…' : 'REQUEST RESUME'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="p-3">
+                  {candidate?.resume_s3_key && candidateId ? (
+                    <ResumeInlinePreview
+                      candidateId={candidateId}
+                      candidateName={candidateDisplayName(candidate)}
+                      onExpand={() => setIsResumeViewerOpen(true)}
+                      heightClassName="h-[400px]"
+                    />
+                  ) : (
+                    <p className="py-4 text-center text-sm text-gray-500">No resume on file yet.</p>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {activeTab === 'assessment' && (
+            // Old app's Assessment layout: rounds down the left as vertical
+            // tabs, the picked round's full detail on the right. Replaces the
+            // separate round-card row that used to sit above the tabs — its
+            // at-a-glance status lives in each tab (RoundSidebarItem), its
+            // action links in the round detail's action row, and its summary
+            // footer in the bar below.
+            <div className="flex flex-col gap-3">
+              {rounds.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm">
+                  <div className="min-w-0">
+                    <div className="text-xs text-gray-400">Next step</div>
+                    <div className="font-semibold text-gray-900">
+                      {pipeline.nextRound
+                        ? roundLabel(pipeline.nextRound)
+                        : 'None, pipeline complete'}
+                      {pipeline.nextWhen && (
+                        <span className="ml-1 font-normal text-gray-500">
+                          · {pipeline.nextWhen}
+                        </span>
                       )}
-                    </span>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">
-                        {roundLabel(selectedRound)}
-                      </h3>
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-full bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700">
-                    {isResumeAwaitingAdvance
-                      ? 'Score ready'
-                      : formatRoundStatus(selectedBooking?.status ?? selectedRound.status)}
-                  </span>
-                </div>
-
-                {isResumeStage ? (
-                  // The resume stage is "upload a resume, get it scored" —
-                  // there is no separate interview to schedule or book for
-                  // it (send_round_invite.py/skip_interview_round.py both
-                  // refuse this stage on the backend for the same reason).
-                  // What actually belongs here is the resume's own AI score
-                  // plus the recruiter's own review of it — previously only
-                  // reachable from the Assessment tab, so adding one here
-                  // never showed up on the "Resume Screening" pipeline card
-                  // a recruiter actually clicks into.
-                  <CommonCard>
-                    <div className="p-5 grid gap-6 sm:grid-cols-3">
-                      <div>
-                        <div className="text-xs font-semibold uppercase text-gray-400">
-                          AI Score
-                        </div>
-                        <div className="mt-2 text-2xl font-bold text-primary">
-                          {candidate?.resume_score ?? '-'}
-                        </div>
-                        {candidate?.scoring_reason && (
-                          <p className="mt-1 text-sm text-gray-600">{candidate.scoring_reason}</p>
-                        )}
-                      </div>
-                      <div>
-                        {/* Intake Call consistency — transcript-vs-resume authenticity
-                          check, distinct from the AI Score beside it (that's the resume
-                          judged against the job; this is whether the call sounds like
-                          the same person). candidate-service started projecting both
-                          fields onto CandidateView 2026-09-08 (see CandidateLifecycle.ts's
-                          own note) — null here now genuinely means "not scored yet"
-                          (ai-service hasn't reported one, or one of the two artifacts
-                          — resume/call transcript — isn't in yet), not "field doesn't
-                          exist." Doesn't have a "recruiter review" of its own the way
-                          resume score does — it's a fraud signal to weigh, not something
-                          a recruiter re-scores. */}
-                        <div className="text-xs font-semibold uppercase text-gray-400">
-                          Intake Call Consistency
-                        </div>
-                        <div className="mt-2 text-2xl font-bold text-primary">
-                          {candidate?.consistency_score ?? '-'}
-                        </div>
-                        {candidate?.consistency_score_reason && (
-                          <p className="mt-1 text-sm text-gray-600">
-                            {candidate.consistency_score_reason}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="text-xs font-semibold uppercase text-gray-400">
-                            Recruiter Review
-                          </div>
-                          <Button
-                            className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700"
-                            onClick={() => setIsResumeReviewOpen(true)}
-                          >
-                            {candidate?.resume_rating ? 'EDIT REVIEW' : 'ADD REVIEW'}
-                          </Button>
-                        </div>
-                        {candidate?.resume_rating ? (
-                          <>
-                            <Rate disabled value={candidate.resume_rating} className="mt-2" />
-                            {candidate.resume_review_comment && (
-                              <p className="mt-1 text-sm text-gray-600">
-                                {candidate.resume_review_comment}
-                              </p>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => void handleDeleteResumeReview()}
-                              className="mt-2 block text-xs font-semibold text-red-500 hover:underline cursor-pointer"
-                            >
-                              Remove review
-                            </button>
-                          </>
-                        ) : (
-                          <p className="mt-2 text-sm text-gray-400">No review yet.</p>
-                        )}
-                      </div>
+                  <div>
+                    <div className="text-xs text-gray-400">Rounds completed</div>
+                    <div className="font-semibold text-gray-900">
+                      {pipeline.completedCount} / {rounds.length}
                     </div>
-                  </CommonCard>
-                ) : (
-                  <>
-                    {selectedRoundScore && (
-                      // The round's own AI/recruiter score, including its
-                      // section breakdown and reasoning — previously only
-                      // shown squeezed into the Scores tab's summary table
-                      // (a cross-round comparison, not built to hold a full
-                      // paragraph), which blew out that table's row height.
-                      // Belongs here, in the round it's actually about.
-                      <CommonCard>
-                        <div className="p-5 flex flex-col gap-2">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-semibold text-gray-900">AI Assessment</h4>
-                            <Button
-                              className="rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700"
-                              onClick={() =>
-                                setScoreModalFor({
-                                  scoreId: selectedRoundScore.id,
-                                  roundName: roundLabel(selectedRound),
-                                  currentScore: selectedRoundScore.recruiter_score,
-                                  currentReason: selectedRoundScore.recruiter_score_reason,
-                                })
-                              }
-                            >
-                              {selectedRoundScore.recruiter_score != null
-                                ? 'EDIT RECRUITER SCORE'
-                                : 'RATE THIS ROUND'}
-                            </Button>
-                          </div>
-                          <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
-                            {selectedRoundScore.score == null &&
-                            selectedRoundScore.recruiter_score == null ? (
-                              <span className="text-2xl font-bold text-primary">-</span>
-                            ) : (
-                              <>
-                                {selectedRoundScore.score != null && (
-                                  <div>
-                                    <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                                      AI
-                                    </span>{' '}
-                                    <span className="text-2xl font-bold text-primary">
-                                      {selectedRoundScore.score} / 10
-                                    </span>
-                                  </div>
-                                )}
-                                {selectedRoundScore.recruiter_score != null && (
-                                  <div>
-                                    <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                                      Recruiter
-                                    </span>{' '}
-                                    <span className="text-2xl font-bold text-primary">
-                                      {selectedRoundScore.recruiter_score} / 10
-                                    </span>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                          {selectedRoundScore.section_scores &&
-                            selectedRoundScore.section_scores.length > 0 && (
-                              <div className="text-xs text-gray-500">
-                                {selectedRoundScore.section_scores
-                                  .map((s) => `${s.key}: ${s.score}/10`)
-                                  .join(' · ')}
-                              </div>
-                            )}
-                          {selectedRoundScore.scoring_reason && (
-                            <p className="text-sm text-gray-600">
-                              {selectedRoundScore.scoring_reason}
-                            </p>
-                          )}
-                        </div>
-                      </CommonCard>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400">Avg. score so far</div>
+                    <div className="font-semibold text-gray-900">{pipeline.avgScore ?? '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400">Overall standing</div>
+                    <Badge status={pipeline.standing.status}>{pipeline.standing.label}</Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 lg:ml-auto">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-success" /> Completed
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-warning" /> Current stage
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-neutral-300" /> Upcoming
+                    </span>
+                    {pipeline.hasFailure && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-danger" /> Needs attention
+                      </span>
                     )}
-
-                    {selectedRoundIsVoiceCall && (
-                      // What actually happened on the call — completed,
-                      // asked to reschedule, said not interested, never
-                      // picked up, or cut off with no clear reason. Backed by
-                      // interview-service's own `GET /bookings/{id}`
-                      // (`selectedBooking`, already fetched above), not
-                      // candidate-service — this field doesn't exist there.
-                      <CommonCard>
-                        <div className="p-5">
-                          <div className="text-xs font-semibold uppercase text-gray-400">
-                            Call Outcome
-                          </div>
-                          <div className="mt-2 text-lg font-bold text-primary">
-                            {formatCallIntent(selectedBooking?.call_intent ?? null)}
-                          </div>
-                          {selectedBooking?.call_intent_reason ? (
-                            <p className="mt-1 text-sm text-gray-600">
-                              {selectedBooking.call_intent_reason}
-                            </p>
-                          ) : selectedBooking?.call_intent == null ? (
-                            <p className="mt-1 text-sm text-gray-400">
-                              Not available yet — updates once this call has ended.
-                            </p>
-                          ) : null}
-                          {selectedBooking?.call_intent != null && (
-                            // Only offered once the call has actually
-                            // concluded (a `call_intent` exists) — matches
-                            // interview-service's own eligibility check on
-                            // POST /bookings/{id}/request-reschedule, so this
-                            // is never offered somewhere the backend would
-                            // just reject it.
-                            <Button
-                              className="mt-3 rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
-                              disabled={isRequestingReschedule}
-                              onClick={() => {
-                                setRescheduleRound(selectedRound);
-                                setIsRescheduleConfirmOpen(true);
-                              }}
-                            >
-                              {isRequestingReschedule
-                                ? 'Sending…'
-                                : 'Create Booking (Reschedule Call)'}
-                            </Button>
-                          )}
-                        </div>
-                      </CommonCard>
-                    )}
-
-                    {selectedRoundIsVoiceCall && (bookingHistory?.length ?? 0) > 1 && (
-                      // Only shown once there's actually more than one
-                      // attempt — a single-entry "history" would just repeat
-                      // the Call Outcome card above. `bookingHistory` is
-                      // oldest-first; render it newest-first so the most
-                      // recent (and most relevant) attempt reads first.
-                      <CommonCard>
-                        <div className="p-5">
-                          <div className="text-xs font-semibold uppercase text-gray-400">
-                            Reschedule History
-                          </div>
-                          <p className="mt-1 text-xs text-gray-400">
-                            Select an attempt to view its Questions Asked below.
-                          </p>
-                          <div className="mt-3 flex flex-col gap-3">
-                            {[...(bookingHistory ?? [])].reverse().map((attempt, index) => {
-                              // Positional, not a real field — `BookingView`
-                              // doesn't expose `attempt_of`. `bookingHistory`
-                              // is oldest-first before this reverse(), so the
-                              // LAST entry after reversing is always the
-                              // original (never itself a reschedule).
-                              const isOriginal = index === (bookingHistory?.length ?? 1) - 1;
-                              const actionTime = formatDateTime(attempt.created_at);
-                              // index 0 (current attempt) maps to `null`, same as
-                              // `selectedAttemptBookingId`'s own "current" default.
-                              const isSelected =
-                                index === 0
-                                  ? selectedAttemptBookingId === null
-                                  : selectedAttemptBookingId === attempt.id;
-                              return (
-                                <button
-                                  key={attempt.id}
-                                  type="button"
-                                  onClick={() =>
-                                    setSelectedAttemptBookingId(index === 0 ? null : attempt.id)
-                                  }
-                                  aria-pressed={isSelected}
-                                  className={`flex w-full items-start justify-between gap-3 rounded-lg border-b border-gray-100 pb-3 pt-1 text-left last:border-0 last:pb-0 cursor-pointer hover:bg-gray-50 ${
-                                    isSelected ? 'bg-primary-50' : ''
-                                  }`}
-                                >
-                                  <div>
-                                    <div className="text-sm font-semibold text-gray-900">
-                                      {index === 0
-                                        ? 'Current attempt'
-                                        : `Attempt ${bookingHistory!.length - index}`}
-                                    </div>
-                                    {index !== 0 && actionTime && (
-                                      <div className="text-xs text-gray-500">
-                                        {isOriginal ? 'Created' : 'Rescheduled'} {actionTime}
-                                      </div>
-                                    )}
-                                    <div className="text-xs text-gray-400">
-                                      {formatDateTime(attempt.start_time)
-                                        ? `Scheduled for ${formatDateTime(attempt.start_time)}`
-                                        : CONCLUDED_BOOKING_STATUSES.includes(attempt.status)
-                                          ? 'Call placed immediately (no scheduled time)'
-                                          : 'Not yet scheduled'}
-                                    </div>
-                                  </div>
-                                  <span className="shrink-0 text-xs font-semibold text-primary-600">
-                                    {formatCallIntent(attempt.call_intent)}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </CommonCard>
-                    )}
-
-                    {selectedRoundIsIntakeCall && (
-                      // Same transcript-vs-resume authenticity signal shown on
-                      // the Resume stage card (see that card's own comment) —
-                      // surfaced here too since it's specifically about THIS
-                      // round's call, not just the resume. Recruiters who land
-                      // on the Intake Call round directly (its Pipeline card,
-                      // not the Resume one) should see it without a detour.
-                      <CommonCard>
-                        <div className="p-5">
-                          <div className="text-xs font-semibold uppercase text-gray-400">
-                            Resume Consistency
-                          </div>
-                          <div className="mt-2 text-2xl font-bold text-primary">
-                            {candidate?.consistency_score ?? '-'}
-                          </div>
-                          {candidate?.consistency_score_reason ? (
-                            <p className="mt-1 text-sm text-gray-600">
-                              {candidate.consistency_score_reason}
-                            </p>
-                          ) : (
-                            <p className="mt-1 text-sm text-gray-400">
-                              Not available yet; reported by ai-service once it has both the resume
-                              and this call&apos;s transcript.
-                            </p>
-                          )}
-                        </div>
-                      </CommonCard>
-                    )}
-
-                    {isPanelRound && (
-                      <CommonCard>
-                        <div className="p-5 flex flex-col gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setIsPanelQuestionsOpen((prev) => !prev)}
-                            className="w-full flex items-center justify-between text-left cursor-pointer"
-                            aria-expanded={isPanelQuestionsOpen}
+                  </div>
+                </div>
+              )}
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+                <div className="w-full shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white lg:w-[260px]">
+                  <ul className="flex overflow-x-auto text-sm text-gray-800 lg:flex-col lg:overflow-visible">
+                    {roundsLoaded && !hasResumeStageRound && (
+                      <li className="relative min-w-[210px] border-r border-gray-100 last:border-r-0 lg:min-w-0 lg:border-r-0 lg:border-b">
+                        <button
+                          type="button"
+                          className={`w-full px-3 py-3 text-left cursor-pointer hover:bg-gray-50 ${
+                            isResumeFallbackSelected ? 'bg-primary-50' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedRound(null);
+                            setIsResumeFallbackSelected(true);
+                          }}
+                        >
+                          <h3
+                            className={`text-sm font-semibold ${isResumeFallbackSelected ? 'text-primary' : 'text-gray-900'}`}
                           >
+<<<<<<< Updated upstream
                             <div>
                               <h4 className="font-semibold text-gray-900">Interview questions</h4>
                               <p className="text-sm text-gray-600 mt-0.5">
@@ -1602,258 +2282,147 @@ const CandidateDetails = () => {
                           ) : (
                             <p className="text-sm text-gray-400">
                               No questions were recorded for this call.
+=======
+                            Resume Screening
+                          </h3>
+                          {candidate?.resume_score != null && (
+                            <p className="mt-1 text-xs font-semibold text-primary-600">
+                              Score: {candidate.resume_score} / 10
+>>>>>>> Stashed changes
                             </p>
                           )}
-                        </div>
-                      </CommonCard>
-                    )}
-
-                    <CommonCard>
-                      <div className="p-5 flex flex-col gap-3">
-                        <h4 className="font-semibold text-gray-900">Interview scheduling</h4>
-                        {selectedRound.interview_booking_id ? (
-                          <p className="text-sm text-gray-600">
-                            This round has a booking. The candidate uses the booking link to choose
-                            a time{' '}
-                            {isPanelRound
-                              ? 'from the panel’s connected calendar.'
-                              : isAiVideoRound(selectedRound)
-                                ? 'from the available AI Video slots.'
-                                : isAudioScreeningRound(selectedRound) ||
-                                    isIntakeCallRound(selectedRound)
-                                  ? 'from the available AI audio slots.'
-                                  : 'from the available slots.'}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-gray-600">
-                            Create a booking to start scheduling this round.
-                          </p>
-                        )}
-                        {isPanelRound && !selectedRound.interview_booking_id && (
-                          <PanelInterviewerPicker
-                            id="panel-interviewer-select"
-                            value={selectedInterviewerIds}
-                            onChange={setSelectedInterviewerIds}
-                            options={eligibleInterviewers ?? []}
-                            loading={isLoadingInterviewers}
-                            calendarConnectedById={interviewerCalendarConnectedById}
-                            helperText="Pick at least one panel interviewer to enable Create Booking."
+                        </button>
+                        {isResumeFallbackSelected && (
+                          <span
+                            className="absolute left-0 top-0 h-full w-1 bg-primary"
+                            aria-hidden
                           />
                         )}
-                        <div className="flex flex-wrap gap-3">
+                      </li>
+                    )}
+                    {rounds.map((round, index) => (
+                      <RoundSidebarItem
+                        key={round.id ?? `assessment-${index}`}
+                        round={round}
+                        index={index}
+                        bucket={pipeline.displayBuckets[index]}
+                        overdue={pipeline.overdueFlags[index]}
+                        isCurrentStage={index === pipeline.activeIndex}
+                        isSelected={!isResumeFallbackSelected && selectedRound?.id === round.id}
+                        isResumeScored={isResumeScored(round, candidate?.resume_score ?? null)}
+                        roundScore={
+                          round.stage_type === 'interview'
+                            ? scores.find((sc) => sc.candidate_interview_round_id === round.id)
+                            : undefined
+                        }
+                        resumeScore={candidate?.resume_score ?? null}
+                        consistencyScore={candidate?.consistency_score ?? null}
+                        onSelect={() => {
+                          setIsResumeFallbackSelected(false);
+                          setSelectedRound(round);
+                        }}
+                      />
+                    ))}
+                    {roundsLoaded && rounds.length === 0 && (
+                      <li className="px-3 py-3 text-xs text-gray-500">No round plan yet.</li>
+                    )}
+                  </ul>
+                </div>
+
+                <div className="flex min-w-0 flex-1 flex-col gap-3">
+                  {isResumeFallbackSelected ? (
+                    <CommonCard>
+                      <div className="p-4 flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-base font-bold">Resume Assessment</h3>
                           <Button
-                            className={`rounded-full px-5 py-2 text-sm font-semibold ${
-                              selectedRound.interview_booking_id
-                                ? 'border border-green-200 bg-green-50 text-green-700'
-                                : 'bg-primary text-white'
-                            }`}
-                            disabled={
-                              Boolean(selectedRound.interview_booking_id) ||
-                              isCreatingBooking ||
-                              isSavingInterviewers ||
-                              (isPanelRound && selectedInterviewerIds.length === 0)
-                            }
-                            onClick={() => void handleCreateBooking()}
+                            className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700"
+                            onClick={() => setIsResumeReviewOpen(true)}
                           >
-                            {isCreatingBooking || isSavingInterviewers
-                              ? 'CREATING…'
-                              : selectedRound.interview_booking_id
-                                ? 'INVITATION CREATED'
-                                : 'CREATE BOOKING'}
+                            {candidate?.resume_rating ? 'EDIT SCORING' : 'ADD SCORING'}
                           </Button>
-                          {isPanelRound &&
-                            (showsOwnConnectCalendarAction && calendarGrantStatus?.connected ? (
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700">
-                                Calendar Connected
-                                {calendarGrantStatus.email ? `: ${calendarGrantStatus.email}` : ''}
-                              </span>
-                            ) : (
-                              <Button
-                                className="rounded-full border border-primary-300 bg-white px-5 py-2 text-sm font-semibold text-primary-700"
-                                onClick={handleConnectCalendar}
-                              >
-                                CONNECT CALENDAR
-                              </Button>
-                            ))}
-                          {isPanelRound &&
-                            selectedBooking != null &&
-                            CONCLUDED_BOOKING_STATUSES.includes(selectedBooking.status) && (
-                              // Same eligibility interview-service's own
-                              // request-reschedule endpoint enforces for a
-                              // PANEL booking (already concluded) — mirrors
-                              // the Call Outcome card's button below, just
-                              // gated on booking status instead of
-                              // call_intent (PANEL has no call_intent).
-                              <Button
-                                className="rounded-full border border-primary-200 bg-primary-50 px-5 py-2 text-sm font-semibold text-primary-700 disabled:opacity-50"
-                                disabled={isRequestingReschedule}
-                                onClick={() => {
-                                  setRescheduleRound(selectedRound);
-                                  setIsRescheduleConfirmOpen(true);
-                                }}
-                              >
-                                {isRequestingReschedule ? 'Sending…' : 'Request reschedule'}
-                              </Button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                          <div>
+                            <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                              AI Score
+                            </div>
+                            <div className="text-2xl font-bold text-primary">
+                              {candidate?.resume_score ?? '-'}
+                            </div>
+                            {candidate?.scoring_reason && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                {candidate.scoring_reason}
+                              </p>
                             )}
-                          {/* Offline-PANEL only — an online PANEL round already
-                            gets its recording automatically via LiveKit
-                            egress, so manually attaching one there would just
-                            create a second, conflicting artifact. Mirrors
-                            BookingDetailDrawer.tsx's own `isOfflinePanel`. */}
-                          {selectedRound.round_type === 'PANEL' &&
-                            selectedRound.interview_booking_id &&
-                            selectedBooking?.round_snapshot?.delivery_mode === 'offline' && (
+                          </div>
+                          <div>
+                            {/* Same Intake Call consistency signal as the Pipeline tab's
+                              resume-stage card — see that card's own comment. Kept in
+                              sync deliberately; this tab and that one show the same
+                              underlying resume data from two different entry points
+                              (comment above `isResumeStage` explains why both exist). */}
+                            <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                              Intake Call Consistency
+                            </div>
+                            <div className="text-2xl font-bold text-primary">
+                              {candidate?.consistency_score ?? '-'}
+                            </div>
+                            {candidate?.consistency_score_reason && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                {candidate.consistency_score_reason}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                              Recruiter Scoring
+                            </div>
+                            {candidate?.resume_rating ? (
                               <>
-                                <input
-                                  ref={audioFileInputRef}
-                                  type="file"
-                                  accept="audio/*"
-                                  className="hidden"
-                                  onChange={(e) => void handleAudioFileSelected(e)}
-                                />
-                                <Button
-                                  className={`rounded-full px-5 py-2 text-sm font-semibold ${
-                                    hasRecording
-                                      ? 'border border-green-200 bg-green-50 text-green-700'
-                                      : 'border border-primary-300 bg-white text-primary-700'
-                                  }`}
-                                  disabled={isUploadingAudio || hasRecording}
-                                  onClick={() => audioFileInputRef.current?.click()}
+                                <Rate disabled value={candidate.resume_rating} />
+                                {candidate.resume_review_comment && (
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    {candidate.resume_review_comment}
+                                  </p>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDeleteResumeReview()}
+                                  className="mt-2 text-xs font-semibold text-red-500 hover:underline cursor-pointer"
                                 >
-                                  {isUploadingAudio
-                                    ? 'UPLOADING…'
-                                    : hasRecording
-                                      ? 'RECORDING UPLOADED'
-                                      : 'UPLOAD AUDIO'}
-                                </Button>
+                                  Remove scoring
+                                </button>
                               </>
+                            ) : (
+                              <p className="text-sm text-gray-400">No scoring yet.</p>
                             )}
+                          </div>
                         </div>
                       </div>
                     </CommonCard>
-                  </>
-                )}
-              </WidgetErrorBoundary>
+                  ) : selectedRound ? (
+                    <WidgetErrorBoundary key={selectedRound.id} label="Round details">
+                      {roundDetailBody}
+                    </WidgetErrorBoundary>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      {roundsLoaded ? 'Select a round to see its details.' : 'Loading rounds…'}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
-          ) : null}
-
-          {!selectedRound && activeTab === 'assessment' && (
-            <CommonCard>
-              <div className="p-5 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold">Resume Assessment</h3>
-                  <Button
-                    className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700"
-                    onClick={() => setIsResumeReviewOpen(true)}
-                  >
-                    {candidate?.resume_rating ? 'EDIT REVIEW' : 'ADD REVIEW'}
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  <div>
-                    <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                      AI Score
-                    </div>
-                    <div className="text-2xl font-bold text-primary">
-                      {candidate?.resume_score ?? '-'}
-                    </div>
-                    {candidate?.scoring_reason && (
-                      <p className="text-sm text-gray-600 mt-1">{candidate.scoring_reason}</p>
-                    )}
-                  </div>
-                  <div>
-                    {/* Same Intake Call consistency signal as the Pipeline tab's
-                        resume-stage card — see that card's own comment. Kept in
-                        sync deliberately; this tab and that one show the same
-                        underlying resume data from two different entry points
-                        (comment above `isResumeStage` explains why both exist). */}
-                    <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                      Intake Call Consistency
-                    </div>
-                    <div className="text-2xl font-bold text-primary">
-                      {candidate?.consistency_score ?? '-'}
-                    </div>
-                    {candidate?.consistency_score_reason && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        {candidate.consistency_score_reason}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                      Recruiter Review
-                    </div>
-                    {candidate?.resume_rating ? (
-                      <>
-                        <Rate disabled value={candidate.resume_rating} />
-                        {candidate.resume_review_comment && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            {candidate.resume_review_comment}
-                          </p>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteResumeReview()}
-                          className="mt-2 text-xs font-semibold text-red-500 hover:underline cursor-pointer"
-                        >
-                          Remove review
-                        </button>
-                      </>
-                    ) : (
-                      <p className="text-sm text-gray-400">No review yet.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CommonCard>
           )}
 
-          {!selectedRound && activeTab === 'resume' && (
-            <CommonCard>
-              <div className="p-5 flex flex-col items-center gap-4 text-center">
-                {candidate?.resume_s3_key ? (
-                  <>
-                    <p className="text-sm text-gray-600">A resume is on file for this candidate.</p>
-                    <div className="flex flex-wrap items-center justify-center gap-3">
-                      <Button
-                        className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white"
-                        onClick={() => setIsResumeViewerOpen(true)}
-                      >
-                        VIEW RESUME
-                      </Button>
-                      <Button
-                        className="rounded-full border border-primary-200 bg-primary-50 px-6 py-2 text-sm font-semibold text-primary-700 disabled:opacity-50"
-                        onClick={() => void handleDownloadResume()}
-                        disabled={isResumeUrlLoading}
-                      >
-                        {isResumeUrlLoading ? 'PREPARING…' : 'DOWNLOAD'}
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-gray-500">No resume on file yet.</p>
-                    <Button
-                      className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                      onClick={() => void handleRequestResumeUpload()}
-                      disabled={isRequestingResumeUpload}
-                    >
-                      {isRequestingResumeUpload ? 'REQUESTING…' : 'REQUEST RESUME'}
-                    </Button>
-                  </>
-                )}
-              </div>
-            </CommonCard>
-          )}
-
-          {!selectedRound && activeTab === 'summary' && (
+          {activeTab === 'scheduling' && (
             <div className="flex flex-col gap-4">
               {rounds.length === 0 ? (
                 <p className="text-sm text-gray-500">No interview rounds recorded yet.</p>
               ) : (
                 <>
                   <CommonCard>
-                    <div className="p-5">
+                    <div className="p-4">
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-gray-900">
                           Scores across rounds
@@ -1870,7 +2439,7 @@ const CandidateDetails = () => {
                           </span>
                         </div>
                       </div>
-                      <div className="mt-5 flex items-end gap-4">
+                      <div className="mt-4 flex items-end gap-4">
                         {rounds.map((round, index) => {
                           // The resume stage / Intake Call rows have no
                           // `CandidateInterviewScore`; `summariseRound`
@@ -1951,13 +2520,22 @@ const CandidateDetails = () => {
                               >
                                 <td className="px-2 py-3 font-medium text-gray-800">{roundName}</td>
                                 <td className="px-2 py-3 text-gray-500">
-                                  {roundScore?.recruiter_scored_by ?? 'Not assigned'}
+                                  {/* `recruiter_scored_by` is a user id, not a
+                                      name — show "You" or a hiring manager's
+                                      name when known, never the raw id. */}
+                                  {!roundScore?.recruiter_scored_by
+                                    ? 'Not scored yet'
+                                    : String(roundScore.recruiter_scored_by) === String(userId)
+                                      ? 'You'
+                                      : (hiringManagerOptions.find((o) =>
+                                          idsMatch(o.id, roundScore.recruiter_scored_by)
+                                        )?.name ?? 'Recruiter')}
                                 </td>
                                 <td className="max-w-[260px] px-2 py-3 text-gray-700">
                                   {/* Section breakdown and the AI's own reasoning
                                       (CandidateInterviewScoreView.section_scores/
                                       scoring_reason) now live on the round's own
-                                      "AI Assessment" card in the Pipeline drill-down
+                                      "AI Assessment" card in the Assessment tab's round detail
                                       instead — a cross-round comparison table isn't
                                       built to hold a full paragraph per row. */}
                                   {scoreText ?? statusText}
@@ -2000,7 +2578,7 @@ const CandidateDetails = () => {
 
                   <div className="grid gap-4 lg:grid-cols-2">
                     <CommonCard>
-                      <div className="p-5">
+                      <div className="p-4">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-semibold text-gray-900">Interviewer Notes</h3>
                           <Button
@@ -2020,7 +2598,7 @@ const CandidateDetails = () => {
                       </div>
                     </CommonCard>
                     <CommonCard>
-                      <div className="p-5">
+                      <div className="p-4">
                         <h3 className="text-sm font-semibold text-gray-900">AI Summary</h3>
                         <ul className="mt-4 space-y-1.5 text-sm leading-6 text-gray-600">
                           <li>
@@ -2052,9 +2630,9 @@ const CandidateDetails = () => {
             </div>
           )}
 
-          {!selectedRound && activeTab === 'sms' && (
+          {activeTab === 'sms' && (
             <CommonCard>
-              <div className="p-5 flex flex-col items-center gap-3 text-center">
+              <div className="p-4 flex flex-col items-center gap-3 text-center">
                 <p className="text-sm text-gray-500 max-w-md">
                   Message history isn&apos;t available yet; this sends a new SMS, it doesn&apos;t
                   show a conversation thread.
@@ -2220,7 +2798,7 @@ const CandidateDetails = () => {
             // Audio Screening/AI Video rounds don't have one, so this
             // clause would be misleading there. Driven by `rescheduleRound`,
             // not `selectedRound` — this modal can open straight from a
-            // PipelineBoard card, before any round is "selected".
+            // round other than the one currently selected.
             rescheduleRound &&
             isIntakeCallRound(rescheduleRound) &&
             candidate?.consistency_score != null
@@ -2232,6 +2810,31 @@ const CandidateDetails = () => {
           confirmText="REQUEST RESCHEDULE"
           cancelText="CANCEL"
           isLoading={isRequestingReschedule}
+        />
+      )}
+      {artifactsModalFor && candidateId && (
+        <RoundArtifactsModal
+          open={!!artifactsModalFor}
+          onClose={() => setArtifactsModalFor(null)}
+          candidateId={candidateId}
+          roundId={artifactsModalFor.id}
+          roundName={roundLabel(artifactsModalFor)}
+          roundType={artifactsModalFor.round_type}
+          feedback={{
+            candidate_feedback_rating: artifactsModalFor.candidate_feedback_rating,
+            candidate_feedback_text: artifactsModalFor.candidate_feedback_text,
+            candidate_feedback_submitted_at: artifactsModalFor.candidate_feedback_submitted_at,
+          }}
+        />
+      )}
+      {interviewersModalFor && candidateId && (
+        <PanelInterviewersModal
+          open={!!interviewersModalFor}
+          onClose={() => setInterviewersModalFor(null)}
+          candidateId={candidateId}
+          roundId={interviewersModalFor.id}
+          roundName={roundLabel(interviewersModalFor)}
+          currentInterviewerIds={interviewersModalFor.interviewer_ids ?? []}
         />
       )}
       {scoreModalFor && candidateId && (

@@ -111,8 +111,17 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     return isViewMode ? stepPaths.view : isEditMode ? stepPaths.edit : stepPaths.create;
   }, [isViewMode, isEditMode, id, aiJobDescriptionId]);
 
+  // A single candidate's page (not the candidate list, which `isCandidatePage`
+  // also matches) — its Back link reads "Back to Candidate List", so it goes
+  // to exactly that instead of wherever the browser history happens to point.
+  const isCandidateDetailsPage =
+    /\/candidates\/[^/]+\/details/.test(location.pathname) ||
+    location.pathname.includes('/candidateDetails/');
+
   const handleBackNavigation = () => {
-    if (isCandidatePage) {
+    if (isCandidateDetailsPage && id) {
+      navigate(`/jobs/view/${id}/candidates`);
+    } else if (isCandidatePage) {
       navigate(-1);
     } else if (fromDashboard) {
       navigate('/');
@@ -190,7 +199,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
           className="flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg px-2 py-1 -ml-2 cursor-pointer transition-colors"
         >
           <MdOutlineArrowBack size={16} />
-          <span>Back</span>
+          <span>{isCandidateDetailsPage ? 'Back to Candidate List' : 'Back'}</span>
         </button>
       </div>
       <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">

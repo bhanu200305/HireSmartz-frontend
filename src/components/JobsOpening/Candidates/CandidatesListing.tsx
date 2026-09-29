@@ -59,8 +59,9 @@ import {
 } from './candidateDisplay';
 import { bucketForStatus, normaliseRoundStatus, type RoundBucket } from './roundProgress';
 import { formatRoundStatus } from './roundDisplay';
+import { humanScoreOutOf10 } from './roundPipeline';
 
-// Mirrors PipelineBoard.tsx's own `BUCKET_META` badge-color mapping — kept
+// Mirrors roundPipeline.ts's own `BUCKET_META` badge-color mapping — kept
 // local here rather than imported since that map isn't exported and this
 // listing only ever needs the badge color, never the border/step styling
 // that map also carries for the round cards themselves.
@@ -79,14 +80,14 @@ type SelectedMap = Record<string, boolean>;
 const buildCurrentSortKey = (sortBy: string, sortOrder: 'asc' | 'desc') =>
   sortOrder === 'desc' ? `-${sortBy}` : sortBy;
 
-// Same "Avg. score so far" figure as PipelineBoard.tsx's candidate
+// Same "Avg. score so far" figure as roundPipeline.ts's candidate
 // drill-down - the resume score plus every interview round's own score
 // (recruiter's if one was recorded, else the AI's), averaged together. Its
 // own component (not inlined in the row .map() below) because it needs a
 // per-candidate scores query - can't call a hook from inside a loop body.
 // No backend list endpoint returns this pre-aggregated, so it's one query
 // per visible row rather than a single bulk fetch; frontend-only change,
-// same tradeoff PipelineBoard.tsx already accepts per round.
+// same tradeoff roundPipeline.ts already accepts per round.
 const CandidateAverageScoreCell = ({
   candidateId,
   resumeScore,
@@ -95,9 +96,14 @@ const CandidateAverageScoreCell = ({
   resumeScore: number | null;
 }) => {
   const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId);
-  const scoreValues = [resumeScore, ...scores.map((s) => s.recruiter_score ?? s.score)].filter(
-    (v): v is number => v !== null && v !== undefined
-  );
+  // recruiter_score is 1-5 stars — converted to 0-10 so it averages
+  // like-for-like with the AI scores (same as roundPipeline.ts).
+  const scoreValues = [
+    resumeScore,
+    ...scores.map((s) =>
+      s.recruiter_score != null ? humanScoreOutOf10(s.recruiter_score) : s.score
+    ),
+  ].filter((v): v is number => v !== null && v !== undefined);
   const avgScore =
     scoreValues.length > 0
       ? Number((scoreValues.reduce((sum, v) => sum + v, 0) / scoreValues.length).toFixed(1))

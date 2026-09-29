@@ -10,6 +10,9 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 // Review & Scoring"). A recruiter's own take on the resume, beside the AI
 // score — never overwrites `CandidateView.resume_score`. Both fields
 // optional, unlike the round-score modal's required pair.
+//
+// 5 stars, saved as-is (1-5) — the recruiter's Human score is out of 5
+// (2026-09-29, product decision); the backend field itself accepts 0-10.
 
 type ResumeReviewModalProps = {
   open: boolean;
@@ -52,11 +55,11 @@ const ResumeReviewModal = ({
         candidateId,
         body: { rating: rating || undefined, comment: comment.trim() || undefined },
       }).unwrap();
-      showToast({ message: 'Resume review saved.', type: 'success' });
+      showToast({ message: 'Resume scoring saved.', type: 'success' });
       onSaved?.();
       onClose();
     } catch (e) {
-      showToast({ message: getCandidateErrorMessage(e, 'Could not save review'), type: 'error' });
+      showToast({ message: getCandidateErrorMessage(e, 'Could not save scoring'), type: 'error' });
     }
   };
 
@@ -64,13 +67,13 @@ const ResumeReviewModal = ({
     <AntdCommonModal
       open={open}
       onClose={onClose}
-      title="Resume Review"
+      title="Resume Scoring"
       modalProps={{ width: 480 }}
     >
       <div className="flex flex-col gap-4">
         <div>
-          <div className="mb-1 text-sm text-gray-800">Rating</div>
-          <Rate count={10} value={rating} onChange={setRating} />
+          <div className="mb-1 text-sm text-gray-800">Score</div>
+          <Rate count={5} value={rating} onChange={setRating} />
         </div>
         <div>
           <label htmlFor="resume-review-comment" className="mb-1 block text-sm text-gray-800">
@@ -91,7 +94,7 @@ const ResumeReviewModal = ({
           disabled={isLoading}
           className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
         >
-          {isLoading ? 'SAVING…' : 'SAVE REVIEW'}
+          {isLoading ? 'SAVING…' : 'SAVE SCORING'}
         </Button>
       </div>
     </AntdCommonModal>

@@ -32,7 +32,7 @@ const roleLabel = (role: string): string =>
 // rule RoundArtifactsModal.tsx already documents for the same reason.
 //
 // The backend only refuses this on the resume stage, an already-finished
-// round, or an already-booked one (409) — PipelineBoard.tsx gates the
+// round, or an already-booked one (409) — roundPipeline.ts's canManageRoundInterviewers gates the
 // trigger the same way, but the 409 is still the real guard if state
 // changed between render and click.
 

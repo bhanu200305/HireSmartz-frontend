@@ -15,6 +15,9 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 // "Remove score" (DELETE, same route) mirrors ResumeReviewModal's own
 // remove affordance — only shown once there's actually a score on file to
 // remove, same author-only rule as the resume review's delete.
+//
+// 5 stars, saved as-is (1-5) — the recruiter's Human score is out of 5
+// (2026-09-29, product decision); the backend field itself accepts 0-10.
 
 type RecruiterRoundScoreModalProps = {
   open: boolean;
@@ -90,7 +93,7 @@ const RecruiterRoundScoreModal = ({
           <div className="mb-1 text-sm text-gray-800">
             Score <span className="required-asterisk">*</span>
           </div>
-          <Rate count={10} value={score} onChange={setScore} />
+          <Rate count={5} value={score} onChange={setScore} />
         </div>
         <div>
           <label htmlFor="round-score-reason" className="mb-1 block text-sm text-gray-800">

@@ -87,7 +87,7 @@ export type CandidateView = {
   /** Raw status of whichever round `_current_round.resolve_current_round`
    * (candidate-service) currently resolves to for this candidate — the same
    * vocabulary `roundProgress.ts`'s `bucketForStatus`/`normaliseRoundStatus`
-   * already bucket for a live round object (see `PipelineBoard.tsx`'s round
+   * already bucket for a live round object (see `RoundSidebarItem.tsx`'s round
    * cards). `null` once there's no outstanding round left to resolve (every
    * round concluded, or none exist yet). */
   current_round_status: string | null;
@@ -146,6 +146,11 @@ export type ApplyRequest = {
   referredBy?: string;
   referalCode?: string;
   referalNote?: string;
+  /** candidate-service's `ApplicationSource` code. `POST /candidates` stores
+   * whatever the client sends here (null when omitted, which is why
+   * recruiter-added candidates used to show Source "N/A"); the QR/public
+   * apply and bulk-resume paths set theirs server-side. */
+  source?: 'qr_self_apply' | 'ats_fetch' | 'recruiter_upload';
 };
 
 /** `call_placed` is `false` if this job has no Intake Call round configured,
@@ -244,6 +249,7 @@ const extendedApi = candidateApi.injectEndpoints({
         referredBy,
         referalCode,
         referalNote,
+        source,
       }) => ({
         url: '/candidates',
         method: 'POST',
@@ -262,6 +268,7 @@ const extendedApi = candidateApi.injectEndpoints({
           referred_by: referredBy,
           referal_code: referalCode,
           referal_note: referalNote,
+          source,
         },
       }),
       invalidatesTags: ['CandidateList'],
