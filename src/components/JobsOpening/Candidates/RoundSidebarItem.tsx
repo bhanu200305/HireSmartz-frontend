@@ -13,7 +13,7 @@ import {
   normaliseRoundStatus,
   type RoundBucket,
 } from './roundProgress';
-import { BUCKET_META, HUMAN_SCORE_MAX, formatWhen } from './roundPipeline';
+import { AI_SCORE_MAX, BUCKET_META, HUMAN_SCORE_MAX, formatWhen } from './roundPipeline';
 import { roundLabel, formatRoundStatus } from './roundDisplay';
 
 type RoundSidebarItemProps = {
@@ -86,15 +86,15 @@ const RoundSidebarItem = ({
   const roundScoreValue = roundScore?.recruiter_score ?? roundScore?.score;
   const scoreLine =
     round.stage_type === 'resume' && resumeScore !== null
-      ? `Score: ${resumeScore} / 10`
+      ? `Score: ${resumeScore} / ${AI_SCORE_MAX}`
       : isIntakeCallRound(round) && consistencyScore !== null
-        ? `Consistency: ${consistencyScore} / 10`
+        ? `Consistency: ${consistencyScore} / ${AI_SCORE_MAX}`
         : isInterviewRound && !isIntakeCallRound(round) && roundScoreValue != null
           ? roundScore?.score != null && roundScore?.recruiter_score != null
-            ? `AI: ${roundScore.score} / 10 · Recruiter: ${roundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
+            ? `AI: ${roundScore.score} / ${AI_SCORE_MAX} · Recruiter: ${roundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
             : roundScore?.recruiter_score != null
               ? `Recruiter: ${roundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
-              : `Score: ${roundScore?.score} / 10 · AI score`
+              : `Score: ${roundScore?.score} / ${AI_SCORE_MAX} · AI score`
           : null;
 
   return (

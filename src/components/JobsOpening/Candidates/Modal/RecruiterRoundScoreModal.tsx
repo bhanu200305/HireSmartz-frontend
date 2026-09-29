@@ -17,7 +17,8 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 // remove, same author-only rule as the resume review's delete.
 //
 // 5 stars, saved as-is (1-5) — the recruiter's Human score is out of 5
-// (2026-09-29, product decision); the backend field itself accepts 0-10.
+// (2026-09-29, product decision); the backend field accepts 0-5, same
+// scale as the AI score.
 
 type RecruiterRoundScoreModalProps = {
   open: boolean;

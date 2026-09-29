@@ -30,12 +30,24 @@ export const BUCKET_META: Record<
 };
 
 /** The recruiter's Human score (resume scoring + per-round scoring) is a
- * 1-5 star value, saved as-is (2026-09-29 product decision), while every AI
- * score — resume, consistency, round — is 0-10. Anything that averages or
- * charts the two together must put the Human score on the 0-10 scale first
- * via `humanScoreOutOf10`. */
+ * 1-5 star value, saved as-is (2026-09-29 product decision). */
 export const HUMAN_SCORE_MAX = 5;
-export const humanScoreOutOf10 = (value: number) => value * (10 / HUMAN_SCORE_MAX);
+
+/** Every AI score — resume, intake consistency, each round and its
+ * per-category breakdown — is 0-5 (ai-service rescale, 2026-09-29; was
+ * 0-10). Same range as the Human score, so the two average like-for-like
+ * with no conversion. Every "/ max" label, bar width and colour band reads
+ * this rather than a hardcoded number. */
+export const AI_SCORE_MAX = 5;
+
+/** A 0-AI_SCORE_MAX score as a clamped 0-100 bar width. */
+export const aiScorePercent = (value: number) =>
+  Math.max(0, Math.min(100, (value / AI_SCORE_MAX) * 100));
+
+/** Badge colour for an average score — green from 70% of the max, amber
+ * from 40%, red below (same relative cut points as the old 7/4 of 10). */
+export const scoreBadgeStatus = (value: number): BadgeStatus =>
+  value >= AI_SCORE_MAX * 0.7 ? 'success' : value >= AI_SCORE_MAX * 0.4 ? 'warning' : 'danger';
 
 /** interview-service's `interview_type` for a round's booking, from the
  * round's real `round_type` (candidate-service) — AUDIO is the Intake Call,
@@ -130,13 +142,11 @@ export const summarisePipeline = (
     ? (formatWhen(nextRound.scheduled_at) ?? formatWhen(nextRound.due_at))
     : null;
 
-  // resumeScore and the AI `score` are 0-10; a recruiter_score (1-5 stars)
-  // is converted to 0-10 first so the average stays like-for-like.
+  // resumeScore, the AI `score` and recruiter_score are all 0-5, so they
+  // average as-is.
   const scoreValues = [
     resumeScore,
-    ...scores.map((s) =>
-      s.recruiter_score != null ? humanScoreOutOf10(s.recruiter_score) : s.score
-    ),
+    ...scores.map((s) => (s.recruiter_score != null ? s.recruiter_score : s.score)),
   ].filter((v): v is number => v !== null && v !== undefined);
   const avgScore =
     scoreValues.length > 0

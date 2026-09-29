@@ -17,12 +17,8 @@ import {
   useGetApplicationsOverTimeQuery,
   useGetInterviewsByStatusQuery,
   useGetResumeScoreDistributionQuery,
-  type ResumeScoreBand,
+  RESUME_SCORE_BAND_ORDER,
 } from '../../api/candidate-service/Stats/stats';
-
-// Fixed band order per the Candidate Stats API contract — the response
-// array isn't guaranteed to arrive in this order.
-const RESUME_SCORE_BAND_ORDER: ResumeScoreBand[] = ['0-2', '2-4', '4-6', '6-8', '8-10'];
 
 // "AUDIO" | "AVATAR" | "VIDEO" — the fixed round-type vocabulary
 // interviews-by-status groups by (round_type_classification.py).

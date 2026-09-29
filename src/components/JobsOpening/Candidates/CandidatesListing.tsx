@@ -59,7 +59,7 @@ import {
 } from './candidateDisplay';
 import { bucketForStatus, normaliseRoundStatus, type RoundBucket } from './roundProgress';
 import { formatRoundStatus } from './roundDisplay';
-import { humanScoreOutOf10 } from './roundPipeline';
+import { AI_SCORE_MAX, scoreBadgeStatus } from './roundPipeline';
 
 // Mirrors roundPipeline.ts's own `BUCKET_META` badge-color mapping — kept
 // local here rather than imported since that map isn't exported and this
@@ -96,13 +96,10 @@ const CandidateAverageScoreCell = ({
   resumeScore: number | null;
 }) => {
   const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId);
-  // recruiter_score is 1-5 stars — converted to 0-10 so it averages
-  // like-for-like with the AI scores (same as roundPipeline.ts).
+  // recruiter_score and the AI scores are all 0-5 (same as roundPipeline.ts).
   const scoreValues = [
     resumeScore,
-    ...scores.map((s) =>
-      s.recruiter_score != null ? humanScoreOutOf10(s.recruiter_score) : s.score
-    ),
+    ...scores.map((s) => (s.recruiter_score != null ? s.recruiter_score : s.score)),
   ].filter((v): v is number => v !== null && v !== undefined);
   const avgScore =
     scoreValues.length > 0
@@ -112,11 +109,9 @@ const CandidateAverageScoreCell = ({
   if (avgScore === null) {
     return <span className="text-sm text-neutral-400">—</span>;
   }
-  // Both scores are 0-10 (see CandidateDetails.tsx's scoring fix) - same
-  // relative cut points the old resume-only badge used (70/40 out of 100).
   return (
-    <Badge dot={false} status={avgScore >= 7 ? 'success' : avgScore >= 4 ? 'warning' : 'danger'}>
-      {avgScore}
+    <Badge dot={false} status={scoreBadgeStatus(avgScore)}>
+      {avgScore} / {AI_SCORE_MAX}
     </Badge>
   );
 };

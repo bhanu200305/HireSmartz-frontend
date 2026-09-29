@@ -11,20 +11,17 @@ import {
   useGetHiringFunnelQuery,
   useGetAverageResumeScoreQuery,
   useGetResumeScoreDistributionQuery,
-  type ResumeScoreBand,
+  RESUME_SCORE_BAND_ORDER,
 } from '../../api/candidate-service/Stats/stats';
 import { useGetInterviewSummaryQuery } from '../../api/interview-service/Dashboard/summary';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
+import { AI_SCORE_MAX } from '../JobsOpening/Candidates/roundPipeline';
 
 const capitalize = (value: string): string =>
   value
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
-
-// Fixed band order per API_CONTRACT.md's Candidate Stats section — the
-// response array isn't guaranteed to arrive in this order.
-const RESUME_SCORE_BAND_ORDER: ResumeScoreBand[] = ['0-2', '2-4', '4-6', '6-8', '8-10'];
 
 const COMING_SOON_ROUND_TYPE =
   'Coming soon: interview-service no longer breaks bookings down by Audio/AI/Panel, only by status.';
@@ -98,7 +95,11 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
       // `average` is `null` when nothing has been scored yet, not `0` —
       // API_CONTRACT.md's own distinction, rendered as "-" not "0.0".
       label: 'Avg AI score',
-      value: isAvgScoreLoading ? undefined : (averageResumeScore?.average?.toFixed(1) ?? '-'),
+      value: isAvgScoreLoading
+        ? undefined
+        : averageResumeScore?.average != null
+          ? `${averageResumeScore.average.toFixed(1)} / ${AI_SCORE_MAX}`
+          : '-',
     },
   ];
 

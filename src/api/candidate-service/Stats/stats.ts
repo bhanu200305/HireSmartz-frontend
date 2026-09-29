@@ -103,8 +103,14 @@ export type CandidatePoolListView = {
 
 export type CandidatePoolListParams = CandidateStatsParams & { limit?: number; offset?: number };
 
-/** `band` is always one of these five fixed strings — not a free-form range. */
-export type ResumeScoreBand = '0-2' | '2-4' | '4-6' | '6-8' | '8-10';
+/** `band` is always one of these five fixed strings — not a free-form range.
+ * 0-5 since 2026-09-29 (was '0-2'…'8-10'), matching candidate-service's
+ * `_RESUME_SCORE_BAND` in candidate_stats_queries.py. */
+export type ResumeScoreBand = '0-1' | '1-2' | '2-3' | '3-4' | '4-5';
+
+/** Fixed chart order — the response array isn't guaranteed to arrive in
+ * this order. */
+export const RESUME_SCORE_BAND_ORDER: ResumeScoreBand[] = ['0-1', '1-2', '2-3', '3-4', '4-5'];
 
 export type ResumeScoreDistributionBand = {
   band: ResumeScoreBand;

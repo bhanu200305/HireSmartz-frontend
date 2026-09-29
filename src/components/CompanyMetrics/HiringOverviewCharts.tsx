@@ -28,12 +28,8 @@ import {
   useGetApplicationsOverTimeQuery,
   useGetInterviewsByStatusQuery,
   useGetResumeScoreDistributionQuery,
-  type ResumeScoreBand,
+  RESUME_SCORE_BAND_ORDER,
 } from '../../api/candidate-service/Stats/stats';
-
-// Fixed band order per API_CONTRACT.md's Candidate Stats section — the
-// response array isn't guaranteed to arrive in this order.
-const RESUME_SCORE_BAND_ORDER: ResumeScoreBand[] = ['0-2', '2-4', '4-6', '6-8', '8-10'];
 
 // Same brand tokens as the Super Admin's GrowthAdoptionCharts (src/theme/index.css)
 // — one shared palette across every KPI chart in the app.

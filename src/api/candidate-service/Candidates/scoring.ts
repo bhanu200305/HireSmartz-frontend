@@ -52,8 +52,8 @@ export type CandidateInterviewScoreView = {
   recruiter_score: number | null;
   recruiter_score_reason: string | null;
   recruiter_scored_by: string | null;
-  /** Per-category breakdown behind `score` (0-10 each), e.g.
-   * `[{ key: "communication", score: 7 }, ...]`. `null` on rows scored
+  /** Per-category breakdown behind `score` (0-5 each), e.g.
+   * `[{ key: "communication", score: 4 }, ...]`. `null` on rows scored
    * before this field existed on the wire (candidate-service 2026-09-14);
    * `[]` when ai-service computed no sections for that round. */
   section_scores: { key: string; score: number }[] | null;

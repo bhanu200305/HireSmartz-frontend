@@ -9,6 +9,7 @@ import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import type { CandidatePoolItem } from '../../api/candidate-service/Stats/stats';
 import { jobDisplayName } from './useJobOpeningNameMap';
+import { AI_SCORE_MAX } from '../JobsOpening/Candidates/roundPipeline';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 
 const formatDate = (iso: string | null): string =>
@@ -114,7 +115,7 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
       key: 'resume_score',
       minWidth: 130,
       align: 'center',
-      render: (value: number | null) => value ?? '-',
+      render: (value: number | null) => (value != null ? `${value} / ${AI_SCORE_MAX}` : '-'),
     },
     {
       title: 'Interview score',

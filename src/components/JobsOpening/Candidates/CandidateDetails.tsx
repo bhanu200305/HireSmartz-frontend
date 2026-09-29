@@ -80,7 +80,8 @@ import {
   hasRoundRecordings,
   canManageRoundInterviewers,
   HUMAN_SCORE_MAX,
-  humanScoreOutOf10,
+  AI_SCORE_MAX,
+  aiScorePercent,
   interviewTypeForRound,
 } from './roundPipeline';
 import ResumeInlinePreview from './ResumeInlinePreview';
@@ -162,11 +163,11 @@ const formatStatus = (status: string) =>
   status.replace(/[_-]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
 
 /** "Scored" table cell — AI scores (resume, consistency, round) are out of
- * 10, the recruiter's Human score out of 5 (`outOf`). `undefined` means the
- * column doesn't apply to
+ * AI_SCORE_MAX, the recruiter's Human score out of HUMAN_SCORE_MAX (`outOf`).
+ * `undefined` means the column doesn't apply to
  * that round at all (e.g. no human score exists for the Intake Call's
  * consistency check), `null` means it applies but nothing's recorded yet. */
-const formatScoredCell = (value: number | null | undefined, outOf = 10) =>
+const formatScoredCell = (value: number | null | undefined, outOf = AI_SCORE_MAX) =>
   value === undefined ? '-' : value === null ? 'N/A' : `${value}/${outOf}`;
 
 /** One label/value line in the header card's info column. */
@@ -1023,13 +1024,10 @@ const CandidateDetails = () => {
       return {
         roundScore,
         chartValue: candidate?.resume_score ?? null,
-        // Resume score is 0-10 (ai-service's score_resume.py), not 0-100 —
-        // scale up for the bar height.
-        pct:
-          candidate?.resume_score == null
-            ? 0
-            : Math.max(0, Math.min(100, candidate.resume_score * 10)),
-        scoreText: scored ? `${candidate?.resume_score} / 10 · AI resume score` : null,
+        // Resume score is 0-AI_SCORE_MAX (ai-service's score_resume.py), not
+        // 0-100 — scale up for the bar height.
+        pct: candidate?.resume_score == null ? 0 : aiScorePercent(candidate.resume_score),
+        scoreText: scored ? `${candidate?.resume_score} / ${AI_SCORE_MAX} · AI resume score` : null,
         statusText: scored ? 'Completed' : formatStatus(round.status),
         outcomeLabel: scored ? 'Scored' : null,
       };
@@ -1039,36 +1037,31 @@ const CandidateDetails = () => {
       return {
         roundScore,
         chartValue: candidate?.consistency_score ?? null,
-        // Consistency score is 0-10 (ai-service's
+        // Consistency score is 0-AI_SCORE_MAX (ai-service's
         // check_intake_call_consistency.py), not 0-100 — scale up for the
         // bar height.
-        pct:
-          candidate?.consistency_score == null
-            ? 0
-            : Math.max(0, Math.min(100, candidate.consistency_score * 10)),
-        scoreText: checked ? `${candidate?.consistency_score} / 10 · resume consistency` : null,
+        pct: candidate?.consistency_score == null ? 0 : aiScorePercent(candidate.consistency_score),
+        scoreText: checked
+          ? `${candidate?.consistency_score} / ${AI_SCORE_MAX} · resume consistency`
+          : null,
         statusText: formatRoundStatus(round.status),
         outcomeLabel: checked ? 'Checked' : null,
       };
     }
-    // The AI score is 0-10; the recruiter's score is 1-5 stars (see
-    // roundPipeline.ts's HUMAN_SCORE_MAX) — converted to 0-10 before
-    // scaling the bar so both sources read on the same height scale.
-    const barScoreOutOf10 =
-      roundScore?.recruiter_score != null
-        ? humanScoreOutOf10(roundScore.recruiter_score)
-        : (roundScore?.score ?? null);
-    const pct = barScoreOutOf10 != null ? Math.max(0, Math.min(100, barScoreOutOf10 * 10)) : 0;
+    // The AI score and the recruiter's 1-5 stars share the same 0-5 range,
+    // so either one scales the bar directly.
+    const barScore = roundScore?.recruiter_score ?? roundScore?.score ?? null;
+    const pct = barScore != null ? aiScorePercent(barScore) : 0;
     // The AI score is never replaced by a recruiter score - the backend
     // deliberately keeps both (a disagreement is worth keeping, not
     // discarding) - so show both when both exist instead of picking one.
     const scoreText =
       roundScore?.score != null && roundScore?.recruiter_score != null
-        ? `AI: ${roundScore.score} / 10 · Recruiter: ${roundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
+        ? `AI: ${roundScore.score} / ${AI_SCORE_MAX} · Recruiter: ${roundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
         : roundScore?.recruiter_score != null
           ? `Recruiter: ${roundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
           : roundScore?.score != null
-            ? `AI: ${roundScore.score} / 10`
+            ? `AI: ${roundScore.score} / ${AI_SCORE_MAX}`
             : null;
     return {
       roundScore,
@@ -1497,7 +1490,7 @@ const CandidateDetails = () => {
                                 AI
                               </span>{' '}
                               <span className="text-2xl font-bold text-primary">
-                                {selectedRoundScore.score} / 10
+                                {selectedRoundScore.score} / {AI_SCORE_MAX}
                               </span>
                             </div>
                           )}
@@ -1518,7 +1511,7 @@ const CandidateDetails = () => {
                       selectedRoundScore.section_scores.length > 0 && (
                         <div className="text-xs text-gray-500">
                           {selectedRoundScore.section_scores
-                            .map((s) => `${s.key}: ${s.score}/10`)
+                            .map((s) => `${s.key}: ${s.score}/${AI_SCORE_MAX}`)
                             .join(' · ')}
                         </div>
                       )}
@@ -2144,7 +2137,9 @@ const CandidateDetails = () => {
                   </div>
                   <div>
                     <div className="text-xs text-gray-400">Avg. score so far</div>
-                    <div className="font-semibold text-gray-900">{pipeline.avgScore ?? '-'}</div>
+                    <div className="font-semibold text-gray-900">
+                      {pipeline.avgScore != null ? `${pipeline.avgScore} / ${AI_SCORE_MAX}` : '-'}
+                    </div>
                   </div>
                   <div>
                     <div className="text-xs text-gray-400">Overall standing</div>
@@ -2186,109 +2181,11 @@ const CandidateDetails = () => {
                           <h3
                             className={`text-sm font-semibold ${isResumeFallbackSelected ? 'text-primary' : 'text-gray-900'}`}
                           >
-<<<<<<< Updated upstream
-                            <div>
-                              <h4 className="font-semibold text-gray-900">Interview questions</h4>
-                              <p className="text-sm text-gray-600 mt-0.5">
-                                Visible to whoever is preparing for or sitting on this panel.
-                              </p>
-                            </div>
-                            <CollapseToggle open={isPanelQuestionsOpen} />
-                          </button>
-                          <div
-                            className={`grid transition-all duration-300 ease-in-out ${
-                              isPanelQuestionsOpen
-                                ? 'grid-rows-[1fr] opacity-100'
-                                : 'grid-rows-[0fr] opacity-0'
-                            }`}
-                          >
-                            <div className="overflow-hidden">
-                              {roundQuestions && roundQuestions.questions.length > 0 ? (
-                                <ol className="list-decimal space-y-3 pl-5 text-sm pt-1">
-                                  {roundQuestions.questions.map((q) => (
-                                    <li key={q.id} className="text-gray-800">
-                                      {q.question_text}
-                                      {q.answer_text && (
-                                        <p className="mt-0.5 text-xs text-gray-400">
-                                          {q.answer_text}
-                                        </p>
-                                      )}
-                                    </li>
-                                  ))}
-                                </ol>
-                              ) : (
-                                <p className="text-sm text-gray-400 pt-1">
-                                  No questions have been added for this round yet.
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </CommonCard>
-                    )}
-
-                    {isVoiceScreeningRound && (
-                      <CommonCard>
-                        <div className="p-5 flex flex-col gap-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <h4 className="font-semibold text-gray-900">Questions asked</h4>
-                            {questionsAskedAttemptLabel && (
-                              <span className="shrink-0 rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-600">
-                                {questionsAskedAttemptLabel}
-                              </span>
-                            )}
-                          </div>
-                          {isLoadingQuestionsAsked ? (
-                            <Loader />
-                          ) : questionsAskedError ? (
-                            <p className="text-sm text-gray-400">
-                              Could not load the questions for this call right now.
-                            </p>
-                          ) : questionsAsked?.status === 'not_yet_concluded' ? (
-                            <p className="text-sm text-gray-400">
-                              This round hasn&apos;t concluded yet.
-                            </p>
-                          ) : questionsAsked?.status === 'no_questions_asked' ? (
-                            <p className="text-sm text-gray-400">
-                              {questionsAsked.reason ?? 'No questions were recorded for this call.'}
-                            </p>
-                          ) : questionsAsked && questionsAsked.questions.length > 0 ? (
-                            <>
-                              <ol className="list-decimal space-y-3 pl-5 text-sm">
-                                {questionsAsked.questions.map((q) => (
-                                  <li key={q.question_id} className="text-gray-800">
-                                    {q.question_text}
-                                    {q.answer_text && (
-                                      <p className="mt-0.5 text-xs text-gray-400">
-                                        {q.answer_text}
-                                      </p>
-                                    )}
-                                    {q.scoring_sections.length > 0 && (
-                                      <div className="mt-1 flex flex-wrap gap-1">
-                                        {q.scoring_sections.map((section) => (
-                                          <Badge key={section} status="neutral" dot={false}>
-                                            {section}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </li>
-                                ))}
-                              </ol>
-                              {questionsAsked.limitation && (
-                                <p className="text-xs text-gray-400">{questionsAsked.limitation}</p>
-                              )}
-                            </>
-                          ) : (
-                            <p className="text-sm text-gray-400">
-                              No questions were recorded for this call.
-=======
                             Resume Screening
                           </h3>
                           {candidate?.resume_score != null && (
                             <p className="mt-1 text-xs font-semibold text-primary-600">
-                              Score: {candidate.resume_score} / 10
->>>>>>> Stashed changes
+                              Score: {candidate.resume_score} / {AI_SCORE_MAX}
                             </p>
                           )}
                         </button>
@@ -2446,7 +2343,7 @@ const CandidateDetails = () => {
                           // substitutes the AI resume score and the
                           // consistency score respectively. All three
                           // sources (resume, consistency, round score/
-                          // recruiter_score) are 0-10, so `pct` scales the
+                          // recruiter_score) are 0-5, so `pct` scales the
                           // same way regardless of which one a round uses.
                           const { chartValue, pct, scoreText } = summariseRound(round);
                           const hasScore = chartValue != null;
@@ -2802,7 +2699,7 @@ const CandidateDetails = () => {
             rescheduleRound &&
             isIntakeCallRound(rescheduleRound) &&
             candidate?.consistency_score != null
-              ? `Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, the resume-consistency score will be recalculated from it and will overwrite the current score (${candidate.consistency_score} / 10).`
+              ? `Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, the resume-consistency score will be recalculated from it and will overwrite the current score (${candidate.consistency_score} / ${AI_SCORE_MAX}).`
               : rescheduleRound && isIntakeCallRound(rescheduleRound)
                 ? 'Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, a resume-consistency score will be calculated from it.'
                 : 'Requesting a reschedule will email the candidate a new link, valid for 24 hours.'

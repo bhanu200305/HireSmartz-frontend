@@ -7,6 +7,7 @@ import {
   useGetSelectedCandidatesByLocationQuery,
 } from '../../api/candidate-service/Stats/stats';
 import { useJobOpeningNameMap, jobDisplayName } from './useJobOpeningNameMap';
+import { AI_SCORE_MAX } from '../JobsOpening/Candidates/roundPipeline';
 
 const COLOR_PRIMARY = '#263d92';
 const COLOR_ACCENT = '#0f9fc4';
@@ -187,8 +188,8 @@ const HiringManagerCharts: React.FC = () => {
               label={xAxisLabel('Job')}
             />
             <YAxis
-              domain={[0, 10]}
-              ticks={[0, 2, 4, 6, 8, 10]}
+              domain={[0, AI_SCORE_MAX]}
+              ticks={[0, 1, 2, 3, 4, 5]}
               tick={{ fontSize: 12, fill: '#8593ac' }}
               axisLine={false}
               tickLine={false}

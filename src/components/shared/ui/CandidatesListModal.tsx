@@ -22,6 +22,7 @@ import {
   jobDisplayName,
 } from '../../HiringManagerDashboard/useJobOpeningNameMap';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
+import { AI_SCORE_MAX } from '../../JobsOpening/Candidates/roundPipeline';
 
 // Candidate / Resume score / Applied date are the only three columns
 // candidate-service can actually sort by (`ListCandidatesArgs.sortBy`) — see
@@ -140,7 +141,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       align: 'center',
       sorter: true,
       sortOrder: sortOrderFor('resume_score'),
-      render: (value: number | null) => value ?? '-',
+      render: (value: number | null) => (value != null ? `${value} / ${AI_SCORE_MAX}` : '-'),
     },
     {
       title: 'Source',
