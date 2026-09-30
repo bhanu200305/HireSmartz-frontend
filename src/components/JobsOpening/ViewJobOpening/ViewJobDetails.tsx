@@ -722,128 +722,133 @@ const ViewJobDetails = () => {
             <span className="text-base font-bold text-neutral-900 font-display">Salary</span>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 mt-2">
-            <div>
-              <span className="text-sm font-semibold text-neutral-700">Exempt - Annual</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-1">
-                <Form.Item label={<span>Minimum Salary (in USD)</span>}>
-                  <div className="flex items-center gap-1.5">
-                    <CurrencyInput
-                      value={jobData?.data.exemptMinSalary ?? ''}
-                      disableGroupSeparators
-                      decimalsLimit={2}
-                      decimalScale={2}
-                      disabled
-                      prefix="$"
-                      placeholder="Minimum Salary"
-                      className="w-full !lowercase"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: 0,
-                        boxShadow: 'none',
-                        color: '#111827',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                      }}
-                      intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                    />
-                    {jobData?.data.exemptMinSalary != null && (
-                      <span className="shrink-0 text-xs font-semibold text-neutral-500">
-                        /year
-                      </span>
-                    )}
-                  </div>
-                </Form.Item>
-                <Form.Item label={<span>Maximum Salary (in USD)</span>}>
-                  <div className="flex items-center gap-1.5">
-                    <CurrencyInput
-                      value={jobData?.data.exemptMaxSalary ?? ''}
-                      disableGroupSeparators
-                      decimalsLimit={2}
-                      decimalScale={2}
-                      disabled
-                      prefix="$"
-                      placeholder="Maximum Salary"
-                      className="w-full !lowercase"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: 0,
-                        boxShadow: 'none',
-                        color: '#111827',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                      }}
-                      intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                    />
-                    {jobData?.data.exemptMaxSalary != null && (
-                      <span className="shrink-0 text-xs font-semibold text-neutral-500">
-                        /year
-                      </span>
-                    )}
-                  </div>
-                </Form.Item>
+            {(jobData?.data.exemptMinSalary != null || jobData?.data.exemptMaxSalary != null) && (
+              <div>
+                <span className="text-sm font-semibold text-neutral-700">Exempt - Annual</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-1">
+                  <Form.Item label={<span>Minimum Salary (in USD)</span>}>
+                    <div className="flex items-center gap-1.5">
+                      <CurrencyInput
+                        value={jobData?.data.exemptMinSalary ?? ''}
+                        disableGroupSeparators
+                        decimalsLimit={2}
+                        decimalScale={2}
+                        disabled
+                        prefix="$"
+                        placeholder="Minimum Salary"
+                        className="w-full !lowercase"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          padding: 0,
+                          boxShadow: 'none',
+                          color: '#111827',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                        }}
+                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                      />
+                      {jobData?.data.exemptMinSalary != null && (
+                        <span className="shrink-0 text-xs font-semibold text-neutral-500">
+                          /year
+                        </span>
+                      )}
+                    </div>
+                  </Form.Item>
+                  <Form.Item label={<span>Maximum Salary (in USD)</span>}>
+                    <div className="flex items-center gap-1.5">
+                      <CurrencyInput
+                        value={jobData?.data.exemptMaxSalary ?? ''}
+                        disableGroupSeparators
+                        decimalsLimit={2}
+                        decimalScale={2}
+                        disabled
+                        prefix="$"
+                        placeholder="Maximum Salary"
+                        className="w-full !lowercase"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          padding: 0,
+                          boxShadow: 'none',
+                          color: '#111827',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                        }}
+                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                      />
+                      {jobData?.data.exemptMaxSalary != null && (
+                        <span className="shrink-0 text-xs font-semibold text-neutral-500">
+                          /year
+                        </span>
+                      )}
+                    </div>
+                  </Form.Item>
+                </div>
               </div>
-            </div>
-            <div>
-              <span className="text-sm font-semibold text-neutral-700">Non-Exempt - Hourly</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-1">
-                <Form.Item label={<span>Minimum Rate (in USD)</span>}>
-                  <div className="flex items-center gap-1.5">
-                    <CurrencyInput
-                      value={jobData?.data.nonExemptMinSalary ?? ''}
-                      disableGroupSeparators
-                      decimalsLimit={2}
-                      decimalScale={2}
-                      disabled
-                      prefix="$"
-                      placeholder="Minimum Rate"
-                      className="w-full !lowercase"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: 0,
-                        boxShadow: 'none',
-                        color: '#111827',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                      }}
-                      intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                    />
-                    {jobData?.data.nonExemptMinSalary != null && (
-                      <span className="shrink-0 text-xs font-semibold text-neutral-500">/hr</span>
-                    )}
-                  </div>
-                </Form.Item>
-                <Form.Item label={<span>Maximum Rate (in USD)</span>}>
-                  <div className="flex items-center gap-1.5">
-                    <CurrencyInput
-                      value={jobData?.data.nonExemptMaxSalary ?? ''}
-                      disableGroupSeparators
-                      decimalsLimit={2}
-                      decimalScale={2}
-                      disabled
-                      prefix="$"
-                      placeholder="Maximum Rate"
-                      className="w-full !lowercase"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: 0,
-                        boxShadow: 'none',
-                        color: '#111827',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                      }}
-                      intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                    />
-                    {jobData?.data.nonExemptMaxSalary != null && (
-                      <span className="shrink-0 text-xs font-semibold text-neutral-500">/hr</span>
-                    )}
-                  </div>
-                </Form.Item>
+            )}
+            {(jobData?.data.nonExemptMinSalary != null ||
+              jobData?.data.nonExemptMaxSalary != null) && (
+              <div>
+                <span className="text-sm font-semibold text-neutral-700">Non-Exempt - Hourly</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-1">
+                  <Form.Item label={<span>Minimum Salary (in USD)</span>}>
+                    <div className="flex items-center gap-1.5">
+                      <CurrencyInput
+                        value={jobData?.data.nonExemptMinSalary ?? ''}
+                        disableGroupSeparators
+                        decimalsLimit={2}
+                        decimalScale={2}
+                        disabled
+                        prefix="$"
+                        placeholder="Minimum Salary"
+                        className="w-full !lowercase"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          padding: 0,
+                          boxShadow: 'none',
+                          color: '#111827',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                        }}
+                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                      />
+                      {jobData?.data.nonExemptMinSalary != null && (
+                        <span className="shrink-0 text-xs font-semibold text-neutral-500">/hr</span>
+                      )}
+                    </div>
+                  </Form.Item>
+                  <Form.Item label={<span>Maximum Salary (in USD)</span>}>
+                    <div className="flex items-center gap-1.5">
+                      <CurrencyInput
+                        value={jobData?.data.nonExemptMaxSalary ?? ''}
+                        disableGroupSeparators
+                        decimalsLimit={2}
+                        decimalScale={2}
+                        disabled
+                        prefix="$"
+                        placeholder="Maximum Salary"
+                        className="w-full !lowercase"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          padding: 0,
+                          boxShadow: 'none',
+                          color: '#111827',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                        }}
+                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                      />
+                      {jobData?.data.nonExemptMaxSalary != null && (
+                        <span className="shrink-0 text-xs font-semibold text-neutral-500">/hr</span>
+                      )}
+                    </div>
+                  </Form.Item>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
         <div className="form-grid-equal-labels grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">

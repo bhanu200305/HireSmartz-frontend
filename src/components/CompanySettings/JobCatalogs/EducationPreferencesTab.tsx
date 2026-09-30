@@ -4,6 +4,8 @@ import {
   useCreatePlatformEducationPreferenceMutation,
   useUpdatePlatformEducationPreferenceMutation,
   useDeletePlatformEducationPreferenceMutation,
+  useActivatePlatformEducationPreferenceMutation,
+  useDeactivatePlatformEducationPreferenceMutation,
   PlatformEducationPreference,
 } from '../../../api/job-service/Platform/masterEducationPreferences';
 import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
@@ -35,6 +37,8 @@ const EducationPreferencesTab: React.FC = () => {
   const [create] = useCreatePlatformEducationPreferenceMutation();
   const [update] = useUpdatePlatformEducationPreferenceMutation();
   const [remove] = useDeletePlatformEducationPreferenceMutation();
+  const [activate] = useActivatePlatformEducationPreferenceMutation();
+  const [deactivate] = useDeactivatePlatformEducationPreferenceMutation();
 
   return (
     <PlatformCatalogTab<PlatformEducationPreference, FormValues>
@@ -80,6 +84,11 @@ const EducationPreferencesTab: React.FC = () => {
         }).unwrap()
       }
       onDelete={(item) => remove(item.education_preference_id).unwrap()}
+      onToggleActive={(item, next) =>
+        next
+          ? activate(item.education_preference_id).unwrap()
+          : deactivate(item.education_preference_id).unwrap()
+      }
     />
   );
 };

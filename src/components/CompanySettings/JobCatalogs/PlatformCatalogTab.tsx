@@ -1,13 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { TableProps } from 'antd';
+import { Tooltip } from 'antd';
 import { MdDelete, MdEdit, MdOutlineAdd, MdSearch } from 'react-icons/md';
 import { Button, CustomTable, Input, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
+import StatusToggle from '../../shared/ui/StatusToggle';
 import MasterPagination from '../../shared/ui/MasterPagination';
 import { RowsPerPageSelect } from '../../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
+import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import CatalogFormFields, { type CatalogField } from './CatalogFormFields';
@@ -33,6 +36,11 @@ export type CatalogServerQuery = {
  * equivalent Super Admin catalogue screen) — kept as a generic component
  * here instead of copied 9 times because these 9 really are that identical.
  */
+/** `is_active` reflection for the Status Switch - defaults true so a row
+ * from a backend that hasn't added the column yet still reads as active. */
+const isActive = (item: unknown): boolean =>
+  (item as { is_active?: boolean } | null)?.is_active ?? true;
+
 export type PlatformCatalogTabProps<TItem, TFormValues extends Record<string, unknown>> = {
   title: string;
   itemNounSingular: string;
@@ -50,6 +58,10 @@ export type PlatformCatalogTabProps<TItem, TFormValues extends Record<string, un
   onUpdate: (id: string, values: TFormValues) => Promise<unknown>;
   onDelete?: (item: TItem) => Promise<unknown>;
   deleteConfirmTitle?: (item: TItem) => string;
+  /** Status column's Switch - flips `is_active` without touching
+   * `is_deleted`, so the row stays visible either way. Only renders when
+   * passed. */
+  onToggleActive?: (item: TItem, nextActive: boolean) => Promise<unknown>;
   /** Hides the "+ Add" button. Defaults true. */
   allowCreate?: boolean;
   /** Hides the row-level Edit action, independent of `onDelete`. Defaults true. */
@@ -86,6 +98,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
   onUpdate,
   onDelete,
   deleteConfirmTitle,
+  onToggleActive,
   allowCreate = true,
   allowEdit = true,
   canEditRow = () => true,
@@ -101,6 +114,23 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
   const [itemToDelete, setItemToDelete] = useState<TItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchText, setSearchText] = useState('');
+  // Server-driven search: typing updates this instantly (so the box feels
+  // responsive), but the actual query only fires 400ms after typing stops -
+  // was firing a fresh request on every keystroke before this.
+  const [searchInput, setSearchInput] = useState(serverQuery?.search ?? '');
+  useEffect(() => {
+    setSearchInput(serverQuery?.search ?? '');
+    // Only resync from external changes (e.g. a reset), not our own typing.
+  }, [serverQuery?.search]);
+  useDebouncedEffect(
+    () => {
+      if (isServerDriven && searchInput !== serverQuery!.search) {
+        onServerQueryChange!({ ...serverQuery!, search: searchInput, page: 1 });
+      }
+    },
+    [searchInput],
+    400
+  );
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize(
     `company_settings_catalog_${itemNounPlural.trim().toLowerCase().replace(/\s+/g, '_')}`,
@@ -199,31 +229,53 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
 
   const allColumns: TableProps<TItem & { key: string }>['columns'] = [
     ...(baseColumns ?? []),
+    onToggleActive && {
+      title: 'Status',
+      key: 'status',
+      width: 90,
+      render: (_: unknown, item: TItem & { key: string }) => (
+        <StatusToggle
+          isActive={isActive(item)}
+          activateLabel={`Activate ${itemNounSingular.toLowerCase()}`}
+          deactivateLabel={`Deactivate ${itemNounSingular.toLowerCase()}`}
+          deactivateConfirmTitle={`Deactivate "${labelOf(item)}"?`}
+          onActivate={() => onToggleActive(item, true)}
+          onDeactivate={() => onToggleActive(item, false)}
+        />
+      ),
+    },
     showActions && {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 90,
       render: (_: unknown, item: TItem & { key: string }) => (
         <div className="flex items-center gap-1">
           {allowEdit && canEditRow(item) && (
-            <button
-              type="button"
-              aria-label={`Edit ${itemNounSingular.toLowerCase()}`}
-              className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
-              onClick={() => openEdit(item)}
-            >
-              <MdEdit className="text-gray-600" />
-            </button>
+            <Tooltip title={`Edit ${itemNounSingular.toLowerCase()}`}>
+              <button
+                type="button"
+                aria-label={`Edit ${itemNounSingular.toLowerCase()}`}
+                className="p-2 hover:bg-gray-100 rounded-full cursor-pointer transition-colors"
+                onClick={() => openEdit(item)}
+              >
+                <MdEdit size={18} className="text-gray-600" />
+              </button>
+            </Tooltip>
           )}
           {onDelete && canDeleteRow(item) && (
-            <button
-              type="button"
-              aria-label={`Delete ${itemNounSingular.toLowerCase()}`}
-              className="p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
-              onClick={() => setItemToDelete(item)}
-            >
-              <MdDelete className="text-red-500" />
-            </button>
+            <Tooltip title={`Delete ${itemNounSingular.toLowerCase()}`}>
+              <button
+                type="button"
+                aria-label={`Delete ${itemNounSingular.toLowerCase()}`}
+                className="group p-2 hover:bg-red-50 rounded-full cursor-pointer transition-colors"
+                onClick={() => setItemToDelete(item)}
+              >
+                <MdDelete
+                  size={18}
+                  className="text-gray-600 transition-colors group-hover:text-red-600"
+                />
+              </button>
+            </Tooltip>
           )}
         </div>
       ),
@@ -262,10 +314,11 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
             prefix={<MdSearch className="text-gray-400" />}
             placeholder={`Search ${itemNounPlural.toLowerCase()}...`}
             className="w-56"
-            value={isServerDriven ? serverQuery!.search : searchText}
+            value={isServerDriven ? searchInput : searchText}
             onChange={(e) => {
               if (isServerDriven) {
-                onServerQueryChange!({ ...serverQuery!, search: e.target.value, page: 1 });
+                // Query fires later, debounced - see the useDebouncedEffect above.
+                setSearchInput(e.target.value);
               } else {
                 setSearchText(e.target.value);
                 setPage(0);

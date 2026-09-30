@@ -4,6 +4,8 @@ import {
   useCreateJobTypeMutation,
   useUpdateJobTypeMutation,
   useDeleteJobTypeMutation,
+  useActivateJobTypeMutation,
+  useDeactivateJobTypeMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import type { OrganizationJobType } from '../../../api/job-service/types';
 import PlatformCatalogTab, {
@@ -40,12 +42,17 @@ const TenantJobTypesTab: React.FC = () => {
   const [create] = useCreateJobTypeMutation();
   const [update] = useUpdateJobTypeMutation();
   const [remove] = useDeleteJobTypeMutation();
+  const [activate] = useActivateJobTypeMutation();
+  const [deactivate] = useDeactivateJobTypeMutation();
   // Both hooks must run unconditionally on every render — `||` short-circuits
   // the second call once the first is true, which varies the hook count
   // between renders and violates React's rules of hooks.
   const canManageCompanySettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const canManageJobCatalog = useHasAccess(Authorities.JOB_CATALOG_EDIT);
   const canManage = canManageCompanySettings || canManageJobCatalog;
+  // JOB_CATALOG_DELETE = admin: edit or delete any row. Without it, a
+  // caller may only add new rows, never edit or delete existing ones.
+  const canManageAny = useHasAccess(Authorities.JOB_CATALOG_DELETE) || canManageCompanySettings;
 
   return (
     <PlatformCatalogTab<OrganizationJobType, FormValues>
@@ -57,7 +64,9 @@ const TenantJobTypesTab: React.FC = () => {
       serverQuery={query}
       onServerQueryChange={setQuery}
       allowCreate={canManage}
-      allowEdit={canManage}
+      allowEdit={canManageAny}
+      canEditRow={() => canManageAny}
+      canDeleteRow={() => canManageAny}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.job_type_name}
@@ -91,7 +100,14 @@ const TenantJobTypesTab: React.FC = () => {
         }).unwrap()
       }
       onDelete={
-        canManage ? (item) => remove({ jobTypeId: item.id, isMaster: false }).unwrap() : undefined
+        canManageAny
+          ? (item) => remove({ jobTypeId: item.id, isMaster: false }).unwrap()
+          : undefined
+      }
+      onToggleActive={
+        canManageAny
+          ? (item, next) => (next ? activate(item.id).unwrap() : deactivate(item.id).unwrap())
+          : undefined
       }
     />
   );

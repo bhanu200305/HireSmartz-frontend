@@ -9,6 +9,8 @@ export type PlatformClosureReason = {
   reason: string;
   requires_input: boolean;
   description: string | null;
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 type ClosureReasonWriteBody = {
@@ -25,7 +27,7 @@ const extendedApi = jobApi.injectEndpoints({
       providesTags: ['PlatformClosureReasons'],
     }),
     searchPlatformClosureReasons: build.query<CatalogPage<PlatformClosureReason>, SearchArgs>({
-      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+      query: ({ page, pageSize, search, sortBy, sortDir, includeInactive }) => ({
         url: '/platform/master-closure-reasons/search',
         method: 'GET',
         params: {
@@ -34,6 +36,7 @@ const extendedApi = jobApi.injectEndpoints({
           search: search || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          include_inactive: includeInactive || undefined,
         },
       }),
       transformResponse: (response: {
@@ -72,6 +75,30 @@ const extendedApi = jobApi.injectEndpoints({
       }),
       invalidatesTags: ['PlatformClosureReasons'],
     }),
+    // Undoes deletePlatformClosureReason's soft-delete.
+    reactivatePlatformClosureReason: build.mutation<void, string>({
+      query: (reasonId) => ({
+        url: `/platform/master-closure-reasons/${reasonId}/reactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformClosureReasons'],
+    }),
+    // Status-toggle Switch in the catalogue table - sets is_active without
+    // touching is_deleted, unlike deletePlatformClosureReason above.
+    activatePlatformClosureReason: build.mutation<void, string>({
+      query: (reasonId) => ({
+        url: `/platform/master-closure-reasons/${reasonId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformClosureReasons'],
+    }),
+    deactivatePlatformClosureReason: build.mutation<void, string>({
+      query: (reasonId) => ({
+        url: `/platform/master-closure-reasons/${reasonId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformClosureReasons'],
+    }),
   }),
 });
 
@@ -81,4 +108,7 @@ export const {
   useCreatePlatformClosureReasonMutation,
   useUpdatePlatformClosureReasonMutation,
   useDeletePlatformClosureReasonMutation,
+  useReactivatePlatformClosureReasonMutation,
+  useActivatePlatformClosureReasonMutation,
+  useDeactivatePlatformClosureReasonMutation,
 } = extendedApi;

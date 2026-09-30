@@ -192,8 +192,8 @@ export type JobDetailsState = {
   // Single catalogue id, held as an array-of-one — the org's configured shift, not a free-typed time range.
   shift?: Array<string | number>;
   openings: number | null;
-  // A job may offer either classification, or both — two independent
-  // ranges, not one range picked by a dropdown.
+  // Multi-select: 'true' = Exempt, 'false' = Non-Exempt. Either or both.
+  exemptionStatus: string[];
   exemptMinSalary: string | null;
   exemptMaxSalary: string | null;
   nonExemptMinSalary: string | null;

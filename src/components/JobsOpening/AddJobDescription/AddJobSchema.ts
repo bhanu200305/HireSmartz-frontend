@@ -30,6 +30,7 @@ export const jobDetailsSchema = z
           message: 'Opening(s) are required.',
         })
     ),
+    exemptionStatus: z.array(z.string()).min(1, 'Exemption Status is required.'),
     // Range-completeness rules live in the superRefine below.
     exemptMinSalary: z.preprocess(
       (val) => (val === '' || val === undefined || val === null ? null : val),
@@ -55,7 +56,7 @@ export const jobDetailsSchema = z
         .string()
         .nullable()
         .refine((val) => val === null || (!isNaN(Number(val)) && Number(val) >= 0), {
-          message: 'Enter a valid minimum rate.',
+          message: 'Enter a valid minimum salary.',
         })
     ),
     nonExemptMaxSalary: z.preprocess(
@@ -64,7 +65,7 @@ export const jobDetailsSchema = z
         .string()
         .nullable()
         .refine((val) => val === null || (!isNaN(Number(val)) && Number(val) >= 0), {
-          message: 'Enter a valid maximum rate.',
+          message: 'Enter a valid maximum salary.',
         })
     ),
     referralBonus: z.preprocess(
@@ -250,31 +251,38 @@ export const jobDetailsSchema = z
       }
     }
 
-    // A job needs at least one complete range — Exempt, Non-Exempt, or both.
-    const exemptComplete = exemptMin !== null && exemptMax !== null;
-    const nonExemptComplete = nonExemptMin !== null && nonExemptMax !== null;
-    if (!exemptComplete && !nonExemptComplete) {
+    const wantsExempt = (data.exemptionStatus ?? []).includes('true');
+    const wantsNonExempt = (data.exemptionStatus ?? []).includes('false');
+
+    if (wantsExempt && exemptMin === null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Provide at least one complete salary range — Exempt, Non-Exempt, or both.',
+        message: 'Minimum salary is required.',
         path: ['exemptMinSalary'],
       });
     }
-
-    if (exemptMin !== null && exemptMax === null) {
+    if (wantsExempt && exemptMax === null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Enter a maximum salary for the Exempt range.',
+        message: 'Maximum salary is required.',
         path: ['exemptMaxSalary'],
       });
     }
-    if (exemptMax !== null && exemptMin === null) {
+    if (wantsNonExempt && nonExemptMin === null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Enter a minimum salary for the Exempt range.',
-        path: ['exemptMinSalary'],
+        message: 'Minimum salary is required.',
+        path: ['nonExemptMinSalary'],
       });
     }
+    if (wantsNonExempt && nonExemptMax === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Maximum salary is required.',
+        path: ['nonExemptMaxSalary'],
+      });
+    }
+
     if (exemptMin !== null && exemptMax !== null && exemptMin > exemptMax) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -283,24 +291,10 @@ export const jobDetailsSchema = z
       });
     }
 
-    if (nonExemptMin !== null && nonExemptMax === null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Enter a maximum rate for the Non-Exempt range.',
-        path: ['nonExemptMaxSalary'],
-      });
-    }
-    if (nonExemptMax !== null && nonExemptMin === null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Enter a minimum rate for the Non-Exempt range.',
-        path: ['nonExemptMinSalary'],
-      });
-    }
     if (nonExemptMin !== null && nonExemptMax !== null && nonExemptMin > nonExemptMax) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Minimum rate cannot exceed maximum rate.',
+        message: 'Minimum salary cannot exceed maximum salary.',
         path: ['nonExemptMinSalary'],
       });
     }
@@ -384,6 +378,7 @@ export const jobDetailsDraftSchema = z.object({
   useCultureIntro: z.boolean().optional(),
   isRemote: z.boolean().optional(),
   openings: z.number().optional().nullable(),
+  exemptionStatus: z.array(z.string()).optional(),
   exemptMinSalary: z.string().optional().nullable(),
   exemptMaxSalary: z.string().optional().nullable(),
   nonExemptMinSalary: z.string().optional().nullable(),

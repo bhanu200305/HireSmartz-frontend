@@ -26,6 +26,7 @@ const initialState: JobState = {
     jobType: [],
     shift: [],
     openings: null,
+    exemptionStatus: [],
     exemptMinSalary: null,
     exemptMaxSalary: null,
     nonExemptMinSalary: null,

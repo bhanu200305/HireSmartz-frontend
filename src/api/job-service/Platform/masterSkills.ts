@@ -11,6 +11,8 @@ export type PlatformSkill = {
   skill_category_id: string | null;
   organization_id: string | null;
   is_organization_specific: boolean;
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 const extendedApi = jobApi.injectEndpoints({
@@ -21,7 +23,7 @@ const extendedApi = jobApi.injectEndpoints({
       providesTags: ['PlatformSkills'],
     }),
     searchPlatformSkills: build.query<CatalogPage<PlatformSkill>, SearchArgs>({
-      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+      query: ({ page, pageSize, search, sortBy, sortDir, includeInactive }) => ({
         url: '/platform/master-skills/search',
         method: 'GET',
         params: {
@@ -30,6 +32,7 @@ const extendedApi = jobApi.injectEndpoints({
           search: search || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          include_inactive: includeInactive || undefined,
         },
       }),
       transformResponse: (response: {
@@ -77,6 +80,30 @@ const extendedApi = jobApi.injectEndpoints({
       }),
       invalidatesTags: ['PlatformSkills'],
     }),
+    // Undoes deletePlatformSkill's soft-delete.
+    reactivatePlatformSkill: build.mutation<void, string>({
+      query: (skillId) => ({
+        url: `/platform/master-skills/${skillId}/reactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformSkills'],
+    }),
+    // Status-toggle Switch in the catalogue table - sets is_active without
+    // touching is_deleted, unlike deletePlatformSkill above.
+    activatePlatformSkill: build.mutation<void, string>({
+      query: (skillId) => ({
+        url: `/platform/master-skills/${skillId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformSkills'],
+    }),
+    deactivatePlatformSkill: build.mutation<void, string>({
+      query: (skillId) => ({
+        url: `/platform/master-skills/${skillId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformSkills'],
+    }),
   }),
 });
 
@@ -86,4 +113,7 @@ export const {
   useCreatePlatformSkillMutation,
   useUpdatePlatformSkillMutation,
   useDeletePlatformSkillMutation,
+  useReactivatePlatformSkillMutation,
+  useActivatePlatformSkillMutation,
+  useDeactivatePlatformSkillMutation,
 } = extendedApi;

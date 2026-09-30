@@ -78,6 +78,16 @@ const extendedApi = jobApi.injectEndpoints({
       }),
       providesTags: (_r, _e, jobOpeningId) => [{ type: 'JobDetails', id: jobOpeningId }],
     }),
+
+    // Only works while still a draft (backend 422s otherwise) - what
+    // Cancel uses so the job is gone, not left behind as an abandoned draft.
+    deleteDraftJob: build.mutation<void, string>({
+      query: (jobOpeningId) => ({
+        url: `/job-openings/${jobOpeningId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: 'JobOpenings', id: 'LIST' }, 'JobStats'],
+    }),
   }),
 });
 
@@ -86,4 +96,5 @@ export const {
   useUpdateJobOpeningMutation,
   useGetJobDetailsQuery,
   useLazyGetJobDetailsQuery,
+  useDeleteDraftJobMutation,
 } = extendedApi;

@@ -4,6 +4,8 @@ import {
   useCreateEducationPreferenceMutation,
   useUpdateEducationPreferenceMutation,
   useDeleteEducationPreferenceMutation,
+  useActivateEducationPreferenceMutation,
+  useDeactivateEducationPreferenceMutation,
   OrganizationEducationPreference,
 } from '../../../api/job-service/JobOpening/educationPreferences';
 import PlatformCatalogTab, {
@@ -39,12 +41,17 @@ const TenantEducationPreferencesTab: React.FC = () => {
   const [create] = useCreateEducationPreferenceMutation();
   const [update] = useUpdateEducationPreferenceMutation();
   const [remove] = useDeleteEducationPreferenceMutation();
+  const [activate] = useActivateEducationPreferenceMutation();
+  const [deactivate] = useDeactivateEducationPreferenceMutation();
   // Both hooks must run unconditionally on every render — `||` short-circuits
   // the second call once the first is true, which varies the hook count
   // between renders and violates React's rules of hooks.
   const canManageCompanySettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const canManageJobCatalog = useHasAccess(Authorities.JOB_CATALOG_EDIT);
   const canManage = canManageCompanySettings || canManageJobCatalog;
+  // JOB_CATALOG_DELETE = admin: edit or delete any row. Without it, a
+  // caller may only add new rows, never edit or delete existing ones.
+  const canManageAny = useHasAccess(Authorities.JOB_CATALOG_DELETE) || canManageCompanySettings;
 
   return (
     <PlatformCatalogTab<OrganizationEducationPreference, FormValues>
@@ -56,7 +63,9 @@ const TenantEducationPreferencesTab: React.FC = () => {
       serverQuery={query}
       onServerQueryChange={setQuery}
       allowCreate={canManage}
-      allowEdit={canManage}
+      allowEdit={canManageAny}
+      canEditRow={() => canManageAny}
+      canDeleteRow={() => canManageAny}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.education_preference_name}
@@ -87,7 +96,12 @@ const TenantEducationPreferencesTab: React.FC = () => {
           education_preference_description: values.description,
         }).unwrap()
       }
-      onDelete={canManage ? (item) => remove(item.id).unwrap() : undefined}
+      onDelete={canManageAny ? (item) => remove(item.id).unwrap() : undefined}
+      onToggleActive={
+        canManageAny
+          ? (item, next) => (next ? activate(item.id).unwrap() : deactivate(item.id).unwrap())
+          : undefined
+      }
     />
   );
 };

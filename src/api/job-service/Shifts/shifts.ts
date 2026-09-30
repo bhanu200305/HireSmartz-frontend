@@ -11,6 +11,9 @@ export type OrganizationShift = {
   start_time: string; // HH:MM:SS
   end_time: string;
   duration_minutes: number | null;
+  created_by?: string | null;
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 export type SaveOrganizationShiftArgs = {
@@ -28,7 +31,7 @@ const extendedApi = jobApi.injectEndpoints({
       providesTags: ['OrgShifts'],
     }),
     searchOrganizationShifts: build.query<CatalogPage<OrganizationShift>, SearchArgs>({
-      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+      query: ({ page, pageSize, search, sortBy, sortDir, includeInactive }) => ({
         url: '/shifts/search',
         method: 'GET',
         params: {
@@ -37,6 +40,7 @@ const extendedApi = jobApi.injectEndpoints({
           search: search || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          include_inactive: includeInactive || undefined,
         },
       }),
       transformResponse: (response: {
@@ -50,6 +54,12 @@ const extendedApi = jobApi.injectEndpoints({
         page: response.page ?? 1,
         pageSize: response.page_size ?? 20,
       }),
+      providesTags: ['OrgShifts'],
+    }),
+    // Targeted single-row lookup by id, even if deactivated - resolves a
+    // job's currently-assigned shift without a bounded batch fetch.
+    getOrganizationShiftById: build.query<OrganizationShift, string>({
+      query: (shiftId) => ({ url: `/shifts/${shiftId}`, method: 'GET' }),
       providesTags: ['OrgShifts'],
     }),
     createOrganizationShift: build.mutation<OrganizationShift, SaveOrganizationShiftArgs>({
@@ -67,13 +77,31 @@ const extendedApi = jobApi.injectEndpoints({
       query: (shiftId) => ({ url: `/shifts/${shiftId}`, method: 'DELETE' }),
       invalidatesTags: ['OrgShifts'],
     }),
+    reactivateOrganizationShift: build.mutation<void, string>({
+      query: (shiftId) => ({ url: `/shifts/${shiftId}/reactivate`, method: 'POST' }),
+      invalidatesTags: ['OrgShifts'],
+    }),
+    // Status-toggle Switch in the catalogue table - sets is_active without
+    // touching is_deleted, unlike deleteOrganizationShift above.
+    activateOrganizationShift: build.mutation<void, string>({
+      query: (shiftId) => ({ url: `/shifts/${shiftId}/activate`, method: 'POST' }),
+      invalidatesTags: ['OrgShifts'],
+    }),
+    deactivateOrganizationShift: build.mutation<void, string>({
+      query: (shiftId) => ({ url: `/shifts/${shiftId}/deactivate`, method: 'POST' }),
+      invalidatesTags: ['OrgShifts'],
+    }),
   }),
 });
 
 export const {
   useGetOrganizationShiftsQuery,
   useSearchOrganizationShiftsQuery,
+  useGetOrganizationShiftByIdQuery,
   useCreateOrganizationShiftMutation,
   useUpdateOrganizationShiftMutation,
   useDeleteOrganizationShiftMutation,
+  useReactivateOrganizationShiftMutation,
+  useActivateOrganizationShiftMutation,
+  useDeactivateOrganizationShiftMutation,
 } = extendedApi;

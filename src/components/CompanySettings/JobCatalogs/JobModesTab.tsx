@@ -4,6 +4,8 @@ import {
   useCreatePlatformJobModeMutation,
   useUpdatePlatformJobModeMutation,
   useDeletePlatformJobModeMutation,
+  useActivatePlatformJobModeMutation,
+  useDeactivatePlatformJobModeMutation,
   PlatformJobMode,
 } from '../../../api/job-service/Platform/masterJobModes';
 import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
@@ -35,6 +37,8 @@ const JobModesTab: React.FC = () => {
   const [create] = useCreatePlatformJobModeMutation();
   const [update] = useUpdatePlatformJobModeMutation();
   const [remove] = useDeletePlatformJobModeMutation();
+  const [activate] = useActivatePlatformJobModeMutation();
+  const [deactivate] = useDeactivatePlatformJobModeMutation();
 
   return (
     <PlatformCatalogTab<PlatformJobMode, FormValues>
@@ -76,6 +80,9 @@ const JobModesTab: React.FC = () => {
         }).unwrap()
       }
       onDelete={(item) => remove(item.job_mode_id).unwrap()}
+      onToggleActive={(item, next) =>
+        next ? activate(item.job_mode_id).unwrap() : deactivate(item.job_mode_id).unwrap()
+      }
     />
   );
 };

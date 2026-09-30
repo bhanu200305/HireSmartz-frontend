@@ -31,6 +31,7 @@ const initialState: EditJobState = {
     isMultilingual: false,
     shift: [],
     openings: null,
+    exemptionStatus: [],
     exemptMinSalary: null,
     exemptMaxSalary: null,
     nonExemptMinSalary: null,

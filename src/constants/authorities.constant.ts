@@ -87,6 +87,14 @@ export enum Authorities {
   // Types, Job Modes) — one read/write pair covering all four.
   JOB_CATALOG_VIEW = 'job_catalog:read',
   JOB_CATALOG_EDIT = 'job_catalog:write',
+  // Admin-level grant on top of JOB_CATALOG_EDIT — required to edit or
+  // delete any entry. Without this, JOB_CATALOG_EDIT alone (e.g. Hiring
+  // Manager) only lets a caller add new entries, never edit or delete.
+  JOB_CATALOG_DELETE = 'job_catalog:delete',
+
+  // job-service's tenant skill catalogue.
+  SKILL_WRITE = 'skill:write',
+  SKILL_DELETE = 'skill:delete',
 
   // -- organization-service: team invitations --
   INVITATION_VIEW = 'invitation:read',
@@ -717,7 +725,11 @@ export const PERMISSION_DESCRIPTIONS: Partial<Record<Authorities, string>> = {
   [Authorities.JOB_CATALOG_VIEW]:
     'View job catalogues — shifts, job types, job modes, and education preferences.',
   [Authorities.JOB_CATALOG_EDIT]:
-    'Add, edit, or delete job catalogue entries — shifts, job types, job modes, and education preferences.',
+    'Add a job catalogue entry — shifts, job types, job modes, and education preferences. Editing existing entries requires JOB_CATALOG_DELETE.',
+  [Authorities.JOB_CATALOG_DELETE]: 'Edit or delete any job catalogue entry.',
+  [Authorities.SKILL_WRITE]:
+    "Add a skill to your company's catalogue. Editing existing skills requires SKILL_DELETE.",
+  [Authorities.SKILL_DELETE]: "Edit or delete any of your company's skill catalogue entries.",
 
   [Authorities.INVITATION_VIEW]: 'See who has been invited to join, and the status of each invite.',
   [Authorities.INVITATION_SEND]: 'Send a new invite, or resend one that has not been accepted yet.',
@@ -914,6 +926,9 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.COMPANY_SETTINGS_EDIT,
       Authorities.JOB_CATALOG_VIEW,
       Authorities.JOB_CATALOG_EDIT,
+      Authorities.JOB_CATALOG_DELETE,
+      Authorities.SKILL_WRITE,
+      Authorities.SKILL_DELETE,
       Authorities.REPORT_EXPORT,
       Authorities.REPORT_VIEW,
       Authorities.ROLE_DELETE,
@@ -1014,6 +1029,9 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.COMPANY_SETTINGS_EDIT,
       Authorities.JOB_CATALOG_VIEW,
       Authorities.JOB_CATALOG_EDIT,
+      Authorities.JOB_CATALOG_DELETE,
+      Authorities.SKILL_WRITE,
+      Authorities.SKILL_DELETE,
       Authorities.REPORT_EXPORT,
       Authorities.REPORT_VIEW,
       Authorities.ROLE_APPROVE,
@@ -1046,10 +1064,10 @@ export const ROLE_AUTHORITIES: Record<string, Record<string, Authorities[]>> = {
       Authorities.LOCATION_VIEW,
       Authorities.COMPANY_SETTINGS_VIEW,
       Authorities.JOB_CATALOG_VIEW,
+      Authorities.JOB_CATALOG_EDIT,
+      Authorities.SKILL_WRITE,
       Authorities.TENANT_JOB_TITLE_VIEW,
       Authorities.TENANT_JOB_TITLE_ADD,
-      Authorities.TENANT_JOB_TITLE_EDIT,
-      Authorities.TENANT_JOB_TITLE_DELETE,
       Authorities.REPORT_VIEW,
       Authorities.USER_VIEW,
     ],

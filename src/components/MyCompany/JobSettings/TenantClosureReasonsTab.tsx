@@ -4,6 +4,8 @@ import {
   useCreateClosureReasonMutation,
   useUpdateClosureReasonMutation,
   useDeleteClosureReasonMutation,
+  useActivateClosureReasonMutation,
+  useDeactivateClosureReasonMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import type { OrganizationClosureReason } from '../../../api/job-service/types';
 import PlatformCatalogTab, {
@@ -41,6 +43,8 @@ const TenantClosureReasonsTab: React.FC = () => {
   const [create] = useCreateClosureReasonMutation();
   const [update] = useUpdateClosureReasonMutation();
   const [remove] = useDeleteClosureReasonMutation();
+  const [activate] = useActivateClosureReasonMutation();
+  const [deactivate] = useDeactivateClosureReasonMutation();
   // Two separate `useHasAccess` calls, not `a || b` inline — the `||` would
   // short-circuit and skip the second hook call entirely whenever the first
   // is truthy, changing how many hooks render between renders (a real rules-
@@ -49,6 +53,9 @@ const TenantClosureReasonsTab: React.FC = () => {
   const canManageSettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const canManageCatalog = useHasAccess(Authorities.JOB_CATALOG_EDIT);
   const canManage = canManageSettings || canManageCatalog;
+  // JOB_CATALOG_DELETE = admin: edit/delete/reactivate any row. Without it,
+  // a caller may only add new rows, never edit or deactivate existing ones.
+  const canManageAny = useHasAccess(Authorities.JOB_CATALOG_DELETE) || canManageSettings;
 
   return (
     <PlatformCatalogTab<OrganizationClosureReason, FormValues>
@@ -70,7 +77,7 @@ const TenantClosureReasonsTab: React.FC = () => {
       emptyForm={emptyForm}
       toFormValues={(item) => ({ reason: item.reason, description: item.description ?? null })}
       allowCreate={canManage}
-      allowEdit={canManage}
+      allowEdit={canManageAny}
       onCreate={(values) =>
         create({ reason: values.reason.trim(), description: values.description }).unwrap()
       }
@@ -81,7 +88,12 @@ const TenantClosureReasonsTab: React.FC = () => {
           description: values.description,
         }).unwrap()
       }
-      onDelete={canManage ? (item) => remove(item.id).unwrap() : undefined}
+      onDelete={canManageAny ? (item) => remove(item.id).unwrap() : undefined}
+      onToggleActive={
+        canManageAny
+          ? (item, next) => (next ? activate(item.id).unwrap() : deactivate(item.id).unwrap())
+          : undefined
+      }
       deleteConfirmTitle={(item) =>
         `Remove "${item.reason}"? Blocked if a job's closure still references it.`
       }

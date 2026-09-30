@@ -6,6 +6,8 @@ import {
   useCreateOrganizationSkillMutation,
   useUpdateOrganizationSkillMutation,
   useDeleteOrganizationSkillMutation,
+  useActivateOrganizationSkillMutation,
+  useDeactivateOrganizationSkillMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import type { SkillCatalogEntry } from '../../../api/job-service/types';
 import PlatformCatalogTab from '../../CompanySettings/JobCatalogs/PlatformCatalogTab';
@@ -35,12 +37,18 @@ const TenantSkillsTab: React.FC = () => {
   const [create] = useCreateOrganizationSkillMutation();
   const [update] = useUpdateOrganizationSkillMutation();
   const [remove] = useDeleteOrganizationSkillMutation();
+  const [activate] = useActivateOrganizationSkillMutation();
+  const [deactivate] = useDeactivateOrganizationSkillMutation();
   // Two separate `useHasAccess` calls, not `a || b` inline — see
   // TenantClosureReasonsTab's identical fix for why the short-circuit
   // version is a real rules-of-hooks violation, not just a lint nag.
   const canManageSettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
-  const canManageCatalog = useHasAccess(Authorities.JOB_CATALOG_EDIT);
+  const canManageCatalog = useHasAccess(Authorities.SKILL_WRITE);
   const canManage = canManageSettings || canManageCatalog;
+  // Holding SKILL_DELETE (Company Admin/cfp_admin) means "delete and edit
+  // any" - SKILL_WRITE alone (e.g. Hiring Manager) only lets a caller add
+  // new skills, never edit existing ones.
+  const canManageAny = useHasAccess(Authorities.SKILL_DELETE) || canManageSettings;
 
   const filterToggle = (
     <div className="inline-flex h-11 shrink-0 items-center rounded-full border border-neutral-200 bg-neutral-50 p-1">
@@ -81,9 +89,9 @@ const TenantSkillsTab: React.FC = () => {
         item.skill_label.toLowerCase().includes(query.toLowerCase())
       }
       allowCreate={canManage}
-      allowEdit={canManage}
-      canEditRow={(item) => Boolean(item.is_organization_specific)}
-      canDeleteRow={(item) => Boolean(item.is_organization_specific)}
+      allowEdit={canManageAny}
+      canEditRow={(item) => Boolean(item.is_organization_specific) && canManageAny}
+      canDeleteRow={() => canManageAny}
       columns={[
         {
           title: 'Name',
@@ -124,7 +132,15 @@ const TenantSkillsTab: React.FC = () => {
           skill_description: values.description.trim() || null,
         }).unwrap()
       }
-      onDelete={canManage ? (item) => remove({ skillId: item.skill_id }).unwrap() : undefined}
+      onDelete={canManageAny ? (item) => remove({ skillId: item.skill_id }).unwrap() : undefined}
+      onToggleActive={
+        canManageAny
+          ? (item, next) =>
+              next
+                ? activate({ skillId: item.skill_id }).unwrap()
+                : deactivate({ skillId: item.skill_id }).unwrap()
+          : undefined
+      }
       deleteConfirmTitle={(item) =>
         `Remove "${item.skill_label}"? Blocked while a job still selects it.`
       }

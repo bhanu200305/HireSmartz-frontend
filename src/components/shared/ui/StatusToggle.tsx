@@ -24,6 +24,9 @@ export type StatusToggleProps = {
    * renders the switch inert rather than hiding it, so status is still
    * visible either way. */
   disabled?: boolean;
+  /** "small" for tight spaces like an inline dropdown row; default matches
+   * every existing catalogue-table caller. */
+  size?: 'default' | 'small';
 };
 
 /**
@@ -43,6 +46,7 @@ const StatusToggle: React.FC<StatusToggleProps> = ({
   deactivateLabel,
   deactivateConfirmTitle,
   disabled = false,
+  size = 'default',
 }) => {
   const [isConfirmingDeactivate, setIsConfirmingDeactivate] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -87,6 +91,7 @@ const StatusToggle: React.FC<StatusToggleProps> = ({
           onChange={handleChange}
           disabled={disabled}
           loading={isBusy}
+          size={size}
           aria-label={isActive ? deactivateLabel : activateLabel}
         />
       </Tooltip>

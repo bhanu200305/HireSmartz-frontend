@@ -447,12 +447,19 @@ export type OrganizationShift = {
   start_time: string;
   end_time: string;
   duration_minutes: number | null;
+  created_by?: string | null;
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 export type OrganizationJobType = {
   id: string;
   job_type_name: string;
   job_type_description?: string | null;
+  created_by?: string | null;
+  /** True only for a deactivated row, listed via `includeInactive`. */
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 /** Super Admin's master job-type catalogue row. */
@@ -473,6 +480,9 @@ export type OrganizationJobMode = {
   id: string;
   job_mode_name: string;
   job_mode_description?: string | null;
+  created_by?: string | null;
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 /** What a job closure's `closure_reason_id` references. */
@@ -480,6 +490,8 @@ export type OrganizationClosureReason = {
   id: string;
   reason: string;
   description?: string | null;
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 /** What a job's `language_ids` pick from. */
@@ -497,6 +509,11 @@ export type SkillCatalogEntry = {
   category_name: string;
   /** True only for this org's own added skill - gates rename/remove in the UI. */
   is_organization_specific?: boolean;
+  /** Who created this row - null for platform-global skills. */
+  created_by?: string | null;
+  /** True only for this org's own deactivated skill, listed via `includeInactive`. */
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 export type AtsConnection = {

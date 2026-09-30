@@ -5,6 +5,7 @@ import { MdOutlineAddCircleOutline, MdEdit, MdDelete, MdReplay } from 'react-ico
 import { AiFillStar } from 'react-icons/ai';
 import ConfirmationModal from './ConfirmationModal';
 import EditModal from './EditModalForDropdown';
+import StatusToggle from './StatusToggle';
 
 interface DropdownOption {
   id: string | number;
@@ -15,6 +16,9 @@ interface DropdownOption {
   /** False hides edit/delete for this option even when `enableEditDelete` is on
    * for the whole dropdown - e.g. a platform-shared skill vs. an org's own. */
   isEditable?: boolean;
+  /** Real is_active status, shown as a Switch matching PlatformCatalogTab -
+   * defaults true (via `??`) wherever a catalogue doesn't supply it yet. */
+  isActive?: boolean;
 }
 interface DropdownWithAddOptionProps {
   value: any;
@@ -28,6 +32,9 @@ interface DropdownWithAddOptionProps {
   onEditOption?: (id: string | number, newName: string, type: string) => void;
   onDeleteOption?: (id: string | number, type: string) => void;
   onReuseOption?: (id: string | number, type: string) => void;
+  /** Status Switch next to Edit/Delete - flips is_active, independent of the
+   * isDeleted/reuse soft-delete path above. */
+  onToggleActive?: (id: string | number, nextActive: boolean, type: string) => void;
   type: string;
   error?: string;
   /** Overrides "No options available", e.g. with a permission-denied reason. */
@@ -55,6 +62,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
   onEditOption,
   onDeleteOption,
   onReuseOption,
+  onToggleActive,
   type,
   error,
   emptyMessage,
@@ -108,9 +116,10 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
   };
 
   const hasActiveSelectableOption = (): boolean => {
-    // AntD marks keyboard-focused items with this class; use it to decide Enter behavior.
+    // Scoped to a visible dropdown - other closed instances on this page
+    // stay mounted with a stale active item during their close animation.
     const activeOption = document.querySelector(
-      '.ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled)'
+      '.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option-active:not(.ant-select-item-option-disabled)'
     );
     return Boolean(activeOption);
   };
@@ -227,18 +236,9 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
     return option.isDeleted && onReuseOption;
   };
 
-  const normalizedType = type?.toLowerCase() || '';
-  const usesDeactivateCopy =
-    normalizedType.includes('industry') ||
-    normalizedType.includes('department') ||
-    normalizedType.includes('jobtype') ||
-    normalizedType.includes('job_type') ||
-    normalizedType.includes('jobtitle') ||
-    normalizedType.includes('job_title');
-
-  const destructiveActionLabel = usesDeactivateCopy ? 'Deactivate' : 'Delete';
-  const destructiveActionLabelUpper = usesDeactivateCopy ? 'DEACTIVATE' : 'DELETE';
-  const destructiveActionVerb = usesDeactivateCopy ? 'deactivate' : 'delete';
+  const destructiveActionLabel = 'Delete';
+  const destructiveActionLabelUpper = 'REMOVE';
+  const destructiveActionVerb = 'remove';
   const actionTooltipProps = {
     placement: 'top' as const,
     color: '#0f172a',
@@ -302,10 +302,12 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
             }
             if (e.key !== 'Enter') return;
 
-            // Never create from Enter. Let AntD select the active option if one exists.
+            // Let AntD select the active option if one exists; otherwise
+            // Enter adds the typed value, same as clicking "Add".
             if (!hasActiveSelectableOption()) {
               e.preventDefault();
               e.stopPropagation();
+              if (showAddOption) handleAddOption();
             }
           }}
           dropdownRender={(menu) => (
@@ -351,40 +353,53 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
                     <span className="ml-2 text-xs italic flex-shrink-0">(Deactivated)</span>
                   )}
                 </div>
-                {shouldShowEditDeleteActions(option) && (onEditOption || onDeleteOption) && (
-                  <div className="flex items-center ml-2 opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity">
-                    {onEditOption && (
-                      <Tooltip title="Edit" {...actionTooltipProps}>
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded text-brand-600 transition-colors cursor-pointer"
-                          onClick={(e) => handleEditClick(option, e)}
-                          tabIndex={-1}
-                        >
-                          <MdEdit size={14} />
-                        </button>
-                      </Tooltip>
-                    )}
-                    {onDeleteOption && (
-                      <Tooltip
-                        title={usesDeactivateCopy ? 'Deactivate' : destructiveActionLabel}
-                        {...actionTooltipProps}
-                      >
-                        <button
-                          type="button"
-                          className="group p-1 hover:bg-gray-200 rounded transition-colors mr-2 cursor-pointer"
-                          onClick={(e) => handleDeleteClick(option, e)}
-                          tabIndex={-1}
-                        >
-                          <MdDelete
-                            size={14}
-                            className="text-gray-600 transition-colors group-hover:text-red-600"
-                          />
-                        </button>
-                      </Tooltip>
-                    )}
-                  </div>
-                )}
+                {shouldShowEditDeleteActions(option) &&
+                  (onEditOption || onDeleteOption || onToggleActive) && (
+                    <div
+                      className="flex items-center gap-1 ml-2 mr-1 opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity"
+                      // Stops a Switch click from also toggling the Select option.
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {onToggleActive && (
+                        <StatusToggle
+                          isActive={option.isActive ?? true}
+                          activateLabel="Activate"
+                          deactivateLabel="Deactivate"
+                          deactivateConfirmTitle={`Deactivate "${option.name}"?`}
+                          onActivate={async () => onToggleActive(option.id, true, type)}
+                          onDeactivate={async () => onToggleActive(option.id, false, type)}
+                          size="small"
+                        />
+                      )}
+                      {onEditOption && (
+                        <Tooltip title="Edit" {...actionTooltipProps}>
+                          <button
+                            type="button"
+                            className="p-1 hover:bg-gray-200 rounded text-brand-600 transition-colors cursor-pointer"
+                            onClick={(e) => handleEditClick(option, e)}
+                            tabIndex={-1}
+                          >
+                            <MdEdit size={14} />
+                          </button>
+                        </Tooltip>
+                      )}
+                      {onDeleteOption && (
+                        <Tooltip title={destructiveActionLabel} {...actionTooltipProps}>
+                          <button
+                            type="button"
+                            className="group p-1 hover:bg-gray-200 rounded transition-colors mr-2 cursor-pointer"
+                            onClick={(e) => handleDeleteClick(option, e)}
+                            tabIndex={-1}
+                          >
+                            <MdDelete
+                              size={16}
+                              className="text-gray-600 transition-colors group-hover:text-red-600"
+                            />
+                          </button>
+                        </Tooltip>
+                      )}
+                    </div>
+                  )}
                 {shouldShowReuseAction(option) && (
                   <div className="flex items-center ml-2 opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity">
                     <Tooltip title="Activate" {...actionTooltipProps}>

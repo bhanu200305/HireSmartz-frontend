@@ -5,6 +5,8 @@ import {
   useCreatePlatformSkillMutation,
   useUpdatePlatformSkillMutation,
   useDeletePlatformSkillMutation,
+  useActivatePlatformSkillMutation,
+  useDeactivatePlatformSkillMutation,
   PlatformSkill,
 } from '../../../api/job-service/Platform/masterSkills';
 import { useListPlatformSkillCategoriesQuery } from '../../../api/job-service/Platform/masterSkillCategories';
@@ -35,6 +37,8 @@ const SkillsTab: React.FC = () => {
   const [create] = useCreatePlatformSkillMutation();
   const [update] = useUpdatePlatformSkillMutation();
   const [remove] = useDeletePlatformSkillMutation();
+  const [activate] = useActivatePlatformSkillMutation();
+  const [deactivate] = useDeactivatePlatformSkillMutation();
 
   const categoryName = (id: string | null) =>
     categories.find((c) => c.category_id === id)?.skill_category || '-';
@@ -113,6 +117,9 @@ const SkillsTab: React.FC = () => {
       onDelete={(item) => remove(item.skill_id).unwrap()}
       deleteConfirmTitle={(item) =>
         `Remove "${item.skill}"? Blocked while a job or the title-suggestion cache still references it.`
+      }
+      onToggleActive={(item, next) =>
+        next ? activate(item.skill_id).unwrap() : deactivate(item.skill_id).unwrap()
       }
     />
   );

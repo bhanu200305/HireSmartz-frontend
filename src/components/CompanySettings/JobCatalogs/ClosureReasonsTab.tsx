@@ -5,6 +5,8 @@ import {
   useCreatePlatformClosureReasonMutation,
   useUpdatePlatformClosureReasonMutation,
   useDeletePlatformClosureReasonMutation,
+  useActivatePlatformClosureReasonMutation,
+  useDeactivatePlatformClosureReasonMutation,
   PlatformClosureReason,
 } from '../../../api/job-service/Platform/masterClosureReasons';
 import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
@@ -42,6 +44,8 @@ const ClosureReasonsTab: React.FC = () => {
   const [create] = useCreatePlatformClosureReasonMutation();
   const [update] = useUpdatePlatformClosureReasonMutation();
   const [remove] = useDeletePlatformClosureReasonMutation();
+  const [activate] = useActivatePlatformClosureReasonMutation();
+  const [deactivate] = useDeactivatePlatformClosureReasonMutation();
 
   return (
     <PlatformCatalogTab<PlatformClosureReason, FormValues>
@@ -98,6 +102,9 @@ const ClosureReasonsTab: React.FC = () => {
       onDelete={(item) => remove(item.reason_id).unwrap()}
       deleteConfirmTitle={(item) =>
         `Remove "${item.reason}"? Blocked if a job's closure still references it.`
+      }
+      onToggleActive={(item, next) =>
+        next ? activate(item.reason_id).unwrap() : deactivate(item.reason_id).unwrap()
       }
     />
   );

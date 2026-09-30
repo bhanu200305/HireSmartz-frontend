@@ -181,6 +181,8 @@ const AiQuestionsSetup = () => {
   // True while waiting for the polled question list to change after generation.
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const questionSnapshotBeforeGenerateRef = useRef<string | null>(null);
+  // Round the in-flight generation targeted - auto-opens its section once done.
+  const roundBeingGeneratedForRef = useRef<string | null>(null);
 
   const {
     data: questionsData,
@@ -227,6 +229,12 @@ const AiQuestionsSetup = () => {
   );
   // Content fingerprint rather than a count, since REPLACE can reduce the count.
   const questionsSnapshotKey = useMemo(() => questions.map((q) => q.id).join(','), [questions]);
+
+  // Accordion: one section open at a time. '__default__' defers to the
+  // active round; '' means every section is explicitly collapsed.
+  const [openSectionKey, setOpenSectionKey] = useState<string>('__default__');
+  const effectiveOpenKey =
+    openSectionKey === '__default__' ? (activeRoundInstanceId ?? '') : openSectionKey;
 
   // Hiring Panel = available_variants ["online", "offline"].
   const activeRoundTypeId = jdRounds.find(
@@ -284,6 +292,10 @@ const AiQuestionsSetup = () => {
     if (questionsSnapshotKey === questionSnapshotBeforeGenerateRef.current) return;
     setIsGeneratingQuestions(false);
     showToast({ message: 'Questions generated', type: 'success' });
+    if (roundBeingGeneratedForRef.current) {
+      setOpenSectionKey(roundBeingGeneratedForRef.current);
+      roundBeingGeneratedForRef.current = null;
+    }
   }, [isGeneratingQuestions, questionsSnapshotKey]);
 
   // Safety net so polling doesn't run forever. Does one last refetch before
@@ -299,6 +311,10 @@ const AiQuestionsSetup = () => {
       if (latestKey !== questionSnapshotBeforeGenerateRef.current) {
         setIsGeneratingQuestions(false);
         showToast({ message: 'Questions generated', type: 'success' });
+        if (roundBeingGeneratedForRef.current) {
+          setOpenSectionKey(roundBeingGeneratedForRef.current);
+          roundBeingGeneratedForRef.current = null;
+        }
         return;
       }
       setIsGeneratingQuestions(false);
@@ -353,6 +369,7 @@ const AiQuestionsSetup = () => {
     try {
       // Snapshot the current list so the polling effect can detect a change.
       questionSnapshotBeforeGenerateRef.current = questionsSnapshotKey;
+      roundBeingGeneratedForRef.current = activeRoundInstanceId;
       if (mode === 'REPLACE') {
         await regenerateJobQuestions({
           jobOpeningId: activeJobOpeningId,
@@ -536,7 +553,7 @@ const AiQuestionsSetup = () => {
   const handlePublishOrFinish = async () => {
     dispatch(stopStream());
     if (isEditingAlreadyPublishedJob) {
-      navigate(`/jobs/view/${id}/details`);
+      navigate('/jobs');
       return;
     }
     if (!activeJobOpeningId) {
@@ -575,7 +592,7 @@ const AiQuestionsSetup = () => {
       );
       dispatch(setIsDraft(published.is_draft));
       showToast({ message: 'Job opening published', type: 'success' });
-      navigate(isEditRoute ? `/jobs/view/${id}/details` : '/jobs');
+      navigate('/jobs');
     } catch (err) {
       showToast({
         message: describePublishError(err, 'Failed to publish job opening'),
@@ -589,13 +606,6 @@ const AiQuestionsSetup = () => {
       refetchQuestions();
     }
   }, [activeJobOpeningId, refetchQuestions]);
-
-  // Accordion: one section open at a time. '__default__' defers to the
-  // active round so a round's questions are visible without an extra click;
-  // '' means every section is explicitly collapsed.
-  const [openSectionKey, setOpenSectionKey] = useState<string>('__default__');
-  const effectiveOpenKey =
-    openSectionKey === '__default__' ? (activeRoundInstanceId ?? '') : openSectionKey;
 
   const handleToggleSection = (key: string) => {
     if (effectiveOpenKey === key) {
@@ -626,7 +636,7 @@ const AiQuestionsSetup = () => {
           isInlineSubmitting ||
           isPublishing) && <Loader />}
 
-        <div className="flex items-center gap-2 px-1">
+        <div className="flex items-center gap-2 px-6">
           <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
             <MdOutlineQuestionAnswer size={16} />
           </span>
@@ -635,82 +645,113 @@ const AiQuestionsSetup = () => {
           </Typography>
         </div>
 
-        <div className="flex justify-between items-center px-2">
+        {activeJobOpeningId && (
+          <JobIntakeQuestionsSection
+            jobOpeningId={activeJobOpeningId}
+            canManage={isAssignedToThisJob}
+            isOpen={effectiveOpenKey === 'intake'}
+            onToggle={() => handleToggleSection('intake')}
+          />
+        )}
+
+        <div className="flex justify-between items-center px-6">
           <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
             Interview Questions
           </Typography>
         </div>
 
         {noEligibleRound && (
-          <Typography variant="body2" className="text-amber-600 px-2">
+          <Typography variant="body2" className="text-amber-600 px-6">
             Add an AI Video, Hiring Panel, or Audio Screening round to the Interview Sequence before
             adding questions.
           </Typography>
         )}
 
         {jdRounds.length > 0 && (
-          <div className="mb-4">
-            <Typography variant="body2" className="text-gray-600 mb-1.5 font-semibold">
-              Interview Round
-            </Typography>
-            <Select
-              value={activeRoundInstanceId ?? undefined}
-              onChange={(value) => {
-                setSelectedRoundInstanceId(value);
-                setOpenSectionKey(value);
-                setSelectedIds([]);
-                setUploadedFileName('');
-                setImportedCount(0);
-                setFailedRowCount(0);
-                setDuplicateRowCount(0);
-                setImportWarnings([]);
-              }}
-              className="w-full max-w-sm"
-              options={jdRounds.map((round) => ({
-                value: round.round_instance_id,
-                label: round.round_name,
-              }))}
-            />
-            {activeRoundGuidanceLabels.length > 0 && (
-              <Typography variant="body2" className="text-gray-500 mt-1.5">
-                Focus questions on: {activeRoundGuidanceLabels.join(', ')}.
+          <div className="flex flex-col md:flex-row gap-6 px-6 items-start">
+            <div className="md:w-1/2 w-full">
+              <Typography variant="body2" className="text-gray-600 mb-1.5 font-semibold">
+                Interview Round
               </Typography>
-            )}
+              <Select
+                value={activeRoundInstanceId ?? undefined}
+                onChange={(value) => {
+                  setSelectedRoundInstanceId(value);
+                  setOpenSectionKey(value);
+                  setSelectedIds([]);
+                  setUploadedFileName('');
+                  setImportedCount(0);
+                  setFailedRowCount(0);
+                  setDuplicateRowCount(0);
+                  setImportWarnings([]);
+                }}
+                className="w-full"
+                options={jdRounds.map((round) => ({
+                  value: round.round_instance_id,
+                  label: round.round_name,
+                }))}
+              />
+              {activeRoundGuidanceLabels.length > 0 && (
+                <Typography variant="body2" className="text-gray-500 mt-1.5">
+                  Focus questions on: {activeRoundGuidanceLabels.join(', ')}.
+                </Typography>
+              )}
+            </div>
+
+            <div className="md:w-1/2 w-full">
+              <UploadAndGenerateHeader
+                description="Type a question, or paste several at once - one question per line."
+                onGenerate={() => setShowGenerateConsentModal(true)}
+                onUpload={handleFileUpload}
+                onDownloadTemplate={handleDownloadTemplate}
+                uploadedFileName={uploadedFileName}
+                importedCount={importedCount}
+                failedCount={failedRowCount}
+                duplicateCount={duplicateRowCount}
+                warnings={importWarnings}
+                onClearDetails={() => {
+                  setUploadedFileName('');
+                  setImportWarnings([]);
+                  setFailedRowCount(0);
+                  setDuplicateRowCount(0);
+                }}
+                isGenerating={isGenerating}
+                generateDisabled={noEligibleRound}
+                isUploading={isUploadingExcel}
+                isDownloading={isDownloadingTemplate}
+                stacked
+              />
+            </div>
           </div>
         )}
 
-        <UploadAndGenerateHeader
-          description="Type a question, or paste several at once - one question per line."
-          onGenerate={() => setShowGenerateConsentModal(true)}
-          onUpload={handleFileUpload}
-          onDownloadTemplate={handleDownloadTemplate}
-          uploadedFileName={uploadedFileName}
-          importedCount={importedCount}
-          failedCount={failedRowCount}
-          duplicateCount={duplicateRowCount}
-          warnings={importWarnings}
-          onClearDetails={() => {
-            setUploadedFileName('');
-            setImportWarnings([]);
-            setFailedRowCount(0);
-            setDuplicateRowCount(0);
-          }}
-          isGenerating={isGenerating}
-          generateDisabled={noEligibleRound}
-          isUploading={isUploadingExcel}
-          isDownloading={isDownloadingTemplate}
-        />
+        {jdRounds.length === 0 && (
+          <div className="px-6">
+            <UploadAndGenerateHeader
+              description="Type a question, or paste several at once - one question per line."
+              onGenerate={() => setShowGenerateConsentModal(true)}
+              onUpload={handleFileUpload}
+              onDownloadTemplate={handleDownloadTemplate}
+              uploadedFileName={uploadedFileName}
+              importedCount={importedCount}
+              failedCount={failedRowCount}
+              duplicateCount={duplicateRowCount}
+              warnings={importWarnings}
+              onClearDetails={() => {
+                setUploadedFileName('');
+                setImportWarnings([]);
+                setFailedRowCount(0);
+                setDuplicateRowCount(0);
+              }}
+              isGenerating={isGenerating}
+              generateDisabled={noEligibleRound}
+              isUploading={isUploadingExcel}
+              isDownloading={isDownloadingTemplate}
+            />
+          </div>
+        )}
 
         <div className="flex flex-col gap-4">
-          {activeJobOpeningId && (
-            <JobIntakeQuestionsSection
-              jobOpeningId={activeJobOpeningId}
-              canManage={isAssignedToThisJob}
-              isOpen={effectiveOpenKey === 'intake'}
-              onToggle={() => handleToggleSection('intake')}
-            />
-          )}
-
           {jdRounds.map((round) => {
             const isOpen = effectiveOpenKey === round.round_instance_id;
             return (
@@ -731,19 +772,19 @@ const AiQuestionsSetup = () => {
                 </button>
                 {isOpen && (
                   <div className="px-6 pb-6">
-                    <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={isAllSelected}
-                          onChange={(e) => handleSelectAll(e.target.checked)}
-                          className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
-                        />
-                        <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-                          All Questions ({visibleQuestions.length})
-                        </Typography>
-                      </div>
-                      {(selectedIds.length > 0 || visibleQuestions.length > 0) && (
+                    {visibleQuestions.length > 0 && (
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isAllSelected}
+                            onChange={(e) => handleSelectAll(e.target.checked)}
+                            className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
+                          />
+                          <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
+                            All Questions ({visibleQuestions.length})
+                          </Typography>
+                        </div>
                         <button
                           className="flex items-center gap-1.5 text-red-500 hover:text-red-700 text-sm font-semibold cursor-pointer"
                           onClick={() => {
@@ -757,13 +798,15 @@ const AiQuestionsSetup = () => {
                             ? `Delete selected (${selectedIds.length})`
                             : 'Delete all'}
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {isLoadingQuestions ? (
-                      <p className="text-gray-400 py-6 text-center italic text-sm">Loading...</p>
+                      <p className="text-gray-400 py-2 mb-3 text-center italic text-sm">
+                        Loading...
+                      </p>
                     ) : visibleQuestions.length === 0 ? (
-                      <p className="text-gray-400 py-6 text-center italic text-sm">
+                      <p className="text-gray-400 py-2 mb-3 text-center italic text-sm">
                         No questions. Add questions manually, import via Excel, or generate with AI.
                       </p>
                     ) : (

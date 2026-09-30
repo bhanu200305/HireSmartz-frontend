@@ -36,10 +36,12 @@ import {
   useCreateOrganizationSkillMutation,
   useUpdateOrganizationSkillMutation,
   useDeleteOrganizationSkillMutation,
+  useReactivateOrganizationSkillMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import {
   useUpdateEducationPreferenceMutation,
   useDeleteEducationPreferenceMutation,
+  useReactivateEducationPreferenceMutation,
 } from '../../../api/job-service/JobOpening/educationPreferences';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
@@ -68,13 +70,27 @@ const JobDescription = () => {
   const atsJobOpeningId = location.state?.atsJobOpeningId;
   const { details, jobOpeningId } = useSelector((state: RootState) => state.JobSlice);
   const effectivePermissions = useEffectivePermissions();
-  // POST /skills requires organization:update.
-  const canAddSkill = effectivePermissions.includes(Authorities.COMPANY_SETTINGS_EDIT);
+  const canManageCatalogueEntries = effectivePermissions.includes(
+    Authorities.COMPANY_SETTINGS_EDIT
+  );
+  // skill:write adds only; skill:delete is required to edit or delete an
+  // existing entry.
+  const canAddSkill =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.SKILL_WRITE);
+  const canDeleteSkill =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.SKILL_DELETE);
+  // job_catalog:write adds only; job_catalog:delete edits/deletes.
+  const canManageJobCatalogues =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.JOB_CATALOG_EDIT);
+  const canDeleteJobCatalogues =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.JOB_CATALOG_DELETE);
   const [saveJobOpening, { isLoading }] = useSaveJobOpeningMutation();
   const [updateJobOpening, { isLoading: isUpdating }] = useUpdateJobOpeningMutation();
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
   const [updateOrganizationSkill] = useUpdateOrganizationSkillMutation();
   const [deleteOrganizationSkill] = useDeleteOrganizationSkillMutation();
+  const [reactivateOrganizationSkill] = useReactivateOrganizationSkillMutation();
+  const [reactivateEducationPreference] = useReactivateEducationPreferenceMutation();
   const {
     jobOpeningDropdown: educationPreference,
     loading: educationPreferenceLoading,
@@ -217,12 +233,27 @@ const JobDescription = () => {
       setOpenModalFor(null);
     }
   };
-  const handleReuseOption = async (_id: string | number, _type: string) => {
-    // No restore/reactivate endpoint exists for soft-deleted entries.
-    showToast({
-      message: 'Removed options cannot be restored from this screen.',
-      type: 'error',
-    });
+  const handleReuseOption = async (id: string | number, type: string) => {
+    const optionId = String(id);
+    try {
+      if (type === 'educationPreference') {
+        await reactivateEducationPreference(optionId).unwrap();
+      } else if (type === 'mandatorySkills' || type === 'optionalSkills') {
+        await reactivateOrganizationSkill({ skillId: optionId }).unwrap();
+      } else {
+        showToast({
+          message: 'Removed options cannot be restored from this screen.',
+          type: 'error',
+        });
+        return;
+      }
+      showToast({ message: 'Option reactivated successfully', type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Something went wrong while reactivating this option.'),
+        type: 'error',
+      });
+    }
   };
   const handleEditOption = async (id: string | number, newName: string, type: string) => {
     if (type === 'educationPreference') {
@@ -451,11 +482,11 @@ const JobDescription = () => {
                 onSearchChange={searchMandatorySkills}
                 type="mandatorySkills"
                 error={errors.mandatorySkills?.message}
-                // isEditable hides icons on platform-shared skills; canAddSkill hides them
-                // for roles without organization:update, which the API would 403 anyway.
+                // isEditable hides icons on platform-shared skills; canDeleteSkill hides them
+                // for roles without skill:delete, which the API would 403 anyway.
                 enableEditDelete
-                onEditOption={canAddSkill ? handleEditOption : undefined}
-                onDeleteOption={canAddSkill ? handleDeleteOption : undefined}
+                onEditOption={canDeleteSkill ? handleEditOption : undefined}
+                onDeleteOption={canDeleteSkill ? handleDeleteOption : undefined}
                 onReuseOption={handleReuseOption}
                 maxTagCount={0}
                 maxTagPlaceholder={(omittedValues: any) => (
@@ -529,8 +560,8 @@ const JobDescription = () => {
                 type="optionalSkills"
                 error={errors.optionalSkills?.message}
                 enableEditDelete
-                onEditOption={canAddSkill ? handleEditOption : undefined}
-                onDeleteOption={canAddSkill ? handleDeleteOption : undefined}
+                onEditOption={canDeleteSkill ? handleEditOption : undefined}
+                onDeleteOption={canDeleteSkill ? handleDeleteOption : undefined}
                 onReuseOption={handleReuseOption}
                 maxTagCount={0}
                 maxTagPlaceholder={(omittedValues: any) => (
@@ -613,13 +644,17 @@ const JobDescription = () => {
             loading={educationPreferenceLoading || isAddingToDropdown === 'educationPreference'}
             placeholder="Select Education Preference"
             label="Education Preference"
-            onAddOption={(value) => handleAddOption(value, 'educationPreference')}
+            onAddOption={
+              canManageJobCatalogues
+                ? (value) => handleAddOption(value, 'educationPreference')
+                : undefined
+            }
             type="educationPreference"
             error={errors.educationPreference?.message}
-            enableEditDelete
-            onEditOption={handleEditOption}
-            onDeleteOption={handleDeleteOption}
-            onReuseOption={handleReuseOption}
+            enableEditDelete={canDeleteJobCatalogues}
+            onEditOption={canDeleteJobCatalogues ? handleEditOption : undefined}
+            onDeleteOption={canDeleteJobCatalogues ? handleDeleteOption : undefined}
+            onReuseOption={canDeleteJobCatalogues ? handleReuseOption : undefined}
           />
         </Form.Item>
       </div>

@@ -37,6 +37,8 @@ export type SearchArgs = {
   search?: string;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
+  /** Also return deactivated (soft-deleted) rows, flagged `is_deleted`. */
+  includeInactive?: boolean;
 };
 
 export type ListJobTypesArgs = {
@@ -57,9 +59,23 @@ export type SearchJobTypesArgs = {
   search?: string;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
+  /** Tenant (`/job-types/search`) only - the platform route has no such flag. */
+  includeInactive?: boolean;
 };
 
 type JobTypeListRow = OrganizationJobType & Partial<MasterJobType>;
+
+/** Exported for direct unit testing. */
+export const transformJobTypesResponse = (response: {
+  job_types?: JobTypeListRow[];
+}): OrganizationJobType[] =>
+  (response.job_types ?? []).map((item) => ({
+    id: item.id || item.job_type_id || '',
+    job_type_name: item.job_type_name,
+    job_type_description: item.job_type_description,
+    is_deleted: item.is_deleted,
+    is_active: item.is_active,
+  }));
 
 const catalogsApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
@@ -68,17 +84,12 @@ const catalogsApi = jobApi.injectEndpoints({
         url: isMaster ? '/platform/master-job-types' : '/job-types',
         method: 'GET',
       }),
-      transformResponse: (response: { job_types?: JobTypeListRow[] }) =>
-        (response.job_types ?? []).map((item) => ({
-          id: item.id || item.job_type_id || '',
-          job_type_name: item.job_type_name,
-          job_type_description: item.job_type_description,
-        })),
+      transformResponse: transformJobTypesResponse,
       providesTags: ['JobTypes'],
     }),
 
     searchJobTypes: build.query<CatalogPage<OrganizationJobType>, SearchJobTypesArgs>({
-      query: ({ isMaster, page, pageSize, search, sortBy, sortDir }) => ({
+      query: ({ isMaster, page, pageSize, search, sortBy, sortDir, includeInactive }) => ({
         url: isMaster ? '/platform/master-job-types/search' : '/job-types/search',
         method: 'GET',
         params: {
@@ -87,6 +98,7 @@ const catalogsApi = jobApi.injectEndpoints({
           search: search || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          include_inactive: includeInactive ? true : undefined,
         },
       }),
       transformResponse: (response: {
@@ -99,6 +111,8 @@ const catalogsApi = jobApi.injectEndpoints({
           id: item.id || item.job_type_id || '',
           job_type_name: item.job_type_name,
           job_type_description: item.job_type_description,
+          created_by: item.created_by,
+          is_deleted: item.is_deleted,
         })),
         total: response.total ?? (response.job_types ?? []).length,
         page: response.page ?? 1,
@@ -149,6 +163,53 @@ const catalogsApi = jobApi.injectEndpoints({
       invalidatesTags: ['JobTypes'],
     }),
 
+    // Tenant-only - undoes deleteJobType's soft-delete.
+    reactivateJobType: build.mutation<void, string>({
+      query: (jobTypeId) => ({ url: `/job-types/${jobTypeId}/reactivate`, method: 'POST' }),
+      invalidatesTags: ['JobTypes'],
+    }),
+
+    // Platform/master-only equivalent of reactivateJobType above.
+    reactivatePlatformJobType: build.mutation<void, string>({
+      query: (jobTypeId) => ({
+        url: `/platform/master-job-types/${jobTypeId}/reactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['JobTypes'],
+    }),
+
+    // Status-toggle Switch in the catalogue table - sets is_active without
+    // touching is_deleted, unlike deleteJobType above.
+    activateJobType: build.mutation<void, string>({
+      query: (jobTypeId) => ({ url: `/job-types/${jobTypeId}/activate`, method: 'POST' }),
+      invalidatesTags: ['JobTypes'],
+    }),
+    deactivateJobType: build.mutation<void, string>({
+      query: (jobTypeId) => ({ url: `/job-types/${jobTypeId}/deactivate`, method: 'POST' }),
+      invalidatesTags: ['JobTypes'],
+    }),
+    activatePlatformJobType: build.mutation<void, string>({
+      query: (jobTypeId) => ({
+        url: `/platform/master-job-types/${jobTypeId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['JobTypes'],
+    }),
+    deactivatePlatformJobType: build.mutation<void, string>({
+      query: (jobTypeId) => ({
+        url: `/platform/master-job-types/${jobTypeId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['JobTypes'],
+    }),
+
+    // Targeted single-row lookup by id, even if deactivated - resolves a
+    // job's currently-assigned job type without a bounded batch fetch.
+    getJobTypeById: build.query<OrganizationJobType, string>({
+      query: (jobTypeId) => ({ url: `/job-types/${jobTypeId}`, method: 'GET' }),
+      providesTags: ['JobTypes'],
+    }),
+
     // Shift CRUD lives in ../Shifts/shifts.ts, not here.
 
     // The platform-wide job-mode suggestion catalogue (Super Admin managed) —
@@ -168,7 +229,7 @@ const catalogsApi = jobApi.injectEndpoints({
     }),
 
     searchOrganizationJobModes: build.query<CatalogPage<OrganizationJobMode>, SearchArgs>({
-      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+      query: ({ page, pageSize, search, sortBy, sortDir, includeInactive }) => ({
         url: '/job-modes/search',
         method: 'GET',
         params: {
@@ -177,6 +238,7 @@ const catalogsApi = jobApi.injectEndpoints({
           search: search || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          include_inactive: includeInactive || undefined,
         },
       }),
       transformResponse: (response: {
@@ -218,6 +280,29 @@ const catalogsApi = jobApi.injectEndpoints({
       invalidatesTags: ['JobModes'],
     }),
 
+    reactivateJobMode: build.mutation<void, string>({
+      query: (jobModeId) => ({ url: `/job-modes/${jobModeId}/reactivate`, method: 'POST' }),
+      invalidatesTags: ['JobModes'],
+    }),
+
+    // Status-toggle Switch in the catalogue table - sets is_active without
+    // touching is_deleted, unlike deleteJobMode above.
+    activateJobMode: build.mutation<void, string>({
+      query: (jobModeId) => ({ url: `/job-modes/${jobModeId}/activate`, method: 'POST' }),
+      invalidatesTags: ['JobModes'],
+    }),
+    deactivateJobMode: build.mutation<void, string>({
+      query: (jobModeId) => ({ url: `/job-modes/${jobModeId}/deactivate`, method: 'POST' }),
+      invalidatesTags: ['JobModes'],
+    }),
+
+    // Targeted single-row lookup by id, even if deactivated - resolves a
+    // job's currently-assigned job mode without a bounded batch fetch.
+    getJobModeById: build.query<OrganizationJobMode, string>({
+      query: (jobModeId) => ({ url: `/job-modes/${jobModeId}`, method: 'GET' }),
+      providesTags: ['JobModes'],
+    }),
+
     listLanguages: build.query<Language[], void>({
       query: () => ({ url: '/master/languages', method: 'GET' }),
       transformResponse: (response: { languages: Language[] }) => response.languages ?? [],
@@ -244,7 +329,7 @@ const catalogsApi = jobApi.injectEndpoints({
       CatalogPage<OrganizationClosureReason>,
       SearchArgs
     >({
-      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+      query: ({ page, pageSize, search, sortBy, sortDir, includeInactive }) => ({
         url: '/job-closure-reasons/search',
         method: 'GET',
         params: {
@@ -253,6 +338,7 @@ const catalogsApi = jobApi.injectEndpoints({
           search: search || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          include_inactive: includeInactive || undefined,
         },
       }),
       transformResponse: (response: {
@@ -298,6 +384,31 @@ const catalogsApi = jobApi.injectEndpoints({
       invalidatesTags: ['ClosureReasons'],
     }),
 
+    reactivateClosureReason: build.mutation<void, string>({
+      query: (closureReasonId) => ({
+        url: `/job-closure-reasons/${closureReasonId}/reactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['ClosureReasons'],
+    }),
+
+    // Status-toggle Switch in the catalogue table - sets is_active without
+    // touching is_deleted, unlike deleteClosureReason above.
+    activateClosureReason: build.mutation<void, string>({
+      query: (closureReasonId) => ({
+        url: `/job-closure-reasons/${closureReasonId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['ClosureReasons'],
+    }),
+    deactivateClosureReason: build.mutation<void, string>({
+      query: (closureReasonId) => ({
+        url: `/job-closure-reasons/${closureReasonId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['ClosureReasons'],
+    }),
+
     listInterviewRoundTypes: build.query<InterviewRoundType[], void>({
       query: () => ({ url: '/master/interview-rounds', method: 'GET' }),
       transformResponse: (response: { round_types: InterviewRoundType[] }) =>
@@ -320,8 +431,13 @@ const catalogsApi = jobApi.injectEndpoints({
 
     // All active skills visible to this caller, no query/cap. Backs a
     // skill dropdown's initial options before the user searches.
-    listActiveSkills: build.query<SkillCatalogEntry[], void>({
-      query: () => ({ url: '/skills', method: 'GET' }),
+    // `includeInactive` adds this org's own deactivated skills.
+    listActiveSkills: build.query<SkillCatalogEntry[], { includeInactive?: boolean } | void>({
+      query: (args) => ({
+        url: '/skills',
+        method: 'GET',
+        params: args?.includeInactive ? { include_inactive: true } : undefined,
+      }),
       transformResponse: (response: { skills: SkillCatalogEntry[] }) => response.skills ?? [],
       providesTags: ['Skills'],
     }),
@@ -374,27 +490,74 @@ const catalogsApi = jobApi.injectEndpoints({
       }),
       invalidatesTags: ['Skills'],
     }),
+
+    // Same ownership scoping as the delete above.
+    reactivateOrganizationSkill: build.mutation<void, { skillId: string }>({
+      query: ({ skillId }) => ({
+        url: `/skills/${skillId}/reactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Skills'],
+    }),
+
+    // Status-toggle Switch in the catalogue table - sets is_active without
+    // touching is_deleted, unlike deleteOrganizationSkill above.
+    activateOrganizationSkill: build.mutation<void, { skillId: string }>({
+      query: ({ skillId }) => ({
+        url: `/skills/${skillId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Skills'],
+    }),
+    deactivateOrganizationSkill: build.mutation<void, { skillId: string }>({
+      query: ({ skillId }) => ({
+        url: `/skills/${skillId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Skills'],
+    }),
+
+    // Targeted single-row lookup by id, even if deactivated - resolves a
+    // job's currently-assigned skill without a bounded batch fetch.
+    getSkillById: build.query<SkillCatalogEntry, string>({
+      query: (skillId) => ({ url: `/skills/${skillId}`, method: 'GET' }),
+      providesTags: ['Skills'],
+    }),
   }),
 });
 
 export const {
   useListJobTypesQuery,
   useSearchJobTypesQuery,
+  useGetJobTypeByIdQuery,
   useCreateJobTypeMutation,
   useUpdateJobTypeMutation,
   useDeleteJobTypeMutation,
+  useReactivateJobTypeMutation,
+  useReactivatePlatformJobTypeMutation,
+  useActivateJobTypeMutation,
+  useDeactivateJobTypeMutation,
+  useActivatePlatformJobTypeMutation,
+  useDeactivatePlatformJobTypeMutation,
   useListJobModesQuery,
   useListOrganizationJobModesQuery,
   useSearchOrganizationJobModesQuery,
+  useGetJobModeByIdQuery,
   useCreateJobModeMutation,
   useUpdateJobModeMutation,
   useDeleteJobModeMutation,
+  useReactivateJobModeMutation,
+  useActivateJobModeMutation,
+  useDeactivateJobModeMutation,
   useListLanguagesQuery,
   useListClosureReasonsQuery,
   useSearchOrganizationJobClosureReasonsQuery,
   useCreateClosureReasonMutation,
   useUpdateClosureReasonMutation,
   useDeleteClosureReasonMutation,
+  useReactivateClosureReasonMutation,
+  useActivateClosureReasonMutation,
+  useDeactivateClosureReasonMutation,
   useListInterviewRoundTypesQuery,
   useSearchSkillsQuery,
   useLazySearchSkillsQuery,
@@ -402,4 +565,8 @@ export const {
   useCreateOrganizationSkillMutation,
   useUpdateOrganizationSkillMutation,
   useDeleteOrganizationSkillMutation,
+  useReactivateOrganizationSkillMutation,
+  useActivateOrganizationSkillMutation,
+  useDeactivateOrganizationSkillMutation,
+  useGetSkillByIdQuery,
 } = catalogsApi;

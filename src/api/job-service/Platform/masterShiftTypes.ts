@@ -11,6 +11,8 @@ export type PlatformShiftType = {
   // "HH:mm:ss" or null.
   start_time: string | null;
   end_time: string | null;
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 type ShiftTypeWriteBody = {
@@ -29,7 +31,7 @@ const extendedApi = jobApi.injectEndpoints({
       providesTags: ['PlatformShiftTypes'],
     }),
     searchPlatformShiftTypes: build.query<CatalogPage<PlatformShiftType>, SearchArgs>({
-      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+      query: ({ page, pageSize, search, sortBy, sortDir, includeInactive }) => ({
         url: '/platform/master-shift-types/search',
         method: 'GET',
         params: {
@@ -38,6 +40,7 @@ const extendedApi = jobApi.injectEndpoints({
           search: search || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          include_inactive: includeInactive || undefined,
         },
       }),
       transformResponse: (response: {
@@ -75,6 +78,30 @@ const extendedApi = jobApi.injectEndpoints({
       }),
       invalidatesTags: ['PlatformShiftTypes'],
     }),
+    // Undoes deletePlatformShiftType's soft-delete.
+    reactivatePlatformShiftType: build.mutation<void, string>({
+      query: (shiftTypeId) => ({
+        url: `/platform/master-shift-types/${shiftTypeId}/reactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformShiftTypes'],
+    }),
+    // Status-toggle Switch in the catalogue table - sets is_active without
+    // touching is_deleted, unlike deletePlatformShiftType above.
+    activatePlatformShiftType: build.mutation<void, string>({
+      query: (shiftTypeId) => ({
+        url: `/platform/master-shift-types/${shiftTypeId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformShiftTypes'],
+    }),
+    deactivatePlatformShiftType: build.mutation<void, string>({
+      query: (shiftTypeId) => ({
+        url: `/platform/master-shift-types/${shiftTypeId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformShiftTypes'],
+    }),
   }),
 });
 
@@ -84,4 +111,7 @@ export const {
   useCreatePlatformShiftTypeMutation,
   useUpdatePlatformShiftTypeMutation,
   useDeletePlatformShiftTypeMutation,
+  useReactivatePlatformShiftTypeMutation,
+  useActivatePlatformShiftTypeMutation,
+  useDeactivatePlatformShiftTypeMutation,
 } = extendedApi;

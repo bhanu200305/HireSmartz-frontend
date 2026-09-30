@@ -1,7 +1,8 @@
 .custom-select-jobs .ant-select-selector {
   border: none !important;
   box-shadow: none !important;
-  padding: 0 !important;
+  /* Matches the Job ID Input's own px-4 (16px). */
+  padding-inline: 16px 36px !important;
   height: 100% !important;
   display: flex !important;
   align-items: center !important;
@@ -29,7 +30,7 @@
 .custom-select-jobs .ant-select-selector {
   border: none !important;
   box-shadow: none !important;
-  padding: 0 !important;
+  padding-inline: 16px 36px !important;
 }
 
 .placeholder-style .ant-select-selection-placeholder {

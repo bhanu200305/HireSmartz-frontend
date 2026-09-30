@@ -76,7 +76,8 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+    // z-[1101]: clears MainLayout's sticky Footer at z-[1100].
+    <div className="fixed bottom-6 right-6 z-[1101] flex flex-col items-end gap-3">
       {isOpen && (
         <div className="w-80 bg-white rounded-2xl shadow-lg border border-[var(--border)] p-4">
           <div className="flex items-center justify-between mb-2">

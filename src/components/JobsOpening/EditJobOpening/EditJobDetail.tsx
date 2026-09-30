@@ -46,17 +46,36 @@ import {
   useCreateOrganizationSkillMutation,
   useUpdateOrganizationSkillMutation,
   useDeleteOrganizationSkillMutation,
+  useReactivateOrganizationSkillMutation,
   useCreateJobTypeMutation,
   useUpdateJobTypeMutation,
   useDeleteJobTypeMutation,
+  useReactivateJobTypeMutation,
   useCreateJobModeMutation,
   useUpdateJobModeMutation,
   useDeleteJobModeMutation,
+  useReactivateJobModeMutation,
+  useListOrganizationJobModesQuery,
+  useGetJobModeByIdQuery,
+  useListJobTypesQuery,
+  useGetJobTypeByIdQuery,
+  useListActiveSkillsQuery,
+  useActivateJobTypeMutation,
+  useDeactivateJobTypeMutation,
+  useActivateJobModeMutation,
+  useDeactivateJobModeMutation,
+  useActivateOrganizationSkillMutation,
+  useDeactivateOrganizationSkillMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import {
   useCreateEducationPreferenceMutation,
   useUpdateEducationPreferenceMutation,
   useDeleteEducationPreferenceMutation,
+  useReactivateEducationPreferenceMutation,
+  useListEducationPreferencesQuery,
+  useGetEducationPreferenceByIdQuery,
+  useActivateEducationPreferenceMutation,
+  useDeactivateEducationPreferenceMutation,
 } from '../../../api/job-service/JobOpening/educationPreferences';
 import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
 import { asJobId } from '../../../api/job-service/jobId';
@@ -66,12 +85,15 @@ import useEffectivePermissions, {
   useEffectivePermissionsRefetch,
 } from '../../../hooks/useEffectivePermissions';
 import { Authorities } from '../../../constants/authorities.constant';
+import { formatTime12h } from '../../../utils/formatTime';
 import {
   officeDisplayName,
   useListTenantOfficesQuery,
 } from '../../../api/organization-service/Tenants/offices';
 import {
+  useActivateTenantDepartmentMutation,
   useAddTenantDepartmentMutation,
+  useDeactivateTenantDepartmentMutation,
   useDeleteTenantDepartmentMutation,
   useListTenantDepartmentsQuery,
   useUpdateTenantDepartmentMutation,
@@ -79,8 +101,10 @@ import {
 import {
   idsMatch,
   tenantJobTitleFormId,
+  useActivateTenantJobTitleMutation,
   useAssignTenantJobTitleToDepartmentMutation,
   useCreateTenantJobTitleMutation,
+  useDeactivateTenantJobTitleMutation,
   useDeleteTenantJobTitleMutation,
   useImportMasterJobTitleMutation,
   useListTenantDepartmentJobTitlesQuery,
@@ -97,9 +121,13 @@ import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
 import {
   useGetOrganizationShiftsQuery,
+  useGetOrganizationShiftByIdQuery,
   useCreateOrganizationShiftMutation,
   useUpdateOrganizationShiftMutation,
   useDeleteOrganizationShiftMutation,
+  useReactivateOrganizationShiftMutation,
+  useActivateOrganizationShiftMutation,
+  useDeactivateOrganizationShiftMutation,
 } from '../../../api/job-service/Shifts/shifts';
 import ShiftFormModal, { computeShiftDurationMinutes } from '../ShiftFormModal';
 
@@ -125,6 +153,7 @@ const JOB_DETAILS_FIELD_ORDER = [
   'hiringManagers',
   'openDate',
   'openings',
+  'exemptionStatus',
   'exemptMinSalary',
   'exemptMaxSalary',
   'nonExemptMinSalary',
@@ -210,9 +239,18 @@ const EditJobDetail = () => {
   const canDeleteJobTitle =
     canManageCatalogueEntries || effectivePermissions.includes(Authorities.TENANT_JOB_TITLE_DELETE);
   const canManageJobTitle = canAddJobTitle || canEditJobTitle || canDeleteJobTitle;
-  // Job Type/Job Mode/Shift/Education Preference also accept job_catalog:write.
+  // Job Type/Job Mode/Shift/Education Preference: job_catalog:write adds only.
   const canManageJobCatalogues =
     canManageCatalogueEntries || effectivePermissions.includes(Authorities.JOB_CATALOG_EDIT);
+  // Editing/deleting an existing entry needs the admin-level grant — write
+  // alone (Hiring Manager) can only add new ones.
+  const canDeleteJobCatalogues =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.JOB_CATALOG_DELETE);
+  // Same add/edit-delete split for the skill catalogue.
+  const canAddSkill =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.SKILL_WRITE);
+  const canDeleteSkill =
+    canManageCatalogueEntries || effectivePermissions.includes(Authorities.SKILL_DELETE);
   const tenantId = useSessionTenantId();
   const [, setSelectedLocationIdForUsers] = useState<string | undefined>(undefined);
   const [dismissedUnresolvedAiFields, setDismissedUnresolvedAiFields] = useState<Set<string>>(
@@ -231,6 +269,8 @@ const EditJobDetail = () => {
   const [addTenantDepartment] = useAddTenantDepartmentMutation();
   const [updateTenantDepartment] = useUpdateTenantDepartmentMutation();
   const [deleteTenantDepartment] = useDeleteTenantDepartmentMutation();
+  const [activateTenantDepartment] = useActivateTenantDepartmentMutation();
+  const [deactivateTenantDepartment] = useDeactivateTenantDepartmentMutation();
   // organization-service's real culture-intro backend.
   const { data: tenantCultureIntro } = useGetTenantCultureIntroQuery(tenantId ?? '', {
     skip: !tenantId,
@@ -238,6 +278,8 @@ const EditJobDetail = () => {
   const [createTenantJobTitle] = useCreateTenantJobTitleMutation();
   const [updateTenantJobTitle] = useUpdateTenantJobTitleMutation();
   const [deleteTenantJobTitle] = useDeleteTenantJobTitleMutation();
+  const [activateTenantJobTitle] = useActivateTenantJobTitleMutation();
+  const [deactivateTenantJobTitle] = useDeactivateTenantJobTitleMutation();
   const [importMasterJobTitle] = useImportMasterJobTitleMutation();
   const [assignTenantJobTitleToDepartment] = useAssignTenantJobTitleToDepartmentMutation();
   const { data: jobTitleCatalogue = [], isFetching: loadingCatalogue } =
@@ -245,33 +287,15 @@ const EditJobDetail = () => {
   const { data: tenantJobTitles = [] } = useListTenantJobTitlesQuery(tenantId ?? '', {
     skip: !tenantId,
   });
-  const {
-    jobOpeningDropdown: jobTypes,
-    loading: jobTypesLoading,
-    refetch: refetchJobTypes,
-  } = useJobOpeningDropdown('JOB_TYPE', 'edit', parsedJobId);
-  const {
-    jobOpeningDropdown: jobModes,
-    loading: jobModesLoading,
-    refetch: refetchJobModes,
-  } = useJobOpeningDropdown('JOB_MODE', 'edit', parsedJobId);
+  const { jobOpeningDropdown: exemptionStatusOptions, loading: exemptionStatusLoading } =
+    useJobOpeningDropdown('EXEMPTION_STATUS', 'edit', parsedJobId);
   // Raw shift objects — needed to prefill start/end time when editing.
+  // Active-only, unbounded (dropdown consumers need the complete list, not
+  // one page of it). A currently-assigned-but-deactivated shift is resolved
+  // separately below via a targeted by-id lookup, not this list.
   const { data: organizationShiftsData, isFetching: shiftsLoading } =
     useGetOrganizationShiftsQuery();
   const organizationShifts = organizationShiftsData?.shifts ?? [];
-  const shiftOptions = useMemo(
-    () =>
-      organizationShifts.map((item) => ({
-        id: item.id,
-        name: `${item.shift_name} (${item.start_time.slice(0, 5)} - ${item.end_time.slice(0, 5)})`,
-      })),
-    [organizationShifts]
-  );
-  const {
-    jobOpeningDropdown: educationPreference,
-    loading: educationPreferenceLoading,
-    refetch: refetchEducationPreference,
-  } = useJobOpeningDropdown('EDUCATION_PREFERENCE', 'edit', parsedJobId);
   const { jobOpeningDropdown: languageOptions, loading: languagesLoading } = useJobOpeningDropdown(
     'LANGUAGE',
     'edit',
@@ -306,6 +330,21 @@ const EditJobDetail = () => {
   const [createOrganizationShift] = useCreateOrganizationShiftMutation();
   const [updateOrganizationShift] = useUpdateOrganizationShiftMutation();
   const [deleteOrganizationShift] = useDeleteOrganizationShiftMutation();
+  const [reactivateJobType] = useReactivateJobTypeMutation();
+  const [reactivateJobMode] = useReactivateJobModeMutation();
+  const [reactivateOrganizationShift] = useReactivateOrganizationShiftMutation();
+  const [reactivateEducationPreference] = useReactivateEducationPreferenceMutation();
+  const [reactivateOrganizationSkill] = useReactivateOrganizationSkillMutation();
+  const [activateJobType] = useActivateJobTypeMutation();
+  const [deactivateJobType] = useDeactivateJobTypeMutation();
+  const [activateJobMode] = useActivateJobModeMutation();
+  const [deactivateJobMode] = useDeactivateJobModeMutation();
+  const [activateOrganizationShift] = useActivateOrganizationShiftMutation();
+  const [deactivateOrganizationShift] = useDeactivateOrganizationShiftMutation();
+  const [activateEducationPreference] = useActivateEducationPreferenceMutation();
+  const [deactivateEducationPreference] = useDeactivateEducationPreferenceMutation();
+  const [activateOrganizationSkill] = useActivateOrganizationSkillMutation();
+  const [deactivateOrganizationSkill] = useDeactivateOrganizationSkillMutation();
   const [shiftModalMode, setShiftModalMode] = useState<'add' | 'edit' | null>(null);
   const [isSavingShift, setIsSavingShift] = useState(false);
   const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
@@ -394,6 +433,116 @@ const EditJobDetail = () => {
     defaultValues: {},
   });
 
+  // A currently-assigned-but-deactivated shift stays visible (flagged
+  // isDeleted) via a targeted by-id lookup, fired only when the selected id
+  // isn't already in the active list above.
+  const selectedShiftId = watch('shift')?.[0];
+  const selectedShiftIdStr = selectedShiftId != null ? String(selectedShiftId) : '';
+  const shiftMissingFromActiveList =
+    Boolean(selectedShiftIdStr) &&
+    !organizationShifts.some((item) => String(item.id) === selectedShiftIdStr);
+  const { data: deactivatedShift } = useGetOrganizationShiftByIdQuery(selectedShiftIdStr, {
+    skip: !shiftMissingFromActiveList,
+  });
+  const shiftOptions = useMemo(() => {
+    const base = organizationShifts.map((item) => ({
+      id: item.id,
+      name: `${item.shift_name} (${formatTime12h(item.start_time)} - ${formatTime12h(item.end_time)})`,
+      isDeleted: Boolean(item.is_deleted),
+      isActive: item.is_active,
+    }));
+    if (shiftMissingFromActiveList && deactivatedShift) {
+      base.push({
+        id: deactivatedShift.id,
+        name: `${deactivatedShift.shift_name} (${formatTime12h(deactivatedShift.start_time)} - ${formatTime12h(deactivatedShift.end_time)})`,
+        isDeleted: true,
+        isActive: deactivatedShift.is_active,
+      });
+    }
+    return base;
+  }, [organizationShifts, shiftMissingFromActiveList, deactivatedShift]);
+
+  // Active-only, unbounded job-mode list — same reasoning as shifts above.
+  const {
+    data: jobModesData,
+    isFetching: jobModesInclInactiveLoading,
+    refetch: refetchJobModes,
+  } = useListOrganizationJobModesQuery();
+  const organizationJobModes = jobModesData ?? [];
+  const jobModes = organizationJobModes;
+  const selectedJobModeId = watch('jobMode')?.[0];
+  const selectedJobModeIdStr = selectedJobModeId != null ? String(selectedJobModeId) : '';
+  const jobModeMissingFromActiveList =
+    Boolean(selectedJobModeIdStr) &&
+    !organizationJobModes.some((item) => String(item.id) === selectedJobModeIdStr);
+  const { data: deactivatedJobMode } = useGetJobModeByIdQuery(selectedJobModeIdStr, {
+    skip: !jobModeMissingFromActiveList,
+  });
+  const jobModeOptions = useMemo(() => {
+    const base = organizationJobModes.map((item) => ({
+      id: item.id,
+      name: item.job_mode_name,
+      isDeleted: Boolean(item.is_deleted),
+      isActive: item.is_active,
+    }));
+    if (jobModeMissingFromActiveList && deactivatedJobMode) {
+      base.push({
+        id: deactivatedJobMode.id,
+        name: deactivatedJobMode.job_mode_name,
+        isDeleted: true,
+        isActive: deactivatedJobMode.is_active,
+      });
+    }
+    return base;
+  }, [organizationJobModes, jobModeMissingFromActiveList, deactivatedJobMode]);
+
+  // Active-only, unbounded education-preference list — same reasoning as shifts above.
+  const {
+    data: educationPreferenceData,
+    isFetching: educationPreferenceInclInactiveLoading,
+    refetch: refetchEducationPreference,
+  } = useListEducationPreferencesQuery();
+  const organizationEducationPreferences = educationPreferenceData ?? [];
+  const educationPreference = organizationEducationPreferences;
+  const selectedEducationPreferenceId = watch('educationPreference')?.[0];
+  const selectedEducationPreferenceIdStr =
+    selectedEducationPreferenceId != null ? String(selectedEducationPreferenceId) : '';
+  const educationPreferenceMissingFromActiveList =
+    Boolean(selectedEducationPreferenceIdStr) &&
+    !organizationEducationPreferences.some(
+      (item) => String(item.id) === selectedEducationPreferenceIdStr
+    );
+  const { data: deactivatedEducationPreference } = useGetEducationPreferenceByIdQuery(
+    selectedEducationPreferenceIdStr,
+    { skip: !educationPreferenceMissingFromActiveList }
+  );
+  const educationPreferenceOptions = useMemo(() => {
+    const base = organizationEducationPreferences.map((item) => ({
+      id: item.id,
+      name: item.education_preference_name,
+      isDeleted: Boolean(item.is_deleted),
+      isActive: item.is_active,
+    }));
+    if (educationPreferenceMissingFromActiveList && deactivatedEducationPreference) {
+      base.push({
+        id: deactivatedEducationPreference.id,
+        name: deactivatedEducationPreference.education_preference_name,
+        isDeleted: true,
+        isActive: deactivatedEducationPreference.is_active,
+      });
+    }
+    return base;
+  }, [
+    organizationEducationPreferences,
+    educationPreferenceMissingFromActiveList,
+    deactivatedEducationPreference,
+  ]);
+
+  // Full skill catalogue including deactivated rows, used only to source a
+  // real name for a currently-selected-but-deactivated skill - the dropdown's
+  // own active-only list (mandatorySkills/optionalSkills) never carries one.
+  const { data: allSkillsInclInactive } = useListActiveSkillsQuery({ includeInactive: true });
+
   // Polls jd/status so AI fields fill in without a manual reload.
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
   // Tracks which job id the READY fallback has already run for.
@@ -414,16 +563,48 @@ const EditJobDetail = () => {
   const selectedRecruiterIds = (watch('recruiters') || []).map((id) => String(id));
   const selectedMandatorySkillIds = (watch('mandatorySkills') || []).map((id) => String(id));
   const selectedOptionalSkillIds = (watch('optionalSkills') || []).map((id) => String(id));
+
+  // A currently-selected-but-deactivated skill stays visible (flagged
+  // isDeleted), same treatment shiftOptions/jobModeOptions give their fields.
+  const mandatorySkillOptions = useMemo(() => {
+    const extraDeactivated = (allSkillsInclInactive ?? [])
+      .filter(
+        (skill) => skill.is_deleted && selectedMandatorySkillIds.includes(String(skill.skill_id))
+      )
+      .filter((skill) => !mandatorySkills.some((o) => String(o.id) === String(skill.skill_id)))
+      .map((skill) => ({
+        id: skill.skill_id,
+        name: skill.skill_label,
+        isDeleted: true,
+        isActive: false,
+      }));
+    return [...mandatorySkills.map((o) => ({ ...o, isActive: true })), ...extraDeactivated];
+  }, [mandatorySkills, allSkillsInclInactive, selectedMandatorySkillIds]);
+  const optionalSkillOptions = useMemo(() => {
+    const extraDeactivated = (allSkillsInclInactive ?? [])
+      .filter(
+        (skill) => skill.is_deleted && selectedOptionalSkillIds.includes(String(skill.skill_id))
+      )
+      .filter((skill) => !optionalSkills.some((o) => String(o.id) === String(skill.skill_id)))
+      .map((skill) => ({
+        id: skill.skill_id,
+        name: skill.skill_label,
+        isDeleted: true,
+        isActive: false,
+      }));
+    return [...optionalSkills.map((o) => ({ ...o, isActive: true })), ...extraDeactivated];
+  }, [optionalSkills, allSkillsInclInactive, selectedOptionalSkillIds]);
+
   const selectedHiringManagers = hiringManagers.filter((option) =>
     selectedHiringManagerIds.includes(String(option.id))
   );
   const selectedRecruiters = recruiters.filter((option) =>
     selectedRecruiterIds.includes(String(option.id))
   );
-  const selectedMandatorySkills = [...mandatorySkills, ...extraSuggestedSkillOptions]
+  const selectedMandatorySkills = [...mandatorySkillOptions, ...extraSuggestedSkillOptions]
     .filter((option, index, self) => index === self.findIndex((o) => idsMatch(o.id, option.id)))
     .filter((option) => selectedMandatorySkillIds.includes(String(option.id)));
-  const selectedOptionalSkills = [...optionalSkills, ...extraSuggestedSkillOptions]
+  const selectedOptionalSkills = [...optionalSkillOptions, ...extraSuggestedSkillOptions]
     .filter((option, index, self) => index === self.findIndex((o) => idsMatch(o.id, option.id)))
     .filter((option) => selectedOptionalSkillIds.includes(String(option.id)));
   const [jobTitleSearchText, setJobTitleSearchText] = useState('');
@@ -439,11 +620,14 @@ const EditJobDetail = () => {
 
   const selectedDepartmentId = watch('department')?.[0];
 
-  const { data: departmentJobTitlesData = [], isFetching: jobTitlesLoading } =
-    useListTenantDepartmentJobTitlesQuery(
-      { tenantId: tenantId ?? '', departmentId: String(selectedDepartmentId) },
-      { skip: !tenantId || !selectedDepartmentId }
-    );
+  const {
+    data: departmentJobTitlesData = [],
+    isFetching: jobTitlesLoading,
+    refetch: refetchDepartmentJobTitles,
+  } = useListTenantDepartmentJobTitlesQuery(
+    { tenantId: tenantId ?? '', departmentId: String(selectedDepartmentId) },
+    { skip: !tenantId || !selectedDepartmentId }
+  );
   const selectedJobTitleId = watch('jobTitle')?.[0];
 
   const resolveOrgJobTitleId = (id: string | number): string | undefined => {
@@ -458,6 +642,7 @@ const EditJobDetail = () => {
   const departmentJobTitles = departmentJobTitlesData.map((jt) => ({
     id: tenantJobTitleFormId(jt),
     name: jt.name,
+    isActive: jt.is_active,
     isDeleted: false,
     source: 'department' as const,
   }));
@@ -494,6 +679,7 @@ const EditJobDetail = () => {
     const activeDepartments = (orgDepartments ?? []).map((department) => ({
       id: department.org_department_id,
       name: department.name,
+      isActive: department.is_active,
       isDeleted: false,
     }));
 
@@ -501,6 +687,7 @@ const EditJobDetail = () => {
       jobData?.data?.department?.map((department: { id: number; departmentName: string }) => ({
         id: department.id,
         name: department.departmentName,
+        isActive: true,
         isDeleted: true,
       })) || [];
 
@@ -582,47 +769,41 @@ const EditJobDetail = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unaddedSuggestedSkills]);
 
-  const getOptionName = (option: Record<string, unknown> | null | undefined): string => {
-    if (!option) return '';
-
-    const candidateName =
-      option.name ?? option.jobTypeName ?? option.typeName ?? option.value ?? option.label;
-
-    return typeof candidateName === 'string' ? candidateName : '';
-  };
-
+  // Active-only, unbounded job-type list - jobData never carries a real job
+  // type name (always blanked by mapJobOpeningToLegacyView), so a fallback
+  // built from it can't work. A currently-assigned-but-deactivated job type
+  // is resolved separately below via a targeted by-id lookup.
+  const {
+    data: jobTypesData,
+    isFetching: jobTypesInclInactiveLoading,
+    refetch: refetchJobTypes,
+  } = useListJobTypesQuery({ isMaster: false });
+  const organizationJobTypes = jobTypesData ?? [];
+  const jobTypes = organizationJobTypes;
+  const selectedJobTypeIdStr = selectedJobTypeId != null ? String(selectedJobTypeId) : '';
+  const jobTypeMissingFromActiveList =
+    Boolean(selectedJobTypeIdStr) &&
+    !organizationJobTypes.some((item) => String(item.id) === selectedJobTypeIdStr);
+  const { data: deactivatedJobType } = useGetJobTypeByIdQuery(selectedJobTypeIdStr, {
+    skip: !jobTypeMissingFromActiveList,
+  });
   const jobTypeOptions = useMemo(() => {
-    const optionMap = new Map<string, { id: string; name: string; isDeleted?: boolean }>();
-
-    (jobTypes || []).forEach((jobType) => {
-      const id = String(jobType.id);
-      if (!id) return;
-
-      optionMap.set(id, {
-        id,
-        name: jobType.name,
-        isDeleted: Boolean(jobType.isDeleted),
-      });
-    });
-
-    const selectedFromBackend = (jobData?.data?.jobType || []).find(
-      (jobType: Record<string, unknown>) => idsMatch(jobType?.id, selectedJobTypeId)
-    );
-
-    const selectedName = getOptionName(selectedFromBackend);
-    const selectedId =
-      selectedJobTypeId != null && selectedJobTypeId !== '' ? String(selectedJobTypeId) : '';
-
-    if (selectedId && selectedName && !optionMap.has(selectedId)) {
-      optionMap.set(selectedId, {
-        id: selectedId,
-        name: selectedName,
+    const base = organizationJobTypes.map((item) => ({
+      id: item.id,
+      name: item.job_type_name,
+      isDeleted: Boolean(item.is_deleted),
+      isActive: item.is_active,
+    }));
+    if (jobTypeMissingFromActiveList && deactivatedJobType) {
+      base.push({
+        id: deactivatedJobType.id,
+        name: deactivatedJobType.job_type_name,
         isDeleted: true,
+        isActive: deactivatedJobType.is_active,
       });
     }
-
-    return Array.from(optionMap.values());
-  }, [jobTypes, jobData, selectedJobTypeId]);
+    return base;
+  }, [organizationJobTypes, jobTypeMissingFromActiveList, deactivatedJobType]);
 
   const jobLocationOptions = (offices ?? [])
     .map((office) => ({
@@ -702,6 +883,14 @@ const EditJobDetail = () => {
         jobData.data.nonExemptMinSalary != null ? String(jobData.data.nonExemptMinSalary) : null,
       nonExemptMaxSalary:
         jobData.data.nonExemptMaxSalary != null ? String(jobData.data.nonExemptMaxSalary) : null,
+      exemptionStatus: [
+        ...(jobData.data.exemptMinSalary != null || jobData.data.exemptMaxSalary != null
+          ? ['true']
+          : []),
+        ...(jobData.data.nonExemptMinSalary != null || jobData.data.nonExemptMaxSalary != null
+          ? ['false']
+          : []),
+      ],
       minExperience: jobData.data.minExperience != null ? Number(jobData.data.minExperience) : null,
       maxExperience: jobData.data.maxExperience != null ? Number(jobData.data.maxExperience) : null,
       responsibilities: jobData.data.responsibilities || '',
@@ -916,6 +1105,10 @@ const EditJobDetail = () => {
         }
         if (fresh.exemptMinSalary != null && !current.exemptMinSalary) {
           setValue('exemptMinSalary', String(fresh.exemptMinSalary), { shouldValidate: true });
+          const currentStatus = getValues('exemptionStatus') ?? [];
+          if (!currentStatus.includes('true')) {
+            setValue('exemptionStatus', [...currentStatus, 'true'], { shouldValidate: true });
+          }
           appliedAnything = true;
         }
         if (fresh.exemptMaxSalary != null && !current.exemptMaxSalary) {
@@ -923,11 +1116,19 @@ const EditJobDetail = () => {
           appliedAnything = true;
         }
         if (fresh.nonExemptMinSalary != null && !current.nonExemptMinSalary) {
-          setValue('nonExemptMinSalary', String(fresh.nonExemptMinSalary), { shouldValidate: true });
+          setValue('nonExemptMinSalary', String(fresh.nonExemptMinSalary), {
+            shouldValidate: true,
+          });
+          const currentStatus = getValues('exemptionStatus') ?? [];
+          if (!currentStatus.includes('false')) {
+            setValue('exemptionStatus', [...currentStatus, 'false'], { shouldValidate: true });
+          }
           appliedAnything = true;
         }
         if (fresh.nonExemptMaxSalary != null && !current.nonExemptMaxSalary) {
-          setValue('nonExemptMaxSalary', String(fresh.nonExemptMaxSalary), { shouldValidate: true });
+          setValue('nonExemptMaxSalary', String(fresh.nonExemptMaxSalary), {
+            shouldValidate: true,
+          });
           appliedAnything = true;
         }
         // Merge in AI-suggested skills not already selected, split by type.
@@ -1289,7 +1490,7 @@ const EditJobDetail = () => {
 
       if (addType === 'educationPreference') {
         const existingPreference = educationPreference.find(
-          (item) => item.name.toLowerCase() === normalizedValue
+          (item) => item.education_preference_name.toLowerCase() === normalizedValue
         );
         if (existingPreference) {
           setValue('educationPreference', [existingPreference.id], { shouldValidate: true });
@@ -1339,7 +1540,7 @@ const EditJobDetail = () => {
 
       if (addType === 'jobType') {
         const existingJobType = jobTypes.find(
-          (item) => item.name.toLowerCase() === normalizedValue
+          (item) => item.job_type_name.toLowerCase() === normalizedValue
         );
         if (existingJobType) {
           setValue('jobType', [existingJobType.id], { shouldValidate: true });
@@ -1357,7 +1558,7 @@ const EditJobDetail = () => {
 
       if (addType === 'jobMode') {
         const existingJobMode = jobModes.find(
-          (item) => item.name.toLowerCase() === normalizedValue
+          (item) => item.job_mode_name.toLowerCase() === normalizedValue
         );
         if (existingJobMode) {
           setValue('jobMode', [existingJobMode.id], { shouldValidate: true });
@@ -1379,7 +1580,7 @@ const EditJobDetail = () => {
       setOpenModalFor(null);
     }
   };
-  const handleReuseOption = async (_id: string | number, type: string) => {
+  const handleReuseOption = async (id: string | number, type: string) => {
     if (type === 'department') {
       showToast({
         message: 'Removed departments cannot be restored from this screen.',
@@ -1396,12 +1597,105 @@ const EditJobDetail = () => {
       return;
     }
 
-    // No restore endpoint exists for job types, education preferences, or skill-catalog entries.
-    showToast({
-      message: 'Removed options cannot be restored from this screen.',
-      type: 'error',
-    });
+    const optionId = String(id);
+    try {
+      if (type === 'jobType') {
+        await reactivateJobType(optionId).unwrap();
+      } else if (type === 'jobMode') {
+        await reactivateJobMode(optionId).unwrap();
+      } else if (type === 'shift') {
+        await reactivateOrganizationShift(optionId).unwrap();
+      } else if (type === 'educationPreference') {
+        await reactivateEducationPreference(optionId).unwrap();
+      } else if (type === 'mandatorySkills' || type === 'optionalSkills') {
+        await reactivateOrganizationSkill({ skillId: optionId }).unwrap();
+      } else {
+        showToast({
+          message: 'Removed options cannot be restored from this screen.',
+          type: 'error',
+        });
+        return;
+      }
+      showToast({ message: 'Option reactivated successfully', type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Something went wrong while reactivating this option.'),
+        type: 'error',
+      });
+    }
   };
+  // Status Switch next to Edit/Delete - flips is_active, independent of the
+  // isDeleted/reuse soft-delete path above.
+  const toggleActiveTypeLabels: Record<string, string> = {
+    jobType: 'Job type',
+    jobMode: 'Job mode',
+    shift: 'Shift',
+    educationPreference: 'Education preference',
+    mandatorySkills: 'Skill',
+    optionalSkills: 'Skill',
+    department: 'Department',
+    jobTitle: 'Job title',
+  };
+
+  const handleToggleActive = async (id: string | number, nextActive: boolean, type: string) => {
+    const optionId = String(id);
+    const typeLabel = toggleActiveTypeLabels[type] ?? 'Option';
+    try {
+      if (type === 'jobType') {
+        await (nextActive ? activateJobType(optionId) : deactivateJobType(optionId)).unwrap();
+        refetchJobTypes?.();
+      } else if (type === 'jobMode') {
+        await (nextActive ? activateJobMode(optionId) : deactivateJobMode(optionId)).unwrap();
+        refetchJobModes?.();
+      } else if (type === 'shift') {
+        await (
+          nextActive ? activateOrganizationShift(optionId) : deactivateOrganizationShift(optionId)
+        ).unwrap();
+      } else if (type === 'educationPreference') {
+        await (
+          nextActive
+            ? activateEducationPreference(optionId)
+            : deactivateEducationPreference(optionId)
+        ).unwrap();
+        refetchEducationPreference?.();
+      } else if (type === 'mandatorySkills' || type === 'optionalSkills') {
+        await (
+          nextActive
+            ? activateOrganizationSkill({ skillId: optionId })
+            : deactivateOrganizationSkill({ skillId: optionId })
+        ).unwrap();
+        refetchMandatorySkills?.();
+        refetchOptionalSkills?.();
+      } else if (type === 'department') {
+        await (
+          nextActive
+            ? activateTenantDepartment({ tenantId: tenantId ?? '', departmentId: optionId })
+            : deactivateTenantDepartment({ tenantId: tenantId ?? '', departmentId: optionId })
+        ).unwrap();
+        refetchDepartments?.();
+      } else if (type === 'jobTitle') {
+        await (
+          nextActive
+            ? activateTenantJobTitle({ tenantId: tenantId ?? '', jobTitleId: optionId })
+            : deactivateTenantJobTitle({ tenantId: tenantId ?? '', jobTitleId: optionId })
+        ).unwrap();
+        refetchDepartmentJobTitles?.();
+      }
+      showToast({
+        message: `${typeLabel} ${nextActive ? 'activated' : 'deactivated'} successfully`,
+        type: 'success',
+      });
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(
+          err,
+          `Something went wrong while updating ${typeLabel.toLowerCase()} status.`
+        ),
+        type: 'error',
+      });
+    }
+  };
+
   const handleEditOption = async (id: string | number, newName: string, type: string) => {
     if (type === 'department') {
       if (!tenantId) {
@@ -1472,7 +1766,7 @@ const EditJobDetail = () => {
           // Not collected by this rename-only dialog — preserve whatever's
           // already stored rather than wiping it (PUT replaces).
           job_type_description: jobTypes.find((item) => String(item.id) === String(id))
-            ?.description,
+            ?.job_type_description,
           isMaster: false,
         }).unwrap();
         showToast({ message: 'Job type updated successfully', type: 'success' });
@@ -1495,7 +1789,7 @@ const EditJobDetail = () => {
           // Not collected by this rename-only dialog — preserve whatever's
           // already stored rather than wiping it (PUT replaces).
           job_mode_description: jobModes.find((item) => String(item.id) === String(id))
-            ?.description,
+            ?.job_mode_description,
         }).unwrap();
         showToast({ message: 'Job mode updated successfully', type: 'success' });
         refetchJobModes?.();
@@ -1783,6 +2077,24 @@ const EditJobDetail = () => {
     job_title: 'Job Title',
     department: 'Department',
   };
+  // Same add-only permission each field's own dropdown "+ Add" already
+  // uses - location has no per-field add permission, stays Admin-only.
+  const canAddUnresolvedField = (fieldKey: string): boolean => {
+    switch (fieldKey) {
+      case 'department':
+        return canAddDepartment;
+      case 'job_title':
+        return canAddJobTitle;
+      case 'job_type':
+      case 'work_mode':
+      case 'education_preference':
+      case 'shift':
+        return canManageJobCatalogues;
+      default:
+        return canManageCatalogueEntries;
+    }
+  };
+
   const handleCreateFromUnresolvedSuggestion = (fieldKey: string, guess: string) => {
     switch (fieldKey) {
       case 'job_type':
@@ -2068,71 +2380,6 @@ const EditJobDetail = () => {
     }
   };
 
-  // Plain "Save" — persists this tab's edits and nothing else. "Save & Next"
-  // above bundles two things a user editing an already-published job may not
-  // want together: it always navigates to the JD tab, AND it silently
-  // re-runs AI JD generation (enhanceJd({ regenerate: true })) whenever a
-  // description-relevant field changed. This mirrors onSubmit's own
-  // save-and-dispatch steps but stops right there — no regenerate check, no
-  // navigation — so a small edit doesn't kick off the whole pipeline.
-  const handleSaveOnly = async (data: JobDetailsState) => {
-    const hasInterviewsStarted = jobData?.data?.interviewedCandidateCount !== 0;
-    const languagesValue = hasInterviewsStarted
-      ? (jobData?.data?.languages ?? [])
-      : (data.languages ?? []);
-
-    const processedData = {
-      ...data,
-      referralBonus:
-        data.referralBonus === null ||
-        data.referralBonus === undefined ||
-        data.referralBonus === 0 ||
-        data.referralBonus === ''
-          ? ''
-          : data.referralBonus,
-      languages: languagesValue,
-      useCultureIntro: Boolean(data.useCultureIntro),
-      isDraft: false,
-    };
-    const payload = {
-      ...jobDetails,
-      ...processedData,
-    };
-    const jobDescriptionPayload = {
-      educationPreference: data.educationPreference,
-      mandatorySkills: data.mandatorySkills,
-      optionalSkills: data.optionalSkills,
-      otherRequirements: data.otherRequirements,
-      benefits: data.benefits,
-      responsibilities: data.responsibilities,
-    };
-
-    try {
-      const jobId = parsedJobId || asJobId(jobOpeningId);
-      const details = buildSaveJobDetailsPayload({ data: payload, offices });
-      await updateJobOpening({
-        jobOpeningId: jobId,
-        body: details,
-      }).unwrap();
-
-      showToast({ message: 'Job details saved.', type: 'success' });
-      justSavedRef.current = true;
-      dispatch(updateEditJobDetails(payload));
-      dispatch(updateEditJobDescription(jobDescriptionPayload));
-      dispatch(updateEditInterviewRounds(interViewRound));
-      // Re-baselines the unsaved-changes check against what was just
-      // persisted, rather than permanently disabling it via
-      // setAllowNavigation(true) — this stays on the page, so the guard
-      // should still catch whatever the user edits NEXT.
-      setInitialFormValues({ ...formValues });
-    } catch (error) {
-      showToast({
-        message: getJobErrorMessage(error, 'Failed to save job details'),
-        type: 'error',
-      });
-    }
-  };
-
   return (
     <>
       {(isFetchingJobData || isUpdatingDraft || isRegenerating) && <Loader />}
@@ -2149,46 +2396,49 @@ const EditJobDetail = () => {
       >
         {visibleUnresolvedAiSuggestions.length > 0 && (
           <div className="mt-2 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            {visibleUnresolvedAiSuggestions.map(([fieldKey, guess]) => (
-              <div key={fieldKey} className="flex items-center justify-between gap-4">
-                <span className="text-sm text-amber-900">
-                  <span className="mr-1.5">⚠️</span>
-                  <strong>{UNRESOLVED_AI_FIELD_LABELS[fieldKey] ?? fieldKey}:</strong> the job
-                  description mentions &quot;{guess}&quot;, but that isn&apos;t set up in your
-                  organization&apos;s catalogue yet.{' '}
-                  {fieldKey === 'location'
-                    ? canManageCatalogueEntries
-                      ? 'Add it under Company Settings > Locations.'
-                      : 'Contact your company admin to add it.'
-                    : !canManageCatalogueEntries
-                      ? 'Contact your company admin to add it.'
-                      : null}
-                </span>
-                <div className="flex items-center gap-3 shrink-0">
-                  {canManageCatalogueEntries && fieldKey !== 'location' && (
-                    <Button
+            {visibleUnresolvedAiSuggestions.map(([fieldKey, guess]) => {
+              const canAddThisField = canAddUnresolvedField(fieldKey);
+              return (
+                <div key={fieldKey} className="flex items-center justify-between gap-4">
+                  <span className="text-sm text-amber-900">
+                    <span className="mr-1.5">⚠️</span>
+                    <strong>{UNRESOLVED_AI_FIELD_LABELS[fieldKey] ?? fieldKey}:</strong> the job
+                    description mentions &quot;{guess}&quot;, but that isn&apos;t set up in your
+                    organization&apos;s catalogue yet.{' '}
+                    {fieldKey === 'location'
+                      ? canManageCatalogueEntries
+                        ? 'Add it under Company Settings > Locations.'
+                        : 'Contact your company admin to add it.'
+                      : !canAddThisField
+                        ? 'Contact your company admin to add it.'
+                        : null}
+                  </span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {canAddThisField && fieldKey !== 'location' && (
+                      <Button
+                        type="button"
+                        className="text-white bg-button rounded-3xl px-4 py-1.5 text-xs font-semibold cursor-pointer"
+                        onClick={() => handleCreateFromUnresolvedSuggestion(fieldKey, guess)}
+                      >
+                        Create it
+                      </Button>
+                    )}
+                    <button
                       type="button"
-                      className="text-white bg-button rounded-3xl px-4 py-1.5 text-xs font-semibold cursor-pointer"
-                      onClick={() => handleCreateFromUnresolvedSuggestion(fieldKey, guess)}
+                      onClick={() =>
+                        setDismissedUnresolvedAiFields((prev) =>
+                          new Set(prev).add(`${parsedJobId}:${fieldKey}`)
+                        )
+                      }
+                      className="text-amber-600 hover:text-amber-800 cursor-pointer"
+                      aria-label="Dismiss notice"
                     >
-                      Create it
-                    </Button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDismissedUnresolvedAiFields((prev) =>
-                        new Set(prev).add(`${parsedJobId}:${fieldKey}`)
-                      )
-                    }
-                    className="text-amber-600 hover:text-amber-800 cursor-pointer"
-                    aria-label="Dismiss notice"
-                  >
-                    ×
-                  </button>
+                      ×
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         {(jdStatusForHydration?.status === 'PROCESSING' ||
@@ -2264,6 +2514,7 @@ const EditJobDetail = () => {
                   onEditOption={canEditDepartment ? handleEditOption : undefined}
                   onDeleteOption={canDeleteDepartment ? handleDeleteOption : undefined}
                   onReuseOption={canManageDepartment ? handleReuseOption : undefined}
+                  onToggleActive={canDeleteDepartment ? handleToggleActive : undefined}
                 />
               </div>
             </Form.Item>
@@ -2303,6 +2554,7 @@ const EditJobDetail = () => {
                   onEditOption={canEditJobTitle ? handleEditOption : undefined}
                   onDeleteOption={canDeleteJobTitle ? handleDeleteOption : undefined}
                   onReuseOption={canManageJobTitle ? handleReuseOption : undefined}
+                  onToggleActive={canDeleteJobTitle ? handleToggleActive : undefined}
                 />
               </div>
             </Form.Item>
@@ -2322,7 +2574,7 @@ const EditJobDetail = () => {
                     setValue('jobType', value ? [value] : [], { shouldValidate: true });
                   }}
                   options={jobTypeOptions}
-                  loading={jobTypesLoading || isAddingToDropdown === 'jobType'}
+                  loading={jobTypesInclInactiveLoading || isAddingToDropdown === 'jobType'}
                   placeholder="Select Job Type"
                   label="Job Type"
                   onAddOption={
@@ -2332,10 +2584,11 @@ const EditJobDetail = () => {
                   }
                   type="jobType"
                   error={errors.jobType?.message}
-                  enableEditDelete={canManageJobCatalogues}
-                  onEditOption={canManageJobCatalogues ? handleEditOption : undefined}
-                  onDeleteOption={canManageJobCatalogues ? handleDeleteOption : undefined}
-                  onReuseOption={canManageJobCatalogues ? handleReuseOption : undefined}
+                  enableEditDelete={canDeleteJobCatalogues}
+                  onEditOption={canDeleteJobCatalogues ? handleEditOption : undefined}
+                  onDeleteOption={canDeleteJobCatalogues ? handleDeleteOption : undefined}
+                  onReuseOption={canDeleteJobCatalogues ? handleReuseOption : undefined}
+                  onToggleActive={canDeleteJobCatalogues ? handleToggleActive : undefined}
                 />
               </div>
             </Form.Item>
@@ -2347,8 +2600,8 @@ const EditJobDetail = () => {
                   onChange={(value) => {
                     setValue('jobMode', value ? [value] : [], { shouldValidate: true });
                   }}
-                  options={jobModes}
-                  loading={jobModesLoading || isAddingToDropdown === 'jobMode'}
+                  options={jobModeOptions}
+                  loading={jobModesInclInactiveLoading || isAddingToDropdown === 'jobMode'}
                   placeholder="Select Job Mode"
                   label="Job Mode"
                   onAddOption={
@@ -2358,10 +2611,11 @@ const EditJobDetail = () => {
                   }
                   type="jobMode"
                   error={errors.jobMode?.message}
-                  enableEditDelete={canManageJobCatalogues}
-                  onEditOption={canManageJobCatalogues ? handleEditOption : undefined}
-                  onDeleteOption={canManageJobCatalogues ? handleDeleteOption : undefined}
-                  onReuseOption={canManageJobCatalogues ? handleReuseOption : undefined}
+                  enableEditDelete={canDeleteJobCatalogues}
+                  onEditOption={canDeleteJobCatalogues ? handleEditOption : undefined}
+                  onDeleteOption={canDeleteJobCatalogues ? handleDeleteOption : undefined}
+                  onReuseOption={canDeleteJobCatalogues ? handleReuseOption : undefined}
+                  onToggleActive={canDeleteJobCatalogues ? handleToggleActive : undefined}
                 />
               </div>
             </Form.Item>
@@ -2377,14 +2631,16 @@ const EditJobDetail = () => {
                 placeholder="Select Shift"
                 label="Shift"
                 type="shift"
-                enableEditDelete={canManageJobCatalogues}
+                enableEditDelete={canDeleteJobCatalogues}
                 onAddOption={
                   canManageJobCatalogues ? (value) => handleAddShiftOption(value) : undefined
                 }
                 onEditOption={
-                  canManageJobCatalogues ? (id) => handleEditShiftOption(id) : undefined
+                  canDeleteJobCatalogues ? (id) => handleEditShiftOption(id) : undefined
                 }
-                onDeleteOption={canManageJobCatalogues ? (id) => handleDeleteShift(id) : undefined}
+                onDeleteOption={canDeleteJobCatalogues ? (id) => handleDeleteShift(id) : undefined}
+                onReuseOption={canDeleteJobCatalogues ? handleReuseOption : undefined}
+                onToggleActive={canDeleteJobCatalogues ? handleToggleActive : undefined}
               />
               {errors.shift && (
                 <p className="text-red-500 text-sm mt-1">{errors.shift?.message as string}</p>
@@ -2854,139 +3110,205 @@ const EditJobDetail = () => {
         </div>
         <div className="mt-2">
           <div className="w-full">
-            <span className="text-lg font-semibold">Salary</span>
-            <p className="text-sm text-[#717171] mt-1">
-              Provide at least one range — this job can offer Exempt - annual, Non-Exempt
-              - hourly, or both.
-            </p>
+            <span className="text-lg font-semibold">Salary Status</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
+            <Form.Item
+              label={
+                <span>
+                  Exemption Status <span className="required-asterisk">*</span>
+                </span>
+              }
+            >
+              <div
+                id="field-exemptionStatus"
+                className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl "
+              >
+                <Select
+                  mode="multiple"
+                  value={watch('exemptionStatus') ?? []}
+                  onChange={(value: string[]) => {
+                    setValue('exemptionStatus', value, { shouldValidate: true });
+                    if (!value.includes('true')) {
+                      setValue('exemptMinSalary', null);
+                      setValue('exemptMaxSalary', null);
+                    }
+                    if (!value.includes('false')) {
+                      setValue('nonExemptMinSalary', null);
+                      setValue('nonExemptMaxSalary', null);
+                    }
+                    trigger([
+                      'exemptionStatus',
+                      'exemptMinSalary',
+                      'exemptMaxSalary',
+                      'nonExemptMinSalary',
+                      'nonExemptMaxSalary',
+                    ]);
+                  }}
+                  className="w-full custom-select-jobs placeholder-style"
+                  placeholder="Select Exemption Status"
+                  popupClassName="rounded-3xl"
+                  loading={exemptionStatusLoading}
+                >
+                  {exemptionStatusOptions.length > 0 ? (
+                    exemptionStatusOptions.map((status) => (
+                      <Option key={status.id} value={status.id}>
+                        {status.name}
+                      </Option>
+                    ))
+                  ) : (
+                    <Option value="No Status Found" disabled>
+                      No Status Found
+                    </Option>
+                  )}
+                </Select>
+              </div>
+              {errors.exemptionStatus && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.exemptionStatus.message as string}
+                </p>
+              )}
+            </Form.Item>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 mt-2">
-            <div>
-              <span className="font-medium text-[#4f4f4f]">Exempt - Annual</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
-                <Form.Item label={<span>Minimum Salary (in USD)</span>}>
-                  <Controller
-                    name="exemptMinSalary"
-                    control={control}
-                    render={() => (
-                      <CurrencyInput
-                        id="field-exemptMinSalary"
-                        value={watch('exemptMinSalary') ?? ''}
-                        onValueChange={(value) => {
-                          setValue('exemptMinSalary', value ?? null, { shouldValidate: true });
-                          trigger(['exemptMinSalary', 'exemptMaxSalary']);
-                        }}
-                        decimalsLimit={2}
-                        decimalScale={2}
-                        prefix="$"
-                        suffix="/year"
-                        placeholder="Minimum Salary"
-                        className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
-                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                      />
+            {(watch('exemptionStatus') ?? []).includes('true') && (
+              <div>
+                <span className="font-medium text-[#4f4f4f]">Exempt - Annual</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
+                  <Form.Item
+                    label={
+                      <span>
+                        Minimum Salary (in USD) <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <Controller
+                      name="exemptMinSalary"
+                      control={control}
+                      render={() => (
+                        <CurrencyInput
+                          id="field-exemptMinSalary"
+                          value={watch('exemptMinSalary') ?? ''}
+                          onValueChange={(value) => {
+                            setValue('exemptMinSalary', value ?? null, { shouldValidate: true });
+                            trigger(['exemptMinSalary', 'exemptMaxSalary']);
+                          }}
+                          decimalsLimit={2}
+                          decimalScale={2}
+                          prefix="$"
+                          suffix="/year"
+                          placeholder="Minimum Salary"
+                          className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                          intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                        />
+                      )}
+                    />
+                    {errors.exemptMinSalary && (
+                      <p className="text-red-500 text-sm mt-1">{errors.exemptMinSalary.message}</p>
                     )}
-                  />
-                  {errors.exemptMinSalary && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.exemptMinSalary.message}
-                    </p>
-                  )}
-                </Form.Item>
-                <Form.Item label={<span>Maximum Salary (in USD)</span>}>
-                  <Controller
-                    name="exemptMaxSalary"
-                    control={control}
-                    render={() => (
-                      <CurrencyInput
-                        id="field-exemptMaxSalary"
-                        value={watch('exemptMaxSalary') ?? ''}
-                        onValueChange={(value) => {
-                          setValue('exemptMaxSalary', value ?? null, { shouldValidate: true });
-                          trigger(['exemptMinSalary', 'exemptMaxSalary']);
-                        }}
-                        decimalsLimit={2}
-                        decimalScale={2}
-                        prefix="$"
-                        suffix="/year"
-                        placeholder="Maximum Salary"
-                        className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
-                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                      />
+                  </Form.Item>
+                  <Form.Item label={<span>Maximum Salary (in USD)</span>}>
+                    <Controller
+                      name="exemptMaxSalary"
+                      control={control}
+                      render={() => (
+                        <CurrencyInput
+                          id="field-exemptMaxSalary"
+                          value={watch('exemptMaxSalary') ?? ''}
+                          onValueChange={(value) => {
+                            setValue('exemptMaxSalary', value ?? null, { shouldValidate: true });
+                            trigger(['exemptMinSalary', 'exemptMaxSalary']);
+                          }}
+                          decimalsLimit={2}
+                          decimalScale={2}
+                          prefix="$"
+                          suffix="/year"
+                          placeholder="Maximum Salary"
+                          className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                          intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                        />
+                      )}
+                    />
+                    {errors.exemptMaxSalary && (
+                      <p className="text-red-500 text-sm mt-1">{errors.exemptMaxSalary.message}</p>
                     )}
-                  />
-                  {errors.exemptMaxSalary && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.exemptMaxSalary.message}
-                    </p>
-                  )}
-                </Form.Item>
+                  </Form.Item>
+                </div>
               </div>
-            </div>
-            <div>
-              <span className="font-medium text-[#4f4f4f]">Non-Exempt - Hourly</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
-                <Form.Item label={<span>Minimum Rate (in USD)</span>}>
-                  <Controller
-                    name="nonExemptMinSalary"
-                    control={control}
-                    render={() => (
-                      <CurrencyInput
-                        id="field-nonExemptMinSalary"
-                        value={watch('nonExemptMinSalary') ?? ''}
-                        onValueChange={(value) => {
-                          setValue('nonExemptMinSalary', value ?? null, {
-                            shouldValidate: true,
-                          });
-                          trigger(['nonExemptMinSalary', 'nonExemptMaxSalary']);
-                        }}
-                        decimalsLimit={2}
-                        decimalScale={2}
-                        prefix="$"
-                        suffix="/hr"
-                        placeholder="Minimum Rate"
-                        className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
-                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                      />
+            )}
+            {(watch('exemptionStatus') ?? []).includes('false') && (
+              <div>
+                <span className="font-medium text-[#4f4f4f]">Non-Exempt - Hourly</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
+                  <Form.Item
+                    label={
+                      <span>
+                        Minimum Salary (in USD) <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
+                    <Controller
+                      name="nonExemptMinSalary"
+                      control={control}
+                      render={() => (
+                        <CurrencyInput
+                          id="field-nonExemptMinSalary"
+                          value={watch('nonExemptMinSalary') ?? ''}
+                          onValueChange={(value) => {
+                            setValue('nonExemptMinSalary', value ?? null, {
+                              shouldValidate: true,
+                            });
+                            trigger(['nonExemptMinSalary', 'nonExemptMaxSalary']);
+                          }}
+                          decimalsLimit={2}
+                          decimalScale={2}
+                          prefix="$"
+                          suffix="/hr"
+                          placeholder="Minimum Salary"
+                          className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                          intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                        />
+                      )}
+                    />
+                    {errors.nonExemptMinSalary && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.nonExemptMinSalary.message}
+                      </p>
                     )}
-                  />
-                  {errors.nonExemptMinSalary && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.nonExemptMinSalary.message}
-                    </p>
-                  )}
-                </Form.Item>
-                <Form.Item label={<span>Maximum Rate (in USD)</span>}>
-                  <Controller
-                    name="nonExemptMaxSalary"
-                    control={control}
-                    render={() => (
-                      <CurrencyInput
-                        id="field-nonExemptMaxSalary"
-                        value={watch('nonExemptMaxSalary') ?? ''}
-                        onValueChange={(value) => {
-                          setValue('nonExemptMaxSalary', value ?? null, {
-                            shouldValidate: true,
-                          });
-                          trigger(['nonExemptMinSalary', 'nonExemptMaxSalary']);
-                        }}
-                        decimalsLimit={2}
-                        decimalScale={2}
-                        prefix="$"
-                        suffix="/hr"
-                        placeholder="Maximum Rate"
-                        className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
-                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                      />
+                  </Form.Item>
+                  <Form.Item label={<span>Maximum Salary (in USD)</span>}>
+                    <Controller
+                      name="nonExemptMaxSalary"
+                      control={control}
+                      render={() => (
+                        <CurrencyInput
+                          id="field-nonExemptMaxSalary"
+                          value={watch('nonExemptMaxSalary') ?? ''}
+                          onValueChange={(value) => {
+                            setValue('nonExemptMaxSalary', value ?? null, {
+                              shouldValidate: true,
+                            });
+                            trigger(['nonExemptMinSalary', 'nonExemptMaxSalary']);
+                          }}
+                          decimalsLimit={2}
+                          decimalScale={2}
+                          prefix="$"
+                          suffix="/hr"
+                          placeholder="Maximum Salary"
+                          className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
+                          intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                        />
+                      )}
+                    />
+                    {errors.nonExemptMaxSalary && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.nonExemptMaxSalary.message}
+                      </p>
                     )}
-                  />
-                  {errors.nonExemptMaxSalary && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.nonExemptMaxSalary.message}
-                    </p>
-                  )}
-                </Form.Item>
+                  </Form.Item>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
         <div className="form-grid-equal-labels grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
@@ -3091,7 +3413,7 @@ const EditJobDetail = () => {
                       shouldValidate: true,
                     })
                   }
-                  options={mandatorySkills.filter(
+                  options={mandatorySkillOptions.filter(
                     (option) => !selectedOptionalSkillIds.includes(String(option.id))
                   )}
                   loading={mandatorySkillsLoading || isAddingToDropdown === 'mandatorySkills'}
@@ -3099,18 +3421,18 @@ const EditJobDetail = () => {
                   placeholder="Select Required Skills"
                   label="Required Skills"
                   onAddOption={
-                    canManageCatalogueEntries
-                      ? (value) => handleAddOption(value, 'mandatorySkills')
-                      : undefined
+                    canAddSkill ? (value) => handleAddOption(value, 'mandatorySkills') : undefined
                   }
                   onSearchChange={searchMandatorySkills}
                   type="mandatorySkills"
                   error={errors.mandatorySkills?.message}
-                  // isEditable hides icons on platform-shared skills; canManageCatalogueEntries hides
-                  // them for roles without organization:update, which the API would 403 anyway.
+                  // isEditable hides icons on platform-shared skills; canDeleteSkill hides
+                  // them for roles without skill:delete, which the API would 403 anyway.
                   enableEditDelete
-                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                  onEditOption={canDeleteSkill ? handleEditOption : undefined}
+                  onDeleteOption={canDeleteSkill ? handleDeleteOption : undefined}
+                  onReuseOption={handleReuseOption}
+                  onToggleActive={canDeleteSkill ? handleToggleActive : undefined}
                   maxTagCount={0}
                   maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
                     <span>
@@ -3174,7 +3496,7 @@ const EditJobDetail = () => {
                       shouldValidate: true,
                     })
                   }
-                  options={optionalSkills.filter(
+                  options={optionalSkillOptions.filter(
                     (option) => !selectedMandatorySkillIds.includes(String(option.id))
                   )}
                   loading={optionalSkillsLoading || isAddingToDropdown === 'optionalSkills'}
@@ -3182,16 +3504,16 @@ const EditJobDetail = () => {
                   placeholder="Select Optional Skills"
                   label="Optional Skills"
                   onAddOption={
-                    canManageCatalogueEntries
-                      ? (value) => handleAddOption(value, 'optionalSkills')
-                      : undefined
+                    canAddSkill ? (value) => handleAddOption(value, 'optionalSkills') : undefined
                   }
                   onSearchChange={searchOptionalSkills}
                   type="optionalSkills"
                   error={errors.optionalSkills?.message as string | undefined}
                   enableEditDelete
-                  onEditOption={canManageCatalogueEntries ? handleEditOption : undefined}
-                  onDeleteOption={canManageCatalogueEntries ? handleDeleteOption : undefined}
+                  onEditOption={canDeleteSkill ? handleEditOption : undefined}
+                  onDeleteOption={canDeleteSkill ? handleDeleteOption : undefined}
+                  onReuseOption={handleReuseOption}
+                  onToggleActive={canDeleteSkill ? handleToggleActive : undefined}
                   maxTagCount={0}
                   maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
                     <span>
@@ -3262,9 +3584,10 @@ const EditJobDetail = () => {
                       shouldValidate: true,
                     })
                   }
-                  options={educationPreference}
+                  options={educationPreferenceOptions}
                   loading={
-                    educationPreferenceLoading || isAddingToDropdown === 'educationPreference'
+                    educationPreferenceInclInactiveLoading ||
+                    isAddingToDropdown === 'educationPreference'
                   }
                   placeholder="Select Education Preference"
                   label="Education Preference"
@@ -3275,10 +3598,11 @@ const EditJobDetail = () => {
                   }
                   type="educationPreference"
                   error={errors.educationPreference?.message}
-                  enableEditDelete={canManageJobCatalogues}
-                  onEditOption={canManageJobCatalogues ? handleEditOption : undefined}
-                  onDeleteOption={canManageJobCatalogues ? handleDeleteOption : undefined}
-                  onReuseOption={canManageJobCatalogues ? handleReuseOption : undefined}
+                  enableEditDelete={canDeleteJobCatalogues}
+                  onEditOption={canDeleteJobCatalogues ? handleEditOption : undefined}
+                  onDeleteOption={canDeleteJobCatalogues ? handleDeleteOption : undefined}
+                  onReuseOption={canDeleteJobCatalogues ? handleReuseOption : undefined}
+                  onToggleActive={canDeleteJobCatalogues ? handleToggleActive : undefined}
                 />
               </div>
             </Form.Item>
@@ -3381,20 +3705,6 @@ const EditJobDetail = () => {
           )}
           <Button
             type="button"
-            className="border border-button text-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-            onClick={handleSubmit(handleSaveOnly, (invalidFields) => {
-              showToast({
-                message: 'Please fill all required fields before saving.',
-                type: 'error',
-              });
-              scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
-            })}
-            disabled={isFetchingJobData || isUpdatingDraft || !canEditThisJob}
-          >
-            SAVE
-          </Button>
-          <Button
-            type="button"
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
             onClick={handleSubmit(onSubmit, (invalidFields) => {
               showToast({
@@ -3422,7 +3732,7 @@ const EditJobDetail = () => {
           onClose={handleCancelRegenerate}
           onConfirm={handleConfirmRegenerate}
           title="Would you like to regenerate the Job Description using AI, or use the current uploaded Job Description?"
-          confirmText="REGENERATE"
+          confirmText="AI-REGENERATE"
           cancelText="USE UPLOADED JD"
           isLoading={isRegenerating}
         />

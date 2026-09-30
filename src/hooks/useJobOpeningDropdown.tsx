@@ -13,6 +13,7 @@ import { useListUsersQuery } from '../api/organization-service/Users/users';
 import { useListPlatformTenantUsersQuery } from '../api/organization-service/Platform/users';
 import { useListPlatformTenantsQuery } from '../api/organization-service/Platform/tenants';
 import { useMemo, useState } from 'react';
+import { formatTime12h } from '../utils/formatTime';
 import { useSelector } from 'react-redux';
 import { RootState } from '../redux/provider/store';
 import { useSessionTenantId } from './useSessionTenantId';
@@ -182,7 +183,7 @@ const useJobOpeningDropdown = (
         case 'SHIFT':
           return (shifts.data?.shifts ?? []).map((item) => ({
             id: item.id,
-            name: `${item.shift_name} (${item.start_time.slice(0, 5)} - ${item.end_time.slice(0, 5)})`,
+            name: `${item.shift_name} (${formatTime12h(item.start_time)} - ${formatTime12h(item.end_time)})`,
           }));
         case 'MANDATORY_SKILLS':
         case 'OPTIONAL_SKILLS': {

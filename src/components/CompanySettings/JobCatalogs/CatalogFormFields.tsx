@@ -13,7 +13,9 @@ export type CatalogField<TFormValues> = {
 };
 
 // Existing values come back as "HH:mm:ss" from the backend; parse both formats.
+// Stored/sent as 24h; only the picker's own display is 12h with AM/PM.
 const TIME_FORMAT = 'HH:mm';
+const TIME_DISPLAY_FORMAT = 'h:mm A';
 const TIME_PARSE_FORMATS = ['HH:mm:ss', 'HH:mm'];
 
 type Props<TFormValues extends Record<string, unknown>> = {
@@ -56,7 +58,9 @@ function CatalogFormFields<TFormValues extends Record<string, unknown>>({
               <TimePicker
                 key={field.name}
                 className="w-full"
-                format={TIME_FORMAT}
+                format={TIME_DISPLAY_FORMAT}
+                use12Hours
+                minuteStep={5}
                 placeholder={field.label + (field.required ? ' *' : '')}
                 value={raw ? dayjs(raw as string, TIME_PARSE_FORMATS) : null}
                 onChange={(value) => setField(field.name, value ? value.format(TIME_FORMAT) : '')}

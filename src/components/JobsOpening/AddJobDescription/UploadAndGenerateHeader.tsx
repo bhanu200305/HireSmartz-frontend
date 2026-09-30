@@ -29,6 +29,8 @@ interface UploadAndGenerateHeaderProps {
   isUploading?: boolean;
   isDownloading?: boolean;
   generateDisabled?: boolean;
+  /** Forces description-above-buttons layout for narrow-column callers. */
+  stacked?: boolean;
 }
 
 export const UploadAndGenerateHeader = ({
@@ -46,6 +48,7 @@ export const UploadAndGenerateHeader = ({
   isUploading = false,
   isDownloading = false,
   generateDisabled = false,
+  stacked = false,
 }: UploadAndGenerateHeaderProps) => {
   const skippedCount = failedCount + duplicateCount;
   const generateButton = (
@@ -76,13 +79,15 @@ export const UploadAndGenerateHeader = ({
   );
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-[#F8F9FA] rounded-2xl p-5 flex flex-col md:flex-row justify-between items-center border border-gray-200 gap-3">
+      <div
+        className={`bg-[#F8F9FA] rounded-2xl p-4 flex flex-col ${stacked ? '' : 'md:flex-row md:items-center'} justify-between border border-gray-200 gap-3`}
+      >
         <div className="flex-1">
           <Typography variant="body2" className="text-gray-600 m-0 text-sm">
             {description}
           </Typography>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center flex-wrap gap-2.5">
           {generateButton}
 
           <div className="relative flex flex-col items-center">

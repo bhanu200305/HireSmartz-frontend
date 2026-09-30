@@ -4,6 +4,8 @@ import {
   useCreateOrganizationShiftMutation,
   useUpdateOrganizationShiftMutation,
   useDeleteOrganizationShiftMutation,
+  useActivateOrganizationShiftMutation,
+  useDeactivateOrganizationShiftMutation,
   type OrganizationShift,
 } from '../../../api/job-service/Shifts/shifts';
 import PlatformCatalogTab, {
@@ -12,6 +14,7 @@ import PlatformCatalogTab, {
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
 import useHasAccess from '../../../hooks/useHasAccess';
 import { Authorities } from '../../../constants/authorities.constant';
+import { formatTime12h } from '../../../utils/formatTime';
 
 type FormValues = {
   name: string;
@@ -63,12 +66,17 @@ const TenantShiftsTab: React.FC = () => {
   const [create] = useCreateOrganizationShiftMutation();
   const [update] = useUpdateOrganizationShiftMutation();
   const [remove] = useDeleteOrganizationShiftMutation();
+  const [activate] = useActivateOrganizationShiftMutation();
+  const [deactivate] = useDeactivateOrganizationShiftMutation();
   // Both hooks must run unconditionally on every render — `||` short-circuits
   // the second call once the first is true, which varies the hook count
   // between renders and violates React's rules of hooks.
   const canManageCompanySettings = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const canManageJobCatalog = useHasAccess(Authorities.JOB_CATALOG_EDIT);
   const canManage = canManageCompanySettings || canManageJobCatalog;
+  // SKILL/JOB_CATALOG_DELETE = admin: edit or delete any row. Without it,
+  // a caller may only add new rows, never edit or delete existing ones.
+  const canManageAny = useHasAccess(Authorities.JOB_CATALOG_DELETE) || canManageCompanySettings;
 
   return (
     <PlatformCatalogTab<OrganizationShift, FormValues>
@@ -80,7 +88,9 @@ const TenantShiftsTab: React.FC = () => {
       serverQuery={query}
       onServerQueryChange={setQuery}
       allowCreate={canManage}
-      allowEdit={canManage}
+      allowEdit={canManageAny}
+      canEditRow={() => canManageAny}
+      canDeleteRow={() => canManageAny}
       isLoading={isLoading}
       idOf={(item) => item.id}
       labelOf={(item) => item.shift_name}
@@ -90,7 +100,8 @@ const TenantShiftsTab: React.FC = () => {
         {
           title: 'Time',
           key: 'time',
-          render: (_, item) => `${item.start_time} to ${item.end_time}`,
+          render: (_, item) =>
+            `${formatTime12h(item.start_time)} to ${formatTime12h(item.end_time)}`,
         },
         {
           title: 'Duration',
@@ -125,7 +136,12 @@ const TenantShiftsTab: React.FC = () => {
           duration_minutes: computeDurationMinutes(values.start_time, values.end_time) ?? undefined,
         }).unwrap()
       }
-      onDelete={canManage ? (item) => remove(item.id).unwrap() : undefined}
+      onDelete={canManageAny ? (item) => remove(item.id).unwrap() : undefined}
+      onToggleActive={
+        canManageAny
+          ? (item, next) => (next ? activate(item.id).unwrap() : deactivate(item.id).unwrap())
+          : undefined
+      }
     />
   );
 };

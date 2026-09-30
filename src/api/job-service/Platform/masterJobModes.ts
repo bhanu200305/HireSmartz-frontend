@@ -6,6 +6,8 @@ export type PlatformJobMode = {
   job_mode_id: string;
   job_mode_name: string;
   job_mode_description: string | null;
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 const extendedApi = jobApi.injectEndpoints({
@@ -16,7 +18,7 @@ const extendedApi = jobApi.injectEndpoints({
       providesTags: ['PlatformJobModes'],
     }),
     searchPlatformJobModes: build.query<CatalogPage<PlatformJobMode>, SearchArgs>({
-      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+      query: ({ page, pageSize, search, sortBy, sortDir, includeInactive }) => ({
         url: '/platform/master-job-modes/search',
         method: 'GET',
         params: {
@@ -25,6 +27,7 @@ const extendedApi = jobApi.injectEndpoints({
           search: search || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          include_inactive: includeInactive || undefined,
         },
       }),
       transformResponse: (response: {
@@ -65,6 +68,30 @@ const extendedApi = jobApi.injectEndpoints({
       }),
       invalidatesTags: ['PlatformJobModes'],
     }),
+    // Undoes deletePlatformJobMode's soft-delete.
+    reactivatePlatformJobMode: build.mutation<void, string>({
+      query: (jobModeId) => ({
+        url: `/platform/master-job-modes/${jobModeId}/reactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformJobModes'],
+    }),
+    // Status-toggle Switch in the catalogue table - sets is_active without
+    // touching is_deleted, unlike deletePlatformJobMode above.
+    activatePlatformJobMode: build.mutation<void, string>({
+      query: (jobModeId) => ({
+        url: `/platform/master-job-modes/${jobModeId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformJobModes'],
+    }),
+    deactivatePlatformJobMode: build.mutation<void, string>({
+      query: (jobModeId) => ({
+        url: `/platform/master-job-modes/${jobModeId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['PlatformJobModes'],
+    }),
   }),
 });
 
@@ -74,4 +101,7 @@ export const {
   useCreatePlatformJobModeMutation,
   useUpdatePlatformJobModeMutation,
   useDeletePlatformJobModeMutation,
+  useReactivatePlatformJobModeMutation,
+  useActivatePlatformJobModeMutation,
+  useDeactivatePlatformJobModeMutation,
 } = extendedApi;

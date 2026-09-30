@@ -211,6 +211,12 @@ h6 {
   background: linear-gradient(135deg, rgb(52, 211, 153), rgb(16, 185, 129)) !important;
   box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18);
 }
+/* Disabled = not applicable, not "off" - grey, not red/green. */
+.ant-switch.ant-switch-disabled,
+.ant-switch.ant-switch-disabled.ant-switch-checked {
+  background: #d1d5db !important;
+  box-shadow: none;
+}
 .ant-switch .ant-switch-handle::before {
   background: #ffffff;
   box-shadow:
@@ -943,10 +949,15 @@ select:focus {
 
 .custom-select-jobs .ant-select-selector {
   cursor: pointer;
+  /* Matches the Job ID Input's own px-4 (16px). */
+  padding-inline: 16px 36px !important;
 }
 
 .custom-select-jobs .ant-select-selection-item {
   cursor: pointer;
+  /* AntD positions this absolutely with its own inset - matched separately. */
+  inset-inline-start: 16px !important;
+  inset-inline-end: 36px !important;
 }
 
 .custom-select-jobs .ant-select-arrow {
@@ -955,6 +966,18 @@ select:focus {
 
 .custom-select-jobs .ant-select-selection-search-input {
   cursor: pointer !important;
+}
+
+.custom-select-jobs .ant-select-selection-placeholder {
+  /* Same inset fix as .ant-select-selection-item above. */
+  inset-inline-start: 16px !important;
+  inset-inline-end: 36px !important;
+}
+
+.custom-select-jobs .ant-select-selection-search {
+  /* Same inset fix as .ant-select-selection-item above. */
+  inset-inline-start: 16px !important;
+  inset-inline-end: 36px !important;
 }
 
 .dropdown-focus-ring:focus-within {

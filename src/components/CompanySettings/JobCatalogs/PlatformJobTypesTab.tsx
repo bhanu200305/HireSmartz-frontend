@@ -4,6 +4,8 @@ import {
   useCreateJobTypeMutation,
   useUpdateJobTypeMutation,
   useDeleteJobTypeMutation,
+  useActivatePlatformJobTypeMutation,
+  useDeactivatePlatformJobTypeMutation,
 } from '../../../api/job-service/JobOpening/catalogs';
 import type { OrganizationJobType } from '../../../api/job-service/types';
 import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
@@ -36,6 +38,8 @@ const PlatformJobTypesTab: React.FC = () => {
   const [create] = useCreateJobTypeMutation();
   const [update] = useUpdateJobTypeMutation();
   const [remove] = useDeleteJobTypeMutation();
+  const [activate] = useActivatePlatformJobTypeMutation();
+  const [deactivate] = useDeactivatePlatformJobTypeMutation();
 
   return (
     <PlatformCatalogTab<OrganizationJobType, FormValues>
@@ -79,6 +83,9 @@ const PlatformJobTypesTab: React.FC = () => {
         }).unwrap()
       }
       onDelete={(item) => remove({ jobTypeId: item.id, isMaster: true }).unwrap()}
+      onToggleActive={(item, next) =>
+        next ? activate(item.id).unwrap() : deactivate(item.id).unwrap()
+      }
     />
   );
 };

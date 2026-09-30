@@ -7,6 +7,9 @@ export type OrganizationEducationPreference = {
   id: string;
   education_preference_name: string;
   education_preference_description: string | null;
+  created_by?: string | null;
+  is_deleted?: boolean;
+  is_active?: boolean;
 };
 
 const educationPreferencesApi = jobApi.injectEndpoints({
@@ -22,7 +25,7 @@ const educationPreferencesApi = jobApi.injectEndpoints({
       CatalogPage<OrganizationEducationPreference>,
       SearchArgs
     >({
-      query: ({ page, pageSize, search, sortBy, sortDir }) => ({
+      query: ({ page, pageSize, search, sortBy, sortDir, includeInactive }) => ({
         url: '/education-preferences/search',
         method: 'GET',
         params: {
@@ -31,6 +34,7 @@ const educationPreferencesApi = jobApi.injectEndpoints({
           search: search || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          include_inactive: includeInactive || undefined,
         },
       }),
       transformResponse: (response: {
@@ -44,6 +48,14 @@ const educationPreferencesApi = jobApi.injectEndpoints({
         page: response.page ?? 1,
         pageSize: response.page_size ?? 20,
       }),
+      providesTags: ['EducationPreferences'],
+    }),
+
+    // Targeted single-row lookup by id, even if deactivated - resolves a
+    // job's currently-assigned education preference without a bounded
+    // batch fetch.
+    getEducationPreferenceById: build.query<OrganizationEducationPreference, string>({
+      query: (preferenceId) => ({ url: `/education-preferences/${preferenceId}`, method: 'GET' }),
       providesTags: ['EducationPreferences'],
     }),
 
@@ -78,13 +90,42 @@ const educationPreferencesApi = jobApi.injectEndpoints({
       }),
       invalidatesTags: ['EducationPreferences'],
     }),
+
+    reactivateEducationPreference: build.mutation<void, string>({
+      query: (preferenceId) => ({
+        url: `/education-preferences/${preferenceId}/reactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['EducationPreferences'],
+    }),
+
+    // Status-toggle Switch in the catalogue table - sets is_active without
+    // touching is_deleted, unlike deleteEducationPreference above.
+    activateEducationPreference: build.mutation<void, string>({
+      query: (preferenceId) => ({
+        url: `/education-preferences/${preferenceId}/activate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['EducationPreferences'],
+    }),
+    deactivateEducationPreference: build.mutation<void, string>({
+      query: (preferenceId) => ({
+        url: `/education-preferences/${preferenceId}/deactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['EducationPreferences'],
+    }),
   }),
 });
 
 export const {
   useListEducationPreferencesQuery,
   useSearchEducationPreferencesQuery,
+  useGetEducationPreferenceByIdQuery,
   useCreateEducationPreferenceMutation,
   useUpdateEducationPreferenceMutation,
   useDeleteEducationPreferenceMutation,
+  useReactivateEducationPreferenceMutation,
+  useActivateEducationPreferenceMutation,
+  useDeactivateEducationPreferenceMutation,
 } = educationPreferencesApi;

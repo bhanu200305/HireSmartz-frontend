@@ -543,7 +543,7 @@ const JobDescriptionPanel = ({
                     disabled={watch('description').trim() !== ''}
                     className="text-primary font-semibold text-xs underline hover:opacity-80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed m-0 p-0"
                   >
-                    REGENERATE
+                    AI-REGENERATE
                   </Button>
                 </span>
               </Tooltip>

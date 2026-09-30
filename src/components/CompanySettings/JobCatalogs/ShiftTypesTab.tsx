@@ -4,10 +4,13 @@ import {
   useCreatePlatformShiftTypeMutation,
   useUpdatePlatformShiftTypeMutation,
   useDeletePlatformShiftTypeMutation,
+  useActivatePlatformShiftTypeMutation,
+  useDeactivatePlatformShiftTypeMutation,
   PlatformShiftType,
 } from '../../../api/job-service/Platform/masterShiftTypes';
 import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
+import { formatTime12h } from '../../../utils/formatTime';
 
 type FormValues = {
   name: string;
@@ -62,6 +65,8 @@ const ShiftTypesTab: React.FC = () => {
   const [create] = useCreatePlatformShiftTypeMutation();
   const [update] = useUpdatePlatformShiftTypeMutation();
   const [remove] = useDeletePlatformShiftTypeMutation();
+  const [activate] = useActivatePlatformShiftTypeMutation();
+  const [deactivate] = useDeactivatePlatformShiftTypeMutation();
 
   return (
     <PlatformCatalogTab<PlatformShiftType, FormValues>
@@ -86,7 +91,9 @@ const ShiftTypesTab: React.FC = () => {
           title: 'Time',
           key: 'time',
           render: (_, item) =>
-            item.start_time && item.end_time ? `${item.start_time} - ${item.end_time}` : '-',
+            item.start_time && item.end_time
+              ? `${formatTime12h(item.start_time)} - ${formatTime12h(item.end_time)}`
+              : '-',
         },
         {
           title: 'Duration',
@@ -122,6 +129,9 @@ const ShiftTypesTab: React.FC = () => {
         }).unwrap()
       }
       onDelete={(item) => remove(item.shift_type_id).unwrap()}
+      onToggleActive={(item, next) =>
+        next ? activate(item.shift_type_id).unwrap() : deactivate(item.shift_type_id).unwrap()
+      }
     />
   );
 };

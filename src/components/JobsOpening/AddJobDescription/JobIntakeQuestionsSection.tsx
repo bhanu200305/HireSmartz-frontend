@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Select } from 'antd';
 import { MdCheck } from 'react-icons/md';
 import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
-import { Button, Typography, showToast } from '../../shared';
+import { Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import CollapseToggle from '../../shared/ui/CollapseToggle';
 import {
@@ -148,17 +148,22 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
 
   const questions = data?.questions ?? [];
 
-  const handleImport = async () => {
-    try {
-      await importQuestions(jobOpeningId).unwrap();
-      showToast({ message: 'Company questions imported.', type: 'success' });
-    } catch (err) {
-      showToast({
-        message: getJobErrorMessage(err, 'Failed to import questions.'),
-        type: 'error',
+  // Auto-imports once per job when there's nothing here yet.
+  const hasAutoImportedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!jobOpeningId || !canManage || isFetching) return;
+    if (questions.length > 0) return;
+    if (hasAutoImportedRef.current === jobOpeningId) return;
+    hasAutoImportedRef.current = jobOpeningId;
+    importQuestions(jobOpeningId)
+      .unwrap()
+      .catch((err) => {
+        showToast({
+          message: getJobErrorMessage(err, 'Failed to import questions.'),
+          type: 'error',
+        });
       });
-    }
-  };
+  }, [jobOpeningId, canManage, isFetching, questions.length, importQuestions]);
 
   const handleCheckRelevance = async () => {
     try {
@@ -224,22 +229,13 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
             </div>
           )}
 
-          {isFetching ? (
+          {isFetching || importing ? (
             <Loader />
           ) : questions.length === 0 ? (
             <div className="py-6 text-center">
               <p className="text-gray-400 italic text-sm">
                 No intake questions set up for this job yet.
               </p>
-              {canManage && (
-                <Button
-                  className="text-white bg-button rounded-3xl px-6 py-2 mt-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={importing}
-                  onClick={handleImport}
-                >
-                  {importing ? 'Importing...' : 'Import from Company Questions'}
-                </Button>
-              )}
             </div>
           ) : (
             <div className="space-y-4">
