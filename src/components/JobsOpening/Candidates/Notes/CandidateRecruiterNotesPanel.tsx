@@ -11,6 +11,7 @@ import {
   type RecruiterNoteView,
 } from '../../../../api/candidate-service/Candidates/notes';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
+import { useListUsersQuery } from '../../../../api/organization-service/Users/users';
 
 // candidate-service's own recruiter-notes CRUD
 // (api/candidate-service/Candidates/notes.ts, `/candidates/{id}/notes`) —
@@ -27,23 +28,33 @@ type CandidateRecruiterNotesPanelProps = {
   candidateId?: string;
 };
 
-/** `RecruiterNoteView` has no author display name/role — only `author_id`
- * (a UUID from the JWT, per API_CONTRACT.md). There's no lookup endpoint
- * this panel can call to resolve an arbitrary author id to a name, so:
- * the signed-in user's own notes show "You"; everyone else's show a plain
- * "Team member" placeholder rather than a fabricated name. Flagged here,
- * not silently faked.
+type AuthorInfo = { name: string; role: string | null };
+
+/** `RecruiterNoteView` carries `author_id` (and sometimes `author_name`).
+ * The signed-in user's own notes show "You"; everyone else's name and role
+ * are resolved from this tenant's user list (same lookup the job notes
+ * panel uses), falling back to "Team member" only if the author isn't in it.
  */
-const toNoteItem = (note: RecruiterNoteView, currentUserId?: string | null): CandidateNoteItem => ({
-  id: note.id,
-  content: note.note,
-  parentType: 'CANDIDATE',
-  createdAt: note.created_at,
-  authorName:
-    currentUserId && note.author_id === currentUserId ? 'You' : (note.author_name ?? 'Team member'),
-  authorId: note.author_id,
-  contextLabel: 'Candidate Note',
-});
+const toNoteItem = (
+  note: RecruiterNoteView,
+  currentUserId: string | null | undefined,
+  userById: Map<string, AuthorInfo>
+): CandidateNoteItem => {
+  const user = userById.get(note.author_id);
+  return {
+    id: note.id,
+    content: note.note,
+    parentType: 'CANDIDATE',
+    createdAt: note.created_at,
+    authorName:
+      currentUserId && note.author_id === currentUserId
+        ? 'You'
+        : (note.author_name ?? user?.name ?? 'Team member'),
+    authorRole: user?.role || undefined,
+    authorId: note.author_id,
+    contextLabel: 'Candidate Note',
+  };
+};
 
 const CandidateRecruiterNotesPanel = ({
   open,
@@ -59,13 +70,22 @@ const CandidateRecruiterNotesPanel = ({
     { skip: !open || !hasCandidate }
   );
 
+  const { data: usersData } = useListUsersQuery({ limit: 200 }, { skip: !open || !hasCandidate });
+  const userById = useMemo(() => {
+    const map = new Map<string, AuthorInfo>();
+    for (const user of usersData?.items ?? []) {
+      map.set(user.user_id, { name: user.full_name || user.email, role: user.role });
+    }
+    return map;
+  }, [usersData]);
+
   const [addNote] = useAddRecruiterNoteMutation();
   const [editNote] = useEditRecruiterNoteMutation();
   const [deleteNote] = useDeleteRecruiterNoteMutation();
 
   const notes = useMemo(
-    () => (data?.items ?? []).map((n) => toNoteItem(n, currentUserId)),
-    [data, currentUserId]
+    () => (data?.items ?? []).map((n) => toNoteItem(n, currentUserId, userById)),
+    [data, currentUserId, userById]
   );
 
   const remoteActions: NotesRemoteActions | null = useMemo(() => {

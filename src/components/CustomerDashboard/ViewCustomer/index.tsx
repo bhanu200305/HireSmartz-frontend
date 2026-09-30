@@ -329,7 +329,7 @@ const ViewCustomer = () => {
     { key: '0', label: 'Metrics', children: <MetricsPanel tenantId={tenantId} /> },
     {
       key: '1',
-      label: 'Company Details',
+      label: 'General',
       children: <CompanyProfilePanel tenantId={tenantId} readOnly={isSupportViewer} />,
     },
     {
@@ -386,16 +386,16 @@ const ViewCustomer = () => {
       ),
     },
     { key: '5', label: 'Scoring Criteria', children: <ScoringCriteriaPanel tenantId={tenantId} /> },
-    { key: '6', label: 'QR Management', children: <QrCodePanel tenantId={tenantId} /> },
+    { key: '6', label: 'QR Code', children: <QrCodePanel tenantId={tenantId} /> },
     { key: '7', label: 'Email Templates', children: <EmailTemplatesPanel tenantId={tenantId} /> },
     {
       key: '10',
-      label: 'Notification copy',
+      label: 'Notification Copy',
       children: <NotificationCopyPanel tenantId={tenantId} />,
     },
     {
       key: '9',
-      label: 'Activity',
+      label: 'Activity Feed',
       children: <TenantActivityFeedTab tenantId={tenantId} isMaster />,
     },
     {
@@ -405,10 +405,45 @@ const ViewCustomer = () => {
     },
     {
       key: '12',
-      label: 'Audio Questions',
+      label: 'Intake Questions',
       children: <AudioQuestionsPanel tenantId={tenantId} />,
     },
   ].filter((item) => !isSupportViewer || SUPPORT_ALLOWED_TAB_KEYS.has(item.key));
+
+  // Same two-level layout as the Company Admin's own My Company page
+  // (MyCompany/index.tsx): topic groups on top, that group's leaf tabs
+  // below. Purely a navigation regrouping — leaf keys are unchanged, so
+  // every existing `?tab=<key>` link still opens the same panel, and the
+  // group is derived from the leaf rather than kept as its own URL param.
+  // "Overview" is Super-Admin-only (the company has no Metrics tab of its
+  // own); the other four mirror the Company Admin's group names.
+  const GROUP_LAYOUT: { key: string; label: string; tabKeys: string[] }[] = [
+    { key: 'overview', label: 'Overview', tabKeys: ['0'] },
+    { key: 'profile', label: 'Company Profile', tabKeys: ['1', '2', '3', '11'] },
+    { key: 'team', label: 'Team & Access', tabKeys: ['8', '9'] },
+    { key: 'hiring', label: 'Hiring Configuration', tabKeys: ['12', '5'] },
+    { key: 'tools', label: 'Tools & Settings', tabKeys: ['6', '4', '7', '10'] },
+  ];
+  const groups = GROUP_LAYOUT.map((group) => ({
+    ...group,
+    tabs: group.tabKeys
+      .map((key) => items.find((item) => item.key === key))
+      .filter((item): item is (typeof items)[number] => Boolean(item)),
+  })).filter((group) => group.tabs.length > 0);
+
+  // Default (no `?tab=`) stays '1' (General), same as before; anything not
+  // in the (possibly support-filtered) list falls back to the first group's
+  // first tab rather than leaving a blank tab strip.
+  const activeGroup =
+    groups.find((group) => group.tabs.some((tab) => tab.key === currentTab)) ?? groups[0];
+  const effectiveCurrentTab = activeGroup?.tabs.some((tab) => tab.key === currentTab)
+    ? currentTab
+    : String(activeGroup?.tabs[0]?.key ?? currentTab);
+
+  const handleGroupChange = (groupKey: string) => {
+    const firstLeafTab = groups.find((group) => group.key === groupKey)?.tabs[0];
+    if (firstLeafTab) handleTabChange(String(firstLeafTab.key));
+  };
 
   return (
     <MainLayout>
@@ -550,19 +585,20 @@ const ViewCustomer = () => {
             </div>
 
             <Tabs
-              // Falls back to this (possibly support-filtered) item list's
-              // own first tab when `currentTab` isn't actually in it (e.g.
-              // a `?tab=4` link a support viewer has no Feature Settings
-              // grant for) — same blank-tab-strip bug MyCompany/index.tsx
-              // had from an unconditional default with no such fallback.
-              activeKey={
-                items.some((item) => item.key === currentTab)
-                  ? currentTab
-                  : String(items[0]?.key ?? currentTab)
-              }
+              activeKey={activeGroup?.key}
+              onChange={handleGroupChange}
+              items={groups.map((group) => ({
+                key: group.key,
+                label: group.label,
+                children: null,
+              }))}
+              className="my-company-group-tabs many-tabs"
+            />
+            <Tabs
+              activeKey={effectiveCurrentTab}
               onChange={handleTabChange}
-              items={items}
-              className="view-customer-tabs"
+              items={activeGroup?.tabs ?? []}
+              className="my-company-tabs many-tabs mt-1"
             />
           </div>
         </div>

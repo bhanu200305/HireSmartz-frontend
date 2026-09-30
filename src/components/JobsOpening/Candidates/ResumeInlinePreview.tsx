@@ -7,6 +7,7 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url';
 import { Loader } from '../../shared/ui/loader';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import { useResumeBlobUrl } from './useResumeBlobUrl';
+import DocxRender from './DocxRender';
 
 type ResumeInlinePreviewProps = {
   candidateId: string;
@@ -28,16 +29,12 @@ const ResumeInlinePreview = ({
   onExpand,
   heightClassName = 'h-[380px]',
 }: ResumeInlinePreviewProps) => {
-  const { downloadUrl, blobUrl, inlineFailed, isFetching, error } = useResumeBlobUrl(
-    candidateId,
-    true
-  );
+  const { downloadUrl, blobUrl, docxBlob, officeViewerUrl, inlineFailed, isFetching, error } =
+    useResumeBlobUrl(candidateId, true);
 
   const cannotPreview = (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-neutral-200 p-6 text-center">
-      <p className="text-sm text-gray-600">
-        This resume can&apos;t be previewed here (it may be a Word document).
-      </p>
+      <p className="text-sm text-gray-600">This resume can&apos;t be previewed here.</p>
       {downloadUrl && (
         <a
           href={downloadUrl}
@@ -51,11 +48,11 @@ const ResumeInlinePreview = ({
     </div>
   );
 
-  if (isFetching || (downloadUrl && !blobUrl && !inlineFailed)) {
+  const hasViewer = Boolean(blobUrl || docxBlob || officeViewerUrl);
+
+  if (isFetching || (downloadUrl && !hasViewer && !inlineFailed)) {
     return (
-      <div
-        className={`flex ${heightClassName} items-center justify-center rounded-lg border border-neutral-200`}
-      >
+      <div className={`flex ${heightClassName} items-center justify-center`}>
         <Loader />
       </div>
     );
@@ -71,7 +68,7 @@ const ResumeInlinePreview = ({
     );
   }
 
-  if (inlineFailed || !blobUrl) return cannotPreview;
+  if (inlineFailed || !hasViewer) return cannotPreview;
 
   return (
     <div
@@ -86,18 +83,31 @@ const ResumeInlinePreview = ({
           onExpand();
         }
       }}
-      className={`group relative ${heightClassName} cursor-pointer overflow-hidden rounded-lg border border-neutral-200 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`}
+      className={`group relative ${heightClassName} cursor-pointer overflow-hidden bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`}
     >
       {/* Whole page fitted into the box, read-only: pointer events off so
           the click always reaches the wrapper (opens the full viewer). */}
       <div className="pointer-events-none h-full w-full">
-        <Worker workerUrl={pdfWorkerUrl}>
-          <Viewer
-            fileUrl={blobUrl}
-            defaultScale={SpecialZoomLevel.PageFit}
-            renderError={() => cannotPreview}
+        {docxBlob ? (
+          <DocxRender blob={docxBlob} variant="thumbnail" fallback={cannotPreview} />
+        ) : officeViewerUrl ? (
+          // Legacy .doc: no in-browser renderer exists, so Microsoft's
+          // Office viewer (same approach the old app used).
+          <iframe
+            title={`${candidateName} resume`}
+            src={officeViewerUrl}
+            className="h-full w-full border-0"
+            tabIndex={-1}
           />
-        </Worker>
+        ) : (
+          <Worker workerUrl={pdfWorkerUrl}>
+            <Viewer
+              fileUrl={blobUrl!}
+              defaultScale={SpecialZoomLevel.PageFit}
+              renderError={() => cannotPreview}
+            />
+          </Worker>
+        )}
       </div>
       <span className="absolute left-1/2 top-1/2 inline-flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-neutral-800 shadow-sm transition-transform group-hover:scale-110">
         <BsFullscreen size={18} aria-hidden />

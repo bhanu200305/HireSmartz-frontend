@@ -8,6 +8,7 @@ import {
   LuChevronDown,
   LuCalendarDays,
   LuCircleCheck,
+  LuPhone,
   LuSearch,
 } from 'react-icons/lu';
 import { RxClock } from 'react-icons/rx';
@@ -65,6 +66,16 @@ const T = {
     callNowBody:
       'Your phone should ring shortly. Please make sure you’re somewhere quiet and ready to talk.',
     callNowError: "We couldn't start the call. Please pick a slot instead.",
+    callNowPromptTitle: 'Ready for your call?',
+    callNowPromptBody:
+      'Press the button below and we’ll call you right away. Please make sure you’re somewhere quiet with your phone nearby.',
+    callNowPromptButton: 'Call me now',
+    pickTimeInstead: 'Pick a time instead',
+    callAlreadyPlaced: 'We’re already calling you. Please keep your phone nearby.',
+    contactUnavailable:
+      'We don’t have a phone number for you, so we can’t call right now. Please pick a time instead.',
+    linkExpiredTitle: 'Scheduling Link Expired',
+    linkExpiredBody: 'This link has expired and cannot be used again.',
     panelTitle: 'Schedule your panel interview',
     panelBody:
       'Your interview is with a panel from the hiring team. Pick a time that works for you on the scheduling page; the panel’s live availability is shown there.',
@@ -113,6 +124,16 @@ const T = {
     callNowBody:
       'Tu teléfono debería sonar en breve. Asegúrate de estar en un lugar tranquilo y listo para hablar.',
     callNowError: 'No pudimos iniciar la llamada. Por favor, elige un horario.',
+    callNowPromptTitle: '¿Listo para tu llamada?',
+    callNowPromptBody:
+      'Presiona el botón de abajo y te llamaremos de inmediato. Asegúrate de estar en un lugar tranquilo y con tu teléfono cerca.',
+    callNowPromptButton: 'Llámame ahora',
+    pickTimeInstead: 'Elegir un horario',
+    callAlreadyPlaced: 'Ya te estamos llamando. Por favor, mantén tu teléfono cerca.',
+    contactUnavailable:
+      'No tenemos un número de teléfono tuyo, así que no podemos llamarte ahora. Por favor, elige un horario.',
+    linkExpiredTitle: 'Enlace de programación vencido',
+    linkExpiredBody: 'Este enlace ha vencido y ya no se puede usar.',
     panelTitle: 'Programa tu entrevista de panel',
     panelBody:
       'Tu entrevista es con un panel del equipo de contratación. Elige un horario que te convenga en la página de programación, donde se muestra la disponibilidad del panel en tiempo real.',
@@ -221,6 +242,12 @@ const AiCallSchedulePage = () => {
   const token = searchParams.get('token') ?? '';
   const email = searchParams.get('email') ?? '';
   const langParam = (searchParams.get('lang') ?? 'en') as LangCode;
+  // `&action=call_now` (the "Call me now" link in the invite email) only
+  // pre-selects a confirmation screen — the call is NEVER placed on page
+  // load. Email link scanners/prefetchers GET every link in an email before
+  // a human sees it, so an auto-fire would ring a candidate who never opened
+  // the email; the candidate has to press the button on a real page load.
+  const isCallNowAction = searchParams.get('action') === 'call_now';
   // Always use the browser's local timezone — ignore any ?tz= param
   const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -250,6 +277,11 @@ const AiCallSchedulePage = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [hasConsent, setHasConsent] = useState(false);
   const [calledNow, setCalledNow] = useState(false);
+  // call-now outcomes that change what the page offers (see handleCallNow).
+  const [callAlreadyPlaced, setCallAlreadyPlaced] = useState(false);
+  const [contactUnavailable, setContactUnavailable] = useState(false);
+  const [callNowLinkExpired, setCallNowLinkExpired] = useState(false);
+  const [callNowPromptDismissed, setCallNowPromptDismissed] = useState(false);
 
   const tzDropdownRef = useRef<HTMLDivElement>(null);
   const langDropdownRef = useRef<HTMLDivElement>(null);
@@ -379,13 +411,29 @@ const AiCallSchedulePage = () => {
     }
   };
 
+  // POST /scheduling/{token}/call-now — only ever from a button press. The
+  // call's outcome (answered / no answer / failed) arrives later like any
+  // other audio call's, so success here just means "call initiated".
   const handleCallNow = async (): Promise<void> => {
+    if (callAlreadyPlaced || contactUnavailable) return;
     try {
       await callNow(token).unwrap();
       setCalledNow(true);
     } catch (error) {
       const apiError = error as InterviewApiError;
-      showToast({ message: apiError.message || t.callNowError, type: 'error' });
+      if (apiError.code === 'CALL_ALREADY_PLACED' || apiError.status === 409) {
+        setCallAlreadyPlaced(true);
+        showToast({ message: t.callAlreadyPlaced, type: 'info' });
+      } else if (apiError.code === 'CANDIDATE_CONTACT_UNAVAILABLE') {
+        // No phone on file — steer back to the slot picker.
+        setContactUnavailable(true);
+        setCallNowPromptDismissed(true);
+        showToast({ message: t.contactUnavailable, type: 'warning' });
+      } else if (apiError.code === 'SCHEDULING_LINK_EXPIRED' || apiError.status === 410) {
+        setCallNowLinkExpired(true);
+      } else {
+        showToast({ message: apiError.message || t.callNowError, type: 'error' });
+      }
     }
   };
 
@@ -502,6 +550,62 @@ const AiCallSchedulePage = () => {
         </div>
       </div>
     );
+  }
+
+  // Same screen as an expired link on load, for SCHEDULING_LINK_EXPIRED
+  // coming back from the call-now POST itself.
+  if (callNowLinkExpired) {
+    return (
+      <div className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center">
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2">{t.linkExpiredTitle}</h1>
+          <p className="text-gray-500 text-sm">{t.linkExpiredBody}</p>
+        </div>
+      </div>
+    );
+  }
+
+  //  "Call me now" confirmation (?action=call_now) — audio rounds only.
+  if (isCallNowAction && !callNowPromptDismissed) {
+    if (!schedulingLink) {
+      return (
+        <div className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
+          <Loader />
+        </div>
+      );
+    }
+    if (schedulingLink.interview_type === 'audio') {
+      return (
+        <div className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center">
+            <LuPhone className="text-(--primary) w-14 h-14 mx-auto mb-4" />
+            <h1 className="text-2xl font-semibold text-gray-800 mb-2">{t.callNowPromptTitle}</h1>
+            <p className="text-gray-500 text-sm mb-6">
+              {callAlreadyPlaced ? t.callAlreadyPlaced : t.callNowPromptBody}
+            </p>
+            <button
+              type="button"
+              onClick={handleCallNow}
+              disabled={callNowState.isLoading || callAlreadyPlaced}
+              className="block w-full py-3 rounded-full bg-(--primary) text-white font-semibold text-sm hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {callNowState.isLoading
+                ? t.callNowConfirm
+                : callAlreadyPlaced
+                  ? t.callNowConfirm
+                  : t.callNowPromptButton}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCallNowPromptDismissed(true)}
+              className="mt-4 text-sm font-semibold text-(--primary) hover:underline cursor-pointer"
+            >
+              {t.pickTimeInstead}
+            </button>
+          </div>
+        </div>
+      );
+    }
   }
 
   // PANEL — interview-service has no free/busy integration and no panel-book
@@ -758,10 +862,21 @@ const AiCallSchedulePage = () => {
                 </div>
                 {schedulingLink?.interview_type === 'audio' && (
                   <div className="border-t border-gray-100 px-5 py-4 shrink-0">
-                    <p className="text-xs text-gray-400 mb-2 text-center">{t.callNowHint}</p>
+                    <p
+                      className={clsx(
+                        'text-xs mb-2 text-center',
+                        callAlreadyPlaced || contactUnavailable ? 'text-amber-600' : 'text-gray-400'
+                      )}
+                    >
+                      {callAlreadyPlaced
+                        ? t.callAlreadyPlaced
+                        : contactUnavailable
+                          ? t.contactUnavailable
+                          : t.callNowHint}
+                    </p>
                     <button
                       onClick={handleCallNow}
-                      disabled={callNowState.isLoading}
+                      disabled={callNowState.isLoading || callAlreadyPlaced || contactUnavailable}
                       className="w-full py-2.5 rounded-full border border-(--primary) text-(--primary) text-sm font-semibold hover:bg-(--primary)/5 transition disabled:opacity-60 flex items-center justify-center gap-2 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {callNowState.isLoading ? t.callNowConfirm : t.callNowButton}

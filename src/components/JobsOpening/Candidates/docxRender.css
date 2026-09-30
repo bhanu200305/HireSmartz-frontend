@@ -1,0 +1,21 @@
+/* docx-preview's default wrapper is a grey page-sorter background with
+ * 30px padding. Thumbnail: just the page with a soft shadow, like the PDF
+ * preview. Full viewer: keep the grey background but tighten the padding. */
+.docx-render--thumbnail .docx-wrapper {
+  background: transparent;
+  padding: 0;
+  display: block;
+}
+
+.docx-render--thumbnail .docx-wrapper > section.docx {
+  margin: 0;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+}
+
+.docx-render--full .docx-wrapper {
+  padding: 16px;
+}
+
+.docx-render--full .docx-wrapper > section.docx {
+  margin-bottom: 16px;
+}

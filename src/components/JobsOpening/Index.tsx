@@ -1041,39 +1041,39 @@ const JobsOpening = () => {
   return (
     <div>
       <MainLayout>
-        <div className="jobs-list-page w-full p-4 sm:p-8 justify-start pt-8 sm:pt-16">
+        <div className="jobs-list-page w-full px-4 pb-6 pt-4 sm:px-6 sm:pt-6 justify-start">
           <button
             onClick={() => navigate('/')}
-            className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
+            className="mb-2 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
           >
             <MdOutlineArrowBack className="mr-2" />
             <span>Back</span>
           </button>
           {(isLoading || isDuplicating) && <Loader />}
-          <div className="flex flex-wrap gap-4 justify-between p-2">
+          <div className="flex flex-wrap gap-3 justify-between items-center px-2 pb-3">
             {isFromGlobalSearch && filters.text ? (
               <div className="flex flex-col space-y-2">
                 <div className="flex items-center space-x-2">
-                  <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
+                  <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
                     <TbBriefcase2 size={18} />
                   </span>
-                  <h2 className="text-xl font-bold text-neutral-900">Showing Results</h2>
+                  <h2 className="heading-font text-xl font-bold text-black">Showing Results</h2>
                 </div>
                 <span className="text-neutral-500 text-sm">for &quot;{filters.text}&quot;</span>
               </div>
             ) : (
               <div className="flex flex-col space-y-1">
                 <div className="flex items-center space-x-2">
-                  <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
+                  <span className="bg-black text-white p-2 rounded-3xl flex items-center justify-center">
                     <TbBriefcase2 size={18} />
                   </span>
-                  <h2 className="text-xl font-bold text-neutral-900 whitespace-nowrap">
+                  <h2 className="heading-font text-xl font-bold text-black whitespace-nowrap">
                     Job Openings
                   </h2>
                 </div>
               </div>
             )}
-            <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex flex-wrap gap-3 items-center">
               <Tooltip title="QR Management" placement="top">
                 <Button
                   onClick={() => setQrModalOpen(true)}
@@ -1165,7 +1165,7 @@ const JobsOpening = () => {
             </div>
           </div>
           {jobStats && (
-            <div className="px-2 mb-2">
+            <div className="px-2 mb-3">
               {canFilterToMyJobs && (
                 <div className="mb-3 inline-flex rounded-full border border-neutral-200 bg-neutral-100 p-1">
                   <button
@@ -1208,14 +1208,17 @@ const JobsOpening = () => {
             {/* overflow-x-auto + min-w keeps columns readable on narrow viewports. */}
             <div className="overflow-x-auto">
               <div className="min-w-[760px]">
-                <Row gutter={[16, 16]} className="bg-neutral-50 px-2 py-3">
+                <Row
+                  gutter={[16, 16]}
+                  className="heading-font bg-[#FAFAFA] border-b border-neutral-200 px-2 py-3"
+                >
                   <COL
                     sortable
                     sortKey="jobTitleName"
                     currentSortKey={currentSortKey}
                     onSort={handleSort}
                     span={5}
-                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                    className="px-4 text-xs font-bold uppercase text-neutral-900"
                   >
                     JOB TITLE
                   </COL>
@@ -1225,7 +1228,7 @@ const JobsOpening = () => {
                     currentSortKey={currentSortKey}
                     onSort={handleSort}
                     span={4}
-                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                    className="px-4 text-xs font-bold uppercase text-neutral-900"
                   >
                     LOCATION
                   </COL>
@@ -1235,38 +1238,29 @@ const JobsOpening = () => {
                     currentSortKey={currentSortKey}
                     onSort={handleSort}
                     span={3}
-                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+                    className="px-4 text-xs font-bold uppercase text-neutral-900"
                   >
                     CANDIDATES
                   </COL>
                   <Col
                     span={3}
-                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500 break-words"
+                    className="px-4 text-xs font-bold uppercase text-neutral-900 break-words"
                   >
                     INTERVIEWED
                   </Col>
                   <Col
                     span={3}
-                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500 break-words"
+                    className="px-4 text-xs font-bold uppercase text-neutral-900 break-words"
                   >
                     SELECTED
                   </Col>
-                  <Col
-                    span={2}
-                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-                  >
+                  <Col span={2} className="px-4 text-xs font-bold uppercase text-neutral-900">
                     NOT SELECTED
                   </Col>
-                  <Col
-                    span={2}
-                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-                  >
+                  <Col span={2} className="px-4 text-xs font-bold uppercase text-neutral-900">
                     STATUS
                   </Col>
-                  <Col
-                    span={2}
-                    className="px-4 text-xs font-semibold uppercase tracking-wide text-neutral-500"
-                  >
+                  <Col span={2} className="px-4 text-xs font-bold uppercase text-neutral-900">
                     ACTIONS
                   </Col>
                 </Row>
@@ -1381,28 +1375,43 @@ const JobsOpening = () => {
                           </div>
                         </Col>
                         <Col span={3}>
-                          <p className="roboto-font">
-                            {renderHighlightedField(
-                              jobs.interviewedCandidateCount ?? 0,
-                              'interviewedCandidateCount'
-                            )}
-                          </p>
+                          <Link
+                            to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
+                            className="text-primary hover:underline roboto-font"
+                          >
+                            <span className="text-primary font-semibold">
+                              {renderHighlightedField(
+                                jobs.interviewedCandidateCount ?? 0,
+                                'interviewedCandidateCount'
+                              )}
+                            </span>
+                          </Link>
                         </Col>
                         <Col span={3}>
-                          <p className="roboto-font">
-                            {renderHighlightedField(
-                              jobs?.selectedCount?.toString(),
-                              'selectedCount'
-                            )}
-                          </p>
+                          <Link
+                            to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
+                            className="text-primary hover:underline roboto-font"
+                          >
+                            <span className="text-primary font-semibold">
+                              {renderHighlightedField(
+                                jobs?.selectedCount?.toString(),
+                                'selectedCount'
+                              )}
+                            </span>
+                          </Link>
                         </Col>
                         <Col span={2}>
-                          <p className="roboto-font">
-                            {renderHighlightedField(
-                              jobs?.rejectedCount?.toString(),
-                              'rejectedCount'
-                            )}
-                          </p>
+                          <Link
+                            to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
+                            className="text-primary hover:underline roboto-font"
+                          >
+                            <span className="text-primary font-semibold">
+                              {renderHighlightedField(
+                                jobs?.rejectedCount?.toString(),
+                                'rejectedCount'
+                              )}
+                            </span>
+                          </Link>
                         </Col>
                         <Col span={2}>
                           {jobs.isDraft ? (

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import TextArea from 'antd/es/input/TextArea';
 import { Button, Input, PhoneNumberField, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import {
   useUpdateCandidateMutation,
   type CandidateView,
 } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
+import { FORM_EMAIL_REGEX } from '../../../../constants/app.constants';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 import {
   isPhoneValidForCountry,
@@ -37,8 +37,6 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
   const [email, setEmail] = useState('');
   const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phone, setPhone] = useState('');
-  const [qualification, setQualification] = useState('');
-  const [address, setAddress] = useState('');
   const [updateCandidate, { isLoading }] = useUpdateCandidateMutation();
 
   useEffect(() => {
@@ -49,19 +47,29 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
       const split = splitE164(candidate.contact_no);
       setCountryCode(split.countryCode || DEFAULT_COUNTRY_CODE);
       setPhone(split.phoneNumber);
-      setQualification(candidate.qualification ?? '');
-      setAddress(candidate.address ?? '');
     }
   }, [open, candidate]);
 
-  const isFormValid = firstName.trim().length > 0 && lastName.trim().length > 0;
+  // First name, last name, email and phone are all mandatory.
+  const isFormValid =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    email.trim().length > 0 &&
+    phone.trim().length > 0;
 
   const handleSave = async () => {
     if (!isFormValid) {
-      showToast({ message: 'First and last name are required.', type: 'error' });
+      showToast({
+        message: 'First name, last name, email and phone are required.',
+        type: 'error',
+      });
       return;
     }
-    if (phone.trim() && !isPhoneValidForCountry(phone, countryCode)) {
+    if (!FORM_EMAIL_REGEX.test(email.trim())) {
+      showToast({ message: 'Enter a valid email address.', type: 'error' });
+      return;
+    }
+    if (!isPhoneValidForCountry(phone, countryCode)) {
       showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
       return;
     }
@@ -73,15 +81,10 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
     const nextLast = lastName.trim();
     const nextEmail = email.trim();
     const nextPhone = phone.trim() ? toE164(countryCode, phone) : '';
-    const nextQualification = qualification.trim();
-    const nextAddress = address.trim();
     if (nextFirst !== (candidate.first_name ?? '')) body.first_name = nextFirst;
     if (nextLast !== (candidate.last_name ?? '')) body.last_name = nextLast;
     if (nextEmail !== (candidate.email_id ?? '')) body.email_id = nextEmail;
     if (nextPhone !== (candidate.contact_no ?? '')) body.contact_no = nextPhone;
-    if (nextQualification !== (candidate.qualification ?? ''))
-      body.qualification = nextQualification;
-    if (nextAddress !== (candidate.address ?? '')) body.address = nextAddress;
 
     if (Object.keys(body).length === 0) {
       onClose();
@@ -136,7 +139,7 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor="edit-candidate-email" className="mb-1 block text-sm text-gray-800">
-              Email
+              Email <span className="required-asterisk">*</span>
             </label>
             <Input
               id="edit-candidate-email"
@@ -148,7 +151,7 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
           </div>
           <div>
             <label htmlFor="edit-candidate-phone" className="mb-1 block text-sm text-gray-800">
-              Phone
+              Phone <span className="required-asterisk">*</span>
             </label>
             <PhoneNumberField
               countryCode={countryCode}
@@ -158,34 +161,6 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
               className="h-10 rounded-lg"
             />
           </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="edit-candidate-qualification"
-            className="mb-1 block text-sm text-gray-800"
-          >
-            Qualification
-          </label>
-          <Input
-            id="edit-candidate-qualification"
-            value={qualification}
-            onChange={(e) => setQualification(e.target.value)}
-            className="h-10 rounded-lg border border-gray-300 text-sm"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="edit-candidate-address" className="mb-1 block text-sm text-gray-800">
-            Address
-          </label>
-          <TextArea
-            id="edit-candidate-address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            rows={2}
-            className="resize-y rounded-lg text-sm"
-          />
         </div>
 
         <Button

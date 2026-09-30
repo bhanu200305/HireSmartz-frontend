@@ -40,6 +40,7 @@
     "clsx": "^2.1.1",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.13",
+    "docx-preview": "0.4.1",
     "draft-js": "^0.11.7",
     "draft-js-export-markdown": "^1.4.0",
     "draftjs-to-html": "^0.9.1",

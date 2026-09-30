@@ -4,6 +4,7 @@ import { useSelector, shallowEqual } from 'react-redux';
 import { Col, Row, Tooltip, Checkbox } from 'antd';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
+import './candidatesListing.css';
 import {
   LuCalendarPlus,
   LuMail,
@@ -12,10 +13,11 @@ import {
   LuThumbsUp,
   LuUsers,
 } from 'react-icons/lu';
-import { TbBriefcase2 } from 'react-icons/tb';
+import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { IoArrowRedoOutline } from 'react-icons/io5';
-import { MdClose } from 'react-icons/md';
-import { CommonCard, Button, Badge, type BadgeStatus, showToast } from '../../shared';
+import { MdClose, MdEdit, MdOutlineRemoveRedEye } from 'react-icons/md';
+import { FaEnvelope } from 'react-icons/fa';
+import { CommonCard, Button, Badge, showToast } from '../../shared';
 import MasterPagination from '../../shared/ui/MasterPagination';
 import { RowsPerPageSelect } from '../../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
@@ -43,9 +45,10 @@ import {
   useListCandidateStatusesQuery,
   useListApplicationSourcesQuery,
 } from '../../../api/candidate-service/Master/master';
-import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
 import AddCandidateModal from './Modal/AddCandidateModal';
+import EditCandidateModal from './Modal/EditCandidateModal';
+import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
 import BulkScheduleInterviewsModal from './Modal/BulkScheduleInterviewsModal';
 import ChangeCandidateStatusModal, {
@@ -53,24 +56,13 @@ import ChangeCandidateStatusModal, {
 } from './Modal/ChangeCandidateStatusModal';
 import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
 import {
-  candidateInitials,
+  candidateDisplayName,
   candidateStatusColor,
   candidateStatusTooltip,
 } from './candidateDisplay';
-import { bucketForStatus, normaliseRoundStatus, type RoundBucket } from './roundProgress';
+import { normaliseRoundStatus } from './roundProgress';
 import { formatRoundStatus } from './roundDisplay';
 import { AI_SCORE_MAX, scoreBadgeStatus } from './roundPipeline';
-
-// Mirrors roundPipeline.ts's own `BUCKET_META` badge-color mapping — kept
-// local here rather than imported since that map isn't exported and this
-// listing only ever needs the badge color, never the border/step styling
-// that map also carries for the round cards themselves.
-const ROUND_BUCKET_BADGE_STATUS: Record<RoundBucket, BadgeStatus> = {
-  done: 'success',
-  current: 'warning',
-  pending: 'neutral',
-  failed: 'danger',
-};
 
 // Candidate list is job-scoped; there is no cross-job list route.
 // `resume_score` of null means "not scored yet", not an error.
@@ -139,6 +131,10 @@ const CandidatesListing = () => {
   const [isJobNotesPanelOpen, setIsJobNotesPanelOpen] = useState(false);
   const [isBulkEmailOpen, setIsBulkEmailOpen] = useState(false);
   const [isBulkScheduleOpen, setIsBulkScheduleOpen] = useState(false);
+  // Per-row Actions column targets (view is a plain navigation).
+  const [editCandidate, setEditCandidate] = useState<CandidateView | null>(null);
+  const [notesCandidate, setNotesCandidate] = useState<CandidateView | null>(null);
+  const [emailCandidate, setEmailCandidate] = useState<CandidateView | null>(null);
   const [statusModal, setStatusModal] = useState<{
     mode: ChangeCandidateStatusMode;
     candidates: CandidateView[];
@@ -208,7 +204,7 @@ const CandidatesListing = () => {
     }
   }, [location.state, location.pathname, navigate]);
 
-  const { data, isLoading, error, refetch } = useListCandidatesQuery(
+  const { data, isLoading, refetch } = useListCandidatesQuery(
     {
       jobOpeningId: parsedJobId,
       search: search || undefined,
@@ -301,95 +297,95 @@ const CandidatesListing = () => {
     '[&_svg]:!h-5 [&_svg]:!w-5 [&_.anticon]:!inline-flex [&_.anticon]:!h-5 [&_.anticon]:!w-5 [&_.anticon]:!items-center [&_.anticon]:!justify-center';
 
   return (
-    <div className="relative">
+    // Layout/typography follow the legacy careerforcepro-web candidate list:
+    // job facts stacked on the left, search/notes/add + filters on the right.
+    <div className="candidates-list-page relative">
       {isJobOpeningLoading && <Loader />}
 
-      <div className="mb-5">
-        <div className="flex flex-col gap-4 pb-4 border-b border-neutral-100 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-3 min-w-0">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary">
-              <TbBriefcase2 size={22} />
-            </span>
-            <div className="flex flex-col gap-1.5 min-w-0">
-              <Link to={`/jobs/view/${parsedJobId}/details`}>
-                <span className="font-bold text-xl heading-font text-neutral-900 hover:text-primary hover:underline transition-colors capitalize">
-                  {jobTitleName}
-                </span>
-              </Link>
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="rounded-full bg-neutral-100 px-3 py-1 font-semibold text-neutral-600">
-                  {jobProfileCode || 'N/A'}
-                </span>
-                {departmentName && (
-                  <span className="rounded-full bg-info-bg px-3 py-1 font-semibold text-info-text">
-                    {departmentName}
-                  </span>
-                )}
-                {jobTypeName && (
-                  <span className="rounded-full bg-neutral-100 px-3 py-1 font-semibold text-neutral-600">
-                    {jobTypeName}
-                  </span>
-                )}
-                <span className="flex items-center gap-1 rounded-full bg-primary-50 px-3 py-1 font-semibold text-primary-700">
-                  <LuUsers size={13} /> {data?.total ?? 0} candidate
-                  {(data?.total ?? 0) === 1 ? '' : 's'}
-                </span>
-              </div>
+      <div className="mb-3 rounded-lg bg-white px-4 py-4 shadow-sm sm:px-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-col gap-1 text-sm">
+            <Link to={`/jobs/view/${parsedJobId}/details`} className="w-fit max-w-full">
+              <span className="block truncate font-bold text-xl heading-font text-primary underline cursor-pointer hover:opacity-80 transition-opacity capitalize">
+                {jobTitleName}
+              </span>
+            </Link>
+            <div className="flex items-center gap-2">
+              <p className="font-bold">Job ID:</p>
+              <span className="text-gray-500">{jobProfileCode || 'N/A'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="font-bold">Department:</p>
+              <span className="text-gray-500">{departmentName || 'N/A'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="font-bold">Job Type:</p>
+              <span className="text-gray-500">{jobTypeName || 'N/A'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="font-bold">Company Culture Introduction:</p>
+              <span className="font-semibold text-gray-500">
+                {jobOpeningData?.data?.useCultureIntro ? 'On' : 'Off'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="font-bold">Candidates:</p>
+              <span className="font-semibold text-gray-500">{data?.total ?? 0}</span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {canViewJobNotes && (
-              <Button
-                className={`rounded-full border border-neutral-200 bg-white px-5 py-2 text-neutral-700 font-semibold flex items-center gap-2 hover:border-primary-200 hover:text-primary-700 transition-colors ${notesPillIconClass}`}
-                onClick={() => setIsJobNotesPanelOpen(true)}
-              >
-                <LuSquarePen size={16} />
-                <span>Notes</span>
-                {jobNotes.length > 0 && (
-                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary text-white flex items-center justify-center text-[11px] font-semibold leading-none">
+          <div className="flex flex-col gap-4 lg:items-end">
+            <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+              <Search
+                appname="candidates listing"
+                placeholder="Search Candidate..."
+                onSearch={handleSearch}
+                allowClear
+                value={search}
+                className="bg-white border-gray-300 rounded-full py-2 w-full sm:w-64"
+              />
+
+              {canViewJobNotes && (
+                <Button
+                  className={`box-border flex h-11 min-w-[170px] items-center justify-center gap-2 rounded-full border border-[#a9c5e6] bg-[#eaf3ff] px-5 text-[#2c69ad] font-semibold ${notesPillIconClass}`}
+                  onClick={() => setIsJobNotesPanelOpen(true)}
+                >
+                  <LuSquarePen size={18} />
+                  <span>Notes</span>
+                  <span className="min-w-6 h-6 px-1.5 rounded-lg bg-[#2c69ad] text-white flex items-center justify-center text-xs leading-none">
                     {jobNotes.length}
                   </span>
-                )}
-              </Button>
-            )}
+                </Button>
+              )}
 
-            {canManageCandidates && (
-              <Tooltip
-                title={
-                  isDraft
-                    ? 'Cannot add candidates to draft job openings'
-                    : isClosed
-                      ? 'Cannot add candidates to closed job openings'
-                      : ''
-                }
-              >
-                <span>
-                  <Button
-                    className="text-white bg-primary rounded-full px-5 py-2 font-semibold shadow-sm hover:opacity-90 transition-opacity"
-                    onClick={() =>
-                      !isDraft && !isClosed ? setIsAddCandidateModalOpen(true) : null
-                    }
-                    disabled={isDraft || isClosed}
-                  >
-                    ADD CANDIDATE
-                  </Button>
-                </span>
-              </Tooltip>
-            )}
+              {canManageCandidates && (
+                <Tooltip
+                  title={
+                    isDraft
+                      ? 'Cannot add candidates to draft job openings'
+                      : isClosed
+                        ? 'Cannot add candidates to closed job openings'
+                        : ''
+                  }
+                >
+                  <span>
+                    <Button
+                      className="box-border flex h-11 min-w-[170px] items-center justify-center rounded-full border border-transparent bg-primary px-5 font-semibold text-white"
+                      onClick={() =>
+                        !isDraft && !isClosed ? setIsAddCandidateModalOpen(true) : null
+                      }
+                      disabled={isDraft || isClosed}
+                    >
+                      ADD CANDIDATE
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+            </div>
+            <div className="w-full lg:w-auto">
+              <FilterMenu filters={{ statusCode, source }} onFilterChange={handleFilterChange} />
+            </div>
           </div>
-        </div>
-
-        <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <Search
-            appname="candidates listing"
-            placeholder="Search Candidate..."
-            onSearch={handleSearch}
-            allowClear
-            value={search}
-            className="bg-neutral-50 border-neutral-200 rounded-full py-2 w-full sm:max-w-xs"
-          />
-          <FilterMenu filters={{ statusCode, source }} onFilterChange={handleFilterChange} />
         </div>
       </div>
 
@@ -412,7 +408,7 @@ const CandidatesListing = () => {
             <div className="w-full pb-2">
               <Row
                 gutter={[16, 16]}
-                className="rounded-xl border border-neutral-100 bg-white p-4 text-xs font-bold uppercase tracking-wide text-neutral-500 shadow-sm heading-font"
+                className="rounded-lg border border-neutral-200 bg-white px-4 py-6 text-[11px] font-bold uppercase text-black shadow heading-font"
               >
                 <Col span={1}>
                   <Checkbox
@@ -427,18 +423,9 @@ const CandidatesListing = () => {
                   sortKey="name"
                   currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
                   onSort={handleSort}
-                  span={3}
+                  span={6}
                 >
-                  FIRST NAME
-                </COL>
-                <COL
-                  sortable
-                  sortKey="name"
-                  currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
-                  onSort={handleSort}
-                  span={3}
-                >
-                  LAST NAME
+                  CANDIDATE NAME
                 </COL>
                 {/* Not sortable - "average score" is computed client-side
                     per row (see CandidateAverageScoreCell), so there's no
@@ -455,8 +442,11 @@ const CandidatesListing = () => {
                 >
                   APPLIED DATE
                 </COL>
-                <COL span={9}>
+                <COL span={6}>
                   <span>STATUS</span>
+                </COL>
+                <COL span={3}>
+                  <span>ACTIONS</span>
                 </COL>
               </Row>
             </div>
@@ -464,13 +454,9 @@ const CandidatesListing = () => {
             <div className="w-full">
               {isLoading ? (
                 <Loader />
-              ) : error ? (
-                <p>
-                  {getCandidateErrorMessage(error, 'Failed to load candidates. Please try again.')}
-                </p>
               ) : candidates.length > 0 ? (
                 candidates.map((candidate) => (
-                  <div key={candidate.id} className="mb-3">
+                  <div key={candidate.id} className="mb-2">
                     <div
                       className={clsx(
                         selected[candidate.id] && 'selected-candidate-highlight',
@@ -480,11 +466,11 @@ const CandidatesListing = () => {
                         border: selected[candidate.id]
                           ? '2px solid var(--primary)'
                           : '2px solid transparent',
-                        borderRadius: 12,
+                        borderRadius: 16,
                         transition: 'all 0.3s ease',
                       }}
                     >
-                      <CommonCard>
+                      <CommonCard className="!rounded-2xl !border-neutral-100 !shadow-md">
                         <Row gutter={[16, 16]} align="middle">
                           <Col span={1}>
                             <Checkbox
@@ -493,41 +479,31 @@ const CandidatesListing = () => {
                               onChange={() => toggleSelect(candidate.id)}
                             />
                           </Col>
-                          <Col span={3} className="min-w-0 overflow-hidden">
+                          <Col span={6} className="min-w-0 overflow-hidden">
                             <div
-                              className="flex items-center gap-2.5 min-w-0 max-w-full cursor-pointer roboto-font"
+                              className="flex items-center gap-2 min-w-0 max-w-full cursor-pointer roboto-font"
                               onClick={() =>
                                 setExpandedId((prev) =>
                                   prev === candidate.id ? null : candidate.id
                                 )
                               }
                             >
-                              <span
-                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${candidateStatusColor(candidate.status_code).dot}`}
-                              >
-                                {candidateInitials(candidate)}
-                              </span>
                               <Link
                                 to={buildDetailsPath(candidate.id)}
-                                className="block min-w-0 flex-1 overflow-hidden text-[var(--primary)]"
+                                className="group block min-w-0 overflow-hidden text-[var(--primary)]"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <span className="block min-w-0 truncate whitespace-nowrap font-semibold underline text-[var(--primary)] leading-5">
-                                  {candidate.first_name || 'N/A'}
+                                <span className="block min-w-0 truncate whitespace-nowrap font-semibold text-[var(--primary)] leading-5 transition-colors group-hover:text-black">
+                                  {[candidate.first_name, candidate.last_name]
+                                    .map((part) => part?.trim())
+                                    .filter(Boolean)
+                                    .join(' ') || 'N/A'}
                                 </span>
                               </Link>
-                            </div>
-                          </Col>
-                          <Col span={3} className="min-w-0 overflow-hidden">
-                            <Link
-                              to={buildDetailsPath(candidate.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="block min-w-0 overflow-hidden text-[var(--primary)] roboto-font"
-                            >
-                              <span className="block min-w-0 truncate whitespace-nowrap font-semibold underline text-[var(--primary)] leading-5">
-                                {candidate.last_name || 'N/A'}
+                              <span className="shrink-0 text-neutral-700">
+                                {expandedId === candidate.id ? <UpOutlined /> : <DownOutlined />}
                               </span>
-                            </Link>
+                            </div>
                           </Col>
                           <Col span={4}>
                             <CandidateAverageScoreCell
@@ -536,59 +512,94 @@ const CandidatesListing = () => {
                             />
                           </Col>
                           <Col span={4}>
-                            <p className="text-sm text-neutral-600 roboto-font">
+                            <p className="text-sm text-neutral-900 roboto-font">
                               {dayjs(candidate.applied_date).isValid()
                                 ? dayjs(candidate.applied_date).format('MMM DD, YYYY')
                                 : 'N/A'}
                             </p>
                           </Col>
-                          <Col span={9}>
-                            <div className="flex flex-wrap items-center gap-1.5">
+                          <Col span={6}>
+                            <div className="flex flex-col items-start gap-0.5 roboto-font">
                               <Tooltip title={candidateStatusTooltip(candidate.status_code)}>
                                 <Link
                                   to={buildDetailsPath(candidate.id)}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="inline-block"
+                                  className={`inline-block text-sm hover:underline ${candidateStatusColor(candidate.status_code).text}`}
                                 >
-                                  {(() => {
-                                    const color = candidateStatusColor(candidate.status_code);
-                                    return (
-                                      <span
-                                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${color.bg} ${color.text}`}
-                                      >
-                                        <span className={`h-1.5 w-1.5 rounded-full ${color.dot}`} />
-                                        {candidate.status_label ||
-                                          statusLabelByCode.get(candidate.status_code ?? '') ||
-                                          'Not yet screened'}
-                                      </span>
-                                    );
-                                  })()}
+                                  {candidate.status_label ||
+                                    statusLabelByCode.get(candidate.status_code ?? '') ||
+                                    'Not yet screened'}
                                 </Link>
                               </Tooltip>
                               {candidate.current_round_status && (
                                 <Link
                                   to={buildDetailsPath(candidate.id)}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="inline-block"
+                                  className="inline-block text-sm text-neutral-900 hover:underline"
                                 >
-                                  <Badge
-                                    status={
-                                      ROUND_BUCKET_BADGE_STATUS[
-                                        bucketForStatus(candidate.current_round_status)
-                                      ]
-                                    }
-                                    className="w-fit"
-                                  >
-                                    {normaliseRoundStatus(candidate.current_round_status) ===
-                                    'booking_created'
-                                      ? 'Booking created — waiting to be scheduled'
-                                      : normaliseRoundStatus(candidate.current_round_status) ===
-                                          'awaiting_resume_upload'
-                                        ? 'Awaiting resume upload'
-                                        : formatRoundStatus(candidate.current_round_status)}
-                                  </Badge>
+                                  {normaliseRoundStatus(candidate.current_round_status) ===
+                                  'booking_created'
+                                    ? 'Booking created — waiting to be scheduled'
+                                    : normaliseRoundStatus(candidate.current_round_status) ===
+                                        'awaiting_resume_upload'
+                                      ? 'Awaiting resume upload'
+                                      : formatRoundStatus(candidate.current_round_status)}
                                 </Link>
                               )}
+                            </div>
+                          </Col>
+                          <Col span={3}>
+                            {/* Same four actions as the legacy list: view, edit, notes, email. */}
+                            <div className="flex items-center gap-3 text-lg text-neutral-900">
+                              <Tooltip title="View Assessment">
+                                <button
+                                  type="button"
+                                  aria-label="View assessment"
+                                  className="flex cursor-pointer hover:text-[var(--primary)] transition-colors"
+                                  onClick={() => navigate(buildDetailsPath(candidate.id))}
+                                >
+                                  <MdOutlineRemoveRedEye />
+                                </button>
+                              </Tooltip>
+                              <Tooltip title="Edit Candidate">
+                                <button
+                                  type="button"
+                                  aria-label="Edit candidate"
+                                  className="flex cursor-pointer hover:text-[var(--primary)] transition-colors"
+                                  onClick={() => setEditCandidate(candidate)}
+                                >
+                                  <MdEdit />
+                                </button>
+                              </Tooltip>
+                              <Tooltip title="Candidate Notes">
+                                <button
+                                  type="button"
+                                  aria-label="Candidate notes"
+                                  className="flex cursor-pointer hover:text-[var(--primary)] transition-colors"
+                                  onClick={() => setNotesCandidate(candidate)}
+                                >
+                                  <LuSquarePen size={17} />
+                                </button>
+                              </Tooltip>
+                              <Tooltip
+                                title={
+                                  candidate.email_id
+                                    ? `Email ${candidate.email_id}`
+                                    : 'No email on file'
+                                }
+                              >
+                                <span className="inline-flex">
+                                  <button
+                                    type="button"
+                                    aria-label="Email candidate"
+                                    className="flex cursor-pointer hover:text-[var(--primary)] transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-neutral-900"
+                                    disabled={!candidate.email_id}
+                                    onClick={() => setEmailCandidate(candidate)}
+                                  >
+                                    <FaEnvelope size={16} />
+                                  </button>
+                                </span>
+                              </Tooltip>
                             </div>
                           </Col>
                         </Row>
@@ -741,6 +752,24 @@ const CandidatesListing = () => {
         jobTitle={jobTitleName}
         jobOpeningId={parsedJobId}
         canWrite={canWriteJobNotes}
+      />
+      {editCandidate && (
+        <EditCandidateModal
+          open={!!editCandidate}
+          onClose={() => setEditCandidate(null)}
+          candidate={editCandidate}
+        />
+      )}
+      <CandidateRecruiterNotesPanel
+        open={!!notesCandidate}
+        onClose={() => setNotesCandidate(null)}
+        title={`Candidate Notes - ${notesCandidate ? candidateDisplayName(notesCandidate) : ''}`}
+        candidateId={notesCandidate?.id}
+      />
+      <BulkEmailCandidatesModal
+        open={!!emailCandidate}
+        onClose={() => setEmailCandidate(null)}
+        candidates={emailCandidate ? [emailCandidate] : []}
       />
       <AddCandidateModal
         open={isAddCandidateModalOpen}

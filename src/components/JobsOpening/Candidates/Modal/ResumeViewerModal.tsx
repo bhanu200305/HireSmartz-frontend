@@ -2,6 +2,7 @@ import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Loader } from '../../../shared/ui/loader';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 import { useResumeBlobUrl } from '../useResumeBlobUrl';
+import DocxRender from '../DocxRender';
 
 // Views the candidate's resume IN PLACE instead of downloading it.
 //
@@ -12,9 +13,9 @@ import { useResumeBlobUrl } from '../useResumeBlobUrl';
 // as a `blob:` URL, which the browser's built-in PDF viewer renders inline.
 //
 // The fetch is cross-origin (S3), so it only succeeds if the bucket's CORS
-// policy allows this origin for GET. When it doesn't — or the file is a
-// DOC/DOCX, which an <iframe> can't render — it falls back to an
-// open-in-new-tab link. An inline-disposition URL from the backend would
+// policy allows this origin for GET. When it doesn't, it falls back to an
+// open-in-new-tab link. PDFs render in an <iframe>; .docx renders in-browser
+// (DocxRender); legacy .doc renders through Microsoft's Office viewer. An inline-disposition URL from the backend would
 // drop the fetch hop entirely (see INTERVIEW_INTAKE_FLOW_BACKEND_GAPS.md).
 
 type ResumeViewerModalProps = {
@@ -30,12 +31,45 @@ const ResumeViewerModal = ({
   candidateId,
   candidateName,
 }: ResumeViewerModalProps) => {
-  const { downloadUrl, blobUrl, inlineFailed, isFetching, error } = useResumeBlobUrl(
-    candidateId,
-    open
-  );
+  const {
+    downloadUrl,
+    blobUrl,
+    docxBlob,
+    officeViewerUrl,
+    fileKind,
+    inlineFailed,
+    isFetching,
+    error,
+  } = useResumeBlobUrl(candidateId, open);
 
-  const downloadName = `${candidateName.replace(/[^\w.-]+/g, '_') || 'candidate'}-resume.pdf`;
+  const extension = fileKind === 'docx' ? 'docx' : fileKind === 'doc' ? 'doc' : 'pdf';
+  const downloadName = `${candidateName.replace(/[^\w.-]+/g, '_') || 'candidate'}-resume.${extension}`;
+  const cannotPreview = (
+    <div className="flex flex-col items-center gap-3 py-10 text-center">
+      <p className="text-sm text-gray-600">
+        This resume can&apos;t be previewed here. Download it or open it in a new tab instead.
+      </p>
+      {downloadUrl && (
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <a
+            href={downloadUrl}
+            className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white"
+          >
+            DOWNLOAD RESUME
+          </a>
+          <a
+            href={downloadUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full border border-primary-200 bg-primary-50 px-6 py-2 text-sm font-semibold text-primary-700"
+          >
+            OPEN IN NEW TAB
+          </a>
+        </div>
+      )}
+    </div>
+  );
+  const hasViewer = Boolean(blobUrl || docxBlob || officeViewerUrl);
 
   return (
     <AntdCommonModal
@@ -56,29 +90,8 @@ const ResumeViewerModal = ({
       ) : !downloadUrl ? (
         <p className="text-sm text-gray-500">No resume on file yet.</p>
       ) : inlineFailed ? (
-        <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <p className="text-sm text-gray-600">
-            This resume can&apos;t be previewed here (it may be a Word document). Download it or
-            open it in a new tab instead.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <a
-              href={downloadUrl}
-              className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white"
-            >
-              DOWNLOAD RESUME
-            </a>
-            <a
-              href={downloadUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full border border-primary-200 bg-primary-50 px-6 py-2 text-sm font-semibold text-primary-700"
-            >
-              OPEN IN NEW TAB
-            </a>
-          </div>
-        </div>
-      ) : !blobUrl ? (
+        cannotPreview
+      ) : !hasViewer ? (
         <div className="flex justify-center py-10">
           <Loader />
         </div>
@@ -100,11 +113,17 @@ const ResumeViewerModal = ({
               'calc(100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 248px)',
           }}
         >
-          <iframe
-            title={`${candidateName} resume`}
-            src={blobUrl}
-            className="w-full flex-1 min-h-0 rounded-lg border border-neutral-200"
-          />
+          {docxBlob ? (
+            <div className="w-full flex-1 min-h-0 rounded-lg border border-neutral-200 bg-gray-100">
+              <DocxRender blob={docxBlob} variant="full" fallback={cannotPreview} />
+            </div>
+          ) : (
+            <iframe
+              title={`${candidateName} resume`}
+              src={officeViewerUrl ?? blobUrl ?? undefined}
+              className="w-full flex-1 min-h-0 rounded-lg border border-neutral-200"
+            />
+          )}
           <div className="flex items-center justify-end gap-4">
             <a
               href={downloadUrl}
@@ -114,11 +133,13 @@ const ResumeViewerModal = ({
             >
               Open in new tab ›
             </a>
-            {/* Same-origin blob: URL, so the `download` attribute is honoured
-                and the file saves without a round-trip. */}
+            {/* Same-origin blob: URL (PDF), so the `download` attribute is
+                honoured and the file saves without a round-trip. Word files
+                download from the presigned URL, which is already an
+                attachment. */}
             <a
-              href={blobUrl}
-              download={downloadName}
+              href={blobUrl ?? downloadUrl}
+              download={blobUrl ? downloadName : undefined}
               className="rounded-full bg-primary px-5 py-1.5 text-xs font-semibold text-white"
             >
               DOWNLOAD RESUME

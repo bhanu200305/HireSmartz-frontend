@@ -20,6 +20,10 @@ export type CandidateListFilterValues = {
   source?: string;
 };
 
+// Sentinel for the "All" option — never sent to the API; selecting it clears
+// the filter (`undefined`), so the list goes back to every candidate.
+const ALL = '__all__';
+
 type FilterMenuProps = {
   filters: CandidateListFilterValues;
   onFilterChange: (newFilters: Partial<CandidateListFilterValues>) => void;
@@ -36,15 +40,18 @@ const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
           <FilterSelectIcon />
           <Select
             placeholder="Status"
-            value={filters.statusCode}
-            onChange={(val) => onFilterChange({ statusCode: val || undefined })}
-            allowClear
+            value={filters.statusCode ?? ALL}
+            onChange={(val) => onFilterChange({ statusCode: val && val !== ALL ? val : undefined })}
+            allowClear={Boolean(filters.statusCode)}
             showSearch
             optionFilterProp="label"
             className="w-full custom-select-jobs placeholder-style"
             dropdownClassName="rounded-3xl"
             variant="borderless"
-            options={statuses.map((s) => ({ label: s.label, value: s.code }))}
+            options={[
+              { label: 'All Statuses', value: ALL },
+              ...statuses.map((s) => ({ label: s.label, value: s.code })),
+            ]}
             popupMatchSelectWidth={false}
           />
         </div>
@@ -52,15 +59,18 @@ const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
           <FilterSelectIcon />
           <Select
             placeholder="Source"
-            value={filters.source}
-            onChange={(val) => onFilterChange({ source: val || undefined })}
-            allowClear
+            value={filters.source ?? ALL}
+            onChange={(val) => onFilterChange({ source: val && val !== ALL ? val : undefined })}
+            allowClear={Boolean(filters.source)}
             showSearch
             optionFilterProp="label"
             className="w-full custom-select-jobs placeholder-style"
             dropdownClassName="rounded-3xl"
             variant="borderless"
-            options={sources.map((s) => ({ label: s.label, value: s.code }))}
+            options={[
+              { label: 'All Sources', value: ALL },
+              ...sources.map((s) => ({ label: s.label, value: s.code })),
+            ]}
             popupMatchSelectWidth={false}
           />
         </div>

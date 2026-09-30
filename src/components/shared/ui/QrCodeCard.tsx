@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CopyOutlined, CheckOutlined, DownloadOutlined } from '@ant-design/icons';
+import { CopyOutlined, CheckOutlined } from '@ant-design/icons';
 import { Button } from './button';
 
 // One QR per tenant (organization-service's own design — see qrCode.ts's
@@ -64,11 +64,21 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-center py-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 w-full max-w-md flex flex-col items-center gap-6">
+    // Styled after the legacy careerforcepro-web QR card: Sora heading,
+    // Roboto body, a bordered input-style row and a plain "DOWNLOAD" pill.
+    <div
+      className="flex items-center justify-center py-2"
+      style={{ fontFamily: "'Roboto', sans-serif" }}
+    >
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-8 sm:px-10 w-full max-w-md flex flex-col items-center gap-6">
         {/* Header */}
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">{title}</h2>
+          <h2
+            className="text-xl font-semibold text-gray-800 mb-2"
+            style={{ fontFamily: "'Sora', sans-serif" }}
+          >
+            {title}
+          </h2>
           <p className="text-sm text-gray-500 leading-relaxed">{subtitle ?? defaultSubtitle}</p>
         </div>
 
@@ -80,7 +90,7 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
             <img
               src={imageUrl!}
               alt="QR code linking to your job openings"
-              className="w-full h-full object-contain rounded-lg"
+              className="w-full h-full object-contain"
             />
           ) : (
             <p className="text-sm text-red-500 text-center px-2">
@@ -92,12 +102,16 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
         {hasQr && (
           <>
             {/* Public link, always valid — the QR just encodes this same URL */}
-            <div className="w-full flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2">
-              <span className="flex-1 text-xs text-gray-600 truncate">{publicUrl}</span>
+            <div className="w-full h-10 flex items-center gap-2 bg-white border border-gray-300 rounded-md pl-3 pr-2 hover:border-[#1B4DFF] transition-colors">
+              <span className="flex-1 min-w-0 text-sm text-gray-700 truncate" title={publicUrl}>
+                {publicUrl}
+              </span>
               <button
+                type="button"
                 onClick={handleCopyLink}
-                className="shrink-0 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+                className="shrink-0 flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
                 aria-label="Copy link"
+                title={copied ? 'Copied!' : 'Copy link'}
               >
                 {copied ? <CheckOutlined className="text-green-500" /> : <CopyOutlined />}
               </button>
@@ -106,10 +120,9 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
             <Button
               onClick={() => void handleDownload()}
               disabled={isDownloading}
-              className="w-full h-11 bg-[#1B4DFF] text-white rounded-full font-semibold text-sm tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="w-full h-11 bg-[#1B4DFF] text-white rounded-full font-bold text-sm tracking-widest flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-60"
             >
-              <DownloadOutlined />
-              {isDownloading ? 'DOWNLOADING...' : 'DOWNLOAD PNG'}
+              {isDownloading ? 'DOWNLOADING...' : 'DOWNLOAD'}
             </Button>
           </>
         )}

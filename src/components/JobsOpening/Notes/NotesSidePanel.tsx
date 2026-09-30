@@ -163,9 +163,7 @@ const NotesSidePanel = ({
     }
   }, [open, layout]);
   const isCompact = open ? layout === 'compact' : layoutWhileOpenRef.current === 'compact';
-  const { loginToken, role, userId: sessionUserId } = useSelector(
-    (state: any) => state.LoginSlice
-  );
+  const { loginToken, role, userId: sessionUserId } = useSelector((state: any) => state.LoginSlice);
   const roleName = typeof role?.name === 'string' ? role.name.trim() : '';
   const currentUser = safeDecodeToken<{
     firstName?: string;
@@ -203,6 +201,11 @@ const NotesSidePanel = ({
       n.createdAt ?? '',
       n.content ?? '',
       n.authorId ?? '',
+      // Names/roles are resolved from the user list, which usually lands
+      // after the notes — without these the panel kept the first
+      // "Unknown User" render forever.
+      n.authorName ?? '',
+      n.authorRole ?? '',
       n.roundId ?? '',
     ]);
     const apiKey = JSON.stringify(rows);

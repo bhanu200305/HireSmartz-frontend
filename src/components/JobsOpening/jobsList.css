@@ -11,6 +11,25 @@
  * plain white box with a hard gray border at all times.
  */
 
+/* Typography matched to the legacy careerforcepro-web Job Openings page:
+ * Roboto for body/table text, Sora for headings. Re-pointing the theme's
+ * font tokens only inside this wrapper keeps every other page on Inter /
+ * Plus Jakarta Sans. (Roboto + Sora are loaded in index.html.) */
+.jobs-list-page {
+  --font-sans: 'Roboto', ui-sans-serif, -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Sora', ui-sans-serif, -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* antd sets its own font-family on inputs/selects; make them follow the page. */
+.jobs-list-page .ant-select,
+.jobs-list-page .ant-select-selection-item,
+.jobs-list-page .ant-select-selection-placeholder,
+.jobs-list-page input,
+.jobs-list-page button {
+  font-family: inherit;
+}
+
 .jobs-list-page .search-input-wrapper {
   background-color: var(--gray-50, #fafafa);
   border-color: var(--gray-200);

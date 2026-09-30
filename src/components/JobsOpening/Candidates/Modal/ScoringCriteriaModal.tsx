@@ -403,10 +403,125 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
       </section>
     </div>
   );
+  // Intake Call: matches ai-service's INTAKE_CONSISTENCY_PROMPT and
+  // check_intake_call_consistency.py (0-5 scale, name-mismatch cap of 1,
+  // never folded into any other score).
+  const renderIntakeCallScoringContent = () => (
+    <div className="-mx-6 max-h-[90vh] overflow-y-auto px-6 py-4">
+      <h2 className="text-2xl font-semibold text-center">Intake Call Scoring</h2>
+      <p className="text-center text-gray-600">{subtitle || 'Intake Call'}</p>
+
+      <section className="mb-6 mt-6">
+        <h3 className="text-lg font-semibold mb-2">What the Intake Call Checks</h3>
+        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-3">
+          <p>
+            The Intake Call is an <strong>authenticity check</strong>, not a skills interview. The
+            AI compares what the candidate says during the call with the claims on their uploaded
+            resume to confirm that the person on the call is the genuine owner of that resume.
+          </p>
+          <p>
+            Only the candidate&apos;s own statements are assessed. The interviewer&apos;s questions
+            are used for context only.
+          </p>
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">What Is Compared</h3>
+        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-3">
+          <p>Specific claims made during the call are checked against the resume, including:</p>
+          <ul className="list-disc ml-7 space-y-2">
+            <li>
+              <strong>Roles and Employers</strong> - Job titles and the companies the candidate has
+              worked for
+            </li>
+            <li>
+              <strong>Projects</strong> - Work the candidate describes and their part in it
+            </li>
+            <li>
+              <strong>Skills</strong> - Tools, technologies, and abilities the candidate mentions
+            </li>
+            <li>
+              <strong>Education</strong> - Degrees, institutions, and certifications
+            </li>
+            <li>
+              <strong>Length of Experience</strong> - Years in each role and overall
+            </li>
+          </ul>
+          <p>
+            <strong>Name check:</strong> the name the candidate gives or confirms during the call is
+            also compared with the name on the resume. Nicknames, shortened names, and spelling
+            variants of the same name are accepted. If no name is mentioned during the call, this is
+            not treated as a mismatch.
+          </p>
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">Consistency Scale (0-5)</h3>
+        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-3">
+          <p>The call receives a single score from 0 to 5:</p>
+          <ul className="list-disc ml-7 space-y-2">
+            <li>
+              <strong>4-5 - Consistent</strong>: The call confirms specific resume claims with
+              credible detail that only the resume&apos;s owner would be likely to know
+            </li>
+            <li>
+              <strong>3 - Broadly Consistent</strong>: No contradictions, with minor gaps or topics
+              the call did not cover
+            </li>
+            <li>
+              <strong>2 - Inconclusive</strong>: Vague or generic answers that neither confirm nor
+              contradict the resume. This score is also given when the call is too short to compare
+              meaningfully
+            </li>
+            <li>
+              <strong>0-1 - Inconsistent</strong>: Direct contradictions, claims the resume does not
+              support, or a name that does not match the resume
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">How the Score Is Determined</h3>
+        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-3">
+          <p>
+            <strong>1. The whole call is reviewed at once</strong> against the whole resume. There
+            are no category weights and no per-question averages.
+          </p>
+          <p>
+            <strong>2. One overall score is given</strong>, together with a short written
+            explanation of the reasoning.
+          </p>
+          <p>
+            <strong>3. A name mismatch caps the score at 1</strong>, regardless of how consistent
+            the rest of the call is.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-lg font-semibold mb-2">How the Score Is Used</h3>
+        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-3">
+          <p>
+            The Intake Call Consistency score is a <strong>standalone authenticity signal</strong>.
+            It is not included in any interview-round score or in the candidate&apos;s overall
+            score.
+          </p>
+          <p>
+            Pipeline actions for the candidate (Advance, Skip, and Reject) become available once
+            this check has been completed.
+          </p>
+        </div>
+      </section>
+    </div>
+  );
   const renderContent = () => {
     if (title === 'AI_FINAL_FEEDBACK') return renderAIFinalFeedbackContent();
     if (title === 'INTERVIEWER_FINAL_FEEDBACK') return renderInterviewerFinalFeedbackContent();
     if (title === 'INTERVIEW_SCORING') return renderInterviewScoringContent();
+    if (title === 'INTAKE_CALL_SCORING') return renderIntakeCallScoringContent();
     return renderDefaultContent();
   };
 

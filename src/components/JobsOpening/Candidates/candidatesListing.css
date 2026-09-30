@@ -1,0 +1,21 @@
+/* candidatesListing.css — typography for the job's Candidates tab, matched to
+ * the legacy careerforcepro-web candidate list (Roboto body, Sora headings).
+ *
+ * Scoped to `.candidates-list-page` so only this page changes: the theme's
+ * font tokens are re-pointed inside the wrapper, every other page keeps
+ * Inter / Plus Jakarta Sans. Roboto + Sora are loaded in index.html.
+ */
+.candidates-list-page {
+  --font-sans: 'Roboto', ui-sans-serif, -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Sora', ui-sans-serif, -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* antd sets its own font-family on inputs/selects; make them follow the page. */
+.candidates-list-page .ant-select,
+.candidates-list-page .ant-select-selection-item,
+.candidates-list-page .ant-select-selection-placeholder,
+.candidates-list-page input,
+.candidates-list-page button {
+  font-family: inherit;
+}

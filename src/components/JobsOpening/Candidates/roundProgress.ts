@@ -71,6 +71,16 @@ export const isResumeStageRound = (round: CandidateInterviewRoundView): boolean 
 export const isIntakeCallRound = (round: CandidateInterviewRoundView): boolean =>
   round.stage_type === 'interview' && round.round_type === 'AUDIO';
 
+/** The Identity Verification round (ID.me). candidate-service's classifier
+ * deliberately gives it no `round_type` (`round_type_classification.py`
+ * returns None for `is_verification_round`), and there's no dedicated flag
+ * on the round view, so: an interview-stage round with no scoring type
+ * whose name says identity/verification. It is never scored. */
+export const isIdentityVerificationRound = (round: CandidateInterviewRoundView): boolean =>
+  round.stage_type === 'interview' &&
+  !round.round_type &&
+  /identity|verification/i.test(round.round_name ?? '');
+
 /** The Audio Screening round — same reasoning as `isIntakeCallRound`
  * above. Added 2026-09-13 alongside the call-intent feature, which covers
  * both this and the Intake Call. */

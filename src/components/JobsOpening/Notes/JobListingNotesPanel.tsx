@@ -166,25 +166,25 @@ const JobListingNotesPanel = ({
   // Manager/Recruiter pickers already use. Skipped along with the notes
   // query itself while the panel is closed.
   const { data: usersData } = useListUsersQuery({ limit: 200 }, { skip: !open || !jobOpeningId });
-  const userNameById = useMemo(() => {
-    const map = new Map<string, string>();
+  const userById = useMemo(() => {
+    const map = new Map<string, { name: string; role: string | null }>();
     for (const user of usersData?.items ?? []) {
-      map.set(user.user_id, user.full_name || user.email);
+      map.set(user.user_id, { name: user.full_name || user.email, role: user.role });
     }
     return map;
   }, [usersData]);
 
   const apiNotes = useMemo(
     () =>
-      apiNotesRaw.map((note) =>
-        note.authorName
-          ? note
-          : {
-              ...note,
-              authorName: (note.authorId && userNameById.get(note.authorId)) || 'Unknown User',
-            }
-      ),
-    [apiNotesRaw, userNameById]
+      apiNotesRaw.map((note) => {
+        const user = note.authorId ? userById.get(note.authorId) : undefined;
+        return {
+          ...note,
+          authorName: note.authorName || user?.name || 'Team member',
+          authorRole: note.authorRole || user?.role || undefined,
+        };
+      }),
+    [apiNotesRaw, userById]
   );
 
   const [createNote] = useCreateJobOpeningNoteMutation();
