@@ -19,7 +19,7 @@ import RoleTable from './RoleTable';
 import CreateRoleModal from './CreateRoleModal';
 import EditRoleModal from './EditRoleModal';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
-// import PermissionReferenceTab from './PermissionExplorer/PermissionReferenceTab'; // Temporarily disabled — see tabItems below.
+import PermissionReferenceTab from './PermissionExplorer/PermissionReferenceTab';
 import type { RoleManagementContext } from './types';
 import type { Role } from '../../types';
 
@@ -139,13 +139,16 @@ const RolesManagement: React.FC = () => {
     isPlatformCaller && context.scope === 'tenant' && !context.tenantId;
 
   // "Who has this permission" / "what can this person do" lookups inside the
-  // Permission Reference tab only ever apply to a COMPANY's users — never
-  // CFP's own internal (platform) roles, and never before a Super Admin has
-  // actually picked which company they mean. A Company Admin session always
-  // satisfies this the moment `context` above resolves (their own tenant,
-  // from their token — no picker needed).
-  // Unused while the Permission Reference tab (below) is commented out.
-  // const canLookupCompany = context.scope === 'tenant' && Boolean(context.tenantId);
+  // Permission Reference tab, for a COMPANY's own users — never before a
+  // Super Admin has actually picked which company they mean. A Company
+  // Admin session always satisfies this the moment `context` above resolves
+  // (their own tenant, from their token — no picker needed).
+  const canLookupCompany = context.scope === 'tenant' && Boolean(context.tenantId);
+
+  // The same lookups, for CFP's OWN internal staff — only meaningful once a
+  // Super Admin is actually looking at the "Careerforce Pro (CFP staff)"
+  // tier itself (RoleContextSwitcher's other option), not a client company.
+  const canLookupPlatformStaff = context.scope === 'platform';
 
   const handleTabChange = (key: string) => {
     setSearchParams((prev) => {
@@ -225,20 +228,18 @@ const RolesManagement: React.FC = () => {
 
   const tabItems = [
     { key: 'roles', label: 'Roles', children: rolesTabContent },
-    // Temporarily disabled — the category/description backend gap on
-    // GET /v1/roles/permissions needs a real fix first. Re-enable by
-    // uncommenting this entry once that's sorted.
-    // {
-    //   key: 'reference',
-    //   label: 'Permission Reference',
-    //   children: (
-    //     <PermissionReferenceTab
-    //       isMaster={isMaster}
-    //       tenantId={context.tenantId}
-    //       canLookupCompany={canLookupCompany}
-    //     />
-    //   ),
-    // },
+    {
+      key: 'reference',
+      label: 'Permission Reference',
+      children: (
+        <PermissionReferenceTab
+          isMaster={isPlatformCaller}
+          tenantId={context.tenantId}
+          canLookupCompany={canLookupCompany}
+          canLookupPlatformStaff={canLookupPlatformStaff}
+        />
+      ),
+    },
   ];
 
   return (

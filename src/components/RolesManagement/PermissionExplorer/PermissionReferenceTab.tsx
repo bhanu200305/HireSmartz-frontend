@@ -2,14 +2,22 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
 import { MdWarningAmber, MdChevronRight } from 'react-icons/md';
 import { LuUsers } from 'react-icons/lu';
-import { Search, Badge } from '../../shared';
+import { Search } from '../../shared';
 import CollapsibleSection from '../../shared/ui/CollapsibleSection';
 import { Loader } from '../../shared/ui/loader';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
 import { useGetPermissionCatalogQuery } from '../../../api/organization-service/Roles/permissionCatalog';
-import { useLazyGetPermissionMatrixQuery } from '../../../api/organization-service/Roles/permissionMatrix';
+import {
+  useLazyGetPermissionMatrixQuery,
+  useGetCrossOrgPermissionMatrixQuery,
+} from '../../../api/organization-service/Roles/permissionMatrix';
+import {
+  usePlatformPermissionMatrix,
+  PLATFORM_ORGANIZATION_ID,
+} from './usePlatformPermissionMatrix';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import {
+  flattenMatrixResponses,
   groupPermissionCatalogByCategory,
   roleDisplayName,
   type FlatPermissionEntry,
@@ -24,8 +32,14 @@ type PermissionReferenceTabProps = {
   tenantId?: string;
   /** True once a real company is in scope (a Company Admin's own tenant, or
    * a Super Admin who's picked one) — gates the "who has this" / "what can
-   * this person do" lookups, which only ever apply to a company's users. */
+   * this person do" lookups for that COMPANY's users. */
   canLookupCompany: boolean;
+  /** True once a Super Admin is looking at CFP's OWN staff tier (not a
+   * client company) — gates the same lookups, sourced from
+   * `usePlatformPermissionMatrix` instead of the tenant matrix endpoint.
+   * Mutually exclusive with `canLookupCompany` (both come from the same
+   * `RoleContextSwitcher` scope). */
+  canLookupPlatformStaff: boolean;
 };
 
 const matchesSearch = (entry: FlatPermissionEntry, q: string): boolean =>
@@ -36,7 +50,8 @@ const matchesSearch = (entry: FlatPermissionEntry, q: string): boolean =>
 /**
  * "What does each permission do" — the live catalog (GET /v1/roles/permissions),
  * grouped by category with a collapsible section per group. The same search
- * box also looks for matching PEOPLE (when a company is in scope): click a
+ * box also looks for matching PEOPLE, whenever a company OR the CFP-staff
+ * tier is in scope (`canLookupCompany`/`canLookupPlatformStaff`): click a
  * permission to see who holds it, or click a matched person to see
  * everything they can do — both open as a modal rather than navigating away
  * from this list.
@@ -45,6 +60,7 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
   isMaster,
   tenantId,
   canLookupCompany,
+  canLookupPlatformStaff,
 }) => {
   const { data, isLoading, error } = useGetPermissionCatalogQuery();
   const [search, setSearch] = useState('');
@@ -54,11 +70,16 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
     code: string;
     label: string;
   } | null>(null);
-  const [selectedPerson, setSelectedPerson] = useState<{ id: string; name: string } | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<{
+    id: string;
+    name: string;
+    organizationId: string;
+    organizationName: string;
+  } | null>(null);
 
   useDebouncedEffect(() => setDebouncedSearch(search), [search], 300);
 
-  const [searchPeople, { data: peopleData, isFetching: isSearchingPeople }] =
+  const [searchPeople, { data: peopleData, isFetching: isSearchingCompanyPeople }] =
     useLazyGetPermissionMatrixQuery();
 
   useEffect(() => {
@@ -70,11 +91,38 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
     });
   }, [canLookupCompany, debouncedSearch, tenantId, isMaster, searchPeople]);
 
+  // No lazy trigger needed here (unlike the tenant search above): staff and
+  // platform roles are already fully in memory once fetched, so this is a
+  // plain in-memory filter, not a network round-trip per keystroke.
+  const { data: platformPeopleData, isFetching: isSearchingPlatformPeople } =
+    usePlatformPermissionMatrix(
+      { q: debouncedSearch.trim() },
+      !canLookupPlatformStaff || !debouncedSearch.trim()
+    );
+
+  // The CFP-staff tier searches CFP staff AND every client company at once —
+  // "superadmin should have access to all the info", not just their own
+  // internal roster. See ExploreCrossOrgPermissionAccessUseCase's docstring
+  // for how this stays RLS-safe (a fan-out over each tenant's own isolated
+  // read, not a new cross-tenant query).
+  const { data: crossOrgPeopleData, isFetching: isSearchingCrossOrgPeople } =
+    useGetCrossOrgPermissionMatrixQuery(
+      { q: debouncedSearch.trim(), limit: 20 },
+      { skip: !canLookupPlatformStaff || !debouncedSearch.trim() }
+    );
+
+  const isSearchingPeople =
+    isSearchingCompanyPeople || isSearchingPlatformPeople || isSearchingCrossOrgPeople;
+
   const matchedPeople = useMemo(
     () =>
-      peopleData?.Organization_User_Permissions?.flatMap((org) => org.Users_Permission ?? []) ?? [],
-    [peopleData]
+      canLookupPlatformStaff
+        ? flattenMatrixResponses(platformPeopleData, crossOrgPeopleData)
+        : flattenMatrixResponses(peopleData),
+    [canLookupPlatformStaff, platformPeopleData, crossOrgPeopleData, peopleData]
   );
+
+  const canLookupPeople = canLookupCompany || canLookupPlatformStaff;
 
   const groups = useMemo(() => groupPermissionCatalogByCategory(data, isMaster), [data, isMaster]);
   const q = debouncedSearch.trim().toLowerCase();
@@ -106,7 +154,7 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
       <Search
         appname="permission reference"
         placeholder={
-          canLookupCompany
+          canLookupPeople
             ? 'Search by permission name, code, or a person…'
             : 'Search by name, code, or description…'
         }
@@ -116,7 +164,18 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
         className="max-w-md"
       />
 
-      {canLookupCompany && q && (
+      {/* Spells out the icon below in plain text up front, rather than
+       * leaving it to a hover-only tooltip nobody happens to find — the same
+       * reason each row still keeps its own `title` for anyone who does
+       * hover. */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-500">
+        <span className="inline-flex items-center gap-1.5">
+          <MdWarningAmber className="text-warning-text shrink-0" size={14} />
+          Sensitive — deletes, exports, role changes, or invites
+        </span>
+      </div>
+
+      {canLookupPeople && q && (
         <div className="bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-3">
           <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
             People matching &quot;{debouncedSearch}&quot;
@@ -135,9 +194,16 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
                 );
                 return (
                   <button
-                    key={user.User_Id}
+                    key={`${user.organizationId}-${user.User_Id}`}
                     type="button"
-                    onClick={() => setSelectedPerson({ id: user.User_Id, name: user.User_Name })}
+                    onClick={() =>
+                      setSelectedPerson({
+                        id: user.User_Id,
+                        name: user.User_Name,
+                        organizationId: user.organizationId,
+                        organizationName: user.organizationName,
+                      })
+                    }
                     className="w-full flex items-center justify-between gap-3 py-2 text-left cursor-pointer hover:bg-white rounded-lg px-2 -mx-2"
                   >
                     <div className="min-w-0">
@@ -146,6 +212,10 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
                       </div>
                       <div className="text-xs text-gray-500 truncate">
                         {user.Email} · {roleNames.map(roleDisplayName).join(', ') || 'No role'}
+                        {/* Only shown once a match can come from more than
+                         * one organization — a single company's own search
+                         * has nothing to disambiguate. */}
+                        {canLookupPlatformStaff && ` · ${user.organizationName}`}
                       </div>
                     </div>
                     <MdChevronRight className="text-gray-300 shrink-0" size={18} />
@@ -188,17 +258,12 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
                           <MdWarningAmber size={14} />
                         </span>
                       )}
-                      {!entry.enforced && (
-                        <Badge status="neutral" dot={false}>
-                          Not in use yet
-                        </Badge>
-                      )}
                     </div>
                     {entry.description && (
                       <p className="text-xs text-gray-500 mt-0.5">{entry.description}</p>
                     )}
                   </div>
-                  {canLookupCompany && (
+                  {canLookupPeople && (
                     <Tooltip title="See who has this permission">
                       <button
                         type="button"
@@ -231,6 +296,7 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
           onClose={() => setSelectedPermission(null)}
           tenantId={tenantId}
           isMaster={isMaster}
+          platformScope={canLookupPlatformStaff}
           code={selectedPermission.code}
           label={selectedPermission.label}
         />
@@ -242,6 +308,13 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
           onClose={() => setSelectedPerson(null)}
           tenantId={tenantId}
           isMaster={isMaster}
+          platformScope={canLookupPlatformStaff}
+          crossOrgTenantId={
+            selectedPerson.organizationId === PLATFORM_ORGANIZATION_ID
+              ? undefined
+              : selectedPerson.organizationId
+          }
+          organizationName={selectedPerson.organizationName}
           userId={selectedPerson.id}
           userName={selectedPerson.name}
         />

@@ -6,18 +6,30 @@ import { Badge } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import {
   useGetPermissionMatrixQuery,
-  type MatrixUser,
+  useGetCrossOrgPermissionMatrixQuery,
 } from '../../../api/organization-service/Roles/permissionMatrix';
+import { usePlatformPermissionMatrix } from './usePlatformPermissionMatrix';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
-import { roleDisplayName } from './permissionExplorer.helpers';
+import {
+  flattenMatrixResponses,
+  roleDisplayName,
+  type TaggedMatrixUser,
+} from './permissionExplorer.helpers';
 
-type HolderRow = MatrixUser & { key: string };
+type HolderRow = TaggedMatrixUser & { key: string };
 
 type PermissionHoldersModalProps = {
   open: boolean;
   onClose: () => void;
   tenantId?: string;
   isMaster: boolean;
+  /** True when opened from the CFP-staff tier (not one client company) —
+   * sources holders from CFP staff (`usePlatformPermissionMatrix`) MERGED
+   * with a cross-org search of every client company
+   * (`useGetCrossOrgPermissionMatrixQuery`), rather than the tenant-scoped
+   * `GET /v1/roles/permission-matrix`, which a platform caller with no
+   * single `tenant_id` to send would just 422 on. */
+  platformScope?: boolean;
   code: string;
   label: string;
 };
@@ -36,22 +48,44 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
   onClose,
   tenantId,
   isMaster,
+  platformScope = false,
   code,
   label,
 }) => {
-  const { data, isLoading, error } = useGetPermissionMatrixQuery(
+  const tenantResult = useGetPermissionMatrixQuery(
     {
       tenantId: isMaster ? tenantId : undefined,
       codes: [code],
       limit: 200,
     },
-    { skip: !open }
+    { skip: !open || platformScope }
+  );
+  const platformStaffResult = usePlatformPermissionMatrix(
+    { codes: [code] },
+    !open || !platformScope
+  );
+  const crossOrgResult = useGetCrossOrgPermissionMatrixQuery(
+    { codes: [code], limit: 200 },
+    { skip: !open || !platformScope }
   );
 
+  const isLoading = platformScope
+    ? platformStaffResult.isLoading || crossOrgResult.isLoading
+    : tenantResult.isLoading;
+  const error = platformScope
+    ? (platformStaffResult.error ?? crossOrgResult.error)
+    : tenantResult.error;
+
   const users = useMemo(
-    () => data?.Organization_User_Permissions?.flatMap((org) => org.Users_Permission ?? []) ?? [],
-    [data]
+    () =>
+      platformScope
+        ? flattenMatrixResponses(platformStaffResult.data, crossOrgResult.data)
+        : flattenMatrixResponses(tenantResult.data),
+    [platformScope, platformStaffResult.data, crossOrgResult.data, tenantResult.data]
   );
+  const totalUsers = platformScope
+    ? users.length
+    : (tenantResult.data?.total_users ?? users.length);
 
   // Explicit per-column widths — see CandidatesListModal.tsx's identical
   // comment on why `scroll.x: 'max-content'` alone isn't reliable here.
@@ -64,6 +98,20 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
         <span className="font-semibold text-gray-900">{row.User_Name}</span>
       ),
     },
+    // Only meaningful once results can span more than one organization —
+    // a single company's own holders list has nothing to distinguish here.
+    ...(platformScope
+      ? [
+          {
+            title: 'Organization',
+            key: 'organization',
+            minWidth: 180,
+            render: (_: unknown, row: HolderRow) => (
+              <span className="text-gray-700">{row.organizationName}</span>
+            ),
+          },
+        ]
+      : []),
     {
       title: 'Email',
       dataIndex: 'Email',
@@ -106,7 +154,10 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
     },
   ];
 
-  const dataSource: HolderRow[] = users.map((user) => ({ ...user, key: user.User_Id }));
+  const dataSource: HolderRow[] = users.map((user) => ({
+    ...user,
+    key: `${user.organizationId}-${user.User_Id}`,
+  }));
 
   return (
     <AntdCommonModal
@@ -128,8 +179,7 @@ const PermissionHoldersModal: React.FC<PermissionHoldersModalProps> = ({
       ) : (
         <div className="flex min-h-0 flex-auto flex-col gap-2">
           <p className="shrink-0 text-xs text-gray-400">
-            {data?.total_users ?? users.length}{' '}
-            {(data?.total_users ?? users.length) === 1 ? 'person' : 'people'}
+            {totalUsers} {totalUsers === 1 ? 'person' : 'people'}
           </p>
           <div className="w-full min-h-0 flex-auto overflow-hidden rounded-xl border border-gray-200 bg-white flex">
             <CustomTable<HolderRow>

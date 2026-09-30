@@ -7,6 +7,7 @@ import {
   useGetPermissionMatrixQuery,
   type PermissionDetail,
 } from '../../../api/organization-service/Roles/permissionMatrix';
+import { usePlatformPermissionMatrix } from './usePlatformPermissionMatrix';
 import { useGetPermissionCatalogQuery } from '../../../api/organization-service/Roles/permissionCatalog';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { flattenPermissionCatalog, roleDisplayName } from './permissionExplorer.helpers';
@@ -16,23 +17,35 @@ type PersonPermissionsModalProps = {
   onClose: () => void;
   tenantId?: string;
   isMaster: boolean;
+  /** True when opened from the CFP-staff tier — sources this person's
+   * permissions from `usePlatformPermissionMatrix` instead of the
+   * tenant-scoped matrix endpoint. See `PermissionHoldersModal`'s identical
+   * prop for why the tenant query would otherwise just 422. */
+  platformScope?: boolean;
+  /** Set when this specific person was matched by a CROSS-ORG search (opened
+   * from the CFP-staff tier, but the match is one client company's user, not
+   * CFP staff) — the one company they actually belong to. Overrides
+   * `platformScope`: with this set, the lookup is the ordinary tenant-scoped
+   * query bound to THIS tenant, same isolation any other platform-operator
+   * read of a specific company gets, rather than the CFP-staff hook. */
+  crossOrgTenantId?: string;
+  /** Shown next to the person's name whenever `crossOrgTenantId` is set —
+   * the whole point of a cross-org search is telling two same-named people
+   * at different companies apart. */
+  organizationName?: string;
   userId: string;
   userName: string;
 };
 
 /** A held permission, shown under whichever catalog category it resolves to
- * — carrying its own `label`/`description` from the catalog rather than
- * `PermissionDetail`'s own (currently always-blank) fields, same fix as
- * `PermissionReferenceTab`'s. */
+ * — carrying its own `label`/`description` from the catalog. */
 type GroupedDetail = PermissionDetail & { label: string; description: string };
 
 /**
- * Groups this person's held permissions by category. Unlike `GET
- * /v1/roles/permissions` (the plain catalog, whose `category`/`description`
- * come back blank — see `permissionExplorer.helpers.ts`'s own note on that),
- * `GET /v1/roles/permission-matrix?explain=true` populates
- * `Permission_Details[].category`/`.label`/`.description` for real, from
- * organization-service's own curated `permission_definitions.py` — so those
+ * Groups this person's held permissions by category. `GET
+ * /v1/roles/permission-matrix?explain=true` populates
+ * `Permission_Details[].category`/`.label`/`.description` directly from
+ * organization-service's own curated `permission_definitions.py`, so those
  * are trusted first here. The static `PERMISSION_CATALOG` fallback (via
  * `flattenPermissionCatalog`) only kicks in for the rare permission this
  * endpoint doesn't have real text for; in that fallback path, a code the
@@ -90,17 +103,29 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
   onClose,
   tenantId,
   isMaster,
+  platformScope = false,
+  crossOrgTenantId,
+  organizationName,
   userId,
   userName,
 }) => {
-  const { data, isLoading, error } = useGetPermissionMatrixQuery(
+  // A cross-org match overrides `platformScope`: it's still opened from the
+  // CFP-staff tier, but the person themself belongs to one specific client
+  // company, not to CFP.
+  const usePlatformSource = platformScope && !crossOrgTenantId;
+  const tenantResult = useGetPermissionMatrixQuery(
     {
-      tenantId: isMaster ? tenantId : undefined,
+      tenantId: crossOrgTenantId ?? (isMaster ? tenantId : undefined),
       userId,
       explain: true,
     },
-    { skip: !open }
+    { skip: !open || usePlatformSource }
   );
+  const platformResult = usePlatformPermissionMatrix(
+    { membershipId: userId },
+    !open || !usePlatformSource
+  );
+  const { data, isLoading, error } = usePlatformSource ? platformResult : tenantResult;
 
   const person = data?.Organization_User_Permissions?.[0]?.Users_Permission?.[0];
 
@@ -121,6 +146,11 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
       open={open}
       onClose={onClose}
       title={`Permissions for ${userName}`}
+      subtitle={
+        crossOrgTenantId && organizationName ? (
+          <span className="text-xs text-gray-500">{organizationName}</span>
+        ) : undefined
+      }
       modalProps={{ width: 640, maskClosable: true }}
     >
       <div className="max-h-[65vh] overflow-y-auto flex flex-col gap-4">
@@ -175,12 +205,17 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
                               Individual grant
                             </Badge>
                           )}
-                          <Badge status="neutral" dot={false}>
-                            {detail.all_locations
-                              ? 'All offices'
-                              : (detail.locations ?? []).map((l) => l.label).join(', ') ||
-                                'No offices'}
-                          </Badge>
+                          {/* Offices are a tenant-only concept — CFP staff
+                           * permissions aren't scoped to one, so this badge
+                           * would just be a confusing no-op for them. */}
+                          {!usePlatformSource && (
+                            <Badge status="neutral" dot={false}>
+                              {detail.all_locations
+                                ? 'All offices'
+                                : (detail.locations ?? []).map((l) => l.label).join(', ') ||
+                                  'No offices'}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     ))}

@@ -85,6 +85,23 @@ export type PermissionMatrixArgs = {
   offset?: number;
 };
 
+// GET /v1/platform/roles/permission-matrix — the Super Admin, cross-company
+// twin of the args above: no `tenantId` to bind to (there isn't one — this
+// fans the same search out across every tenant server-side), and no
+// `userId`/`locationId`/`includeUsage`/`explain`, which only make sense once
+// a search has already narrowed to one person inside one company. See
+// ExploreCrossOrgPermissionAccessUseCase's docstring for why this is safe
+// (RLS still isolates each tenant's own rows; this just asks the same
+// narrow per-tenant question once per company and merges the answers).
+export type CrossOrgPermissionMatrixArgs = {
+  codes?: string[];
+  match?: 'all' | 'any';
+  q?: string;
+  includeInactive?: boolean;
+  limit?: number;
+  offset?: number;
+};
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     getPermissionMatrix: build.query<PermissionMatrixResponse, PermissionMatrixArgs>({
@@ -107,7 +124,30 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       providesTags: ['PermissionMatrix'],
     }),
+    getCrossOrgPermissionMatrix: build.query<
+      PermissionMatrixResponse,
+      CrossOrgPermissionMatrixArgs
+    >({
+      query: (args) => ({
+        url: '/v1/platform/roles/permission-matrix',
+        method: 'GET',
+        params: {
+          ...(args.codes?.length ? { code: args.codes.join(',') } : {}),
+          ...(args.match ? { match: args.match } : {}),
+          ...(args.q ? { q: args.q } : {}),
+          ...(args.includeInactive === false ? { include_inactive: false } : {}),
+          limit: args.limit ?? 50,
+          offset: args.offset ?? 0,
+        },
+      }),
+      providesTags: ['PermissionMatrix'],
+    }),
   }),
 });
 
-export const { useGetPermissionMatrixQuery, useLazyGetPermissionMatrixQuery } = extendedApi;
+export const {
+  useGetPermissionMatrixQuery,
+  useLazyGetPermissionMatrixQuery,
+  useGetCrossOrgPermissionMatrixQuery,
+  useLazyGetCrossOrgPermissionMatrixQuery,
+} = extendedApi;

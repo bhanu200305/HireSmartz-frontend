@@ -24,8 +24,9 @@ export type PermissionCatalogResource = {
   description: string;
   /** Display-grouping heading, already in display order across the response. */
   category: string;
-  /** 'platform' entries are never grantable to any company role. */
-  audience: 'tenant' | 'platform';
+  /** 'platform' entries are never grantable to any company role; 'both' is
+   * checked on a tenant screen AND a Super Admin screen. */
+  audience: 'tenant' | 'platform' | 'both';
   actions: PermissionCatalogAction[];
 };
 
