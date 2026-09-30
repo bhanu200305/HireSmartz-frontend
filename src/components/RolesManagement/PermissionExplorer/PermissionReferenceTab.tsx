@@ -227,12 +227,18 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
         </div>
       )}
 
-      {categories.map((category) => {
+      {categories.map((category, index) => {
         const entries = groups[category].filter((entry) => !q || matchesSearch(entry, q));
         if (entries.length === 0) return null;
 
         return (
-          <CollapsibleSection key={category} title={category} defaultOpen>
+          // Only the first cluster starts open — `defaultOpen` is read once
+          // at mount (see CollapsibleSection's own docstring), so this is
+          // "the first one on initial load", not "the first one still
+          // matching a search" typed in afterward; every other cluster stays
+          // closed until the admin clicks it themselves. Same for both a
+          // Company Admin's own catalog and a Super Admin's.
+          <CollapsibleSection key={category} title={category} defaultOpen={index === 0}>
             <div className="flex flex-col divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden bg-white">
               {entries.map((entry) => (
                 // Not just `entry.code` — a couple of codes are deliberately
