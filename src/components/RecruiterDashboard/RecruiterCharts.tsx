@@ -10,6 +10,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  LabelList,
 } from 'recharts';
 import { ChartCard, DonutStat } from '../shared';
 import { useGetJobStatsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
@@ -24,9 +25,17 @@ import {
 // interviews-by-status groups by (round_type_classification.py).
 const ROUND_TYPES = ['AUDIO', 'AVATAR', 'VIDEO'] as const;
 const ROUND_TYPE_COLORS: Record<(typeof ROUND_TYPES)[number], string> = {
-  AUDIO: '#263d92',
-  AVATAR: '#0f9fc4',
-  VIDEO: '#d97706',
+  AUDIO: '#1d4ed8',
+  AVATAR: '#0d9488',
+  VIDEO: '#3b82f6',
+};
+// Display names for those buckets (round_type_classification.py): AUDIO =
+// Audio Screening rounds, AVATAR = AI Video rounds (soundwave/avatar),
+// VIDEO = Hiring Panel rounds (online/offline).
+const ROUND_TYPE_LABELS: Record<(typeof ROUND_TYPES)[number], string> = {
+  AUDIO: 'Audio Round',
+  AVATAR: 'AI Interview',
+  VIDEO: 'Panel Interview',
 };
 
 const COLOR_SUCCESS = '#059669';
@@ -181,15 +190,18 @@ const RecruiterCharts: React.FC = () => {
 
       <ChartCard
         title="Interviews by Status & Type"
-        subtitle="Interview round counts split by Audio / Avatar / Video"
+        subtitle="Status split by Audio Round, AI Interview & Panel Interview"
+        tag="Grouped Bar"
         isLoading={isInterviewsLoading}
         available={interviewsByStatusAndTypeData.length > 0}
         span={2}
       >
-        <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+        <ResponsiveContainer width="100%" height={260}>
           <BarChart
             data={interviewsByStatusAndTypeData}
             margin={{ top: 8, right: 12, left: -16, bottom: 14 }}
+            barGap={10}
+            barCategoryGap="22%"
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef1f7" />
             <XAxis
@@ -208,17 +220,30 @@ const RecruiterCharts: React.FC = () => {
               width={48}
               label={yAxisLabel('Interviews')}
             />
-            <Tooltip contentStyle={cardTooltipStyle} />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Tooltip contentStyle={cardTooltipStyle} cursor={{ fill: 'rgba(37, 99, 235, 0.05)' }} />
+            <Legend
+              verticalAlign="top"
+              align="right"
+              iconType="circle"
+              iconSize={10}
+              wrapperStyle={{ fontSize: 13, color: '#334155', paddingBottom: 12 }}
+            />
             {ROUND_TYPES.map((type) => (
               <Bar
                 key={type}
                 dataKey={type}
-                name={capitalize(type)}
+                name={ROUND_TYPE_LABELS[type]}
                 fill={ROUND_TYPE_COLORS[type]}
                 radius={[6, 6, 0, 0]}
-                maxBarSize={28}
-              />
+                maxBarSize={34}
+              >
+                <LabelList
+                  dataKey={type}
+                  position="top"
+                  offset={8}
+                  style={{ fontSize: 11, fontWeight: 600, fill: '#8593ac' }}
+                />
+              </Bar>
             ))}
           </BarChart>
         </ResponsiveContainer>

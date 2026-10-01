@@ -14,6 +14,9 @@ type ChartCardProps = {
   available?: boolean;
   unavailableLabel?: string;
   span?: 1 | 2;
+  /** Small outlined chart-type tag in the header's top-right corner, e.g.
+   * "GROUPED BAR". Optional; omitted everywhere it isn't passed. */
+  tag?: string;
   children: ReactNode;
 };
 
@@ -33,6 +36,7 @@ const ChartCard: React.FC<ChartCardProps> = ({
   available = true,
   unavailableLabel = 'Not available yet.',
   span,
+  tag,
   children,
 }) => (
   <div
@@ -46,14 +50,21 @@ const ChartCard: React.FC<ChartCardProps> = ({
       className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary-50 via-white to-accent-50 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
       aria-hidden
     />
-    <div className="relative">
-      <Typography variant="subtitle2" className="font-semibold text-neutral-900">
-        {title}
-      </Typography>
-      {subtitle && (
-        <Typography variant="caption" className="mt-0.5 block text-neutral-400">
-          {subtitle}
+    <div className="relative flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <Typography variant="subtitle2" className="font-semibold text-neutral-900">
+          {title}
         </Typography>
+        {subtitle && (
+          <Typography variant="caption" className="mt-0.5 block text-neutral-400">
+            {subtitle}
+          </Typography>
+        )}
+      </div>
+      {tag && (
+        <span className="shrink-0 rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+          {tag}
+        </span>
       )}
     </div>
 

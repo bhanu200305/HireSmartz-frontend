@@ -118,11 +118,12 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     /\/candidates\/[^/]+\/details/.test(location.pathname) ||
     location.pathname.includes('/candidateDetails/');
 
+  // The candidate list's Back goes to the job listing directly rather than
+  // `navigate(-1)`: after "Back to Candidate List" pushed the list onto the
+  // history, -1 just returned to the candidate that was open before.
   const handleBackNavigation = () => {
     if (isCandidateDetailsPage && id) {
       navigate(`/jobs/view/${id}/candidates`);
-    } else if (isCandidatePage) {
-      navigate(-1);
     } else if (fromDashboard) {
       navigate('/');
     } else {
