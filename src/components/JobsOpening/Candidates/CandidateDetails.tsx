@@ -1210,8 +1210,8 @@ const CandidateDetails = () => {
         <div className="flex min-w-0 flex-col gap-6">
           {/* AI resume score and the Intake Call consistency check (a
               transcript-vs-resume authenticity signal, not re-scored by a
-              recruiter) — side by side on wider screens. */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              recruiter) — stacked, one full-width row each. */}
+          <div className="flex flex-col gap-4">
             <ScoreSummaryTile
               label="AI Resume Score"
               icon={<LuFileText size={16} />}
