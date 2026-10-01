@@ -26,18 +26,32 @@ const describeAction = (action: string): string =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
+// Sentinel value for the Tenant Select's pinned "Platform / Super Admin
+// only" option — never a real tenant_id, so it can't collide with one.
+// Picking it selects `platformOnly` instead of a `tenantId`; the two are
+// mutually exclusive server-side (422 if both are sent), so the onChange
+// handler always clears one when it sets the other.
+const PLATFORM_ONLY_VALUE = '__platform_only__';
+
 /**
  * GET /v1/platform/audit/events — Super Admin's own action audit trail.
  * The action catalog is explicitly open-ended and grows over time
  * (docs/frontend_guide.txt), so labels are humanized generically rather
  * than mapped from a fixed list — nothing here breaks on a new value.
  *
- * Filters: Tenant and Action are both real, backend-accepted query params
- * (`tenant_id`, `action` on this same endpoint) — not client-side
- * approximations. There is deliberately no Role filter: an audit entry has
- * no role field at all (only `actor_id` — a raw user id — and `actor_type`,
- * neither of which the backend accepts as a filter param today), so a Role
- * filter here would have nothing real to filter by.
+ * Filters: Tenant, Action, and "Platform / Super Admin only" are all real,
+ * backend-accepted query params (`tenant_id`, `action`, `platform_only` on
+ * this same endpoint) — not client-side approximations. The last is folded
+ * into the Tenant dropdown as a pinned option (`PLATFORM_ONLY_VALUE`) rather
+ * than a separate control, since it answers the same underlying question —
+ * "which organization is this?" — just with "none, it's platform-level" as
+ * the answer; `tenant_id` and `platform_only` are mutually exclusive
+ * server-side (422 if both are sent), which is exactly what picking one
+ * option in one dropdown already guarantees. There is deliberately no Role
+ * filter: an audit entry has no role field at all (only `actor_id` — a raw
+ * user id — and `actor_type`, neither of which the backend accepts as a
+ * filter param today), so a Role filter here would have nothing real to
+ * filter by.
  *
  * The Action dropdown's OPTIONS are drawn from a real sample of this same
  * endpoint (`ACTION_CATALOG_SAMPLE_SIZE` recent events, unfiltered) instead
@@ -64,10 +78,12 @@ const PlatformAudit: React.FC = () => {
   const [pageSize, setPageSize] = usePersistedPageSize('platform_audit', 25);
   const [tenantSearch, setTenantSearch] = useState('');
   const [tenantFilter, setTenantFilter] = useState<string | undefined>(undefined);
+  const [platformOnlyFilter, setPlatformOnlyFilter] = useState(false);
   const [actionFilter, setActionFilter] = useState<string | undefined>(undefined);
 
   const { data, isLoading, isFetching, error } = useListAuditEventsQuery({
     tenantId: tenantFilter,
+    platformOnly: platformOnlyFilter,
     action: actionFilter,
     limit: pageSize,
     offset: page * pageSize,
@@ -113,10 +129,11 @@ const PlatformAudit: React.FC = () => {
   }, [error]);
 
   const events = data?.events ?? [];
-  const hasActiveFilters = Boolean(tenantFilter || actionFilter);
+  const hasActiveFilters = Boolean(tenantFilter || platformOnlyFilter || actionFilter);
 
   const clearFilters = () => {
     setTenantFilter(undefined);
+    setPlatformOnlyFilter(false);
     setTenantSearch('');
     setActionFilter(undefined);
     setPage(0);
@@ -146,19 +163,28 @@ const PlatformAudit: React.FC = () => {
               allowClear
               showSearch
               className="w-56"
-              value={tenantFilter}
+              value={platformOnlyFilter ? PLATFORM_ONLY_VALUE : tenantFilter}
               onChange={(value) => {
-                setTenantFilter(value);
+                if (value === PLATFORM_ONLY_VALUE) {
+                  setPlatformOnlyFilter(true);
+                  setTenantFilter(undefined);
+                } else {
+                  setTenantFilter(value);
+                  setPlatformOnlyFilter(false);
+                }
                 setPage(0);
               }}
               onSearch={setTenantSearch}
               filterOption={false}
               loading={isSearchingTenants}
               notFoundContent={isSearchingTenants ? 'Searching…' : 'No companies found'}
-              options={(tenantResults?.tenants ?? []).map((tenant) => ({
-                label: tenant.company_name,
-                value: tenant.tenant_id,
-              }))}
+              options={[
+                { label: 'Platform / Super Admin only', value: PLATFORM_ONLY_VALUE },
+                ...(tenantResults?.tenants ?? []).map((tenant) => ({
+                  label: tenant.company_name,
+                  value: tenant.tenant_id,
+                })),
+              ]}
             />
             <Select
               placeholder="Filter by action"

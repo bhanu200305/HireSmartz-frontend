@@ -22,6 +22,11 @@ export type ListAuditEventsArgs = {
   actorId?: string;
   action?: string;
   tenantId?: string;
+  /** Only actions not tied to any tenant at all (platform-staff management,
+   * global catalog changes) — `tenant_id IS NULL` server-side. Mutually
+   * exclusive with `tenantId`: the backend 422s if both are sent, so never
+   * set this alongside a `tenantId`. */
+  platformOnly?: boolean;
   limit?: number;
   offset?: number;
 };
@@ -40,6 +45,7 @@ const extendedApi = orgApi.injectEndpoints({
           ...(args?.actorId ? { actor_id: args.actorId } : {}),
           ...(args?.action ? { action: args.action } : {}),
           ...(args?.tenantId ? { tenant_id: args.tenantId } : {}),
+          ...(args?.platformOnly ? { platform_only: true } : {}),
           limit: args?.limit ?? 50,
           offset: args?.offset ?? 0,
         },
