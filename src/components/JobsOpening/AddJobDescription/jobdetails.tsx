@@ -2681,7 +2681,9 @@ const JobDetails = () => {
                                 : 'Contact your company admin to add it.'
                               : !canAddThisField
                                 ? 'Contact your company admin to add it.'
-                                : null}
+                                : fieldKey === 'job_title' && !selectedDepartmentId
+                                  ? 'Select a Department first to add it.'
+                                  : null}
                           </span>
                           <div className="flex items-center gap-3 shrink-0">
                             {canAddThisField && fieldKey !== 'location' && (

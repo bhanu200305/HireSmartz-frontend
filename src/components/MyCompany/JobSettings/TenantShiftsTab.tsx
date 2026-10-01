@@ -14,7 +14,7 @@ import PlatformCatalogTab, {
 import type { CatalogField } from '../../CompanySettings/JobCatalogs/CatalogFormFields';
 import useHasAccess from '../../../hooks/useHasAccess';
 import { Authorities } from '../../../constants/authorities.constant';
-import { formatTime12h } from '../../../utils/formatTime';
+import { formatTime12h, formatDurationMinutes } from '../../../utils/formatTime';
 
 type FormValues = {
   name: string;
@@ -106,7 +106,8 @@ const TenantShiftsTab: React.FC = () => {
         {
           title: 'Duration',
           key: 'duration_minutes',
-          render: (_, item) => (item.duration_minutes ? `${item.duration_minutes} min` : '-'),
+          render: (_, item) =>
+            item.duration_minutes ? formatDurationMinutes(item.duration_minutes) : '-',
         },
       ]}
       fields={fields}
