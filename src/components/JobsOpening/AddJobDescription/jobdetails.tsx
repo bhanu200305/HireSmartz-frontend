@@ -503,6 +503,14 @@ const JobDetails = () => {
       country: jobDetails?.country || '',
       state: jobDetails?.state || '',
       useCultureIntro: jobDetails?.useCultureIntro ?? false,
+      // exemptionStatus isn't a stored field - derive it from whichever
+      // salary values are already present, same as the live AI-fill does.
+      exemptionStatus: jobDetails?.exemptionStatus?.length
+        ? jobDetails.exemptionStatus
+        : [
+            ...(jobDetails?.exemptMinSalary != null ? ['true'] : []),
+            ...(jobDetails?.nonExemptMinSalary != null ? ['false'] : []),
+          ],
     },
   });
 
@@ -1629,8 +1637,12 @@ const JobDetails = () => {
         return;
       }
     } catch (err) {
+      const status = (err as { status?: number })?.status;
       showToast({
-        message: getJobErrorMessage(err, 'Something went wrong while updating dropdown.'),
+        message:
+          status === 403
+            ? "You don't have permission to link this job title to this department. Ask an admin to do it."
+            : getJobErrorMessage(err, 'Something went wrong while updating dropdown.'),
         type: 'error',
       });
     } finally {
