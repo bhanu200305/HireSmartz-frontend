@@ -28,7 +28,10 @@ describe('transformJobTypesResponse — is_active/is_deleted', () => {
 
   it('falls back to job_type_id for the platform catalogue shape', () => {
     const result = transformJobTypesResponse({
-      job_types: [{ job_type_id: 'master-1', job_type_name: 'Contract' }],
+      // No `id` in real master responses - cast past the type.
+      job_types: [{ job_type_id: 'master-1', job_type_name: 'Contract' }] as unknown as Parameters<
+        typeof transformJobTypesResponse
+      >[0]['job_types'],
     });
 
     expect(result[0].id).toBe('master-1');
