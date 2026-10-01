@@ -79,6 +79,7 @@ import {
 } from '../../../api/job-service/JobOpening/educationPreferences';
 import { buildSaveJobDetailsPayload } from '../../../api/job-service/buildSaveJobDetailsPayload';
 import { asJobId } from '../../../api/job-service/jobId';
+import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import { hasFeatureAccess, isAssignedToJob } from '../../../shared/utils/auth/getAccess';
 import useEffectivePermissions, {
@@ -362,6 +363,8 @@ const EditJobDetail = () => {
     | 'optionalSkills'
   >(null);
   const [allowNavigation, setAllowNavigation] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
   const [showRegenerateConfirmModal, setShowRegenerateConfirmModal] = useState(false);
   const [pendingContinueJobId, setPendingContinueJobId] = useState<string | null>(null);
   const [isAddingToDropdown, setIsAddingToDropdown] = useState<string | null>(null);
@@ -550,6 +553,10 @@ const EditJobDetail = () => {
   const { data: jdStatusForHydration, isFetching: jdStatusFetching } = useJdStatusPolling(
     parsedJobId ?? undefined
   );
+  // Fields stay disabled until AI has finished parsing/generating the JD -
+  // editing mid-parse would just get overwritten the moment it lands.
+  const fieldsLocked =
+    jdStatusForHydration?.status === 'PROCESSING' || jdStatusForHydration?.status === 'GENERATING';
 
   const [initialFormValues, setInitialFormValues] = useState<any>(null);
 
@@ -2187,6 +2194,25 @@ const EditJobDetail = () => {
     }
   };
 
+  const handleConfirmCancel = async () => {
+    setAllowNavigation(true);
+    if (parsedJobId) {
+      try {
+        await deleteDraftJob(parsedJobId).unwrap();
+      } catch (error) {
+        setAllowNavigation(false);
+        showToast({
+          message: getJobErrorMessage(error, 'Failed to remove job opening'),
+          type: 'error',
+        });
+        setShowCancelConfirm(false);
+        return;
+      }
+    }
+    setShowCancelConfirm(false);
+    navigate('/jobs');
+  };
+
   const onSaveDraft = async (data: Partial<JobDetailsState>) => {
     setAllowNavigation(true);
     const { errors } = validateDraft<JobDetailsState>(data, editJobDetailsDraftSchema);
@@ -2441,16 +2467,15 @@ const EditJobDetail = () => {
             })}
           </div>
         )}
-        {(jdStatusForHydration?.status === 'PROCESSING' ||
-          jdStatusForHydration?.status === 'GENERATING') && (
+        {fieldsLocked && (
           <div className="mb-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
             <span
               className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"
               aria-hidden="true"
             />
             <span>
-              Reading your job description and filling in details below - this usually takes under a
-              minute. Feel free to keep filling in fields yourself in the meantime.
+              Let AI fill in the parsed fields below from your job description. Fields will unlock
+              automatically once it&apos;s done.
             </span>
           </div>
         )}
@@ -2503,6 +2528,7 @@ const EditJobDetail = () => {
                   }}
                   options={departments}
                   loading={orgDepartmentsLoading || isAddingToDropdown === 'department'}
+                  disabled={fieldsLocked}
                   placeholder="Select Department"
                   label="Department"
                   onAddOption={
@@ -2544,6 +2570,7 @@ const EditJobDetail = () => {
                       ? 'Please select a department first'
                       : 'Select Job Title'
                   }
+                  disabled={fieldsLocked}
                   label="Job Title"
                   onAddOption={
                     canAddJobTitle ? (value) => handleAddOption(value, 'jobTitle') : undefined
@@ -2575,6 +2602,7 @@ const EditJobDetail = () => {
                   }}
                   options={jobTypeOptions}
                   loading={jobTypesInclInactiveLoading || isAddingToDropdown === 'jobType'}
+                  disabled={fieldsLocked}
                   placeholder="Select Job Type"
                   label="Job Type"
                   onAddOption={
@@ -2602,6 +2630,7 @@ const EditJobDetail = () => {
                   }}
                   options={jobModeOptions}
                   loading={jobModesInclInactiveLoading || isAddingToDropdown === 'jobMode'}
+                  disabled={fieldsLocked}
                   placeholder="Select Job Mode"
                   label="Job Mode"
                   onAddOption={
@@ -2628,6 +2657,7 @@ const EditJobDetail = () => {
                 }}
                 options={shiftOptions}
                 loading={shiftsLoading}
+                disabled={fieldsLocked}
                 placeholder="Select Shift"
                 label="Shift"
                 type="shift"
@@ -2693,7 +2723,7 @@ const EditJobDetail = () => {
                           showSearch
                           optionFilterProp="label"
                           variant="borderless"
-                          disabled={isDisabled}
+                          disabled={isDisabled || fieldsLocked}
                           placeholder="Select languages"
                           className="w-full custom-select-jobs placeholder-style"
                           loading={languagesLoading}
@@ -2737,7 +2767,7 @@ const EditJobDetail = () => {
                     shouldValidate: true,
                   });
                 }}
-                disabled={!hasCultureInfo}
+                disabled={!hasCultureInfo || fieldsLocked}
                 style={{
                   backgroundColor: watch('useCultureIntro') ? 'var(--color-primary)' : undefined,
                 }}
@@ -2769,6 +2799,7 @@ const EditJobDetail = () => {
                   onChange={handleLocationChange}
                   options={jobLocationOptions}
                   loading={loadingJobLocations}
+                  disabled={fieldsLocked}
                   label="Location"
                   placeholder="Select Location"
                   type="location"
@@ -2891,7 +2922,7 @@ const EditJobDetail = () => {
                       {omittedValues.length} of {hiringManagers.length} hiring managers selected
                     </span>
                   )}
-                  disabled={false}
+                  disabled={fieldsLocked}
                   enableEditDelete={false}
                   error={errors.hiringManagers?.message}
                 />
@@ -2928,7 +2959,8 @@ const EditJobDetail = () => {
                                 shouldValidate: true,
                               });
                             }}
-                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
+                            disabled={fieldsLocked}
+                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             ×
                           </button>
@@ -2961,7 +2993,7 @@ const EditJobDetail = () => {
                       {omittedValues.length} of {recruiters.length} recruiters selected
                     </span>
                   )}
-                  disabled={false}
+                  disabled={fieldsLocked}
                   enableEditDelete={false}
                   error={errors.recruiters?.message as string | undefined}
                 />
@@ -2996,7 +3028,8 @@ const EditJobDetail = () => {
                                 shouldValidate: true,
                               });
                             }}
-                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
+                            disabled={fieldsLocked}
+                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             ×
                           </button>
@@ -3038,6 +3071,7 @@ const EditJobDetail = () => {
                       disabledDate={(current) =>
                         current && current.isBefore(dayjs().startOf('day'))
                       }
+                      disabled={fieldsLocked}
                     />
                   </div>
                 )}
@@ -3072,6 +3106,7 @@ const EditJobDetail = () => {
                 }}
                 placeholder="Opening(s)"
                 className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                disabled={fieldsLocked}
               />
               {errors.openings && (
                 <p className="text-red-500 text-sm mt-1">{errors.openings.message}</p>
@@ -3098,6 +3133,7 @@ const EditJobDetail = () => {
                       disabledDate={(current) =>
                         current && current.isBefore(dayjs().startOf('day'))
                       }
+                      disabled={fieldsLocked}
                     />
                   </div>
                 )}
@@ -3149,6 +3185,7 @@ const EditJobDetail = () => {
                   placeholder="Select Exemption Status"
                   popupClassName="rounded-3xl"
                   loading={exemptionStatusLoading}
+                  disabled={fieldsLocked}
                 >
                   {exemptionStatusOptions.length > 0 ? (
                     exemptionStatusOptions.map((status) => (
@@ -3200,6 +3237,7 @@ const EditJobDetail = () => {
                           placeholder="Minimum Salary"
                           className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                           intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                          disabled={fieldsLocked}
                         />
                       )}
                     />
@@ -3226,6 +3264,7 @@ const EditJobDetail = () => {
                           placeholder="Maximum Salary"
                           className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                           intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                          disabled={fieldsLocked}
                         />
                       )}
                     />
@@ -3267,6 +3306,7 @@ const EditJobDetail = () => {
                           placeholder="Minimum Salary"
                           className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                           intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                          disabled={fieldsLocked}
                         />
                       )}
                     />
@@ -3297,6 +3337,7 @@ const EditJobDetail = () => {
                           placeholder="Maximum Salary"
                           className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                           intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                          disabled={fieldsLocked}
                         />
                       )}
                     />
@@ -3328,6 +3369,7 @@ const EditJobDetail = () => {
                   placeholder="Referral Bonus"
                   className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                   intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                  disabled={fieldsLocked}
                 />
               )}
             />
@@ -3359,6 +3401,7 @@ const EditJobDetail = () => {
               }}
               placeholder="Minimum Experience"
               className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+              disabled={fieldsLocked}
             />
             {errors.minExperience && (
               <p className="text-red-500 text-sm mt-1">{errors.minExperience.message}</p>
@@ -3385,6 +3428,7 @@ const EditJobDetail = () => {
               }}
               placeholder="Maximum Experience"
               className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+              disabled={fieldsLocked}
             />
             {errors.maxExperience && (
               <p className="text-red-500 text-sm mt-1">{errors.maxExperience.message}</p>
@@ -3425,6 +3469,7 @@ const EditJobDetail = () => {
                   }
                   onSearchChange={searchMandatorySkills}
                   type="mandatorySkills"
+                  disabled={fieldsLocked}
                   error={errors.mandatorySkills?.message}
                   // isEditable hides icons on platform-shared skills; canDeleteSkill hides
                   // them for roles without skill:delete, which the API would 403 anyway.
@@ -3473,7 +3518,8 @@ const EditJobDetail = () => {
                                 shouldValidate: true,
                               });
                             }}
-                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
+                            disabled={fieldsLocked}
+                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             ×
                           </button>
@@ -3508,6 +3554,7 @@ const EditJobDetail = () => {
                   }
                   onSearchChange={searchOptionalSkills}
                   type="optionalSkills"
+                  disabled={fieldsLocked}
                   error={errors.optionalSkills?.message as string | undefined}
                   enableEditDelete
                   onEditOption={canDeleteSkill ? handleEditOption : undefined}
@@ -3554,7 +3601,8 @@ const EditJobDetail = () => {
                                 shouldValidate: true,
                               });
                             }}
-                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
+                            disabled={fieldsLocked}
+                            className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             ×
                           </button>
@@ -3597,6 +3645,7 @@ const EditJobDetail = () => {
                       : undefined
                   }
                   type="educationPreference"
+                  disabled={fieldsLocked}
                   error={errors.educationPreference?.message}
                   enableEditDelete={canDeleteJobCatalogues}
                   onEditOption={canDeleteJobCatalogues ? handleEditOption : undefined}
@@ -3628,6 +3677,7 @@ const EditJobDetail = () => {
                       formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
                     }}
                     className="w-full px-4 py-2 border rounded-lg"
+                    disabled={fieldsLocked}
                   />
                 )}
               />
@@ -3654,6 +3704,7 @@ const EditJobDetail = () => {
                       formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
                     }}
                     className="w-full px-4 py-2 border rounded-lg"
+                    disabled={fieldsLocked}
                   />
                 )}
               />
@@ -3678,6 +3729,7 @@ const EditJobDetail = () => {
                       formatter: ({ count, maxLength }) => `${count}/${maxLength} characters`,
                     }}
                     className="w-full px-4 py-2 border rounded-lg"
+                    disabled={fieldsLocked}
                   />
                 )}
               />
@@ -3717,6 +3769,15 @@ const EditJobDetail = () => {
           >
             SAVE & NEXT
           </Button>
+          {isDraft && (
+            <Button
+              type="button"
+              className="text-white bg-red-400 hover:bg-red-500 rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+              onClick={() => setShowCancelConfirm(true)}
+            >
+              CANCEL
+            </Button>
+          )}
         </div>
       </Form>
       {isBlocked && (
@@ -3725,6 +3786,15 @@ const EditJobDetail = () => {
           onConfirm={confirmNavigation}
           title="You have unsaved changes. Are you sure you want to leave?"
           confirmText="LEAVE PAGE"
+        />
+      )}
+      {showCancelConfirm && (
+        <ConfirmationModal
+          onClose={() => setShowCancelConfirm(false)}
+          onConfirm={handleConfirmCancel}
+          title="Cancel this job opening? It will not be saved."
+          confirmText="CANCEL JOB"
+          isLoading={isCancelling}
         />
       )}
       {showRegenerateConfirmModal && (

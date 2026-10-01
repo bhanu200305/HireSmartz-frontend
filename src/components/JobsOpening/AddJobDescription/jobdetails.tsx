@@ -315,6 +315,10 @@ const JobDetails = () => {
   // and apply AI-written fields once ready — see the effect below.
   const { data: jdStatusForHydration, isFetching: jdStatusFetching } =
     useJdStatusPolling(resolvedJobId);
+  // Fields stay disabled until AI has finished parsing/generating the JD -
+  // editing mid-parse would just get overwritten the moment it lands.
+  const fieldsLocked =
+    jdStatusForHydration?.status === 'PROCESSING' || jdStatusForHydration?.status === 'GENERATING';
   const prevJdStatusForHydrationRef = useRef<string | undefined>(undefined);
   // Tracks which job id the "already READY on first observation" fallback
   // has run for, so it fires at most once per job.
@@ -2658,16 +2662,15 @@ const JobDetails = () => {
                     })}
                   </div>
                 )}
-                {(jdStatusForHydration?.status === 'PROCESSING' ||
-                  jdStatusForHydration?.status === 'GENERATING') && (
+                {fieldsLocked && (
                   <div className="mb-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
                     <span
                       className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"
                       aria-hidden="true"
                     />
                     <span>
-                      Reading your job description and filling in details below - this usually takes
-                      under a minute. Feel free to keep filling in fields yourself in the meantime.
+                      Let AI fill in the parsed fields below from your job description. Fields will
+                      unlock automatically once it&apos;s done.
                     </span>
                   </div>
                 )}
@@ -2713,6 +2716,7 @@ const JobDetails = () => {
                           }}
                           options={departments}
                           loading={departmentsLoading || isAddingToDropdown === 'department'}
+                          disabled={fieldsLocked}
                           label="Department"
                           placeholder="Select Department"
                           onAddOption={
@@ -2754,6 +2758,7 @@ const JobDetails = () => {
                               ? 'Please select a department first'
                               : 'Select Job Title'
                           }
+                          disabled={fieldsLocked}
                           label="Job Title"
                           onAddOption={
                             canAddJobTitle
@@ -2787,6 +2792,7 @@ const JobDetails = () => {
                           }
                           options={jobTypeOptions}
                           loading={jobTypesInclInactiveLoading || isAddingToDropdown === 'jobType'}
+                          disabled={fieldsLocked}
                           label="Job Type"
                           placeholder="Select Job Type"
                           onAddOption={
@@ -2815,6 +2821,7 @@ const JobDetails = () => {
                           }
                           options={jobModeOptions}
                           loading={jobModesInclInactiveLoading || isAddingToDropdown === 'jobMode'}
+                          disabled={fieldsLocked}
                           label="Job Mode"
                           placeholder="Select Job Mode"
                           onAddOption={
@@ -2840,6 +2847,7 @@ const JobDetails = () => {
                         onChange={(value) => setValue('shift', [value], { shouldValidate: true })}
                         options={shiftOptions}
                         loading={shiftsLoading}
+                        disabled={fieldsLocked}
                         label="Shift"
                         placeholder="Select Shift"
                         type="shift"
@@ -2900,6 +2908,7 @@ const JobDetails = () => {
                               placeholder="Select languages"
                               className="w-full custom-select-jobs placeholder-style"
                               loading={languagesLoading}
+                              disabled={fieldsLocked}
                               value={languagesLoading ? [] : (value ?? []).map(String)}
                               onChange={(next) => onChange(next)}
                               options={languageOptions.map((item) => ({
@@ -2943,7 +2952,7 @@ const JobDetails = () => {
                               shouldValidate: true,
                             });
                           }}
-                          disabled={!hasCultureInfo}
+                          disabled={!hasCultureInfo || fieldsLocked}
                           style={{
                             backgroundColor: useCultureIntroValue
                               ? 'var(--color-primary)'
@@ -2977,6 +2986,7 @@ const JobDetails = () => {
                           onChange={handleLocationChange}
                           options={jobLocationOptions}
                           loading={loadingJobLocations}
+                          disabled={fieldsLocked}
                           label="Location"
                           placeholder="Select Location"
                           type="location"
@@ -3112,7 +3122,7 @@ const JobDetails = () => {
                               selected
                             </span>
                           )}
-                          disabled={false}
+                          disabled={fieldsLocked}
                           enableEditDelete={false}
                           error={errors.hiringManagers?.message}
                         />
@@ -3149,7 +3159,8 @@ const JobDetails = () => {
                                         shouldValidate: true,
                                       });
                                     }}
-                                    className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
+                                    disabled={fieldsLocked}
+                                    className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     ×
                                   </button>
@@ -3182,7 +3193,7 @@ const JobDetails = () => {
                               {omittedValues.length} of {recruiters.length} recruiters selected
                             </span>
                           )}
-                          disabled={false}
+                          disabled={fieldsLocked}
                           enableEditDelete={false}
                           error={errors.recruiters?.message as string | undefined}
                         />
@@ -3219,7 +3230,8 @@ const JobDetails = () => {
                                         shouldValidate: true,
                                       });
                                     }}
-                                    className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
+                                    disabled={fieldsLocked}
+                                    className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     ×
                                   </button>
@@ -3264,6 +3276,7 @@ const JobDetails = () => {
                               e.preventDefault();
                             }
                           }}
+                          disabled={fieldsLocked}
                         />
                       </div>
                       {errors.openDate && (
@@ -3301,6 +3314,7 @@ const JobDetails = () => {
                             inputMode="numeric"
                             placeholder="Opening(s)"
                             className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                            disabled={fieldsLocked}
                           />
                         )}
                       />
@@ -3336,6 +3350,7 @@ const JobDetails = () => {
                               e.preventDefault();
                             }
                           }}
+                          disabled={fieldsLocked}
                         />
                       </div>
                       {errors.closeDate && (
@@ -3385,6 +3400,7 @@ const JobDetails = () => {
                           placeholder="Select Exemption Status"
                           popupClassName="rounded-3xl"
                           loading={exemptionStatusLoading}
+                          disabled={fieldsLocked}
                         >
                           {exemptionStatusOptions.length > 0 ? (
                             exemptionStatusOptions.map((status) => (
@@ -3434,6 +3450,7 @@ const JobDetails = () => {
                               placeholder="Minimum Salary"
                               className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                               intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                              disabled={fieldsLocked}
                             />
                             {errors.exemptMinSalary && (
                               <p className="text-red-500 text-sm mt-1">
@@ -3458,6 +3475,7 @@ const JobDetails = () => {
                               placeholder="Maximum Salary"
                               className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                               intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                              disabled={fieldsLocked}
                             />
                             {errors.exemptMaxSalary && (
                               <p className="text-red-500 text-sm mt-1">
@@ -3495,6 +3513,7 @@ const JobDetails = () => {
                               placeholder="Minimum Salary"
                               className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                               intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                              disabled={fieldsLocked}
                             />
                             {errors.nonExemptMinSalary && (
                               <p className="text-red-500 text-sm mt-1">
@@ -3519,6 +3538,7 @@ const JobDetails = () => {
                               placeholder="Maximum Salary"
                               className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                               intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                              disabled={fieldsLocked}
                             />
                             {errors.nonExemptMaxSalary && (
                               <p className="text-red-500 text-sm mt-1">
@@ -3552,6 +3572,7 @@ const JobDetails = () => {
                             placeholder="Referral Bonus"
                             className="bg-white w-full px-4 py-2 !lowercase border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)] placeholder:capitalize"
                             intlConfig={{ locale: 'en-US', currency: 'USD' }}
+                            disabled={fieldsLocked}
                           />
                         )}
                       />
@@ -3587,6 +3608,7 @@ const JobDetails = () => {
                         }}
                         placeholder="Minimum Experience"
                         className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                        disabled={fieldsLocked}
                       />
                       {errors.minExperience && (
                         <p className="text-red-500 text-sm mt-1">{errors.minExperience.message}</p>
@@ -3614,6 +3636,7 @@ const JobDetails = () => {
                         }}
                         placeholder="Maximum Experience"
                         className="bg-white w-full px-4 py-2 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]"
+                        disabled={fieldsLocked}
                       />
                       {errors.maxExperience && (
                         <p className="text-red-500 text-sm mt-1">{errors.maxExperience.message}</p>
@@ -3655,6 +3678,7 @@ const JobDetails = () => {
                           }
                           onSearchChange={searchMandatorySkills}
                           type="mandatorySkills"
+                          disabled={fieldsLocked}
                           error={errors.mandatorySkills?.message}
                           // isEditable hides icons on platform-shared skills; canDeleteSkill hides
                           // them for roles without skill:delete, which the API would 403 anyway.
@@ -3703,7 +3727,8 @@ const JobDetails = () => {
                                         shouldValidate: true,
                                       });
                                     }}
-                                    className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
+                                    disabled={fieldsLocked}
+                                    className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     ×
                                   </button>
@@ -3740,6 +3765,7 @@ const JobDetails = () => {
                           }
                           onSearchChange={searchOptionalSkills}
                           type="optionalSkills"
+                          disabled={fieldsLocked}
                           error={errors.optionalSkills?.message}
                           enableEditDelete
                           onEditOption={canDeleteSkill ? handleEditOption : undefined}
@@ -3786,7 +3812,8 @@ const JobDetails = () => {
                                         shouldValidate: true,
                                       });
                                     }}
-                                    className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer"
+                                    disabled={fieldsLocked}
+                                    className="ml-1 w-4 h-4 flex items-center justify-center text-brand-500 hover:text-brand-700 hover:bg-brand-200 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     ×
                                   </button>
@@ -3829,6 +3856,7 @@ const JobDetails = () => {
                               : undefined
                           }
                           type="educationPreference"
+                          disabled={fieldsLocked}
                           error={errors.educationPreference?.message}
                           enableEditDelete={canDeleteJobCatalogues}
                           onEditOption={canDeleteJobCatalogues ? handleEditOption : undefined}
@@ -3861,6 +3889,7 @@ const JobDetails = () => {
                                 `${count}/${maxLength} characters`,
                             }}
                             className="w-full px-4 py-2 border rounded-lg"
+                            disabled={fieldsLocked}
                           />
                         )}
                       />
@@ -3888,6 +3917,7 @@ const JobDetails = () => {
                                 `${count}/${maxLength} characters`,
                             }}
                             className="w-full px-4 py-2 border rounded-lg"
+                            disabled={fieldsLocked}
                           />
                         )}
                       />
@@ -3915,6 +3945,7 @@ const JobDetails = () => {
                                 `${count}/${maxLength} characters`,
                             }}
                             className="w-full px-4 py-2 border rounded-lg"
+                            disabled={fieldsLocked}
                           />
                         )}
                       />
@@ -3930,6 +3961,7 @@ const JobDetails = () => {
                     <Checkbox
                       checked={isSyncingWithATS}
                       onChange={(e) => setIsSyncingWithATS(e.target.checked)}
+                      disabled={fieldsLocked}
                       className="custom-checkbox roboto-font"
                     >
                       Sync Job Description With ATS

@@ -91,7 +91,8 @@ const TenantSkillsTab: React.FC = () => {
       allowCreate={canManage}
       allowEdit={canManageAny}
       canEditRow={(item) => Boolean(item.is_organization_specific) && canManageAny}
-      canDeleteRow={() => canManageAny}
+      canDeleteRow={(item) => Boolean(item.is_organization_specific) && canManageAny}
+      canToggleRow={(item) => Boolean(item.is_organization_specific) && canManageAny}
       columns={[
         {
           title: 'Name',

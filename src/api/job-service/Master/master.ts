@@ -37,6 +37,12 @@ export type JobMode = {
   job_mode_description: string | null;
 };
 
+export type MasterSkillCategory = {
+  category_id: string;
+  skill_category: string;
+  category_description: string | null;
+};
+
 export type QuestionImportTemplateResponse = {
   download_url: string;
   expires_in: number;
@@ -64,6 +70,10 @@ const extendedApi = jobApi.injectEndpoints({
       query: () => '/master/job-modes',
       providesTags: ['MasterJobModes'],
     }),
+    getMasterSkillCategories: build.query<{ categories: MasterSkillCategory[] }, void>({
+      query: () => '/master/skill-categories',
+      providesTags: ['MasterSkillCategories'],
+    }),
     // Returns a presigned download URL, not the file bytes.
     getQuestionImportTemplate: build.query<QuestionImportTemplateResponse, void>({
       query: () => '/master/question-import-template',
@@ -77,6 +87,7 @@ export const {
   useGetMasterShiftTypesQuery,
   useGetMasterJobTypeSuggestionsQuery,
   useGetMasterJobModesQuery,
+  useGetMasterSkillCategoriesQuery,
   useGetQuestionImportTemplateQuery,
   useLazyGetQuestionImportTemplateQuery,
 } = extendedApi;

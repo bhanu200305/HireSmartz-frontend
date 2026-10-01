@@ -110,6 +110,12 @@ const useJobOpeningDropdown = (
     },
     { skip: skip || !needsPeople || isMaster }
   );
+  // Company Admin can also act as HM/recruiter on a job - merged into both
+  // lists below rather than requiring a separate role grant.
+  const tenantCompanyAdmins = useListUsersQuery(
+    { limit: 200, role: 'company_admin' },
+    { skip: skip || !needsPeople || isMaster }
+  );
   const platformUsers = useListPlatformTenantUsersQuery(
     { tenantId: tenantId ?? '', limit: 200 },
     { skip: skip || !needsPeople || !isMaster || !tenantId }
@@ -160,11 +166,17 @@ const useJobOpeningDropdown = (
             special_kind: item.special_kind,
           }));
         case 'HIRING_MANAGER':
-        case 'RECRUITER':
-          return (users.data?.items ?? []).map((user) => ({
+        case 'RECRUITER': {
+          const combined = [
+            ...(users.data?.items ?? []),
+            ...(tenantCompanyAdmins.data?.items ?? []),
+          ];
+          const deduped = [...new Map(combined.map((user) => [user.user_id, user])).values()];
+          return deduped.map((user) => ({
             id: user.user_id,
             name: user.full_name || user.email,
           }));
+        }
         case 'EXEMPTION_STATUS':
           return [
             { id: 'true', name: 'Exempt' },
@@ -213,6 +225,7 @@ const useJobOpeningDropdown = (
     languages.data,
     shifts.data,
     users.data,
+    tenantCompanyAdmins.data,
     skillsResult.data,
     hasActiveSkillSearch,
     preloadedSkills.data,
@@ -257,6 +270,7 @@ const useJobOpeningDropdown = (
     languages.isFetching ||
     shifts.isFetching ||
     users.isFetching ||
+    tenantCompanyAdmins.isFetching ||
     preloadedSkills.isFetching ||
     skillsResult.isFetching;
 
@@ -270,7 +284,10 @@ const useJobOpeningDropdown = (
     if (endpoint === 'EDUCATION_PREFERENCE') await educationPreferences.refetch();
     if (endpoint === 'LANGUAGE') await languages.refetch();
     if (endpoint === 'SHIFT') await shifts.refetch();
-    if (needsPeople) await users.refetch();
+    if (needsPeople) {
+      await users.refetch();
+      await tenantCompanyAdmins.refetch();
+    }
     if (isSkillsEndpoint(endpoint)) await preloadedSkills.refetch();
   };
 

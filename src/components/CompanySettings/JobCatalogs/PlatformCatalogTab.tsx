@@ -69,6 +69,10 @@ export type PlatformCatalogTabProps<TItem, TFormValues extends Record<string, un
   /** Per-row override on top of `allowEdit`/`onDelete`. Defaults true. */
   canEditRow?: (item: TItem) => boolean;
   canDeleteRow?: (item: TItem) => boolean;
+  /** Per-row override on top of `onToggleActive`. Defaults true - set this
+   * for a catalogue that mixes rows the caller doesn't own (e.g. a
+   * platform-shared row shown alongside the org's own). */
+  canToggleRow?: (item: TItem) => boolean;
   /** Total match count from the backend. Only meaningful with `serverQuery`. */
   total?: number;
   /** Extra control rendered in the header row, before the search box. */
@@ -103,6 +107,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
   allowEdit = true,
   canEditRow = () => true,
   canDeleteRow = () => true,
+  canToggleRow = () => true,
   total,
   headerExtra,
   serverQuery,
@@ -233,16 +238,17 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
       title: 'Status',
       key: 'status',
       width: 90,
-      render: (_: unknown, item: TItem & { key: string }) => (
-        <StatusToggle
-          isActive={isActive(item)}
-          activateLabel={`Activate ${itemNounSingular.toLowerCase()}`}
-          deactivateLabel={`Deactivate ${itemNounSingular.toLowerCase()}`}
-          deactivateConfirmTitle={`Deactivate "${labelOf(item)}"?`}
-          onActivate={() => onToggleActive(item, true)}
-          onDeactivate={() => onToggleActive(item, false)}
-        />
-      ),
+      render: (_: unknown, item: TItem & { key: string }) =>
+        canToggleRow(item) ? (
+          <StatusToggle
+            isActive={isActive(item)}
+            activateLabel={`Activate ${itemNounSingular.toLowerCase()}`}
+            deactivateLabel={`Deactivate ${itemNounSingular.toLowerCase()}`}
+            deactivateConfirmTitle={`Deactivate "${labelOf(item)}"?`}
+            onActivate={() => onToggleActive(item, true)}
+            onDeactivate={() => onToggleActive(item, false)}
+          />
+        ) : null,
     },
     showActions && {
       title: 'Actions',
