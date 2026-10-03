@@ -86,7 +86,13 @@ const GuestOrganizations: React.FC = () => {
       key: 'created_at',
       render: (_: unknown, lead: LeadRow) => (
         <span className="text-sm text-gray-500">
-          {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '-'}
+          {lead.created_at
+            ? new Date(lead.created_at).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              })
+            : '-'}
         </span>
       ),
     },

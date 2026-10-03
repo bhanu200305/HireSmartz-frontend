@@ -11,7 +11,7 @@ import {
 const formatDate = (isoDate: string | null): string =>
   isoDate
     ? new Date(isoDate).toLocaleDateString('en-US', {
-        month: 'short',
+        month: 'long',
         day: 'numeric',
         year: 'numeric',
       })

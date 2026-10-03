@@ -104,7 +104,7 @@ export const CareersInstantCallPage = () => {
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
       const apiMessage = (err as { data?: { message?: string } })?.data?.message;
-      toast.error(apiMessage ?? 'Failed to submit. Please try again.');
+      toast.error(apiMessage ?? 'Failed to submit. Please try again.', { autoClose: 6000 });
     }
   };
 

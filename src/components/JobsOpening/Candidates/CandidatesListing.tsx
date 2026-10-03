@@ -73,6 +73,19 @@ type SelectedMap = Record<string, boolean>;
 const buildCurrentSortKey = (sortBy: string, sortOrder: 'asc' | 'desc') =>
   sortOrder === 'desc' ? `-${sortBy}` : sortBy;
 
+// How long a just-applied candidate keeps its "New" badge. 48h (2 days),
+// not 24h: a recruiter who doesn't open this job's candidate list every
+// single day (weekends, a busy stretch) shouldn't come back to find
+// yesterday's applicants already blending into the rest of the list. Not a
+// full week either - by then "new" has stopped meaning anything useful,
+// it's just noise competing with genuinely fresh applicants.
+const NEW_CANDIDATE_WINDOW_HOURS = 48;
+
+const isNewCandidate = (appliedDate: string): boolean => {
+  const applied = dayjs(appliedDate);
+  return applied.isValid() && dayjs().diff(applied, 'hour') < NEW_CANDIDATE_WINDOW_HOURS;
+};
+
 // Same "Avg. score so far" figure as roundPipeline.ts's candidate
 // drill-down - the resume score plus every interview round's own score
 // (recruiter's if one was recorded, else the AI's), averaged together. Its
@@ -339,12 +352,6 @@ const CandidatesListing = () => {
               <span className="text-gray-500">{jobTypeName || 'N/A'}</span>
             </div>
             <div className="flex items-center gap-2">
-              <p className="font-bold">Company Culture Introduction:</p>
-              <span className="font-semibold text-gray-500">
-                {jobOpeningData?.data?.useCultureIntro ? 'On' : 'Off'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
               <p className="font-bold">Candidates:</p>
               <span className="font-semibold text-gray-500">{data?.total ?? 0}</span>
             </div>
@@ -517,6 +524,11 @@ const CandidatesListing = () => {
                                     .join(' ') || 'N/A'}
                                 </span>
                               </Link>
+                              {isNewCandidate(candidate.applied_date) && (
+                                <Badge status="info" dot={false} className="shrink-0">
+                                  New
+                                </Badge>
+                              )}
                               <span className="shrink-0 text-neutral-700">
                                 {expandedId === candidate.id ? <UpOutlined /> : <DownOutlined />}
                               </span>
@@ -531,7 +543,7 @@ const CandidatesListing = () => {
                           <Col span={4}>
                             <p className="text-sm text-neutral-900 roboto-font">
                               {dayjs(candidate.applied_date).isValid()
-                                ? dayjs(candidate.applied_date).format('MMM DD, YYYY')
+                                ? dayjs(candidate.applied_date).format('MMMM D, YYYY')
                                 : 'N/A'}
                             </p>
                           </Col>

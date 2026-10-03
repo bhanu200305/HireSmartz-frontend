@@ -1,9 +1,0 @@
-/* AntD derives the today/selected cell fill from colorPrimary, but our
-   theme (main.tsx) hands AntD an unparseable `var(--primary-600)` string for
-   that token — AntD's color algorithm can't compute a tint from it and
-   falls back to solid black. Override with an actual grey until the
-   ConfigProvider theme passes real hex values instead of CSS vars. */
-.interview-calendar .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-calendar-date,
-.interview-calendar .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-calendar-date-today {
-  background: var(--gray-200);
-}

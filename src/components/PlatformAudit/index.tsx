@@ -255,7 +255,15 @@ const PlatformAudit: React.FC = () => {
                     </Typography>
                   </div>
                   <Typography variant="caption" className="whitespace-nowrap">
-                    {event.created_at ? new Date(event.created_at).toLocaleString() : '-'}
+                    {event.created_at
+                      ? new Date(event.created_at).toLocaleString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })
+                      : '-'}
                   </Typography>
                 </div>
               ))}

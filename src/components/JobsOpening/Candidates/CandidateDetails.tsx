@@ -194,7 +194,7 @@ const candidateDisplayName = (c?: CandidateView) =>
   `${c?.first_name ?? ''} ${c?.last_name ?? ''}`.trim() || 'N/A';
 
 const formatDateTime = (value: string | null | undefined) =>
-  value && dayjs(value).isValid() ? dayjs(value).format('MMM DD, YYYY · h:mm A') : null;
+  value && dayjs(value).isValid() ? dayjs(value).format('MMMM D, YYYY · h:mm A') : null;
 
 /** "Scored" table cell — AI scores (resume, consistency, round) are out of
  * AI_SCORE_MAX, the recruiter's Human score out of HUMAN_SCORE_MAX (`outOf`).
@@ -1239,6 +1239,21 @@ const CandidateDetails = () => {
           instead of being pushed wide. */}
       <div className="flex flex-col gap-6 p-2 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
+          <div>
+            <h4 className="text-base font-semibold text-gray-900">Resume Scoring</h4>
+            {/* Clickable stars; empty stars in a visible grey (antd's
+                default unfilled colour is near-invisible on white). */}
+            <ConfigProvider theme={{ components: { Rate: { starBg: '#cbd5e1' } } }}>
+              <Rate
+                value={candidate?.resume_rating ?? 0}
+                allowClear={false}
+                disabled={isSavingResumeRating}
+                onChange={(value) => void handleRateResume(value)}
+                className="mt-2 text-2xl"
+              />
+            </ConfigProvider>
+          </div>
+
           {/* AI resume score and the Intake Call consistency check (a
               transcript-vs-resume authenticity signal, not re-scored by a
               recruiter) — stacked, one full-width row each. */}
@@ -1257,23 +1272,6 @@ const CandidateDetails = () => {
               reason={candidate?.consistency_score_reason}
               pendingText="Available after the intake call"
             />
-          </div>
-
-          <div>
-            <h4 className="text-base font-semibold text-gray-900">
-              {candidate?.resume_rating ? 'Resume Scoring' : 'Add Scoring'}
-            </h4>
-            {/* Clickable stars; empty stars in a visible grey (antd's
-                default unfilled colour is near-invisible on white). */}
-            <ConfigProvider theme={{ components: { Rate: { starBg: '#cbd5e1' } } }}>
-              <Rate
-                value={candidate?.resume_rating ?? 0}
-                allowClear={false}
-                disabled={isSavingResumeRating}
-                onChange={(value) => void handleRateResume(value)}
-                className="mt-2 text-2xl"
-              />
-            </ConfigProvider>
           </div>
 
           <div>

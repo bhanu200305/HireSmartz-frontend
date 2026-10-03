@@ -19,7 +19,13 @@ const STATUS_BADGE: Record<SessionStatus, BadgeStatus> = {
 
 const formatDateTime = (iso: string): string => {
   try {
-    return new Date(iso).toLocaleString();
+    return new Date(iso).toLocaleString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
   } catch {
     return iso;
   }

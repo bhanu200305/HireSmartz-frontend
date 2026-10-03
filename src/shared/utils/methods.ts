@@ -188,8 +188,8 @@ export const handleDateValue = (filters: Filters): DateTimeRange => {
 export const formattedDate = (startDate: string) => {
   const date = new Date(startDate);
   const formattedDate = date.toLocaleDateString('en-US', {
-    day: '2-digit',
-    month: 'short',
+    day: 'numeric',
+    month: 'long',
     year: 'numeric',
   });
   return formattedDate;

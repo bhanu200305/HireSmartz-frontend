@@ -45,7 +45,14 @@ export const InterviewEndedScreen: React.FC<InterviewEndedScreenProps> = ({ ende
 
         {/* Footer */}
         <p className="text-xs text-gray-500 pt-8">
-          Interview session closed at {new Date().toLocaleString()}
+          Interview session closed at{' '}
+          {new Date().toLocaleString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          })}
         </p>
       </div>
     </div>

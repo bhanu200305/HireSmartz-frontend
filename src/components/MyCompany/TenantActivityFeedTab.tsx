@@ -124,7 +124,15 @@ const TenantActivityFeedTab: React.FC<{ tenantId: string; isMaster?: boolean }> 
       key: 'created_at',
       render: (_: unknown, event: ActivityRow) => (
         <span className="text-gray-500 text-sm whitespace-nowrap">
-          {event.created_at ? new Date(event.created_at).toLocaleString() : '-'}
+          {event.created_at
+            ? new Date(event.created_at).toLocaleString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              })
+            : '-'}
         </span>
       ),
     },

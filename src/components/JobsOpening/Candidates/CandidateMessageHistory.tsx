@@ -114,7 +114,7 @@ const CandidateMessageHistory = ({ candidateId, canSms, onSendSms }: Props) => {
                       {item.channel}
                     </span>
                     <span>
-                      {dayjs(when).isValid() ? dayjs(when).format('MMM D, YYYY · h:mm A') : ''}
+                      {dayjs(when).isValid() ? dayjs(when).format('MMMM D, YYYY · h:mm A') : ''}
                     </span>
                     <span className="truncate">to {item.recipient_address}</span>
                     <Badge status={badge.status} className="ml-auto">

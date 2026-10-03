@@ -151,10 +151,14 @@ export const CareersApplyPage = () => {
       // reads like a system failure and invites a retry that will just 409
       // again, when nothing actually needs fixing on the candidate's end.
       if (fetchErr?.status === 409) {
-        toast.error("You've already applied to this job with this email address.");
+        toast.error("You've already applied to this job with this email address.", {
+          autoClose: 6000,
+        });
         return;
       }
-      toast.error(fetchErr?.data?.message ?? 'Failed to submit application. Please try again.');
+      toast.error(fetchErr?.data?.message ?? 'Failed to submit application. Please try again.', {
+        autoClose: 6000,
+      });
     }
   };
 

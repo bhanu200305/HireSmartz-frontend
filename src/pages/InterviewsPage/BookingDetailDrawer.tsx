@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Drawer, Select } from 'antd';
 import dayjs from 'dayjs';
+import { LuExternalLink, LuCirclePlay } from 'react-icons/lu';
 
 import { Badge } from '../../components/shared/ui/badge';
 import { Button } from '../../components/shared/ui/button';
@@ -8,6 +9,8 @@ import { Loader } from '../../components/shared/ui/loader';
 import { showToast } from '../../components/shared';
 import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
+import { useGetCandidateQuery } from '../../api/candidate-service/Candidates/CandidateLifecycle';
+import { buildCandidateDetailsPath } from '../../components/JobsOpening/Candidates/useCandidateNavigation';
 import {
   useGetBookingQuery,
   useGetFollowUpsQuery,
@@ -55,7 +58,7 @@ const TERMINAL: BookingStatus[] = [
 ];
 
 const fmt = (iso: string | null): string =>
-  iso && dayjs(iso).isValid() ? dayjs(iso).format('DD MMM YYYY, h:mm A') : '-';
+  iso && dayjs(iso).isValid() ? dayjs(iso).format('MMMM D, YYYY, h:mm A') : '-';
 
 type PendingAction = 'cancel' | 'skip' | 'status' | 'substitute' | null;
 
@@ -320,6 +323,17 @@ export const BookingDetailDrawer = ({
     booking?.round_snapshot?.job_title?.trim() || (booking ? resolveJobTitle(booking.job_id) : '');
   const roundDurationMin = booking?.round_snapshot?.duration_minutes ?? null;
 
+  // Same candidate query `CandidateNameCell` below already fires — RTK
+  // Query dedupes identical args into one request, so this just reads the
+  // `job_opening_id` that request already has, to build the profile link.
+  const { data: candidateForProfile } = useGetCandidateQuery(booking?.candidate_id ?? '', {
+    skip: !open || !booking?.candidate_id,
+  });
+  const profileHref =
+    booking && candidateForProfile?.job_opening_id
+      ? buildCandidateDetailsPath(candidateForProfile.job_opening_id, booking.candidate_id)
+      : null;
+
   return (
     <Drawer
       open={open}
@@ -350,6 +364,18 @@ export const BookingDetailDrawer = ({
                 {bookingStatusLabel(booking.status)}
               </Badge>
             </div>
+
+            {profileHref && (
+              <a
+                href={profileHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
+              >
+                View full candidate profile
+                <LuExternalLink size={14} />
+              </a>
+            )}
 
             <SectionTitle>Overview</SectionTitle>
             <div className="divide-y divide-neutral-100">
@@ -549,22 +575,23 @@ export const BookingDetailDrawer = ({
                         key={`${a.kind}-${i}`}
                         className="flex items-center justify-between gap-3"
                       >
-                        <span className="capitalize text-neutral-700">
-                          {a.kind}
+                        <span className="capitalize text-neutral-700">{a.kind}</span>
+                        <div className="flex items-center gap-2">
                           {a.playback_token && (
                             <a
                               href={`/recordings?token=${encodeURIComponent(a.playback_token)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="ml-2 text-xs font-medium text-brand-600 hover:text-brand-700"
+                              className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100"
                             >
-                              View
+                              <LuCirclePlay size={13} />
+                              Play
                             </a>
                           )}
-                        </span>
-                        <Badge status="neutral" dot={false}>
-                          {String(a.handoff_status).replace(/_/g, ' ')}
-                        </Badge>
+                          <Badge status="neutral" dot={false}>
+                            {String(a.handoff_status).replace(/_/g, ' ')}
+                          </Badge>
+                        </div>
                       </li>
                     ))}
                   </ul>

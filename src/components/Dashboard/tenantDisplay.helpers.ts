@@ -20,7 +20,7 @@ export const formatTenantStatusLabel = (status: string): string =>
 export const formatTenantDate = (isoDate: string | null): string =>
   isoDate
     ? new Date(isoDate).toLocaleDateString('en-US', {
-        month: 'short',
+        month: 'long',
         day: 'numeric',
         year: 'numeric',
       })

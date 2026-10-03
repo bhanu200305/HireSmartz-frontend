@@ -42,7 +42,7 @@ const candidateName = (row: CandidateRow): string =>
 
 const formatDate = (iso: string | null): string =>
   iso
-    ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    ? new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : '-';
 
 /**

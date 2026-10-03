@@ -60,6 +60,9 @@ import EmailTemplatesPanel from './panels/EmailTemplatesPanel';
 import NotificationCopyPanel from './panels/NotificationCopyPanel';
 import TenantActivityFeedTab from '../../MyCompany/TenantActivityFeedTab';
 
+const formatMetaDate = (iso: string): string =>
+  new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
 const STATUS_BADGE: Record<string, BadgeStatus> = {
   draft: 'neutral',
   pre_approved: 'warning',
@@ -571,15 +574,13 @@ const ViewCustomer = () => {
               <MetaTile
                 icon={<MdOutlineCalendarToday size={18} />}
                 label="Joined"
-                value={tenant.created_at ? new Date(tenant.created_at).toLocaleDateString() : '-'}
+                value={tenant.created_at ? formatMetaDate(tenant.created_at) : '-'}
               />
               <MetaTile
                 icon={<MdOutlineAccessTime size={18} />}
                 label="Last active"
                 value={
-                  tenant.last_active_at
-                    ? new Date(tenant.last_active_at).toLocaleDateString()
-                    : 'Not available'
+                  tenant.last_active_at ? formatMetaDate(tenant.last_active_at) : 'Not available'
                 }
               />
             </div>

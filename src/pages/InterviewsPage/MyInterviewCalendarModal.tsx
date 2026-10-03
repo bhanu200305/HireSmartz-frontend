@@ -19,7 +19,11 @@ export const MyInterviewCalendarModal = ({ open, onClose }: MyInterviewCalendarM
 
   return (
     <>
-      <AntdCommonModal open={open} onClose={onClose} modalProps={{ width: 960 }}>
+      <AntdCommonModal
+        open={open}
+        onClose={onClose}
+        modalProps={{ width: '94vw', style: { maxWidth: 1560 } }}
+      >
         {/* Right gutter clears AntdCommonModal's own close button, which
             sits absolutely positioned top-right regardless of this header
             row (see that component's own note on this). */}
