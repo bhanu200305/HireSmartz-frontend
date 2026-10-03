@@ -61,6 +61,7 @@ import {
   candidateStatusTooltip,
 } from './candidateDisplay';
 import { normaliseRoundStatus } from './roundProgress';
+import type { CandidateNavState } from './useCandidateNavigation';
 import { formatRoundStatus } from './roundDisplay';
 import { AI_SCORE_MAX, scoreBadgeStatus } from './roundPipeline';
 
@@ -292,6 +293,21 @@ const CandidatesListing = () => {
 
   const buildDetailsPath = (candidateId: string) =>
     `/jobs/view/${parsedJobId}/candidates/${candidateId}/details`;
+  // Hands the current filters/sort + absolute row position to the details
+  // page so its Previous / Next buttons follow this list's order.
+  const detailsNavState = (rowIndex: number): CandidateNavState => ({
+    candidateNav: {
+      args: {
+        jobOpeningId: parsedJobId,
+        search: search || undefined,
+        statusCode,
+        source,
+        sortBy,
+        sortOrder,
+      },
+      index: page * pageSize + rowIndex,
+    },
+  });
 
   const notesPillIconClass =
     '[&_svg]:!h-5 [&_svg]:!w-5 [&_.anticon]:!inline-flex [&_.anticon]:!h-5 [&_.anticon]:!w-5 [&_.anticon]:!items-center [&_.anticon]:!justify-center';
@@ -455,7 +471,7 @@ const CandidatesListing = () => {
               {isLoading ? (
                 <Loader />
               ) : candidates.length > 0 ? (
-                candidates.map((candidate) => (
+                candidates.map((candidate, rowIndex) => (
                   <div key={candidate.id} className="mb-2">
                     <div
                       className={clsx(
@@ -490,6 +506,7 @@ const CandidatesListing = () => {
                             >
                               <Link
                                 to={buildDetailsPath(candidate.id)}
+                                state={detailsNavState(rowIndex)}
                                 className="group block min-w-0 overflow-hidden text-[var(--primary)]"
                                 onClick={(e) => e.stopPropagation()}
                               >
@@ -523,6 +540,7 @@ const CandidatesListing = () => {
                               <Tooltip title={candidateStatusTooltip(candidate.status_code)}>
                                 <Link
                                   to={buildDetailsPath(candidate.id)}
+                                  state={detailsNavState(rowIndex)}
                                   onClick={(e) => e.stopPropagation()}
                                   className={`inline-block text-sm hover:underline ${candidateStatusColor(candidate.status_code).text}`}
                                 >
@@ -534,6 +552,7 @@ const CandidatesListing = () => {
                               {candidate.current_round_status && (
                                 <Link
                                   to={buildDetailsPath(candidate.id)}
+                                  state={detailsNavState(rowIndex)}
                                   onClick={(e) => e.stopPropagation()}
                                   className="inline-block text-sm text-neutral-900 hover:underline"
                                 >
@@ -556,7 +575,11 @@ const CandidatesListing = () => {
                                   type="button"
                                   aria-label="View assessment"
                                   className="flex cursor-pointer hover:text-[var(--primary)] transition-colors"
-                                  onClick={() => navigate(buildDetailsPath(candidate.id))}
+                                  onClick={() =>
+                                    navigate(buildDetailsPath(candidate.id), {
+                                      state: detailsNavState(rowIndex),
+                                    })
+                                  }
                                 >
                                   <MdOutlineRemoveRedEye />
                                 </button>

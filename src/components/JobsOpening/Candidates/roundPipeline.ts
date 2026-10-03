@@ -16,7 +16,7 @@ import {
 // (removed 2026-09-29, its features now live in the Assessment tab). Same
 // data, same two queries (`useListCandidateInterviewRoundsQuery` /
 // `useListCandidateInterviewScoresQuery` in CandidateDetails.tsx); every
-// figure (avg score, rounds completed, standing) is derived client-side, no
+// figure (avg score, rounds completed) is derived client-side, no
 // backend field carries them today.
 
 export const BUCKET_META: Record<
@@ -90,7 +90,7 @@ export const isResumeScored = (round: CandidateInterviewRoundView, resumeScore: 
  * never booked/started) is the correct signal: a 'current' round may have
  * prior recordings from before its latest reschedule, a 'failed' one
  * (no-show/cancelled) may still have one from an earlier attempt, and
- * RoundArtifactsModal already shows "No recordings yet" gracefully when
+ * RoundArtifactsPanel already shows "No recordings yet" gracefully when
  * there truly are none. Never for the synthetic resume stage.
  *
  * Also offered as soon as the round has a booking: a booked call (e.g. the
@@ -124,7 +124,6 @@ export const summarisePipeline = (
   // though the backend itself has never reported one.
   const overdueFlags = rounds.map((r) => isOverdue(r));
   const hasFailure = displayBuckets.includes('failed') || overdueFlags.some(Boolean);
-  const allDone = rounds.length > 0 && displayBuckets.every((b) => b === 'done');
 
   // The round ADVANCE would actually complete next — NOT just "the first
   // round whose status reads pending": an instant-call candidate with no
@@ -155,12 +154,6 @@ export const summarisePipeline = (
 
   const completedCount = displayBuckets.filter((b) => b === 'done').length;
 
-  const standing: { status: BadgeStatus; label: string } = hasFailure
-    ? { status: 'danger', label: 'Needs attention' }
-    : allDone
-      ? { status: 'success', label: 'Complete' }
-      : { status: 'info', label: 'On track' };
-
   return {
     displayBuckets,
     overdueFlags,
@@ -170,6 +163,5 @@ export const summarisePipeline = (
     nextWhen,
     avgScore,
     completedCount,
-    standing,
   };
 };

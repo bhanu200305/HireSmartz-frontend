@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
-import CollapseToggle from '../../shared/ui/CollapseToggle';
+import { AiOutlineMinus, AiOutlinePlus } from 'react-icons/ai';
 
 type RoundCollapsibleSectionProps = {
   title: string;
@@ -9,41 +9,59 @@ type RoundCollapsibleSectionProps = {
    * while collapsed. Must not contain buttons — the header is itself one. */
   summary?: ReactNode;
   defaultOpen?: boolean;
+  /** Don't mount the content until the section is first opened (then keep
+   * it mounted) — for content that downloads media on mount. */
+  lazy?: boolean;
   children: ReactNode;
 };
 
-// One collapsible block in a round's detail panel (old app's accordion:
-// rounded bordered row, title on the left, circled down-arrow on the
-// right). Content is always mounted, just height-animated, so opening a
-// section never refetches anything.
+// One collapsible block in a round's detail panel, styled like the old
+// app's accordion (careerforcepro-web AiInterviewDetails.tsx): a pill-shaped
+// bordered row while collapsed, rounded card once open, title on the left
+// and a blue plus/minus on the right, content in an inner bordered box.
+// Content is always mounted (unless `lazy`), just height-animated, so
+// opening a section never refetches anything.
 const RoundCollapsibleSection = ({
   title,
   subtitle,
   summary,
   defaultOpen = false,
+  lazy = false,
   children,
 }: RoundCollapsibleSectionProps) => {
   const [open, setOpen] = useState(defaultOpen);
+  const [hasOpened, setHasOpened] = useState(defaultOpen);
   const bodyId = useId();
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs">
+    <section
+      className={`overflow-hidden border border-[#E2E2E2] bg-white ${
+        open ? 'rounded-xl' : 'rounded-full'
+      }`}
+    >
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          setOpen((prev) => !prev);
+          setHasOpened(true);
+        }}
         aria-expanded={open}
         aria-controls={bodyId}
-        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-gray-50 cursor-pointer sm:px-6"
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-gray-50 cursor-pointer focus:outline-none focus-visible:bg-gray-50 sm:px-6"
       >
         <span className="min-w-0">
-          <span className="block text-base font-semibold text-gray-900">{title}</span>
+          <span className="block text-base font-medium text-gray-800">{title}</span>
           {subtitle && <span className="mt-0.5 block text-sm text-gray-500">{subtitle}</span>}
         </span>
         <span className="flex shrink-0 items-center gap-3">
           {summary && (
             <span className="hidden text-sm font-semibold text-primary sm:inline">{summary}</span>
           )}
-          <CollapseToggle open={open} />
+          {open ? (
+            <AiOutlineMinus className="h-5 w-5 text-primary" aria-hidden />
+          ) : (
+            <AiOutlinePlus className="h-5 w-5 text-primary" aria-hidden />
+          )}
         </span>
       </button>
       <div
@@ -53,7 +71,11 @@ const RoundCollapsibleSection = ({
         }`}
       >
         <div className="overflow-hidden">
-          <div className="border-t border-gray-100 px-5 py-4 sm:px-6">{children}</div>
+          <div className="px-5 pb-4 sm:px-6">
+            <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700 shadow-sm">
+              {lazy && !hasOpened ? null : children}
+            </div>
+          </div>
         </div>
       </div>
     </section>

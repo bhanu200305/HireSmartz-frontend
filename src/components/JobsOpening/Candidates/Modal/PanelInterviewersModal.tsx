@@ -29,7 +29,7 @@ const roleLabel = (role: string): string =>
 // same as never having set anything (set_panel_interviewers.py's own
 // docstring). `{round_id}` in the URL is this LOCAL round row's own `id`
 // (`CandidateInterviewRoundView.id`), never job-service's `round_id` — same
-// rule RoundArtifactsModal.tsx already documents for the same reason.
+// rule RoundArtifactsPanel.tsx already documents for the same reason.
 //
 // The backend only refuses this on the resume stage, an already-finished
 // round, or an already-booked one (409) — roundPipeline.ts's canManageRoundInterviewers gates the

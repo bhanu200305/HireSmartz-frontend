@@ -15,6 +15,15 @@ import {
   LuVideo,
   LuUsers,
   LuFileText,
+  LuChevronLeft,
+  LuChevronRight,
+  LuListChecks,
+  LuSend,
+  LuRefreshCw,
+  LuCalendarPlus,
+  LuCalendarCheck,
+  LuUpload,
+  LuCircleCheck,
 } from 'react-icons/lu';
 import { IoChatbubbleEllipses } from 'react-icons/io5';
 import { CommonCard, Button, Badge, InfoHint, showToast } from '../../shared';
@@ -73,7 +82,7 @@ import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import ResumeViewerModal from './Modal/ResumeViewerModal';
 import RoundSidebarItem from './RoundSidebarItem';
-import RoundArtifactsModal from './Modal/RoundArtifactsModal';
+import { RoundCandidateFeedback, RoundRecording, RoundTranscript } from './RoundArtifactsPanel';
 import PanelInterviewersModal from './Modal/PanelInterviewersModal';
 import {
   summarisePipeline,
@@ -87,10 +96,12 @@ import {
 import ResumeInlinePreview from './ResumeInlinePreview';
 import ScoreSummaryTile from './ScoreSummaryTile';
 import RoundCollapsibleSection from './RoundCollapsibleSection';
+import RoundDetailTabs from './RoundDetailTabs';
 import ScoringCriteriaModal from './Modal/ScoringCriteriaModal';
 import { useGetJobScoringConfigQuery } from '../../../api/job-service/JobOpening/jobScoringConfig';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import CandidateMessageHistory from './CandidateMessageHistory';
+import { useCandidateNavigation } from './useCandidateNavigation';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import {
@@ -313,6 +324,7 @@ const CandidateDetails = () => {
   }>();
   const parsedJobId = asJobId(jobIdFromParams);
   const [searchParams] = useSearchParams();
+  const candidateNav = useCandidateNavigation(candidateId, parsedJobId);
   const userId = useSelector((state: RootState) => state.LoginSlice.userId);
 
   // `?tab=` deep links. The Interview Scheduling tab was removed
@@ -377,9 +389,6 @@ const CandidateDetails = () => {
   const [pickedRound, setSelectedRound] = useState<CandidateInterviewRoundView | null>(null);
   const [isResumeFallbackSelected, setIsResumeFallbackSelected] = useState(false);
   // Round-card actions that now live in the round detail's action row.
-  const [artifactsModalFor, setArtifactsModalFor] = useState<CandidateInterviewRoundView | null>(
-    null
-  );
   const [interviewersModalFor, setInterviewersModalFor] =
     useState<CandidateInterviewRoundView | null>(null);
   // Hiring Panel's reference question list defaults open (it's the main
@@ -416,6 +425,8 @@ const CandidateDetails = () => {
   // currently drilled-into `selectedRound` at all.
   const isRescheduleRoundPanel = rescheduleRound?.round_type === 'PANEL';
   const [rescheduleStep, setRescheduleStep] = useState<'choice' | 'picker'>('choice');
+  // "Send interview invite" dialog behind the round's invite icon.
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [rescheduleInterviewerIds, setRescheduleInterviewerIds] = useState<string[]>([]);
   // Reset to the first step every time a fresh reschedule flow opens, so a
   // previous round's "choose different interviewers" progress can't leak
@@ -934,14 +945,14 @@ const CandidateDetails = () => {
     }
   };
 
-  const handleCreateBooking = async () => {
-    if (!candidateId || !parsedJobId || !selectedRound?.round_id) return;
+  const handleCreateBooking = async (): Promise<boolean> => {
+    if (!candidateId || !parsedJobId || !selectedRound?.round_id) return false;
     // Belt-and-suspenders alongside the button's own `disabled` — a PANEL
     // booking with no roster falls back to interview-service auto-composing
     // it from whichever calendar-connected interviewers are in the pool,
     // which is exactly the untested, no-real-caller path this picker exists
     // to avoid (see CreateBookingRequest.interviewer_ids's own comment).
-    if (isPanelRound && selectedInterviewerIds.length === 0) return;
+    if (isPanelRound && selectedInterviewerIds.length === 0) return false;
 
     setIsCreatingBooking(true);
     const interviewType = interviewTypeForRound(selectedRound);
@@ -996,6 +1007,7 @@ const CandidateDetails = () => {
       } else {
         showToast({ message: 'Booking created successfully.', type: 'success' });
       }
+      return true;
     } catch (error) {
       // interview-service's own PREVIOUS_ROUND_NOT_CONCLUDED message is
       // log-style (round numbers, raw candidate/job UUIDs) — not something to
@@ -1009,6 +1021,7 @@ const CandidateDetails = () => {
           ? 'Please complete the previous round before scheduling this one.'
           : getInterviewErrorMessage(error, 'Could not create booking.');
       showToast({ message, type: 'error' });
+      return false;
     } finally {
       setIsCreatingBooking(false);
     }
@@ -1170,10 +1183,14 @@ const CandidateDetails = () => {
       : null;
   };
   const overallRows = scoredRows.filter((row) => !row.excludeFromOverall);
-  const overallScore = {
-    ai: averageOf(overallRows.map((row) => row.ai)),
-    human: averageOf(overallRows.map((row) => row.human)),
-  };
+  // N/A (null) until every round is completed — a mid-pipeline average
+  // would read as a final verdict.
+  const overallScore = allRoundsCompleted
+    ? {
+        ai: averageOf(overallRows.map((row) => row.ai)),
+        human: averageOf(overallRows.map((row) => row.human)),
+      }
+    : { ai: null, human: null };
 
   if (candidateError) {
     return (
@@ -1195,13 +1212,18 @@ const CandidateDetails = () => {
     max: w.weightPercentage,
   }));
 
+  // Icon-only (label on hover) so it doesn't crowd each round's header.
   const scoringCriteriaButton = (kind: 'resume' | 'interview' | 'intake', subtitle?: string) => (
-    <Button
-      className="shrink-0 rounded-lg bg-button px-4 py-2 text-sm font-medium text-white cursor-pointer"
-      onClick={() => setScoringCriteriaFor({ kind, subtitle })}
-    >
-      Scoring Criteria
-    </Button>
+    <Tooltip title="Scoring Criteria">
+      <button
+        type="button"
+        aria-label="Scoring Criteria"
+        className={`${candidateHeaderIconCircle} shrink-0`}
+        onClick={() => setScoringCriteriaFor({ kind, subtitle })}
+      >
+        <LuListChecks size={18} strokeWidth={2} aria-hidden />
+      </button>
+    </Tooltip>
   );
 
   const renderResumeAssessment = () => (
@@ -1340,14 +1362,8 @@ const CandidateDetails = () => {
             </div>
           </div>
         </div>
-        {/* Identity Verification is never scored, so it gets no button. */}
-        {isResumeStage
-          ? scoringCriteriaButton('resume')
-          : isIntakeCallRound(selectedRound)
-            ? scoringCriteriaButton('intake', roundLabel(selectedRound))
-            : isIdentityVerificationRound(selectedRound)
-              ? null
-              : scoringCriteriaButton('interview', roundLabel(selectedRound))}
+        {/* Interview rounds show it beside their Summary / Feedback tabs. */}
+        {isResumeStage && scoringCriteriaButton('resume')}
       </div>
 
       {isResumeStage ? (
@@ -1362,493 +1378,599 @@ const CandidateDetails = () => {
         // a recruiter actually clicks into.
         renderResumeAssessment()
       ) : (
-        <>
-          {/* Scheduling actions sit directly under the round title — every
-              button a recruiter acts on here (book, connect calendar,
-              reschedule, upload audio) is reachable without scrolling past
-              the scores and question lists below. */}
-          <RoundCollapsibleSection title="Interview Scheduling" defaultOpen>
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1 basis-64">
-                  {selectedRound.interview_booking_id ? (
-                    <p className="text-sm text-gray-600">
-                      This round has a booking. The candidate uses the booking link to choose a time{' '}
-                      {isPanelRound
-                        ? 'from the panel’s connected calendar.'
-                        : isAiVideoRound(selectedRound)
-                          ? 'from the available AI Video slots.'
-                          : isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound)
-                            ? 'from the available AI audio slots.'
-                            : 'from the available slots.'}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-600">
-                      Send an invite to start scheduling this round.
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
-                      selectedRound.interview_booking_id
-                        ? 'border border-green-200 bg-green-50 text-green-700'
-                        : 'bg-primary text-white'
-                    }`}
-                    disabled={
-                      Boolean(selectedRound.interview_booking_id) ||
-                      isCreatingBooking ||
-                      isSavingInterviewers ||
-                      (isPanelRound && selectedInterviewerIds.length === 0)
-                    }
-                    onClick={() => void handleCreateBooking()}
+        <RoundDetailTabs
+          actions={
+            // Round actions as icons (label on hover) — these replaced the
+            // old "Interview Scheduling" card. Each shows only where that
+            // card used to offer it; the invite icon sits next to Scoring
+            // Criteria.
+            <>
+              {canManageRoundInterviewers(selectedRound) && (
+                // Saves the panel roster to the round (PanelInterviewersModal).
+                <Tooltip
+                  title={
+                    (selectedRound.interviewer_ids ?? []).length > 0
+                      ? `Interviewers (${(selectedRound.interviewer_ids ?? []).length})`
+                      : 'Set interviewers'
+                  }
+                >
+                  <button
+                    type="button"
+                    aria-label="Set interviewers"
+                    className={`${candidateHeaderIconCircle} shrink-0`}
+                    onClick={() => setInterviewersModalFor(selectedRound)}
                   >
-                    {isCreatingBooking || isSavingInterviewers
-                      ? 'SENDING…'
-                      : selectedRound.interview_booking_id
-                        ? 'INVITATION CREATED'
-                        : 'SEND INVITE'}
-                  </Button>
-                  {canManageRoundInterviewers(selectedRound) && (
-                    // Saves the panel roster straight to the round
-                    // (PanelInterviewersModal) — was the round card's
-                    // "Set interviewers ›" link.
-                    <Button
-                      className="rounded-full border border-primary-300 bg-white px-4 py-1.5 text-sm font-semibold text-primary-700"
-                      onClick={() => setInterviewersModalFor(selectedRound)}
+                    <LuUsers size={18} strokeWidth={2} aria-hidden />
+                  </button>
+                </Tooltip>
+              )}
+              {isPanelRound &&
+                (showsOwnConnectCalendarAction && calendarGrantStatus?.connected ? (
+                  <Tooltip
+                    title={`Calendar connected${calendarGrantStatus.email ? `: ${calendarGrantStatus.email}` : ''}`}
+                  >
+                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-green-200 bg-green-50 text-green-700">
+                      <LuCalendarCheck size={18} strokeWidth={2} aria-label="Calendar connected" />
+                    </span>
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="Connect calendar">
+                    <button
+                      type="button"
+                      aria-label="Connect calendar"
+                      className={`${candidateHeaderIconCircle} shrink-0`}
+                      onClick={handleConnectCalendar}
                     >
-                      {(selectedRound.interviewer_ids ?? []).length > 0
-                        ? `INTERVIEWERS (${(selectedRound.interviewer_ids ?? []).length})`
-                        : 'SET INTERVIEWERS'}
-                    </Button>
-                  )}
-                  {isPanelRound &&
-                    (showsOwnConnectCalendarAction && calendarGrantStatus?.connected ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 py-1.5 text-sm font-semibold text-green-700">
-                        Calendar Connected
-                        {calendarGrantStatus.email ? `: ${calendarGrantStatus.email}` : ''}
-                      </span>
-                    ) : (
-                      <Button
-                        className="rounded-full border border-primary-300 bg-white px-4 py-1.5 text-sm font-semibold text-primary-700"
-                        onClick={handleConnectCalendar}
-                      >
-                        CONNECT CALENDAR
-                      </Button>
-                    ))}
-                  {isPanelRound &&
-                    selectedBooking != null &&
-                    CONCLUDED_BOOKING_STATUSES.includes(selectedBooking.status) && (
-                      // Same eligibility interview-service's own
-                      // request-reschedule endpoint enforces for a
-                      // PANEL booking (already concluded) — mirrors
-                      // the Call Outcome card's button below, just
-                      // gated on booking status instead of
-                      // call_intent (PANEL has no call_intent).
-                      <Button
-                        className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-sm font-semibold text-primary-700 disabled:opacity-50"
-                        disabled={isRequestingReschedule}
-                        onClick={() => {
-                          setRescheduleRound(selectedRound);
-                          setIsRescheduleConfirmOpen(true);
-                        }}
-                      >
-                        {isRequestingReschedule ? 'Sending…' : 'Request reschedule'}
-                      </Button>
-                    )}
-                  {/* Offline-PANEL only — an online PANEL round already
-                    gets its recording automatically via LiveKit
-                    egress, so manually attaching one there would just
-                    create a second, conflicting artifact. Mirrors
-                    BookingDetailDrawer.tsx's own `isOfflinePanel`. */}
-                  {selectedRound.round_type === 'PANEL' &&
-                    selectedRound.interview_booking_id &&
-                    selectedBooking?.round_snapshot?.delivery_mode === 'offline' && (
-                      <>
-                        <input
-                          ref={audioFileInputRef}
-                          type="file"
-                          accept="audio/*"
-                          className="hidden"
-                          onChange={(e) => void handleAudioFileSelected(e)}
-                        />
-                        <Button
-                          className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
-                            hasRecording
-                              ? 'border border-green-200 bg-green-50 text-green-700'
-                              : 'border border-primary-300 bg-white text-primary-700'
-                          }`}
+                      <LuCalendarPlus size={18} strokeWidth={2} aria-hidden />
+                    </button>
+                  </Tooltip>
+                ))}
+              {/* Offline-PANEL only — an online PANEL round already gets its
+                  recording via LiveKit egress, so attaching one there would
+                  create a second, conflicting artifact. Mirrors
+                  BookingDetailDrawer.tsx's own `isOfflinePanel`. */}
+              {selectedRound.round_type === 'PANEL' &&
+                selectedRound.interview_booking_id &&
+                selectedBooking?.round_snapshot?.delivery_mode === 'offline' && (
+                  <>
+                    <input
+                      ref={audioFileInputRef}
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      onChange={(e) => void handleAudioFileSelected(e)}
+                    />
+                    <Tooltip
+                      title={
+                        isUploadingAudio
+                          ? 'Uploading…'
+                          : hasRecording
+                            ? 'Recording uploaded'
+                            : 'Upload audio recording'
+                      }
+                    >
+                      <span className="inline-flex">
+                        <button
+                          type="button"
+                          aria-label="Upload audio recording"
+                          className={`${candidateHeaderIconCircle} shrink-0 ${hasRecording ? '!border-green-200 !bg-green-50 !text-green-700' : ''}`}
                           disabled={isUploadingAudio || hasRecording}
                           onClick={() => audioFileInputRef.current?.click()}
                         >
-                          {isUploadingAudio
-                            ? 'UPLOADING…'
-                            : hasRecording
-                              ? 'RECORDING UPLOADED'
-                              : 'UPLOAD AUDIO'}
-                        </Button>
-                      </>
-                    )}
-                  {selectedRoundIsVoiceCall && selectedBooking?.call_intent != null && (
-                    // Only offered once the call has actually
-                    // concluded (a `call_intent` exists) — matches
-                    // interview-service's own eligibility check on
-                    // POST /bookings/{id}/request-reschedule, so this
-                    // is never offered somewhere the backend would
-                    // just reject it. Lives in this top action row
-                    // (not the Call Outcome card) so it needs no scrolling.
-                    <Button
-                      className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-sm font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50"
-                      disabled={isRequestingReschedule}
-                      onClick={() => {
-                        setRescheduleRound(selectedRound);
-                        setIsRescheduleConfirmOpen(true);
-                      }}
-                    >
-                      {isRequestingReschedule ? 'Sending…' : 'Send Invite (Reschedule Call)'}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {isPanelRound && !selectedRound.interview_booking_id && (
-                <PanelInterviewerPicker
-                  id="panel-interviewer-select"
-                  value={selectedInterviewerIds}
-                  onChange={setSelectedInterviewerIds}
-                  options={eligibleInterviewers ?? []}
-                  loading={isLoadingInterviewers}
-                  calendarConnectedById={interviewerCalendarConnectedById}
-                  helperText="Pick at least one panel interviewer to enable Send Invite."
-                />
-              )}
-            </div>
-          </RoundCollapsibleSection>
-
-          {/* Recording & transcript for every attempt, plus the candidate's
-              own feedback (RoundArtifactsModal). Disabled until the round
-              has been booked or attempted — nothing can be recorded before. */}
-          <RoundCollapsibleSection
-            title="Recording & Transcripts"
-            summary={hasRoundRecordings(selectedRound) ? 'Available' : undefined}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-gray-600">
-                {hasRoundRecordings(selectedRound)
-                  ? 'Play each attempt’s recording, read its transcript, and see the candidate’s own feedback.'
-                  : 'Available once this round has been booked.'}
-              </p>
-              <Button
-                className="rounded-full border border-primary-300 bg-white px-4 py-1.5 text-sm font-semibold text-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!hasRoundRecordings(selectedRound)}
-                onClick={() => setArtifactsModalFor(selectedRound)}
-              >
-                VIEW RECORDING &amp; TRANSCRIPT
-              </Button>
-            </div>
-          </RoundCollapsibleSection>
-
-          {selectedRoundScore && (
-            // The round's own AI/recruiter score. The per-section
-            // breakdown and the AI's reasoning get their own sections below.
-            <RoundCollapsibleSection
-              title="Interview Score"
-              summary={
-                selectedRoundScore.score == null && selectedRoundScore.recruiter_score == null
-                  ? undefined
-                  : [
-                      selectedRoundScore.score != null
-                        ? `AI ${selectedRoundScore.score}/${AI_SCORE_MAX}`
-                        : null,
-                      selectedRoundScore.recruiter_score != null
-                        ? `Recruiter ${selectedRoundScore.recruiter_score}/${HUMAN_SCORE_MAX}`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')
-              }
-            >
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      AI Score
-                    </div>
-                    <div className="mt-1 text-2xl font-bold text-primary">
-                      {selectedRoundScore.score != null
-                        ? `${selectedRoundScore.score} / ${AI_SCORE_MAX}`
-                        : '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      Recruiter Score
-                    </div>
-                    <div className="mt-1 text-2xl font-bold text-green-700">
-                      {selectedRoundScore.recruiter_score != null
-                        ? `${selectedRoundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
-                        : '-'}
-                    </div>
-                  </div>
-                </div>
-                <Button
-                  className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700"
-                  onClick={() =>
-                    setScoreModalFor({
-                      scoreId: selectedRoundScore.id,
-                      roundName: roundLabel(selectedRound),
-                      currentScore: selectedRoundScore.recruiter_score,
-                      currentReason: selectedRoundScore.recruiter_score_reason,
-                    })
-                  }
-                >
-                  {selectedRoundScore.recruiter_score != null
-                    ? 'EDIT RECRUITER SCORE'
-                    : 'RATE THIS ROUND'}
-                </Button>
-              </div>
-              {selectedRoundScore.recruiter_score_reason && (
-                <p className="mt-3 text-sm text-gray-600">
-                  <span className="font-semibold text-gray-700">Recruiter note: </span>
-                  {selectedRoundScore.recruiter_score_reason}
-                </p>
-              )}
-            </RoundCollapsibleSection>
-          )}
-
-          {selectedRoundScore?.section_scores && selectedRoundScore.section_scores.length > 0 && (
-            <RoundCollapsibleSection
-              title="Scorecard"
-              summary={`${selectedRoundScore.section_scores.length} categories`}
-            >
-              <div className="flex flex-col gap-3">
-                {selectedRoundScore.section_scores.map((section) => {
-                  const pct = Math.max(0, Math.min(100, (section.score / AI_SCORE_MAX) * 100));
-                  const barClass =
-                    pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-danger';
-                  return (
-                    <div
-                      key={section.key}
-                      className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm"
-                    >
-                      <span
-                        className="truncate text-gray-800"
-                        title={formatSectionKey(section.key)}
-                      >
-                        {formatSectionKey(section.key)}
+                          {hasRecording ? (
+                            <LuCircleCheck size={18} strokeWidth={2} aria-hidden />
+                          ) : (
+                            <LuUpload size={18} strokeWidth={2} aria-hidden />
+                          )}
+                        </button>
                       </span>
-                      <span className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
-                        <span
-                          className={`block h-full rounded-full ${barClass}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </span>
-                      <span className="text-right font-semibold text-gray-700">
-                        {section.score}/{AI_SCORE_MAX}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </RoundCollapsibleSection>
-          )}
-
-          {selectedRoundScore?.scoring_reason && (
-            <RoundCollapsibleSection title="Summary">
-              <p className="text-sm leading-relaxed text-gray-600">
-                {selectedRoundScore.scoring_reason}
-              </p>
-            </RoundCollapsibleSection>
-          )}
-
-          {selectedRoundIsVoiceCall && (
-            // What actually happened on the call — completed, asked to
-            // reschedule, said not interested, never picked up, or cut off.
-            // Backed by interview-service's `GET /bookings/{id}`
-            // (`selectedBooking`), not candidate-service.
-            <RoundCollapsibleSection
-              title="Call Outcome"
-              summary={
-                selectedBooking?.call_intent != null
-                  ? formatCallIntent(selectedBooking.call_intent)
-                  : undefined
-              }
-            >
-              <div className="text-lg font-bold text-primary">
-                {formatCallIntent(selectedBooking?.call_intent ?? null)}
-              </div>
-              {selectedBooking?.call_intent_reason ? (
-                <p className="mt-1 text-sm text-gray-600">{selectedBooking.call_intent_reason}</p>
-              ) : selectedBooking?.call_intent == null ? (
-                <p className="mt-1 text-sm text-gray-400">
-                  Not available yet — updates once this call has ended.
-                </p>
-              ) : null}
-            </RoundCollapsibleSection>
-          )}
-
-          {selectedRoundIsIntakeCall && (
-            // Same transcript-vs-resume authenticity signal shown on the
-            // Resume stage — surfaced here too since it's about THIS call.
-            <RoundCollapsibleSection
-              title="Resume Consistency"
-              summary={
-                candidate?.consistency_score != null
-                  ? `${candidate.consistency_score}/${AI_SCORE_MAX}`
-                  : undefined
-              }
-            >
-              <div className="text-2xl font-bold text-primary">
-                {candidate?.consistency_score != null
-                  ? `${candidate.consistency_score} / ${AI_SCORE_MAX}`
-                  : '-'}
-              </div>
-              {candidate?.consistency_score_reason ? (
-                <p className="mt-1 text-sm text-gray-600">{candidate.consistency_score_reason}</p>
-              ) : (
-                <p className="mt-1 text-sm text-gray-400">
-                  Not available yet; reported once both the resume and this call&apos;s transcript
-                  are in.
-                </p>
-              )}
-            </RoundCollapsibleSection>
-          )}
-
-          {selectedRoundIsVoiceCall && (bookingHistory?.length ?? 0) > 1 && (
-            // Only once there's more than one attempt. `bookingHistory` is
-            // oldest-first; rendered newest-first.
-            <RoundCollapsibleSection
-              title="Reschedule History"
-              subtitle="Select an attempt to view its questions below."
-              summary={`${bookingHistory?.length ?? 0} attempts`}
-            >
-              <div className="flex flex-col gap-3">
-                {[...(bookingHistory ?? [])].reverse().map((attempt, index) => {
-                  // Positional — the LAST entry after reversing is the
-                  // original booking (never itself a reschedule).
-                  const isOriginal = index === (bookingHistory?.length ?? 1) - 1;
-                  const actionTime = formatDateTime(attempt.created_at);
-                  // index 0 (current attempt) maps to `null`, same as
-                  // `selectedAttemptBookingId`'s own "current" default.
-                  const isSelected =
-                    index === 0
-                      ? selectedAttemptBookingId === null
-                      : selectedAttemptBookingId === attempt.id;
-                  return (
-                    <button
-                      key={attempt.id}
-                      type="button"
-                      onClick={() => setSelectedAttemptBookingId(index === 0 ? null : attempt.id)}
-                      aria-pressed={isSelected}
-                      className={`flex w-full items-start justify-between gap-3 rounded-lg border-b border-gray-100 px-2 pb-3 pt-1 text-left last:border-0 last:pb-0 cursor-pointer hover:bg-gray-50 ${
-                        isSelected ? 'bg-primary-50' : ''
-                      }`}
+                    </Tooltip>
+                  </>
+                )}
+              {(() => {
+                // Invite + Re-invite, side by side. INVITE (no booking yet)
+                // opens the "Send interview invite" dialog (with the panel
+                // roster picker for PANEL). RE-INVITE (a booking whose attempt
+                // has concluded) goes through the same reschedule flow
+                // interview-service's request-reschedule endpoint allows
+                // (voice calls once a `call_intent` exists, PANEL once the
+                // booking concluded). Each is disabled, with the reason on
+                // hover, when it doesn't apply.
+                const hasBooking = Boolean(selectedRound.interview_booking_id);
+                const canReinvite =
+                  hasBooking &&
+                  ((selectedRoundIsVoiceCall && selectedBooking?.call_intent != null) ||
+                    (isPanelRound &&
+                      selectedBooking != null &&
+                      CONCLUDED_BOOKING_STATUSES.includes(selectedBooking.status)));
+                const isBusy = isCreatingBooking || isSavingInterviewers || isRequestingReschedule;
+                const slotSource = isPanelRound
+                  ? 'from the panel’s connected calendar'
+                  : isAiVideoRound(selectedRound)
+                    ? 'from the available AI Video slots'
+                    : isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound)
+                      ? 'from the available AI audio slots'
+                      : 'from the available slots';
+                const reinviteTooltip = canReinvite
+                  ? 'Send re-invite'
+                  : hasBooking
+                    ? 'Re-invite is available once this attempt has concluded'
+                    : 'Re-invite is available after the first invite';
+                return (
+                  <>
+                    <Tooltip
+                      title={
+                        hasBooking
+                          ? `Invite sent. The candidate picks a time ${slotSource}.`
+                          : 'Send invite'
+                      }
                     >
+                      <span className="inline-flex">
+                        <button
+                          type="button"
+                          className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={isBusy || hasBooking}
+                          onClick={() => setIsInviteOpen(true)}
+                        >
+                          <LuSend size={15} strokeWidth={2} aria-hidden />
+                          {hasBooking ? 'Invited' : 'Invite'}
+                        </button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title={reinviteTooltip}>
+                      <span className="inline-flex">
+                        <button
+                          type="button"
+                          aria-label="Send re-invite"
+                          className={`${candidateHeaderIconCircle} shrink-0`}
+                          disabled={isBusy || !canReinvite}
+                          onClick={() => {
+                            setRescheduleRound(selectedRound);
+                            setIsRescheduleConfirmOpen(true);
+                          }}
+                        >
+                          <LuRefreshCw size={17} strokeWidth={2} aria-hidden />
+                        </button>
+                      </span>
+                    </Tooltip>
+                  </>
+                );
+              })()}
+              {/* Identity Verification is never scored, so it gets no button. */}
+              {isIntakeCallRound(selectedRound)
+                ? scoringCriteriaButton('intake', roundLabel(selectedRound))
+                : isIdentityVerificationRound(selectedRound)
+                  ? null
+                  : scoringCriteriaButton('interview', roundLabel(selectedRound))}
+            </>
+          }
+          feedback={
+            // The recruiter's own verdict on the round: their score and note
+            // (the same record Interview Score shows beside the AI score),
+            // then the candidate's own post-round rating once submitted.
+            <>
+              <section className="rounded-xl border border-[#E2E2E2] bg-white px-5 py-4 sm:px-6">
+                {selectedRoundScore ? (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
                       <div>
-                        <div className="text-sm font-semibold text-gray-900">
-                          {index === 0
-                            ? 'Current attempt'
-                            : `Attempt ${bookingHistory!.length - index}`}
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                          Recruiter Score
                         </div>
-                        {index !== 0 && actionTime && (
-                          <div className="text-xs text-gray-500">
-                            {isOriginal ? 'Created' : 'Rescheduled'} {actionTime}
-                          </div>
-                        )}
-                        <div className="text-xs text-gray-400">
-                          {formatDateTime(attempt.start_time)
-                            ? `Scheduled for ${formatDateTime(attempt.start_time)}`
-                            : CONCLUDED_BOOKING_STATUSES.includes(attempt.status)
-                              ? 'Call placed immediately (no scheduled time)'
-                              : 'Not yet scheduled'}
+                        <div className="mt-1 text-2xl font-bold text-green-700">
+                          {selectedRoundScore.recruiter_score != null
+                            ? `${selectedRoundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
+                            : '-'}
                         </div>
                       </div>
-                      <span className="shrink-0 text-xs font-semibold text-primary-600">
-                        {formatCallIntent(attempt.call_intent)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </RoundCollapsibleSection>
-          )}
-
-          {isPanelRound && (
-            <RoundCollapsibleSection
-              title="Interview Questions"
-              subtitle="Visible to whoever is preparing for or sitting on this panel."
-              summary={
-                roundQuestions && roundQuestions.questions.length > 0
-                  ? `${roundQuestions.questions.length} questions`
-                  : undefined
-              }
-            >
-              {roundQuestions && roundQuestions.questions.length > 0 ? (
-                <ol className="list-decimal space-y-3 pl-5 text-sm">
-                  {roundQuestions.questions.map((q) => (
-                    <li key={q.id} className="text-gray-800">
-                      {q.question_text}
-                      {q.answer_text && (
-                        <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="text-sm text-gray-400">
-                  No questions have been added for this round yet.
-                </p>
+                      <Button
+                        className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700"
+                        onClick={() =>
+                          setScoreModalFor({
+                            scoreId: selectedRoundScore.id,
+                            roundName: roundLabel(selectedRound),
+                            currentScore: selectedRoundScore.recruiter_score,
+                            currentReason: selectedRoundScore.recruiter_score_reason,
+                          })
+                        }
+                      >
+                        {selectedRoundScore.recruiter_score != null
+                          ? 'EDIT RECRUITER SCORE'
+                          : 'RATE THIS ROUND'}
+                      </Button>
+                    </div>
+                    <div>
+                      <div className="mb-1 text-sm font-semibold text-gray-700">Feedback</div>
+                      <p className="whitespace-pre-line text-sm text-gray-600">
+                        {selectedRoundScore.recruiter_score_reason || 'No feedback added yet.'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    Feedback can be added once this round has been scored.
+                  </p>
+                )}
+              </section>
+              {selectedRound.candidate_feedback_submitted_at && (
+                <section className="rounded-xl border border-[#E2E2E2] bg-white px-5 py-4 sm:px-6">
+                  <RoundCandidateFeedback
+                    feedback={{
+                      candidate_feedback_rating: selectedRound.candidate_feedback_rating,
+                      candidate_feedback_text: selectedRound.candidate_feedback_text,
+                      candidate_feedback_submitted_at:
+                        selectedRound.candidate_feedback_submitted_at,
+                    }}
+                  />
+                </section>
               )}
-            </RoundCollapsibleSection>
-          )}
+            </>
+          }
+          summary={
+            <>
+              {/* Old app's recording card: the player right in the card
+              (RoundArtifactsPanel). `lazy`: nothing downloads until the card
+              is first opened. Nothing is recorded before the round is booked. */}
+              <RoundCollapsibleSection
+                title={
+                  isAiVideoRound(selectedRound) || isPanelRound
+                    ? 'Video Interview Recording'
+                    : 'Interview Recording'
+                }
+                lazy
+              >
+                {hasRoundRecordings(selectedRound) && candidateId ? (
+                  <RoundRecording
+                    candidateId={candidateId}
+                    roundId={selectedRound.id}
+                    roundType={selectedRound.round_type}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-600">Not available</p>
+                )}
+              </RoundCollapsibleSection>
 
-          {isVoiceScreeningRound && (
-            <RoundCollapsibleSection
-              title="Questions Asked"
-              summary={questionsAskedAttemptLabel ?? undefined}
-            >
-              {isLoadingQuestionsAsked ? (
-                <Loader />
-              ) : questionsAskedError ? (
-                <p className="text-sm text-gray-400">
-                  Could not load the questions for this call right now.
-                </p>
-              ) : questionsAsked?.status === 'not_yet_concluded' ? (
-                <p className="text-sm text-gray-400">This round hasn&apos;t concluded yet.</p>
-              ) : questionsAsked?.status === 'no_questions_asked' ? (
-                <p className="text-sm text-gray-400">
-                  {questionsAsked.reason ?? 'No questions were recorded for this call.'}
-                </p>
-              ) : questionsAsked && questionsAsked.questions.length > 0 ? (
-                <>
-                  <ol className="list-decimal space-y-3 pl-5 text-sm">
-                    {questionsAsked.questions.map((q) => (
-                      <li key={q.question_id} className="text-gray-800">
-                        {q.question_text}
-                        {q.answer_text && (
-                          <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
-                        )}
-                        {q.scoring_sections.length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {q.scoring_sections.map((section) => (
-                              <Badge key={section} status="neutral" dot={false}>
-                                {section}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
-                  {questionsAsked.limitation && (
-                    <p className="mt-2 text-xs text-gray-400">{questionsAsked.limitation}</p>
+              {selectedRoundScore && (
+                // The round's own AI/recruiter score. The per-section
+                // breakdown and the AI's reasoning get their own sections below.
+                <RoundCollapsibleSection
+                  title="Interview Score"
+                  summary={
+                    selectedRoundScore.score == null && selectedRoundScore.recruiter_score == null
+                      ? undefined
+                      : [
+                          selectedRoundScore.score != null
+                            ? `AI ${selectedRoundScore.score}/${AI_SCORE_MAX}`
+                            : null,
+                          selectedRoundScore.recruiter_score != null
+                            ? `Recruiter ${selectedRoundScore.recruiter_score}/${HUMAN_SCORE_MAX}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                  }
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                          AI Score
+                        </div>
+                        <div className="mt-1 text-2xl font-bold text-primary">
+                          {selectedRoundScore.score != null
+                            ? `${selectedRoundScore.score} / ${AI_SCORE_MAX}`
+                            : '-'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                          Recruiter Score
+                        </div>
+                        <div className="mt-1 text-2xl font-bold text-green-700">
+                          {selectedRoundScore.recruiter_score != null
+                            ? `${selectedRoundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
+                            : '-'}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-xs font-semibold text-primary-700"
+                      onClick={() =>
+                        setScoreModalFor({
+                          scoreId: selectedRoundScore.id,
+                          roundName: roundLabel(selectedRound),
+                          currentScore: selectedRoundScore.recruiter_score,
+                          currentReason: selectedRoundScore.recruiter_score_reason,
+                        })
+                      }
+                    >
+                      {selectedRoundScore.recruiter_score != null
+                        ? 'EDIT RECRUITER SCORE'
+                        : 'RATE THIS ROUND'}
+                    </Button>
+                  </div>
+                  {selectedRoundScore.recruiter_score_reason && (
+                    <p className="mt-3 text-sm text-gray-600">
+                      <span className="font-semibold text-gray-700">Recruiter note: </span>
+                      {selectedRoundScore.recruiter_score_reason}
+                    </p>
                   )}
-                </>
-              ) : (
-                <p className="text-sm text-gray-400">No questions were recorded for this call.</p>
+                </RoundCollapsibleSection>
               )}
-            </RoundCollapsibleSection>
-          )}
-        </>
+
+              {selectedRoundScore?.section_scores &&
+                selectedRoundScore.section_scores.length > 0 && (
+                  <RoundCollapsibleSection
+                    title="Scorecard"
+                    summary={`${selectedRoundScore.section_scores.length} categories`}
+                  >
+                    <div className="flex flex-col gap-3">
+                      {selectedRoundScore.section_scores.map((section) => {
+                        const pct = Math.max(
+                          0,
+                          Math.min(100, (section.score / AI_SCORE_MAX) * 100)
+                        );
+                        const barClass =
+                          pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-danger';
+                        return (
+                          <div
+                            key={section.key}
+                            className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm"
+                          >
+                            <span
+                              className="truncate text-gray-800"
+                              title={formatSectionKey(section.key)}
+                            >
+                              {formatSectionKey(section.key)}
+                            </span>
+                            <span className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+                              <span
+                                className={`block h-full rounded-full ${barClass}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </span>
+                            <span className="text-right font-semibold text-gray-700">
+                              {section.score}/{AI_SCORE_MAX}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </RoundCollapsibleSection>
+                )}
+
+              {selectedRoundScore?.scoring_reason && (
+                <RoundCollapsibleSection title="Summary">
+                  <p className="text-sm leading-relaxed text-gray-600">
+                    {selectedRoundScore.scoring_reason}
+                  </p>
+                </RoundCollapsibleSection>
+              )}
+
+              {/* Transcript as the old app's chat bubbles, in its own
+                  scroll box with an expand-to-popup icon (RoundArtifactsPanel). */}
+              <RoundCollapsibleSection title="Transcripts" lazy>
+                {hasRoundRecordings(selectedRound) && candidateId ? (
+                  <RoundTranscript
+                    candidateId={candidateId}
+                    roundId={selectedRound.id}
+                    roundType={selectedRound.round_type}
+                    roundName={roundLabel(selectedRound)}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-600">Not available</p>
+                )}
+              </RoundCollapsibleSection>
+
+              {selectedRoundIsVoiceCall && (
+                // What actually happened on the call — completed, asked to
+                // reschedule, said not interested, never picked up, or cut off.
+                // Backed by interview-service's `GET /bookings/{id}`
+                // (`selectedBooking`), not candidate-service.
+                <RoundCollapsibleSection
+                  title="Call Outcome"
+                  summary={
+                    selectedBooking?.call_intent != null
+                      ? formatCallIntent(selectedBooking.call_intent)
+                      : undefined
+                  }
+                >
+                  <div className="text-lg font-bold text-primary">
+                    {formatCallIntent(selectedBooking?.call_intent ?? null)}
+                  </div>
+                  {selectedBooking?.call_intent_reason ? (
+                    <p className="mt-1 text-sm text-gray-600">
+                      {selectedBooking.call_intent_reason}
+                    </p>
+                  ) : selectedBooking?.call_intent == null ? (
+                    <p className="mt-1 text-sm text-gray-400">
+                      Not available yet — updates once this call has ended.
+                    </p>
+                  ) : null}
+                </RoundCollapsibleSection>
+              )}
+
+              {selectedRoundIsIntakeCall && (
+                // Same transcript-vs-resume authenticity signal shown on the
+                // Resume stage — surfaced here too since it's about THIS call.
+                <RoundCollapsibleSection
+                  title="Resume Consistency"
+                  summary={
+                    candidate?.consistency_score != null
+                      ? `${candidate.consistency_score}/${AI_SCORE_MAX}`
+                      : undefined
+                  }
+                >
+                  <div className="text-2xl font-bold text-primary">
+                    {candidate?.consistency_score != null
+                      ? `${candidate.consistency_score} / ${AI_SCORE_MAX}`
+                      : '-'}
+                  </div>
+                  {candidate?.consistency_score_reason ? (
+                    <p className="mt-1 text-sm text-gray-600">
+                      {candidate.consistency_score_reason}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm text-gray-400">
+                      Not available yet; reported once both the resume and this call&apos;s
+                      transcript are in.
+                    </p>
+                  )}
+                </RoundCollapsibleSection>
+              )}
+
+              {selectedRoundIsVoiceCall && (bookingHistory?.length ?? 0) > 1 && (
+                // Only once there's more than one attempt. `bookingHistory` is
+                // oldest-first; rendered newest-first.
+                <RoundCollapsibleSection
+                  title="Reschedule History"
+                  subtitle="Select an attempt to view its questions below."
+                  summary={`${bookingHistory?.length ?? 0} attempts`}
+                >
+                  <div className="flex flex-col gap-3">
+                    {[...(bookingHistory ?? [])].reverse().map((attempt, index) => {
+                      // Positional — the LAST entry after reversing is the
+                      // original booking (never itself a reschedule).
+                      const isOriginal = index === (bookingHistory?.length ?? 1) - 1;
+                      const actionTime = formatDateTime(attempt.created_at);
+                      // index 0 (current attempt) maps to `null`, same as
+                      // `selectedAttemptBookingId`'s own "current" default.
+                      const isSelected =
+                        index === 0
+                          ? selectedAttemptBookingId === null
+                          : selectedAttemptBookingId === attempt.id;
+                      return (
+                        <button
+                          key={attempt.id}
+                          type="button"
+                          onClick={() =>
+                            setSelectedAttemptBookingId(index === 0 ? null : attempt.id)
+                          }
+                          aria-pressed={isSelected}
+                          className={`flex w-full items-start justify-between gap-3 rounded-lg border-b border-gray-100 px-2 pb-3 pt-1 text-left last:border-0 last:pb-0 cursor-pointer ${
+                            isSelected
+                              ? 'bg-primary text-white'
+                              : 'group hover:bg-primary hover:text-white'
+                          }`}
+                        >
+                          <div>
+                            <div
+                              className={`text-sm font-semibold ${isSelected ? 'text-white' : 'text-gray-900 group-hover:text-white'}`}
+                            >
+                              {index === 0
+                                ? 'Current attempt'
+                                : `Attempt ${bookingHistory!.length - index}`}
+                            </div>
+                            {index !== 0 && actionTime && (
+                              <div
+                                className={`text-xs ${isSelected ? 'text-white/80' : 'text-gray-500 group-hover:text-white/80'}`}
+                              >
+                                {isOriginal ? 'Created' : 'Rescheduled'} {actionTime}
+                              </div>
+                            )}
+                            <div
+                              className={`text-xs ${isSelected ? 'text-white/70' : 'text-gray-400 group-hover:text-white/70'}`}
+                            >
+                              {formatDateTime(attempt.start_time)
+                                ? `Scheduled for ${formatDateTime(attempt.start_time)}`
+                                : CONCLUDED_BOOKING_STATUSES.includes(attempt.status)
+                                  ? 'Call placed immediately (no scheduled time)'
+                                  : 'Not yet scheduled'}
+                            </div>
+                          </div>
+                          <span
+                            className={`shrink-0 text-xs font-semibold ${isSelected ? 'text-white' : 'text-primary-600 group-hover:text-white'}`}
+                          >
+                            {formatCallIntent(attempt.call_intent)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </RoundCollapsibleSection>
+              )}
+
+              {isPanelRound && (
+                <RoundCollapsibleSection
+                  title="Interview Questions"
+                  subtitle="Visible to whoever is preparing for or sitting on this panel."
+                  summary={
+                    roundQuestions && roundQuestions.questions.length > 0
+                      ? `${roundQuestions.questions.length} questions`
+                      : undefined
+                  }
+                >
+                  {roundQuestions && roundQuestions.questions.length > 0 ? (
+                    <ol className="list-decimal space-y-3 pl-5 text-sm">
+                      {roundQuestions.questions.map((q) => (
+                        <li key={q.id} className="text-gray-800">
+                          {q.question_text}
+                          {q.answer_text && (
+                            <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="text-sm text-gray-400">
+                      No questions have been added for this round yet.
+                    </p>
+                  )}
+                </RoundCollapsibleSection>
+              )}
+
+              {isVoiceScreeningRound && (
+                <RoundCollapsibleSection
+                  title="Questions Asked"
+                  summary={questionsAskedAttemptLabel ?? undefined}
+                >
+                  {isLoadingQuestionsAsked ? (
+                    <Loader />
+                  ) : questionsAskedError ? (
+                    <p className="text-sm text-gray-400">
+                      Could not load the questions for this call right now.
+                    </p>
+                  ) : questionsAsked?.status === 'not_yet_concluded' ? (
+                    <p className="text-sm text-gray-400">This round hasn&apos;t concluded yet.</p>
+                  ) : questionsAsked?.status === 'no_questions_asked' ? (
+                    <p className="text-sm text-gray-400">
+                      {questionsAsked.reason ?? 'No questions were recorded for this call.'}
+                    </p>
+                  ) : questionsAsked && questionsAsked.questions.length > 0 ? (
+                    <>
+                      <ol className="list-decimal space-y-3 pl-5 text-sm">
+                        {questionsAsked.questions.map((q) => (
+                          <li key={q.question_id} className="text-gray-800">
+                            {q.question_text}
+                            {q.answer_text && (
+                              <p className="mt-0.5 text-xs text-gray-400">{q.answer_text}</p>
+                            )}
+                            {q.scoring_sections.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {q.scoring_sections.map((section) => (
+                                  <Badge key={section} status="neutral" dot={false}>
+                                    {section}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                      {questionsAsked.limitation && (
+                        <p className="mt-2 text-xs text-gray-400">{questionsAsked.limitation}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-400">
+                      No questions were recorded for this call.
+                    </p>
+                  )}
+                </RoundCollapsibleSection>
+              )}
+            </>
+          }
+        />
       )}
     </>
   ) : null;
@@ -1856,6 +1978,43 @@ const CandidateDetails = () => {
   return (
     <>
       {isCandidateLoading && <Loader />}
+      {/* Floating Email / SMS dock on the right edge — reachable from
+          anywhere on the page without scrolling back to the header. Opens
+          the same modals as the header icons. */}
+      <div className="fixed right-2 top-1/2 z-40 flex -translate-y-1/2 flex-col gap-3 sm:right-4">
+        <Tooltip
+          placement="left"
+          title={candidate?.email_id ? `Email ${candidate.email_id}` : 'No email on file'}
+        >
+          <span className="animate-float-bob inline-flex">
+            <button
+              type="button"
+              aria-label="Email candidate"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!candidate?.email_id}
+              onClick={() => setIsEmailOpen(true)}
+            >
+              <LuMail size={19} strokeWidth={2} aria-hidden />
+            </button>
+          </span>
+        </Tooltip>
+        <Tooltip
+          placement="left"
+          title={candidate?.contact_no ? 'Send SMS' : 'No phone number on file'}
+        >
+          <span className="animate-float-bob inline-flex [animation-delay:-1.5s]">
+            <button
+              type="button"
+              aria-label="Send SMS"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!candidate?.contact_no}
+              onClick={() => setIsSmsOpen(true)}
+            >
+              <IoChatbubbleEllipses size={19} aria-hidden />
+            </button>
+          </span>
+        </Tooltip>
+      </div>
       <div className="flex flex-col mb-4 gap-2">
         <div className="flex-1 bg-white px-6 py-4 shadow-sm rounded-xl">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-200">
@@ -1945,6 +2104,40 @@ const CandidateDetails = () => {
                 )}
                 {candidate?.status_label || 'Applied'}
               </span>
+              {/* Previous / Next in the listing's order (see useCandidateNavigation). */}
+              {candidateNav.isReady && candidateNav.total > 1 && (
+                <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
+                  <Tooltip title="Previous candidate">
+                    <span className="inline-flex">
+                      <button
+                        type="button"
+                        className={candidateHeaderIconCircle}
+                        disabled={!candidateNav.hasPrev}
+                        aria-label="Previous candidate"
+                        onClick={() => candidateNav.goPrev(activeTab)}
+                      >
+                        <LuChevronLeft size={18} strokeWidth={2} aria-hidden />
+                      </button>
+                    </span>
+                  </Tooltip>
+                  <span className="whitespace-nowrap text-xs font-medium text-gray-500 tabular-nums">
+                    {candidateNav.position} of {candidateNav.total}
+                  </span>
+                  <Tooltip title="Next candidate">
+                    <span className="inline-flex">
+                      <button
+                        type="button"
+                        className={candidateHeaderIconCircle}
+                        disabled={!candidateNav.hasNext}
+                        aria-label="Next candidate"
+                        onClick={() => candidateNav.goNext(activeTab)}
+                      >
+                        <LuChevronRight size={18} strokeWidth={2} aria-hidden />
+                      </button>
+                    </span>
+                  </Tooltip>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1987,7 +2180,11 @@ const CandidateDetails = () => {
                   <div className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] items-center font-semibold">
                     <div
                       className="truncate pr-2"
-                      title="Average across rounds with a score (Intake Call consistency check not included)"
+                      title={
+                        allRoundsCompleted
+                          ? 'Average across rounds with a score (Intake Call consistency check not included)'
+                          : 'Shown once all rounds are completed'
+                      }
                     >
                       Overall Score
                     </div>
@@ -2023,8 +2220,9 @@ const CandidateDetails = () => {
                 // Always visible while the candidate is still in the
                 // pipeline. During the Intake Call consistency check they
                 // stay on screen, greyed out, with the reason on hover.
-                // MARK AS SELECTED appears once the candidate reaches their
-                // last round (or every round is done), beside ADVANCE.
+                // MARK AS SELECTED is offered on every round: the backend
+                // completes the resume stage and skips whatever rounds are
+                // left (candidate-service _status_round_cascade.py).
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Tooltip
                     title={
@@ -2081,19 +2279,25 @@ const CandidateDetails = () => {
                       </Button>
                     </span>
                   </Tooltip>
-                  {(isOnLastRound || allRoundsCompleted) && (
-                    <Tooltip title={actionsLockedForIntakePair ? intakeLockReason : undefined}>
-                      <span className="flex sm:col-span-3">
-                        <Button
-                          className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full border-2 border-green-500 bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={() => setStatusModal('select')}
-                          disabled={actionsLockedForIntakePair}
-                        >
-                          <span className="text-green-700 font-semibold">MARK AS SELECTED</span>
-                        </Button>
-                      </span>
-                    </Tooltip>
-                  )}
+                  <Tooltip
+                    title={
+                      actionsLockedForIntakePair
+                        ? intakeLockReason
+                        : !isOnLastRound && !allRoundsCompleted
+                          ? 'Select now: any remaining rounds will be skipped'
+                          : undefined
+                    }
+                  >
+                    <span className="flex sm:col-span-3">
+                      <Button
+                        className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full border-2 border-green-500 bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => setStatusModal('select')}
+                        disabled={actionsLockedForIntakePair}
+                      >
+                        <span className="text-green-700 font-semibold">MARK AS SELECTED</span>
+                      </Button>
+                    </span>
+                  </Tooltip>
                 </div>
               )}
               {isTerminal && (
@@ -2211,7 +2415,7 @@ const CandidateDetails = () => {
                     { label: 'Email ID', value: candidate?.email_id, required: true },
                     { label: 'Source', value: sourceLabel, required: false },
                     {
-                      label: 'Applied',
+                      label: 'Applied Date',
                       value: formatDateTime(candidate?.applied_date),
                       required: false,
                     },
@@ -2244,11 +2448,15 @@ const CandidateDetails = () => {
                         heightClassName="h-full"
                       />
                     ) : (
-                      <p className="py-4 text-center text-sm text-gray-500">
-                        {resumeUploadLinkExpired
-                          ? "No resume yet — the candidate's upload link expired."
-                          : 'No resume on file yet.'}
-                      </p>
+                      // Same frame as the preview, message inside it.
+                      <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-gray-300 bg-white p-4 text-center">
+                        <LuFileText size={28} className="text-gray-300" aria-hidden />
+                        <p className="text-sm text-gray-500">
+                          {resumeUploadLinkExpired
+                            ? "No resume yet — the candidate's upload link expired."
+                            : 'No resume on file yet.'}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -2290,10 +2498,6 @@ const CandidateDetails = () => {
                     <div className="font-semibold text-gray-900">
                       {pipeline.avgScore != null ? `${pipeline.avgScore} / ${AI_SCORE_MAX}` : '-'}
                     </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400">Overall standing</div>
-                    <Badge status={pipeline.standing.status}>{pipeline.standing.label}</Badge>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 lg:ml-auto">
                     <span className="flex items-center gap-1.5">
@@ -2548,6 +2752,68 @@ const CandidateDetails = () => {
           </div>
         </AntdCommonModal>
       )}
+      {isInviteOpen && selectedRound && !selectedRound.interview_booking_id && (
+        // Behind the round's invite icon. PANEL needs its roster picked
+        // first (a PANEL booking with none would fall back to an untested
+        // auto-compose path — see handleCreateBooking).
+        <AntdCommonModal
+          title="Send interview invite"
+          subtitle={roundLabel(selectedRound)}
+          open
+          onClose={() => setIsInviteOpen(false)}
+          modalProps={{ width: 560 }}
+        >
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-gray-600">
+              The candidate gets a booking link to choose a time{' '}
+              {isPanelRound
+                ? 'from the panel’s connected calendar.'
+                : isAiVideoRound(selectedRound)
+                  ? 'from the available AI Video slots.'
+                  : isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound)
+                    ? 'from the available AI audio slots.'
+                    : 'from the available slots.'}
+            </p>
+            {isPanelRound && (
+              <PanelInterviewerPicker
+                id="panel-interviewer-select"
+                value={selectedInterviewerIds}
+                onChange={setSelectedInterviewerIds}
+                options={eligibleInterviewers ?? []}
+                loading={isLoadingInterviewers}
+                calendarConnectedById={interviewerCalendarConnectedById}
+                helperText="Pick at least one panel interviewer to enable Send Invite."
+              />
+            )}
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                onClick={() => setIsInviteOpen(false)}
+                disabled={isCreatingBooking || isSavingInterviewers}
+                className="flex-1 rounded-full border border-gray-200 py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-gray-600 disabled:opacity-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() =>
+                  void handleCreateBooking().then((ok) => {
+                    if (ok) setIsInviteOpen(false);
+                  })
+                }
+                disabled={
+                  isCreatingBooking ||
+                  isSavingInterviewers ||
+                  (isPanelRound && selectedInterviewerIds.length === 0)
+                }
+                className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+              >
+                {isCreatingBooking || isSavingInterviewers ? 'Sending…' : 'Send invite'}
+              </Button>
+            </div>
+          </div>
+        </AntdCommonModal>
+      )}
       {isRescheduleConfirmOpen && isRescheduleRoundPanel && rescheduleStep === 'picker' && (
         // Same picker UI as the initial Create Booking flow (colored by
         // calendar-connect status) — just feeding `request-reschedule`'s
@@ -2619,21 +2885,6 @@ const CandidateDetails = () => {
           isLoading={isRequestingReschedule}
         />
       )}
-      {artifactsModalFor && candidateId && (
-        <RoundArtifactsModal
-          open={!!artifactsModalFor}
-          onClose={() => setArtifactsModalFor(null)}
-          candidateId={candidateId}
-          roundId={artifactsModalFor.id}
-          roundName={roundLabel(artifactsModalFor)}
-          roundType={artifactsModalFor.round_type}
-          feedback={{
-            candidate_feedback_rating: artifactsModalFor.candidate_feedback_rating,
-            candidate_feedback_text: artifactsModalFor.candidate_feedback_text,
-            candidate_feedback_submitted_at: artifactsModalFor.candidate_feedback_submitted_at,
-          }}
-        />
-      )}
       {interviewersModalFor && candidateId && (
         <PanelInterviewersModal
           open={!!interviewersModalFor}
@@ -2659,4 +2910,11 @@ const CandidateDetails = () => {
   );
 };
 
-export default CandidateDetails;
+// Keyed on the candidate so Previous / Next starts each candidate fresh
+// (tab, drafts, open modals) instead of carrying the last one's local state.
+const CandidateDetailsPage = () => {
+  const { candidateId } = useParams<{ candidateId: string }>();
+  return <CandidateDetails key={candidateId} />;
+};
+
+export default CandidateDetailsPage;

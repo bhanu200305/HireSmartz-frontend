@@ -32,8 +32,12 @@ const ResumeInlinePreview = ({
   const { downloadUrl, blobUrl, docxBlob, officeViewerUrl, inlineFailed, isFetching, error } =
     useResumeBlobUrl(candidateId, true);
 
+  // Every non-viewer state fills the same box as the preview itself, so the
+  // layout doesn't jump and the message sits inside the resume frame.
   const cannotPreview = (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-neutral-200 p-6 text-center">
+    <div
+      className={`flex ${heightClassName} flex-col items-center justify-center gap-3 rounded-lg border border-neutral-200 bg-white p-6 text-center`}
+    >
       <p className="text-sm text-gray-600">This resume can&apos;t be previewed here.</p>
       {downloadUrl && (
         <a
@@ -60,11 +64,15 @@ const ResumeInlinePreview = ({
 
   if (error || !downloadUrl) {
     return (
-      <p className="rounded-lg border border-neutral-200 p-4 text-center text-sm text-gray-500">
-        {error
-          ? getCandidateErrorMessage(error, 'Could not load the resume.')
-          : 'No resume on file yet.'}
-      </p>
+      <div
+        className={`flex ${heightClassName} items-center justify-center rounded-lg border border-neutral-200 bg-white p-4 text-center`}
+      >
+        <p className="text-sm text-gray-500">
+          {error
+            ? getCandidateErrorMessage(error, 'Could not load the resume.')
+            : 'No resume on file yet.'}
+        </p>
+      </div>
     );
   }
 

@@ -388,20 +388,6 @@ canvas[data-agora-recording='true'] {
   overflow: hidden;
 }
 
-/* Round Recordings modal (RoundArtifactsModal) — the Attempt 1/Attempt 2
- * tab strip used to scroll away with the rest of the content (recordings,
- * transcripts) inside `.modal-content` above, forcing a scroll back to the
- * top just to switch attempts. Pins it to the top of that same scroll
- * container instead; an opaque background stops the content scrolling
- * behind it from showing through underneath the tab labels. */
-.round-artifacts-tabs > .ant-tabs-nav {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background-color: #ffffff;
-  margin-bottom: 16px;
-}
-
 /*
  * Same header/footer-clearance rule as the antd Modal block above, for the
  * app's own hand-rolled `fixed inset-0` confirm/edit dialogs (they don't go
@@ -945,6 +931,29 @@ select:focus {
 
 .animate-slideUp {
   animation: slideUp 0.3s ease-out;
+}
+
+/* Candidate page's floating Email / SMS buttons — a gentle bob so they read
+ * as floating. Pauses on hover/focus so they're easy to click. Deliberately
+ * NOT switched off under prefers-reduced-motion (product ask: they must
+ * always move; Windows reports "reduce" whenever Animation effects is off). */
+@keyframes float-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float-bob {
+  animation: float-bob 3s ease-in-out infinite;
+}
+
+.animate-float-bob:hover,
+.animate-float-bob:focus-within {
+  animation-play-state: paused;
 }
 
 .custom-select-jobs .ant-select-selector {
