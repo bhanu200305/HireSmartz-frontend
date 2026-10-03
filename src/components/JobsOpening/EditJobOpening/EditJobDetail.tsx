@@ -671,15 +671,31 @@ const EditJobDetail = () => {
         ? departmentJobTitles
         : [];
     // extraJobTitleOptions goes last so a real list entry wins over the temporary local one.
-    return [...merged, ...extraJobTitleOptions]
-      .filter((title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id)))
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const combined = [...merged, ...extraJobTitleOptions].filter(
+      (title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id))
+    );
+    // Unmapped but selected - show its real name, not a raw id.
+    const selectedId = formValues.jobTitle?.[0];
+    if (selectedId && !combined.some((t) => idsMatch(t.id, selectedId))) {
+      const unmapped = tenantJobTitles.find((jt) => idsMatch(jt.org_job_title_id, selectedId));
+      if (unmapped) {
+        combined.push({
+          id: unmapped.org_job_title_id,
+          name: unmapped.name,
+          isActive: unmapped.is_active,
+          isDeleted: true,
+        });
+      }
+    }
+    return combined.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [
     catalogueJobTitles,
     debouncedJobTitleSearch,
     departmentJobTitles,
     extraJobTitleOptions,
     selectedDepartmentId,
+    tenantJobTitles,
+    formValues.jobTitle,
   ]);
 
   const departments = (() => {
@@ -1307,14 +1323,11 @@ const EditJobDetail = () => {
       return;
     }
 
+    // Department-scoped list only, not the tenant-wide catalogue.
     const validJobTitleIds = currentJobTitleIds.filter(
       (titleId) =>
-        jobTitleOptions.some((jt) => idsMatch(jt.id, titleId)) ||
-        jobTitleCatalogue.some((jt) => idsMatch(jt.job_title_id, titleId)) ||
-        tenantJobTitles.some(
-          (jt) =>
-            idsMatch(tenantJobTitleFormId(jt), titleId) || idsMatch(jt.org_job_title_id, titleId)
-        )
+        departmentJobTitles.some((jt) => idsMatch(jt.id, titleId)) ||
+        jobTitleCatalogue.some((jt) => idsMatch(jt.job_title_id, titleId))
     );
 
     if (validJobTitleIds.length !== currentJobTitleIds.length) {
@@ -1322,9 +1335,8 @@ const EditJobDetail = () => {
     }
   }, [
     selectedDepartmentId,
-    jobTitleOptions,
+    departmentJobTitles,
     jobTitleCatalogue,
-    tenantJobTitles,
     jobTitlesLoading,
     loadingCatalogue,
     formValues.jobTitle,
@@ -2437,7 +2449,9 @@ const EditJobDetail = () => {
                         : 'Contact your company admin to add it.'
                       : !canAddThisField
                         ? 'Contact your company admin to add it.'
-                        : null}
+                        : fieldKey === 'job_title' && !selectedDepartmentId
+                          ? 'Select a Department first to add it.'
+                          : null}
                   </span>
                   <div className="flex items-center gap-3 shrink-0">
                     {canAddThisField && fieldKey !== 'location' && (

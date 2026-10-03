@@ -16,6 +16,8 @@ export type ListTenantDepartmentsArgs = {
    * mirror is `GET /v1/platform/tenants/{id}/departments`.
    */
   isMaster?: boolean;
+  /** Include deactivated departments - off by default. */
+  includeInactive?: boolean;
 };
 
 type ListTenantDepartmentsQueryArg = string | ListTenantDepartmentsArgs;
@@ -91,7 +93,13 @@ const unwrapDepartments = (
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     listTenantDepartments: build.query<TenantDepartment[], ListTenantDepartmentsQueryArg>({
-      query: (arg) => departmentsBasePath(toDepartmentsArgs(arg)),
+      query: (arg) => {
+        const { includeInactive, ...rest } = toDepartmentsArgs(arg);
+        return {
+          url: departmentsBasePath(rest),
+          params: includeInactive ? { include_inactive: true } : undefined,
+        };
+      },
       transformResponse: unwrapDepartments,
       providesTags: (_result, _error, arg) => [
         { type: 'TenantDepartments', id: toDepartmentsArgs(arg).tenantId },

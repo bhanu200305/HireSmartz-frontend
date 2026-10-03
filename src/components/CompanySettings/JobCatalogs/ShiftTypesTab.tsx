@@ -10,7 +10,7 @@ import {
 } from '../../../api/job-service/Platform/masterShiftTypes';
 import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
-import { formatTime12h } from '../../../utils/formatTime';
+import { formatTime12h, formatDurationMinutes } from '../../../utils/formatTime';
 
 type FormValues = {
   name: string;
@@ -98,7 +98,8 @@ const ShiftTypesTab: React.FC = () => {
         {
           title: 'Duration',
           key: 'duration_minutes',
-          render: (_, item) => (item.duration_minutes ? `${item.duration_minutes} min` : '-'),
+          render: (_, item) =>
+            item.duration_minutes ? formatDurationMinutes(item.duration_minutes) : '-',
         },
       ]}
       fields={fields}

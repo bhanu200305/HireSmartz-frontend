@@ -37,6 +37,18 @@ import { RootState } from '../../../redux/provider/store';
 
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
+// Read-only display, so a plain formatted span (not an input box) keeps
+// the /hr or /year suffix hugging the number regardless of its length.
+const formatSalary = (value: number | string | null | undefined): string =>
+  value == null || value === ''
+    ? ''
+    : new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(Number(value));
+
 type ViewJobData = JobOpeningByIdResponse['data'] & {
   location?: {
     id: number;
@@ -728,26 +740,9 @@ const ViewJobDetails = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-1">
                   <Form.Item label={<span>Minimum Salary (in USD)</span>}>
                     <div className="flex items-center gap-1.5">
-                      <CurrencyInput
-                        value={jobData?.data.exemptMinSalary ?? ''}
-                        disableGroupSeparators
-                        decimalsLimit={2}
-                        decimalScale={2}
-                        disabled
-                        prefix="$"
-                        placeholder="Minimum Salary"
-                        className="w-full !lowercase"
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          padding: 0,
-                          boxShadow: 'none',
-                          color: '#111827',
-                          fontWeight: 600,
-                          fontSize: '13px',
-                        }}
-                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                      />
+                      <span style={{ color: '#111827', fontWeight: 600, fontSize: '13px' }}>
+                        {formatSalary(jobData?.data.exemptMinSalary)}
+                      </span>
                       {jobData?.data.exemptMinSalary != null && (
                         <span className="shrink-0 text-xs font-semibold text-neutral-500">
                           /year
@@ -757,26 +752,9 @@ const ViewJobDetails = () => {
                   </Form.Item>
                   <Form.Item label={<span>Maximum Salary (in USD)</span>}>
                     <div className="flex items-center gap-1.5">
-                      <CurrencyInput
-                        value={jobData?.data.exemptMaxSalary ?? ''}
-                        disableGroupSeparators
-                        decimalsLimit={2}
-                        decimalScale={2}
-                        disabled
-                        prefix="$"
-                        placeholder="Maximum Salary"
-                        className="w-full !lowercase"
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          padding: 0,
-                          boxShadow: 'none',
-                          color: '#111827',
-                          fontWeight: 600,
-                          fontSize: '13px',
-                        }}
-                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                      />
+                      <span style={{ color: '#111827', fontWeight: 600, fontSize: '13px' }}>
+                        {formatSalary(jobData?.data.exemptMaxSalary)}
+                      </span>
                       {jobData?.data.exemptMaxSalary != null && (
                         <span className="shrink-0 text-xs font-semibold text-neutral-500">
                           /year
@@ -794,26 +772,9 @@ const ViewJobDetails = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-1">
                   <Form.Item label={<span>Minimum Salary (in USD)</span>}>
                     <div className="flex items-center gap-1.5">
-                      <CurrencyInput
-                        value={jobData?.data.nonExemptMinSalary ?? ''}
-                        disableGroupSeparators
-                        decimalsLimit={2}
-                        decimalScale={2}
-                        disabled
-                        prefix="$"
-                        placeholder="Minimum Salary"
-                        className="w-full !lowercase"
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          padding: 0,
-                          boxShadow: 'none',
-                          color: '#111827',
-                          fontWeight: 600,
-                          fontSize: '13px',
-                        }}
-                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                      />
+                      <span style={{ color: '#111827', fontWeight: 600, fontSize: '13px' }}>
+                        {formatSalary(jobData?.data.nonExemptMinSalary)}
+                      </span>
                       {jobData?.data.nonExemptMinSalary != null && (
                         <span className="shrink-0 text-xs font-semibold text-neutral-500">/hr</span>
                       )}
@@ -821,26 +782,9 @@ const ViewJobDetails = () => {
                   </Form.Item>
                   <Form.Item label={<span>Maximum Salary (in USD)</span>}>
                     <div className="flex items-center gap-1.5">
-                      <CurrencyInput
-                        value={jobData?.data.nonExemptMaxSalary ?? ''}
-                        disableGroupSeparators
-                        decimalsLimit={2}
-                        decimalScale={2}
-                        disabled
-                        prefix="$"
-                        placeholder="Maximum Salary"
-                        className="w-full !lowercase"
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          padding: 0,
-                          boxShadow: 'none',
-                          color: '#111827',
-                          fontWeight: 600,
-                          fontSize: '13px',
-                        }}
-                        intlConfig={{ locale: 'en-US', currency: 'USD' }}
-                      />
+                      <span style={{ color: '#111827', fontWeight: 600, fontSize: '13px' }}>
+                        {formatSalary(jobData?.data.nonExemptMaxSalary)}
+                      </span>
                       {jobData?.data.nonExemptMaxSalary != null && (
                         <span className="shrink-0 text-xs font-semibold text-neutral-500">/hr</span>
                       )}

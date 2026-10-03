@@ -19,7 +19,7 @@ const TONE = {
 } as const;
 
 /** Explanations longer than this are cut with "…" and a See more toggle. */
-const REASON_WORD_LIMIT = 300;
+const REASON_WORD_LIMIT = 100;
 
 /** The AI's explanation, truncated to REASON_WORD_LIMIT words until expanded. */
 const ReasonText = ({ text }: { text: string }) => {
@@ -48,9 +48,13 @@ const ReasonText = ({ text }: { text: string }) => {
 };
 
 // One AI score on the Resume Screening panel (resume score, intake-call
-// consistency), laid out as a full-width horizontal row: label + "x / 5" with
-// a colour-banded bar on the left, the AI's explanation filling the right.
-// Stacks vertically on narrow screens.
+// consistency): label + "x / 5" with a colour-banded bar on top, the AI's
+// explanation below it — always stacked, full card width, never a side
+// column. A side-by-side layout here (score block left, text right) looked
+// right in principle but a narrow text column wraps prose into an
+// unreadable single-word-per-line column the moment anything upstream eats
+// even a little of its width; stacking removes that failure mode entirely
+// since the explanation always gets the full card to itself.
 const ScoreSummaryTile = ({ label, icon, score, reason, pendingText }: ScoreSummaryTileProps) => {
   const isScored = score != null;
   const status = isScored ? scoreBadgeStatus(score) : null;
@@ -58,39 +62,38 @@ const ScoreSummaryTile = ({ label, icon, score, reason, pendingText }: ScoreSumm
     status === 'success' || status === 'warning' || status === 'danger' ? TONE[status] : null;
 
   return (
-    <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 sm:flex-row sm:gap-6">
-      <div className="flex shrink-0 flex-col gap-3 sm:w-52">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
-            {icon}
-          </span>
-          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            {label}
-          </span>
-        </div>
-
-        {isScored && tone ? (
-          <>
-            <div className="flex items-baseline gap-1">
-              <span className={`text-3xl font-bold leading-none ${tone.text}`}>{score}</span>
-              <span className="text-sm font-medium text-gray-400">/ {AI_SCORE_MAX}</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-              <div
-                className={`h-full rounded-full ${tone.bar} transition-[width] duration-500`}
-                style={{ width: `${aiScorePercent(score)}%` }}
-              />
-            </div>
-          </>
-        ) : (
-          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-400" aria-hidden />
-            Pending
-          </span>
-        )}
+    <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
+          {icon}
+        </span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</span>
       </div>
 
-      <div className="min-w-0 flex-1 sm:border-l sm:border-gray-100 sm:pl-6">
+      {isScored && tone ? (
+        <>
+          <div className="flex items-baseline gap-1">
+            <span className={`text-3xl font-bold leading-none ${tone.text}`}>{score}</span>
+            <span className="text-sm font-medium text-gray-400">/ {AI_SCORE_MAX}</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+            <div
+              className={`h-full rounded-full ${tone.bar} transition-[width] duration-500`}
+              style={{ width: `${aiScorePercent(score)}%` }}
+            />
+          </div>
+        </>
+      ) : (
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-500">
+          <span className="h-1.5 w-1.5 rounded-full bg-gray-400" aria-hidden />
+          Pending
+        </span>
+      )}
+
+      {/* The score/bar above reads as one unit; this divider is what marks
+          "everything below is the explanation", now that there's no longer
+          a side border doing that job. */}
+      <div className="min-w-0 border-t border-gray-100 pt-3">
         {reason ? (
           <ReasonText text={reason} />
         ) : (

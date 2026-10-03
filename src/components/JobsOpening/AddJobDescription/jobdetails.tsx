@@ -503,6 +503,14 @@ const JobDetails = () => {
       country: jobDetails?.country || '',
       state: jobDetails?.state || '',
       useCultureIntro: jobDetails?.useCultureIntro ?? false,
+      // exemptionStatus isn't a stored field - derive it from whichever
+      // salary values are already present, same as the live AI-fill does.
+      exemptionStatus: jobDetails?.exemptionStatus?.length
+        ? jobDetails.exemptionStatus
+        : [
+            ...(jobDetails?.exemptMinSalary != null ? ['true'] : []),
+            ...(jobDetails?.nonExemptMinSalary != null ? ['false'] : []),
+          ],
     },
   });
 
@@ -534,6 +542,21 @@ const JobDetails = () => {
     }
     return base;
   }, [organizationShifts, shiftMissingFromActiveList, deactivatedShift]);
+
+  // Same fallback as shift above, for a deactivated department.
+  const selectedDepartmentIdForFallback = (watch('department') || [])[0];
+  const selectedDepartmentIdForFallbackStr =
+    selectedDepartmentIdForFallback != null ? String(selectedDepartmentIdForFallback) : '';
+  const departmentMissingFromActiveList =
+    Boolean(selectedDepartmentIdForFallbackStr) &&
+    !orgDepartments.some((item) => String(item.org_department_id) === selectedDepartmentIdForFallbackStr);
+  const { data: orgDepartmentsInclInactive } = useListTenantDepartmentsQuery(
+    { tenantId: tenantId ?? '', isMaster, includeInactive: true },
+    { skip: !tenantId || !departmentMissingFromActiveList }
+  );
+  const deactivatedDepartment = orgDepartmentsInclInactive?.find(
+    (item) => String(item.org_department_id) === selectedDepartmentIdForFallbackStr
+  );
 
   // Active-only, unbounded job-type list — same reasoning as shifts above.
   const {
@@ -885,15 +908,31 @@ const JobDetails = () => {
         ? mappedDepartmentJobTitles
         : [];
     // extraJobTitleOptions goes last so a real list entry wins over the temporary local one.
-    return [...merged, ...extraJobTitleOptions]
-      .filter((title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id)))
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const combined = [...merged, ...extraJobTitleOptions].filter(
+      (title, index, self) => index === self.findIndex((t) => idsMatch(t.id, title.id))
+    );
+    // Unmapped but selected - show its real name, not a raw id.
+    const selectedId = formValues.jobTitle?.[0];
+    if (selectedId && !combined.some((t) => idsMatch(t.id, selectedId))) {
+      const unmapped = tenantJobTitles.find((jt) => idsMatch(jt.org_job_title_id, selectedId));
+      if (unmapped) {
+        combined.push({
+          id: unmapped.org_job_title_id,
+          name: unmapped.name,
+          isActive: unmapped.is_active,
+          isDeleted: true,
+        });
+      }
+    }
+    return combined.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [
     debouncedJobTitleSearch,
     extraJobTitleOptions,
     mappedCatalogueJobTitles,
     mappedDepartmentJobTitles,
     selectedDepartmentId,
+    tenantJobTitles,
+    formValues.jobTitle,
   ]);
 
   // AI-suggested skills for the currently selected job title — needs the real org_job_title_id, not the form's composite id.
@@ -980,6 +1019,18 @@ const JobDetails = () => {
       isActive: department.is_active,
       isDeleted: false,
     }))
+    .concat(
+      departmentMissingFromActiveList && deactivatedDepartment
+        ? [
+            {
+              id: deactivatedDepartment.org_department_id,
+              name: deactivatedDepartment.name,
+              isActive: deactivatedDepartment.is_active,
+              isDeleted: true,
+            },
+          ]
+        : []
+    )
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const cultureInfoText = String(tenantCultureIntro?.intro_text || '').trim();
   const hasCultureInfo = Boolean(cultureInfoText);
@@ -1316,14 +1367,11 @@ const JobDetails = () => {
       return;
     }
 
+    // Department-scoped list only, not the tenant-wide catalogue.
     const validJobTitleIds = currentJobTitleIds.filter(
       (titleId) =>
-        jobTitleOptions.some((jt) => idsMatch(jt.id, titleId)) ||
-        jobTitleCatalogue.some((jt) => idsMatch(jt.job_title_id, titleId)) ||
-        tenantJobTitles.some(
-          (jt) =>
-            idsMatch(tenantJobTitleFormId(jt), titleId) || idsMatch(jt.org_job_title_id, titleId)
-        )
+        mappedDepartmentJobTitles.some((jt) => idsMatch(jt.id, titleId)) ||
+        jobTitleCatalogue.some((jt) => idsMatch(jt.job_title_id, titleId))
     );
 
     if (validJobTitleIds.length !== currentJobTitleIds.length) {
@@ -1331,9 +1379,8 @@ const JobDetails = () => {
     }
   }, [
     selectedDepartmentId,
-    jobTitleOptions,
+    mappedDepartmentJobTitles,
     jobTitleCatalogue,
-    tenantJobTitles,
     loadingDepartmentJobTitles,
     loadingCatalogue,
     formValues.jobTitle,
@@ -1590,8 +1637,12 @@ const JobDetails = () => {
         return;
       }
     } catch (err) {
+      const status = (err as { status?: number })?.status;
       showToast({
-        message: getJobErrorMessage(err, 'Something went wrong while updating dropdown.'),
+        message:
+          status === 403
+            ? "You don't have permission to link this job title to this department. Ask an admin to do it."
+            : getJobErrorMessage(err, 'Something went wrong while updating dropdown.'),
         type: 'error',
       });
     } finally {
@@ -2630,7 +2681,9 @@ const JobDetails = () => {
                                 : 'Contact your company admin to add it.'
                               : !canAddThisField
                                 ? 'Contact your company admin to add it.'
-                                : null}
+                                : fieldKey === 'job_title' && !selectedDepartmentId
+                                  ? 'Select a Department first to add it.'
+                                  : null}
                           </span>
                           <div className="flex items-center gap-3 shrink-0">
                             {canAddThisField && fieldKey !== 'location' && (

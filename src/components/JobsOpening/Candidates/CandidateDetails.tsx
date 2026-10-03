@@ -1228,8 +1228,17 @@ const CandidateDetails = () => {
 
   const renderResumeAssessment = () => (
     <CommonCard>
-      <div className="grid gap-6 p-2 lg:grid-cols-[minmax(0,1fr)_240px]">
-        <div className="flex min-w-0 flex-col gap-6">
+      {/* flex, not grid-cols-[1fr_240px]: a grid track's own min-width still
+          defaults to its content's intrinsic size, so a wide element dropped
+          into the preview column (the PDF viewer's internal chrome, in
+          particular) can quietly widen that "fixed" 240px track and squeeze
+          the text column down to almost nothing — which is exactly what was
+          making the AI score explanation wrap one word per line. `shrink-0`
+          on the preview side makes 240px an actual hard cap instead of a
+          suggestion; `min-w-0` on the text side is what lets it shrink/wrap
+          instead of being pushed wide. */}
+      <div className="flex flex-col gap-6 p-2 lg:flex-row">
+        <div className="flex min-w-0 flex-1 flex-col gap-6">
           {/* AI resume score and the Intake Call consistency check (a
               transcript-vs-resume authenticity signal, not re-scored by a
               recruiter) — stacked, one full-width row each. */}
@@ -1311,7 +1320,7 @@ const CandidateDetails = () => {
         </div>
 
         {candidate?.resume_s3_key && candidateId && (
-          <div className="relative h-[320px]">
+          <div className="relative h-[320px] w-full shrink-0 lg:w-60">
             <div className="absolute inset-0">
               <ResumeInlinePreview
                 candidateId={candidateId}
