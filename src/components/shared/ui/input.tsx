@@ -72,7 +72,7 @@ export const Input = ({
         <input
           {...restProps}
           className={clsx(
-            'w-full border px-3 py-2 roboto-font focus:outline-none focus:ring-2 focus:border-[var(--primary)] rounded-3xl',
+            'w-full border px-4 py-2 roboto-font focus:outline-none focus:ring-2 focus:border-[var(--primary)] rounded-3xl',
             prefix && 'pl-10',
             suffix && 'pr-10',
             disabled && 'cursor-not-allowed text-gray-500',

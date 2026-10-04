@@ -1311,7 +1311,7 @@ const CandidateDetails = () => {
                 onClick={() => void handleDeleteResumeReview()}
                 className="mt-2 block text-xs font-semibold text-red-500 hover:underline cursor-pointer"
               >
-                Remove scoring
+                Remove Scoring
               </button>
             ) : null}
           </div>
@@ -2246,7 +2246,7 @@ const CandidateDetails = () => {
                         onClick={() => setStatusModal('advance')}
                         disabled={advanceDisabled || actionsLockedForIntakePair}
                       >
-                        <span className="text-white">ADVANCE</span>
+                        <span className="text-white">Advance</span>
                       </Button>
                     </span>
                   </Tooltip>
@@ -2271,7 +2271,7 @@ const CandidateDetails = () => {
                           actionsLockedForIntakePair
                         }
                       >
-                        <span>SKIP</span>
+                        <span>Skip</span>
                       </Button>
                     </span>
                   </Tooltip>
@@ -2282,7 +2282,7 @@ const CandidateDetails = () => {
                         onClick={() => setStatusModal('reject')}
                         disabled={actionsLockedForIntakePair}
                       >
-                        <span>REJECT</span>
+                        <span>Reject</span>
                       </Button>
                     </span>
                   </Tooltip>
@@ -2301,7 +2301,7 @@ const CandidateDetails = () => {
                         onClick={() => setStatusModal('select')}
                         disabled={actionsLockedForIntakePair}
                       >
-                        <span className="text-green-700 font-semibold">MARK AS SELECTED</span>
+                        <span className="text-green-700 font-semibold">Mark As Selected</span>
                       </Button>
                     </span>
                   </Tooltip>
@@ -2362,7 +2362,7 @@ const CandidateDetails = () => {
                   disabled={!candidate}
                 >
                   <LuPencil size={13} className="shrink-0" aria-hidden />
-                  <span>EDIT DETAILS</span>
+                  <span>Edit Details</span>
                 </Button>
                 {candidate?.resume_s3_key ? (
                   <>
@@ -2658,7 +2658,7 @@ const CandidateDetails = () => {
               type="button"
               onClick={() => void handleSkipRound()}
               disabled={!skipReason.trim() || isSkipping}
-              className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+              className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
             >
               {isSkipping ? 'SKIPPING…' : 'SKIP ROUND'}
             </Button>
@@ -2741,9 +2741,9 @@ const CandidateDetails = () => {
               type="button"
               onClick={() => void handleRequestCallReschedule()}
               disabled={isRequestingReschedule}
-              className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+              className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
             >
-              {isRequestingReschedule ? 'Sending…' : 'Keep the same interviewers'}
+              {isRequestingReschedule ? 'Sending…' : 'Keep The Same Interviewers'}
             </Button>
             <Button
               type="button"
@@ -2752,9 +2752,9 @@ const CandidateDetails = () => {
                 setRescheduleStep('picker');
               }}
               disabled={isRequestingReschedule}
-              className="w-full rounded-full border border-primary-200 bg-primary-50 py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-primary-700 disabled:opacity-50"
+              className="w-full rounded-full border border-primary-200 bg-primary-50 py-2.5 text-center text-sm font-semibold text-primary-700 disabled:opacity-50"
             >
-              Choose different interviewers
+              Choose Different Interviewers
             </Button>
           </div>
         </AntdCommonModal>
@@ -2797,7 +2797,7 @@ const CandidateDetails = () => {
                 type="button"
                 onClick={() => setIsInviteOpen(false)}
                 disabled={isCreatingBooking || isSavingInterviewers}
-                className="flex-1 rounded-full border border-gray-200 py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-gray-600 disabled:opacity-50"
+                className="flex-1 rounded-full border border-gray-200 py-2.5 text-center text-sm font-semibold text-gray-600 disabled:opacity-50"
               >
                 Cancel
               </Button>
@@ -2813,9 +2813,9 @@ const CandidateDetails = () => {
                   isSavingInterviewers ||
                   (isPanelRound && selectedInterviewerIds.length === 0)
                 }
-                className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+                className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
               >
-                {isCreatingBooking || isSavingInterviewers ? 'Sending…' : 'Send invite'}
+                {isCreatingBooking || isSavingInterviewers ? 'Sending…' : 'Send Invite'}
               </Button>
             </div>
           </div>
@@ -2850,7 +2850,7 @@ const CandidateDetails = () => {
                 type="button"
                 onClick={() => setRescheduleStep('choice')}
                 disabled={isRequestingReschedule}
-                className="flex-1 rounded-full border border-gray-200 py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-gray-600 disabled:opacity-50"
+                className="flex-1 rounded-full border border-gray-200 py-2.5 text-center text-sm font-semibold text-gray-600 disabled:opacity-50"
               >
                 Back
               </Button>
@@ -2858,9 +2858,9 @@ const CandidateDetails = () => {
                 type="button"
                 onClick={() => void handleRequestCallReschedule(rescheduleInterviewerIds)}
                 disabled={isRequestingReschedule || rescheduleInterviewerIds.length === 0}
-                className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+                className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
               >
-                {isRequestingReschedule ? 'Sending…' : 'Request reschedule'}
+                {isRequestingReschedule ? 'Sending…' : 'Request Reschedule'}
               </Button>
             </div>
           </div>
@@ -2887,8 +2887,8 @@ const CandidateDetails = () => {
                 ? 'Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, a resume-consistency score will be calculated from it.'
                 : 'Requesting a reschedule will email the candidate a new link, valid for 24 hours.'
           }
-          confirmText="REQUEST RESCHEDULE"
-          cancelText="CANCEL"
+          confirmText="Request Reschedule"
+          cancelText="Cancel"
           isLoading={isRequestingReschedule}
         />
       )}

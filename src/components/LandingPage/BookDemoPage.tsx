@@ -307,7 +307,7 @@ const SuccessPanel = ({ onReset }: { onReset: () => void }) => (
       onClick={onReset}
       className="mt-6 cursor-pointer rounded-full border border-neutral-200 px-6 py-2.5 text-sm font-semibold text-neutral-700 shadow-sm transition-all duration-200 hover:border-primary-200 hover:text-primary-600 hover:shadow-md"
     >
-      Submit another request
+      Submit Another Request
     </button>
   </div>
 );
@@ -596,7 +596,7 @@ const BookDemoPage = () => {
                     className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <LuMapPin className="text-sm" />
-                    {isLocating ? 'Locating…' : 'Use my location'}
+                    {isLocating ? 'Locating…' : 'Use My Location'}
                   </button>
                 </div>
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
@@ -739,7 +739,7 @@ const BookDemoPage = () => {
                   disabled={isSubmitting}
                   className="mt-1 w-full cursor-pointer rounded-xl bg-neutral-950 py-3.5 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:bg-primary-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
                 >
-                  {isSubmitting ? 'Submitting…' : 'Book a Demo'}
+                  {isSubmitting ? 'Submitting…' : 'Book A Demo'}
                 </button>
 
                 <p className="text-center text-xs leading-relaxed text-neutral-400">

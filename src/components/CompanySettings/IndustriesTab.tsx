@@ -299,7 +299,7 @@ const IndustriesTab: React.FC = () => {
             className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
             onClick={openAdd}
           >
-            <MdOutlineAdd /> Add industry
+            <MdOutlineAdd /> Add Industry
           </Button>
         </div>
       </div>
@@ -334,7 +334,7 @@ const IndustriesTab: React.FC = () => {
       <AntdCommonModal
         open={modalState !== null}
         onClose={() => setModalState(null)}
-        title={modalState?.mode === 'edit' ? 'Edit industry' : 'Add industry'}
+        title={modalState?.mode === 'edit' ? 'Edit Industry' : 'Add Industry'}
       >
         <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
           <Input
@@ -377,7 +377,7 @@ const IndustriesTab: React.FC = () => {
       {industryToDelete && (
         <ConfirmationModal
           title={`Remove "${industryToDelete.name}"? Blocked if a company still uses it.`}
-          confirmText="REMOVE"
+          confirmText="Remove"
           onConfirm={handleDelete}
           onClose={() => setIndustryToDelete(null)}
         />

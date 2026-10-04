@@ -209,7 +209,7 @@ const PlatformAudit: React.FC = () => {
                 onClick={clearFilters}
                 className="cursor-pointer text-xs font-semibold text-primary-600 hover:underline"
               >
-                Clear filters
+                Clear Filters
               </button>
             )}
           </div>

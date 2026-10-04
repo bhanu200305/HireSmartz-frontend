@@ -193,7 +193,7 @@ const MfaChallengeStep = ({
           disabled={isBusy}
           className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isReissuing ? 'Sending…' : 'Resend code'}
+          {isReissuing ? 'Sending…' : 'Resend Code'}
         </Button>
         <Link
           to="/account-recovery"
@@ -248,7 +248,7 @@ const MfaChallengeStep = ({
           onClick={() => reissueChallenge(undefined)}
           disabled={isBusy}
         >
-          Resend code
+          Resend Code
         </button>
 
         {!showRecoveryOptions ? (
@@ -269,7 +269,7 @@ const MfaChallengeStep = ({
                 onClick={() => reissueChallenge(method.mfa_method_id)}
                 disabled={isBusy}
               >
-                Send it via {describeMethod(method.method_type, method.masked_destination)} instead
+                Send It Via {describeMethod(method.method_type, method.masked_destination)} Instead
               </button>
             ))}
             <Link to="/account-recovery" className="text-gray-500 hover:underline">

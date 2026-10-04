@@ -668,7 +668,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                   onClick={() => applyScrapeField('logo_reference')}
                   className="text-xs font-semibold text-primary-600 hover:underline shrink-0 cursor-pointer"
                 >
-                  Use this logo
+                  Use This Logo
                 </button>
               </div>
             )}
@@ -682,7 +682,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                   onClick={() => applyScrapeField('description')}
                   className="text-xs font-semibold text-primary-600 hover:underline shrink-0 cursor-pointer"
                 >
-                  Use description
+                  Use Description
                 </button>
               </div>
             )}
@@ -696,7 +696,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                   onClick={() => applyScrapeField('culture_text')}
                   className="text-xs font-semibold text-primary-600 hover:underline shrink-0 cursor-pointer"
                 >
-                  Use as culture intro
+                  Use As Culture Intro
                 </button>
               </div>
             )}
@@ -726,7 +726,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             onClick={handleSave}
             disabled={isSaving}
           >
-            {isSaving ? 'Saving…' : 'Save changes'}
+            {isSaving ? 'Saving…' : 'Save Changes'}
           </Button>
         </div>
       )}

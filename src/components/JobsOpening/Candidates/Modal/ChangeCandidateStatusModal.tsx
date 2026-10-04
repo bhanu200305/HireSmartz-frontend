@@ -259,9 +259,9 @@ const ChangeCandidateStatusModal = ({
           <Button
             type="button"
             onClick={onClose}
-            className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white"
+            className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white"
           >
-            DONE
+            Done
           </Button>
         </div>
       ) : (
@@ -292,9 +292,9 @@ const ChangeCandidateStatusModal = ({
             disabled={
               isSubmitting || candidates.length === 0 || (mode === 'reject' && !reason.trim())
             }
-            className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+            className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
           >
-            {isSubmitting ? <Loader /> : `CONFIRM ${MODE_LABEL[mode].toUpperCase()}`}
+            {isSubmitting ? <Loader /> : `Confirm ${MODE_LABEL[mode]}`}
           </Button>
         </div>
       )}

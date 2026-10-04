@@ -1,5 +1,6 @@
+import BackButton from '../shared/ui/BackButton';
 import MainLayout from '../../layouts/MainLayout';
-import { MdLockOutline, MdOutlineArrowBack } from 'react-icons/md';
+import { MdLockOutline } from 'react-icons/md';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, PasswordInput, PasswordRequirementsChecklist, showToast } from '../shared';
 import { Controller, useForm, useWatch } from 'react-hook-form';
@@ -103,13 +104,7 @@ const ChangePassword = () => {
         <div className="flex flex-col items-center bg-white px-4 mt-4 relative pt-8">
           {!autoLogin && (
             <div className="mb-4 self-start px-4 absolute">
-              <button
-                onClick={() => navigate('/')}
-                className="flex items-center text-gray-600 hover:text-gray-800 mb-4 cursor-pointer"
-              >
-                <MdOutlineArrowBack className="mr-2" />
-                <span>Back</span>
-              </button>
+              <BackButton onClick={() => navigate('/')} className="mb-4" />
             </div>
           )}
           <div className="bg-[#FAFAFA] p-6 md:p-14 rounded-2xl shadow-lg w-full max-w-xl flex flex-col">
@@ -253,7 +248,7 @@ const ChangePassword = () => {
                     disabled={!isValid || isLoading}
                     className="w-full text-white bg-button rounded-3xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isLoading ? 'CHANGING PASSWORD...' : 'CHANGE PASSWORD'}
+                    {isLoading ? 'Changing Password...' : 'Change Password'}
                   </Button>
                 </Form.Item>
               </div>

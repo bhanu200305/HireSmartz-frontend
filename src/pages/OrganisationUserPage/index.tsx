@@ -1,6 +1,6 @@
+import BackButton from '../../components/shared/ui/BackButton';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { BsArrowLeft } from 'react-icons/bs';
 import { OrganisationUserTable } from '../../components';
 import CfpUsers from '../../components/CfpUsers';
 import RequirePermission from '../../components/RequirePermission';
@@ -25,13 +25,7 @@ const OrganisationUserPage = () => {
     <RequirePermission permission={[Authorities.USER_VIEW, Authorities.PLATFORM_VIEW]}>
       <MainLayout>
         <div className="w-full p-8 pt-16 flex flex-col gap-10">
-          <div
-            className="flex items-center gap-2 text-sm text-gray-500 -mb-6 cursor-pointer hover:text-primary-600 transition-colors w-fit"
-            onClick={() => navigate(-1)}
-          >
-            <BsArrowLeft />
-            <span>Back</span>
-          </div>
+          <BackButton onClick={() => navigate(-1)} className="-mb-6" />
           {hasTenantUsersAccess && tenantId && <OrganisationUserTable />}
           {hasCfpUsersAccess && <CfpUsers />}
         </div>

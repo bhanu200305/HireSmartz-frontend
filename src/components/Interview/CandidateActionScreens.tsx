@@ -220,7 +220,7 @@ export const CandidateFeedbackPage = () => {
       </div>
 
       <textarea
-        className="mt-4 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+        className="mt-4 w-full resize-none rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none"
         rows={4}
         placeholder="Tell us about your experience…"
         value={text}
@@ -240,7 +240,7 @@ export const CandidateFeedbackPage = () => {
         onClick={onSubmit}
         className="mt-4 w-full rounded-3xl bg-button py-2.5 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
-        {isSubmitting ? 'Submitting…' : 'Submit feedback'}
+        {isSubmitting ? 'Submitting…' : 'Submit Feedback'}
       </button>
     </Shell>
   );
@@ -322,7 +322,7 @@ export const WithdrawalPage = () => {
         onClick={onWithdraw}
         className="mt-5 w-full rounded-3xl bg-danger-bg py-2.5 text-sm font-semibold text-danger-text disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
-        {isSubmitting ? 'Processing…' : 'Withdraw from this process'}
+        {isSubmitting ? 'Processing…' : 'Withdraw From This Process'}
       </button>
     </Shell>
   );

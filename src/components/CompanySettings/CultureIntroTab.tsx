@@ -153,7 +153,7 @@ const CultureIntroTab: React.FC = () => {
               onClick={() => void handleSave()}
               disabled={!isDirty || isSaving}
             >
-              {isSaving ? 'Saving…' : 'Save changes'}
+              {isSaving ? 'Saving…' : 'Save Changes'}
             </Button>
           </div>
         </div>

@@ -13,6 +13,7 @@ import { usePersistedPageSize } from '../../../hooks/usePersistedPageSize';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { capitalizeWordsAdvanced } from '../../../shared/utils/methods';
 import CatalogFormFields, { type CatalogField } from './CatalogFormFields';
 
 /** Backend-driven list state — omit `serverQuery`/`onServerQueryChange`
@@ -336,7 +337,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
               className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
               onClick={openAdd}
             >
-              <MdOutlineAdd /> Add {itemNounSingular.toLowerCase()}
+              <MdOutlineAdd /> Add {capitalizeWordsAdvanced(itemNounSingular)}
             </Button>
           )}
         </div>
@@ -406,8 +407,8 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
         onClose={() => setModalState(null)}
         title={
           modalState?.mode === 'edit'
-            ? `Edit ${itemNounSingular.toLowerCase()}`
-            : `Add ${itemNounSingular.toLowerCase()}`
+            ? `Edit ${capitalizeWordsAdvanced(itemNounSingular)}`
+            : `Add ${capitalizeWordsAdvanced(itemNounSingular)}`
         }
       >
         <div className="flex flex-col gap-4">
@@ -438,7 +439,7 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
               ? deleteConfirmTitle(itemToDelete)
               : `Remove "${labelOf(itemToDelete)}"?`
           }
-          confirmText="REMOVE"
+          confirmText="Remove"
           isLoading={isDeleting}
           onConfirm={handleDelete}
           onClose={() => setItemToDelete(null)}

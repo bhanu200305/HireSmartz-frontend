@@ -233,7 +233,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                       type="button"
                       onClick={() => void handleChangeEmail(matchedUserId)}
                       disabled={!newEmail.trim() || isChangingEmail}
-                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isChangingEmail ? 'Saving…' : 'Save'}
                     </Button>
@@ -241,7 +241,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                       type="button"
                       onClick={cancelChangeEmail}
                       disabled={isChangingEmail}
-                      className="rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Cancel
                     </Button>

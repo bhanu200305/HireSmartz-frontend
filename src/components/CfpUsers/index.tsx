@@ -253,7 +253,7 @@ const CfpUsers: React.FC = () => {
             className="w-52 rounded-full border border-gray-300 px-4 py-2 flex items-center justify-center gap-1 text-sm font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-colors"
             onClick={() => setIsBulkImportOpen(true)}
           >
-            <MdOutlineUploadFile /> Import staff
+            <MdOutlineUploadFile /> Import Staff
           </Button>
           <Button
             className="w-52 rounded-full bg-primary-600 text-white px-4 py-2 flex items-center justify-center gap-1 text-sm font-semibold cfp-hover-lift"
@@ -319,7 +319,7 @@ const CfpUsers: React.FC = () => {
           className="rounded-full border border-gray-300 px-3 py-1 flex items-center gap-1 text-xs font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-colors"
           onClick={() => setIsDeptModalOpen(true)}
         >
-          <MdOutlineAdd /> Add department
+          <MdOutlineAdd /> Add Department
         </Button>
       </div>
       {isDepartmentsLoading ? (
@@ -370,7 +370,7 @@ const CfpUsers: React.FC = () => {
       <AntdCommonModal
         open={isDeptModalOpen}
         onClose={() => setIsDeptModalOpen(false)}
-        title="Add internal department"
+        title="Add Internal Department"
       >
         <div className="flex flex-col gap-4">
           <Input
@@ -400,7 +400,7 @@ const CfpUsers: React.FC = () => {
       {staffToOffboard && (
         <ConfirmationModal
           title={`Offboard ${staffToOffboard.email}? This revokes their sessions immediately.`}
-          confirmText="OFFBOARD"
+          confirmText="Offboard"
           onConfirm={handleOffboard}
           onClose={() => setStaffToOffboard(null)}
         />

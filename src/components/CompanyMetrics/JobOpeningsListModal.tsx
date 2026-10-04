@@ -175,7 +175,7 @@ const JobOpeningsListModal: React.FC<{
             }}
             className="text-sm font-medium text-primary-600 hover:text-primary-700 cursor-pointer"
           >
-            View all job openings
+            View All Job Openings
           </button>
         </div>
 

@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Button, showToast } from '../../shared';
+import { Tooltip } from 'antd';
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
@@ -14,16 +15,20 @@ import { asJobId } from '../../../api/job-service/jobId';
 import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 
 const EditDetailedInterviewRounds = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedRoundId, setSelectedRoundId] = useState<string | number | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const reduxJobOpeningId = useSelector((state: RootState) => state.EditJobSlice.jobOpeningId);
+  const isDraft = useSelector((state: RootState) => state.EditJobSlice.isDraft);
   const jobOpeningId = asJobId(reduxJobOpeningId) || asJobId(id);
   const location = useLocation();
   const [deleteInterviewRound, { isLoading: isDeleting }] = useDeleteInterviewRoundMutation();
+  const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
   const [reorderInterviewRounds, { isLoading: isReordering }] = useReorderInterviewRoundsMutation();
   const { data, isLoading, refetch } = useGetInterviewRoundsByJobIdQuery(jobOpeningId, {
     skip: !jobOpeningId,
@@ -41,6 +46,10 @@ const EditDetailedInterviewRounds = () => {
           )
           .map((round) => String(round.id))
       ),
+    [roundTypes]
+  );
+  const variantLabelOverrides = useMemo(
+    () => Object.assign({}, ...roundTypes.map((round) => round.variant_labels ?? {})),
     [roundTypes]
   );
   useEffect(() => {
@@ -116,6 +125,29 @@ const EditDetailedInterviewRounds = () => {
       });
   };
 
+  const handleConfirmCancel = async () => {
+    if (jobOpeningId) {
+      try {
+        await deleteDraftJob(jobOpeningId).unwrap();
+      } catch (error) {
+        showToast({
+          message: getJobErrorMessage(error, 'Failed to remove job opening'),
+          type: 'error',
+        });
+        setShowCancelConfirm(false);
+        return;
+      }
+    }
+    setShowCancelConfirm(false);
+    navigate('/jobs');
+  };
+
+  // Intentional "leave as draft" exit, same as every other step.
+  const handleSaveDraft = () => {
+    showToast({ message: 'Job saved as draft successfully', type: 'success' });
+    navigate('/jobs');
+  };
+
   return (
     <div className="relative">
       {(isLoading || isDeleting || isReordering) && <Loader />}
@@ -130,19 +162,51 @@ const EditDetailedInterviewRounds = () => {
             setShowDeleteModal(true);
           }}
           anchorRoundTypeIds={anchorRoundTypeIds}
+          variantLabelOverrides={variantLabelOverrides}
         />
       )}
-      <div className="mt-6 flex justify-center">
-        <Button
-          className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-          onClick={() => {
-            // dispatch(resetEditJobState())
-            navigate(`/jobs/edit/${id}/editAiQuestions`);
-          }}
-        >
-          SAVE & NEXT
-        </Button>
+      <div className="mt-6 flex justify-center gap-6">
+        {isDraft && (
+          <Tooltip title="Save progress and come back later.">
+            <Button
+              className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+              onClick={handleSaveDraft}
+            >
+              Save As Draft
+            </Button>
+          </Tooltip>
+        )}
+        {isDraft && (
+          <Tooltip title="Delete this job opening and everything in it.">
+            <Button
+              className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2"
+              onClick={() => setShowCancelConfirm(true)}
+            >
+              Cancel
+            </Button>
+          </Tooltip>
+        )}
+        <Tooltip title="Save this page and continue.">
+          <Button
+            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+            onClick={() => {
+              // dispatch(resetEditJobState())
+              navigate(`/jobs/edit/${id}/editAiQuestions`);
+            }}
+          >
+            Save & Next
+          </Button>
+        </Tooltip>
       </div>
+      {showCancelConfirm && (
+        <ConfirmationModal
+          onClose={() => setShowCancelConfirm(false)}
+          onConfirm={handleConfirmCancel}
+          title="Cancel this job opening? Everything added so far will be permanently deleted."
+          confirmText="Cancel Job"
+          isLoading={isCancelling}
+        />
+      )}
       {showDeleteModal && (
         <ConfirmationModal
           onClose={() => {
@@ -151,7 +215,7 @@ const EditDetailedInterviewRounds = () => {
           }}
           title="Are you sure you want to delete?"
           onConfirm={confirmDelete}
-          confirmText="DELETE"
+          confirmText="Delete"
           isLoading={isDeleting}
         />
       )}

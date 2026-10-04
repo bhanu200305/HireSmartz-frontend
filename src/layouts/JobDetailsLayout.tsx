@@ -1,9 +1,12 @@
+import BackButton from '../components/shared/ui/BackButton';
 import { ReactNode, useEffect, useMemo } from 'react';
-import { MdOutlineArrowBack } from 'react-icons/md';
+import { Tooltip } from 'antd';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { RootState } from '../redux/provider/store';
 import { sanitizedPath } from '../shared/utils/business-logic';
+import { useGetJobDescriptionByIdQuery } from '../api/job-service/JobOpening/ViewJobDescriptionById';
+import { asJobId } from '../api/job-service/jobId';
 
 interface JobDetailsLayoutProps {
   children?: ReactNode;
@@ -20,16 +23,22 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const aiJobDescriptionId = useSelector(
     (state: RootState) => state.EditJobSlice.aiJobDescription.id
   );
-  const jobDetails = useSelector((state: RootState) => state.JobSlice.details);
   const jobDescription = useSelector((state: RootState) => state.JobSlice.description);
   const isFormCompleted = useSelector((state: RootState) => state.JobSlice.isFormCompleted);
+  const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
 
   const isCreateMode = !isViewMode && !isEditMode;
 
+  // A draft id exists before any field is filled, so gate on the
+  // server-verified hasSavedDetails instead.
+  const resolvedJobId = asJobId(reduxJobOpeningId);
+  const { data: jdDetailsForGate } = useGetJobDescriptionByIdQuery(
+    { jobOpeningId: resolvedJobId },
+    { skip: !isCreateMode || !resolvedJobId }
+  );
+
   // Check step completion in create mode
-  const isTab1Completed = isCreateMode
-    ? Object.keys(jobDetails).length > 0 && jobDetails.jobProfileCode
-    : true;
+  const isTab1Completed = isCreateMode ? jdDetailsForGate?.hasSavedDetails === true : true;
   const isTab2Completed = isCreateMode
     ? Object.keys(jobDescription).length > 0 && jobDescription.educationPreference?.length > 0
     : true;
@@ -194,14 +203,10 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   return (
     <div className="flex flex-col items-center px-4 mt-4 w-full">
       <div className="w-full max-w-6xl mb-3">
-        <button
-          type="button"
+        <BackButton
           onClick={handleBackNavigation}
-          className="flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg px-2 py-1 -ml-2 cursor-pointer transition-colors"
-        >
-          <MdOutlineArrowBack size={16} />
-          <span>{isCandidateDetailsPage ? 'Back to Candidate List' : 'Back'}</span>
-        </button>
+          label={isCandidateDetailsPage ? 'Back to Candidate List' : 'Back'}
+        />
       </div>
       <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">
         {!isCandidatePage && (
@@ -211,28 +216,38 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
                 {allSteps.map((step, index) => {
                   const stepPath = currentPaths[index];
 
-                  // Determine if tab is disabled based on previous tabs completion
+                  // Blame whichever earlier step is actually incomplete.
                   let isDisabled = false;
+                  let disabledReason = '';
                   if (isCreateMode) {
-                    if (index === 1 && !isTab1Completed) isDisabled = true;
-                    if (index === 2 && !isScoringUnlocked) isDisabled = true;
-                    if (index === 3 && !isTab3Completed) isDisabled = true;
-                    if (index === 4 && !isTab3Completed) isDisabled = true;
+                    if (index === 1 && !isTab1Completed) {
+                      isDisabled = true;
+                      disabledReason = 'Complete Job Details first.';
+                    }
+                    if (index >= 2 && !isTab1Completed) {
+                      isDisabled = true;
+                      disabledReason = 'Complete Job Details first.';
+                    } else if (index === 2 && !isScoringUnlocked) {
+                      isDisabled = true;
+                      disabledReason = 'Complete AI Job Description first.';
+                    } else if ((index === 3 || index === 4) && !isTab3Completed) {
+                      isDisabled = true;
+                      disabledReason = 'Complete AI Job Description first.';
+                    }
                   }
 
                   const isStepActive = isActiveTab(stepPath);
 
-                  return (
+                  const tabButton = (
                     <button
                       type="button"
-                      key={`${step}-${index}`}
                       onClick={() => {
                         if (isDisabled) return;
                         const safePath = sanitizedPath(stepPath + search) || '/';
                         navigate(safePath);
                       }}
                       disabled={isDisabled}
-                      className={`stepBox whitespace-nowrap shrink-0 pb-3 text-sm border-b-2 transition-colors ${
+                      className={`stepBox whitespace-nowrap shrink-0 pb-3 text-sm border-b-2 transition-colors w-full ${
                         isDisabled
                           ? 'cursor-not-allowed text-neutral-300 border-transparent'
                           : 'cursor-pointer'
@@ -246,6 +261,16 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
                     >
                       {step}
                     </button>
+                  );
+
+                  return (
+                    <span key={`${step}-${index}`} className="shrink-0">
+                      {isDisabled ? (
+                        <Tooltip title={disabledReason}>{tabButton}</Tooltip>
+                      ) : (
+                        tabButton
+                      )}
+                    </span>
                   );
                 })}
               </div>

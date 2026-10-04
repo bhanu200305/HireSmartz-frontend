@@ -224,7 +224,7 @@ const ResultSection: React.FC<ResultSectionProps> = ({
             onViewAll();
           }}
         >
-          VIEW ALL
+          View All
           <span className="no-underline ml-1 text-orange-500">→</span>
         </button>
       </div>

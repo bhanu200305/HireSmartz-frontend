@@ -143,7 +143,7 @@ const StepConfirmProfile = ({ draft, onBack, onConfirmed }: StepConfirmProfilePr
           disabled={isLoading}
           className="w-full bg-white border text-black rounded-3xl py-3"
         >
-          BACK
+          Back
         </Button>
         <Button
           type="submit"
@@ -151,7 +151,7 @@ const StepConfirmProfile = ({ draft, onBack, onConfirmed }: StepConfirmProfilePr
           disabled={!isValid || isLoading}
           className="w-full text-white bg-[var(--color-primary)] rounded-3xl py-3 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Sending invite…' : 'Confirm & Send Invite'}
+          {isLoading ? 'Sending Invite…' : 'Confirm & Send Invite'}
         </Button>
       </div>
     </form>

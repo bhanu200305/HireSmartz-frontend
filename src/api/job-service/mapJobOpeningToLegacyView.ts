@@ -154,13 +154,9 @@ export const mapDetailsToJobDetailsState = (
     state: details.locations?.[0]?.state ?? '',
     openings: details.vacancies,
     exemptMinSalary:
-      details.exempt_lower_salary_range != null
-        ? String(details.exempt_lower_salary_range)
-        : null,
+      details.exempt_lower_salary_range != null ? String(details.exempt_lower_salary_range) : null,
     exemptMaxSalary:
-      details.exempt_upper_salary_range != null
-        ? String(details.exempt_upper_salary_range)
-        : null,
+      details.exempt_upper_salary_range != null ? String(details.exempt_upper_salary_range) : null,
     nonExemptMinSalary:
       details.non_exempt_lower_salary_range != null
         ? String(details.non_exempt_lower_salary_range)

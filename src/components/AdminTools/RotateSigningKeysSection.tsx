@@ -59,7 +59,7 @@ const RotateSigningKeysSection = () => {
           disabled={isLoading}
           className="rounded-3xl border border-red-200 px-5 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Rotate signing key
+          Rotate Signing Key
         </Button>
       )}
 
@@ -89,7 +89,7 @@ const RotateSigningKeysSection = () => {
               disabled={isLoading}
               className="rounded-3xl bg-red-600 px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isLoading ? 'Rotating…' : 'Yes, rotate now'}
+              {isLoading ? 'Rotating…' : 'Yes, Rotate Now'}
             </Button>
           </div>
         </div>

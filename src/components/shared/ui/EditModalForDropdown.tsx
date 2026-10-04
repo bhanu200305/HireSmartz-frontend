@@ -56,7 +56,7 @@ const EditModal: FC<EditModalProps> = ({
             onClick={onClose}
             className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-3xl cursor-pointer hover:bg-gray-100 transition"
           >
-            CANCEL
+            Cancel
           </button>
           <button
             type="button"

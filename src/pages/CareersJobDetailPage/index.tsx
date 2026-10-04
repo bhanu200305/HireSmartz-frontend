@@ -304,7 +304,7 @@ export const CareersJobDetailPage = () => {
               onClick={handleApply}
               className="w-full cursor-pointer bg-black text-white font-bold tracking-widest text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all"
             >
-              APPLY FOR THIS JOB
+              Apply For This Job
             </button>
           </div>
         </div>

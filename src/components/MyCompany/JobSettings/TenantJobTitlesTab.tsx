@@ -323,7 +323,7 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
               onClick={openAdd}
             >
-              <MdOutlineAdd /> Add job title
+              <MdOutlineAdd /> Add Job Title
             </Button>
           )}
         </div>
@@ -359,7 +359,7 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       <AntdCommonModal
         open={modalState !== null}
         onClose={() => setModalState(null)}
-        title={modalState?.mode === 'edit' ? 'Edit job title' : 'Add job title'}
+        title={modalState?.mode === 'edit' ? 'Edit Job Title' : 'Add Job Title'}
       >
         <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
           <Input
@@ -409,7 +409,7 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       {jobTitleToDelete && (
         <ConfirmationModal
           title={`Remove "${jobTitleToDelete.name}"? Blocked while a job still uses it.`}
-          confirmText="REMOVE"
+          confirmText="Remove"
           onConfirm={handleDelete}
           onClose={() => setJobTitleToDelete(null)}
         />

@@ -20,8 +20,8 @@ const InterviewConsentModal = ({
   consentLabel,
   onCancel,
   onContinue,
-  cancelText = 'CANCEL',
-  continueText = 'CONTINUE',
+  cancelText = 'Cancel',
+  continueText = 'Continue',
   requireCheckbox = true,
   panelClassName = 'max-w-95',
 }: InterviewConsentModalProps) => {

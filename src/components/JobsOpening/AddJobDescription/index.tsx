@@ -43,7 +43,7 @@ const CreateJobDescription = () => {
                   navigate('/ats-job-id');
                 }}
               >
-                UPLOAD FROM ATS
+                Upload From ATS
               </button>
               <span className="text-gray-500 text-sm mb-4">-------- OR --------</span>
               <button
@@ -61,7 +61,7 @@ const CreateJobDescription = () => {
                   }
                 }}
               >
-                CREATE JOB OPENING MANUALLY
+                Create Job Opening Manually
               </button>
             </div>
           </div>

@@ -185,7 +185,7 @@ const ConfirmEnrolment = ({
             disabled={isResending}
             className="text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isResending ? 'Sending…' : 'Resend code'}
+            {isResending ? 'Sending…' : 'Resend Code'}
           </button>
         )}
         <button
@@ -224,7 +224,7 @@ const ConfirmEnrolment = ({
               disabled={!cancelPassword || isCancelSubmitting}
               className="shrink-0 rounded-3xl bg-red-600 px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isCancelSubmitting ? 'Cancelling…' : 'Confirm cancel'}
+              {isCancelSubmitting ? 'Cancelling…' : 'Confirm Cancel'}
             </Button>
           </div>
           <button
@@ -318,7 +318,7 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
               disabled={isSettingDefault}
               className="text-xs text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Set as default
+              Set As Default
             </button>
           )}
           <button
@@ -356,7 +356,7 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
             disabled={!password || isDisabling}
             className="shrink-0 rounded-3xl bg-red-600 px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isDisabling ? 'Removing…' : 'Confirm removal'}
+            {isDisabling ? 'Removing…' : 'Confirm Removal'}
           </Button>
         </div>
       )}
@@ -469,7 +469,7 @@ const AddMethodButton = ({
           disabled={!isValidPhone || isLoading}
           className="shrink-0 rounded-3xl bg-button px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isLoading ? 'Sending…' : 'Send code'}
+          {isLoading ? 'Sending…' : 'Send Code'}
         </Button>
       </div>
     );
@@ -482,7 +482,7 @@ const AddMethodButton = ({
         if (methodType === 'sms') {
           // Prefill with whatever's already on the profile — a better
           // default, not a new field; the user can still change either
-          // part, and whatever's in the boxes when they hit "Send code" is
+          // part, and whatever's in the boxes when they hit "Send Code" is
           // what's sent.
           setCountryCode(existingCountryCode);
           setNationalNumber(

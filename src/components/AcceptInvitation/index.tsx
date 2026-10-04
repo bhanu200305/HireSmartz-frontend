@@ -771,7 +771,7 @@ const AcceptInvitation = () => {
                 disabled={isSendingCode}
                 className="mt-2 rounded-3xl border border-brand-600 px-4 py-1.5 text-sm font-medium text-brand-600 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isSendingCode ? 'Sending…' : codeSent ? 'Resend code' : 'Send code'}
+                {isSendingCode ? 'Sending…' : codeSent ? 'Resend Code' : 'Send Code'}
               </button>
               {deliveryHint && (
                 <p className="mt-2 text-xs text-gray-500">Code sent to {deliveryHint}.</p>
@@ -814,7 +814,7 @@ const AcceptInvitation = () => {
           disabled={!isValid || isAccepting || needsCodeRequest}
           className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white transition-all duration-150 hover:brightness-105 hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
         >
-          {isAccepting ? 'Activating…' : 'Activate account'}
+          {isAccepting ? 'Activating…' : 'Activate Account'}
         </Button>
       </form>
     </PageShell>

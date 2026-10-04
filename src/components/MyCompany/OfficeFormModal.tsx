@@ -199,7 +199,7 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
     <AntdCommonModal
       open={open}
       onClose={onClose}
-      title={mode === 'add' ? 'Add office location' : 'Edit office location'}
+      title={mode === 'add' ? 'Add Office Location' : 'Edit Office Location'}
     >
       <div onKeyDown={handleEnterToSubmit}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -238,7 +238,7 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
           className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
         >
           <MdMyLocation size={14} />
-          {isLocating ? 'Locating…' : 'Use my location'}
+          {isLocating ? 'Locating…' : 'Use My Location'}
         </button>
 
         <div className="grid grid-cols-2 gap-4 mt-6">

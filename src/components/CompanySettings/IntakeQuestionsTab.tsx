@@ -276,7 +276,7 @@ const IntakeQuestionsTab: React.FC = () => {
           className="flex items-center gap-1.5 border border-[var(--border)] bg-white text-gray-700 rounded-3xl px-3 py-1.5 text-sm hover:bg-gray-50"
         >
           <MdOutlineUploadFile />
-          Bulk import
+          Bulk Import
         </Button>
       </div>
 
@@ -408,7 +408,7 @@ const IntakeQuestionsTab: React.FC = () => {
       {questionToDelete && (
         <ConfirmationModal
           title={`Remove "${questionToDelete.question_text}"?`}
-          confirmText="REMOVE"
+          confirmText="Remove"
           onConfirm={handleDelete}
           onClose={() => setQuestionToDelete(null)}
         />

@@ -94,7 +94,7 @@ const QuestionImportTemplateTab: React.FC = () => {
           disabled={isDownloading}
         >
           <MdOutlineRemoveRedEye size={16} />
-          Preview current template
+          Preview Current Template
         </Button>
 
         <Button
@@ -103,7 +103,7 @@ const QuestionImportTemplateTab: React.FC = () => {
           disabled={isDownloading}
         >
           <MdDownload size={16} />
-          {isDownloading ? 'Downloading…' : 'Download current template'}
+          {isDownloading ? 'Downloading…' : 'Download Current Template'}
         </Button>
 
         <input
@@ -118,7 +118,7 @@ const QuestionImportTemplateTab: React.FC = () => {
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading || !!pendingFile}
         >
-          Choose replacement template
+          Choose Replacement Template
         </Button>
       </div>
 
@@ -139,7 +139,7 @@ const QuestionImportTemplateTab: React.FC = () => {
             onClick={handleConfirmUpload}
             disabled={isUploading}
           >
-            {isUploading ? 'Uploading…' : 'Confirm & upload'}
+            {isUploading ? 'Uploading…' : 'Confirm & Upload'}
           </Button>
           <button
             type="button"

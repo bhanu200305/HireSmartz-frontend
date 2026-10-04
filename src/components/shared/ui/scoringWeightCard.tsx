@@ -232,13 +232,13 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
             type="button"
             onClick={handleReset}
             disabled={isResetting}
-            className={`text-xs font-semibold tracking-widest uppercase border px-5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+            className={`text-xs font-semibold border px-5 py-1.5 rounded-lg transition-colors cursor-pointer ${
               isResetting
                 ? 'text-gray-300 border-gray-200 cursor-not-allowed'
                 : 'text-gray-600 hover:text-gray-800 border-gray-300 hover:border-gray-400'
             }`}
           >
-            {isResetting ? 'Resetting...' : 'Reset to Defaults'}
+            {isResetting ? 'Resetting...' : 'Reset To Defaults'}
           </button>
           <Button
             onClick={handleSave}

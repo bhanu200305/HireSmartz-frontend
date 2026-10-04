@@ -66,7 +66,7 @@ const ShiftFormModal: React.FC<ShiftFormModalProps> = ({
     <AntdCommonModal
       open={open}
       onClose={onClose}
-      title={mode === 'edit' ? 'Edit shift' : 'Add shift'}
+      title={mode === 'edit' ? 'Edit Shift' : 'Add Shift'}
     >
       <div className="flex flex-col gap-4">
         <CatalogFormFields fields={fields} values={form} onChange={setForm} />

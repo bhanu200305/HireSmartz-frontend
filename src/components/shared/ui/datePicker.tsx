@@ -216,14 +216,14 @@ const DateTimeRangePicker: React.FC<DateTimeProps> = ({ value, onApply, onReset 
           className="font-bold border border-gray-300 rounded-full px-7 py-3"
           onClick={handleReset}
         >
-          RESET
+          Reset
         </Button>
         <Button
           className="px-10 py-3 bg-primary font-bold text-white border rounded-4xl cursor-pointer"
           onClick={handleApply}
           disabled={!range?.startDate || !range?.endDate}
         >
-          APPLY
+          Apply
         </Button>
       </div>
     </div>

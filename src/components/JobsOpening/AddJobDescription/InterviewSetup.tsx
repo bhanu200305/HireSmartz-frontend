@@ -1,5 +1,6 @@
 import JobDetailsLayout from '../../../layouts/JobDetailsLayout';
 import { Button, showToast } from '../../shared';
+import { Tooltip } from 'antd';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import MainLayout from '../../../layouts/MainLayout';
@@ -17,10 +18,13 @@ import { asJobId } from '../../../api/job-service/jobId';
 import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 
 const InterviewSetup = () => {
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
   const [selectedRoundId, setSelectedRoundId] = useState<string | number | null>(null);
   const rawJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
   const jobOpeningId = asJobId(rawJobOpeningId);
@@ -42,6 +46,10 @@ const InterviewSetup = () => {
           )
           .map((round) => String(round.id))
       ),
+    [roundTypes]
+  );
+  const variantLabelOverrides = useMemo(
+    () => Object.assign({}, ...roundTypes.map((round) => round.variant_labels ?? {})),
     [roundTypes]
   );
   useEffect(() => {
@@ -131,6 +139,29 @@ const InterviewSetup = () => {
       });
   };
 
+  const handleConfirmCancel = async () => {
+    if (jobOpeningId) {
+      try {
+        await deleteDraftJob(jobOpeningId).unwrap();
+      } catch (error) {
+        showToast({
+          message: getJobErrorMessage(error, 'Failed to remove job opening'),
+          type: 'error',
+        });
+        setShowCancelConfirm(false);
+        return;
+      }
+    }
+    setShowCancelConfirm(false);
+    navigate('/jobs');
+  };
+
+  // Intentional "leave as draft" exit, same as every other step.
+  const handleSaveDraft = () => {
+    showToast({ message: 'Job saved as draft successfully', type: 'success' });
+    navigate('/jobs');
+  };
+
   return (
     <>
       <div className="relative">
@@ -152,7 +183,7 @@ const InterviewSetup = () => {
                   navigate('add-new-round');
                 }}
               >
-                <HiOutlinePlus className="text-lg" /> <span>ADD NEW ROUND</span>
+                <HiOutlinePlus className="text-lg" /> <span>Add New Round</span>
               </Button>
             }
           >
@@ -166,24 +197,52 @@ const InterviewSetup = () => {
                   setShowDeleteModal(true);
                 }}
                 anchorRoundTypeIds={anchorRoundTypeIds}
+                variantLabelOverrides={variantLabelOverrides}
               />
             )}
-            <div className="mt-6 flex justify-center">
-              <Button
-                className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-                onClick={() => {
-                  navigate('/ai-questions', {
-                    state: {
-                      refresh: true,
-                    },
-                  });
-                }}
-              >
-                SAVE & NEXT
-              </Button>
+            <div className="mt-6 flex justify-center gap-6">
+              <Tooltip title="Save progress and come back later.">
+                <Button
+                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  onClick={handleSaveDraft}
+                >
+                  Save As Draft
+                </Button>
+              </Tooltip>
+              <Tooltip title="Delete this job opening and everything in it.">
+                <Button
+                  className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  onClick={() => setShowCancelConfirm(true)}
+                >
+                  Cancel
+                </Button>
+              </Tooltip>
+              <Tooltip title="Save this page and continue.">
+                <Button
+                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  onClick={() => {
+                    navigate('/ai-questions', {
+                      state: {
+                        refresh: true,
+                      },
+                    });
+                  }}
+                >
+                  Save & Next
+                </Button>
+              </Tooltip>
             </div>
           </JobDetailsLayout>
         </MainLayout>
+        {showCancelConfirm && (
+          <ConfirmationModal
+            onClose={() => setShowCancelConfirm(false)}
+            onConfirm={handleConfirmCancel}
+            title="Cancel this job opening? Everything added so far will be permanently deleted."
+            confirmText="Cancel Job"
+            isLoading={isCancelling}
+          />
+        )}
         {showDeleteModal && (
           <ConfirmationModal
             onClose={() => {
@@ -192,7 +251,7 @@ const InterviewSetup = () => {
             }}
             title="Are you sure you want to delete?"
             onConfirm={confirmDelete}
-            confirmText="DELETE"
+            confirmText="Delete"
             isLoading={isDeleting}
           />
         )}

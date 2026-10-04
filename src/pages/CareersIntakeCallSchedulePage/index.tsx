@@ -157,7 +157,7 @@ export const CareersIntakeCallSchedulePage = () => {
               onClick={() => navigate(`/careers/${organizationId}`)}
               className="mt-8 rounded-full border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
             >
-              Browse more roles
+              Browse More Roles
             </button>
           </div>
         </main>

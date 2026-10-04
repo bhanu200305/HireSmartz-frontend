@@ -1,6 +1,6 @@
+import BackButton from '../shared/ui/BackButton';
 import { useEffect, useState } from 'react';
 import { FaCity } from 'react-icons/fa';
-import { MdOutlineArrowBack } from 'react-icons/md';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { Popconfirm, Select, Tooltip } from 'antd';
 import type { SorterResult } from 'antd/es/table/interface';
@@ -207,13 +207,7 @@ const CustomerTable = () => {
   return (
     <MainLayout>
       <div className="w-full p-8 justify-start pt-16">
-        <button
-          onClick={() => navigate('/')}
-          className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
-        >
-          <MdOutlineArrowBack className="mr-2" />
-          <span>Back</span>
-        </button>
+        <BackButton onClick={() => navigate('/')} className="mb-4" />
         {isLoading && <Loader />}
         <div className="flex flex-wrap gap-4 justify-between items-center p-2">
           <div className="flex items-center gap-2.5">
@@ -264,7 +258,7 @@ const CustomerTable = () => {
               className="text-white bg-primary-600 rounded-full px-5 py-2 flex items-center gap-1.5 text-sm font-semibold cfp-hover-lift"
               onClick={() => navigate('/add-company')}
             >
-              <PlusOutlined className="text-sm" /> <span>ADD COMPANY</span>
+              <PlusOutlined className="text-sm" /> <span>Add Company</span>
             </Button>
           </div>
         </div>

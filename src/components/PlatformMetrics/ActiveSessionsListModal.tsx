@@ -195,7 +195,7 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
                 onClick={() => void handleLoadMore()}
                 disabled={isFetching}
               >
-                {isFetching ? 'Loading…' : 'Load more'}
+                {isFetching ? 'Loading…' : 'Load More'}
               </Button>
             )}
           </div>

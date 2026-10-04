@@ -22,7 +22,7 @@ const fields: CatalogField<FormValues>[] = [
   { name: 'description', label: 'Description', type: 'textarea' },
 ];
 
-/** This organization's own configured job modes. */
+/** This organization's own configured job locations. */
 const TenantJobModesTab: React.FC = () => {
   const [query, setQuery] = useState<CatalogServerQuery>({
     page: 1,
@@ -55,9 +55,9 @@ const TenantJobModesTab: React.FC = () => {
 
   return (
     <PlatformCatalogTab<OrganizationJobMode, FormValues>
-      title="Your company's configured job modes."
-      itemNounSingular="Job mode"
-      itemNounPlural="Job modes"
+      title="Your company's configured job locations."
+      itemNounSingular="Job location"
+      itemNounPlural="Job locations"
       items={data?.items}
       total={data?.total}
       serverQuery={query}

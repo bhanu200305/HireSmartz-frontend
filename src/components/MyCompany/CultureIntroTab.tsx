@@ -88,7 +88,7 @@ const CultureIntroTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               onClick={handleSave}
               disabled={!isDirty || isSaving}
             >
-              {isSaving ? 'Saving…' : 'Save changes'}
+              {isSaving ? 'Saving…' : 'Save Changes'}
             </Button>
           </div>
         )}

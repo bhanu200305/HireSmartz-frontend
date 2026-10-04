@@ -39,7 +39,7 @@ const ReasonText = ({ text }: { text: string }) => {
             onClick={() => setExpanded((prev) => !prev)}
             className="font-semibold text-primary hover:underline cursor-pointer"
           >
-            {expanded ? 'See less' : 'See more'}
+            {expanded ? 'See Less' : 'See More'}
           </button>
         </>
       )}

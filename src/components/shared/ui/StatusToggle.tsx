@@ -98,7 +98,7 @@ const StatusToggle: React.FC<StatusToggleProps> = ({
       {isConfirmingDeactivate && (
         <ConfirmationModal
           title={deactivateConfirmTitle}
-          confirmText="DEACTIVATE"
+          confirmText="Deactivate"
           isLoading={isBusy}
           onConfirm={confirmDeactivate}
           onClose={() => setIsConfirmingDeactivate(false)}

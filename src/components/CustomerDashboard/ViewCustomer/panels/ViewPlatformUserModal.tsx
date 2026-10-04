@@ -474,7 +474,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                 onClick={() => save()}
                 disabled={isSaving || !isEditFormValid}
               >
-                {isSaving ? 'Saving…' : 'Save changes'}
+                {isSaving ? 'Saving…' : 'Save Changes'}
               </Button>
               <Button
                 className="rounded-full border border-gray-300 px-6 py-2"
@@ -595,7 +595,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                   onClick={handleAssign}
                   disabled={!roleId || isAssigning}
                 >
-                  {isAssigning ? 'Assigning…' : 'Grant role'}
+                  {isAssigning ? 'Assigning…' : 'Grant Role'}
                 </Button>
                 <Button
                   className="rounded-full border border-gray-300 px-6 py-2"
@@ -727,7 +727,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
       {showEmailConfirm && (
         <ConfirmationModal
           title={`Change this user's login email to "${pendingEmail}"? This resets their email verification.`}
-          confirmText="CHANGE EMAIL"
+          confirmText="Change Email"
           isLoading={isSaving}
           onConfirm={() => {
             setShowEmailConfirm(false);

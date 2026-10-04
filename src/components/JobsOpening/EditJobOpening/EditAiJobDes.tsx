@@ -1,7 +1,16 @@
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button } from '../../shared';
-import JobDescriptionPanel from '../AddJobDescription/JobDescriptionPanel';
+import { useSelector } from 'react-redux';
+import { Tooltip } from 'antd';
+import { Button, showToast } from '../../shared';
+import JobDescriptionPanel, {
+  type JobDescriptionPanelHandle,
+} from '../AddJobDescription/JobDescriptionPanel';
 import { asJobId } from '../../../api/job-service/jobId';
+import { RootState } from '../../../redux/provider/store';
+import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
+import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 
 /**
  * Edit wizard's "AI Job Description" tab — now the exact same panel the
@@ -24,23 +33,86 @@ const EditAiJobDescription = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const jobOpeningId = asJobId(id);
+  const isDraft = useSelector((state: RootState) => state.EditJobSlice.isDraft);
+  const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const panelRef = useRef<JobDescriptionPanelHandle>(null);
 
-  const handleContinueToScoring = () => {
+  const handleContinueToScoring = async () => {
+    const committed = await panelRef.current?.commitPendingEdit();
+    if (committed === false) return;
     navigate(`/jobs/edit/${id}/scoring-criteria`);
+  };
+
+  const handleSaveDraft = async () => {
+    const committed = await panelRef.current?.commitPendingEdit();
+    if (committed === false) return;
+    showToast({ message: 'Job saved as draft successfully', type: 'success' });
+    navigate('/jobs');
+  };
+
+  const handleConfirmCancel = async () => {
+    if (jobOpeningId) {
+      try {
+        await deleteDraftJob(jobOpeningId).unwrap();
+      } catch (error) {
+        showToast({
+          message: getJobErrorMessage(error, 'Failed to remove job opening'),
+          type: 'error',
+        });
+        setShowCancelConfirm(false);
+        return;
+      }
+    }
+    setShowCancelConfirm(false);
+    navigate('/jobs');
   };
 
   return (
     <>
-      <JobDescriptionPanel aiJobDescriptionId={jobOpeningId} isEditFlow />
+      <JobDescriptionPanel ref={panelRef} aiJobDescriptionId={jobOpeningId} isEditFlow />
       <div className="flex items-center justify-center mt-6 gap-6">
-        <Button
-          type="button"
-          className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-          onClick={handleContinueToScoring}
-        >
-          NEXT: SCORING CRITERIA →
-        </Button>
+        {isDraft && (
+          <Tooltip title="Save progress and come back later.">
+            <Button
+              type="button"
+              className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+              onClick={handleSaveDraft}
+            >
+              Save As Draft
+            </Button>
+          </Tooltip>
+        )}
+        {isDraft && (
+          <Tooltip title="Delete this job opening and everything in it.">
+            <Button
+              type="button"
+              className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+              onClick={() => setShowCancelConfirm(true)}
+            >
+              Cancel
+            </Button>
+          </Tooltip>
+        )}
+        <Tooltip title="Save this page and continue.">
+          <Button
+            type="button"
+            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+            onClick={handleContinueToScoring}
+          >
+            Save & Next
+          </Button>
+        </Tooltip>
       </div>
+      {showCancelConfirm && (
+        <ConfirmationModal
+          onClose={() => setShowCancelConfirm(false)}
+          onConfirm={handleConfirmCancel}
+          title="Cancel this job opening? Everything added so far will be permanently deleted."
+          confirmText="Cancel Job"
+          isLoading={isCancelling}
+        />
+      )}
     </>
   );
 };

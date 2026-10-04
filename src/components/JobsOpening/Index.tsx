@@ -1,3 +1,4 @@
+import BackButton from '../shared/ui/BackButton';
 import dayjs from 'dayjs';
 import { Button, Search, Typography } from '..';
 import './jobsList.css';
@@ -19,7 +20,6 @@ import {
   MdOutlineCheckCircle,
   MdOutlineEditNote,
   MdOutlineCancel,
-  MdOutlineArrowBack,
 } from 'react-icons/md';
 import { StatCardRow, type StatCardData } from '../shared/ui/StatCardRow';
 import { hasFeatureAccess, isAssignedToJob } from '../../shared/utils/auth/getAccess';
@@ -1042,13 +1042,7 @@ const JobsOpening = () => {
     <div>
       <MainLayout>
         <div className="jobs-list-page w-full px-4 pb-6 pt-4 sm:px-6 sm:pt-6 justify-start">
-          <button
-            onClick={() => navigate('/')}
-            className="mb-2 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
-          >
-            <MdOutlineArrowBack className="mr-2" />
-            <span>Back</span>
-          </button>
+          <BackButton onClick={() => navigate('/')} className="mb-2" />
           {(isLoading || isDuplicating) && <Loader />}
           <div className="flex flex-wrap gap-3 justify-between items-center px-2 pb-3">
             {isFromGlobalSearch && filters.text ? (
@@ -1158,7 +1152,7 @@ const JobsOpening = () => {
                     disabled={!canCreateJob}
                   >
                     <PlusOutlined className="text-sm pr-2" />{' '}
-                    <span className="text-sm whitespace-nowrap">ADD JOB OPENING</span>
+                    <span className="text-sm whitespace-nowrap">Add Job Opening</span>
                   </Button>
                 </span>
               </Tooltip>
@@ -1178,7 +1172,7 @@ const JobsOpening = () => {
                         : 'text-neutral-500 hover:text-neutral-700'
                     )}
                   >
-                    All jobs
+                    All Jobs
                   </button>
                   <button
                     type="button"
@@ -1190,7 +1184,7 @@ const JobsOpening = () => {
                         : 'text-neutral-500 hover:text-neutral-700'
                     )}
                   >
-                    My jobs
+                    My Jobs
                   </button>
                 </div>
               )}
@@ -1445,7 +1439,7 @@ const JobsOpening = () => {
             onClose={() => setShowDuplicateModal(false)}
             onConfirm={handleDuplicate}
             title="Are you sure you want to duplicate?"
-            confirmText="DUPLICATE"
+            confirmText="Duplicate"
             isLoading={isDuplicating}
           />
         )}
@@ -1458,7 +1452,7 @@ const JobsOpening = () => {
             }}
             onConfirm={handleDelete}
             title={`Are you sure you want to delete "${jobName}"? This cannot be undone.`}
-            confirmText="DELETE"
+            confirmText="Delete"
             isLoading={isDeleting}
           />
         )}
@@ -1519,7 +1513,7 @@ const JobsOpening = () => {
                   fileInputRef.current?.click();
                 }}
               >
-                UPLOAD JOB DESCRIPTION
+                Upload Job Description
               </Button>
               <p className="text-center text-xs text-gray-400 !-mt-1">
                 Supported format: docx, pdf
@@ -1542,7 +1536,7 @@ const JobsOpening = () => {
                   }
                 }}
               >
-                CREATE JOB MANUALLY
+                Create Job Manually
               </Button>
 
               <Button
@@ -1553,7 +1547,7 @@ const JobsOpening = () => {
                   navigate('/ats-job-id');
                 }}
               >
-                UPLOAD FROM ATS
+                Upload From ATS
               </Button>
             </div>
           </div>
@@ -1594,7 +1588,7 @@ const JobsOpening = () => {
                   <UploadOutlined />
                 </span>
                 <span className="text-left">
-                  <span className="block text-sm font-semibold">UPLOAD JOB DESCRIPTION</span>
+                  <span className="block text-sm font-semibold">Upload Job Description</span>
                   <span className="block text-xs text-gray-500">Supported format: docx, pdf</span>
                 </span>
               </Button>
@@ -1700,14 +1694,14 @@ const JobsOpening = () => {
                       }
                     }}
                   >
-                    GO TO JOB OPENING
+                    Go To Job Opening
                   </Button>
                 ) : (
                   <Button
                     className="text-white bg-button rounded-3xl px-4 py-2"
                     onClick={handleGoToDraftJobs}
                   >
-                    GO TO JOB OPENINGS
+                    Go To Job Openings
                   </Button>
                 )}
               </div>

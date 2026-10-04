@@ -1,208 +1,133 @@
-import { HiOutlineMinus, HiOutlinePlus } from 'react-icons/hi';
-import { MdInfoOutline } from 'react-icons/md';
 import { Outlet, useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Loader } from '../../shared/ui/loader';
-import CollapseToggle from '../../shared/ui/CollapseToggle';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { useGetJobIntakeQuestionsQuery } from '../../../api/job-service/JobOpening/jobQuestions';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getVariantBadge } from '../EditJobOpening/sortableInterviewRounds';
-import RoundInfoModal from '../../shared/ui/RoundInfoModal';
-import {
-  getRoundInfoContent,
-  getSpecialKindFromRoundName,
-} from '../../../shared/utils/roundInfoContent';
+import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import { getSpecialKindFromRoundName } from '../../../shared/utils/roundInfoContent';
 
 const ViewInterviewRound = () => {
-  const [collapsedRounds, setCollapsedRounds] = useState<string[]>([]);
-  // Description starts open (membership = collapsed); Questions starts
-  // closed (membership = expanded) - keeps the card compact by default
-  // while still surfacing the description at a glance, same as before.
-  const [collapsedDescriptions, setCollapsedDescriptions] = useState<string[]>([]);
-  const [expandedQuestionSections, setExpandedQuestionSections] = useState<string[]>([]);
-  const [infoRoundId, setInfoRoundId] = useState<string | null>(null);
+  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
   const { id } = useParams();
   const jobId = asJobId(id);
   const { data: jobData, isLoading } = useGetJobOpeningByIdQuery(
     { jobOpeningId: jobId },
     { skip: !jobId }
   );
-  // Same endpoint the Edit screen's "Intake Call Questions" section
-  // (JobIntakeQuestionsSection.tsx) reads and writes — `/intake-questions`,
-  // not the older, write-less `/intake-call-questions` (getAudioQuestions)
-  // this used to read from. Nothing in the app has ever written to that
-  // endpoint, so whatever a recruiter actually set up under Edit never
-  // showed up here.
+  // Same endpoint the Edit screen's "Intake Call Questions" section reads and writes.
   const { data: intakeData } = useGetJobIntakeQuestionsQuery(jobId, { skip: !jobId });
-  const intakeQuestions = intakeData?.questions ?? [];
-  const generalQuestions = jobData?.data.generalQuestions ?? [];
+  const { jobOpeningDropdown: roundTypes } = useJobOpeningDropdown('ROUNDS', 'view');
+  const variantLabelOverrides = useMemo(
+    () => Object.assign({}, ...roundTypes.map((round) => round.variant_labels ?? {})),
+    [roundTypes]
+  );
 
-  const toggleRound = (roundId: string) => {
-    setCollapsedRounds((prev) =>
-      prev.includes(roundId) ? prev.filter((id) => id !== roundId) : [...prev, roundId]
-    );
-  };
+  const rounds = useMemo(() => {
+    const intakeQuestions = intakeData?.questions ?? [];
+    const generalQuestions = jobData?.data.generalQuestions ?? [];
+    return (jobData?.data.interviewRounds ?? []).map((round, index) => {
+      const roundIdStr = round.id.toString();
+      // Kind from the round type; name lookup is a fallback.
+      const specialKind =
+        roundTypes.find((type) => String(type.id) === String(round.round?.id))?.special_kind ??
+        getSpecialKindFromRoundName(round.round?.name);
+      // Intake questions come from their own endpoint; Resume has none.
+      const isIntakeCall = specialKind === 'intake_call';
+      const isResume = specialKind === 'resume';
+      const questions = isIntakeCall
+        ? intakeQuestions.map((q) => ({ id: q.job_intake_question_id, text: q.question_text }))
+        : generalQuestions
+            .filter((q) => String(q.interviewRoundId) === roundIdStr)
+            .map((q) => ({ id: String(q.id), text: q.question }));
+      return { round, index, roundIdStr, isResume, questions };
+    });
+  }, [jobData, intakeData, roundTypes]);
 
-  const toggleDescription = (roundId: string) => {
-    setCollapsedDescriptions((prev) =>
-      prev.includes(roundId) ? prev.filter((id) => id !== roundId) : [...prev, roundId]
-    );
-  };
-
-  const toggleQuestions = (roundId: string) => {
-    setExpandedQuestionSections((prev) =>
-      prev.includes(roundId) ? prev.filter((id) => id !== roundId) : [...prev, roundId]
-    );
-  };
+  const active = rounds.find((r) => r.roundIdStr === selectedRoundId) ?? rounds[0];
+  const activeBadge = active ? getVariantBadge(active.round.variant, variantLabelOverrides) : null;
+  const ActiveBadgeIcon = activeBadge?.icon;
+  const activeName = active?.round.round?.name ?? 'Interview Round';
 
   return (
     <>
-      <div className="relative">
+      <div className="relative flex flex-col gap-4 py-2">
         {isLoading && <Loader />}
-        {jobData?.data.interviewRounds?.map((round, index) => {
-          const badge = getVariantBadge(round.variant);
-          const BadgeIcon = badge?.icon;
-          const summary = round.duration ? `${round.duration} min` : '';
-          const roundIdStr = round.id.toString();
-          const specialKind = getSpecialKindFromRoundName(round.round?.name);
-          // Intake Call's questions live behind a separate endpoint (they're
-          // not part of the JD question bank), so source them from there
-          // instead of `generalQuestions`.
-          const isIntakeCall = specialKind === 'intake_call';
-          // Resume Round is AI resume screening against the JD, not a Q&A
-          // round — there's no question bank for it, so the section is
-          // hidden below rather than always rendering an empty "Questions".
-          const isResume = specialKind === 'resume';
-          const roundQuestions = isIntakeCall
-            ? intakeQuestions.map((q) => ({ id: q.job_intake_question_id, text: q.question_text }))
-            : generalQuestions
-                .filter((q) => String(q.interviewRoundId) === roundIdStr)
-                .map((q) => ({ id: String(q.id), text: q.question }));
-          const isDescriptionOpen = !collapsedDescriptions.includes(roundIdStr);
-          const isQuestionsOpen = expandedQuestionSections.includes(roundIdStr);
-          return (
-            <div key={round.id} className="relative mt-6">
-              <div
-                className="border shadow-lg rounded-lg p-6 bg-white relative"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0 flex items-center flex-wrap gap-2">
-                    <h3 className="text-lg">
-                      <button
-                        type="button"
-                        className="cursor-pointer border-none bg-transparent p-0 text-lg"
-                        onClick={() => toggleRound(round.id.toString())}
-                      >
-                        {index + 1}. {round.round?.name}
-                      </button>
-                    </h3>
-                    {badge && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 bg-sky-50 px-2.5 py-1 rounded-full whitespace-nowrap">
-                        {BadgeIcon && <BadgeIcon className="text-sm shrink-0" />}
-                        {badge.label}
-                      </span>
-                    )}
-                    {summary && <span className="text-sm text-neutral-500">{summary}</span>}
-                    <button
-                      type="button"
-                      className="text-neutral-400 hover:text-primary-600 cursor-pointer p-0.5"
-                      onClick={() => setInfoRoundId(round.id.toString())}
-                      aria-label={`About the ${round.round?.name} round`}
-                    >
-                      <MdInfoOutline size={16} />
-                    </button>
-                  </div>
+        {rounds.length > 0 && (
+          <nav aria-label="Interview rounds" className="flex flex-wrap gap-2">
+            {rounds.map(({ round, index, roundIdStr }) => {
+              const isActive = active?.roundIdStr === roundIdStr;
+              return (
+                <button
+                  key={roundIdStr}
+                  type="button"
+                  onClick={() => setSelectedRoundId(roundIdStr)}
+                  aria-current={isActive ? 'true' : undefined}
+                  className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary-200 ${
+                    isActive
+                      ? 'border-primary-200 bg-primary-50 text-primary-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {index + 1}. {round.round?.name}
+                </button>
+              );
+            })}
+          </nav>
+        )}
 
-                  <div className="flex items-center space-x-4 shrink-0">
-                    <button
-                      className="cursor-pointer"
-                      onClick={() => toggleRound(round.id.toString())}
-                    >
-                      {collapsedRounds.includes(round.id.toString()) ? (
-                        <HiOutlinePlus className="cursor-pointer" />
-                      ) : (
-                        <HiOutlineMinus className="cursor-pointer" />
-                      )}
-                    </button>
-                  </div>
+        {active && (
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <h3 className="m-0 text-base font-bold text-neutral-900">{activeName}</h3>
+              {activeBadge && (
+                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
+                  {ActiveBadgeIcon && <ActiveBadgeIcon className="shrink-0 text-sm" />}
+                  {activeBadge.label}
+                </span>
+              )}
+              {active.round.duration ? (
+                <span className="text-sm text-neutral-500">{active.round.duration} min</span>
+              ) : null}
+            </div>
+
+            {active.round.description && (
+              <p className="m-0 mt-2 text-sm leading-relaxed text-gray-600">
+                {active.round.description}
+              </p>
+            )}
+
+            {!active.isResume && (
+              <div className="mt-4">
+                <div className="mb-2 text-sm font-semibold text-gray-800">
+                  Questions{active.questions.length > 0 ? ` (${active.questions.length})` : ''}
                 </div>
-                {!collapsedRounds.includes(roundIdStr) && (
-                  <div className="mt-3 flex flex-col gap-3">
-                    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => toggleDescription(roundIdStr)}
-                        className="w-full flex items-center justify-between px-5 py-3 text-left cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition-colors"
-                        aria-expanded={isDescriptionOpen}
+                {active.questions.length > 0 ? (
+                  <ol className="m-0 max-h-[50vh] list-none divide-y divide-gray-100 overflow-y-auto rounded-xl bg-gray-50 p-0">
+                    {active.questions.map((q, questionIndex) => (
+                      <li
+                        key={q.id}
+                        className="flex gap-3 px-4 py-2.5 text-sm leading-relaxed text-gray-700"
                       >
-                        <span className="font-semibold text-sm text-gray-800">Description</span>
-                        <CollapseToggle open={isDescriptionOpen} />
-                      </button>
-                      {isDescriptionOpen && (
-                        <div className="px-5 py-4 text-sm text-gray-700 leading-relaxed">
-                          {round.description || 'No description provided.'}
-                        </div>
-                      )}
-                    </div>
-
-                    {!isResume && (
-                      <div className="border border-[var(--border)] rounded-lg overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => toggleQuestions(roundIdStr)}
-                          className="w-full flex items-center justify-between px-5 py-3 text-left cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition-colors"
-                          aria-expanded={isQuestionsOpen}
-                        >
-                          <span className="font-semibold text-sm text-gray-800">
-                            Questions
-                            {roundQuestions.length > 0 ? ` (${roundQuestions.length})` : ''}
-                          </span>
-                          <CollapseToggle open={isQuestionsOpen} />
-                        </button>
-                        {isQuestionsOpen && (
-                          <div className="px-5 py-4 flex flex-col gap-2">
-                            {roundQuestions.map((q) => (
-                              <div
-                                key={q.id}
-                                className="bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 text-sm text-gray-700"
-                              >
-                                {q.text}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                        <span className="w-5 shrink-0 text-right font-semibold text-gray-400">
+                          {questionIndex + 1}.
+                        </span>
+                        <span className="min-w-0">{q.text}</span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <div className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-400">
+                    No questions added.
                   </div>
                 )}
               </div>
-            </div>
-          );
-        })}
+            )}
+          </section>
+        )}
         <Outlet />
       </div>
-      {infoRoundId &&
-        (() => {
-          const activeRound = jobData?.data.interviewRounds?.find(
-            (round) => round.id.toString() === infoRoundId
-          );
-          if (!activeRound) return null;
-          const badge = getVariantBadge(activeRound.variant);
-          return (
-            <RoundInfoModal
-              roundName={activeRound.round?.name ?? 'Interview round'}
-              badgeLabel={badge?.label}
-              content={getRoundInfoContent({
-                variant: activeRound.variant,
-                roundName: activeRound.round?.name,
-              })}
-              fallbackText={activeRound.description}
-              onClose={() => setInfoRoundId(null)}
-            />
-          );
-        })()}
     </>
   );
 };

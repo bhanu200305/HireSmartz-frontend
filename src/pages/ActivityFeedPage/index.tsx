@@ -1,6 +1,6 @@
+import BackButton from '../../components/shared/ui/BackButton';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { MdOutlineArrowBack } from 'react-icons/md';
 import { RootState } from '../../redux/provider/store';
 import MainLayout from '../../layouts/MainLayout';
 import TenantActivityFeedTab from '../../components/MyCompany/TenantActivityFeedTab';
@@ -19,13 +19,9 @@ const ActivityFeedPage = () => {
   return (
     <MainLayout>
       <div className="pt-16">
-        <button
-          onClick={() => navigate('/')}
-          className="ml-4 mb-2 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
-        >
-          <MdOutlineArrowBack className="mr-2" />
-          <span>Back</span>
-        </button>
+        <div className="ml-4 mb-2">
+          <BackButton onClick={() => navigate('/')} />
+        </div>
         <TenantActivityFeedTab tenantId={tenantId ?? ''} />
       </div>
     </MainLayout>

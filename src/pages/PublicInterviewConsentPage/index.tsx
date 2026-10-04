@@ -36,7 +36,7 @@ export const PublicInterviewConsentPage = () => {
             onClick={handleCancel}
             className="min-w-30 rounded-lg border border-[#B8BDC4] bg-[#F2F2F2] px-5 py-2.5 text-xs font-semibold text-[#2D2D2D] transition hover:bg-[#E8EAED] cursor-pointer"
           >
-            CLOSE
+            Close
           </button>
         </div>
       </div>
@@ -79,8 +79,8 @@ export const PublicInterviewConsentPage = () => {
         consentLabel="I have read and agree to the above, and I consent to this recorded, AI-assisted interview."
         onCancel={handleCancel}
         onContinue={handleContinue}
-        cancelText="CANCEL"
-        continueText="CONTINUE"
+        cancelText="Cancel"
+        continueText="Continue"
         requireCheckbox={true}
         panelClassName="max-w-2xl"
       />

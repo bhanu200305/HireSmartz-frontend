@@ -54,7 +54,7 @@ const FeedbackPromptModal: React.FC<FeedbackPromptModalProps> = ({
             <div className="w-12 h-12 rounded-lg bg-brand-600 flex items-center justify-center group-hover:bg-brand-700 transition-colors">
               <FaRegEdit className="text-white" size={22} />
             </div>
-            <span className="text-sm font-semibold text-gray-800 text-center uppercase tracking-wide">
+            <span className="text-sm font-semibold text-gray-800 text-center">
               Complete Full Feedback
             </span>
           </button>
@@ -68,9 +68,7 @@ const FeedbackPromptModal: React.FC<FeedbackPromptModalProps> = ({
             <div className="w-12 h-12 rounded-lg bg-brand-600 flex items-center justify-center group-hover:bg-brand-700 transition-colors">
               <HiOutlineBolt className="text-white" size={24} />
             </div>
-            <span className="text-sm font-semibold text-gray-800 text-center uppercase tracking-wide">
-              Quick Feedback
-            </span>
+            <span className="text-sm font-semibold text-gray-800 text-center">Quick Feedback</span>
           </button>
         </div>
 
@@ -83,7 +81,7 @@ const FeedbackPromptModal: React.FC<FeedbackPromptModalProps> = ({
             onClick={onSkip}
             loading={isSkipping}
           >
-            SKIP FOR NOW
+            Skip For Now
           </Button>
         </div>
       </div>

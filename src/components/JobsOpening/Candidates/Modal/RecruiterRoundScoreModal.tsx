@@ -113,7 +113,7 @@ const RecruiterRoundScoreModal = ({
           type="button"
           onClick={() => void handleSave()}
           disabled={isLoading || isDeleting || !isFormValid}
-          className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+          className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
         >
           {isLoading ? 'SAVING…' : 'SAVE SCORE'}
         </Button>
@@ -124,7 +124,7 @@ const RecruiterRoundScoreModal = ({
             disabled={isLoading || isDeleting}
             className="text-xs font-semibold text-red-500 hover:underline disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            {isDeleting ? 'Removing…' : 'Remove score'}
+            {isDeleting ? 'Removing…' : 'Remove Score'}
           </button>
         )}
       </div>

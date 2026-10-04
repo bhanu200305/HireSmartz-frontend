@@ -17,8 +17,8 @@ const T = {
     consentLine3: '\u00A0\u00A0• Your responses may be recorded, analyzed and stored.',
     consentLine4: '\u00A0\u00A0• Full consent will be required when the interview begins.',
     consentCheckboxLabel: 'I consent to participate in this AI-assisted recorded interview.',
-    cancel: 'CANCEL',
-    continue: 'CONTINUE',
+    cancel: 'Cancel',
+    continue: 'Continue',
   },
   es: {
     consentTitle: 'Consentimiento para la entrevista asistida por IA',
@@ -30,8 +30,8 @@ const T = {
       '\u00A0\u00A0• Se requerirá el consentimiento total cuando comience la entrevista.',
     consentCheckboxLabel:
       'Doy mi consentimiento para participar en esta entrevista en video grabada asistida por IA.',
-    cancel: 'CANCELAR',
-    continue: 'CONTINUAR',
+    cancel: 'Cancelar',
+    continue: 'Continuar',
   },
 } as const;
 

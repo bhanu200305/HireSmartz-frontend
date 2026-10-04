@@ -48,7 +48,6 @@ export const UploadAndGenerateHeader = ({
   isUploading = false,
   isDownloading = false,
   generateDisabled = false,
-  stacked = false,
 }: UploadAndGenerateHeaderProps) => {
   const skippedCount = failedCount + duplicateCount;
   const generateButton = (
@@ -58,16 +57,16 @@ export const UploadAndGenerateHeader = ({
       disabled={isGenerating || generateDisabled}
     >
       <HiOutlineRefresh className="text-base" />
-      GENERATE WITH AI
+      Generate With AI
     </Button>
   );
   const uploadDisabled = isUploading || generateDisabled;
   const uploadLabel = (
     <label
-      className={`bg-primary hover:bg-brand-700 text-white flex items-center gap-1.5 px-4 py-1.5 font-semibold text-sm rounded-full shadow-sm cursor-pointer ${uploadDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`bg-primary hover:bg-brand-700 text-white flex items-center gap-1.5 px-3.5 py-1.5 font-semibold text-sm rounded-full shadow-sm cursor-pointer ${uploadDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       <HiOutlineUpload className="text-base" />
-      UPLOAD FILE
+      Upload File
       <input
         type="file"
         accept=".xlsx,.csv"
@@ -78,40 +77,26 @@ export const UploadAndGenerateHeader = ({
     </label>
   );
   return (
-    <div className="flex flex-col gap-4">
-      <div
-        className={`bg-[#F8F9FA] rounded-2xl p-4 flex flex-col ${stacked ? '' : 'md:flex-row md:items-center'} justify-between border border-gray-200 gap-3`}
-      >
-        <div className="flex-1">
-          <Typography variant="body2" className="text-gray-600 m-0 text-sm">
-            {description}
-          </Typography>
-        </div>
-        <div className="flex items-center flex-wrap gap-2.5">
-          {generateButton}
-
-          <div className="relative flex flex-col items-center">
-            {uploadLabel}
-            <Typography
-              variant="caption"
-              className="text-gray-400 font-medium absolute top-full mt-0.5 whitespace-nowrap"
-            >
-              Supports .xlsx and .csv formats
-            </Typography>
-          </div>
-
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2.5">
+        {description && <span className="w-full text-sm text-gray-500">{description}</span>}
+        <Tooltip title="Generates questions from the job description and this round's focus areas.">
+          <span>{generateButton}</span>
+        </Tooltip>
+        <Tooltip title="Import questions from an .xlsx or .csv file.">
+          <span>{uploadLabel}</span>
+        </Tooltip>
+        <Tooltip title="Download the .xlsx import template.">
           <button
-            className="border border-primary text-primary hover:bg-gray-50 bg-white p-2.5 rounded-full flex items-center justify-center shadow-sm relative group cursor-pointer disabled:cursor-not-allowed"
+            type="button"
+            className="border border-primary text-primary hover:bg-gray-50 bg-white p-2.5 rounded-full flex items-center justify-center shadow-sm cursor-pointer disabled:cursor-not-allowed"
             onClick={onDownloadTemplate}
             disabled={isDownloading}
-            title="Download Template"
+            aria-label="Download template"
           >
             <MdDownload className="text-base" />
-            <span className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs py-1 px-2 rounded shadow-lg whitespace-nowrap z-50">
-              Download Template
-            </span>
           </button>
-        </div>
+        </Tooltip>
       </div>
 
       {/* Upload Details & Warning display */}

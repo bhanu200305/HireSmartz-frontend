@@ -693,7 +693,7 @@ export const CareersListingPage = () => {
                   onClick={clearAllFilters}
                   className="cursor-pointer text-xs font-semibold text-gray-500 hover:text-gray-800 underline ml-1"
                 >
-                  Clear all
+                  Clear All
                 </button>
               </div>
             )}
@@ -746,7 +746,7 @@ export const CareersListingPage = () => {
                 onClick={clearAllFilters}
                 className="mt-4 cursor-pointer text-sm font-semibold text-primary hover:underline"
               >
-                Clear all filters
+                Clear All Filters
               </button>
             )}
           </div>

@@ -142,8 +142,8 @@ const VIDEO_CONSENT_COPY = {
   title: 'Consent for AI-Assisted Video Interview',
   label:
     'I have read and agree to the above, and I consent to this recorded, AI-assisted interview.',
-  cancel: 'CANCEL',
-  continue: 'CONTINUE',
+  cancel: 'Cancel',
+  continue: 'Continue',
 };
 
 const videoConsentDescription = (
@@ -1676,8 +1676,8 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                 liveKit.isRemoteScreenSharing && !liveKit.mediaState.screenSharing
                   ? 'Another participant is already sharing their screen'
                   : liveKit.mediaState.screenSharing
-                    ? 'Stop sharing'
-                    : 'Share screen'
+                    ? 'Stop Sharing'
+                    : 'Share Screen'
               }
             >
               <Button
@@ -2001,7 +2001,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
               className="mt-6 bg-brand-600 hover:!bg-brand-500 border-none font-medium h-11 shadow-lg shadow-brand-900/20"
               onClick={() => onSidebarChange(null)}
             >
-              SAVE FEEDBACK
+              Save Feedback
             </Button>
           </div>
         )}

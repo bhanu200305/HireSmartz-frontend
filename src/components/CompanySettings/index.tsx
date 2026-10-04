@@ -1,9 +1,9 @@
+import BackButton from '../shared/ui/BackButton';
 import React from 'react';
 import { Tabs } from 'antd';
 import type { TabsProps } from 'antd';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../../layouts/MainLayout';
-import { BsArrowLeft } from 'react-icons/bs';
 import { FiSettings } from 'react-icons/fi';
 import IndustriesTab from './IndustriesTab';
 import DepartmentsTab from './DepartmentsTab';
@@ -104,13 +104,7 @@ const CompanySettings: React.FC = () => {
   return (
     <MainLayout>
       <div className="w-full px-6 py-5 max-w-[1400px] mx-auto">
-        <div
-          className="flex items-center gap-2 text-sm text-gray-500 mb-3 cursor-pointer hover:text-primary-600 transition-colors w-fit"
-          onClick={() => navigate(-1)}
-        >
-          <BsArrowLeft />
-          <span>Back</span>
-        </div>
+        <BackButton onClick={() => navigate(-1)} className="mb-3" />
 
         <div className="bg-white border border-neutral-200 rounded-xl shadow-xs">
           <div className="p-6">

@@ -281,6 +281,8 @@ export type InterviewRoundType = {
   // Marks the fixed anchor round types (Resume + Intake Call) the
   // Interview Rounds page keeps pinned to the top of the sequence.
   special_kind?: 'intake_call' | 'resume' | 'verification' | null;
+  // Display text per variant code.
+  variant_labels?: Record<string, string> | null;
 };
 
 export type QuestionResponse = {

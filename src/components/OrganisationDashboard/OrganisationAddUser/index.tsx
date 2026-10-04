@@ -233,7 +233,7 @@ const AddOrganisationUser = () => {
               disabled={isReactivating}
               className="mt-3 rounded-3xl bg-button px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isReactivating ? 'Reactivating…' : 'Reactivate existing user'}
+              {isReactivating ? 'Reactivating…' : 'Reactivate Existing User'}
             </Button>
           </div>
         )}
@@ -353,7 +353,7 @@ const AddOrganisationUser = () => {
             onClick={handleSubmit}
             disabled={isLoading}
           >
-            {isLoading ? 'Creating…' : 'Create user'}
+            {isLoading ? 'Creating…' : 'Create User'}
           </Button>
         </div>
       </div>

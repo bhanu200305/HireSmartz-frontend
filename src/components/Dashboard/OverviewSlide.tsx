@@ -87,9 +87,9 @@ const OverviewSlide: React.FC<OverviewSlideProps> = ({
         <button
           type="button"
           onClick={() => navigate(viewAllHref)}
-          className="group flex items-center gap-1 text-xs font-semibold tracking-wide text-primary uppercase transition-colors hover:text-primary-700 cursor-pointer"
+          className="group flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary-700 cursor-pointer"
         >
-          View full report
+          View Full Report
           <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">
             →
           </span>

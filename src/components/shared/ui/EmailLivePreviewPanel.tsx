@@ -94,7 +94,7 @@ const EmailLivePreviewPanel: React.FC<EmailLivePreviewPanelProps> = ({
             onClick={handleFullScreen}
             disabled={!preview?.body_html}
           >
-            FULL SCREEN PREVIEW
+            Full Screen Preview
           </Button>
         </div>
       </div>

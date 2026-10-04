@@ -363,7 +363,7 @@ const ViewOrgUser = () => {
             className="mt-6 rounded-full border border-red-300 text-red-600 px-6 py-2 text-sm font-semibold"
             onClick={() => setShowConfirm(true)}
           >
-            Deactivate user
+            Deactivate User
           </Button>
         )}
       </div>
@@ -371,7 +371,7 @@ const ViewOrgUser = () => {
       {showConfirm && (
         <ConfirmationModal
           title="Deactivate this user? This is reversible; their record and role history are kept, not deleted."
-          confirmText="DEACTIVATE"
+          confirmText="Deactivate"
           isLoading={isDeactivating}
           onConfirm={handleDeactivate}
           onClose={() => setShowConfirm(false)}

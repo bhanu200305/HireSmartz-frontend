@@ -71,7 +71,7 @@ const ConfirmRecoveryEmail = () => {
             onClick={() => navigate('/settings/security')}
             className="mt-2 text-sm text-primary hover:underline cursor-pointer"
           >
-            Go to Security settings
+            Go To Security Settings
           </button>
         </div>
       </AuthPageShell>

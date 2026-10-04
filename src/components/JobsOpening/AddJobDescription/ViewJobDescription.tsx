@@ -338,7 +338,7 @@ const ViewJobDescription = () => {
                     disabled={!watch('description').trim()}
                   >
                     <TbReload className="mr-2" size={20} />
-                    REFINE
+                    Refine
                   </Button>
                 </span>
               </Tooltip>
@@ -371,7 +371,7 @@ const ViewJobDescription = () => {
                       className="flex items-center space-x-1 cursor-pointer px-3 py-1"
                       onClick={handleCancelEdit}
                     >
-                      <span>CANCEL</span>
+                      <span>Cancel</span>
                     </Button>
                     <Button
                       className="flex items-center space-x-1 cursor-pointer text-primary px-3 py-1"
@@ -383,7 +383,7 @@ const ViewJobDescription = () => {
                       ) : (
                         <>
                           <MdSave size={20} />
-                          <span className="text-primary">SAVE</span>
+                          <span className="text-primary">Save</span>
                         </>
                       )}
                     </Button>
@@ -476,7 +476,7 @@ const ViewJobDescription = () => {
                 className="text-white w-[25%] bg-button rounded-3xl px-4 py-2 flex items-center justify-center"
                 onClick={handleContinue}
               >
-                SAVE & NEXT
+                Save & Next
               </Button>
             )}
           </div>
@@ -485,7 +485,7 @@ const ViewJobDescription = () => {
               onClose={cancelNavigation}
               onConfirm={confirmNavigation}
               title="You have unsaved changes. Are you sure you want to leave?"
-              confirmText="LEAVE PAGE"
+              confirmText="Leave Page"
             />
           )}
           {showRegenerateModal && (
@@ -496,7 +496,7 @@ const ViewJobDescription = () => {
                 handleRegenerateFromScratch();
               }}
               title="This will generate a new Job Description using Job Details and Job Skills and will ignore previously generated AI content."
-              confirmText="YES"
+              confirmText="Yes"
             />
           )}
         </JobDetailsLayout>

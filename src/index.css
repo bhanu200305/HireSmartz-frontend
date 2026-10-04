@@ -562,7 +562,7 @@ canvas[data-agora-recording='true'] {
   border-radius: 9999px !important;
   background-color: #ffffff !important;
   min-height: 36px !important;
-  padding-inline: 14px 28px !important;
+  padding-inline: 16px 28px !important;
   display: flex !important;
   align-items: center !important;
 }
@@ -956,37 +956,56 @@ select:focus {
   animation-play-state: paused;
 }
 
+/* Job-form dropdowns: placeholder, value and caret share one 12px inset. */
 .custom-select-jobs .ant-select-selector {
   cursor: pointer;
-  /* Matches the Job ID Input's own px-4 (16px). */
-  padding-inline: 16px 36px !important;
-}
-
-.custom-select-jobs .ant-select-selection-item {
-  cursor: pointer;
-  /* AntD positions this absolutely with its own inset - matched separately. */
-  inset-inline-start: 16px !important;
-  inset-inline-end: 36px !important;
+  position: relative !important;
+  padding-inline: 0 !important;
 }
 
 .custom-select-jobs .ant-select-arrow {
   cursor: pointer;
 }
 
+.custom-select-jobs.ant-select-single .ant-select-selection-item,
+.custom-select-jobs.ant-select-single .ant-select-selection-placeholder,
+.custom-select-jobs.ant-select-single .ant-select-selection-search {
+  position: absolute !important;
+  inset-inline-start: 12px !important;
+  inset-inline-end: 36px !important;
+  top: 50% !important;
+  bottom: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: translateY(-50%) !important;
+  line-height: 1.5 !important;
+}
+
 .custom-select-jobs .ant-select-selection-search-input {
   cursor: pointer !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-indent: 0 !important;
+  line-height: 1.5 !important;
 }
 
-.custom-select-jobs .ant-select-selection-placeholder {
-  /* Same inset fix as .ant-select-selection-item above. */
-  inset-inline-start: 16px !important;
-  inset-inline-end: 36px !important;
+/* Multi-select: same 12px start, tags/search flow, placeholder absolute. */
+.custom-select-jobs.ant-select-multiple .ant-select-selection-overflow {
+  padding-inline: 12px 36px !important;
 }
 
-.custom-select-jobs .ant-select-selection-search {
-  /* Same inset fix as .ant-select-selection-item above. */
-  inset-inline-start: 16px !important;
+.custom-select-jobs.ant-select-multiple .ant-select-selection-placeholder {
+  position: absolute !important;
+  inset-inline-start: 12px !important;
   inset-inline-end: 36px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.custom-select-jobs.ant-select-multiple .ant-select-selection-search {
+  margin-inline-start: 0 !important;
 }
 
 .dropdown-focus-ring:focus-within {
@@ -996,6 +1015,8 @@ select:focus {
 
 .custom-select-jobs-dropdown .ant-select-item {
   cursor: pointer;
+  /* Matches the 12px inset above. */
+  padding-left: 12px !important;
 }
 
 .custom-select-jobs-dropdown .ant-select-item-option-disabled {

@@ -208,7 +208,7 @@ const BulkScheduleInterviewsModal = ({
             type="button"
             onClick={() => void handleSchedule()}
             disabled={!jobId || isCreating || stillChecking || readyItems.length === 0}
-            className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+            className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
           >
             {isCreating
               ? 'SCHEDULING…'
@@ -234,9 +234,9 @@ const BulkScheduleInterviewsModal = ({
           <Button
             type="button"
             onClick={onClose}
-            className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white"
+            className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white"
           >
-            DONE
+            Done
           </Button>
         </div>
       )}

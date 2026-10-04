@@ -1,42 +1,19 @@
 import { FC } from 'react';
 import { MdClose } from 'react-icons/md';
-import { HiOutlineFlag, HiOutlineClipboardList, HiOutlineChartBar } from 'react-icons/hi';
-import type { IconType } from 'react-icons';
-import type { RoundInfoContent } from '../../../shared/utils/roundInfoContent';
 
 interface RoundInfoModalProps {
   roundName: string;
   badgeLabel?: string | null;
-  content: RoundInfoContent | null;
-  fallbackText?: string | null;
+  /** The round's own description, as saved on the round type. */
+  description?: string | null;
   onClose: () => void;
 }
 
-const InfoSection: FC<{ icon: IconType; title: string; text: string }> = ({
-  icon: Icon,
-  title,
-  text,
-}) => (
-  <div className="flex gap-3">
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600 text-base">
-      <Icon />
-    </span>
-    <div className="min-w-0">
-      <h3 className="text-sm font-semibold text-neutral-900 mb-1">{title}</h3>
-      <p className="text-sm text-neutral-600 leading-relaxed">{text}</p>
-    </div>
-  </div>
-);
-
-/** Round info popup shown from the "i" icon on the rounds list and the Add
- * Round form. Content is structured (objective/procedure/analysis) for the
- * round types we can reliably identify, and falls back to the round's own
- * description when we cannot, see getRoundInfoContent. */
+/** Round info popup opened from the "i" icon. */
 const RoundInfoModal: FC<RoundInfoModalProps> = ({
   roundName,
   badgeLabel,
-  content,
-  fallbackText,
+  description,
   onClose,
 }) => (
   <div
@@ -66,23 +43,10 @@ const RoundInfoModal: FC<RoundInfoModalProps> = ({
         </button>
       </div>
 
-      <div className="px-6 py-5 space-y-5 overflow-y-auto">
-        {content ? (
-          <>
-            <InfoSection icon={HiOutlineFlag} title="Objective" text={content.objective} />
-            <InfoSection icon={HiOutlineClipboardList} title="Procedure" text={content.procedure} />
-            <InfoSection
-              icon={HiOutlineChartBar}
-              title="What we evaluate"
-              text={content.analysis}
-            />
-          </>
-        ) : (
-          <p className="text-sm text-neutral-600 leading-relaxed">
-            {fallbackText ||
-              'This round has not been described yet. Reach out to your hiring team for more detail.'}
-          </p>
-        )}
+      <div className="px-6 py-5 overflow-y-auto">
+        <p className="m-0 text-sm text-neutral-600 leading-relaxed">
+          {description || 'No description has been added for this round.'}
+        </p>
       </div>
     </div>
   </div>

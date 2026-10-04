@@ -18,7 +18,7 @@ const fields: CatalogField<FormValues>[] = [
   { name: 'description', label: 'Description (optional)', type: 'textarea' },
 ];
 
-/** Platform-wide job-mode catalogue (e.g. Remote, Hybrid, On-site). */
+/** Platform-wide job-location catalogue (e.g. Remote, Hybrid, On-site). */
 const JobModesTab: React.FC = () => {
   const [query, setQuery] = useState<CatalogServerQuery>({
     page: 1,
@@ -42,9 +42,9 @@ const JobModesTab: React.FC = () => {
 
   return (
     <PlatformCatalogTab<PlatformJobMode, FormValues>
-      title="Platform-wide job-mode catalog."
-      itemNounSingular="Job mode"
-      itemNounPlural="Job modes"
+      title="Platform-wide job-location catalog."
+      itemNounSingular="Job location"
+      itemNounPlural="Job locations"
       items={data?.items}
       total={data?.total}
       serverQuery={query}

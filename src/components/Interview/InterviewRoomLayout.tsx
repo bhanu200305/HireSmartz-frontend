@@ -306,7 +306,7 @@ const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean })
               onClick={requestFullscreen}
               className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-neutral-950 hover:opacity-90 cursor-pointer"
             >
-              Return to fullscreen
+              Return To Fullscreen
             </button>
           </div>
         )}

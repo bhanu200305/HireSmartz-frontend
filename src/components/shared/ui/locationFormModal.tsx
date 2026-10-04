@@ -367,7 +367,7 @@ const LocationFormModal = ({
           className="w-full border border-gray-300 text-[#2D323A] py-2 rounded-3xl"
           onClick={onClose}
         >
-          CANCEL
+          Cancel
         </Button>
         <Button
           className="w-full bg-button text-white py-2 rounded-3xl"

@@ -196,7 +196,7 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
                   disabled={isReverting || isSaving}
                   className="rounded-3xl border border-red-200 px-4 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isReverting ? 'Reverting…' : 'Revert to default'}
+                  {isReverting ? 'Reverting…' : 'Revert To Default'}
                 </Button>
               )}
               <Button

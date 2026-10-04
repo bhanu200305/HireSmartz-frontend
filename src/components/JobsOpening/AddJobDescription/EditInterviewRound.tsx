@@ -18,26 +18,9 @@ import { toInterviewSequencePayload } from '../../../api/job-service/interviewSe
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import { slotOptions } from '../../../shared/utils/business-logic';
 import { useState } from 'react';
+import { resolveVariantLabel as formatVariantLabel } from '../../../shared/utils/variantLabel';
 
 const { Option } = Select;
-
-// Same "known set, capitalised fallback" as AddNewRound.tsx / the rounds list.
-const VARIANT_LABELS: Record<string, string> = {
-  online: 'Online Round',
-  offline: 'Offline Round',
-  soundwave: 'Voice Agent Round',
-  avatar: 'Avatar Round',
-};
-
-const formatVariantLabel = (variant: string) =>
-  VARIANT_LABELS[variant.toLowerCase()] ??
-  `${variant
-    .replace(/[_-]+/g, ' ')
-    .trim()
-    .replace(
-      /\w\S*/g,
-      (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    )} Round`;
 
 const EditInterviewRound = () => {
   const navigate = useNavigate();
@@ -253,7 +236,7 @@ const EditInterviewRound = () => {
                                 : 'bg-gray-100'
                             }`}
                           >
-                            {formatVariantLabel(variant)}
+                            {formatVariantLabel(variant, selectedRoundType.variant_labels)}
                           </Radio.Button>
                         ))}
                       </div>
@@ -302,7 +285,7 @@ const EditInterviewRound = () => {
               className="bg-primary text-white py-2 w-full rounded-3xl cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isEditing && <Loader />}
-              SUBMIT
+              Submit
             </button>
           </Form>
           {/* Close Button */}

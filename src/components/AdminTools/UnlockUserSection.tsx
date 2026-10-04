@@ -114,7 +114,7 @@ const UnlockUserSection = () => {
               disabled={isLoading}
               className="rounded-3xl bg-button px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isLoading ? 'Unlocking…' : 'Confirm unlock'}
+              {isLoading ? 'Unlocking…' : 'Confirm Unlock'}
             </Button>
           </div>
         </div>

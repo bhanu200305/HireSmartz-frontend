@@ -1,8 +1,9 @@
+import BackButton from '../../components/shared/ui/BackButton';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Alert, Modal } from 'antd';
-import { MdOutlineArrowBack, MdOutlineCalendarMonth } from 'react-icons/md';
+import { MdOutlineCalendarMonth } from 'react-icons/md';
 import { RootState } from '../../redux/provider/store';
 import MainLayout from '../../layouts/MainLayout';
 import { Button, showToast } from '../../components/shared';
@@ -162,13 +163,7 @@ const CalendarSettingsPage = () => {
   return (
     <MainLayout>
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
-        <button
-          onClick={() => navigate('/profile')}
-          className="flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
-        >
-          <MdOutlineArrowBack className="mr-2" />
-          <span>Back</span>
-        </button>
+        <BackButton onClick={() => navigate('/profile')} />
 
         <div className="flex items-center gap-2">
           <MdOutlineCalendarMonth className="text-xl text-brand-700" />
@@ -239,7 +234,7 @@ const CalendarSettingsPage = () => {
                       disabled={busy}
                       className="rounded-full border border-primary-200 bg-primary-50 px-4 py-2 text-sm font-semibold text-primary-700 disabled:opacity-50"
                     >
-                      {isConnecting ? 'Redirecting…' : 'Switch calendar'}
+                      {isConnecting ? 'Redirecting…' : 'Switch Calendar'}
                     </Button>
                     <Button
                       type="button"
@@ -257,7 +252,7 @@ const CalendarSettingsPage = () => {
                     disabled={busy}
                     className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
                   >
-                    {isConnecting ? 'Redirecting…' : 'Connect calendar'}
+                    {isConnecting ? 'Redirecting…' : 'Connect Calendar'}
                   </Button>
                 )}
               </div>
@@ -270,7 +265,7 @@ const CalendarSettingsPage = () => {
         open={showSwitchModal}
         onCancel={withCloseAttention({ onClose: () => setShowSwitchModal(false) })}
         onOk={confirmSwitch}
-        okText="Yes, switch"
+        okText="Yes, Switch"
         cancelText="Cancel"
         okButtonProps={{ loading: isDisconnecting || isConnecting, danger: true }}
         title="Switch calendar"
@@ -288,7 +283,7 @@ const CalendarSettingsPage = () => {
         open={showDisconnectModal}
         onCancel={withCloseAttention({ onClose: () => setShowDisconnectModal(false) })}
         onOk={confirmDisconnect}
-        okText="Yes, disconnect"
+        okText="Yes, Disconnect"
         cancelText="Cancel"
         okButtonProps={{ loading: isDisconnecting, danger: true }}
         title="Disconnect calendar"

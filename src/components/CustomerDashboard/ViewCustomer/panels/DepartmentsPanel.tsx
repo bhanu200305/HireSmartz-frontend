@@ -215,7 +215,7 @@ const DepartmentsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
               className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
               onClick={() => setIsAddOpen(true)}
             >
-              <MdOutlineAdd /> Add department
+              <MdOutlineAdd /> Add Department
             </Button>
           )}
         </div>
@@ -250,7 +250,7 @@ const DepartmentsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
         onPageChange={(nextPage) => setPage(nextPage - 1)}
       />
 
-      <AntdCommonModal open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add department">
+      <AntdCommonModal open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add Department">
         <div className="flex flex-col gap-4">
           <Input
             placeholder="Department name *"
@@ -290,7 +290,7 @@ const DepartmentsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
       {departmentToDelete && (
         <ConfirmationModal
           title={`Delete "${departmentToDelete.name}"? This isn't checked against active job postings or candidates yet, so make sure nothing depends on it.`}
-          confirmText="DELETE"
+          confirmText="Delete"
           onConfirm={handleDelete}
           onClose={() => setDepartmentToDelete(null)}
         />

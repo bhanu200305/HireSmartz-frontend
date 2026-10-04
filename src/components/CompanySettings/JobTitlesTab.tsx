@@ -325,7 +325,7 @@ const JobTitlesTab: React.FC = () => {
             className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
             onClick={openAdd}
           >
-            <MdOutlineAdd /> Add job title
+            <MdOutlineAdd /> Add Job Title
           </Button>
         </div>
       </div>
@@ -360,7 +360,7 @@ const JobTitlesTab: React.FC = () => {
       <AntdCommonModal
         open={modalState !== null}
         onClose={() => setModalState(null)}
-        title={modalState?.mode === 'edit' ? 'Edit job title' : 'Add job title'}
+        title={modalState?.mode === 'edit' ? 'Edit Job Title' : 'Add Job Title'}
       >
         <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
           <Input
@@ -410,7 +410,7 @@ const JobTitlesTab: React.FC = () => {
       {jobTitleToDelete && (
         <ConfirmationModal
           title={`Remove "${jobTitleToDelete.name}"? Blocked if a company's own title was seeded from it.`}
-          confirmText="REMOVE"
+          confirmText="Remove"
           onConfirm={handleDelete}
           onClose={() => setJobTitleToDelete(null)}
         />

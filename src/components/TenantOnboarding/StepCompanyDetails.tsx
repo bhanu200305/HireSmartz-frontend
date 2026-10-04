@@ -260,7 +260,7 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
           <label htmlFor="industryId" className="text-sm text-gray-600">
             Industry
           </label>
-          <div className="industry-select-wrapper flex items-center bg-white w-full h-11 px-4 mt-1 border rounded-3xl border-[var(--border)]">
+          <div className="industry-select-wrapper flex items-center bg-white w-full h-11 px-1 mt-1 border rounded-3xl border-[var(--border)]">
             <Select
               id="industryId"
               className="w-full custom-select-jobs placeholder-style"
@@ -374,7 +374,7 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
         disabled={!isValid || isLoading || Boolean(emailTakenMessage)}
         className="w-full mt-6 text-white bg-[var(--color-primary)] rounded-3xl py-3 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isLoading ? 'Scraping website…' : 'Create Tenant & Fetch Profile'}
+        {isLoading ? 'Scraping Website…' : 'Create Tenant & Fetch Profile'}
       </Button>
     </form>
   );

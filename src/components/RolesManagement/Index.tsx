@@ -310,7 +310,7 @@ const RolesManagement: React.FC = () => {
       {roleBeingDeleted && (
         <ConfirmationModal
           title={`Delete "${roleBeingDeleted.roleName}"? This can't be undone.`}
-          confirmText="DELETE"
+          confirmText="Delete"
           onConfirm={handleConfirmDelete}
           onClose={() => setRoleBeingDeleted(null)}
         />

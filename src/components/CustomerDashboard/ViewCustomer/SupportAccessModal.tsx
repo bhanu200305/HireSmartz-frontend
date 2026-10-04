@@ -165,7 +165,7 @@ const SupportAccessModal: React.FC<{
               disabled={!membershipId || isGranting}
               onClick={handleGrant}
             >
-              {isGranting ? 'Granting…' : 'Grant access'}
+              {isGranting ? 'Granting…' : 'Grant Access'}
             </Button>
           </div>
         </div>

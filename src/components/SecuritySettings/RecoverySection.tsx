@@ -75,7 +75,7 @@ const SetRecoveryEmailForm = ({ onPending }: { onPending: (email: string) => voi
         disabled={!isValidShape || !password || isLoading}
         className="w-fit shrink-0 rounded-3xl bg-button px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isLoading ? 'Sending…' : 'Send confirmation link'}
+        {isLoading ? 'Sending…' : 'Send Confirmation Link'}
       </Button>
     </div>
   );
@@ -138,7 +138,7 @@ const PendingConfirmation = ({
           disabled={!password || isLoading}
           className="shrink-0 rounded-3xl bg-button px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isLoading ? 'Sending…' : 'Resend link'}
+          {isLoading ? 'Sending…' : 'Resend Link'}
         </Button>
       </div>
       <button
@@ -146,7 +146,7 @@ const PendingConfirmation = ({
         onClick={onCancel}
         className="mt-2 text-xs text-gray-400 hover:underline cursor-pointer"
       >
-        Use a different address instead
+        Use A Different Address Instead
       </button>
     </div>
   );
@@ -209,7 +209,7 @@ const VerifiedRecoveryEmail = ({ maskedEmail }: { maskedEmail: string }) => {
             disabled={!password || isLoading}
             className="shrink-0 rounded-3xl bg-red-600 px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isLoading ? 'Removing…' : 'Confirm removal'}
+            {isLoading ? 'Removing…' : 'Confirm Removal'}
           </Button>
         </div>
       )}

@@ -16,6 +16,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { editJobDetailsDraftSchema, editJobDetailsSchema } from './EditJobDetailsSchema';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
+import { useGetPermittedOfficesQuery } from '../../../api/job-service/JobOpening/GetPermittedOffices';
 import {
   useLazyGetJobDescriptionByIdQuery,
   useGetJobDescriptionByIdQuery,
@@ -253,15 +254,32 @@ const EditJobDetail = () => {
   const canDeleteSkill =
     canManageCatalogueEntries || effectivePermissions.includes(Authorities.SKILL_DELETE);
   const tenantId = useSessionTenantId();
-  const [, setSelectedLocationIdForUsers] = useState<string | undefined>(undefined);
+  const [selectedLocationIdForUsers, setSelectedLocationIdForUsers] = useState<string | undefined>(
+    undefined
+  );
   const [dismissedUnresolvedAiFields, setDismissedUnresolvedAiFields] = useState<Set<string>>(
     new Set()
   );
 
-  const { data: offices = [], isFetching: loadingJobLocations } = useListTenantOfficesQuery(
+  const { data: offices = [], isFetching: loadingOfficesList } = useListTenantOfficesQuery(
     { tenantId: tenantId ?? '' },
     { skip: !tenantId }
   );
+  // Location dropdown: only offices this user holds job:update at.
+  const officeIdsForPermissionCheck = useMemo(
+    () => offices.map((office) => office.office_id),
+    [offices]
+  );
+  const { data: permittedOfficesData, isFetching: loadingPermittedOffices } =
+    useGetPermittedOfficesQuery(
+      { jobOpeningId: parsedJobId, officeIds: officeIdsForPermissionCheck },
+      { skip: !parsedJobId || officeIdsForPermissionCheck.length === 0 }
+    );
+  const permittedOfficeIds = useMemo(
+    () => new Set(permittedOfficesData?.permitted_office_ids ?? []),
+    [permittedOfficesData]
+  );
+  const loadingJobLocations = loadingOfficesList || loadingPermittedOffices;
   const {
     data: orgDepartments = [],
     isFetching: orgDepartmentsLoading,
@@ -317,7 +335,13 @@ const EditJobDetail = () => {
     refetch: refetchOptionalSkills,
   } = useJobOpeningDropdown('OPTIONAL_SKILLS', 'edit', parsedJobId);
   const { jobOpeningDropdown: hiringManagers, loading: hiringManagerLoading } =
-    useJobOpeningDropdown('HIRING_MANAGER', 'edit', parsedJobId);
+    useJobOpeningDropdown(
+      'HIRING_MANAGER',
+      'edit',
+      parsedJobId,
+      undefined,
+      selectedLocationIdForUsers
+    );
   const { jobOpeningDropdown: recruiters, loading: recruitersLoading } = useJobOpeningDropdown(
     'RECRUITER',
     'edit',
@@ -829,6 +853,13 @@ const EditJobDetail = () => {
   }, [organizationJobTypes, jobTypeMissingFromActiveList, deactivatedJobType]);
 
   const jobLocationOptions = (offices ?? [])
+    // Permitted offices + whatever's already saved; unfiltered while loading.
+    .filter(
+      (office) =>
+        !permittedOfficesData ||
+        permittedOfficeIds.has(office.office_id) ||
+        idsMatch(office.office_id, selectedLocationIdForUsers)
+    )
     .map((office) => ({
       id: office.office_id,
       name: officeDisplayName(office),
@@ -1008,12 +1039,18 @@ const EditJobDetail = () => {
       // Otherwise refetch fresh data
       else if (!justSavedRef.current) {
         try {
-          const { data } = await refetch();
+          const { data, error } = await refetch();
           if (data?.data) {
             updateFormWithJobData(data);
+          } else if (error) {
+            showToast({
+              message: getJobErrorMessage(error, 'Could not load this job - please refresh.'),
+              type: 'error',
+            });
           }
         } catch (error) {
           console.error('Failed to fetch job data:', error);
+          showToast({ message: 'Could not load this job - please refresh.', type: 'error' });
         }
       }
     };
@@ -1293,7 +1330,7 @@ const EditJobDetail = () => {
     });
     setValue('country', selectedLocation?.country ?? '', { shouldValidate: true });
     setValue('state', selectedLocation?.state ?? '', { shouldValidate: true });
-    // Hiring Manager/Recruiter are not location-scoped, so leave them as-is here.
+    // HM dropdown re-filters on location change; a stale pick is caught by validation.
   };
 
   useEffect(() => {
@@ -1586,7 +1623,7 @@ const EditJobDetail = () => {
         const createdJobMode = await createJobMode({ job_mode_name: formattedValue }).unwrap();
         await refetchJobModes?.();
         setValue('jobMode', [createdJobMode.id], { shouldValidate: true });
-        showToast({ message: 'Job mode added successfully', type: 'success' });
+        showToast({ message: 'Job location added successfully', type: 'success' });
         return;
       }
     } catch (err) {
@@ -1641,13 +1678,15 @@ const EditJobDetail = () => {
         message: getJobErrorMessage(err, 'Something went wrong while reactivating this option.'),
         type: 'error',
       });
+
+      throw err;
     }
   };
   // Status Switch next to Edit/Delete - flips is_active, independent of the
   // isDeleted/reuse soft-delete path above.
   const toggleActiveTypeLabels: Record<string, string> = {
     jobType: 'Job type',
-    jobMode: 'Job mode',
+    jobMode: 'Job location',
     shift: 'Shift',
     educationPreference: 'Education preference',
     mandatorySkills: 'Skill',
@@ -1741,6 +1780,8 @@ const EditJobDetail = () => {
           message: getOrgErrorMessage(err, 'Something went wrong while updating department.'),
           type: 'error',
         });
+
+        throw err;
       }
 
       return;
@@ -1772,6 +1813,8 @@ const EditJobDetail = () => {
           message: getOrgErrorMessage(err, 'Something went wrong while updating job title.'),
           type: 'error',
         });
+
+        throw err;
       }
 
       return;
@@ -1795,6 +1838,8 @@ const EditJobDetail = () => {
           message: getJobErrorMessage(err, 'Something went wrong while updating job type.'),
           type: 'error',
         });
+
+        throw err;
       }
 
       return;
@@ -1810,13 +1855,15 @@ const EditJobDetail = () => {
           job_mode_description: jobModes.find((item) => String(item.id) === String(id))
             ?.job_mode_description,
         }).unwrap();
-        showToast({ message: 'Job mode updated successfully', type: 'success' });
+        showToast({ message: 'Job location updated successfully', type: 'success' });
         refetchJobModes?.();
       } catch (err) {
         showToast({
-          message: getJobErrorMessage(err, 'Something went wrong while updating job mode.'),
+          message: getJobErrorMessage(err, 'Something went wrong while updating job location.'),
           type: 'error',
         });
+
+        throw err;
       }
 
       return;
@@ -1839,6 +1886,8 @@ const EditJobDetail = () => {
           ),
           type: 'error',
         });
+
+        throw err;
       }
 
       return;
@@ -1858,6 +1907,8 @@ const EditJobDetail = () => {
           message: getJobErrorMessage(err, 'Something went wrong while updating the skill.'),
           type: 'error',
         });
+
+        throw err;
       }
       return;
     }
@@ -1897,6 +1948,8 @@ const EditJobDetail = () => {
           message: getOrgErrorMessage(err, 'Something went wrong while removing department.'),
           type: 'error',
         });
+
+        throw err;
       }
 
       return;
@@ -1932,6 +1985,8 @@ const EditJobDetail = () => {
           message: getOrgErrorMessage(err, 'Something went wrong while removing job title.'),
           type: 'error',
         });
+
+        throw err;
       }
 
       return;
@@ -1957,6 +2012,8 @@ const EditJobDetail = () => {
           message: getJobErrorMessage(err, 'Something went wrong while removing job type.'),
           type: 'error',
         });
+
+        throw err;
       }
 
       return;
@@ -1965,14 +2022,16 @@ const EditJobDetail = () => {
     if (type === 'jobMode') {
       try {
         await deleteJobMode(String(id)).unwrap();
-        showToast({ message: 'Job mode removed successfully', type: 'success' });
+        showToast({ message: 'Job location removed successfully', type: 'success' });
         clearIfSelected();
         refetchJobModes?.();
       } catch (err) {
         showToast({
-          message: getJobErrorMessage(err, 'Something went wrong while removing job mode.'),
+          message: getJobErrorMessage(err, 'Something went wrong while removing job location.'),
           type: 'error',
         });
+
+        throw err;
       }
 
       return;
@@ -1992,6 +2051,8 @@ const EditJobDetail = () => {
           ),
           type: 'error',
         });
+
+        throw err;
       }
 
       return;
@@ -2009,6 +2070,8 @@ const EditJobDetail = () => {
           message: getJobErrorMessage(err, 'Something went wrong while removing the skill.'),
           type: 'error',
         });
+
+        throw err;
       }
       return;
     }
@@ -2072,6 +2135,8 @@ const EditJobDetail = () => {
         message: getJobErrorMessage(err, 'Something went wrong while removing the shift.'),
         type: 'error',
       });
+
+      throw err;
     }
   };
 
@@ -2089,7 +2154,7 @@ const EditJobDetail = () => {
   // location has no single-string add-flow (a full address) - text only.
   const UNRESOLVED_AI_FIELD_LABELS: Record<string, string> = {
     job_type: 'Job Type',
-    work_mode: 'Work Mode',
+    work_mode: 'Job Location',
     shift: 'Shift',
     education_preference: 'Education Preference',
     location: 'Location',
@@ -2291,7 +2356,7 @@ const EditJobDetail = () => {
     const jobId = pendingContinueJobId;
     try {
       await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
-      showToast({ message: 'Regenerating the AI description…', type: 'success' });
+      showToast({ message: 'Regenerating the AI description', type: 'success' });
     } catch (enhanceError) {
       showToast({
         message: getJobErrorMessage(
@@ -2394,7 +2459,7 @@ const EditJobDetail = () => {
         try {
           await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
           showToast({
-            message: 'Job details changed - regenerating the AI description to match…',
+            message: 'Job details changed - regenerating the AI description to match',
             type: 'success',
           });
         } catch (enhanceError) {
@@ -2460,7 +2525,7 @@ const EditJobDetail = () => {
                         className="text-white bg-button rounded-3xl px-4 py-1.5 text-xs font-semibold cursor-pointer"
                         onClick={() => handleCreateFromUnresolvedSuggestion(fieldKey, guess)}
                       >
-                        Create it
+                        Create It
                       </Button>
                     )}
                     <button
@@ -2634,7 +2699,7 @@ const EditJobDetail = () => {
                 />
               </div>
             </Form.Item>
-            <Form.Item label={<span>Job Mode</span>}>
+            <Form.Item label={<span>Job Location</span>}>
               <div id="field-jobMode">
                 <DropdownWithAddOption
                   className="w-full custom-select-jobs placeholder-style"
@@ -2645,8 +2710,8 @@ const EditJobDetail = () => {
                   options={jobModeOptions}
                   loading={jobModesInclInactiveLoading || isAddingToDropdown === 'jobMode'}
                   disabled={fieldsLocked}
-                  placeholder="Select Job Mode"
-                  label="Job Mode"
+                  placeholder="Select Job Location"
+                  label="Job Location"
                   onAddOption={
                     canManageJobCatalogues
                       ? (value) => handleAddOption(value, 'jobMode')
@@ -3259,7 +3324,13 @@ const EditJobDetail = () => {
                       <p className="text-red-500 text-sm mt-1">{errors.exemptMinSalary.message}</p>
                     )}
                   </Form.Item>
-                  <Form.Item label={<span>Maximum Salary (in USD)</span>}>
+                  <Form.Item
+                    label={
+                      <span>
+                        Maximum Salary (in USD) <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
                     <Controller
                       name="exemptMaxSalary"
                       control={control}
@@ -3330,7 +3401,13 @@ const EditJobDetail = () => {
                       </p>
                     )}
                   </Form.Item>
-                  <Form.Item label={<span>Maximum Salary (in USD)</span>}>
+                  <Form.Item
+                    label={
+                      <span>
+                        Maximum Salary (in USD) <span className="required-asterisk">*</span>
+                      </span>
+                    }
+                  >
                     <Controller
                       name="nonExemptMaxSalary"
                       control={control}
@@ -3760,38 +3837,44 @@ const EditJobDetail = () => {
         )}
         <div className="flex items-center justify-center mt-6 gap-6">
           {isDraft && (
+            <Tooltip title="Save progress and come back later.">
+              <Button
+                type="button"
+                className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+                onClick={() => onSaveDraft(watch())}
+                disabled={isUpdatingDraft || !canEditThisJob}
+              >
+                Save As Draft
+              </Button>
+            </Tooltip>
+          )}
+          {isDraft && (
+            <Tooltip title="Delete this job opening and everything in it.">
+              <Button
+                type="button"
+                className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+                onClick={() => setShowCancelConfirm(true)}
+              >
+                Cancel
+              </Button>
+            </Tooltip>
+          )}
+          <Tooltip title="Save this page and continue.">
             <Button
               type="button"
               className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-              onClick={() => onSaveDraft(watch())}
-              disabled={isUpdatingDraft || !canEditThisJob}
+              onClick={handleSubmit(onSubmit, (invalidFields) => {
+                showToast({
+                  message: 'Please fill all required fields before saving.',
+                  type: 'error',
+                });
+                scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
+              })}
+              disabled={isFetchingJobData || !canEditThisJob}
             >
-              SAVE AS DRAFT
+              Save & Next
             </Button>
-          )}
-          <Button
-            type="button"
-            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-            onClick={handleSubmit(onSubmit, (invalidFields) => {
-              showToast({
-                message: 'Please fill all required fields before saving.',
-                type: 'error',
-              });
-              scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
-            })}
-            disabled={isFetchingJobData || !canEditThisJob}
-          >
-            SAVE & NEXT
-          </Button>
-          {isDraft && (
-            <Button
-              type="button"
-              className="text-white bg-red-400 hover:bg-red-500 rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-              onClick={() => setShowCancelConfirm(true)}
-            >
-              CANCEL
-            </Button>
-          )}
+          </Tooltip>
         </div>
       </Form>
       {isBlocked && (
@@ -3799,15 +3882,15 @@ const EditJobDetail = () => {
           onClose={cancelNavigation}
           onConfirm={confirmNavigation}
           title="You have unsaved changes. Are you sure you want to leave?"
-          confirmText="LEAVE PAGE"
+          confirmText="Leave Page"
         />
       )}
       {showCancelConfirm && (
         <ConfirmationModal
           onClose={() => setShowCancelConfirm(false)}
           onConfirm={handleConfirmCancel}
-          title="Cancel this job opening? It will not be saved."
-          confirmText="CANCEL JOB"
+          title="Cancel this job opening? Everything added so far will be permanently deleted."
+          confirmText="Cancel Job"
           isLoading={isCancelling}
         />
       )}
@@ -3816,8 +3899,8 @@ const EditJobDetail = () => {
           onClose={handleCancelRegenerate}
           onConfirm={handleConfirmRegenerate}
           title="Would you like to regenerate the Job Description using AI, or use the current uploaded Job Description?"
-          confirmText="AI-REGENERATE"
-          cancelText="USE UPLOADED JD"
+          confirmText="AI-Regenerate"
+          cancelText="Use Uploaded JD"
           isLoading={isRegenerating}
         />
       )}

@@ -190,7 +190,7 @@ const EntitlementsPanel: React.FC<EntitlementsPanelProps> = ({
         onClick={handleSave}
         disabled={isSaving || !isDirty}
       >
-        {isSaving ? 'Saving…' : 'Save feature toggles'}
+        {isSaving ? 'Saving…' : 'Save Feature Toggles'}
       </Button>
     </div>
   );

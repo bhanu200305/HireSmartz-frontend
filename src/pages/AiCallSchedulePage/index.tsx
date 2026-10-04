@@ -98,8 +98,8 @@ const T = {
     consentLine3: '\u00A0\u00A0• Your responses may be recorded, analyzed and stored.',
     consentLine4: '\u00A0\u00A0• Full consent will be required when the interview begins.',
     consentCheckboxLabel: 'I consent to participate in this AI-assisted recorded interview.',
-    cancel: 'CANCEL',
-    continue: 'CONTINUE',
+    cancel: 'Cancel',
+    continue: 'Continue',
     successConsentText:
       'You will receive an AI-assisted call at your scheduled time. Consent will be required to begin the interview.',
     weekDays: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'],
@@ -158,8 +158,8 @@ const T = {
       '\u00A0\u00A0• Se requerirá el consentimiento total cuando comience la entrevista.',
     consentCheckboxLabel:
       'Doy mi consentimiento para participar en esta entrevista en video grabada asistida por IA.',
-    cancel: 'CANCELAR',
-    continue: 'CONTINUAR',
+    cancel: 'Cancelar',
+    continue: 'Continuar',
     successConsentText:
       'Recibirá una llamada asistida por IA a la hora programada. Se requerirá consentimiento para iniciar la entrevista.',
     weekDays: ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'],

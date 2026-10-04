@@ -82,7 +82,7 @@ const CandidateMessageHistory = ({ candidateId, canSms, onSendSms }: Props) => {
           title={canSms ? undefined : 'No phone number on file'}
         >
           <LuSquarePen size={13} className="shrink-0" aria-hidden />
-          SEND SMS
+          Send SMS
         </Button>
       </div>
 
@@ -143,7 +143,7 @@ const CandidateMessageHistory = ({ candidateId, canSms, onSendSms }: Props) => {
               disabled={isFetching}
               className="text-xs font-semibold text-primary-600 hover:underline cursor-pointer disabled:opacity-50"
             >
-              {isFetching ? 'Loading…' : 'Load more'}
+              {isFetching ? 'Loading…' : 'Load More'}
             </button>
           </div>
         )}

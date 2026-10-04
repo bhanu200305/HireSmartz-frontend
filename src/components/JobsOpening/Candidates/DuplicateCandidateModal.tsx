@@ -58,7 +58,7 @@ const DuplicateCandidateModal = ({ duplicates, onAcknowledge }: DuplicateCandida
         {/* Acknowledge button */}
         <Button
           type="primary"
-          className="w-full rounded-full font-semibold tracking-widest uppercase mt-1"
+          className="w-full rounded-full font-semibold mt-1"
           size="large"
           onClick={onAcknowledge}
         >

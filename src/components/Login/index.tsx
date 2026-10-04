@@ -736,7 +736,7 @@ const Login = () => {
                 disabled={!isFormValid || isLoading || isSubmitting.current}
                 className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white transition-all duration-150 hover:brightness-105 hover:shadow-md active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
               >
-                {isLoading ? 'Logging in…' : 'Log in'}
+                {isLoading ? 'Logging In…' : 'Log In'}
               </Button>
 
               {isDevAuthBypassEnabled() && (
@@ -757,7 +757,7 @@ const Login = () => {
                     disabled={isResendingVerification}
                     className="font-medium underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isResendingVerification ? 'Sending…' : 'Resend verification email'}
+                    {isResendingVerification ? 'Sending…' : 'Resend Verification Email'}
                   </button>
                 </p>
               )}

@@ -332,32 +332,36 @@ const CandidatesListing = () => {
       {isJobOpeningLoading && <Loader />}
 
       <div className="mb-3 rounded-lg bg-white px-4 py-4 shadow-sm sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 flex-col gap-1 text-sm">
-            <Link to={`/jobs/view/${parsedJobId}/details`} className="w-fit max-w-full">
+            {/* Same 44px height as the buttons, to share their line. */}
+            <Link
+              to={`/jobs/view/${parsedJobId}/details`}
+              className="flex min-h-11 w-fit max-w-full items-center"
+            >
               <span className="block truncate font-bold text-xl heading-font text-primary underline cursor-pointer hover:opacity-80 transition-opacity capitalize">
                 {jobTitleName}
               </span>
             </Link>
             <div className="flex items-center gap-2">
-              <p className="font-bold">Job ID:</p>
+              <span className="font-bold">Job ID:</span>
               <span className="text-gray-500">{jobProfileCode || 'N/A'}</span>
             </div>
             <div className="flex items-center gap-2">
-              <p className="font-bold">Department:</p>
+              <span className="font-bold">Department:</span>
               <span className="text-gray-500">{departmentName || 'N/A'}</span>
             </div>
             <div className="flex items-center gap-2">
-              <p className="font-bold">Job Type:</p>
+              <span className="font-bold">Job Type:</span>
               <span className="text-gray-500">{jobTypeName || 'N/A'}</span>
             </div>
             <div className="flex items-center gap-2">
-              <p className="font-bold">Candidates:</p>
+              <span className="font-bold">Candidates:</span>
               <span className="font-semibold text-gray-500">{data?.total ?? 0}</span>
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 lg:items-end">
+          <div className="flex flex-col gap-3 lg:items-end">
             <div className="flex flex-wrap items-center gap-3 lg:justify-end">
               <Search
                 appname="candidates listing"
@@ -399,7 +403,7 @@ const CandidatesListing = () => {
                       }
                       disabled={isDraft || isClosed}
                     >
-                      ADD CANDIDATE
+                      Add Candidate
                     </Button>
                   </span>
                 </Tooltip>

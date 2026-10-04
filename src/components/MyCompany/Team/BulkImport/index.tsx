@@ -219,7 +219,7 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
               onClick={handleDownloadTemplate}
               className="flex items-center gap-1 text-sm text-primary hover:underline cursor-pointer"
             >
-              <MdOutlineDownload /> Download the roster template
+              <MdOutlineDownload /> Download The Roster Template
             </button>
             <button
               type="button"
@@ -261,7 +261,7 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
               onClick={() => setStep(1)}
               className="w-full bg-white border text-black rounded-3xl py-2.5"
             >
-              BACK
+              Back
             </Button>
             <Button
               type="button"

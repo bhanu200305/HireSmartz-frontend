@@ -12,6 +12,8 @@ import { useGetOrganizationShiftsQuery } from '../api/job-service/Shifts/shifts'
 import { useListUsersQuery } from '../api/organization-service/Users/users';
 import { useListPlatformTenantUsersQuery } from '../api/organization-service/Platform/users';
 import { useListPlatformTenantsQuery } from '../api/organization-service/Platform/tenants';
+import { useGetPermissionMatrixQuery } from '../api/organization-service/Roles/permissionMatrix';
+import { Authorities } from '../constants/authorities.constant';
 import { useMemo, useState } from 'react';
 import { formatTime12h } from '../utils/formatTime';
 import { useSelector } from 'react-redux';
@@ -28,6 +30,7 @@ export type JobOpeningDropdownOption = {
   isDeleted?: boolean;
   requires_duration?: boolean;
   available_variants?: string[] | null;
+  variant_labels?: Record<string, string> | null;
   max_occurrences?: number | null;
   special_kind?: 'intake_call' | 'resume' | 'verification' | null;
   /** Skills only: false for a platform-shared skill, so the UI can offer
@@ -58,7 +61,7 @@ const useJobOpeningDropdown = (
   _mode: string,
   _jobOpeningId?: string | number,
   skip?: boolean,
-  _locationId?: string | number,
+  locationId?: string | number,
   _isRemote?: boolean
 ) => {
   const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
@@ -122,6 +125,24 @@ const useJobOpeningDropdown = (
   );
   const users = isMaster ? platformUsers : tenantUsers;
 
+  // Who holds job:write at the job's selected location.
+  const hmLocationPermissions = useGetPermissionMatrixQuery(
+    {
+      tenantId: isMaster ? tenantId : undefined,
+      codes: [Authorities.JOB_OPENING_CREATE],
+      locationId: locationId ? String(locationId) : undefined,
+    },
+    { skip: skip || endpoint !== 'HIRING_MANAGER' || !locationId }
+  );
+  const permittedHmUserIds = useMemo(() => {
+    if (!locationId || !hmLocationPermissions.data) return null;
+    const ids = new Set<string>();
+    hmLocationPermissions.data.Organization_User_Permissions.forEach((org) =>
+      org.Users_Permission.forEach((user) => ids.add(user.User_Id))
+    );
+    return ids;
+  }, [locationId, hmLocationPermissions.data]);
+
   const [searchSkills, skillsResult] = useLazySearchSkillsQuery();
   // Full active catalogue, shown until the recruiter types 2+ characters
   // into the box — at which point `skillsResult` (searchSkills, above)
@@ -162,20 +183,40 @@ const useJobOpeningDropdown = (
             description: item.round_description ?? undefined,
             requires_duration: item.requires_duration,
             available_variants: item.available_variants,
+            variant_labels: item.variant_labels,
             max_occurrences: item.max_occurrences,
             special_kind: item.special_kind,
           }));
         case 'HIRING_MANAGER':
         case 'RECRUITER': {
+          const expectedRole = endpoint === 'HIRING_MANAGER' ? 'hiring_manager' : 'recruiter';
           const combined = [
             ...(users.data?.items ?? []),
             ...(tenantCompanyAdmins.data?.items ?? []),
           ];
           const deduped = [...new Map(combined.map((user) => [user.user_id, user])).values()];
-          return deduped.map((user) => ({
-            id: user.user_id,
-            name: user.full_name || user.email,
-          }));
+          return deduped
+            .filter((user) => {
+              // has_set_password, not is_active (true from invite).
+              if (!user.has_set_password) return false;
+              const roles = (user.role ?? '').split(',').map((r) => r.trim());
+              const isCompanyAdmin = roles.includes('company_admin');
+              if (!roles.includes(expectedRole) && !isCompanyAdmin) return false;
+              // HM only: must hold job:write at this specific location.
+              if (
+                endpoint === 'HIRING_MANAGER' &&
+                permittedHmUserIds &&
+                !isCompanyAdmin &&
+                !permittedHmUserIds.has(user.user_id)
+              ) {
+                return false;
+              }
+              return true;
+            })
+            .map((user) => ({
+              id: user.user_id,
+              name: user.full_name || user.email,
+            }));
         }
         case 'EXEMPTION_STATUS':
           return [
@@ -226,6 +267,7 @@ const useJobOpeningDropdown = (
     shifts.data,
     users.data,
     tenantCompanyAdmins.data,
+    permittedHmUserIds,
     skillsResult.data,
     hasActiveSkillSearch,
     preloadedSkills.data,
@@ -272,7 +314,8 @@ const useJobOpeningDropdown = (
     users.isFetching ||
     tenantCompanyAdmins.isFetching ||
     preloadedSkills.isFetching ||
-    skillsResult.isFetching;
+    skillsResult.isFetching ||
+    hmLocationPermissions.isFetching;
 
   // Awaitable so callers can refetch before setValue, letting the new id
   // already exist in options when the form re-renders instead of showing a raw uuid.

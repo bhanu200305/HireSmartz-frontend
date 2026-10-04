@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Select } from 'antd';
-import { MdOutlineQuestionAnswer } from 'react-icons/md';
+import { Tooltip } from 'antd';
+import { MdInfoOutline, MdOutlineQuestionAnswer } from 'react-icons/md';
 import { HiOutlineTrash } from 'react-icons/hi';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,10 +10,11 @@ import { setIsDraft } from '../../../redux/slices/editJobOpeningSlice';
 import { Loader } from '../../shared/ui/loader';
 import { Button, showToast, Typography } from '../../shared';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
-import CollapseToggle from '../../shared/ui/CollapseToggle';
+import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import QuestionFormModal from './QuestionFormModal';
 import JobIntakeQuestionsSection from './JobIntakeQuestionsSection';
 import {
+  useGetJobIntakeQuestionsQuery,
   useGetJobQuestionsQuery,
   useSaveJobQuestionsMutation,
   useGenerateJobQuestionsMutation,
@@ -31,6 +32,7 @@ import {
   useLazyValidateForPublishQuery,
   usePublishJobMutation,
 } from '../../../api/job-service/JobOpening/CloseJob';
+import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 import {
   jobOpeningByIdApi,
   useGetJobOpeningByIdQuery,
@@ -94,13 +96,51 @@ const describePublishError = (err: unknown, fallback: string): string => {
   return getJobErrorMessage(err, fallback);
 };
 
+const getRoundIdsMissingQuestions = (err: unknown): string[] =>
+  getJobErrorCode(err) === 'PUBLISH_VALIDATION_FAILED'
+    ? ((getJobErrorDetails(err)?.round_ids_missing_questions as string[] | undefined) ?? [])
+    : [];
+
 /** Friendlier copy for NO_ELIGIBLE_INTERVIEW_ROUNDS than the backend's own wording. */
 const describeGenerateQuestionsError = (err: unknown, fallback: string): string => {
   if (getJobErrorCode(err) === 'NO_ELIGIBLE_INTERVIEW_ROUNDS') {
-    return 'Add an AI Video, Hiring Panel, or Audio Screening round to the Interview Sequence before generating questions.';
+    return 'Add an AI Video, Hiring Panel, or AI Audio Screening round to the Interview Sequence before generating questions.';
   }
   return getJobErrorMessage(err, fallback);
 };
+
+type RoundNavItemProps = {
+  label: string;
+  subtitle?: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+};
+
+const RoundNavItem = ({ label, subtitle, count, active, onClick }: RoundNavItemProps) => (
+  <Tooltip title={subtitle}>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? 'true' : undefined}
+      className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors cursor-pointer ${
+        active
+          ? 'border-primary bg-primary-50 text-primary-700'
+          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+      {label}
+      <span
+        title={count > 0 ? `${count} question(s)` : 'No questions yet - add at least one.'}
+        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+          count > 0 ? 'bg-primary text-white' : 'bg-white text-primary-700 ring-1 ring-primary-200'
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  </Tooltip>
+);
 
 const AiQuestionsSetup = () => {
   const navigate = useNavigate();
@@ -139,6 +179,11 @@ const AiQuestionsSetup = () => {
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
 
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  // Rounds (by id) the backend last reported as having no questions.
+  const [blockedRoundIds, setBlockedRoundIds] = useState<string[]>([]);
+  const [intakeUnsaved, setIntakeUnsaved] = useState(false);
+  const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
 
   // Priority: URL param, then create-mode JobSlice, then EditJobSlice.
   const activeJobOpeningId = useMemo(
@@ -551,9 +596,52 @@ const AiQuestionsSetup = () => {
     }
   };
 
+  const handleConfirmCancel = async () => {
+    if (activeJobOpeningId) {
+      try {
+        await deleteDraftJob(activeJobOpeningId).unwrap();
+      } catch (error) {
+        showToast({
+          message: getJobErrorMessage(error, 'Failed to remove job opening'),
+          type: 'error',
+        });
+        setShowCancelConfirm(false);
+        return;
+      }
+    }
+    setShowCancelConfirm(false);
+    navigate('/jobs');
+  };
+
+  // Intentional "leave as draft" exit, same as every other step.
+  const handleSaveDraft = () => {
+    showToast({ message: 'Job saved as draft successfully', type: 'success' });
+    navigate('/jobs');
+  };
+
   const handlePublishOrFinish = async () => {
     dispatch(stopStream());
     if (isEditingAlreadyPublishedJob) {
+      // Edits save as they're made; this only checks no round was left empty.
+      try {
+        const validation = await validateForPublish(activeJobOpeningId).unwrap();
+        const emptyRounds = validation.rounds_missing_questions ?? [];
+        if (emptyRounds.length > 0) {
+          setBlockedRoundIds(validation.round_ids_missing_questions ?? []);
+          showToast({
+            message: describeFailedChecks(['no_question'], emptyRounds),
+            type: 'error',
+          });
+          return;
+        }
+      } catch (err) {
+        showToast({
+          message: getJobErrorMessage(err, 'Could not verify the questions - try again.'),
+          type: 'error',
+        });
+        return;
+      }
+      showToast({ message: 'Job updated successfully', type: 'success' });
       navigate('/jobs');
       return;
     }
@@ -568,6 +656,7 @@ const AiQuestionsSetup = () => {
     try {
       const validation = await validateForPublish(activeJobOpeningId).unwrap();
       if (!validation.is_valid) {
+        setBlockedRoundIds(validation.round_ids_missing_questions ?? []);
         showToast({
           message: `Cannot publish yet: ${describeFailedChecks(
             validation.failed_checks ?? [],
@@ -595,6 +684,7 @@ const AiQuestionsSetup = () => {
       showToast({ message: 'Job opening published', type: 'success' });
       navigate('/jobs');
     } catch (err) {
+      setBlockedRoundIds(getRoundIdsMissingQuestions(err));
       showToast({
         message: describePublishError(err, 'Failed to publish job opening'),
         type: 'error',
@@ -608,11 +698,7 @@ const AiQuestionsSetup = () => {
     }
   }, [activeJobOpeningId, refetchQuestions]);
 
-  const handleToggleSection = (key: string) => {
-    if (effectiveOpenKey === key) {
-      setOpenSectionKey('');
-      return;
-    }
+  const handleSelectSection = (key: string) => {
     setOpenSectionKey(key);
     if (key !== 'intake') {
       setSelectedRoundInstanceId(key);
@@ -625,9 +711,63 @@ const AiQuestionsSetup = () => {
     }
   };
 
+  const { data: intakeData } = useGetJobIntakeQuestionsQuery(activeJobOpeningId, {
+    skip: !activeJobOpeningId,
+  });
+  const intakeCount = intakeData?.questions?.length ?? 0;
+  const questionCountByRound = useMemo(() => {
+    const counts: Record<string, number> = {};
+    questions.forEach((q) => {
+      counts[q.interview_round_id] = (counts[q.interview_round_id] ?? 0) + 1;
+    });
+    return counts;
+  }, [questions]);
+
+  // Live list, so the banner clears itself as the rounds get filled.
+  const emptyRoundNames = jdRounds
+    .filter(
+      (r) =>
+        blockedRoundIds.includes(r.round_instance_id) && !questionCountByRound[r.round_instance_id]
+    )
+    .map((r) => r.round_name);
+
+  // Warn only for unsent text or empty rounds on a published job.
+  const unsentDraft = inlineInputText.trim().length > 0;
+  const roundsLeftEmpty = isEditingAlreadyPublishedJob
+    ? jdRounds.filter((r) => !questionCountByRound[r.round_instance_id]).map((r) => r.round_name)
+    : [];
+  const leaveIssues = [
+    unsentDraft && "a question you haven't added",
+    intakeUnsaved && 'unsaved intake changes',
+    roundsLeftEmpty.length > 0 && `empty rounds: ${roundsLeftEmpty.join(', ')}`,
+  ].filter(Boolean);
+  const { isBlocked, confirmNavigation, cancelNavigation } = useNavigationBlocker(
+    true,
+    leaveIssues.length > 0
+  );
+
+  // Intake is its own entry in the round list; otherwise the active round.
+  const activeKey = effectiveOpenKey || activeRoundInstanceId || 'intake';
+  const isIntakeActive = activeKey === 'intake';
+  // Leaving the Intake tab drops its unsaved edits, so ask first.
+  const [pendingSectionKey, setPendingSectionKey] = useState<string | null>(null);
+  const requestSelectSection = (key: string) => {
+    if (isIntakeActive && intakeUnsaved && key !== 'intake') {
+      setPendingSectionKey(key);
+      return;
+    }
+    handleSelectSection(key);
+  };
+  const activeRound = isIntakeActive
+    ? null
+    : (jdRounds.find((round) => round.round_instance_id === activeKey) ?? jdRounds[0] ?? null);
+  const activeRoundDescription = roundTypes.find(
+    (rt) => rt.round_id === activeRound?.round_id
+  )?.round_description;
+
   return (
     <>
-      <div className="flex flex-col gap-6 py-4">
+      <div className="flex flex-col gap-3 py-2">
         {(isLoadingQuestions ||
           isGenerating ||
           isUploadingExcel ||
@@ -637,7 +777,7 @@ const AiQuestionsSetup = () => {
           isInlineSubmitting ||
           isPublishing) && <Loader />}
 
-        <div className="flex items-center gap-2 px-6">
+        <div className="flex items-center gap-2">
           <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
             <MdOutlineQuestionAnswer size={16} />
           </span>
@@ -646,172 +786,139 @@ const AiQuestionsSetup = () => {
           </Typography>
         </div>
 
-        {activeJobOpeningId && (
-          <JobIntakeQuestionsSection
-            jobOpeningId={activeJobOpeningId}
-            canManage={isAssignedToThisJob}
-            isOpen={effectiveOpenKey === 'intake'}
-            onToggle={() => handleToggleSection('intake')}
-          />
-        )}
-
-        <div className="flex justify-between items-center px-6">
-          <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-            Interview Questions
-          </Typography>
-        </div>
-
         {noEligibleRound && (
-          <Typography variant="body2" className="text-amber-600 px-6">
-            Add an AI Video, Hiring Panel, or Audio Screening round to the Interview Sequence before
-            adding questions.
-          </Typography>
-        )}
-
-        {jdRounds.length > 0 && (
-          <div className="flex flex-col md:flex-row gap-6 px-6 items-start">
-            <div className="md:w-1/2 w-full">
-              <Typography variant="body2" className="text-gray-600 mb-1.5 font-semibold">
-                Interview Round
-              </Typography>
-              <Select
-                value={activeRoundInstanceId ?? undefined}
-                onChange={(value) => {
-                  setSelectedRoundInstanceId(value);
-                  setOpenSectionKey(value);
-                  setSelectedIds([]);
-                  setUploadedFileName('');
-                  setImportedCount(0);
-                  setFailedRowCount(0);
-                  setDuplicateRowCount(0);
-                  setImportWarnings([]);
-                }}
-                className="w-full"
-                options={jdRounds.map((round) => ({
-                  value: round.round_instance_id,
-                  label: round.round_name,
-                }))}
-              />
-              {activeRoundGuidanceLabels.length > 0 && (
-                <Typography variant="body2" className="text-gray-500 mt-1.5">
-                  Focus questions on: {activeRoundGuidanceLabels.join(', ')}.
-                </Typography>
-              )}
-            </div>
-
-            <div className="md:w-1/2 w-full">
-              <UploadAndGenerateHeader
-                description="Type a question, or paste several at once - one question per line."
-                onGenerate={() => setShowGenerateConsentModal(true)}
-                onUpload={handleFileUpload}
-                onDownloadTemplate={handleDownloadTemplate}
-                uploadedFileName={uploadedFileName}
-                importedCount={importedCount}
-                failedCount={failedRowCount}
-                duplicateCount={duplicateRowCount}
-                warnings={importWarnings}
-                onClearDetails={() => {
-                  setUploadedFileName('');
-                  setImportWarnings([]);
-                  setFailedRowCount(0);
-                  setDuplicateRowCount(0);
-                }}
-                isGenerating={isGenerating}
-                generateDisabled={noEligibleRound}
-                isUploading={isUploadingExcel}
-                isDownloading={isDownloadingTemplate}
-                stacked
-              />
-            </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Add an AI Video, Hiring Panel, or AI Audio Screening round to the Interview Sequence
+            before adding questions.
           </div>
         )}
 
-        {jdRounds.length === 0 && (
-          <div className="px-6">
-            <UploadAndGenerateHeader
-              description="Type a question, or paste several at once - one question per line."
-              onGenerate={() => setShowGenerateConsentModal(true)}
-              onUpload={handleFileUpload}
-              onDownloadTemplate={handleDownloadTemplate}
-              uploadedFileName={uploadedFileName}
-              importedCount={importedCount}
-              failedCount={failedRowCount}
-              duplicateCount={duplicateRowCount}
-              warnings={importWarnings}
-              onClearDetails={() => {
-                setUploadedFileName('');
-                setImportWarnings([]);
-                setFailedRowCount(0);
-                setDuplicateRowCount(0);
-              }}
-              isGenerating={isGenerating}
-              generateDisabled={noEligibleRound}
-              isUploading={isUploadingExcel}
-              isDownloading={isDownloadingTemplate}
-            />
+        {emptyRoundNames.length > 0 && (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            Add at least one question to: <strong>{emptyRoundNames.join(', ')}</strong>
           </div>
         )}
 
-        <div className="flex flex-col gap-4">
-          {jdRounds.map((round) => {
-            const isOpen = effectiveOpenKey === round.round_instance_id;
-            return (
-              <div
+        <div className="flex flex-col gap-3">
+          <nav aria-label="Interview rounds" className="flex flex-wrap gap-2">
+            {activeJobOpeningId && (
+              <RoundNavItem
+                label="Intake Call"
+                subtitle="Asked on the intake call"
+                count={intakeCount}
+                active={isIntakeActive}
+                onClick={() => handleSelectSection('intake')}
+              />
+            )}
+            {jdRounds.map((round) => (
+              <RoundNavItem
                 key={round.round_instance_id}
-                className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden"
-              >
-                <button
-                  type="button"
-                  onClick={() => handleToggleSection(round.round_instance_id)}
-                  className="w-full flex items-center justify-between px-6 py-4 text-left cursor-pointer"
-                  aria-expanded={isOpen}
-                >
-                  <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-                    {round.round_name}
+                label={round.round_name ?? 'Interview Round'}
+                count={questionCountByRound[round.round_instance_id] ?? 0}
+                active={
+                  !isIntakeActive && activeRound?.round_instance_id === round.round_instance_id
+                }
+                onClick={() => requestSelectSection(round.round_instance_id)}
+              />
+            ))}
+          </nav>
+
+          <section className="min-w-0 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+            {isIntakeActive && activeJobOpeningId ? (
+              <>
+                <JobIntakeQuestionsSection
+                  jobOpeningId={activeJobOpeningId}
+                  canManage={isAssignedToThisJob}
+                  embedded
+                  onUnsavedChange={setIntakeUnsaved}
+                />
+              </>
+            ) : activeRound ? (
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <Typography variant="subtitle1" className="m-0 font-bold text-gray-900">
+                    {activeRound.round_name}
                   </Typography>
-                  <CollapseToggle open={isOpen} />
-                </button>
-                {isOpen && (
-                  <div className="px-6 pb-6">
+                  {activeRoundDescription && (
+                    <Tooltip title={activeRoundDescription}>
+                      <MdInfoOutline className="-ml-1.5 text-gray-400" size={15} />
+                    </Tooltip>
+                  )}
+                  <span className="text-sm text-gray-400">
+                    {visibleQuestions.length} question{visibleQuestions.length === 1 ? '' : 's'}
+                  </span>
+                  {activeRoundGuidanceLabels.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 border-l border-gray-200 pl-3">
+                      <Tooltip title="Questions for this round should probe these focus areas.">
+                        <span className="cursor-help text-xs font-semibold text-gray-600">
+                          Focus Areas:
+                        </span>
+                      </Tooltip>
+                      {activeRoundGuidanceLabels.map((label) => (
+                        <span
+                          key={label}
+                          className="rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_370px]">
+                  <div className="order-2 min-w-0 lg:order-1">
                     {visibleQuestions.length > 0 && (
-                      <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-                        <div className="flex items-center gap-3">
+                      <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-3">
+                        <label className="flex cursor-pointer items-center gap-3">
                           <input
                             type="checkbox"
                             checked={isAllSelected}
                             onChange={(e) => handleSelectAll(e.target.checked)}
-                            className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
+                            className="h-4 w-4 cursor-pointer rounded border-gray-300 text-primary focus:ring-primary"
                           />
-                          <Typography variant="subtitle1" className="font-bold text-gray-800 m-0">
-                            All Questions ({visibleQuestions.length})
-                          </Typography>
-                        </div>
-                        <button
-                          className="flex items-center gap-1.5 text-red-500 hover:text-red-700 text-sm font-semibold cursor-pointer"
-                          onClick={() => {
-                            if (selectedIds.length === 0)
-                              setSelectedIds(visibleQuestions.map((q) => q.id));
-                            setShowDeleteModal(true);
-                          }}
+                          <span className="text-sm font-semibold text-gray-800">Select All</span>
+                        </label>
+                        <Tooltip
+                          title={
+                            selectedIds.length > 0
+                              ? 'Delete the ticked questions.'
+                              : 'Delete every question in this round.'
+                          }
                         >
-                          <HiOutlineTrash size={15} />
-                          {selectedIds.length > 0
-                            ? `Delete selected (${selectedIds.length})`
-                            : 'Delete all'}
-                        </button>
+                          <button
+                            className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-red-500 hover:text-red-700"
+                            onClick={() => {
+                              if (selectedIds.length === 0)
+                                setSelectedIds(visibleQuestions.map((q) => q.id));
+                              setShowDeleteModal(true);
+                            }}
+                          >
+                            <HiOutlineTrash size={15} />
+                            {selectedIds.length > 0
+                              ? `Delete Selected (${selectedIds.length})`
+                              : 'Delete All'}
+                          </button>
+                        </Tooltip>
                       </div>
                     )}
 
                     {isLoadingQuestions ? (
-                      <p className="text-gray-400 py-2 mb-3 text-center italic text-sm">
-                        Loading...
-                      </p>
+                      <p className="py-6 text-center text-sm italic text-gray-400">Loading...</p>
                     ) : visibleQuestions.length === 0 ? (
-                      <p className="text-gray-400 py-2 mb-3 text-center italic text-sm">
-                        No questions. Add questions manually, import via Excel, or generate with AI.
-                      </p>
+                      <div className="flex h-full min-h-[200px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-8 text-center">
+                        <p className="m-0 text-sm font-semibold text-gray-700">
+                          No questions for this round yet
+                        </p>
+                        <p className="m-0 mt-1 text-sm text-gray-500">
+                          Write a question, generate with AI, or upload a file.
+                        </p>
+                      </div>
                     ) : (
-                      <div className="space-y-3 mb-6">
+                      <div className="max-h-[46vh] min-h-[120px] space-y-3 overflow-y-auto pr-1">
                         {visibleQuestions.map((q) => (
                           <QuestionRowItem
                             key={q.id}
@@ -831,7 +938,9 @@ const AiQuestionsSetup = () => {
                         ))}
                       </div>
                     )}
+                  </div>
 
+                  <div className="order-1 flex flex-col gap-3 lg:order-2">
                     <InlineQuestionInput
                       value={inlineInputText}
                       onChange={setInlineInputText}
@@ -839,11 +948,36 @@ const AiQuestionsSetup = () => {
                       isSubmitting={isInlineSubmitting || isLoadingQuestions}
                       disabled={noEligibleRound}
                     />
+                    <UploadAndGenerateHeader
+                      description="Or add faster:"
+                      onGenerate={() => setShowGenerateConsentModal(true)}
+                      onUpload={handleFileUpload}
+                      onDownloadTemplate={handleDownloadTemplate}
+                      uploadedFileName={uploadedFileName}
+                      importedCount={importedCount}
+                      failedCount={failedRowCount}
+                      duplicateCount={duplicateRowCount}
+                      warnings={importWarnings}
+                      onClearDetails={() => {
+                        setUploadedFileName('');
+                        setImportWarnings([]);
+                        setFailedRowCount(0);
+                        setDuplicateRowCount(0);
+                      }}
+                      isGenerating={isGenerating}
+                      generateDisabled={noEligibleRound}
+                      isUploading={isUploadingExcel}
+                      isDownloading={isDownloadingTemplate}
+                    />
                   </div>
-                )}
+                </div>
               </div>
-            );
-          })}
+            ) : (
+              <p className="m-0 py-8 text-center text-sm text-gray-500">
+                Add an interview round first to start adding questions.
+              </p>
+            )}
+          </section>
         </div>
 
         {showDeleteModal && (
@@ -856,7 +990,7 @@ const AiQuestionsSetup = () => {
             }}
             title={selectedIds.length > 0 ? 'Delete selected questions?' : 'Delete question?'}
             onConfirm={confirmDelete}
-            confirmText="DELETE"
+            confirmText="Delete"
             isLoading={isDeleteInProgress}
           />
         )}
@@ -864,7 +998,7 @@ const AiQuestionsSetup = () => {
           open={isEditModalOpen}
           title="Update AI Question"
           questionText={editedQuestionText}
-          submitLabel="UPDATE QUESTION"
+          submitLabel="Update Question"
           isSubmitting={isEditSubmitting}
           onQuestionChange={setEditedQuestionText}
           onSubmit={handleEditSave}
@@ -879,20 +1013,83 @@ const AiQuestionsSetup = () => {
           hasExistingQuestions={visibleQuestions.length > 0}
           scoringSectionOptions={scoringSectionOptions}
         />
+        {pendingSectionKey && (
+          <ConfirmationModal
+            onClose={() => setPendingSectionKey(null)}
+            onConfirm={() => {
+              handleSelectSection(pendingSectionKey);
+              setPendingSectionKey(null);
+            }}
+            title="You have unsaved intake changes. Switch anyway?"
+            confirmText="Switch"
+          />
+        )}
+        {isBlocked && (
+          <ConfirmationModal
+            onClose={cancelNavigation}
+            onConfirm={confirmNavigation}
+            title={`Leave this page? Still pending: ${leaveIssues.join(', ')}.`}
+            confirmText="Leave Page"
+          />
+        )}
+        {activeJobOpeningId && (
+          <p className="m-0 mt-2 text-center text-xs text-gray-500">
+            {isEditingAlreadyPublishedJob
+              ? 'Your question changes are saved automatically.'
+              : 'Your questions are saved automatically. The job stays a draft until you publish it.'}
+          </p>
+        )}
         {(isEditingAlreadyPublishedJob || (canPublish && isAssignedToThisJob)) && (
-          <div className="mt-6 flex justify-center">
-            <Button
-              className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => void handlePublishOrFinish()}
-              disabled={isPublishing || !activeJobOpeningId}
+          <div className="flex justify-center gap-6">
+            {!isEditingAlreadyPublishedJob && (
+              <Tooltip title="Save progress and come back later.">
+                <Button
+                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  onClick={handleSaveDraft}
+                >
+                  Save As Draft
+                </Button>
+              </Tooltip>
+            )}
+            {!isEditingAlreadyPublishedJob && (
+              <Tooltip title="Delete this job opening and everything in it.">
+                <Button
+                  className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  onClick={() => setShowCancelConfirm(true)}
+                >
+                  Cancel
+                </Button>
+              </Tooltip>
+            )}
+            <Tooltip
+              title={
+                isEditingAlreadyPublishedJob
+                  ? 'Save changes to this published job.'
+                  : 'Publish this job opening live.'
+              }
             >
-              {isPublishing
-                ? 'PUBLISHING…'
-                : isEditingAlreadyPublishedJob
-                  ? 'SAVE & FINISH'
-                  : '✓ PUBLISH JOB OPENING'}
-            </Button>
+              <Button
+                className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => void handlePublishOrFinish()}
+                disabled={isPublishing || !activeJobOpeningId}
+              >
+                {isPublishing
+                  ? 'Publishing…'
+                  : isEditingAlreadyPublishedJob
+                    ? 'Save & Finish'
+                    : '✓ Publish Job Opening'}
+              </Button>
+            </Tooltip>
           </div>
+        )}
+        {showCancelConfirm && (
+          <ConfirmationModal
+            onClose={() => setShowCancelConfirm(false)}
+            onConfirm={handleConfirmCancel}
+            title="Cancel this job opening? Everything added so far will be permanently deleted."
+            confirmText="Cancel Job"
+            isLoading={isCancelling}
+          />
         )}
         <Outlet />
       </div>

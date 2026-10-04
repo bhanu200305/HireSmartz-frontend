@@ -246,7 +246,7 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
           <button
             type="button"
             onClick={() => navigate('/company')}
-            className="group flex items-center gap-1 text-xs font-semibold tracking-wide text-primary uppercase transition-colors hover:text-primary-700 cursor-pointer"
+            className="group flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary-700 cursor-pointer"
           >
             View all / filter
             <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">

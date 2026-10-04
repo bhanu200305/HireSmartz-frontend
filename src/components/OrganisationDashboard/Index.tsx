@@ -569,7 +569,7 @@ const OrganisationUserTable = () => {
             className="text-white bg-primary-600 rounded-full px-5 py-2 flex items-center gap-1.5 text-sm font-semibold cfp-hover-lift"
             onClick={() => navigate('/add-organisation-users')}
           >
-            <PlusOutlined className="text-sm" /> <span>ADD USER</span>
+            <PlusOutlined className="text-sm" /> <span>Add User</span>
           </Button>
         </div>
       </div>

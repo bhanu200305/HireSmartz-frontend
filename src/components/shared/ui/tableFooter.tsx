@@ -22,10 +22,10 @@ const TableFooter: React.FC<TableFooterProps> = ({ onViewAll, title, count }) =>
         Showing latest {count} {formattedTitle}
       </span>
       <button
-        className="group flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-primary cursor-pointer transition-colors hover:text-primary-700"
+        className="group flex items-center gap-1 text-xs font-semibold text-primary cursor-pointer transition-colors hover:text-primary-700"
         onClick={onViewAll}
       >
-        View all {title}
+        View All {title}
         <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">→</span>
       </button>
     </div>

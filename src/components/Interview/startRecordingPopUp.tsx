@@ -37,7 +37,7 @@ const StartRecordingModal: FC<StartRecordingModalProps> = ({
             onClick={onClose}
             className="px-6 border border-gray-300 text-gray-600 py-2 rounded-3xl cursor-pointer hover:bg-gray-100 transition"
           >
-            CANCEL
+            Cancel
           </button>
           <button
             type="button"
@@ -45,7 +45,7 @@ const StartRecordingModal: FC<StartRecordingModalProps> = ({
             disabled={isLoading}
             className="px-6 bg-primary text-white py-2 rounded-3xl cursor-pointer hover:bg-primary-dark transition disabled:opacity-70"
           >
-            {isLoading ? <Loader /> : 'START'}
+            {isLoading ? <Loader /> : 'Start'}
           </button>
         </div>
       </div>

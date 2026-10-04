@@ -178,7 +178,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
                   <FiArrowRightCircle className="text-xl text-primary" />
                 </Button>
               ) : (
-                <Button className="p-2 bg-brand-600 text-white text-sm font-medium">Act now</Button>
+                <Button className="p-2 bg-brand-600 text-white text-sm font-medium">Act Now</Button>
               )}
             </div>
           </div>

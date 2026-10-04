@@ -1,6 +1,7 @@
+import BackButton from '../shared/ui/BackButton';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MdOutlineArrowBack, MdOutlineInsights } from 'react-icons/md';
+import { MdOutlineInsights } from 'react-icons/md';
 import MainLayout from '../../layouts/MainLayout';
 import { Typography, LiveBadge } from '../shared';
 import PlatformOverviewStats from './PlatformOverviewStats';
@@ -21,13 +22,7 @@ const PlatformMetrics: React.FC = () => {
   return (
     <MainLayout>
       <div className="w-full p-8 pt-12">
-        <button
-          onClick={() => navigate('/')}
-          className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
-        >
-          <MdOutlineArrowBack className="mr-2" />
-          <span>Back</span>
-        </button>
+        <BackButton onClick={() => navigate('/')} className="mb-4" />
         <div className="flex items-start justify-between gap-3 mb-5">
           <div className="flex items-center space-x-2">
             <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">

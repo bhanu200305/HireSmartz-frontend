@@ -168,7 +168,7 @@ const PanelInterviewersModal = ({
           type="button"
           onClick={() => void handleSave()}
           disabled={isSaving || isLoading}
-          className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+          className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
         >
           {isSaving ? (
             <Loader />

@@ -137,7 +137,7 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({
           disabled={isSaving || !roleName.trim()}
           className="text-sm font-semibold text-white bg-primary-600 rounded-full px-5 py-2 disabled:opacity-60 cursor-pointer"
         >
-          {isSaving ? 'Saving…' : 'Save changes'}
+          {isSaving ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
     </AntdCommonModal>

@@ -197,7 +197,7 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
             onClick={handleAssign}
             disabled={!roleId || isAssigning}
           >
-            {isAssigning ? 'Assigning…' : 'Assign role'}
+            {isAssigning ? 'Assigning…' : 'Assign Role'}
           </Button>
         </div>
       </div>

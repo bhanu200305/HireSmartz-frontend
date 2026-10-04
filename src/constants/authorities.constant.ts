@@ -442,12 +442,12 @@ export const PERMISSION_CATALOG: PermissionCatalogEntry[] = [
   },
   {
     code: Authorities.JOB_CATALOG_VIEW,
-    label: 'View job catalogs (shifts, job types, job modes, education preferences)',
+    label: 'View job catalogs (shifts, job types, job locations, education preferences)',
     module: 'Departments & Locations',
   },
   {
     code: Authorities.JOB_CATALOG_EDIT,
-    label: 'Add/edit/delete job catalogs (shifts, job types, job modes, education preferences)',
+    label: 'Add/edit/delete job catalogs (shifts, job types, job locations, education preferences)',
     module: 'Departments & Locations',
   },
 
@@ -723,9 +723,9 @@ export const PERMISSION_DESCRIPTIONS: Partial<Record<Authorities, string>> = {
   [Authorities.TENANT_JOB_TITLE_EDIT]: 'Rename an existing job title.',
   [Authorities.TENANT_JOB_TITLE_DELETE]: 'Delete a job title.',
   [Authorities.JOB_CATALOG_VIEW]:
-    'View job catalogues — shifts, job types, job modes, and education preferences.',
+    'View job catalogues — shifts, job types, job locations, and education preferences.',
   [Authorities.JOB_CATALOG_EDIT]:
-    'Add a job catalogue entry — shifts, job types, job modes, and education preferences. Editing existing entries requires JOB_CATALOG_DELETE.',
+    'Add a job catalogue entry — shifts, job types, job locations, and education preferences. Editing existing entries requires JOB_CATALOG_DELETE.',
   [Authorities.JOB_CATALOG_DELETE]: 'Edit or delete any job catalogue entry.',
   [Authorities.SKILL_WRITE]:
     "Add a skill to your company's catalogue. Editing existing skills requires SKILL_DELETE.",

@@ -169,7 +169,7 @@ const CompleteAccountRecovery = () => {
           disabled={!isValid || isLoading}
           className="mt-1 w-full rounded-3xl bg-button py-2.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isLoading ? 'Recovering…' : 'Recover account'}
+          {isLoading ? 'Recovering…' : 'Recover Account'}
         </Button>
 
         <Link to="/login" className="text-center text-sm text-gray-500 hover:underline">

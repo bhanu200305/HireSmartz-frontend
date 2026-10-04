@@ -19,9 +19,7 @@ export { default as UpdateInterviewRoundPage } from './UpdateInterviewRoundPage'
 export { default as ViewJobDetailsPage } from './ViewJobDetails';
 export { ViewDetailJdPage, ViewJobSkillsPage } from './ViewDetailJdPage';
 export { default as EditJobDetailPage } from './EditJobDetailPage';
-export { default as EditJdDetailPage } from './EditJdDetailPage';
 export { default as ViewInterviewRoundPage } from './ViewInterviewRoundPage';
-export { default as ConfrimNewJDModalPage } from './ConfirmNewJDModal';
 export { default as EditAiJobDescriptionPage } from './EditAiJobDescriptionPage';
 export { default as EditDetailedInterviewRoundPage } from './EditDetailedInterviewPage';
 export { default as EditInterviewRoundPage } from './EditInterviewRoundPage';

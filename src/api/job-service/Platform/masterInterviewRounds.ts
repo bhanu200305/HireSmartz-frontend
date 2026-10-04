@@ -11,6 +11,7 @@ export type PlatformInterviewRoundType = {
   requires_duration: boolean;
   available_variants: string[] | null;
   round_description: string | null;
+  variant_labels: Record<string, string> | null;
 };
 
 export type SaveInterviewRoundTypeRequest = {
@@ -23,10 +24,11 @@ export type SaveInterviewRoundTypeRequest = {
   round_description?: string | null;
 };
 
-// PUT /platform/master-interview-rounds/{id} — round_description only,
-// rejected server-side if any other field is sent.
+// Only name, description and variant labels are editable.
 export type UpdateInterviewRoundTypeRequest = {
+  round_name: string;
   round_description?: string | null;
+  variant_labels?: Record<string, string> | null;
 };
 
 const extendedApi = jobApi.injectEndpoints({

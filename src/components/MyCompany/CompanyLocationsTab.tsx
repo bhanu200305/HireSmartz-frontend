@@ -357,7 +357,7 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       {officeToDelete && (
         <ConfirmationModal
           title={`Remove ${officeToDelete.city}? Any linked department will be unlinked automatically.`}
-          confirmText="REMOVE"
+          confirmText="Remove"
           onConfirm={handleDelete}
           onClose={() => setOfficeToDelete(null)}
         />

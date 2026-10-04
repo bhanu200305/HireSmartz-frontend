@@ -414,7 +414,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
             onClick={handleSave}
             disabled={isSaving}
           >
-            {isSaving ? 'Saving…' : 'Save changes'}
+            {isSaving ? 'Saving…' : 'Save Changes'}
           </Button>
         </div>
       )}

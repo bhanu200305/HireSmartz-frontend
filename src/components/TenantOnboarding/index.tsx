@@ -1,6 +1,6 @@
+import BackButton from '../shared/ui/BackButton';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MdOutlineArrowBack } from 'react-icons/md';
 import { StepIndicator, type Step } from '../shared';
 import MainLayout from '../../layouts/MainLayout';
 import StepCompanyDetails from './StepCompanyDetails';
@@ -55,13 +55,7 @@ const TenantOnboardingWizard = () => {
     <MainLayout>
       <div className="flex flex-col items-center bg-white px-6 mt-6 pt-16 pb-10 relative">
         <div className="mb-4 self-start px-4 absolute top-6 left-0">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center text-gray-600 hover:text-gray-800 cursor-pointer"
-          >
-            <MdOutlineArrowBack className="mr-2" />
-            <span>Back</span>
-          </button>
+          <BackButton onClick={() => navigate(-1)} />
         </div>
 
         <div className="w-full max-w-2xl">

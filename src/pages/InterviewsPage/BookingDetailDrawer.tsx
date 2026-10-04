@@ -406,7 +406,7 @@ export const BookingDetailDrawer = ({
                   .catch(() => undefined);
               }}
             >
-              Copy support reference
+              Copy Support Reference
             </button>
 
             {/* Panel interviewers — calendar-connection status */}
@@ -438,7 +438,7 @@ export const BookingDetailDrawer = ({
                           >
                             {nudgingInterviewerId === iv.interviewer_id
                               ? 'Sending…'
-                              : 'Send reminder'}
+                              : 'Send Reminder'}
                           </button>
                         )}
                       </div>
@@ -501,7 +501,7 @@ export const BookingDetailDrawer = ({
             {canFollowUp && (
               <div className="mt-2">
                 <textarea
-                  className="w-full resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-neutral-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none"
                   rows={2}
                   placeholder="Add a follow-up note…"
                   value={note}
@@ -513,7 +513,7 @@ export const BookingDetailDrawer = ({
                     disabled={!note.trim() || followUpState.isLoading}
                     onClick={addNote}
                   >
-                    Add note
+                    Add Note
                   </Button>
                 </div>
               </div>
@@ -602,7 +602,7 @@ export const BookingDetailDrawer = ({
                   <div className="mt-2 flex flex-col gap-2">
                     <div className="flex gap-2">
                       <input
-                        className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:opacity-50"
+                        className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:opacity-50"
                         placeholder="Attach recording by reference…"
                         value={recordingRef}
                         onChange={(e) => setRecordingRef(e.target.value)}
@@ -630,7 +630,7 @@ export const BookingDetailDrawer = ({
                         disabled={uploadState.isLoading || hasRecording}
                         onClick={() => audioFileInputRef.current?.click()}
                       >
-                        {uploadState.isLoading ? 'Uploading…' : 'Upload a recording file'}
+                        {uploadState.isLoading ? 'Uploading…' : 'Upload A Recording File'}
                       </Button>
                     </div>
                   </div>
@@ -659,7 +659,7 @@ export const BookingDetailDrawer = ({
                   <div>
                     <span className="mb-1 block text-xs font-medium text-neutral-600">Notes</span>
                     <textarea
-                      className="w-full resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                      className="w-full resize-none rounded-lg border border-neutral-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none"
                       rows={3}
                       placeholder="Notes for the hiring team…"
                       value={feedbackNotes}
@@ -671,7 +671,7 @@ export const BookingDetailDrawer = ({
                     disabled={!recommendation || !feedbackNotes.trim() || feedbackState.isLoading}
                     onClick={sendFeedback}
                   >
-                    {feedbackState.isLoading ? 'Submitting…' : 'Submit feedback'}
+                    {feedbackState.isLoading ? 'Submitting…' : 'Submit Feedback'}
                   </Button>
                 </div>
               </>
@@ -704,7 +704,7 @@ export const BookingDetailDrawer = ({
                     />
                   ) : (
                     <textarea
-                      className="w-full resize-none rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                      className="w-full resize-none rounded-lg border border-neutral-300 px-4 py-2 text-sm focus:border-brand-500 focus:outline-none"
                       rows={2}
                       placeholder="Reason (optional)"
                       value={reason}
@@ -729,12 +729,12 @@ export const BookingDetailDrawer = ({
                       onClick={runAction}
                     >
                       {pending === 'cancel'
-                        ? 'Confirm cancel'
+                        ? 'Confirm Cancel'
                         : pending === 'skip'
-                          ? 'Confirm skip'
+                          ? 'Confirm Skip'
                           : pending === 'substitute'
                             ? 'Replace'
-                            : 'Update status'}
+                            : 'Update Status'}
                     </Button>
                   </div>
                 </div>
@@ -742,7 +742,7 @@ export const BookingDetailDrawer = ({
                 <div className="flex flex-wrap gap-2">
                   {canUpdate && (
                     <Button className={GHOST_BTN} onClick={() => setPending('status')}>
-                      Change status
+                      Change Status
                     </Button>
                   )}
                   {canUpdate && isPanel && (
@@ -751,7 +751,7 @@ export const BookingDetailDrawer = ({
                       disabled={isTerminal}
                       onClick={() => setPending('substitute')}
                     >
-                      Replace interviewer
+                      Replace Interviewer
                     </Button>
                   )}
                   {canUpdate && (
@@ -760,7 +760,7 @@ export const BookingDetailDrawer = ({
                       disabled={isTerminal}
                       onClick={() => setPending('skip')}
                     >
-                      Skip round
+                      Skip Round
                     </Button>
                   )}
                   {canCancel && (
@@ -769,7 +769,7 @@ export const BookingDetailDrawer = ({
                       disabled={isTerminal}
                       onClick={() => setPending('cancel')}
                     >
-                      Cancel interview
+                      Cancel Interview
                     </Button>
                   )}
                 </div>

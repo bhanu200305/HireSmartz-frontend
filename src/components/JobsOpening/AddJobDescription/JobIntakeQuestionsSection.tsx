@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Select } from 'antd';
-import { MdCheck } from 'react-icons/md';
-import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
-import { Typography, showToast } from '../../shared';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Select, Tooltip } from 'antd';
+import { MdCheck, MdInfoOutline } from 'react-icons/md';
+import { HiOutlineTrash } from 'react-icons/hi';
+import { Button, Typography, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import CollapseToggle from '../../shared/ui/CollapseToggle';
 import {
@@ -21,8 +21,12 @@ import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers'
 type Props = {
   jobOpeningId: string;
   canManage: boolean;
-  isOpen: boolean;
-  onToggle: () => void;
+  isOpen?: boolean;
+  onToggle?: () => void;
+  /** Renders just the body (no card/accordion header) for a host that supplies its own. */
+  embedded?: boolean;
+  /** Reports whether an edit or a typed question is still waiting to be saved. */
+  onUnsavedChange?: (hasUnsaved: boolean) => void;
 };
 
 type FieldOption = { value: string; label: string };
@@ -34,16 +38,23 @@ const QuestionRow: React.FC<{
   onSave: (text: string, fieldId: string | null) => Promise<void>;
   onDelete: () => Promise<void>;
   onDismissFlag: () => Promise<void>;
-}> = ({ question, canManage, fieldOptions, onSave, onDelete, onDismissFlag }) => {
+  setRowDirty: (questionId: string, dirty: boolean) => void;
+}> = ({ question, canManage, fieldOptions, onSave, onDelete, onDismissFlag, setRowDirty }) => {
   const [text, setText] = useState(question.question_text);
   const [fieldId, setFieldId] = useState<string | null>(question.field_id);
   const [saving, setSaving] = useState(false);
   const dirty = text.trim() !== question.question_text || fieldId !== question.field_id;
+  const questionId = question.job_intake_question_id;
+
+  useEffect(() => {
+    setRowDirty(questionId, dirty);
+    return () => setRowDirty(questionId, false);
+  }, [dirty, questionId, setRowDirty]);
   const flagged = question.is_relevant_to_jd === false;
 
   return (
     <div>
-      <div className="bg-white border border-[var(--border)] px-6 py-3 rounded-full transition-all duration-300 ease-in-out">
+      <div className="bg-white border border-[var(--border)] px-4 py-3 rounded-2xl transition-all duration-300 ease-in-out">
         <div className="grid grid-cols-[1fr_11rem_3.25rem] items-center gap-3 w-full">
           <input
             className="min-w-0 bg-transparent text-sm text-gray-800 focus:outline-none disabled:text-gray-500"
@@ -62,28 +73,32 @@ const QuestionRow: React.FC<{
           />
           {canManage && (
             <div className="flex items-center justify-end gap-3">
-              <button
-                className="text-primary hover:text-brand-600 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                disabled={!dirty || saving || !text.trim()}
-                onClick={async () => {
-                  setSaving(true);
-                  try {
-                    await onSave(text.trim(), fieldId);
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
-                aria-label="Save question"
-              >
-                <MdCheck size={18} />
-              </button>
-              <button
-                className="text-red-500 hover:text-red-700 cursor-pointer"
-                onClick={() => void onDelete()}
-                aria-label="Remove question"
-              >
-                <HiOutlineTrash size={18} />
-              </button>
+              <Tooltip title="Save changes">
+                <button
+                  className="text-primary hover:text-brand-600 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  disabled={!dirty || saving || !text.trim()}
+                  onClick={async () => {
+                    setSaving(true);
+                    try {
+                      await onSave(text.trim(), fieldId);
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  aria-label="Save question"
+                >
+                  <MdCheck size={18} />
+                </button>
+              </Tooltip>
+              <Tooltip title="Remove question">
+                <button
+                  className="text-red-500 hover:text-red-700 cursor-pointer"
+                  onClick={() => void onDelete()}
+                  aria-label="Remove question"
+                >
+                  <HiOutlineTrash size={18} />
+                </button>
+              </Tooltip>
             </div>
           )}
         </div>
@@ -112,7 +127,7 @@ const QuestionRow: React.FC<{
                 className="text-neutral-600 hover:text-neutral-800 text-sm cursor-pointer"
                 onClick={() => void onDismissFlag()}
               >
-                Dismiss flag
+                Dismiss Flag
               </button>
             </div>
           )}
@@ -125,9 +140,19 @@ const QuestionRow: React.FC<{
 const JobIntakeQuestionsSection: React.FC<Props> = ({
   jobOpeningId,
   canManage,
-  isOpen,
+  isOpen = true,
   onToggle,
+  embedded = false,
+  onUnsavedChange,
 }) => {
+  const [dirtyRowIds, setDirtyRowIds] = useState<string[]>([]);
+  const setRowDirty = useCallback((questionId: string, dirty: boolean) => {
+    setDirtyRowIds((prev) => {
+      const has = prev.includes(questionId);
+      if (dirty === has) return prev;
+      return dirty ? [...prev, questionId] : prev.filter((id) => id !== questionId);
+    });
+  }, []);
   const { data, isFetching } = useGetJobIntakeQuestionsQuery(jobOpeningId, {
     skip: !jobOpeningId,
   });
@@ -147,6 +172,12 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
   );
 
   const questions = data?.questions ?? [];
+
+  const hasUnsaved = dirtyRowIds.length > 0 || newQuestionText.trim().length > 0;
+  useEffect(() => {
+    onUnsavedChange?.(hasUnsaved);
+    return () => onUnsavedChange?.(false);
+  }, [hasUnsaved, onUnsavedChange]);
 
   // Auto-imports once per job when there's nothing here yet.
   const hasAutoImportedRef = useRef<string | null>(null);
@@ -188,6 +219,7 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
       }).unwrap();
       setNewQuestionText('');
       setNewQuestionFieldId(null);
+      showToast({ message: 'Intake question added', type: 'success' });
     } catch (err) {
       showToast({
         message: getJobErrorMessage(err, 'Failed to add question.'),
@@ -195,6 +227,139 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
       });
     }
   };
+
+  const body = (
+    <div className={embedded ? '' : 'px-6 pb-6'}>
+      {(embedded || (questions.length > 0 && canManage)) && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {embedded && (
+            <>
+              <Typography variant="subtitle1" className="m-0 font-bold text-gray-900">
+                Intake Call Questions
+              </Typography>
+              <Tooltip title="Asked during the candidate's intake call, before any interview round.">
+                <MdInfoOutline className="text-gray-400" size={15} />
+              </Tooltip>
+            </>
+          )}
+          {questions.length > 0 && canManage && (
+            <Tooltip title="Flags intake questions that don't fit this job's description.">
+              <button
+                className="ml-auto border border-primary text-primary hover:bg-gray-50 rounded-full px-4 py-1.5 text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={checkingRelevance}
+                onClick={handleCheckRelevance}
+              >
+                {checkingRelevance ? 'Checking...' : 'Check Relevance To JD'}
+              </button>
+            </Tooltip>
+          )}
+        </div>
+      )}
+
+      {isFetching || importing ? (
+        <Loader />
+      ) : questions.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-8 text-center">
+          <p className="m-0 text-sm font-semibold text-gray-700">No intake questions yet</p>
+          <p className="m-0 mt-1 text-sm text-gray-500">
+            Company questions are copied in automatically when available.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="max-h-[40vh] min-h-[100px] space-y-3 overflow-y-auto pr-1">
+            {questions.map((q) => (
+              <QuestionRow
+                key={q.job_intake_question_id}
+                question={q}
+                canManage={canManage}
+                fieldOptions={fieldOptions}
+                setRowDirty={setRowDirty}
+                onSave={async (text, fieldId) => {
+                  try {
+                    await updateQuestion({
+                      jobOpeningId,
+                      questionId: q.job_intake_question_id,
+                      question_text: text,
+                      field_id: fieldId,
+                    }).unwrap();
+                    showToast({ message: 'Intake question saved', type: 'success' });
+                  } catch (err) {
+                    showToast({
+                      message: getJobErrorMessage(err, 'Failed to save question.'),
+                      type: 'error',
+                    });
+                  }
+                }}
+                onDelete={async () => {
+                  try {
+                    await deleteQuestion({
+                      jobOpeningId,
+                      questionId: q.job_intake_question_id,
+                    }).unwrap();
+                    showToast({ message: 'Intake question removed', type: 'success' });
+                  } catch (err) {
+                    showToast({
+                      message: getJobErrorMessage(err, 'Failed to remove question.'),
+                      type: 'error',
+                    });
+                  }
+                }}
+                onDismissFlag={async () => {
+                  try {
+                    await dismissFlag({
+                      jobOpeningId,
+                      questionId: q.job_intake_question_id,
+                    }).unwrap();
+                  } catch (err) {
+                    showToast({
+                      message: getJobErrorMessage(err, 'Failed to dismiss flag.'),
+                      type: 'error',
+                    });
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {canManage && questions.length < 8 && !isFetching && !importing && (
+        <div className="mt-4 rounded-2xl border border-primary-200 bg-white px-4 py-3 shadow-sm">
+          <div className="mb-2 text-sm font-semibold text-gray-800">Add An Intake Question</div>
+          <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[1fr_11rem_auto]">
+            <input
+              className="min-w-0 rounded-xl border border-gray-200 bg-[#F6F8FD] px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-primary focus:outline-none"
+              placeholder="Type a question..."
+              value={newQuestionText}
+              onChange={(e) => setNewQuestionText(e.target.value)}
+            />
+            <Tooltip title="Which resume field this answer fills in (optional).">
+              <Select
+                className="w-full"
+                placeholder="Resume Field"
+                allowClear
+                options={fieldOptions}
+                value={newQuestionFieldId ?? undefined}
+                onChange={(value) => setNewQuestionFieldId(value ?? null)}
+              />
+            </Tooltip>
+            <Button
+              type="button"
+              className="rounded-full bg-button px-5 py-1.5 text-sm font-semibold text-white"
+              disabled={creating || !newQuestionText.trim()}
+              onClick={handleAdd}
+            >
+              Add
+            </Button>
+          </div>
+          <p className="m-0 mt-2 text-xs text-gray-400">{questions.length} of 8 intake questions</p>
+        </div>
+      )}
+    </div>
+  );
+
+  if (embedded) return body;
 
   return (
     <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
@@ -214,115 +379,7 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
         </div>
         <CollapseToggle open={isOpen} />
       </button>
-
-      {isOpen && (
-        <div className="px-6 pb-6">
-          {questions.length > 0 && canManage && (
-            <div className="flex justify-end mb-4">
-              <button
-                className="text-primary hover:text-brand-600 text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={checkingRelevance}
-                onClick={handleCheckRelevance}
-              >
-                {checkingRelevance ? 'Checking...' : 'Check relevance to JD'}
-              </button>
-            </div>
-          )}
-
-          {isFetching || importing ? (
-            <Loader />
-          ) : questions.length === 0 ? (
-            <div className="py-6 text-center">
-              <p className="text-gray-400 italic text-sm">
-                No intake questions set up for this job yet.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {questions.map((q) => (
-                <QuestionRow
-                  key={q.job_intake_question_id}
-                  question={q}
-                  canManage={canManage}
-                  fieldOptions={fieldOptions}
-                  onSave={async (text, fieldId) => {
-                    try {
-                      await updateQuestion({
-                        jobOpeningId,
-                        questionId: q.job_intake_question_id,
-                        question_text: text,
-                        field_id: fieldId,
-                      }).unwrap();
-                    } catch (err) {
-                      showToast({
-                        message: getJobErrorMessage(err, 'Failed to save question.'),
-                        type: 'error',
-                      });
-                    }
-                  }}
-                  onDelete={async () => {
-                    try {
-                      await deleteQuestion({
-                        jobOpeningId,
-                        questionId: q.job_intake_question_id,
-                      }).unwrap();
-                    } catch (err) {
-                      showToast({
-                        message: getJobErrorMessage(err, 'Failed to remove question.'),
-                        type: 'error',
-                      });
-                    }
-                  }}
-                  onDismissFlag={async () => {
-                    try {
-                      await dismissFlag({
-                        jobOpeningId,
-                        questionId: q.job_intake_question_id,
-                      }).unwrap();
-                    } catch (err) {
-                      showToast({
-                        message: getJobErrorMessage(err, 'Failed to dismiss flag.'),
-                        type: 'error',
-                      });
-                    }
-                  }}
-                />
-              ))}
-
-              {canManage && questions.length < 8 && (
-                <div className="bg-white border border-dashed border-[var(--border)] px-6 py-3 rounded-full">
-                  <div className="grid grid-cols-[1fr_11rem_3.25rem] items-center gap-3 w-full">
-                    <input
-                      className="min-w-0 bg-transparent text-sm text-gray-800 focus:outline-none placeholder:text-gray-400"
-                      placeholder="Add a question..."
-                      value={newQuestionText}
-                      onChange={(e) => setNewQuestionText(e.target.value)}
-                    />
-                    <Select
-                      className="w-full"
-                      placeholder="Resume Field"
-                      allowClear
-                      options={fieldOptions}
-                      value={newQuestionFieldId ?? undefined}
-                      onChange={(value) => setNewQuestionFieldId(value ?? null)}
-                    />
-                    <div className="flex items-center justify-end">
-                      <button
-                        className="text-primary hover:text-brand-600 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                        disabled={creating || !newQuestionText.trim()}
-                        onClick={handleAdd}
-                        aria-label="Add question"
-                      >
-                        <HiOutlinePlus size={18} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {isOpen && body}
     </div>
   );
 };

@@ -99,7 +99,7 @@ const ReplicateToLocations: React.FC<ReplicateToLocationsProps> = ({ targets, on
         className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-primary-200 px-3 py-1.5 text-xs font-semibold text-primary-600 hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <MdContentCopy size={13} />
-        Replicate to locations
+        Replicate To Locations
       </button>
     </Dropdown>
   );

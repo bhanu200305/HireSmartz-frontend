@@ -249,7 +249,7 @@ const MyCompany: React.FC = () => {
         },
         canViewJobSettings && {
           key: '15',
-          label: 'Job Modes',
+          label: 'Job Locations',
           children: <TenantJobModesTab />,
         },
         canViewJobSettings && {

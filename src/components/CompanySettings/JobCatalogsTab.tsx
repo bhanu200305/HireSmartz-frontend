@@ -53,7 +53,7 @@ const JobCatalogsTab: React.FC = () => {
         },
         {
           key: 'job-modes',
-          label: 'Job Modes',
+          label: 'Job Locations',
           children: <JobModesTab />,
         },
         {

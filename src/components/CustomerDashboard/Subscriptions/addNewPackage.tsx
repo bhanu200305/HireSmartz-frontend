@@ -161,7 +161,7 @@ const AddNewPackage = () => {
                   type="submit"
                   className="w-full text-white bg-[var(--color-primary)] rounded-3xl py-3"
                 >
-                  SUBMIT
+                  Submit
                 </Button>
               </Form.Item>
             </Form>

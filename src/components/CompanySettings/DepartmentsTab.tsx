@@ -305,7 +305,7 @@ const DepartmentsTab: React.FC = () => {
             className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
             onClick={openAdd}
           >
-            <MdOutlineAdd /> Add department
+            <MdOutlineAdd /> Add Department
           </Button>
         </div>
       </div>
@@ -342,7 +342,7 @@ const DepartmentsTab: React.FC = () => {
       <AntdCommonModal
         open={modalState !== null}
         onClose={() => setModalState(null)}
-        title={modalState?.mode === 'edit' ? 'Edit department' : 'Add department'}
+        title={modalState?.mode === 'edit' ? 'Edit Department' : 'Add Department'}
       >
         <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
           <Input
@@ -385,7 +385,7 @@ const DepartmentsTab: React.FC = () => {
       {departmentToDelete && (
         <ConfirmationModal
           title={`Remove "${departmentToDelete.name}"? Blocked if a company still uses it.`}
-          confirmText="REMOVE"
+          confirmText="Remove"
           onConfirm={handleDelete}
           onClose={() => setDepartmentToDelete(null)}
         />

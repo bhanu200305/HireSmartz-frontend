@@ -245,7 +245,7 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
                     textDecorationSkipInk: 'auto',
                   }}
                 >
-                  Mark all as read
+                  Mark All As Read
                 </button>
                 {/* Filter dropdown */}
                 <div className="cfp-dropdown-trigger notification-filter-wrapper">

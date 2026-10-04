@@ -35,7 +35,6 @@ const AIQuestionsSetupPage = lazyImport(
   () => import('./pages/AIQuestions'),
   'AIQuestionsSetupPage'
 );
-const ConfrimNewJDModalPage = lazy(() => import('./pages/ConfirmNewJDModal'));
 const CustomersPage = lazy(() => import('./pages/CustomerPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const BookDemoPage = lazy(() => import('./pages/BookDemoPage'));
@@ -622,18 +621,6 @@ export const Routes: RouteType[] = [
         name: 'editJobDetails',
         path: 'details',
         component: EditJobDetail,
-      },
-      {
-        name: 'editJobDescription',
-        path: 'description',
-        component: EditJobDetail,
-        children: [
-          {
-            name: 'confirmNewJD',
-            path: 'confirm-new-jd',
-            component: ConfrimNewJDModalPage,
-          },
-        ],
       },
       {
         name: 'aiJobDescription',

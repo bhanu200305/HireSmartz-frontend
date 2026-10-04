@@ -89,7 +89,7 @@ const StartAccountRecovery = () => {
           disabled={!isValidShape || isLoading}
           className="w-full rounded-3xl bg-button py-2.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isLoading ? 'Submitting…' : 'Send recovery link'}
+          {isLoading ? 'Submitting…' : 'Send Recovery Link'}
         </Button>
 
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-800">

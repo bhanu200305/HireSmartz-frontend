@@ -55,7 +55,7 @@ const ResumeViewerModal = ({
             href={downloadUrl}
             className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white"
           >
-            DOWNLOAD RESUME
+            Download Resume
           </a>
           <a
             href={downloadUrl}
@@ -63,7 +63,7 @@ const ResumeViewerModal = ({
             rel="noopener noreferrer"
             className="rounded-full border border-primary-200 bg-primary-50 px-6 py-2 text-sm font-semibold text-primary-700"
           >
-            OPEN IN NEW TAB
+            Open In New Tab
           </a>
         </div>
       )}
@@ -142,7 +142,7 @@ const ResumeViewerModal = ({
               download={blobUrl ? downloadName : undefined}
               className="rounded-full bg-primary px-5 py-1.5 text-xs font-semibold text-white"
             >
-              DOWNLOAD RESUME
+              Download Resume
             </a>
           </div>
         </div>

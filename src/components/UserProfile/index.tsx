@@ -1,3 +1,4 @@
+import BackButton from '../shared/ui/BackButton';
 import {
   MdBadge,
   MdCameraAlt,
@@ -5,7 +6,6 @@ import {
   MdDelete,
   MdEdit,
   MdMailOutline,
-  MdOutlineArrowBack,
   MdOutlineCalendarMonth,
   MdOutlineDevices,
   MdOutlineFileUpload,
@@ -437,13 +437,7 @@ const UserProfile = () => {
         >
           <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <button
-                onClick={() => navigate('/')}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-600)] hover:text-[var(--gray-900)] transition-colors cursor-pointer"
-              >
-                <MdOutlineArrowBack className="text-base" />
-                <span>Back</span>
-              </button>
+              <BackButton onClick={() => navigate('/')} />
               <div className="flex items-center gap-2">
                 {isCalendarSettingsAvailable && (
                   <button
@@ -460,7 +454,7 @@ const UserProfile = () => {
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
                   >
                     <MdOutlineNotifications className="text-base" />
-                    <span>Notification settings</span>
+                    <span>Notification Settings</span>
                   </button>
                 )}
                 <button
@@ -475,7 +469,7 @@ const UserProfile = () => {
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 shadow-[var(--elevation-xs)] hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
                 >
                   <MdOutlineDevices className="text-base" />
-                  <span>Active sessions</span>
+                  <span>Active Sessions</span>
                 </button>
               </div>
             </div>
@@ -945,7 +939,7 @@ const UserProfile = () => {
                         style={{ boxShadow: 'var(--elevation-sm)' }}
                         onClick={handleSubmit(handleUpdateProfile)}
                       >
-                        {isUpdating ? 'SAVING…' : 'SAVE CHANGES'}
+                        {isUpdating ? 'Saving…' : 'Save Changes'}
                       </Button>
                     </Form.Item>
                   </div>

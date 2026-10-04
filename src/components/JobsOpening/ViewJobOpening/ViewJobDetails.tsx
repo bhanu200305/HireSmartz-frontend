@@ -1,6 +1,5 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Form, Switch, Tooltip } from 'antd';
-import TextArea from 'antd/es/input/TextArea';
+import { Tooltip } from 'antd';
 import { TbBriefcase2 } from 'react-icons/tb';
 import {
   MdOutlineLocationOn,
@@ -8,8 +7,6 @@ import {
   MdOutlineAttachMoney,
   MdOutlineStars,
 } from 'react-icons/md';
-import { Input } from '../../shared';
-import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { useListJobTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
 import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
@@ -25,9 +22,10 @@ import {
   useListTenantJobTitleCatalogueQuery,
 } from '../../../api/organization-service/Tenants/jobTitles';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import { useListUsersQuery } from '../../../api/organization-service/Users/users';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import { useParams } from 'react-router-dom';
-import { lazy, useEffect, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Loader } from '../../shared/ui/loader';
 import dayjs from 'dayjs';
 import { JobOpeningByIdResponse } from '../../../types';
@@ -35,10 +33,6 @@ import { asJobId } from '../../../api/job-service/jobId';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 
-const CurrencyInput = lazy(() => import('react-currency-input-field'));
-
-// Read-only display, so a plain formatted span (not an input box) keeps
-// the /hr or /year suffix hugging the number regardless of its length.
 const formatSalary = (value: number | string | null | undefined): string =>
   value == null || value === ''
     ? ''
@@ -48,6 +42,143 @@ const formatSalary = (value: number | string | null | undefined): string =>
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(Number(value));
+
+const formatSalaryRange = (
+  min: number | string | null | undefined,
+  max: number | string | null | undefined,
+  unit: string
+): string => {
+  if (min != null && max != null) return `${formatSalary(min)} - ${formatSalary(max)} ${unit}`;
+  if (min != null) return `From ${formatSalary(min)} ${unit}`;
+  if (max != null) return `Up to ${formatSalary(max)} ${unit}`;
+  return '';
+};
+
+const formatExperience = (
+  min: number | string | null | undefined,
+  max: number | string | null | undefined
+): string => {
+  if (min != null && min !== '' && max != null && max !== '') return `${min} - ${max} years`;
+  if (min != null && min !== '') return `${min}+ years`;
+  if (max != null && max !== '') return `Up to ${max} years`;
+  return '';
+};
+
+type ChipItem = { key: string; label: string; deactivated?: boolean; muted?: boolean };
+
+const toSkillChip = (skill: { skillName: string }, index: number): ChipItem => ({
+  key: `${skill.skillName}-${index}`,
+  label: skill.skillName,
+});
+
+const EMPTY_VALUE = <span className="font-normal text-gray-400">-</span>;
+
+const Section = ({
+  icon,
+  title,
+  last = false,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  last?: boolean;
+  children: ReactNode;
+}) => (
+  <section className={`py-5 ${last ? '' : 'border-b border-neutral-100'}`}>
+    <div className="flex items-center gap-2">
+      <span className="flex items-center justify-center rounded-lg bg-primary-50 p-1.5 text-primary-600">
+        {icon}
+      </span>
+      <h3 className="m-0 font-display text-base font-bold text-neutral-900">{title}</h3>
+    </div>
+    <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+      {children}
+    </div>
+  </section>
+);
+
+const Field = ({
+  label,
+  value,
+  info,
+  className = '',
+  children,
+}: {
+  label: string;
+  value?: ReactNode;
+  info?: ReactNode;
+  className?: string;
+  children?: ReactNode;
+}) => {
+  const content = children ?? value;
+  const isEmpty = content == null || content === '' || content === false;
+  return (
+    <div className={`min-w-0 ${className}`}>
+      <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-gray-500">
+        {label}
+        {info}
+      </div>
+      <div className="break-words text-sm font-semibold text-gray-900">
+        {isEmpty ? EMPTY_VALUE : content}
+      </div>
+    </div>
+  );
+};
+
+const ChipList = ({ items, tone = 'brand' }: { items: ChipItem[]; tone?: 'brand' | 'neutral' }) => {
+  if (items.length === 0) return EMPTY_VALUE;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((item) => (
+        <span
+          key={item.key}
+          className={`inline-flex cursor-default items-center rounded-md px-2.5 py-1 text-xs font-medium ${
+            item.deactivated || item.muted || tone === 'neutral'
+              ? 'bg-gray-100 text-gray-600'
+              : 'bg-brand-50 text-brand-800'
+          }`}
+        >
+          {item.label}
+          {item.deactivated && <span className="ml-1.5 italic">(Deactivated)</span>}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+const TextTabs = ({ tabs }: { tabs: { label: string; text?: string | null }[] }) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const active = tabs[activeIndex];
+  return (
+    <div className="col-span-full">
+      <div role="tablist" className="mb-3 flex flex-wrap gap-6 border-b border-neutral-200">
+        {tabs.map((tab, index) => (
+          <button
+            key={tab.label}
+            type="button"
+            role="tab"
+            aria-selected={index === activeIndex}
+            onClick={() => setActiveIndex(index)}
+            className={`-mb-px cursor-pointer rounded-sm border-b-2 px-1 pb-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-200 font-semibold transition-colors ${
+              index === activeIndex
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-800'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      {active.text?.trim() ? (
+        <p className="m-0 max-h-72 overflow-y-auto whitespace-pre-line rounded-xl bg-gray-50 px-4 py-3 text-sm leading-relaxed text-gray-700">
+          {active.text}
+        </p>
+      ) : (
+        <div className="rounded-xl bg-gray-50 px-4 py-3">{EMPTY_VALUE}</div>
+      )}
+    </div>
+  );
+};
 
 type ViewJobData = JobOpeningByIdResponse['data'] & {
   location?: {
@@ -151,7 +282,8 @@ const ViewJobDetails = () => {
       .filter(Boolean)
       .join(', ') || '';
   const shiftName = jobData?.data.shiftId
-    ? shiftOptions.find((option) => idsMatch(option.id, jobData.data.shiftId))?.name || ''
+    ? shiftOptions.find((option) => idsMatch(option.id, jobData.data.shiftId))?.name ||
+      'Unavailable shift'
     : '';
   const locationCode = selectedOffice?.location_code || locationData?.code || '';
   const locationAddressLine1 = selectedOffice?.address_line_1 || locationData?.addressLine1 || '';
@@ -191,9 +323,12 @@ const ViewJobDetails = () => {
     'edit',
     jobId
   );
-  const selectedLanguageNames = (jobData?.data?.languages ?? [])
-    .map((id) => languageOptions.find((option) => idsMatch(option.id, id))?.name)
-    .filter((name): name is string => Boolean(name));
+  const selectedLanguageNames = (jobData?.data?.languages ?? []).map(
+    (id) =>
+      languageOptions.find((option) => idsMatch(option.id, id))?.name || 'Unavailable language'
+  );
+  // Unfiltered users, only to name people who no longer qualify for the pickers.
+  const { data: allUsers } = useListUsersQuery({ limit: 200 }, { skip: !tenantId });
 
   // Hiring-manager/recruiter ids are UUIDs, not numbers — normalize to strings
   // and compare with `idsMatch` like the other dropdowns in this file.
@@ -228,174 +363,72 @@ const ViewJobDetails = () => {
     [jobData]
   );
 
-  const selectedHiringManagers = useMemo(
-    () =>
-      hiringManagerOptions.filter((option) =>
-        selectedHiringManagerIds.some((id) => idsMatch(option.id, id))
-      ),
-    [hiringManagerOptions, selectedHiringManagerIds]
-  );
+  // Show every saved assignment, even if no longer in the pickers.
+  const toPeopleChips = (
+    ids: string[],
+    options: { id: string | number; name: string; isDeleted?: boolean }[]
+  ): ChipItem[] =>
+    ids.map((id) => {
+      const option = options.find((o) => idsMatch(o.id, id));
+      if (option) return { key: id, label: option.name, deactivated: Boolean(option.isDeleted) };
+      const user = allUsers?.items?.find((u) => idsMatch(u.user_id, id));
+      if (user) return { key: id, label: user.full_name || user.email, muted: true };
+      return { key: id, label: 'Unavailable user', muted: true };
+    });
+  const hiringManagerChips = toPeopleChips(selectedHiringManagerIds, hiringManagerOptions);
+  const recruiterChips = toPeopleChips(selectedRecruiterIds, recruiterOptions);
 
-  const selectedRecruiters = useMemo(
-    () =>
-      recruiterOptions.filter((option) =>
-        selectedRecruiterIds.some((id) => idsMatch(option.id, id))
-      ),
-    [recruiterOptions, selectedRecruiterIds]
-  );
+  const educationNames = (jobData?.data.educationPreference ?? [])
+    .map(
+      (item) =>
+        educationPreferenceOptions.find((option) => idsMatch(option.id, item.id))?.name ||
+        item.educationLevel
+    )
+    .filter(Boolean)
+    .join(', ');
 
-  const hiringManagerMaxTagPlaceholder = (omittedValues: { value: number | string }[]) => (
-    <span>
-      {omittedValues.length} of {hiringManagerOptions.length} hiring managers selected
-    </span>
-  );
-
-  const recruiterMaxTagPlaceholder = (omittedValues: { value: number | string }[]) => (
-    <span>
-      {omittedValues.length} of {recruiterOptions.length} recruiters selected
-    </span>
-  );
+  const data = jobData?.data;
+  const addressLine = [
+    locationAddressLine1,
+    locationAddressLine2,
+    locationCity,
+    [locationState, locationZipCode].filter(Boolean).join(' '),
+    locationCountry,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <>
       {isLoading && <Loader />}
-      <Form layout="vertical" autoComplete="off">
-        <div className="mt-2 pb-4 border-b border-neutral-100">
-          <div className="w-full flex items-center gap-2">
-            <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
-              <TbBriefcase2 size={16} />
-            </span>
-            <span className="text-base font-bold text-neutral-900 font-display">Job Info</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-            <Form.Item
-              label={
-                <span>
-                  Job ID <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <Input
-                type="text"
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={jobData?.data.jobProfileCode || ''}
-                disabled
-              />
-            </Form.Item>
-            <Form.Item
-              label={
-                <span>
-                  Department <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <div className="w-full p-2 mt-1 bg-white border rounded-3xl border-[var(--border)] text-gray-400 flex flex-wrap items-center gap-x-1 min-h-[38px]">
-                {departmentItems.length > 0
-                  ? departmentItems.map((dept, index) => (
-                      <span key={index}>
-                        {index > 0 && <span className="mr-1">,</span>}
-                        <span>{dept.name}</span>
-                        {dept.isDeactivated && (
-                          <span className="ml-1 text-xs italic text-gray-400">(Deactivated)</span>
-                        )}
+      <div className="flex flex-col">
+        <Section icon={<TbBriefcase2 size={16} />} title="Job Info">
+          <Field label="Job ID" value={data?.jobProfileCode} />
+          <Field label="Department">
+            {departmentItems.length > 0
+              ? departmentItems.map((dept, index) => (
+                  <span key={index}>
+                    {index > 0 && ', '}
+                    {dept.name}
+                    {dept.isDeactivated && (
+                      <span className="ml-1 text-xs font-normal italic text-gray-400">
+                        (Deactivated)
                       </span>
-                    ))
-                  : null}
-              </div>
-            </Form.Item>
-            <Form.Item
-              label={
-                <span>
-                  Job Title <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <div className="w-full p-2 mt-1 bg-white border rounded-3xl border-[var(--border)] text-gray-400 flex flex-wrap items-center gap-x-1 min-h-[38px]">
-                {jobTitleItems.length > 0
-                  ? jobTitleItems.map((jt, index) => (
-                      <span key={index}>
-                        {index > 0 && <span className="mr-1">,</span>}
-                        <span>{jt.name}</span>
-                        {jt.isDeactivated && (
-                          <span className="ml-1 text-xs italic text-gray-400">(Deactivated)</span>
-                        )}
-                      </span>
-                    ))
-                  : null}
-              </div>
-            </Form.Item>
-
-            <Form.Item
-              label={
-                <span>
-                  Job Type <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <Input
-                type="text"
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={jobTypeName}
-                disabled
-              />
-            </Form.Item>
-            <Form.Item label={<span>Shift</span>}>
-              <Input
-                type="text"
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={shiftName}
-                disabled
-              />
-            </Form.Item>
-            <Form.Item label={<span>Communication Language</span>}>
-              <Input
-                type="text"
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={selectedLanguageNames.length ? selectedLanguageNames.join(', ') : '-'}
-                disabled
-              />
-            </Form.Item>
-          </div>
-
-          <div className="mt-2 max-w-[33%]">
-            <div className="flex items-center gap-2">
-              <span className="text-sm capitalize">Company Culture</span>
+                    )}
+                  </span>
+                ))
+              : null}
+          </Field>
+          <Field label="Job Title">
+            {jobTitleItems.length > 0 ? jobTitleItems.map((jt) => jt.name).join(', ') : null}
+          </Field>
+          <Field label="Job Type" value={jobTypeName} />
+          <Field label="Shift" value={shiftName} />
+          <Field label="Communication Language" value={selectedLanguageNames.join(', ')} />
+          <Field
+            className="col-span-full"
+            label="Company Culture Intro"
+            info={
               <Tooltip
                 trigger={['hover', 'click']}
                 title={hasCultureInfo ? cultureInfoText : 'No company culture information provided'}
@@ -403,639 +436,81 @@ const ViewJobDetails = () => {
                 <button
                   type="button"
                   aria-label="View company culture information"
-                  className="inline-flex items-center justify-center text-gray-500 hover:text-[var(--color-primary)] cursor-pointer"
+                  className="inline-flex cursor-pointer items-center text-gray-400 hover:text-[var(--color-primary)]"
                 >
                   <InfoCircleOutlined />
                 </button>
               </Tooltip>
-            </div>
-            <div className="mt-3 flex items-center gap-3">
-              <Switch
-                checked={Boolean(jobData?.data?.useCultureIntro)}
-                disabled
-                style={{
-                  backgroundColor: jobData?.data?.useCultureIntro
-                    ? 'var(--color-primary)'
-                    : undefined,
-                }}
-              />
-              <span className="text-sm text-gray-500">
-                Play Company Culture Introduction at the start of AI Audio Screening and AI Video
-                Interview
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="mt-2 pb-4 border-b border-neutral-100">
-          <div className="w-full flex items-center gap-2">
-            <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
-              <MdOutlineLocationOn size={16} />
-            </span>
-            <span className="text-base font-bold text-neutral-900 font-display">Location</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-            <Form.Item
-              label={
-                <span>
-                  Location Name <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <Input
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={locationDisplayName}
-                disabled
-              />
-            </Form.Item>
-
-            <Form.Item label={<span>Location Code</span>}>
-              <Input
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={locationCode}
-                disabled
-              />
-            </Form.Item>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-            <Form.Item label={<span>Address Line 1</span>}>
-              <Input
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={locationAddressLine1}
-                disabled
-              />
-            </Form.Item>
-            <Form.Item label={<span>Address Line 2</span>}>
-              <Input
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={locationAddressLine2}
-                disabled
-              />
-            </Form.Item>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-            <Form.Item label={<span>City</span>}>
-              <Input
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={locationCity}
-                disabled
-              />
-            </Form.Item>
-            <Form.Item label={<span>State</span>}>
-              <Input
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={locationState}
-                disabled
-              />
-            </Form.Item>
-            <Form.Item label={<span>Zip Code</span>}>
-              <Input
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={locationZipCode}
-                disabled
-              />
-            </Form.Item>
-            <Form.Item label={<span>Country</span>}>
-              <Input
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={locationCountry}
-                disabled
-              />
-            </Form.Item>
-          </div>
-        </div>
-        <div className="mt-2 pb-4 border-b border-neutral-100">
-          <div className="w-full flex items-center gap-2">
-            <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
-              <MdOutlineGroups size={16} />
-            </span>
-            <span className="text-base font-bold text-neutral-900 font-display">Hiring Panel</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-            <Form.Item label={<span>Hiring Manager</span>}>
-              <div className="space-y-3">
-                <DropdownWithAddOption
-                  className="w-full custom-select-jobs placeholder-style"
-                  value={selectedHiringManagerIds}
-                  onChange={() => {}}
-                  options={hiringManagerOptions}
-                  placeholder="No hiring managers assigned"
-                  type="hiringManagers"
-                  mode="multiple"
-                  maxTagCount={0}
-                  maxTagPlaceholder={hiringManagerMaxTagPlaceholder}
-                  disabled
-                  enableEditDelete={false}
-                />
-
-                {selectedHiringManagers.length > 0 && (
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">
-                        Selected Hiring Managers
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedHiringManagers.map((manager) => (
-                        <span
-                          key={manager.id}
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
-                            manager.isDeleted
-                              ? 'bg-gray-100 text-gray-600 border-gray-300'
-                              : 'bg-brand-100 text-brand-800 border-brand-200'
-                          }`}
-                        >
-                          {manager.name}
-                          {manager.isDeleted && (
-                            <span className="ml-2 text-xs italic">(Deactivated)</span>
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Form.Item>
-            <Form.Item label={<span>Recruiter</span>}>
-              <div className="space-y-3">
-                <DropdownWithAddOption
-                  className="w-full custom-select-jobs placeholder-style"
-                  value={selectedRecruiterIds}
-                  onChange={() => {}}
-                  options={recruiterOptions}
-                  placeholder="No recruiters assigned"
-                  type="recruiters"
-                  mode="multiple"
-                  maxTagCount={0}
-                  maxTagPlaceholder={recruiterMaxTagPlaceholder}
-                  disabled
-                  enableEditDelete={false}
-                />
-
-                {selectedRecruiters.length > 0 && (
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Selected Recruiters</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedRecruiters.map((recruiter) => (
-                        <span
-                          key={recruiter.id}
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
-                            recruiter.isDeleted
-                              ? 'bg-gray-100 text-gray-600 border-gray-300'
-                              : 'bg-brand-100 text-brand-800 border-brand-200'
-                          }`}
-                        >
-                          {recruiter.name}
-                          {recruiter.isDeleted && (
-                            <span className="ml-2 text-xs italic">(Deactivated)</span>
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Form.Item>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-            <Form.Item
-              label={
-                <span>
-                  Open Date <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <Input
-                type="text"
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={
-                  // openDate is an ISO 8601 string; let dayjs parse it natively.
-                  jobData?.data.openDate && dayjs(jobData.data.openDate).isValid()
-                    ? dayjs(jobData.data.openDate).format('MMMM D, YYYY')
-                    : ''
-                }
-                disabled
-              />
-            </Form.Item>
-            <Form.Item
-              label={
-                <span>
-                  Opening(s) <span className="required-asterisk">*</span>
-                </span>
-              }
-            >
-              <Input
-                type="text"
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={jobData?.data.openings || ''}
-                disabled
-              />
-            </Form.Item>
-          </div>
-        </div>
-        <div className="mt-2 pb-4 border-b border-neutral-100">
-          <div className="w-full flex items-center gap-2">
-            <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
-              <MdOutlineAttachMoney size={16} />
-            </span>
-            <span className="text-base font-bold text-neutral-900 font-display">Salary</span>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 mt-2">
-            {(jobData?.data.exemptMinSalary != null || jobData?.data.exemptMaxSalary != null) && (
-              <div>
-                <span className="text-sm font-semibold text-neutral-700">Exempt - Annual</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-1">
-                  <Form.Item label={<span>Minimum Salary (in USD)</span>}>
-                    <div className="flex items-center gap-1.5">
-                      <span style={{ color: '#111827', fontWeight: 600, fontSize: '13px' }}>
-                        {formatSalary(jobData?.data.exemptMinSalary)}
-                      </span>
-                      {jobData?.data.exemptMinSalary != null && (
-                        <span className="shrink-0 text-xs font-semibold text-neutral-500">
-                          /year
-                        </span>
-                      )}
-                    </div>
-                  </Form.Item>
-                  <Form.Item label={<span>Maximum Salary (in USD)</span>}>
-                    <div className="flex items-center gap-1.5">
-                      <span style={{ color: '#111827', fontWeight: 600, fontSize: '13px' }}>
-                        {formatSalary(jobData?.data.exemptMaxSalary)}
-                      </span>
-                      {jobData?.data.exemptMaxSalary != null && (
-                        <span className="shrink-0 text-xs font-semibold text-neutral-500">
-                          /year
-                        </span>
-                      )}
-                    </div>
-                  </Form.Item>
-                </div>
-              </div>
-            )}
-            {(jobData?.data.nonExemptMinSalary != null ||
-              jobData?.data.nonExemptMaxSalary != null) && (
-              <div>
-                <span className="text-sm font-semibold text-neutral-700">Non-Exempt - Hourly</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-1">
-                  <Form.Item label={<span>Minimum Salary (in USD)</span>}>
-                    <div className="flex items-center gap-1.5">
-                      <span style={{ color: '#111827', fontWeight: 600, fontSize: '13px' }}>
-                        {formatSalary(jobData?.data.nonExemptMinSalary)}
-                      </span>
-                      {jobData?.data.nonExemptMinSalary != null && (
-                        <span className="shrink-0 text-xs font-semibold text-neutral-500">/hr</span>
-                      )}
-                    </div>
-                  </Form.Item>
-                  <Form.Item label={<span>Maximum Salary (in USD)</span>}>
-                    <div className="flex items-center gap-1.5">
-                      <span style={{ color: '#111827', fontWeight: 600, fontSize: '13px' }}>
-                        {formatSalary(jobData?.data.nonExemptMaxSalary)}
-                      </span>
-                      {jobData?.data.nonExemptMaxSalary != null && (
-                        <span className="shrink-0 text-xs font-semibold text-neutral-500">/hr</span>
-                      )}
-                    </div>
-                  </Form.Item>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="form-grid-equal-labels grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-          <Form.Item label={<span>Referral Bonus (in USD)</span>}>
-            <CurrencyInput
-              value={jobData?.data.referralBonus || ''}
-              disableGroupSeparators
-              decimalsLimit={2}
-              decimalScale={2}
-              disabled
-              prefix="$"
-              // A referral bonus is always a flat one-time payment, never an hourly rate.
-              // placeholder="Referral Bonus"
-              className="w-full !lowercase"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
-                boxShadow: 'none',
-                color: '#111827',
-                fontWeight: 600,
-                fontSize: '14px',
-              }}
-              intlConfig={{ locale: 'en-US', currency: 'USD' }}
-            />
-          </Form.Item>
-          <Form.Item
-            label={
-              <span>
-                Minimum Experience (In years) <span className="required-asterisk">*</span>
-              </span>
             }
           >
-            <Input
-              type="text"
-              className="w-full mt-1"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
-                boxShadow: 'none',
-                color: '#111827',
-                fontWeight: 600,
-                fontSize: '14px',
-              }}
-              value={jobData?.data.minExperience ?? ''}
-              disabled
+            {data?.useCultureIntro
+              ? 'On - plays at the start of AI Audio Screening and AI Video Interview'
+              : 'Off'}
+          </Field>
+        </Section>
+
+        <Section icon={<MdOutlineLocationOn size={16} />} title="Location">
+          <Field label="Location Name" value={locationDisplayName} />
+          <Field label="Location Code" value={locationCode} />
+          <Field className="col-span-full" label="Address" value={addressLine} />
+        </Section>
+
+        <Section icon={<MdOutlineGroups size={16} />} title="Hiring Panel">
+          <Field label="Hiring Managers">
+            <ChipList items={hiringManagerChips} />
+          </Field>
+          <Field label="Recruiters">
+            <ChipList items={recruiterChips} />
+          </Field>
+        </Section>
+
+        <Section icon={<MdOutlineAttachMoney size={16} />} title="Opening & Pay">
+          <Field
+            label="Open Date"
+            value={
+              // openDate is an ISO 8601 string; let dayjs parse it natively.
+              data?.openDate && dayjs(data.openDate).isValid()
+                ? dayjs(data.openDate).format('MMMM D, YYYY')
+                : ''
+            }
+          />
+          <Field label="Openings" value={data?.openings} />
+          <Field
+            label="Experience"
+            value={formatExperience(data?.minExperience, data?.maxExperience)}
+          />
+          {(data?.exemptMinSalary != null || data?.exemptMaxSalary != null) && (
+            <Field
+              label="Exempt (Annual)"
+              value={formatSalaryRange(data?.exemptMinSalary, data?.exemptMaxSalary, '/ year')}
             />
-          </Form.Item>
-          <Form.Item label={<span>Maximum Experience (In years)</span>}>
-            <Input
-              type="text"
-              className="w-full mt-1"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
-                boxShadow: 'none',
-                color: '#111827',
-                fontWeight: 600,
-                fontSize: '14px',
-              }}
-              value={jobData?.data.maxExperience ?? ''}
-              disabled
+          )}
+          {(data?.nonExemptMinSalary != null || data?.nonExemptMaxSalary != null) && (
+            <Field
+              label="Non-Exempt (Hourly)"
+              value={formatSalaryRange(data?.nonExemptMinSalary, data?.nonExemptMaxSalary, '/ hr')}
             />
-          </Form.Item>
-        </div>
-        <div className="mt-2 pb-4 border-b border-neutral-100">
-          <div className="w-full flex items-center gap-2">
-            <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
-              <MdOutlineStars size={16} />
-            </span>
-            <span className="text-base font-bold text-neutral-900 font-display">Job Skills</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
-            <Form.Item label={<span>Required Skills</span>}>
-              <Input
-                type="text"
-                className="w-full mt-1 mb-2"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={
-                  jobData?.data.mandatorySkills?.length
-                    ? `${jobData.data.mandatorySkills.length} skills selected`
-                    : ''
-                }
-                disabled
-              />
-              {jobData?.data.mandatorySkills?.length ? (
-                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">
-                      Selected Required Skills
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {jobData.data.mandatorySkills.map((skill, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-3 py-1 bg-brand-100 text-brand-800 border border-brand-200 rounded-full text-xs font-medium"
-                      >
-                        {skill.skillName}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </Form.Item>
+          )}
+          <Field label="Referral Bonus" value={formatSalary(data?.referralBonus)} />
+        </Section>
 
-            <Form.Item label={<span>Optional Skills</span>}>
-              <Input
-                type="text"
-                className="w-full mt-1 mb-2"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={
-                  jobData?.data.optionalSkills?.length
-                    ? `${jobData.data.optionalSkills.length} skills selected`
-                    : ''
-                }
-                disabled
-              />
-              {jobData?.data.optionalSkills?.length ? (
-                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 max-h-40 overflow-auto pr-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">
-                      Selected Optional Skills
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {jobData.data.optionalSkills.map((skill, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-3 py-1 bg-brand-100 text-brand-800 border border-brand-200 rounded-full text-xs font-medium"
-                      >
-                        {skill.skillName}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </Form.Item>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-2">
-            <Form.Item label={<span>Education Preference</span>}>
-              <Input
-                type="text"
-                className="w-full mt-1"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  boxShadow: 'none',
-                  color: '#111827',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                }}
-                value={
-                  jobData?.data.educationPreference
-                    ?.map(
-                      (item) =>
-                        educationPreferenceOptions.find((option) => idsMatch(option.id, item.id))
-                          ?.name || ''
-                    )
-                    .filter(Boolean)
-                    .join(', ') || ''
-                }
-                disabled
-              />
-            </Form.Item>
-
-            <Form.Item label={<span>Responsibilities</span>}>
-              <TextArea
-                rows={4}
-                className="w-full"
-                style={{
-                  background: 'var(--color-neutral-25)',
-                  border: '1px solid var(--color-neutral-100)',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
-                  color: '#374151',
-                  resize: 'none',
-                }}
-                value={jobData?.data.responsibilities || ''}
-                disabled
-              />
-            </Form.Item>
-          </div>
-
-          <div className="grid grid-cols gap-4">
-            <Form.Item label={<span>Other Requirements</span>}>
-              <TextArea
-                rows={4}
-                className="w-full"
-                style={{
-                  background: 'var(--color-neutral-25)',
-                  border: '1px solid var(--color-neutral-100)',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
-                  color: '#374151',
-                  resize: 'none',
-                }}
-                value={jobData?.data.otherRequirements || ''}
-                disabled
-              />
-            </Form.Item>
-          </div>
-
-          <div className="grid grid-cols gap-4">
-            <Form.Item label={<span>Benefits</span>}>
-              <TextArea
-                rows={4}
-                className="w-full"
-                style={{
-                  background: 'var(--color-neutral-25)',
-                  border: '1px solid var(--color-neutral-100)',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
-                  color: '#374151',
-                  resize: 'none',
-                }}
-                value={jobData?.data.benefits || ''}
-                disabled
-              />
-            </Form.Item>
-          </div>
-        </div>
-      </Form>
+        <Section icon={<MdOutlineStars size={16} />} title="Skills & Requirements" last>
+          <Field className="sm:col-span-2 lg:col-span-3" label="Required Skills">
+            <ChipList items={(data?.mandatorySkills ?? []).map(toSkillChip)} />
+          </Field>
+          <Field className="sm:col-span-2 lg:col-span-3" label="Optional Skills">
+            <ChipList tone="neutral" items={(data?.optionalSkills ?? []).map(toSkillChip)} />
+          </Field>
+          <Field className="col-span-full" label="Education Preference" value={educationNames} />
+          <TextTabs
+            tabs={[
+              { label: 'Responsibilities', text: data?.responsibilities },
+              { label: 'Other Requirements', text: data?.otherRequirements },
+              { label: 'Benefits', text: data?.benefits },
+            ]}
+          />
+        </Section>
+      </div>
     </>
   );
 };

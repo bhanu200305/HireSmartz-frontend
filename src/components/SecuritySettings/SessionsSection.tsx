@@ -97,7 +97,7 @@ const SessionRow = ({
           disabled={isLoading}
           className="rounded-3xl border border-red-200 px-4 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isLoading ? 'Signing out…' : 'Sign out'}
+          {isLoading ? 'Signing Out…' : 'Sign Out'}
         </Button>
       )}
     </div>
@@ -144,7 +144,7 @@ const SessionsSection = () => {
             className="rounded-3xl border border-[var(--border)] px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoggingOutAll
-              ? 'Signing out…'
+              ? 'Signing Out…'
               : `Sign out ${otherSessionCount} other device${otherSessionCount === 1 ? '' : 's'}`}
           </Button>
         )}

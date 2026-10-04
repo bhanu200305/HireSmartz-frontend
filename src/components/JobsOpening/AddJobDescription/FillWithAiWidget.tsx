@@ -62,7 +62,7 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
     try {
       await enhanceJd({ jobOpeningId, instruction: trimmed }).unwrap();
       showToast({
-        message: 'Generating your job description with AI…',
+        message: 'Generating your job description with AI',
         type: 'success',
       });
       setPromptText('');
@@ -124,7 +124,7 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
         onClick={() => setIsOpen((open) => !open)}
       >
         <span className="text-base">✨</span>
-        Fill with AI
+        Fill With AI
       </Button>
     </div>
   );

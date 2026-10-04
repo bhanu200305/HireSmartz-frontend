@@ -190,7 +190,7 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
               className="flex-1 flex items-center justify-center gap-2 border border-[var(--border)] bg-white text-gray-700 rounded-3xl px-4 py-2 hover:bg-gray-50"
             >
               <MdOutlineFileDownload />
-              {isDownloading ? 'Downloading…' : 'Download template'}
+              {isDownloading ? 'Downloading…' : 'Download Template'}
             </Button>
             <Button
               type="button"
@@ -237,7 +237,7 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
             }}
             className="flex items-center gap-1 text-sm text-primary hover:underline self-start cursor-pointer"
           >
-            <MdOutlineRemoveRedEye /> Preview this file
+            <MdOutlineRemoveRedEye /> Preview This File
           </button>
 
           {extraWarning && (
@@ -272,7 +272,7 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
                 onClick={reset}
                 className="border border-[var(--border)] bg-white text-gray-700 rounded-3xl px-4 py-2"
               >
-                Choose a different file
+                Choose A Different File
               </Button>
               <Button
                 type="button"

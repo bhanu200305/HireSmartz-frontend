@@ -118,7 +118,7 @@ const AtsJobId = () => {
                 onClick={handleSubmit}
                 disabled={!selectedJobId}
               >
-                SAVE & NEXT
+                Save & Next
               </button>
             </div>
           </div>

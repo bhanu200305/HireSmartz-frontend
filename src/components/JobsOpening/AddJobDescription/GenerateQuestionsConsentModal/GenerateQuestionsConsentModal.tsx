@@ -245,7 +245,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
               disabled={isLoading}
               className="border border-gray-300 text-gray-600 bg-white hover:bg-gray-50 py-2 px-6 rounded-3xl cursor-pointer text-sm font-semibold transition"
             >
-              CANCEL
+              Cancel
             </Button>
 
             <Button
@@ -253,12 +253,12 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
               onClick={handleConfirmClick}
               disabled={isLoading || !effectiveMode}
               className={clsx(
-                'text-white py-2 px-6 rounded-3xl cursor-pointer text-sm font-semibold transition flex items-center justify-center gap-2 min-w-[120px] bg-success hover:opacity-90',
+                'text-white py-2 px-6 rounded-3xl cursor-pointer text-sm font-semibold transition flex items-center justify-center gap-2 min-w-[120px] bg-primary hover:bg-brand-700',
                 (isLoading || !effectiveMode) && 'opacity-50 cursor-not-allowed'
               )}
             >
               {isLoading && <Loader />}
-              CONFIRM
+              Confirm
             </Button>
           </div>
         </div>

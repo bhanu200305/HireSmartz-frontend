@@ -157,13 +157,13 @@ const PushTemplatesTab: React.FC = () => {
               className="flex-1 rounded-full border border-gray-300 bg-white py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               onClick={() => setIsPreConfirmModalOpen(false)}
             >
-              CANCEL
+              Cancel
             </Button>
             <Button
               className="flex-1 rounded-full bg-primary py-2.5 text-sm font-semibold text-white hover:brightness-105"
               onClick={handleDryRun}
             >
-              CONTINUE
+              Continue
             </Button>
           </div>
         </div>
@@ -196,7 +196,7 @@ const PushTemplatesTab: React.FC = () => {
               onClick={() => setIsConfirmModalOpen(false)}
               disabled={isPushing}
             >
-              CANCEL
+              Cancel
             </Button>
             <Button
               className="flex-1 rounded-full bg-primary py-2.5 text-sm font-semibold text-white hover:brightness-105"

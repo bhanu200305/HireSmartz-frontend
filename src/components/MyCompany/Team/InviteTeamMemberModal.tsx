@@ -264,7 +264,7 @@ const InviteTeamMemberForm = ({
             disabled={isLoading}
             className="w-full bg-white border text-black rounded-3xl py-2.5"
           >
-            CANCEL
+            Cancel
           </Button>
           <Button
             type="submit"

@@ -171,7 +171,7 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
             className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
           >
             <MdRotateLeft className="text-base" />
-            <span>Rotate left</span>
+            <span>Rotate Left</span>
           </button>
           <button
             type="button"
@@ -179,7 +179,7 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
             className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--gray-700)] bg-white border border-[var(--border)] rounded-full px-3.5 py-1.5 hover:border-[var(--primary-300)] hover:text-[var(--primary)] transition-colors cursor-pointer"
           >
             <MdRotateRight className="text-base" />
-            <span>Rotate right</span>
+            <span>Rotate Right</span>
           </button>
         </div>
 

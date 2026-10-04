@@ -69,7 +69,7 @@ export const CareersApplyChoicePage = () => {
                 className="text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all mt-2"
               />
             </div>
-            <div className="font-bold text-gray-900 mb-1.5">Apply with Resume</div>
+            <div className="font-bold text-gray-900 mb-1.5">Apply With Resume</div>
             <p className="text-sm text-gray-500 leading-relaxed">
               Fill out your details and upload your resume. We&apos;ll review and follow up by
               email.
@@ -89,7 +89,7 @@ export const CareersApplyChoicePage = () => {
                 className="text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all mt-2"
               />
             </div>
-            <div className="font-bold text-gray-900 mb-1.5">Instant Call with Iris</div>
+            <div className="font-bold text-gray-900 mb-1.5">Instant Call With Iris</div>
             <p className="text-sm text-gray-500 leading-relaxed">
               Skip the form. Give us a call number and we&apos;ll call you. Upload your resume
               afterward.

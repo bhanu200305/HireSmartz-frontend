@@ -186,7 +186,7 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
             onClick={handleSubmit}
             disabled={isLoading || !isFormValid}
           >
-            {isLoading ? 'Sending…' : 'Send invite'}
+            {isLoading ? 'Sending…' : 'Send Invite'}
           </Button>
         </div>
       </div>

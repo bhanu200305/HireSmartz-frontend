@@ -180,7 +180,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
                   type="button"
                   onClick={() => void handlePreview()}
                   disabled={isPreviewing || isSending || !isFormValid}
-                  className="rounded-full border border-gray-300 px-5 py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-full border border-gray-300 px-5 py-2.5 text-center text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >
                   {isPreviewing ? 'LOADING…' : 'PREVIEW'}
                 </Button>
@@ -189,7 +189,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
                 type="button"
                 onClick={() => void handleSend()}
                 disabled={candidates.length === 0 || isSending || !isFormValid}
-                className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+                className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
               >
                 {isSending ? 'SENDING…' : 'SEND EMAIL'}
               </Button>
@@ -214,9 +214,9 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
             <Button
               type="button"
               onClick={onClose}
-              className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white"
+              className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white"
             >
-              DONE
+              Done
             </Button>
           </div>
         )}

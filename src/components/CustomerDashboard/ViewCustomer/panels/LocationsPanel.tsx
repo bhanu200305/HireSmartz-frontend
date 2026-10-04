@@ -255,7 +255,7 @@ const LocationsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
               className="rounded-full bg-button text-white px-4 py-2 flex items-center justify-center gap-1 shadow-sm hover:shadow-md transition-shadow shrink-0 min-w-[180px]"
               onClick={() => setModalState({ mode: 'add' })}
             >
-              <MdOutlineAdd /> Add office
+              <MdOutlineAdd /> Add Office
             </Button>
           )}
         </div>
@@ -302,7 +302,7 @@ const LocationsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
       {officeToDelete && (
         <ConfirmationModal
           title={`Remove ${officeToDelete.city}? Any linked department will be unlinked automatically.`}
-          confirmText="REMOVE"
+          confirmText="Remove"
           onConfirm={handleDelete}
           onClose={() => setOfficeToDelete(null)}
         />

@@ -1,8 +1,8 @@
+import BackButton from '../../shared/ui/BackButton';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Dropdown, Tabs, Tooltip, Upload, type MenuProps } from 'antd';
-import { BsArrowLeft } from 'react-icons/bs';
 import {
   MdEmail,
   MdOutlineCalendarToday,
@@ -451,13 +451,7 @@ const ViewCustomer = () => {
   return (
     <MainLayout>
       <div className="w-full px-6 py-5 max-w-[1400px] mx-auto">
-        <div
-          className="flex items-center gap-2 text-sm text-gray-500 mb-3 cursor-pointer hover:text-primary-600 transition-colors w-fit"
-          onClick={() => navigate('/company')}
-        >
-          <BsArrowLeft />
-          <span>Back</span>
-        </div>
+        <BackButton onClick={() => navigate('/company')} className="mb-3" />
 
         <div className="bg-white border border-neutral-200 rounded-xl shadow-xs">
           <div className="p-6">
@@ -538,14 +532,14 @@ const ViewCustomer = () => {
                     onClick={() => setShowSupportAccess(true)}
                   >
                     <MdOutlineSupportAgent size={16} />
-                    Support access
+                    Support Access
                   </Button>
                   {(tenant.status === 'draft' || tenant.status === 'pre_approved') && (
                     <Button
                       className="rounded-full border border-primary-300 text-primary-600 px-5 py-2 hover:bg-primary-50 transition-colors"
                       onClick={() => setShowCorrectEmail(true)}
                     >
-                      Correct admin email
+                      Correct Admin Email
                     </Button>
                   )}
                   {tenant.status === 'active' && (
@@ -553,7 +547,7 @@ const ViewCustomer = () => {
                       className="rounded-full border border-red-300 text-red-600 px-5 py-2 hover:bg-red-50 transition-colors"
                       onClick={() => setShowSuspendConfirm(true)}
                     >
-                      Suspend company
+                      Suspend Company
                     </Button>
                   )}
                 </div>
@@ -608,7 +602,7 @@ const ViewCustomer = () => {
       {showSuspendConfirm && (
         <ConfirmationModal
           title={`Suspend "${tenant.company_name}"? Every user in this company will immediately stop being able to work.`}
-          confirmText="SUSPEND"
+          confirmText="Suspend"
           isLoading={isSuspending}
           onConfirm={handleSuspend}
           onClose={() => setShowSuspendConfirm(false)}

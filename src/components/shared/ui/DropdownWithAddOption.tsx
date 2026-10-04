@@ -237,7 +237,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
   };
 
   const destructiveActionLabel = 'Delete';
-  const destructiveActionLabelUpper = 'REMOVE';
+  const destructiveActionLabelUpper = 'Remove';
   const destructiveActionVerb = 'remove';
   const actionTooltipProps = {
     placement: 'top' as const,
@@ -261,6 +261,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
           value={loading ? (mode === 'multiple' ? [] : undefined) : value}
           onChange={handleChange}
           className={`w-full capitalize ${className}`}
+          popupClassName="custom-select-jobs-dropdown"
           placeholder={placeholder}
           variant="borderless"
           loading={loading}
@@ -317,7 +318,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
               {/* Add option */}
               {showAddOption && (
                 <div
-                  className="p-2 cursor-pointer bg-white hover:font-medium flex items-center text-primary capitalize"
+                  className="pl-3 pr-2 py-2 cursor-pointer bg-white hover:font-medium flex items-center text-primary capitalize"
                   key="add-new-option"
                   // onClick={() => onAddOption(searchValue, type)}
                   onClick={handleAddOption}
@@ -425,7 +426,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
           onClose={handleCancelEdit}
           onConfirm={handleConfirmEdit}
           title={` <strong>"${selectedOption.name}"</strong> is currently being used in existing job openings. Editing this option will affect all job openings using it. Are you sure you want to continue?`}
-          confirmText="CONTINUE EDITING"
+          confirmText="Continue Editing"
         />
       )}
 
@@ -456,7 +457,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
           onClose={handleCloseReuseModal}
           onConfirm={handleConfirmReuse}
           title={`Are you sure you want to reactivate <strong>"${selectedOption.name}"</strong>?`}
-          confirmText="REACTIVATE"
+          confirmText="Reactivate"
           isLoading={isLoading}
         />
       )}

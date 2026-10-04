@@ -1,8 +1,8 @@
+import BackButton from '../../components/shared/ui/BackButton';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Select } from 'antd';
 import { BsCalendar4Event } from 'react-icons/bs';
-import { MdOutlineArrowBack } from 'react-icons/md';
 import dayjs from 'dayjs';
 
 import MainLayout from '../../layouts/MainLayout';
@@ -124,13 +124,7 @@ export const InterviewsPage = () => {
   return (
     <MainLayout>
       <div className="w-full p-8 pt-16">
-        <button
-          onClick={() => navigate('/')}
-          className="mb-4 flex w-fit items-center text-gray-600 hover:text-gray-800 cursor-pointer"
-        >
-          <MdOutlineArrowBack className="mr-2" />
-          <span>Back</span>
-        </button>
+        <BackButton onClick={() => navigate('/')} className="mb-4" />
         <div className="mb-6 flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
             <BsCalendar4Event size={20} />
@@ -176,7 +170,7 @@ export const InterviewsPage = () => {
                 resetPaging();
               }}
             >
-              Clear filters
+              Clear Filters
             </button>
           )}
         </div>
@@ -220,7 +214,7 @@ export const InterviewsPage = () => {
                 {apiError.message || 'Could not load interviews.'}
               </p>
               <Button className={PRIMARY_BTN} onClick={() => refetch()}>
-                Try again
+                Try Again
               </Button>
             </div>
           ) : bookings.length === 0 ? (

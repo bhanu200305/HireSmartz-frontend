@@ -23,7 +23,7 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
   isLoading = false,
   disableConfirm = false,
   disableClose = false,
-  cancelText = 'CANCEL',
+  cancelText = 'Cancel',
 }) => {
   return (
     <div className="app-modal-overlay fixed inset-0 flex items-center justify-center bg-neutral-900/50 z-[2000] p-4">

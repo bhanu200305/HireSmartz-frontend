@@ -377,7 +377,7 @@ const EditOrgUser = () => {
             onClick={handleAssignRole}
             disabled={!assignRoleId || isAssigningRole}
           >
-            {isAssigningRole ? 'Assigning…' : 'Assign role'}
+            {isAssigningRole ? 'Assigning…' : 'Assign Role'}
           </Button>
         </div>
 
@@ -394,7 +394,7 @@ const EditOrgUser = () => {
             onClick={() => save()}
             disabled={isSaving}
           >
-            {isSaving ? 'Saving…' : 'Save changes'}
+            {isSaving ? 'Saving…' : 'Save Changes'}
           </Button>
         </div>
       </div>
@@ -402,7 +402,7 @@ const EditOrgUser = () => {
       {showEmailConfirm && (
         <ConfirmationModal
           title={`Change this user's login email to "${pendingEmail}"? This resets their email verification.`}
-          confirmText="CHANGE EMAIL"
+          confirmText="Change Email"
           isLoading={isSaving}
           onConfirm={() => {
             setShowEmailConfirm(false);

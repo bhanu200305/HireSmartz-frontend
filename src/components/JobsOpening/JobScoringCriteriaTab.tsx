@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { Tooltip } from 'antd';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../redux/provider/store';
 import { showToast } from '../shared/ui/toast';
@@ -23,6 +24,8 @@ import {
 import type { ScoringWeight } from '../shared';
 import { getJobErrorMessage } from '../../shared/utils/auth/jobError.helpers';
 import { asJobId } from '../../api/job-service/jobId';
+import { useDeleteDraftJobMutation } from '../../api/job-service/JobOpening/AddJobOpening';
+import ConfirmationModal from '../shared/ui/ConfirmationModal';
 
 const normalizeWeights = (weights: unknown): JobScoringWeight[] => normalizeScoringWeights(weights);
 
@@ -50,6 +53,31 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
   // Tracks which card's button should show as loading.
   const [savingSection, setSavingSection] = useState<'resume' | 'interview' | null>(null);
   const [resettingSection, setResettingSection] = useState<'resume' | 'interview' | null>(null);
+  const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const handleConfirmCancel = async () => {
+    if (jobId) {
+      try {
+        await deleteDraftJob(jobId).unwrap();
+      } catch (error) {
+        showToast({
+          message: getJobErrorMessage(error, 'Failed to remove job opening'),
+          type: 'error',
+        });
+        setShowCancelConfirm(false);
+        return;
+      }
+    }
+    setShowCancelConfirm(false);
+    navigate('/jobs');
+  };
+
+  // Intentional "leave as draft" exit, same as every other step.
+  const handleSaveDraft = () => {
+    showToast({ message: 'Job saved as draft successfully', type: 'success' });
+    navigate('/jobs');
+  };
 
   const isLocked = Boolean(jobScoringData?.data?.isLocked);
   const lockedReason = jobScoringData?.data?.lockedReason ?? null;
@@ -230,17 +258,48 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
       </div>
 
       {!isViewMode && (
-        <div className="mt-8 flex justify-center">
-          <Button
-            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-            onClick={() =>
-              // Edit mode needs the job-id-aware route, not the create wizard's bare path.
-              navigate(isEditMode ? `/jobs/edit/${jobId}/interview` : '/interview-setup')
-            }
-          >
-            SAVE &amp; NEXT
-          </Button>
+        <div className="mt-8 flex justify-center gap-6">
+          {!isEditMode && (
+            <Tooltip title="Save progress and come back later.">
+              <Button
+                className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+                onClick={handleSaveDraft}
+              >
+                Save As Draft
+              </Button>
+            </Tooltip>
+          )}
+          {!isEditMode && (
+            <Tooltip title="Delete this job opening and everything in it.">
+              <Button
+                className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2"
+                onClick={() => setShowCancelConfirm(true)}
+              >
+                Cancel
+              </Button>
+            </Tooltip>
+          )}
+          <Tooltip title="Save this page and continue.">
+            <Button
+              className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+              onClick={() =>
+                // Edit mode needs the job-id-aware route, not the create wizard's bare path.
+                navigate(isEditMode ? `/jobs/edit/${jobId}/interview` : '/interview-setup')
+              }
+            >
+              Save &amp; Next
+            </Button>
+          </Tooltip>
         </div>
+      )}
+      {showCancelConfirm && (
+        <ConfirmationModal
+          onClose={() => setShowCancelConfirm(false)}
+          onConfirm={handleConfirmCancel}
+          title="Cancel this job opening? Everything added so far will be permanently deleted."
+          confirmText="Cancel Job"
+          isLoading={isCancelling}
+        />
       )}
     </div>
   );

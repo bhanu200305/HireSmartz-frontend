@@ -67,7 +67,7 @@ const RoleContextSwitcher: React.FC<RoleContextSwitcherProps> = ({
               mode === 'organization' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500'
             }`}
           >
-            A client organization
+            A Client Organization
           </button>
         </div>
       ) : (
@@ -115,7 +115,7 @@ const RoleContextSwitcher: React.FC<RoleContextSwitcherProps> = ({
               onChange({ scope: 'tenant', tenantId: undefined, tenantName: undefined })
             }
           >
-            Switch company
+            Switch Company
           </button>
         </div>
       )}

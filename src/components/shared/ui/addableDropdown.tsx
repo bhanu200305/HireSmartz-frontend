@@ -52,7 +52,7 @@ const AddableDropdown: FC<AddableDropdownProps> = ({
             onClick={handleSubmit(handleFormSubmit)}
             className="bg-primary text-white py-2 w-full rounded-3xl cursor-pointer transition"
           >
-            SUBMIT
+            Submit
           </button>
         </div>
 

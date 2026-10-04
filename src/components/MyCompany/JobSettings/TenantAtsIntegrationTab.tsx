@@ -108,7 +108,7 @@ const TenantAtsIntegrationTab: React.FC = () => {
         onCancel={() => setIsModalOpen(false)}
         onOk={() => form.submit()}
         confirmLoading={isConnecting}
-        okText="Continue to provider"
+        okText="Continue To Provider"
       >
         <Form<ConnectFormValues> form={form} layout="vertical" onFinish={handleConnect}>
           <Form.Item

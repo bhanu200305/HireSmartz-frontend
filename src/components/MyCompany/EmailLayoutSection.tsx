@@ -301,7 +301,7 @@ const EmailLayoutSection: React.FC = () => {
                 disabled={isBusy}
                 className="rounded-3xl border border-red-200 px-4 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isReverting ? 'Reverting…' : 'Revert to default'}
+                {isReverting ? 'Reverting…' : 'Revert To Default'}
               </Button>
             )}
             <Button
@@ -311,7 +311,7 @@ const EmailLayoutSection: React.FC = () => {
               disabled={isBusy}
               className="rounded-3xl bg-primary px-4 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSaving || isUploadingBanner || isSavingBanner ? 'Saving…' : 'Save layout'}
+              {isSaving || isUploadingBanner || isSavingBanner ? 'Saving…' : 'Save Layout'}
             </Button>
           </div>
         </div>

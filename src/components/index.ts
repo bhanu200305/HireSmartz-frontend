@@ -10,10 +10,8 @@ export { default as CreateJobDescription } from './JobsOpening/AddJobDescription
 export { default as AddOrganisationUser } from './OrganisationDashboard/OrganisationAddUser';
 export { default as OrganisationUserTable } from './OrganisationDashboard/Index';
 export { default as EditJobDetail } from './JobsOpening/EditJobOpening/EditJobDetail';
-export { default as EditJdDetail } from './JobsOpening/EditJobOpening/EditJdDetail';
 export { default as EditInterviewRound } from './JobsOpening/AddJobDescription/EditInterviewRound';
 export { default as EditDetailedInterviewRounds } from './JobsOpening/EditJobOpening/EditDetailedInterviewRound';
-export { default as ConfirmNewJDModal } from './JobsOpening/EditJobOpening/ConfirmNewJDModal';
 export { default as EditAiJobDescription } from './JobsOpening/EditJobOpening/EditAiJobDes';
 export { default as UpdateInterviewRound } from './JobsOpening/EditJobOpening/UpdateInterviewRound';
 export { default as AiQuestions } from './JobsOpening/ViewJobOpening/AiQuestions';

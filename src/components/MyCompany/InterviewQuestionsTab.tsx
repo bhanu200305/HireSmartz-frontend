@@ -203,7 +203,7 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
               className="flex items-center gap-1.5 border border-gray-300 bg-white text-gray-700 rounded-full px-3 py-1.5 text-sm hover:bg-gray-50"
             >
               <MdOutlineUploadFile />
-              Bulk import
+              Bulk Import
             </Button>
           )}
         </div>
@@ -328,7 +328,7 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
       {questionToDelete && (
         <ConfirmationModal
           title={`Remove "${questionToDelete.question_text}"?`}
-          confirmText="REMOVE"
+          confirmText="Remove"
           onConfirm={handleDelete}
           onClose={() => setQuestionToDelete(null)}
         />

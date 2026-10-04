@@ -150,7 +150,7 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
             onClick={onClose}
             disabled={isSubmitting}
           >
-            CANCEL
+            Cancel
           </Button>
           <Button
             type="primary"
@@ -164,7 +164,7 @@ const QuickFeedbackModal: React.FC<QuickFeedbackModalProps> = ({
             loading={isSubmitting}
             disabled={rating === 0}
           >
-            SUBMIT
+            Submit
           </Button>
         </div>
       </div>

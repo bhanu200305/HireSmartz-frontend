@@ -167,7 +167,7 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
           type="button"
           onClick={() => void handleSave()}
           disabled={isLoading || !isFormValid}
-          className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+          className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
         >
           {isLoading ? 'SAVING…' : 'SAVE CHANGES'}
         </Button>

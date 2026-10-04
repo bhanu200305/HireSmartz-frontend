@@ -143,9 +143,9 @@ const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
         <button
           type="button"
           onClick={() => setIsViewAllOpen(true)}
-          className="group flex items-center gap-1 text-xs font-semibold tracking-wide text-primary uppercase transition-colors hover:text-primary-700 cursor-pointer"
+          className="group flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary-700 cursor-pointer"
         >
-          View all
+          View All
           <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">
             →
           </span>

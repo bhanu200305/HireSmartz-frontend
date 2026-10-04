@@ -15,7 +15,7 @@ import type { IconType } from 'react-icons';
 import { DraggableItem } from '../../shared/ui/DragAndDrop';
 import { showToast } from '../../shared';
 import RoundInfoModal from '../../shared/ui/RoundInfoModal';
-import { getRoundInfoContent } from '../../../shared/utils/roundInfoContent';
+import { resolveVariantLabel } from '../../../shared/utils/variantLabel';
 
 type InterviewRound = {
   id: string | number;
@@ -29,33 +29,23 @@ type InterviewRound = {
   variant?: string | null;
 };
 
-/** Recruiter-facing label + icon for each real catalog variant
- * (`master_interview_round.available_variants`: AI Video round ->
- * soundwave/avatar, Hiring Panel round -> online/offline). Anything outside
- * that fixed set falls back to a plain capitalised label with no icon,
- * rather than guessing — same "don't invent it" posture as the backend's
- * own catalog-driven enforcement. */
-export const VARIANT_BADGES: Record<string, { label: string; icon: IconType }> = {
-  soundwave: { label: 'Voice Agent Round', icon: HiOutlineMicrophone },
-  avatar: { label: 'Avatar Round', icon: HiOutlineUserCircle },
-  online: { label: 'Video Call Round', icon: HiOutlineVideoCamera },
-  offline: { label: 'In Person Round', icon: HiOutlineOfficeBuilding },
+/** Icon per variant code; text comes from the database. */
+const VARIANT_ICONS: Record<string, IconType> = {
+  soundwave: HiOutlineMicrophone,
+  avatar: HiOutlineUserCircle,
+  online: HiOutlineVideoCamera,
+  offline: HiOutlineOfficeBuilding,
 };
 
-/** `icon` is omitted for a variant outside the known set above — the badge
- * still renders with a label, just without a fabricated icon for a shape
- * we don't actually know the meaning of. */
 export const getVariantBadge = (
-  variant?: string | null
+  variant?: string | null,
+  overrides?: Record<string, string> | null
 ): { label: string; icon: IconType | null } | null => {
   if (!variant) return null;
-  const known = VARIANT_BADGES[variant.toLowerCase()];
-  if (known) return known;
-  const label = variant
-    .replace(/[_-]+/g, ' ')
-    .trim()
-    .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
-  return { label: `${label} Round`, icon: null };
+  return {
+    label: resolveVariantLabel(variant, overrides),
+    icon: VARIANT_ICONS[variant.toLowerCase()] ?? null,
+  };
 };
 
 type SortableInterviewRoundsProps = {
@@ -66,6 +56,8 @@ type SortableInterviewRoundsProps = {
   isEditMode?: boolean;
   // Round-type ids for fixed anchor rounds (Resume/Intake Call) that must stay in the top 2 slots.
   anchorRoundTypeIds?: Set<string>;
+  // Variant display text, merged across round types.
+  variantLabelOverrides?: Record<string, string>;
 };
 
 export const SortableInterviewRounds = ({
@@ -75,6 +67,7 @@ export const SortableInterviewRounds = ({
   onDelete,
   isEditMode = false,
   anchorRoundTypeIds,
+  variantLabelOverrides,
 }: SortableInterviewRoundsProps) => {
   const [items, setItems] = useState<InterviewRound[]>(rounds);
   const [infoRound, setInfoRound] = useState<InterviewRound | null>(null);
@@ -122,7 +115,7 @@ export const SortableInterviewRounds = ({
   };
 
   const renderCardBody = (round: InterviewRound, index: number, isOver = false) => {
-    const badge = getVariantBadge(round.variant);
+    const badge = getVariantBadge(round.variant, variantLabelOverrides);
     const BadgeIcon = badge?.icon;
     const summary = round.duration ? `${round.duration} min` : '';
     // Resume and Intake Call are auto-seeded, locked anchor rounds — they
@@ -189,12 +182,8 @@ export const SortableInterviewRounds = ({
   const infoModal = infoRound && (
     <RoundInfoModal
       roundName={infoRound.round?.name ?? 'Interview round'}
-      badgeLabel={getVariantBadge(infoRound.variant)?.label}
-      content={getRoundInfoContent({
-        variant: infoRound.variant,
-        roundName: infoRound.round?.name,
-      })}
-      fallbackText={infoRound.description}
+      badgeLabel={getVariantBadge(infoRound.variant, variantLabelOverrides)?.label}
+      description={infoRound.description}
       onClose={() => setInfoRound(null)}
     />
   );

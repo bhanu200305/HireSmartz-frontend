@@ -5,7 +5,6 @@ import { MdClose, MdInfoOutline } from 'react-icons/md';
 import TextArea from 'antd/es/input/TextArea';
 import { useState } from 'react';
 import RoundInfoModal from '../../shared/ui/RoundInfoModal';
-import { getRoundInfoContent } from '../../../shared/utils/roundInfoContent';
 import { useSaveInterviewRoundMutation } from '../../../api/job-service/JobOpening/AddInterviewRound';
 import { SaveInterviewRoundRequest } from '../../../types';
 import { Controller, useForm } from 'react-hook-form';
@@ -23,30 +22,9 @@ import {
 } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import { slotOptions } from '../../../shared/utils/business-logic';
+import { resolveVariantLabel as formatVariantLabel } from '../../../shared/utils/variantLabel';
 
 const { Option } = Select;
-
-/** Recruiter-facing label for a round-type variant — same "known set,
- * capitalised fallback" approach as the badges on the rounds list
- * (sortableInterviewRounds.tsx), kept local since the wording here
- * ("Online Round"/"Offline Round") is form-control copy, not the summary
- * badge shown afterward. */
-const VARIANT_LABELS: Record<string, string> = {
-  online: 'Online Round',
-  offline: 'Offline Round',
-  soundwave: 'Voice Agent Round',
-  avatar: 'Avatar Round',
-};
-
-const formatVariantLabel = (variant: string) =>
-  VARIANT_LABELS[variant.toLowerCase()] ??
-  `${variant
-    .replace(/[_-]+/g, ' ')
-    .trim()
-    .replace(
-      /\w\S*/g,
-      (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    )} Round`;
 
 const AddNewRound = () => {
   const navigate = useNavigate();
@@ -83,7 +61,6 @@ const AddNewRound = () => {
     control,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<SaveInterviewRoundRequest>({
     defaultValues: {
@@ -335,7 +312,7 @@ const AddNewRound = () => {
                                   : 'bg-gray-100'
                               }`}
                             >
-                              {formatVariantLabel(variant)}
+                              {formatVariantLabel(variant, selectedRoundType.variant_labels)}
                             </Radio.Button>
                           ))}
                         </div>
@@ -424,12 +401,7 @@ const AddNewRound = () => {
       {showRoundInfo && selectedRoundType && (
         <RoundInfoModal
           roundName={selectedRoundType.name}
-          content={getRoundInfoContent({
-            specialKind: selectedRoundType.special_kind,
-            variant: watch('variant') ?? selectedRoundType.available_variants?.[0],
-            roundName: selectedRoundType.name,
-          })}
-          fallbackText={selectedRoundType.description}
+          description={selectedRoundType.description}
           onClose={() => setShowRoundInfo(false)}
         />
       )}
