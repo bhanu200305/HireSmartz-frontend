@@ -1,0 +1,217 @@
+import { useEffect, useState } from 'react';
+import { Button, Input, PhoneNumberField, showToast } from '../../shared';
+import {
+  useUpdateCandidateMutation,
+  type CandidateView,
+} from '../../../api/candidate-service/Candidates/CandidateLifecycle';
+import { FORM_EMAIL_REGEX } from '../../../constants/app.constants';
+import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
+import {
+  isPhoneValidForCountry,
+  PHONE_VALIDATION_MESSAGE,
+  splitE164,
+  toE164,
+} from '../../../shared/utils/validation/phoneValidation';
+
+// Same default every other phone field in this app starts from.
+const DEFAULT_COUNTRY_CODE = '+1';
+
+// Shared look for every field, read-only or editable. Disabled fields get the
+// browser's not-allowed cursor (circle with a slash) on hover — the old app's
+// cue that the details can't be changed until "Edit Details" is clicked.
+const FIELD_CLASS =
+  'h-12 rounded-full border border-gray-300 bg-white px-4 text-sm text-gray-800 disabled:cursor-not-allowed disabled:bg-white disabled:text-gray-600';
+
+// Candidate Details tab's fields, in place (replaces the old Edit Candidate
+// modal, as in the legacy app). `PATCH /candidates/{id}`
+// (`UpdateCandidateRequest`) — only fields that actually changed are sent, so
+// this never clobbers a field the recruiter didn't touch. Source and Applied
+// Date describe how/when the candidate applied, so they stay read-only even
+// while editing.
+
+type CandidateDetailsFormProps = {
+  candidate: CandidateView | undefined;
+  isEditing: boolean;
+  onDone: () => void;
+  sourceLabel: string | undefined;
+  appliedDate: string | undefined;
+};
+
+const CandidateDetailsForm = ({
+  candidate,
+  isEditing,
+  onDone,
+  sourceLabel,
+  appliedDate,
+}: CandidateDetailsFormProps) => {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [phone, setPhone] = useState('');
+  const [updateCandidate, { isLoading }] = useUpdateCandidateMutation();
+
+  // Mirror the record while read-only (including after a save's refetch), and
+  // re-seed on Cancel so unsaved edits are discarded. Skipped while editing so
+  // a background refetch never wipes what the recruiter is typing.
+  useEffect(() => {
+    if (isEditing) return;
+    setFirstName(candidate?.first_name ?? '');
+    setLastName(candidate?.last_name ?? '');
+    setEmail(candidate?.email_id ?? '');
+    const split = splitE164(candidate?.contact_no);
+    setCountryCode(split.countryCode || DEFAULT_COUNTRY_CODE);
+    setPhone(split.phoneNumber);
+  }, [candidate, isEditing]);
+
+  // First name, last name, email and phone are all mandatory.
+  const isFormValid =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    email.trim().length > 0 &&
+    phone.trim().length > 0;
+
+  const handleSave = async () => {
+    if (!candidate) return;
+    if (!isFormValid) {
+      showToast({
+        message: 'First name, last name, email and phone are required.',
+        type: 'error',
+      });
+      return;
+    }
+    if (!FORM_EMAIL_REGEX.test(email.trim())) {
+      showToast({ message: 'Enter a valid email address.', type: 'error' });
+      return;
+    }
+    if (!isPhoneValidForCountry(phone, countryCode)) {
+      showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
+      return;
+    }
+
+    const body: Record<string, string> = {};
+    const nextFirst = firstName.trim();
+    const nextLast = lastName.trim();
+    const nextEmail = email.trim();
+    const nextPhone = phone.trim() ? toE164(countryCode, phone) : '';
+    if (nextFirst !== (candidate.first_name ?? '')) body.first_name = nextFirst;
+    if (nextLast !== (candidate.last_name ?? '')) body.last_name = nextLast;
+    if (nextEmail !== (candidate.email_id ?? '')) body.email_id = nextEmail;
+    if (nextPhone !== (candidate.contact_no ?? '')) body.contact_no = nextPhone;
+
+    if (Object.keys(body).length === 0) {
+      onDone();
+      return;
+    }
+
+    try {
+      await updateCandidate({ candidateId: candidate.id, body }).unwrap();
+      showToast({ message: 'Candidate updated.', type: 'success' });
+      onDone();
+    } catch (e) {
+      showToast({
+        message: getCandidateErrorMessage(e, 'Could not update candidate'),
+        type: 'error',
+      });
+    }
+  };
+
+  const disabled = !isEditing || isLoading;
+
+  const label = (htmlFor: string, text: string, required: boolean) => (
+    <label htmlFor={htmlFor} className="mb-2 block text-base text-gray-800">
+      {text}
+      {required && <span className="required-asterisk"> *</span>}
+    </label>
+  );
+
+  return (
+    <div className="flex min-w-0 flex-col gap-5">
+      <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+        <div className="min-w-0">
+          {label('candidate-details-first-name', 'First Name', true)}
+          <Input
+            id="candidate-details-first-name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            disabled={disabled}
+            maxLength={100}
+            placeholder="First Name"
+            className={FIELD_CLASS}
+          />
+        </div>
+        <div className="min-w-0">
+          {label('candidate-details-last-name', 'Last Name', true)}
+          <Input
+            id="candidate-details-last-name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            disabled={disabled}
+            maxLength={100}
+            placeholder="Last Name"
+            className={FIELD_CLASS}
+          />
+        </div>
+        <div className="min-w-0">
+          {label('candidate-details-phone', 'Phone Number', true)}
+          <PhoneNumberField
+            countryCode={countryCode}
+            onCountryCodeChange={setCountryCode}
+            phoneNumber={phone}
+            onPhoneNumberChange={setPhone}
+            disabled={disabled}
+            className="h-12 rounded-full !border-gray-300 !bg-white text-sm text-gray-800"
+          />
+        </div>
+        <div className="min-w-0">
+          {label('candidate-details-email', 'Email ID', true)}
+          <Input
+            id="candidate-details-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={disabled}
+            placeholder="Email ID"
+            className={FIELD_CLASS}
+          />
+        </div>
+        <div className="min-w-0">
+          {label('candidate-details-source', 'Source', false)}
+          <Input
+            id="candidate-details-source"
+            value={sourceLabel || 'N/A'}
+            title={sourceLabel || undefined}
+            disabled
+            readOnly
+            className={`${FIELD_CLASS} truncate`}
+          />
+        </div>
+        <div className="min-w-0">
+          {label('candidate-details-applied-date', 'Applied Date', false)}
+          <Input
+            id="candidate-details-applied-date"
+            value={appliedDate || 'N/A'}
+            disabled
+            readOnly
+            className={`${FIELD_CLASS} truncate`}
+          />
+        </div>
+      </div>
+
+      {isEditing && (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={isLoading || !isFormValid}
+            className="h-10 w-full rounded-full bg-primary px-6 text-sm font-semibold text-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          >
+            {isLoading ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CandidateDetailsForm;

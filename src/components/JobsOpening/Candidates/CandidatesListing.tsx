@@ -47,7 +47,6 @@ import {
 } from '../../../api/candidate-service/Master/master';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
 import AddCandidateModal from './Modal/AddCandidateModal';
-import EditCandidateModal from './Modal/EditCandidateModal';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
 import BulkScheduleInterviewsModal from './Modal/BulkScheduleInterviewsModal';
@@ -145,8 +144,7 @@ const CandidatesListing = () => {
   const [isJobNotesPanelOpen, setIsJobNotesPanelOpen] = useState(false);
   const [isBulkEmailOpen, setIsBulkEmailOpen] = useState(false);
   const [isBulkScheduleOpen, setIsBulkScheduleOpen] = useState(false);
-  // Per-row Actions column targets (view is a plain navigation).
-  const [editCandidate, setEditCandidate] = useState<CandidateView | null>(null);
+  // Per-row Actions column targets (view and edit are plain navigations).
   const [notesCandidate, setNotesCandidate] = useState<CandidateView | null>(null);
   const [emailCandidate, setEmailCandidate] = useState<CandidateView | null>(null);
   const [statusModal, setStatusModal] = useState<{
@@ -605,7 +603,17 @@ const CandidatesListing = () => {
                                   type="button"
                                   aria-label="Edit candidate"
                                   className="flex cursor-pointer hover:text-[var(--primary)] transition-colors"
-                                  onClick={() => setEditCandidate(candidate)}
+                                  // Opens the details page's Candidate Details
+                                  // tab already in edit mode, as the legacy app did.
+                                  onClick={() =>
+                                    navigate(
+                                      {
+                                        pathname: buildDetailsPath(candidate.id),
+                                        search: '?tab=details&edit=true',
+                                      },
+                                      { state: detailsNavState(rowIndex) }
+                                    )
+                                  }
                                 >
                                   <MdEdit />
                                 </button>
@@ -792,13 +800,6 @@ const CandidatesListing = () => {
         jobOpeningId={parsedJobId}
         canWrite={canWriteJobNotes}
       />
-      {editCandidate && (
-        <EditCandidateModal
-          open={!!editCandidate}
-          onClose={() => setEditCandidate(null)}
-          candidate={editCandidate}
-        />
-      )}
       <CandidateRecruiterNotesPanel
         open={!!notesCandidate}
         onClose={() => setNotesCandidate(null)}

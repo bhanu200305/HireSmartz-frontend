@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { ConfigProvider, Input, Rate, Select, Tabs, Tooltip } from 'antd';
 import type { RootState } from '../../../redux/provider/store';
@@ -18,8 +18,6 @@ import {
   LuChevronLeft,
   LuChevronRight,
   LuListChecks,
-  LuSend,
-  LuRefreshCw,
   LuCalendarPlus,
   LuCalendarCheck,
   LuUpload,
@@ -77,7 +75,7 @@ import ChangeCandidateStatusModal, {
 } from './Modal/ChangeCandidateStatusModal';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
 import BulkSendSmsModal from './Modal/BulkSendSmsModal';
-import EditCandidateModal from './Modal/EditCandidateModal';
+import CandidateDetailsForm from './CandidateDetailsForm';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import AssignJobModal from './Modal/AssignJobModal';
@@ -323,7 +321,8 @@ const CandidateDetails = () => {
     id: string;
   }>();
   const parsedJobId = asJobId(jobIdFromParams);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const candidateNav = useCandidateNavigation(candidateId, parsedJobId);
   const userId = useSelector((state: RootState) => state.LoginSlice.userId);
 
@@ -337,7 +336,7 @@ const CandidateDetails = () => {
     const tabParam = searchParams.get('tab');
     const validTabs: TabKey[] = ['details', 'assessment', 'sms'];
     if (tabParam && validTabs.includes(tabParam as TabKey)) return tabParam as TabKey;
-    if (tabParam === 'resume') return 'details';
+    if (tabParam === 'resume' || searchParams.get('edit') === 'true') return 'details';
     return 'assessment';
   });
   const [statusModal, setStatusModal] = useState<ChangeCandidateStatusMode | null>(null);
@@ -382,7 +381,26 @@ const CandidateDetails = () => {
     skip: !parsedJobId || scoringCriteriaFor?.kind !== 'resume',
   });
   const [isResumeViewerOpen, setIsResumeViewerOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
+  // Candidate Details tab's edit mode. The listing's Edit action lands here
+  // with `?tab=details&edit=true` (as the legacy app did); the flag is read
+  // once, then dropped from the URL so a reload opens read-only. Stepping to
+  // another candidate (Previous / Next) always starts read-only.
+  const [isEditingDetails, setIsEditingDetails] = useState(
+    () => searchParams.get('edit') === 'true'
+  );
+  const [editingCandidateId, setEditingCandidateId] = useState(candidateId);
+  if (editingCandidateId !== candidateId) {
+    setEditingCandidateId(candidateId);
+    setIsEditingDetails(false);
+  }
+  useEffect(() => {
+    if (searchParams.has('edit')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('edit');
+      // Keep router state — it carries the list order Previous / Next use.
+      setSearchParams(next, { replace: true, state: location.state });
+    }
+  }, [searchParams, setSearchParams, location.state]);
   // The round picked in the Assessment tab's sidebar. Stored as picked (and
   // updated optimistically after Create Booking), but read through
   // `selectedRound` below, which swaps in the latest polled copy of the same
@@ -1238,7 +1256,8 @@ const CandidateDetails = () => {
     if (!entry) return [];
     const value = Number(entry.score) || 0;
     const percentage = Math.max(0, Math.min(100, Math.round((value / AI_SCORE_MAX) * 100)));
-    const color = percentage >= 80 ? '#2B934E' : percentage >= 50 ? '#FFBF00' : '#FF3B30';
+    // Muted green / amber / red — same bands, softer tones than pure status colours.
+    const color = percentage >= 80 ? '#5FAE7C' : percentage >= 50 ? '#E8C065' : '#E07A72';
     return [{ label, percentage, color }];
   });
 
@@ -1266,9 +1285,9 @@ const CandidateDetails = () => {
             <div className="space-y-3.5">
               {resumeCategoryBars.map((bar) => (
                 <div key={bar.label} className="flex items-center gap-3">
-                  <div className="h-5 w-44 shrink-0 overflow-hidden bg-gray-200 xl:w-52">
+                  <div className="h-5 w-44 shrink-0 overflow-hidden rounded-md bg-gray-100 xl:w-52">
                     <div
-                      className="h-full"
+                      className="h-full rounded-md"
                       style={{ width: `${bar.percentage}%`, backgroundColor: bar.color }}
                     />
                   </div>
@@ -1508,14 +1527,11 @@ const CandidateDetails = () => {
                   </>
                 )}
               {(() => {
-                // Invite + Re-invite, side by side. INVITE (no booking yet)
-                // opens the "Send interview invite" dialog (with the panel
-                // roster picker for PANEL). RE-INVITE (a booking whose attempt
-                // has concluded) goes through the same reschedule flow
-                // interview-service's request-reschedule endpoint allows
-                // (voice calls once a `call_intent` exists, PANEL once the
-                // booking concluded). Each is disabled, with the reason on
-                // hover, when it doesn't apply.
+                // Re-invite (a booking whose attempt has concluded) goes
+                // through the same reschedule flow interview-service's
+                // request-reschedule endpoint allows (voice calls once a
+                // `call_intent` exists, PANEL once the booking concluded).
+                // Disabled, with the reason on hover, when it doesn't apply.
                 const hasBooking = Boolean(selectedRound.interview_booking_id);
                 const canReinvite =
                   hasBooking &&
@@ -1524,56 +1540,27 @@ const CandidateDetails = () => {
                       selectedBooking != null &&
                       CONCLUDED_BOOKING_STATUSES.includes(selectedBooking.status)));
                 const isBusy = isCreatingBooking || isSavingInterviewers || isRequestingReschedule;
-                const slotSource = isPanelRound
-                  ? 'from the panel’s connected calendar'
-                  : isAiVideoRound(selectedRound)
-                    ? 'from the available AI Video slots'
-                    : isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound)
-                      ? 'from the available AI audio slots'
-                      : 'from the available slots';
                 const reinviteTooltip = canReinvite
                   ? 'Send re-invite'
                   : hasBooking
                     ? 'Re-invite is available once this attempt has concluded'
                     : 'Re-invite is available after the first invite';
                 return (
-                  <>
-                    <Tooltip
-                      title={
-                        hasBooking
-                          ? `Invite sent. The candidate picks a time ${slotSource}.`
-                          : 'Send Invite'
-                      }
-                    >
-                      <span className="inline-flex">
-                        <button
-                          type="button"
-                          className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={isBusy || hasBooking}
-                          onClick={() => setIsInviteOpen(true)}
-                        >
-                          <LuSend size={15} strokeWidth={2} aria-hidden />
-                          {hasBooking ? 'Invited' : 'Invite'}
-                        </button>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title={reinviteTooltip}>
-                      <span className="inline-flex">
-                        <button
-                          type="button"
-                          aria-label="Send re-invite"
-                          className={`${candidateHeaderIconCircle} shrink-0`}
-                          disabled={isBusy || !canReinvite}
-                          onClick={() => {
-                            setRescheduleRound(selectedRound);
-                            setIsRescheduleConfirmOpen(true);
-                          }}
-                        >
-                          <LuRefreshCw size={17} strokeWidth={2} aria-hidden />
-                        </button>
-                      </span>
-                    </Tooltip>
-                  </>
+                  <Tooltip title={reinviteTooltip}>
+                    <span className="inline-flex">
+                      <button
+                        type="button"
+                        className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={isBusy || !canReinvite}
+                        onClick={() => {
+                          setRescheduleRound(selectedRound);
+                          setIsRescheduleConfirmOpen(true);
+                        }}
+                      >
+                        Re-invite
+                      </button>
+                    </span>
+                  </Tooltip>
                 );
               })()}
               {/* Identity Verification is never scored, so it gets no button. */}
@@ -2063,9 +2050,8 @@ const CandidateDetails = () => {
                 className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full border border-[var(--border)] bg-white px-4 text-sm font-medium text-[var(--primary)] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                 disabled={!candidate}
                 onClick={() => {
-                  // Show the Candidate Details tab behind the modal.
                   setActiveTab('details');
-                  setIsEditOpen(true);
+                  setIsEditingDetails(true);
                 }}
               >
                 Edit Candidate Details
@@ -2380,11 +2366,11 @@ const CandidateDetails = () => {
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button
                   className="box-border inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-gray-300 bg-white px-4 text-xs font-medium leading-none cursor-pointer hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={() => setIsEditOpen(true)}
+                  onClick={() => setIsEditingDetails((editing) => !editing)}
                   disabled={!candidate}
                 >
-                  <LuPencil size={13} className="shrink-0" aria-hidden />
-                  <span>Edit Details</span>
+                  {!isEditingDetails && <LuPencil size={13} className="shrink-0" aria-hidden />}
+                  <span>{isEditingDetails ? 'Cancel' : 'Edit Details'}</span>
                 </Button>
                 {candidate?.resume_s3_key ? (
                   <>
@@ -2434,35 +2420,15 @@ const CandidateDetails = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_230px]">
-                {/* Read-only view of the same fields EditCandidateModal
-                    edits, plus the intake facts shown in the header. */}
-                <dl className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-                  {[
-                    { label: 'First Name', value: candidate?.first_name, required: true },
-                    { label: 'Last Name', value: candidate?.last_name, required: true },
-                    { label: 'Phone Number', value: candidate?.contact_no, required: true },
-                    { label: 'Email ID', value: candidate?.email_id, required: true },
-                    { label: 'Source', value: sourceLabel, required: false },
-                    {
-                      label: 'Applied Date',
-                      value: formatDateTime(candidate?.applied_date),
-                      required: false,
-                    },
-                  ].map((field) => (
-                    <div key={field.label} className="min-w-0">
-                      <dt className="mb-2 text-base text-gray-800">
-                        {field.label}
-                        {field.required && <span className="required-asterisk"> *</span>}
-                      </dt>
-                      <dd
-                        className="flex h-12 min-w-0 items-center rounded-full border border-gray-300 bg-white px-4 text-sm text-gray-600"
-                        title={field.value || undefined}
-                      >
-                        <span className="truncate">{field.value || 'N/A'}</span>
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
+                {/* Read-only (not-allowed cursor) until Edit Details is
+                    clicked, then editable in place. */}
+                <CandidateDetailsForm
+                  candidate={candidate}
+                  isEditing={isEditingDetails}
+                  onDone={() => setIsEditingDetails(false)}
+                  sourceLabel={sourceLabel ?? undefined}
+                  appliedDate={formatDateTime(candidate?.applied_date) ?? undefined}
+                />
 
                 {/* On lg the resume fills exactly the fields' height (absolute
                     inside a stretched grid cell, so it never sets the row
@@ -2673,11 +2639,6 @@ const CandidateDetails = () => {
             open={isSmsOpen}
             onClose={() => setIsSmsOpen(false)}
             candidates={[candidate]}
-          />
-          <EditCandidateModal
-            open={isEditOpen}
-            onClose={() => setIsEditOpen(false)}
-            candidate={candidate}
           />
         </>
       )}
