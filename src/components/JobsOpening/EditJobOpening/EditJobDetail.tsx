@@ -454,7 +454,7 @@ const EditJobDetail = () => {
     watch,
     setError,
     trigger,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<JobDetailsState>({
     resolver: zodResolver(editJobDetailsSchema) as Resolver<JobDetailsState>,
     defaultValues: {},
@@ -785,14 +785,20 @@ const EditJobDetail = () => {
     { skip: !id || !selectedJobTitleId || !selectedJobTitle?.name }
   );
   const suggestedSkills = suggestedSkillsData?.skills ?? [];
+  // Each suggestion is auto-added once, so a skill the user removes stays removed.
+  const offeredSuggestedSkillIdsRef = useRef(new Set<string>());
   const unaddedSuggestedSkills = suggestedSkills.filter(
     (skill) =>
+      !offeredSuggestedSkillIdsRef.current.has(String(skill.skill_id)) &&
       !selectedMandatorySkillIds.includes(skill.skill_id) &&
       !selectedOptionalSkillIds.includes(skill.skill_id)
   );
 
   const handleAddAllSuggestedSkills = () => {
     if (unaddedSuggestedSkills.length === 0) return;
+    unaddedSuggestedSkills.forEach((skill) =>
+      offeredSuggestedSkillIdsRef.current.add(String(skill.skill_id))
+    );
     const newMandatoryIds = unaddedSuggestedSkills
       .filter((skill) => skill.suggested_skill_type.toLowerCase() === 'required')
       .map((skill) => skill.skill_id);
@@ -1155,15 +1161,23 @@ const EditJobDetail = () => {
           }
           return;
         }
-        if (fresh.responsibilities && !current.responsibilities) {
+        if (
+          fresh.responsibilities &&
+          fresh.responsibilities !== current.responsibilities &&
+          !dirtyFields.responsibilities
+        ) {
           setValue('responsibilities', fresh.responsibilities, { shouldValidate: true });
           appliedAnything = true;
         }
-        if (fresh.otherRequirements && !current.otherRequirements) {
+        if (
+          fresh.otherRequirements &&
+          fresh.otherRequirements !== current.otherRequirements &&
+          !dirtyFields.otherRequirements
+        ) {
           setValue('otherRequirements', fresh.otherRequirements, { shouldValidate: true });
           appliedAnything = true;
         }
-        if (fresh.benefits && !current.benefits) {
+        if (fresh.benefits && fresh.benefits !== current.benefits && !dirtyFields.benefits) {
           setValue('benefits', fresh.benefits, { shouldValidate: true });
           appliedAnything = true;
         }
