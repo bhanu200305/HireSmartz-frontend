@@ -331,6 +331,15 @@ const AiQuestionsSetup = () => {
     return weights.filter(appliesToActiveRound).map((w) => w.displayName ?? w.categoryName);
   }, [scoringData, isHiringPanelActiveRound, isAiVideoActiveRound]);
 
+  // A batch rejected by the content check: stop waiting and show why.
+  const generationError = questionsData?.generation_error;
+  useEffect(() => {
+    if (!isGeneratingQuestions || !generationError) return;
+    setIsGeneratingQuestions(false);
+    roundBeingGeneratedForRef.current = null;
+    showToast({ message: generationError, type: 'error' });
+  }, [isGeneratingQuestions, generationError]);
+
   // Stop polling once the list differs from its pre-generation snapshot.
   useEffect(() => {
     if (!isGeneratingQuestions) return;

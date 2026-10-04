@@ -129,3 +129,12 @@ describe('jdGenerationFailureMessage', () => {
     );
   });
 });
+
+describe('jdGenerationFailureMessage - content guardrail', () => {
+  it.each([
+    'We blocked the AI-written text: Discriminatory requirement. Please try again.',
+    "We couldn't check the AI-written text right now. Please try again.",
+  ])('shows the guardrail message as-is: %s', (message) => {
+    expect(jdGenerationFailureMessage(message)).toBe(message);
+  });
+});

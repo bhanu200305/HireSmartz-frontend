@@ -53,3 +53,17 @@ describe('getJobErrorMessage', () => {
     expect(getJobErrorMessage(undefined, 'Something went wrong.')).toBe('Something went wrong.');
   });
 });
+
+describe('getJobErrorMessage - content guardrail', () => {
+  it('shows the standard rejection message', () => {
+    const err = {
+      data: {
+        message: "This content doesn't meet our guidelines. Please try again.",
+        data: { error_code: 'CONTENT_REJECTED', details: { field: 'prompt_text' } },
+      },
+    };
+    expect(getJobErrorMessage(err, 'fallback')).toBe(
+      "This content doesn't meet our guidelines. Please try again."
+    );
+  });
+});
