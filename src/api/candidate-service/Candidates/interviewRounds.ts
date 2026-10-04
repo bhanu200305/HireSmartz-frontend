@@ -57,6 +57,8 @@ export type CandidateInterviewRoundView = {
   due_at: string | null;
   /** Set together, only when `status === "skipped"`. Null otherwise. */
   skip_reason: string | null;
+  /** The recruiter's separate notes from the skip popup. Null for rounds skipped before it existed. */
+  skip_feedback?: string | null;
   skipped_by: string | null;
   skipped_at: string | null;
   /** When `CandidateReadyForRound` was last actually published for this
@@ -170,6 +172,9 @@ export const BULK_ADVANCE_FAILURE_LABELS: Record<string, string> = {
   candidate_not_found: 'Candidate not found',
   no_interview_rounds_planned: 'No interview rounds planned for this candidate',
   job_opening_not_found: "This candidate's job opening no longer exists",
+  candidate_in_final_status: 'This candidate is already finished',
+  resume_consistency_check_pending: 'Waiting on the intake-call consistency check',
+  interviewer_feedback_pending: "The interviewer's feedback hasn't been recorded yet",
 };
 
 export type BulkAdvanceCandidatesResultView = {
@@ -190,6 +195,10 @@ export type SkipInterviewRoundArgs = {
   /** Required, non-empty — a skip is a deliberate override, not a routine
    * "this happened" click, so it has to say why (`SkipInterviewRoundRequest`). */
   reason: string;
+  /** Optional notes, stored apart from `reason` (`SkipInterviewRoundRequest.feedback`). */
+  feedback?: string;
+  /** Push past a 409 INTERVIEWER_FEEDBACK_PENDING (the interviewer hasn't submitted yet). */
+  overridePendingInterviewerFeedback?: boolean;
 };
 
 /** `invite_sent: false` means this call was treated as a duplicate click (the
@@ -221,12 +230,19 @@ const extendedApi = candidateApi.injectEndpoints({
       ],
     }),
 
-    advanceCandidate: build.mutation<AdvanceCandidateResultView, string>({
-      query: (candidateId) => ({
+    advanceCandidate: build.mutation<
+      AdvanceCandidateResultView,
+      { candidateId: string; overridePendingInterviewerFeedback?: boolean }
+    >({
+      query: ({ candidateId, overridePendingInterviewerFeedback }) => ({
         url: `/candidates/${candidateId}/advance`,
         method: 'POST',
+        // 409 INTERVIEWER_FEEDBACK_PENDING otherwise (needed for AI-run rounds).
+        params: overridePendingInterviewerFeedback
+          ? { override_pending_interviewer_feedback: true }
+          : undefined,
       }),
-      invalidatesTags: (_result, _error, candidateId) => [
+      invalidatesTags: (_result, _error, { candidateId }) => [
         { type: 'Candidate', id: candidateId },
         { type: 'CandidateInterviewRounds', id: candidateId },
         { type: 'CandidateStatusHistory', id: candidateId },
@@ -264,10 +280,16 @@ const extendedApi = candidateApi.injectEndpoints({
     // next becomes due" shape as advance, just requires a reason and is
     // recorded as a skip rather than a completion.
     skipInterviewRound: build.mutation<SkipInterviewRoundResultView, SkipInterviewRoundArgs>({
-      query: ({ candidateId, reason }) => ({
+      query: ({ candidateId, reason, feedback, overridePendingInterviewerFeedback }) => ({
         url: `/candidates/${candidateId}/skip-round`,
         method: 'POST',
-        body: { reason },
+        body: {
+          reason,
+          ...(feedback ? { feedback } : {}),
+          ...(overridePendingInterviewerFeedback
+            ? { override_pending_interviewer_feedback: true }
+            : {}),
+        },
       }),
       invalidatesTags: (_result, _error, { candidateId }) => [
         { type: 'Candidate', id: candidateId },

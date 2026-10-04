@@ -48,7 +48,11 @@ export type CandidateView = {
   scoring_reason: string | null;
   /** Per-criterion breakdown behind `resume_score` — `[{ key: 'SKILLS_MATCH', score: 4 }, ...]`,
    * each 0-5. `null` for candidates scored before candidate-service stored it. */
-  resume_category_scores?: { key: string; score: number }[] | null;
+  resume_category_scores?: { key: string; score: number; reason?: string[] | null }[] | null;
+  /** The AI's overall summary as short bullet phrases (same content as `scoring_reason`). */
+  scoring_reason_bullets?: string[] | null;
+  /** Per-user "New" flag from candidate-service (cleared once this user opens the profile). */
+  is_new_for_me?: boolean;
   resume_s3_key: string | null;
 
   /** The recruiter's own take on the resume, beside the AI score — never replacing it. */

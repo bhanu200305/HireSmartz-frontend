@@ -9,6 +9,7 @@ import {
   BULK_STATUS_FAILURE_LABELS,
 } from '../../../../api/candidate-service/Candidates/status';
 import {
+  useAdvanceCandidateMutation,
   useBulkAdvanceCandidatesMutation,
   BULK_ADVANCE_FAILURE_LABELS,
 } from '../../../../api/candidate-service/Candidates/interviewRounds';
@@ -80,13 +81,22 @@ const ChangeCandidateStatusModal = ({
 }: ChangeCandidateStatusModalProps) => {
   const [reason, setReason] = useState('');
   const [results, setResults] = useState<
-    { name: string; ok: boolean; detail: string; needsInvite: boolean }[] | null
+    | {
+        name: string;
+        ok: boolean;
+        detail: string;
+        needsInvite: boolean;
+        /** Set on a failure the recruiter may push through (interviewer feedback pending). */
+        overrideCandidateId?: string;
+      }[]
+    | null
   >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: statuses = [] } = useListCandidateStatusesQuery();
   const [bulkChangeStatus] = useBulkChangeCandidateStatusMutation();
   const [bulkAdvanceCandidates] = useBulkAdvanceCandidatesMutation();
+  const [advanceCandidate, { isLoading: isOverriding }] = useAdvanceCandidateMutation();
 
   useEffect(() => {
     if (open) {
@@ -133,6 +143,9 @@ const ChangeCandidateStatusModal = ({
                 ok: false,
                 detail: BULK_ADVANCE_FAILURE_LABELS[slug] ?? 'Could not advance',
                 needsInvite: false,
+                // The interviewer's feedback gate can be pushed through per
+                // candidate (bulk-advance has no override of its own).
+                overrideCandidateId: slug === 'interviewer_feedback_pending' ? c.id : undefined,
               };
             }
             if (item.outcome === 'unchanged') {
@@ -224,6 +237,39 @@ const ChangeCandidateStatusModal = ({
     }
   };
 
+  // "Advance anyway": single advance with override_pending_interviewer_feedback.
+  const handleAdvanceAnyway = async (index: number, candidateId: string) => {
+    try {
+      const res = await advanceCandidate({
+        candidateId,
+        overridePendingInterviewerFeedback: true,
+      }).unwrap();
+      setResults((prev) =>
+        prev
+          ? prev.map((r, i) =>
+              i === index
+                ? {
+                    ...r,
+                    ok: true,
+                    overrideCandidateId: undefined,
+                    detail: res.next_round
+                      ? 'Advanced to next round'
+                      : 'Completed final round, moved to Selected',
+                    needsInvite: res.next_round !== null,
+                  }
+                : r
+            )
+          : prev
+      );
+      onSuccess();
+    } catch (e) {
+      showToast({
+        message: getCandidateErrorMessage(e, 'Could not advance this candidate'),
+        type: 'error',
+      });
+    }
+  };
+
   return (
     <AntdCommonModal
       open={open}
@@ -240,6 +286,16 @@ const ChangeCandidateStatusModal = ({
                 <span className="font-medium text-gray-900">{r.name}</span>
                 <span className={`text-right shrink-0 ${r.ok ? 'text-green-600' : 'text-red-500'}`}>
                   {r.detail}
+                  {r.overrideCandidateId && (
+                    <button
+                      type="button"
+                      disabled={isOverriding}
+                      onClick={() => void handleAdvanceAnyway(i, r.overrideCandidateId as string)}
+                      className="ml-2 rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 cursor-pointer disabled:opacity-50"
+                    >
+                      {isOverriding ? 'Advancing…' : 'Advance anyway'}
+                    </button>
+                  )}
                   {r.needsInvite && (
                     <span className="ml-1 text-amber-600" title="Send Invite still needed">
                       · invite not sent

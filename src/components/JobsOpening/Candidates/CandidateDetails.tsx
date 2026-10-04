@@ -85,7 +85,6 @@ import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import AssignJobModal from './Modal/AssignJobModal';
 import ResumeSplitLayout from './ResumeSplitLayout';
 import AiCommentsBox from './AiCommentsBox';
-import { markCandidateViewed } from './candidateViewed';
 import { useRecordCandidateViewedMutation } from '../../../api/candidate-service/Candidates/candidateViewedApi';
 import ResumeViewerModal from './Modal/ResumeViewerModal';
 import RoundSidebarItem from './RoundSidebarItem';
@@ -369,6 +368,10 @@ const CandidateDetails = () => {
   const [isAiCommentExpanded, setIsAiCommentExpanded] = useState(false);
   const [skipReason, setSkipReason] = useState('');
   const [skipFeedback, setSkipFeedback] = useState('');
+  // Field-level server errors (content guardrail) and the interviewer-feedback gate.
+  const [skipReasonError, setSkipReasonError] = useState<string | null>(null);
+  const [skipFeedbackError, setSkipFeedbackError] = useState<string | null>(null);
+  const [skipNeedsOverride, setSkipNeedsOverride] = useState(false);
   const [skipInterviewRound, { isLoading: isSkipping }] = useSkipInterviewRoundMutation();
   // "Scoring Criteria" popup (old app's per-round button): the resume
   // round's weighted breakdown, or the interview-scoring explainer.
@@ -501,22 +504,20 @@ const CandidateDetails = () => {
     pollingInterval: 20_000,
     skipPollingIfUnfocused: true,
   });
-  // Opening a candidate's profile clears its "New" badge in the list for this user.
-  // Also reported to the backend (POST /candidates/{id}/viewed) so the badge can
-  // become per-person on any device. The browser copy stays until the list's
-  // backend flag ships. Fire-and-forget, once per opened candidate: a failure
-  // never affects the page, and the call is idempotent server-side.
+  // Reported to the backend (POST /candidates/{id}/viewed): that is what clears
+  // this user's "New" badge (`is_new_for_me`) on any device. Fire-and-forget,
+  // once per opened candidate: a failure never affects the page, and the call
+  // is idempotent server-side.
   const [recordCandidateViewed] = useRecordCandidateViewedMutation();
   const reportedViewFor = useRef<string | null>(null);
   useEffect(() => {
     if (!candidate?.id) return;
-    markCandidateViewed(userId, candidate.id);
     if (reportedViewFor.current === candidate.id) return;
     reportedViewFor.current = candidate.id;
     recordCandidateViewed(candidate.id)
       .unwrap()
       .catch(() => undefined);
-  }, [candidate?.id, userId, recordCandidateViewed]);
+  }, [candidate?.id, recordCandidateViewed]);
 
   // `candidate.source` is the raw master-data code (e.g. "qr_self_apply");
   // shown as its label from candidate-service's own list, same lookup
@@ -1049,16 +1050,28 @@ const CandidateDetails = () => {
     setResumeCommentDraft(savedResumeComment);
   }, [savedResumeComment, candidateId]);
 
+  const resetSkipForm = () => {
+    setSkipReason('');
+    setSkipFeedback('');
+    setSkipReasonError(null);
+    setSkipFeedbackError(null);
+    setSkipNeedsOverride(false);
+  };
+
   const handleSkipRound = async () => {
     if (!candidateId || !skipReason.trim() || !skipFeedback.trim()) return;
+    setSkipReasonError(null);
+    setSkipFeedbackError(null);
     try {
-      // skip-round takes a single `reason` (the request model forbids extra
-      // fields), so the recruiter's feedback rides along inside it.
+      // `reason` and `feedback` go as separate fields (feedback is stored and
+      // returned separately as `skip_feedback`). `skipNeedsOverride` is set
+      // after the backend answered 409 INTERVIEWER_FEEDBACK_PENDING and the
+      // recruiter chose to continue anyway.
       const result = await skipInterviewRound({
         candidateId,
-        reason: `${skipReason.trim()}
-
-Feedback: ${skipFeedback.trim()}`,
+        reason: skipReason.trim(),
+        feedback: skipFeedback.trim(),
+        overridePendingInterviewerFeedback: skipNeedsOverride,
       }).unwrap();
       showToast({
         message: result.skipped_round
@@ -1067,13 +1080,28 @@ Feedback: ${skipFeedback.trim()}`,
         type: 'success',
       });
       setIsSkipOpen(false);
-      setSkipReason('');
-      setSkipFeedback('');
+      resetSkipForm();
     } catch (e) {
       const status = getCandidateErrorStatusCode(e);
       const serverMessage = getCandidateErrorMessage(e, '');
       // candidate-service's error body carries no machine code (see
-      // candidateError.helpers), so the 409 cases are told apart by message.
+      // candidateError.helpers), so the cases are told apart by status + message.
+      if (
+        status === 409 &&
+        /interviewer'?s? feedback|override_pending_interviewer_feedback/i.test(serverMessage)
+      ) {
+        // The interviewer hasn't submitted feedback for this round yet: ask
+        // once, then the same button sends the override.
+        setSkipNeedsOverride(true);
+        return;
+      }
+      if (status === 422 && /guidelines|content/i.test(serverMessage)) {
+        // Show the content-check message beside the field it names.
+        const body = JSON.stringify((e as { data?: unknown })?.data ?? '').toLowerCase();
+        if (body.includes('feedback')) setSkipFeedbackError(serverMessage);
+        else setSkipReasonError(serverMessage);
+        return;
+      }
       let message = serverMessage || 'Could not skip round';
       if (status === 409) {
         if (/in[ _-]?progress/i.test(serverMessage)) {
@@ -1408,7 +1436,9 @@ Feedback: ${skipFeedback.trim()}`,
     const percentage = Math.max(0, Math.min(100, Math.round((value / AI_SCORE_MAX) * 100)));
     // Same bands, vibrant but soft tones rather than pure status colours.
     const color = percentage >= 80 ? '#3FB97F' : percentage >= 50 ? '#F6BC3F' : '#F0686B';
-    return [{ label, percentage, color }];
+    // The AI's short reasons for this category (a list, or null / empty: no tooltip).
+    const reasons = (entry.reason ?? []).filter((r) => r && r.trim().length > 0);
+    return [{ label, percentage, color, reasons }];
   });
 
   const renderResumeAssessment = () => (
@@ -1466,27 +1496,48 @@ Feedback: ${skipFeedback.trim()}`,
       >
         {resumeCategoryBars.length > 0 && (
           <div className="space-y-3.5">
-            {resumeCategoryBars.map((bar) => (
-              <div key={bar.label} className="flex items-center gap-3">
-                <div className="h-5 w-44 shrink-0 overflow-hidden rounded-md bg-gray-100 xl:w-52">
-                  <div
-                    className="h-full rounded-md"
-                    style={{ width: `${bar.percentage}%`, backgroundColor: bar.color }}
-                  />
+            {resumeCategoryBars.map((bar) => {
+              const row = (
+                <div className="flex items-center gap-3">
+                  <div className="h-5 w-44 shrink-0 overflow-hidden rounded-md bg-gray-100 xl:w-52">
+                    <div
+                      className="h-full rounded-md"
+                      style={{ width: `${bar.percentage}%`, backgroundColor: bar.color }}
+                    />
+                  </div>
+                  <span className="min-w-0 text-[13px] leading-tight text-gray-800">
+                    {bar.label} – {bar.percentage}%
+                  </span>
                 </div>
-                <span className="min-w-0 text-[13px] leading-tight text-gray-800">
-                  {bar.label} – {bar.percentage}%
-                </span>
-              </div>
-            ))}
+              );
+              // No reasons for this category: no tooltip at all (never an empty one).
+              return bar.reasons.length > 0 ? (
+                <Tooltip
+                  key={bar.label}
+                  placement="topLeft"
+                  title={
+                    <ul className="m-0 list-disc space-y-1 pl-4 text-xs">
+                      {bar.reasons.map((reason, i) => (
+                        <li key={i}>{reason}</li>
+                      ))}
+                    </ul>
+                  }
+                >
+                  <div className="cursor-help">{row}</div>
+                </Tooltip>
+              ) : (
+                <div key={bar.label}>{row}</div>
+              );
+            })}
           </div>
         )}
 
-        {candidate?.scoring_reason && (
+        {(candidate?.scoring_reason || (candidate?.scoring_reason_bullets ?? []).length > 0) && (
           <div>
             <h2 className="mb-1 text-base font-medium">AI Comments</h2>
             <AiCommentsBox
-              text={candidate.scoring_reason}
+              bullets={candidate?.scoring_reason_bullets ?? null}
+              text={candidate?.scoring_reason ?? ''}
               expanded={isAiCommentExpanded}
               onToggle={() => setIsAiCommentExpanded((v) => !v)}
             />
@@ -1547,6 +1598,19 @@ Feedback: ${skipFeedback.trim()}`,
 
   const roundDetailBody = selectedRound ? (
     <>
+      {selectedRound.skip_reason && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+          <p className="font-semibold text-gray-900">Round skipped</p>
+          <p className="mt-1 text-gray-700">
+            <span className="font-medium">Reason:</span> {selectedRound.skip_reason}
+          </p>
+          {selectedRound.skip_feedback && (
+            <p className="mt-1 whitespace-pre-line text-gray-700">
+              <span className="font-medium">Feedback:</span> {selectedRound.skip_feedback}
+            </p>
+          )}
+        </div>
+      )}
       {isResumeStage ? (
         // The resume stage is "upload a resume, get it scored" —
         // there is no separate interview to schedule or book for
@@ -2782,8 +2846,7 @@ Feedback: ${skipFeedback.trim()}`,
           open
           onClose={() => {
             setIsSkipOpen(false);
-            setSkipReason('');
-            setSkipFeedback('');
+            resetSkipForm();
           }}
           modalProps={{ width: 480 }}
         >
@@ -2794,29 +2857,45 @@ Feedback: ${skipFeedback.trim()}`,
             <Input.TextArea
               id="skip-round-reason"
               value={skipReason}
-              onChange={(e) => setSkipReason(e.target.value)}
+              onChange={(e) => {
+                setSkipReason(e.target.value);
+                setSkipReasonError(null);
+              }}
               placeholder="Why is this round being skipped?"
               autoSize={{ minRows: 3, maxRows: 6 }}
+              status={skipReasonError ? 'error' : undefined}
               className="rounded-md text-sm"
             />
+            {skipReasonError && <p className="text-xs text-red-500">{skipReasonError}</p>}
             <label htmlFor="skip-round-feedback" className="text-sm text-gray-800">
               Feedback <span className="required-asterisk">*</span>
             </label>
             <Input.TextArea
               id="skip-round-feedback"
               value={skipFeedback}
-              onChange={(e) => setSkipFeedback(e.target.value)}
+              onChange={(e) => {
+                setSkipFeedback(e.target.value);
+                setSkipFeedbackError(null);
+              }}
               placeholder="Your feedback on the candidate for this round"
               autoSize={{ minRows: 3, maxRows: 6 }}
+              status={skipFeedbackError ? 'error' : undefined}
               className="rounded-md text-sm"
             />
+            {skipFeedbackError && <p className="text-xs text-red-500">{skipFeedbackError}</p>}
+            {skipNeedsOverride && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                The interviewer hasn&apos;t submitted feedback for this round yet. You can skip
+                anyway.
+              </p>
+            )}
             <Button
               type="button"
               onClick={() => void handleSkipRound()}
               disabled={!skipReason.trim() || !skipFeedback.trim() || isSkipping}
               className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
             >
-              {isSkipping ? 'Skipping…' : 'Skip Round'}
+              {isSkipping ? 'Skipping…' : skipNeedsOverride ? 'Skip Anyway' : 'Skip Round'}
             </Button>
           </div>
         </AntdCommonModal>

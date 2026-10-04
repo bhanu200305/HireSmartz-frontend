@@ -31,7 +31,6 @@ import { useListJobTypesQuery } from '../../../api/job-service/JobOpening/catalo
 import { useGetJobOpeningNotesQuery } from '../../../api/job-service/JobOpening/JobOpeningNotes';
 import { useListTenantDepartmentsQuery } from '../../../api/organization-service/Tenants/departments';
 import { useListTenantJobTitlesQuery } from '../../../api/organization-service/Tenants/jobTitles';
-import { isCandidateViewed } from './candidateViewed';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
 import { hasFeatureAccess, isAssignedToJob } from '../../../shared/utils/auth/getAccess';
@@ -72,21 +71,6 @@ type SelectedMap = Record<string, boolean>;
 
 const buildCurrentSortKey = (sortBy: string, sortOrder: 'asc' | 'desc') =>
   sortOrder === 'desc' ? `-${sortBy}` : sortBy;
-
-// Upper limit on a just-applied candidate's "New" badge; it also ends as soon as
-// the current user opens that candidate's profile (candidateViewed.ts).
-// How long a just-applied candidate keeps its "New" badge. 48h (2 days),
-// not 24h: a recruiter who doesn't open this job's candidate list every
-// single day (weekends, a busy stretch) shouldn't come back to find
-// yesterday's applicants already blending into the rest of the list. Not a
-// full week either - by then "new" has stopped meaning anything useful,
-// it's just noise competing with genuinely fresh applicants.
-const NEW_CANDIDATE_WINDOW_HOURS = 48;
-
-const isNewCandidate = (appliedDate: string): boolean => {
-  const applied = dayjs(appliedDate);
-  return applied.isValid() && dayjs().diff(applied, 'hour') < NEW_CANDIDATE_WINDOW_HOURS;
-};
 
 // Same "Avg. score so far" figure as roundPipeline.ts's candidate
 // drill-down - the resume score plus every interview round's own score
@@ -529,12 +513,11 @@ const CandidatesListing = () => {
                                     .join(' ') || 'N/A'}
                                 </span>
                               </Link>
-                              {isNewCandidate(candidate.applied_date) &&
-                                !isCandidateViewed(userId, candidate.id) && (
-                                  <Badge status="info" dot={false} className="shrink-0">
-                                    New
-                                  </Badge>
-                                )}
+                              {candidate.is_new_for_me && (
+                                <Badge status="info" dot={false} className="shrink-0">
+                                  New
+                                </Badge>
+                              )}
                               <span className="shrink-0 text-neutral-700">
                                 {expandedId === candidate.id ? <UpOutlined /> : <DownOutlined />}
                               </span>
