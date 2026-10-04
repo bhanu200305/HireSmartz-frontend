@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { setEditAiJdPassedJobId } from '../../../redux/slices/jobOpeningSlice';
 import { Tooltip } from 'antd';
 import { Button, showToast } from '../../shared';
 import JobDescriptionPanel, {
@@ -31,6 +32,7 @@ import ConfirmationModal from '../../shared/ui/ConfirmationModal';
  */
 const EditAiJobDescription = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { id } = useParams<{ id: string }>();
   const jobOpeningId = asJobId(id);
   const isDraft = useSelector((state: RootState) => state.EditJobSlice.isDraft);
@@ -41,6 +43,7 @@ const EditAiJobDescription = () => {
   const handleContinueToScoring = async () => {
     const committed = await panelRef.current?.commitPendingEdit();
     if (committed === false) return;
+    dispatch(setEditAiJdPassedJobId(id ?? null));
     navigate(`/jobs/edit/${id}/scoring-criteria`);
   };
 

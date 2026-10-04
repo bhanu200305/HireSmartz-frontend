@@ -1266,17 +1266,17 @@ const JobsOpening = () => {
                     >
                       <Row gutter={[16, 16]} align="middle">
                         <Col span={5}>
-                          <div className="flex items-center flex-wrap gap-1.5">
+                          <div className="flex items-start gap-1.5">
                             <Link
                               to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
-                              className="font-semibold text-primary underline hover:text-primary roboto-font"
+                              className="min-w-0 font-semibold text-primary underline hover:text-primary roboto-font break-words"
                             >
                               <span className="text-primary capitalize">
                                 {renderHighlightedField(jobs.jobTitleName, 'jobTitleName')}
                               </span>
                             </Link>
                             <span
-                              className="ml-1 cursor-pointer"
+                              className="ml-1 mt-1 shrink-0 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleCollapse(jobs.jobOpeningId.toString());

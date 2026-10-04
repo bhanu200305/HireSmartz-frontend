@@ -13,6 +13,8 @@ type JobState = {
   aiJobDescriptionId: string | null;
   isFormCompleted?: boolean;
   isScoringCompleted?: boolean;
+  /** Draft whose AI Job Description step was passed while editing. */
+  editAiJdPassedJobId?: string | null;
 };
 
 const initialState: JobState = {
@@ -20,6 +22,7 @@ const initialState: JobState = {
   aiJobDescriptionId: null,
   isFormCompleted: false,
   isScoringCompleted: false,
+  editAiJdPassedJobId: null,
   details: {
     jobProfileCode: '',
     jobTitle: [],
@@ -82,10 +85,17 @@ const jobSlice = createSlice({
       state.interviewRounds = action.payload;
     },
     setJobOpeningId: (state, action: PayloadAction<string>) => {
+      if (state.jobOpeningId !== action.payload) {
+        state.isFormCompleted = false;
+        state.isScoringCompleted = false;
+      }
       state.jobOpeningId = action.payload;
     },
     setIsFormCompleted: (state, action: PayloadAction<boolean>) => {
       state.isFormCompleted = action.payload;
+    },
+    setEditAiJdPassedJobId: (state, action: PayloadAction<string | null>) => {
+      state.editAiJdPassedJobId = action.payload;
     },
     setIsScoringCompleted: (state, action: PayloadAction<boolean>) => {
       state.isScoringCompleted = action.payload;
@@ -111,5 +121,6 @@ export const {
   resetJobDescription,
   setIsFormCompleted,
   setIsScoringCompleted,
+  setEditAiJdPassedJobId,
 } = jobSlice.actions;
 export default jobSlice.reducer;
