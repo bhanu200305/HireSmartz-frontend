@@ -84,14 +84,14 @@ const SupportAccessModal: React.FC<{
 
   const columns: TableProps<GrantRow>['columns'] = [
     {
-      title: 'Support staff',
+      title: 'Support Staff',
       key: 'email',
       render: (_: unknown, row: GrantRow) => (
         <span className="text-gray-800">{row.email ?? row.membership_id}</span>
       ),
     },
     {
-      title: 'Time remaining',
+      title: 'Time Remaining',
       key: 'remaining',
       render: (_: unknown, row: GrantRow) => <RemainingCell expiresAt={row.expires_at} />,
     },
@@ -116,7 +116,7 @@ const SupportAccessModal: React.FC<{
     <AntdCommonModal
       open
       onClose={onClose}
-      title="Support access"
+      title="Support Access"
       subtitle={companyName}
       modalProps={{ width: 620, maskClosable: true }}
     >
@@ -128,7 +128,7 @@ const SupportAccessModal: React.FC<{
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[220px]">
               <label htmlFor="support-access-staff" className="text-xs text-gray-500 mb-1 block">
-                Support staff member
+                Support Staff Member
               </label>
               <Select
                 id="support-access-staff"
@@ -172,7 +172,7 @@ const SupportAccessModal: React.FC<{
 
         <div>
           <Typography variant="h6" className="mb-2 block">
-            Current grants
+            Current Grants
           </Typography>
           {isLoadingGrants ? (
             <Loader />

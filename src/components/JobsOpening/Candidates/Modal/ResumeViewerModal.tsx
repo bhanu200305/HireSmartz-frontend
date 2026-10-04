@@ -131,7 +131,7 @@ const ResumeViewerModal = ({
               rel="noopener noreferrer"
               className="text-xs font-semibold text-primary-600 hover:underline"
             >
-              Open in new tab ›
+              Open in New Tab ›
             </a>
             {/* Same-origin blob: URL (PDF), so the `download` attribute is
                 honoured and the file saves without a round-trip. Word files

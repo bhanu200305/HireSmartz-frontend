@@ -58,7 +58,7 @@ const PlatformTenantsListModal: React.FC<{
   onClose: () => void;
   createdAfter?: string;
   title?: string;
-}> = ({ onClose, createdAfter, title = 'Total customers' }) => {
+}> = ({ onClose, createdAfter, title = 'Total Customers' }) => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('platform_tenants_modal', 10);
   const [selectedTenant, setSelectedTenant] = useState<PlatformTenantSummary | null>(null);
@@ -112,7 +112,7 @@ const PlatformTenantsListModal: React.FC<{
       ),
     },
     {
-      title: 'Admin email',
+      title: 'Admin Email',
       dataIndex: 'admin_email',
       key: 'admin_email',
       minWidth: 300,

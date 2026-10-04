@@ -435,7 +435,7 @@ const CandidatesListing = () => {
             <div className="w-full pb-2">
               <Row
                 gutter={[16, 16]}
-                className="rounded-lg border border-neutral-200 bg-white px-4 py-6 text-[11px] font-bold uppercase text-black shadow heading-font"
+                className="rounded-lg border border-neutral-200 bg-white px-4 py-6 text-[11px] font-bold text-black shadow heading-font"
               >
                 <Col span={1}>
                   <Checkbox
@@ -452,13 +452,13 @@ const CandidatesListing = () => {
                   onSort={handleSort}
                   span={6}
                 >
-                  CANDIDATE NAME
+                  Candidate Name
                 </COL>
                 {/* Not sortable - "average score" is computed client-side
                     per row (see CandidateAverageScoreCell), so there's no
                     single backend field to sort by. */}
                 <COL span={4}>
-                  <span>AVG. SCORE</span>
+                  <span>Avg. Score</span>
                 </COL>
                 <COL
                   sortable
@@ -467,13 +467,13 @@ const CandidatesListing = () => {
                   onSort={handleSort}
                   span={4}
                 >
-                  APPLIED DATE
+                  Applied Date
                 </COL>
                 <COL span={6}>
-                  <span>STATUS</span>
+                  <span>Status</span>
                 </COL>
                 <COL span={3}>
-                  <span>ACTIONS</span>
+                  <span>Actions</span>
                 </COL>
               </Row>
             </div>
@@ -577,7 +577,7 @@ const CandidatesListing = () => {
                                     ? 'Booking created — waiting to be scheduled'
                                     : normaliseRoundStatus(candidate.current_round_status) ===
                                         'awaiting_resume_upload'
-                                      ? 'Awaiting resume upload'
+                                      ? 'Awaiting Resume Upload'
                                       : formatRoundStatus(candidate.current_round_status)}
                                 </Link>
                               )}
@@ -691,7 +691,7 @@ const CandidatesListing = () => {
           current={page + 1}
           pageSize={pageSize}
           total={data?.total ?? 0}
-          itemLabel="Candidates"
+          itemLabel="candidates"
           onPageChange={(p) => setPage(p - 1)}
         />
       </div>

@@ -338,9 +338,9 @@ export const CareersInstantCallPage = () => {
           <button
             onClick={() => void handleSubmit()}
             disabled={isSubmitting || !recaptchaSiteKey}
-            className="w-full cursor-pointer bg-black text-white font-bold tracking-widest text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full cursor-pointer bg-black text-white font-bold tracking-widest uppercase text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? 'SUBMITTING…' : 'REQUEST A CALL'}
+            {isSubmitting ? 'Submitting…' : 'Request a Call'}
           </button>
         </div>
       </div>

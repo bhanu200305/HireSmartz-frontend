@@ -157,8 +157,8 @@ export const UploadAndGenerateHeader = ({
                 title={
                   <div className="py-1">
                     <div className="flex items-center justify-between gap-3 px-3 pb-2 mb-1.5 border-b border-gray-100">
-                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wide">
-                        Row issues
+                      <span className="text-xs font-bold text-gray-800 tracking-wide">
+                        Row Issues
                       </span>
                       <span className="text-xs font-semibold text-gray-400">
                         {warnings.length} {warnings.length === 1 ? 'row' : 'rows'}

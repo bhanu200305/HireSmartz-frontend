@@ -42,7 +42,7 @@ const AudioQuestionsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <CustomTable<QuestionRow>
           columns={[
             { title: 'Question', dataIndex: 'question_text', key: 'question_text' },
-            { title: 'Resume field', dataIndex: 'fieldLabel', key: 'fieldLabel', minWidth: 180 },
+            { title: 'Resume Field', dataIndex: 'fieldLabel', key: 'fieldLabel', minWidth: 180 },
           ]}
           dataSource={dataSource}
           emptyText="No audio questions set — this company is inheriting the platform default."

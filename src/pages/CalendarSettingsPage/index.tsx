@@ -201,7 +201,7 @@ const CalendarSettingsPage = () => {
           <p className="text-sm text-red-600">Could not load your calendar connection status.</p>
         ) : (
           <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
-            <h2 className="text-lg font-semibold text-gray-900">Connected calendar</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Connected Calendar</h2>
             <p className="mt-1 text-sm text-gray-500">
               Connect your Google or Microsoft calendar so interviews can be scheduled around your
               real availability and added to your calendar automatically. Panel interviews can only
@@ -268,7 +268,7 @@ const CalendarSettingsPage = () => {
         okText="Yes, Switch"
         cancelText="Cancel"
         okButtonProps={{ loading: isDisconnecting || isConnecting, danger: true }}
-        title="Switch calendar"
+        title="Switch Calendar"
         centered
         maskClosable
       >
@@ -286,7 +286,7 @@ const CalendarSettingsPage = () => {
         okText="Yes, Disconnect"
         cancelText="Cancel"
         okButtonProps={{ loading: isDisconnecting, danger: true }}
-        title="Disconnect calendar"
+        title="Disconnect Calendar"
         centered
         maskClosable
       >

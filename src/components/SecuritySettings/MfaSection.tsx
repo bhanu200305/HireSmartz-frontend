@@ -307,7 +307,7 @@ const MethodRow = ({ method }: { method: MfaMethodView }) => {
         </div>
         <div className="flex items-center gap-2">
           {method.is_default && <Badge status="info">Default</Badge>}
-          {!method.is_enabled && <Badge status="warning">Awaiting confirmation</Badge>}
+          {!method.is_enabled && <Badge status="warning">Awaiting Confirmation</Badge>}
           {method.is_enabled && !method.is_default && (
             <button
               type="button"
@@ -528,7 +528,7 @@ const MfaSection = () => {
     <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
       <div className="mb-4 flex items-center gap-2">
         <MdOutlineSecurity className="text-xl text-brand-700" />
-        <h3 className="text-lg font-semibold text-gray-900">Two-factor authentication</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Two-Factor Authentication</h3>
       </div>
 
       {isLoading && <p className="text-sm text-gray-500">Loading…</p>}

@@ -112,7 +112,7 @@ const MasterSmsTemplatesSection: React.FC = () => {
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <Typography variant="h6" className="mb-1 block">
-            Platform default SMS templates
+            Platform Default SMS Templates
           </Typography>
           <Typography variant="caption" className="block text-gray-500">
             The only SMS copy that exists for these types; there is no per-organization override.

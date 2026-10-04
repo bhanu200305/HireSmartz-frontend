@@ -43,7 +43,7 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
   onCancel,
   onConfirm,
   isSaving = false,
-  title = 'Adjust your photo',
+  title = 'Adjust Your Photo',
   subtitle = 'Drag to reposition, then zoom or rotate to fit the frame',
   cropShape = 'round',
   aspect = 1,

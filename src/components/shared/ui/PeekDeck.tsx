@@ -63,7 +63,7 @@ export const PeekDeck = ({ panels, initialIndex = 0, className }: PeekDeckProps)
     <div className={clsx('w-full', className)}>
       <div className="text-center mb-3">
         <p
-          className="text-xs font-semibold tracking-wider text-neutral-500 uppercase"
+          className="text-xs font-semibold tracking-wider uppercase text-neutral-500"
           aria-live="polite"
         >
           {activePanel.label}

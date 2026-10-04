@@ -161,7 +161,7 @@ const QuestionImportTemplateTab: React.FC = () => {
         open={!!previewSource}
         onClose={() => setPreviewSource(null)}
         title={
-          previewSource?.kind === 'file' ? 'Preview: file to upload' : 'Preview: current template'
+          previewSource?.kind === 'file' ? 'Preview: File to Upload' : 'Preview: Current Template'
         }
         source={previewSource}
       />

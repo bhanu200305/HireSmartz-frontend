@@ -33,7 +33,7 @@ const ViewJdDetails = () => {
       {isLoading && <Loader />}
       <div className="w-full">
         <span className="mt-4 mb-4 self-start px-6 py-4">
-          <h1>AI based job description</h1>
+          <h1>AI Based Job Description</h1>
         </span>
         <div className="bg-white p-6 md:p-10 rounded-2xl shadow-lg ">
           <div className="prose max-w-none prose-p:my-2 prose-li:my-1 prose-h2:mt-4 prose-h2:mb-2">

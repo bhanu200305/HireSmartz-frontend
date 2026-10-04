@@ -110,7 +110,7 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
       render: (value: string | null) => value || '-',
     },
     {
-      title: 'Resume score',
+      title: 'Resume Score',
       dataIndex: 'resume_score',
       key: 'resume_score',
       minWidth: 130,
@@ -118,7 +118,7 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
       render: (value: number | null) => (value != null ? `${value} / ${AI_SCORE_MAX}` : '-'),
     },
     {
-      title: 'Interview score',
+      title: 'Interview Score',
       dataIndex: 'interview_score',
       key: 'interview_score',
       minWidth: 140,
@@ -140,7 +140,7 @@ const CandidatePoolTable: React.FC<CandidatePoolTableProps> = ({
       ),
     },
     {
-      title: 'Applied date',
+      title: 'Applied Date',
       dataIndex: 'applied_date',
       key: 'applied_date',
       minWidth: 140,

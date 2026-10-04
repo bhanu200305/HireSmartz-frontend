@@ -162,7 +162,7 @@ export const DeviceCheckLobby = ({ onReady, lockFullscreen = false }: DeviceChec
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-neutral-950 px-6 py-10 text-white">
       <div className="w-full max-w-md">
-        <h1 className="mb-1 text-center text-xl font-semibold">Check your camera and mic</h1>
+        <h1 className="mb-1 text-center text-xl font-semibold">Check Your Camera and Mic</h1>
         <p className="mb-6 text-center text-sm text-neutral-400">
           You&apos;ll be on camera for the whole interview, so take a moment to make sure everything
           looks and sounds right.
@@ -183,7 +183,7 @@ export const DeviceCheckLobby = ({ onReady, lockFullscreen = false }: DeviceChec
           />
           {!loading && !cameraEnabled && (
             <div className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500">
-              Camera off
+              Camera Off
             </div>
           )}
         </div>

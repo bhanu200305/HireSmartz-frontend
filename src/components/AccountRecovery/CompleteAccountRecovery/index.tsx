@@ -73,7 +73,7 @@ const CompleteAccountRecovery = () => {
             Recovery links expire after an hour and only work once. Start over to get a new one.
           </p>
           <Link to="/account-recovery" className="mt-2 text-sm text-primary hover:underline">
-            Start account recovery again
+            Start Account Recovery Again
           </Link>
         </div>
       </AuthPageShell>
@@ -85,7 +85,7 @@ const CompleteAccountRecovery = () => {
       <AuthPageShell>
         <div className="flex flex-col items-center gap-3 text-center">
           <FaCheckCircle className="text-4xl text-brand-600" />
-          <h2 className="text-xl font-semibold text-gray-900">Account recovered</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Account Recovered</h2>
           <p className="text-sm text-gray-500">
             Your password was reset and your two-factor methods were removed for safety. You&apos;ll
             be asked to set up MFA again next time you log in. Redirecting you to log in…
@@ -99,7 +99,7 @@ const CompleteAccountRecovery = () => {
     <AuthPageShell>
       {isLoading && <Loader />}
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-semibold text-gray-900">Set a new password</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Set a New Password</h2>
         <p className="mt-1 text-sm text-gray-500">
           This also removes every two-factor method on your account and signs you out everywhere.
           You&apos;ll set up MFA again after logging back in.

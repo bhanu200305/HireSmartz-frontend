@@ -12,7 +12,7 @@ const StepDone = ({ companyName, adminEmail, invitationId }: StepDoneProps) => {
   return (
     <div className="flex flex-col items-center text-center py-6">
       <FaCheckCircle className="text-5xl text-brand-600 mb-4" />
-      <h3 className="text-xl font-semibold mb-1">Invite sent</h3>
+      <h3 className="text-xl font-semibold mb-1">Invite Sent</h3>
       <p className="text-gray-500 max-w-sm">
         <span className="font-medium text-gray-700">{companyName}</span> has been created and an
         invite was sent to <span className="font-medium text-gray-700">{adminEmail}</span>. They

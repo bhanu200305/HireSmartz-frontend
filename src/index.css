@@ -360,6 +360,26 @@ canvas[data-agora-recording='true'] {
 }
 
 /*
+ * ScoringCriteriaModal's scroll region: the scrollbar is always shown
+ * (`overflow-y: scroll`) instead of appearing only once hovered/scrolled.
+ * In Chromium, the global `scrollbar-width`/`scrollbar-color` above switch
+ * to the native thin bar (which can auto-hide as an overlay) and disable the
+ * `::-webkit-scrollbar` rules; resetting both to `auto` here brings back that
+ * same 8px grey rounded thumb, permanently visible. Firefox keeps the
+ * global thin bar.
+ */
+.scoring-criteria-scroll {
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+}
+@supports selector(::-webkit-scrollbar) {
+  .scoring-criteria-scroll {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+}
+
+/*
  * Opt-in modifier (AntdCommonModal's `fillHeight` prop) for a caller whose
  * body is exactly one CustomTable capped via `scrollY="100%"`, alongside
  * its own fixed search/filter row and pagination footer — those need to

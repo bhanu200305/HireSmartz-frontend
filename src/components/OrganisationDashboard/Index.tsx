@@ -449,13 +449,13 @@ const OrganisationUserTable = () => {
         // someone still sitting on an unaccepted invite — see
         // OrgUser.has_set_password's own docstring.
         row.kind === 'pending' ? (
-          <Badge status="warning">Pending setup</Badge>
+          <Badge status="warning">Pending Setup</Badge>
         ) : !row.is_active ? (
           <Badge status="neutral">Deactivated</Badge>
         ) : row.has_set_password ? (
           <Badge status="success">Onboarded</Badge>
         ) : (
-          <Badge status="warning">Pending setup</Badge>
+          <Badge status="warning">Pending Setup</Badge>
         ),
     },
     {
@@ -475,7 +475,7 @@ const OrganisationUserTable = () => {
         return (
           <div className="flex items-center justify-end gap-1">
             {invitationId && (
-              <Tooltip title="Resend invitation">
+              <Tooltip title="Resend Invitation">
                 <button
                   type="button"
                   aria-label="Resend invitation"
@@ -534,8 +534,8 @@ const OrganisationUserTable = () => {
               className="w-full custom-select"
               variant="borderless"
               options={[
-                { label: 'Active only', value: 'active' },
-                { label: 'Include deactivated', value: 'all' },
+                { label: 'Active Only', value: 'active' },
+                { label: 'Include Deactivated', value: 'all' },
               ]}
             />
           </div>
@@ -615,7 +615,7 @@ const OrganisationUserTable = () => {
           current={page + 1}
           pageSize={pageSize}
           total={data?.total || 0}
-          itemLabel="Users"
+          itemLabel="users"
           onPageChange={(p) => setPage(p - 1)}
         />
       )}

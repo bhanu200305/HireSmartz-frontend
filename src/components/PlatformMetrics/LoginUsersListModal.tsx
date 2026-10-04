@@ -94,7 +94,7 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       title: 'Name',
       key: 'name',
       render: (_: unknown, row: UserRow) => (
-        <span className="font-semibold text-neutral-900">{row.name ?? 'Platform staff'}</span>
+        <span className="font-semibold text-neutral-900">{row.name ?? 'Platform Staff'}</span>
       ),
     },
     {
@@ -111,7 +111,7 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       align: 'center',
     },
     {
-      title: 'Last sign-in',
+      title: 'Last Sign-In',
       key: 'last_login_at',
       render: (_: unknown, row: UserRow) => (
         <span className="text-neutral-600">{formattedDateTime(row.last_login_at)}</span>
@@ -123,7 +123,7 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     <AntdCommonModal
       open
       onClose={onClose}
-      title="Monthly active users"
+      title="Monthly Active Users"
       subtitle={
         meta?.window_start && meta?.window_end
           ? `${formattedDateTime(meta.window_start)} – ${formattedDateTime(meta.window_end)}`

@@ -61,13 +61,12 @@
   width: 100%;
 }
 
-/* Wireframe-matched table chrome: uppercase/tracked headers + a brand-tinted
+/* Wireframe-matched table chrome: tracked headers + a brand-tinted
    row hover instead of AntD's flat gray default — cascades to every
    CustomTable call site app-wide from this one file. */
 .customTable .ant-table-thead > tr > th {
   font-size: 12px !important;
   font-weight: 700 !important;
-  text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-neutral-500) !important;
   padding: 10px 16px !important;

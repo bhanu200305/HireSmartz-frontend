@@ -88,7 +88,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
   const tabItems = [
     {
       key: 'activity',
-      label: <span className="text-base heading-font">Activity</span>,
+      label: <span className="text-base heading-font">Activity Feed</span>,
     },
     // {
     //   key: 'tasks',
@@ -318,7 +318,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
             current={filters.page + 1}
             pageSize={filters.size}
             total={totalRecords}
-            itemLabel="Activity Feeds"
+            itemLabel="activities"
             onPageChange={(page) => handlePageChange(page)}
           />
         ) : (
@@ -332,7 +332,7 @@ const ActivityCard = ({ fullPage = false }: ActivityCardProps) => {
             onClick={() => navigate(`/activityFeed${location.search}`)}
             className="ml-auto text-primary font-bold flex items-center underline cursor-pointer"
           >
-            VIEW ALL ACTIVITIES <IoIosArrowForward />
+            View All Activities <IoIosArrowForward />
           </button>
         )}
       </div>

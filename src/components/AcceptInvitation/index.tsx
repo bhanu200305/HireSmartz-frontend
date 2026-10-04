@@ -41,7 +41,7 @@ const DEFAULT_COUNTRY_CODE = '+1';
 // "invite not available" screen and the submit-time messaging stay
 // consistent with each other.
 const INVITATION_NOT_FOUND_COPY = {
-  title: 'Invite not available',
+  title: 'Invite Not Available',
   message:
     "This invite link isn't valid. Double-check the link from your email, or ask whoever invited you to send a new one.",
 };
@@ -50,12 +50,12 @@ const INVITATION_EXPIRED_COPY = {
   message: 'Ask whoever invited you to resend it. Invites are valid for 48 hours.',
 };
 const INVITATION_ALREADY_ACCEPTED_COPY = {
-  title: 'Already set up',
+  title: 'Already Set Up',
   message:
     'This invite has already been used to create an account. If that was you, log in instead.',
 };
 const GENERIC_INVITE_ERROR_COPY = {
-  title: 'Invite not available',
+  title: 'Invite Not Available',
   message:
     'This invite link is invalid, expired, or has already been used. Ask whoever invited you to resend it.',
 };
@@ -182,8 +182,8 @@ const PageShell = ({ children, wide = false }: { children: ReactNode; wide?: boo
     >
       <div className="mb-6 flex flex-col items-center">
         <img src="/cfpLogo.svg" alt="Careerforce Pro" className="h-10 w-auto object-contain" />
-        <span className="ai-recruitment-text mt-2 text-xs tracking-widest">
-          AI POWERED RECRUITMENT SOLUTIONS
+        <span className="ai-recruitment-text mt-2 text-xs tracking-widest uppercase">
+          AI Powered Recruitment Solutions
         </span>
       </div>
       {children}
@@ -192,7 +192,7 @@ const PageShell = ({ children, wide = false }: { children: ReactNode; wide?: boo
   </div>
 );
 
-/** Small uppercase section header, shared by every group in the form below
+/** Small section header, shared by every group in the form below
  * (name/phone, password, two-factor) so the wider card reads as clearly
  * organized sections instead of one long stack of fields. */
 const SectionHeading = ({
@@ -204,7 +204,7 @@ const SectionHeading = ({
 }) => (
   <div className="mb-3 flex items-center gap-2">
     <Icon className="text-base text-brand-600" />
-    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{children}</span>
+    <span className="text-xs font-semibold tracking-wide text-gray-500">{children}</span>
   </div>
 );
 
@@ -674,7 +674,7 @@ const AcceptInvitation = () => {
         </div>
 
         <div>
-          <SectionHeading icon={MdLockOutline}>Create a password</SectionHeading>
+          <SectionHeading icon={MdLockOutline}>Create a Password</SectionHeading>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Controller
@@ -740,7 +740,7 @@ const AcceptInvitation = () => {
         </div>
 
         <div className="rounded-2xl border border-[var(--border)] bg-gray-50 p-4 sm:p-5">
-          <SectionHeading icon={MdOutlineSecurity}>Two-factor authentication</SectionHeading>
+          <SectionHeading icon={MdOutlineSecurity}>Two-Factor Authentication</SectionHeading>
           <p className="-mt-2 mb-3 text-xs text-gray-500">
             Required to activate your account. Choose how you&apos;d like to verify it&apos;s you.
           </p>

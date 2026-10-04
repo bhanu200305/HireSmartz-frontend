@@ -55,7 +55,7 @@ const HiringManagerStatCards: React.FC = () => {
           {
             icon: <MdOutlineWorkOutline />,
             variant: 'blue' as const,
-            label: 'My open jobs',
+            label: 'My Active Job Openings',
             value: isJobStatsLoading ? undefined : jobStats?.published_count?.toLocaleString(),
             onClick: () => setShowJobs(true),
           },
@@ -66,7 +66,7 @@ const HiringManagerStatCards: React.FC = () => {
           {
             icon: <MdOutlineRateReview />,
             variant: 'orange' as const,
-            label: 'Candidates in review',
+            label: 'Candidates in Review',
             value: isReviewLoading ? undefined : candidatesInReview?.total?.toLocaleString(),
             footer: (
               <p className="text-xs text-neutral-400">
@@ -96,7 +96,7 @@ const HiringManagerStatCards: React.FC = () => {
       <StatCardRow cards={cards} columns={3} />
       {showJobs && (
         <JobOpeningsListModal
-          title="My open jobs"
+          title="My Active Job Openings"
           assignedToMe
           onClose={() => setShowJobs(false)}
         />
@@ -107,7 +107,7 @@ const HiringManagerStatCards: React.FC = () => {
           onClose={() => setActiveDetail(null)}
           icon={<MdOutlineRateReview />}
           variant="orange"
-          label="Candidates in review"
+          label="Candidates in Review"
           value={candidatesInReview?.total?.toLocaleString()}
           description="Candidates scheduled for, or already given, a panel interview on one of your jobs."
           viewAllHref="/candidates"

@@ -43,7 +43,7 @@ const RotateSigningKeysSection = () => {
     <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
       <div className="mb-4 flex items-center gap-2">
         <MdOutlineVpnKey className="text-xl text-brand-700" />
-        <h3 className="text-lg font-semibold text-gray-900">Rotate the signing key</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Rotate the Signing Key</h3>
       </div>
       <p className="mb-4 text-sm text-gray-500">
         Issues a new key and switches every future token to it. The previous public key stays in

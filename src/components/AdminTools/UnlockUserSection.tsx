@@ -59,7 +59,7 @@ const UnlockUserSection = () => {
     <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
       <div className="mb-4 flex items-center gap-2">
         <MdOutlineLockOpen className="text-xl text-brand-700" />
-        <h3 className="text-lg font-semibold text-gray-900">Unlock a user account</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Unlock a User Account</h3>
       </div>
       <p className="mb-4 text-sm text-gray-500">
         Clears the lockout from too many failed sign-in attempts, and resets the failure counter so
@@ -67,7 +67,7 @@ const UnlockUserSection = () => {
       </p>
 
       <label htmlFor="unlock-user-email" className="mb-1 block text-xs font-medium text-gray-500">
-        User email
+        User Email
       </label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <Input

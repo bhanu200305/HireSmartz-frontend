@@ -111,7 +111,7 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
                 onClick={handleCopyLink}
                 className="shrink-0 flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
                 aria-label="Copy link"
-                title={copied ? 'Copied!' : 'Copy link'}
+                title={copied ? 'Copied!' : 'Copy Link'}
               >
                 {copied ? <CheckOutlined className="text-green-500" /> : <CopyOutlined />}
               </button>
@@ -120,9 +120,9 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
             <Button
               onClick={() => void handleDownload()}
               disabled={isDownloading}
-              className="w-full h-11 bg-[#1B4DFF] text-white rounded-full font-bold text-sm tracking-widest flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="w-full h-11 bg-[#1B4DFF] text-white rounded-full font-bold text-sm tracking-widest uppercase flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-60"
             >
-              {isDownloading ? 'DOWNLOADING...' : 'DOWNLOAD'}
+              {isDownloading ? 'Downloading...' : 'Download'}
             </Button>
           </>
         )}

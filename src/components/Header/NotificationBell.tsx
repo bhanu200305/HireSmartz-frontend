@@ -224,7 +224,7 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
           >
             {/* Header with title and actions */}
             <div className="px-5 py-2 border-b border-gray-200 sticky top-0 bg-white flex items-center justify-between rounded-t-lg">
-              <span className="font-semibold text-sm">NOTIFICATIONS</span>
+              <span className="font-semibold text-sm">Notifications</span>
               <div className="flex items-center gap-2">
                 {/* Mark all as read link */}
                 <button

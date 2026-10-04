@@ -179,7 +179,7 @@ export const CareersIntakeCallSchedulePage = () => {
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="bg-white rounded-2xl shadow-lg w-full max-w-3xl flex flex-col">
           <div className="px-6 pt-5 pb-3 border-b border-gray-100 shrink-0">
-            <h1 className="text-lg font-bold text-gray-900 mb-1">Pick a time to talk</h1>
+            <h1 className="text-lg font-bold text-gray-900 mb-1">Pick a Time to Talk</h1>
             <div className="flex items-center gap-2 text-gray-500 text-sm">
               <RxClock className="w-4 h-4" />
               <span>
@@ -266,8 +266,8 @@ export const CareersIntakeCallSchedulePage = () => {
                 </div>
               ) : selectedSlot ? (
                 <div className="flex-1 flex flex-col p-6">
-                  <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-1">
-                    Confirm your call
+                  <p className="text-xs text-gray-400 tracking-wide font-semibold mb-1">
+                    Confirm Your Call
                   </p>
                   <h3 className="text-base font-semibold text-gray-800 mb-6">
                     {selectedDate.format('dddd, MMMM D, YYYY')}

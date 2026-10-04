@@ -83,7 +83,7 @@ const MetaTile: React.FC<{
       {icon}
     </span>
     <div className="min-w-0">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="text-xs font-semibold tracking-wide text-gray-400">{label}</p>
       <p
         className="text-sm font-medium text-gray-800 truncate"
         title={typeof value === 'string' ? value : undefined}
@@ -244,7 +244,7 @@ const ViewCustomer = () => {
 
   const logoMenuItems: MenuProps['items'] = [
     { key: 'select', label: 'Select new image', icon: <MdOutlineFileUpload /> },
-    { key: 'adjust', label: 'Adjust current logo', icon: <MdOutlineCropRotate /> },
+    { key: 'adjust', label: 'Adjust Current Logo', icon: <MdOutlineCropRotate /> },
   ];
   const handleLogoMenuClick: NonNullable<MenuProps['onClick']> = ({ key }) => {
     if (key === 'select') logoUploadRef.current?.click();
@@ -361,7 +361,7 @@ const ViewCustomer = () => {
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <Typography variant="h5">Feature settings</Typography>
+                <Typography variant="h5">Feature Settings</Typography>
                 <Tooltip title="Locking a flag here stops the company from changing it themselves.">
                   <MdLock className="text-gray-400" size={14} />
                 </Tooltip>
@@ -514,7 +514,7 @@ const ViewCustomer = () => {
                     </h1>
                     <Badge status={STATUS_BADGE[tenant.status] || 'neutral'}>{tenant.status}</Badge>
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5">Company overview and management</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Company Overview and Management</p>
                 </div>
               </div>
               {isSupportViewer ? (
@@ -557,12 +557,12 @@ const ViewCustomer = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 pb-6 border-b border-gray-100">
               <MetaTile
                 icon={<MdEmail size={18} />}
-                label="Admin email"
+                label="Admin Email"
                 value={tenant.admin_email}
               />
               <MetaTile
                 icon={<MdOutlineCampaign size={18} />}
-                label="Signup source"
+                label="Signup Source"
                 value={<span className="capitalize">{tenant.signup_source}</span>}
               />
               <MetaTile
@@ -572,7 +572,7 @@ const ViewCustomer = () => {
               />
               <MetaTile
                 icon={<MdOutlineAccessTime size={18} />}
-                label="Last active"
+                label="Last Active"
                 value={
                   tenant.last_active_at ? formatMetaDate(tenant.last_active_at) : 'Not available'
                 }
@@ -632,7 +632,7 @@ const ViewCustomer = () => {
         onCancel={handleLogoCropCancel}
         onConfirm={handleLogoCropConfirm}
         isSaving={isUploadingLogo}
-        title="Adjust your logo"
+        title="Adjust Your Logo"
         subtitle="Drag to reposition, then zoom or rotate to fit the frame"
       />
     </MainLayout>

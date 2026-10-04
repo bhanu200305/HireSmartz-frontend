@@ -167,7 +167,7 @@ const CustomerTable = () => {
           // click doesn't also navigate to /view-company underneath it.
           <span onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1">
             {canCorrectEmail && (
-              <Tooltip title="Correct admin email">
+              <Tooltip title="Correct Admin Email">
                 <Button
                   appname="correct admin email"
                   onClick={() => setCorrectEmailTenant(tenant)}
@@ -247,7 +247,7 @@ const CustomerTable = () => {
                 options={[
                   { label: 'All', value: 'all' },
                   { label: 'Draft', value: 'draft' },
-                  { label: 'Pending approval', value: 'pre_approved' },
+                  { label: 'Pending Approval', value: 'pre_approved' },
                   { label: 'Active', value: 'active' },
                   { label: 'Suspended', value: 'suspended' },
                 ]}
@@ -296,7 +296,7 @@ const CustomerTable = () => {
           current={page + 1}
           pageSize={PAGE_SIZE}
           total={data?.total || 0}
-          itemLabel="Companies"
+          itemLabel="companies"
           onPageChange={(p) => setPage(p - 1)}
         />
       </div>

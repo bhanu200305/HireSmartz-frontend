@@ -176,7 +176,7 @@ const ViewOrgUser = () => {
                       ? 'Deactivated'
                       : user.has_set_password
                         ? 'Active'
-                        : 'Pending setup'}
+                        : 'Pending Setup'}
                   </Badge>
                   {roleNames.map((name) => (
                     <Badge key={name} status="info" dot={false}>
@@ -299,7 +299,7 @@ const ViewOrgUser = () => {
                 onClick={handleAttachLocation}
                 disabled={!pendingLocationId || isAttaching}
               >
-                {isAttaching ? 'Attaching…' : '+ Attach location'}
+                {isAttaching ? 'Attaching…' : '+ Attach Location'}
               </Button>
             </div>
           )}
@@ -316,7 +316,7 @@ const ViewOrgUser = () => {
                 className="text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5"
                 onClick={() => setShowAssignRole(true)}
               >
-                + Assign role
+                + Assign Role
               </Button>
             )}
           </div>

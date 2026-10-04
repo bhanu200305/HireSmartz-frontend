@@ -27,25 +27,25 @@ type ChecklistStep = {
 const CHECKLIST_STEPS: ChecklistStep[] = [
   {
     key: 'profileReviewed',
-    label: 'Review your business profile',
+    label: 'Review Your Business Profile',
     description: 'Confirm the pre-filled name, logo, and description.',
     tabKey: '1',
   },
   {
     key: 'hasOffice',
-    label: 'Add your office locations',
+    label: 'Add Your Office Locations',
     description: 'Needed before you can schedule interviews.',
     tabKey: '2',
   },
   {
     key: 'hasDepartment',
-    label: 'Create your departments',
+    label: 'Create Your Departments',
     description: 'Jobs and team members get assigned to these.',
     tabKey: '3',
   },
   {
     key: 'hasInvitedTeam',
-    label: 'Invite your team',
+    label: 'Invite Your Team',
     description: 'One at a time, or import a spreadsheet in bulk.',
     tabKey: '5',
   },
@@ -89,7 +89,7 @@ const OnboardingChecklist = ({ companyId, status, onNavigateToTab }: OnboardingC
             <MdOutlineRocketLaunch />
           </span>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">Getting started</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Getting Started</h3>
             <p className="mt-0.5 text-xs text-gray-500">
               {completedCount} of {totalCount} steps done, a few things left to finish setting up
               your workspace.

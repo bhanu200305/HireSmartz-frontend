@@ -68,7 +68,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
               {headers?.map((item, index) => (
                 <th
                   key={index}
-                  className="py-2.5 px-3 whitespace-nowrap text-xs font-semibold uppercase tracking-wide"
+                  className="py-2.5 px-3 whitespace-nowrap text-xs font-semibold tracking-wide"
                 >
                   {item}
                 </th>

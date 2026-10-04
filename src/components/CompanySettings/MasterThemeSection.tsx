@@ -165,7 +165,7 @@ const MasterThemeSection: React.FC = () => {
           </span>
           <div>
             <Typography variant="h6" className="mb-0.5 block">
-              Platform default theme
+              Platform Default Theme
             </Typography>
             <Typography variant="caption" className="block text-gray-500">
               What every tenant on this pack receives unless they&apos;ve set their own colors.

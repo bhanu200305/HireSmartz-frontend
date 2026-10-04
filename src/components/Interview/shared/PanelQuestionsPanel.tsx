@@ -67,9 +67,7 @@ const QuestionList = ({ title, items }: { title: string; items: PanelQuestionIte
   if (items.length === 0) return null;
   return (
     <div>
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
-        {title}
-      </h4>
+      <h4 className="mb-2 text-xs font-semibold tracking-wide text-neutral-400">{title}</h4>
       <ol className="list-decimal space-y-3 pl-5">
         {items.map((q, idx) => (
           <li key={idx} className="text-sm leading-relaxed text-neutral-200">
@@ -140,8 +138,8 @@ export const PanelQuestionsPanel = ({
           <p className="text-sm text-neutral-400">No panel questions received yet.</p>
         ) : (
           <>
-            <QuestionList title="Resume-based" items={panelQuestions!.resume_based} />
-            <QuestionList title="JD-based" items={panelQuestions!.jd_based} />
+            <QuestionList title="Resume-Based" items={panelQuestions!.resume_based} />
+            <QuestionList title="JD-Based" items={panelQuestions!.jd_based} />
           </>
         )}
       </div>

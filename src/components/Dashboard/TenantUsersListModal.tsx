@@ -84,7 +84,7 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
     <AntdCommonModal
       open
       onClose={onClose}
-      title="Active users"
+      title="Active Users"
       modalProps={{ width: 780, maskClosable: true }}
       fillHeight
     >
@@ -98,8 +98,8 @@ const TenantUsersListModal: React.FC<{ tenantId: string; onClose: () => void }> 
               setPage(0);
             }}
             options={[
-              { label: 'Active only', value: 'active' },
-              { label: 'Include deactivated', value: 'all' },
+              { label: 'Active Only', value: 'active' },
+              { label: 'Include Deactivated', value: 'all' },
             ]}
           />
         </div>

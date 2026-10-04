@@ -1,7 +1,7 @@
 export const cfpCustomersHeaders = [
-  'COMPANY DETAILS',
-  'PHONE',
-  'INTERVIEW',
-  'PACKAGE',
-  'RECRUITERS',
+  'Company Details',
+  'Phone',
+  'Interview',
+  'Package',
+  'Recruiters',
 ];

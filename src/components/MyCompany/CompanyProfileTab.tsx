@@ -282,7 +282,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   // one already showing), so it asks rather than assuming.
   const logoMenuItems: MenuProps['items'] = [
     { key: 'select', label: 'Select new image', icon: <MdOutlineFileUpload /> },
-    { key: 'adjust', label: 'Adjust current logo', icon: <MdOutlineCropRotate /> },
+    { key: 'adjust', label: 'Adjust Current Logo', icon: <MdOutlineCropRotate /> },
   ];
   const handleLogoMenuClick: NonNullable<MenuProps['onClick']> = ({ key }) => {
     if (key === 'select') logoUploadRef.current?.click();
@@ -446,12 +446,12 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     // which the PATCH would otherwise only reject after a round trip.
     maxLength?: number;
   }[] = [
-    { key: 'name', label: 'Company name', icon: <MdBusiness size={16} />, maxLength: 200 },
+    { key: 'name', label: 'Company Name', icon: <MdBusiness size={16} />, maxLength: 200 },
     { key: 'website_url', label: 'Website', icon: <MdLanguage size={16} />, maxLength: 2048 },
-    { key: 'company_size', label: 'Company size', icon: <MdGroups size={16} /> },
+    { key: 'company_size', label: 'Company Size', icon: <MdGroups size={16} /> },
     {
       key: 'admin_contact',
-      label: 'Admin contact',
+      label: 'Admin Contact',
       icon: <MdPhone size={16} />,
       maxLength: 40,
     },
@@ -535,7 +535,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-5">
-        <Typography variant="h5">Company profile</Typography>
+        <Typography variant="h5">Company Profile</Typography>
         {!isEditMode && canEdit && (
           <Button
             className="rounded-full border border-gray-300 px-4 py-1.5 flex items-center gap-1.5"
@@ -553,7 +553,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <div className="flex-1 min-w-0 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <Typography variant="h4" className="min-w-0 truncate font-semibold text-gray-900">
-              {form.name || 'Untitled company'}
+              {form.name || 'Untitled Company'}
             </Typography>
             {profile.status && (
               <Badge status={STATUS_BADGE[profile.status] || 'neutral'} className="shrink-0">
@@ -584,7 +584,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               <span className="w-7 h-7 shrink-0 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
                 {icon}
               </span>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+              <p className="text-xs font-semibold tracking-wide text-gray-400">{label}</p>
             </div>
             {isEditMode ? (
               <div className={key === 'website_url' ? 'flex items-center gap-2' : ''}>
@@ -655,7 +655,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                   alt="Scraped logo"
                   className="w-10 h-10 rounded-lg border border-gray-200 object-contain bg-white"
                 />
-                <span className="flex-1 text-sm text-gray-600 truncate">Logo found on site</span>
+                <span className="flex-1 text-sm text-gray-600 truncate">Logo Found on Site</span>
                 <button
                   type="button"
                   onClick={handleAdjustScrapedLogo}
@@ -736,7 +736,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         onCancel={handleLogoCropCancel}
         onConfirm={handleLogoCropConfirm}
         isSaving={isUploadingLogo}
-        title="Adjust your logo"
+        title="Adjust Your Logo"
         subtitle="Drag to reposition, then zoom or rotate to fit the frame"
       />
     </div>

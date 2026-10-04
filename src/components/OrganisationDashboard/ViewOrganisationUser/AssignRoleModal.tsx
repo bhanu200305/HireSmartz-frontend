@@ -101,7 +101,7 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
     <AntdCommonModal
       open={open}
       onClose={handleClose}
-      title="Assign a role"
+      title="Assign a Role"
       subtitle="Grant this person a role, optionally scoped to one office."
       modalProps={{ width: 640 }}
     >
@@ -145,7 +145,7 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
 
         <div>
           <label htmlFor="assignRoleSelect" className="text-sm text-gray-600">
-            {currentAssignments?.length ? 'Assign another role' : 'Role'}
+            {currentAssignments?.length ? 'Assign Another Role' : 'Role'}
           </label>
           <Select
             id="assignRoleSelect"

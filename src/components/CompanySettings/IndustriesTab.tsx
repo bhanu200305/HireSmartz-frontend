@@ -243,7 +243,7 @@ const IndustriesTab: React.FC = () => {
       width: 90,
       render: (_: unknown, industry: IndustryRow) => (
         <div className="flex items-center gap-1">
-          <Tooltip title="Edit industry">
+          <Tooltip title="Edit Industry">
             <button
               type="button"
               aria-label="Edit industry"
@@ -253,7 +253,7 @@ const IndustriesTab: React.FC = () => {
               <MdEdit className="text-gray-600" />
             </button>
           </Tooltip>
-          <Tooltip title="Delete industry">
+          <Tooltip title="Delete Industry">
             <button
               type="button"
               aria-label="Delete industry"

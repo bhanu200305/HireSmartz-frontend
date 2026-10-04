@@ -10,9 +10,9 @@ import type { ScrapedTenantPreview } from '../../api/organization-service/Tenant
 import type { TenantDetailsFormValues } from './TenantOnboardingSchema';
 
 const WIZARD_STEPS: Step[] = [
-  { key: 'details', label: 'Company details' },
-  { key: 'confirm', label: 'Review & confirm' },
-  { key: 'done', label: 'Invite sent' },
+  { key: 'details', label: 'Company Details' },
+  { key: 'confirm', label: 'Review & Confirm' },
+  { key: 'done', label: 'Invite Sent' },
 ];
 
 export type TenantDraft = {
@@ -59,7 +59,7 @@ const TenantOnboardingWizard = () => {
         </div>
 
         <div className="w-full max-w-2xl">
-          <h2 className="text-center text-2xl font-semibold mb-1">New company onboarding</h2>
+          <h2 className="text-center text-2xl font-semibold mb-1">New Company Onboarding</h2>
           <p className="text-center text-gray-500 mb-8">
             Create the tenant, confirm their profile, and send the Company Admin invite.
           </p>

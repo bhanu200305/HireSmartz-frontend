@@ -248,7 +248,7 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       render: (_: unknown, office: OfficeRow) => (
         <div className="flex items-center gap-1">
           {canEdit && (
-            <Tooltip title="Edit office">
+            <Tooltip title="Edit Office">
               <button
                 type="button"
                 aria-label="Edit office"
@@ -260,7 +260,7 @@ const CompanyLocationsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             </Tooltip>
           )}
           {canDelete && (
-            <Tooltip title="Delete office">
+            <Tooltip title="Delete Office">
               <button
                 type="button"
                 aria-label="Delete office"

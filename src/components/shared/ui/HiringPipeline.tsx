@@ -92,7 +92,7 @@ const HiringPipeline: React.FC<HiringPipelineProps> = ({ stages }) => {
                 >
                   {stageIcon(stage.label)}
                 </div>
-                <div className="truncate text-xs font-bold uppercase tracking-wide text-neutral-500">
+                <div className="truncate text-xs font-bold tracking-wide text-neutral-500">
                   {stage.label}
                 </div>
                 <div className="mt-1 font-display text-lg font-semibold text-neutral-900">
@@ -112,9 +112,9 @@ const HiringPipeline: React.FC<HiringPipelineProps> = ({ stages }) => {
 
       {outcomeStages.length > 0 && (
         <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+          <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-neutral-400">
             <span className="h-px w-4 bg-neutral-300" aria-hidden />
-            {lastMainStage.label} outcome
+            {lastMainStage.label} Outcome
           </div>
           <div className="grid grid-cols-2 gap-2 sm:w-[22rem]">
             {outcomeStages.map((stage) => {
@@ -132,7 +132,7 @@ const HiringPipeline: React.FC<HiringPipelineProps> = ({ stages }) => {
                     {style.icon}
                   </div>
                   <div className="min-w-0">
-                    <div className="truncate text-[11px] font-bold uppercase tracking-wide text-neutral-500">
+                    <div className="truncate text-[11px] font-bold tracking-wide text-neutral-500">
                       {stage.label}
                     </div>
                     <div className="font-display text-sm font-semibold text-neutral-900">

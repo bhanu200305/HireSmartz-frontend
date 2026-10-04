@@ -34,7 +34,7 @@ const CreateJobDescription = () => {
 
             <div className="bg-white p-6 md:p-10 rounded-2xl shadow-md w-full max-w-md flex flex-col items-center">
               <button className="border border-gray-300 px-6 py-3 rounded-full flex items-center justify-center w-full mb-4 hover:bg-gray-100 cursor-pointer">
-                UPLOAD FROM ATS
+                Upload from ATS
               </button>
               <span className="text-gray-500 text-sm mb-4">-------- OR --------</span>
               <button
@@ -52,7 +52,7 @@ const CreateJobDescription = () => {
                   }
                 }}
               >
-                CREATE JOB OPENING MANUALLY
+                Create Job Opening Manually
               </button>
             </div>
           </div>

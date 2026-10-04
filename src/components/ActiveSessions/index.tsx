@@ -22,7 +22,7 @@ const ActiveSessions = () => {
           <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-2 rounded-full flex items-center justify-center shadow-sm">
             <MdOutlineDevices size={18} />
           </span>
-          <h1 className="font-display text-xl font-bold text-gray-900">Active sessions</h1>
+          <h1 className="font-display text-xl font-bold text-gray-900">Active Sessions</h1>
         </div>
 
         <SessionsSection />

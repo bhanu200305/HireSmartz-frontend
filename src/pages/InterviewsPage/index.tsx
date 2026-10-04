@@ -227,7 +227,7 @@ export const InterviewsPage = () => {
             <div className="overflow-x-auto">
               <table className="min-w-[860px] w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  <tr className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold tracking-wide text-neutral-500">
                     {canUpdate && (
                       <th className="w-10 px-4 py-3">
                         <input

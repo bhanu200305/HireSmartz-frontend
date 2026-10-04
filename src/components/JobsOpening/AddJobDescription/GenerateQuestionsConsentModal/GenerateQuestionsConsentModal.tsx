@@ -92,7 +92,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
                 variant="subtitle2"
                 className="text-gray-800 font-semibold font-sora block mb-2"
               >
-                Number of questions
+                Number of Questions
               </Typography>
               <input
                 type="number"
@@ -206,7 +206,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
                 variant="subtitle2"
                 className="text-gray-800 font-semibold font-sora block mb-1"
               >
-                Scoring sections
+                Scoring Sections
               </Typography>
               <Typography variant="caption" className="text-gray-500 font-roboto block mb-2">
                 Pick which sections to generate questions from. Leave nothing selected to use every

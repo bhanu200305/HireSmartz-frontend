@@ -114,7 +114,7 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
             loading={isSubmitting}
             disabled={isSubmitting || isGenerating || !promptText.trim()}
           >
-            {isGenerating ? 'WRITING YOUR JD…' : 'GENERATE'}
+            {isGenerating ? 'Writing Your JD…' : 'Generate'}
           </Button>
         </div>
       )}

@@ -374,7 +374,7 @@ const LocationFormModal = ({
           onClick={onSave}
           disabled={isSaving || isSaveDisabled}
         >
-          {isSaving ? 'SAVING...' : 'SAVE'}
+          {isSaving ? 'Saving...' : 'Save'}
         </Button>
       </div>
     </div>

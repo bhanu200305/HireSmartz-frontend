@@ -113,14 +113,14 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
   });
 
   return (
-    <AntdCommonModal open={open} onClose={handleClose} title="Invite platform member">
+    <AntdCommonModal open={open} onClose={handleClose} title="Invite Platform Member">
       <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
         <Select
           value={kind}
           onChange={setKind}
           options={[
             { label: 'Internal staff (Sales, Support, Finance, Ops…)', value: 'staff' },
-            { label: 'Super Admin / co-founder', value: 'super_admin' },
+            { label: 'Super Admin / Co-Founder', value: 'super_admin' },
           ]}
         />
         <Input

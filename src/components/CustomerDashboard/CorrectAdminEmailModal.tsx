@@ -71,7 +71,7 @@ const CorrectAdminEmailModal: React.FC<CorrectAdminEmailModalProps> = ({
     <AntdCommonModal
       open
       onClose={onClose}
-      title="Correct admin email"
+      title="Correct Admin Email"
       subtitle={`${companyName} — this fixes the address the invite goes to, it doesn't rename anything else.`}
     >
       <Input

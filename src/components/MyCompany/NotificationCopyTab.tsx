@@ -61,7 +61,7 @@ const NotificationCopyTab: React.FC = () => {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <Typography variant="h6" className="mb-1 block">
-              Notification copy
+              Notification Copy
             </Typography>
             <Typography variant="caption" className="block text-gray-500">
               Every system message Careerforce Pro can send on your behalf. Edit the ones you&apos;d

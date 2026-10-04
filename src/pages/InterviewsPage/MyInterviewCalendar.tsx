@@ -283,7 +283,7 @@ const MonthGrid = ({
         {WEEKDAYS.map((day) => (
           <div
             key={day}
-            className="pb-2 text-center text-[11px] font-semibold uppercase tracking-wide text-neutral-400"
+            className="pb-2 text-center text-[11px] font-semibold tracking-wide text-neutral-400"
           >
             {day}
           </div>
@@ -343,7 +343,7 @@ const MonthGrid = ({
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-brand-500" />
-          Has interviews
+          Has Interviews
         </span>
       </div>
     </div>
@@ -503,7 +503,7 @@ export const MyInterviewCalendar = ({ onSelectBooking }: MyInterviewCalendarProp
             browse, never click through empty days to find out they're
             empty. */}
         <div className="p-5 lg:w-1/2">
-          <h3 className="mb-3 text-base font-semibold text-neutral-900">Upcoming interviews</h3>
+          <h3 className="mb-3 text-base font-semibold text-neutral-900">Upcoming Interviews</h3>
 
           {upcomingGroups.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-200 py-12 text-center">

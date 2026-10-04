@@ -517,7 +517,7 @@ const VideoQuestionsSetup = () => {
             }}
             title={activeDeleteCategoryId !== null ? 'Delete questions?' : 'Delete question?'}
             onConfirm={confirmDelete}
-            confirmText="DELETE"
+            confirmText="Delete"
             isLoading={isDeleteInProgress}
           />
         )}
@@ -527,7 +527,7 @@ const VideoQuestionsSetup = () => {
           roundName={activeRoundName}
           categoryId={editedCategoryId}
           questionText={editedQuestionText}
-          submitLabel="UPDATE QUESTION"
+          submitLabel="Update Question"
           isSubmitting={isEditSubmitting}
           isCategoryLoading={categoryLoading}
           categoryOptions={categoryOptions}
@@ -558,7 +558,7 @@ const VideoQuestionsSetup = () => {
               dispatch(stopStream());
             }}
           >
-            SAVE & NEXT
+            Save & Next
           </Button>
         </div>
         <Outlet />

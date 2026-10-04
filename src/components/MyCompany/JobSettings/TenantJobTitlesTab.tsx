@@ -262,7 +262,7 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       render: (_: unknown, jobTitle: JobTitleRow) => (
         <div className="flex items-center gap-1">
           {canEdit && (
-            <Tooltip title="Edit job title">
+            <Tooltip title="Edit Job Title">
               <button
                 type="button"
                 aria-label="Edit job title"
@@ -274,7 +274,7 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             </Tooltip>
           )}
           {canDelete && (
-            <Tooltip title="Delete job title">
+            <Tooltip title="Delete Job Title">
               <button
                 type="button"
                 aria-label="Delete job title"

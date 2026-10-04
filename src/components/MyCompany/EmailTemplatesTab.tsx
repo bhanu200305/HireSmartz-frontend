@@ -62,7 +62,7 @@ const PackPicker: React.FC = () => {
   return (
     <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
       <Typography variant="h6" className="mb-1 block">
-        Template pack
+        Template Pack
       </Typography>
       <Typography variant="caption" className="mb-4 block text-gray-500">
         A pack is a theme; choosing one restyles every notification you send at once. Sample
@@ -84,7 +84,7 @@ const PackPicker: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <Typography variant="body1">{pack.name}</Typography>
-                {pack.is_selected && <Badge status="success">In use</Badge>}
+                {pack.is_selected && <Badge status="success">In Use</Badge>}
               </div>
               <Typography variant="caption" className="text-gray-500">
                 {pack.description}

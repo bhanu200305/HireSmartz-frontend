@@ -202,7 +202,7 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
                           ))}
                           {detail.direct_grant && (
                             <Badge status="info" dot={false}>
-                              Individual grant
+                              Individual Grant
                             </Badge>
                           )}
                           {/* Offices are a tenant-only concept — CFP staff
@@ -211,7 +211,7 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
                           {!usePlatformSource && (
                             <Badge status="neutral" dot={false}>
                               {detail.all_locations
-                                ? 'All offices'
+                                ? 'All Offices'
                                 : (detail.locations ?? []).map((l) => l.label).join(', ') ||
                                   'No offices'}
                             </Badge>
@@ -226,8 +226,8 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
 
             {(person.Denied_Permissions?.length ?? 0) > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-danger-text uppercase tracking-wide mb-2">
-                  Taken away
+                <h4 className="text-xs font-semibold text-danger-text tracking-wide mb-2">
+                  Taken Away
                 </h4>
                 <div className="flex items-center gap-1.5 flex-wrap bg-danger-bg/40 border border-danger-bg rounded-xl px-4 py-3">
                   {person.Denied_Permissions?.map((code) => (

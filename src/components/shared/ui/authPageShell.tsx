@@ -30,8 +30,8 @@ export const AuthPageShell = ({ children }: { children: ReactNode }) => (
     <div className="login-card-pop relative z-10 w-full max-w-sm rounded-3xl bg-white px-8 py-9 shadow-2xl ring-1 ring-black/5">
       <div className="mb-6 flex flex-col items-center">
         <img src="/cfpLogo.svg" alt="Careerforce Pro" className="h-10 w-auto object-contain" />
-        <span className="ai-recruitment-text mt-2 text-xs tracking-widest">
-          AI POWERED RECRUITMENT SOLUTIONS
+        <span className="ai-recruitment-text mt-2 text-xs tracking-widest uppercase">
+          AI Powered Recruitment Solutions
         </span>
       </div>
       {children}

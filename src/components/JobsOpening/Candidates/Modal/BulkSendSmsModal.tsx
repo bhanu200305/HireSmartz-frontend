@@ -201,7 +201,7 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
                   disabled={isPreviewing || isSending || !isFormValid}
                   className="rounded-full border border-gray-300 px-5 py-2.5 text-center text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  {isPreviewing ? 'LOADING…' : 'PREVIEW'}
+                  {isPreviewing ? 'Loading…' : 'Preview'}
                 </Button>
               )}
               <Button
@@ -210,7 +210,7 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
                 disabled={candidates.length === 0 || isSending || !isFormValid}
                 className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
               >
-                {isSending ? 'SENDING…' : 'SEND SMS'}
+                {isSending ? 'Sending…' : 'Send SMS'}
               </Button>
             </div>
           ) : (

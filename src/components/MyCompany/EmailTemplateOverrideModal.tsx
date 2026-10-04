@@ -152,7 +152,7 @@ const EmailTemplateOverrideModal: React.FC<EmailTemplateOverrideModalProps> = ({
 
           {hasSms && (
             <div>
-              <p className="mb-1 block text-sm font-medium text-gray-700">SMS message</p>
+              <p className="mb-1 block text-sm font-medium text-gray-700">SMS Message</p>
               <PlaceholderProtectedField
                 as="textarea"
                 value={smsMessage}

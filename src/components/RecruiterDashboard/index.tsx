@@ -61,7 +61,7 @@ const RecruiterDashboard: React.FC = () => {
         {canViewJobs && (
           <section>
             <Typography variant="subtitle1" className="mb-2 font-semibold text-neutral-900">
-              Open jobs
+              Active Job Openings
             </Typography>
             <OpenJobsSection status="published" />
           </section>

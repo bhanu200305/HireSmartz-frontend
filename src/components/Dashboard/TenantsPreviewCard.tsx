@@ -174,7 +174,7 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
             <thead className="sticky top-0 m-0 bg-neutral-50 p-0">
               <tr className="text-neutral-500">
                 <th
-                  className="cursor-pointer select-none py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap hover:text-neutral-700"
+                  className="cursor-pointer select-none py-2.5 px-3 text-xs font-semibold tracking-wide whitespace-nowrap hover:text-neutral-700"
                   onClick={() => toggleSort('company_name')}
                 >
                   <span className="inline-flex items-center">
@@ -182,14 +182,14 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
                     <SortCaretIcon direction={sortDirectionFor('company_name')} />
                   </span>
                 </th>
-                <th className="py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
+                <th className="py-2.5 px-3 text-xs font-semibold tracking-wide whitespace-nowrap">
                   Status
                 </th>
-                <th className="py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
-                  Admin email
+                <th className="py-2.5 px-3 text-xs font-semibold tracking-wide whitespace-nowrap">
+                  Admin Email
                 </th>
                 <th
-                  className="cursor-pointer select-none py-2.5 px-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap hover:text-neutral-700"
+                  className="cursor-pointer select-none py-2.5 px-3 text-xs font-semibold tracking-wide whitespace-nowrap hover:text-neutral-700"
                   onClick={() => toggleSort('created_at')}
                 >
                   <span className="inline-flex items-center">
@@ -248,7 +248,7 @@ const TenantsPreviewCard: React.FC<{ fillHeight?: boolean }> = ({ fillHeight }) 
             onClick={() => navigate('/company')}
             className="group flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary-700 cursor-pointer"
           >
-            View all / filter
+            View All / Filter
             <span className="text-accent-400 transition-transform group-hover:translate-x-0.5">
               →
             </span>

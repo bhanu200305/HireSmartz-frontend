@@ -81,7 +81,7 @@ const MySupportAccess: React.FC = () => {
                   ),
                 },
                 {
-                  title: 'Time remaining',
+                  title: 'Time Remaining',
                   key: 'remaining',
                   render: (_: unknown, row: GrantRow) => (
                     <RemainingCell expiresAt={row.expires_at} />

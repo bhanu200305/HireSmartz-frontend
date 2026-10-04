@@ -15,8 +15,8 @@ const EMPTY_FORM: ShiftFormValues = { name: '', start_time: '', end_time: '' };
 
 const fields: CatalogField<ShiftFormValues>[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
-  { name: 'start_time', label: 'Start time', type: 'time', required: true },
-  { name: 'end_time', label: 'End time', type: 'time', required: true },
+  { name: 'start_time', label: 'Start Time', type: 'time', required: true },
+  { name: 'end_time', label: 'End Time', type: 'time', required: true },
 ];
 
 /** Minutes between two "HH:mm" times, wrapping past midnight. Null if

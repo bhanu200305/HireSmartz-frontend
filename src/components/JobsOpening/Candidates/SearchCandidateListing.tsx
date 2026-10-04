@@ -245,19 +245,19 @@ const SearchCandidateListing = () => {
                   className="font-bold py-2 px-2 bg-[#FAFAFA] border border-[var(--border)] heading-font"
                 >
                   <COL span={6} className="px-4 py-2 border-[var(--border)]">
-                    CANDIDATE DETAILS
+                    Candidate Details
                   </COL>
                   <Col span={4} className="px-4 py-2 border-[var(--border)]">
-                    RESUME SCORE
+                    Resume Score
                   </Col>
                   <Col span={4} className="px-4 py-2">
-                    APPLIED JOB OPENING
+                    Applied Job Opening
                   </Col>
                   <Col span={4} className="px-4 py-2 border-[var(--border)]">
-                    STATUS
+                    Status
                   </Col>
                   <Col span={4} className="px-4 py-2 border-[var(--border)]">
-                    SOURCE
+                    Source
                   </Col>
                 </Row>
               </div>
@@ -494,7 +494,7 @@ const SearchCandidateListing = () => {
               current={currentPage}
               pageSize={pageSize}
               total={totalItems}
-              itemLabel="Candidates"
+              itemLabel="candidates"
               onPageChange={handlePageChange}
             />
           )}

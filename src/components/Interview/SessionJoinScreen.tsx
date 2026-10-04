@@ -288,7 +288,7 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
     }
     if (action === 'not-found') {
       return {
-        title: 'Interview not found',
+        title: 'Interview Not Found',
         detail: 'This link does not point to a valid interview.',
       };
     }
@@ -318,13 +318,13 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
         detail: `You've already used this link the maximum number of times${details?.max_joins != null ? ` (${details.max_joins})` : ''}. Please contact support if you're having trouble joining.`,
       };
     }
-    return { title: 'Could not connect', detail: apiError.message };
+    return { title: 'Could Not Connect', detail: apiError.message };
   }, [apiError]);
 
   if (!token) {
     return (
       <CenteredMessage
-        title="Missing interview link"
+        title="Missing Interview Link"
         detail="Open the link from your interview email; it needs to include the token."
       />
     );
@@ -362,7 +362,7 @@ export const SessionJoinScreen = ({ joinAs }: { joinAs: JoinRole }) => {
   if (isError || !session) {
     return (
       <CenteredMessage
-        title={errorCopy?.title ?? 'Could not connect'}
+        title={errorCopy?.title ?? 'Could Not Connect'}
         detail={errorCopy?.detail ?? 'Please try opening the link again.'}
       />
     );

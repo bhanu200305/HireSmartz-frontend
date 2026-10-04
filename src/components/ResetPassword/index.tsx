@@ -86,7 +86,7 @@ const ResetPassword = () => {
             Reset links expire after an hour and only work once. Request a new one to continue.
           </p>
           <Link to="/forgot-password" className="mt-2 text-sm text-primary hover:underline">
-            Request a new link
+            Request a New Link
           </Link>
         </div>
       </AuthPageShell>
@@ -98,7 +98,7 @@ const ResetPassword = () => {
       <AuthPageShell>
         <div className="flex flex-col items-center gap-3 text-center">
           <FaCheckCircle className="text-4xl text-brand-600" />
-          <h2 className="text-xl font-semibold text-gray-900">Password reset</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Password Reset</h2>
           <p className="text-sm text-gray-500">
             You&apos;ve been signed out everywhere for safety. Redirecting you to log in…
           </p>
@@ -111,7 +111,7 @@ const ResetPassword = () => {
     <AuthPageShell>
       {isLoading && <Loader />}
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-semibold text-gray-900">Set a new password</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Set a New Password</h2>
         <p className="mt-1 text-sm text-gray-500">
           This will sign you out on every device. You&apos;ll need to log back in with the new
           password.

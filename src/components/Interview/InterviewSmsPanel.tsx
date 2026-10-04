@@ -46,7 +46,7 @@ const QUICK_REPLIES: QuickReplyItem[] = [
   { id: 'check_connection', label: 'Please check your connection', mode: 'text' },
   {
     id: 'send_interview_link',
-    label: 'Send interview link',
+    label: 'Send Interview Link',
     mode: 'action',
     actionType: 'SEND_INTERVIEW_LINK',
   },

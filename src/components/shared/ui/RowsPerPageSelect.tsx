@@ -31,7 +31,7 @@ export const RowsPerPageSelect: React.FC<RowsPerPageSelectProps> = ({
   className = 'rows-per-page-select',
 }) => (
   <div className="flex items-center justify-end gap-2 pb-2 pr-1 text-sm text-neutral-500">
-    <span>Rows per page</span>
+    <span>Rows per Page</span>
     <Select
       size="small"
       value={pageSize}

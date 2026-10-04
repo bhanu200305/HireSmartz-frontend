@@ -113,7 +113,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
           {
             icon: <MdOutlineWorkOutline />,
             variant: 'blue' as const,
-            label: 'Active job openings',
+            label: 'Active Job Openings',
             value: isJobStatsLoading ? undefined : jobStats?.published_count?.toLocaleString(),
             onClick: () => setShowJobOpenings(true),
           },
@@ -124,7 +124,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
           {
             icon: <MdOutlineDescription />,
             variant: 'green' as const,
-            label: 'Total applications',
+            label: 'Total Applications',
             value: isApplicationsLoading ? undefined : totalApplications?.total?.toLocaleString(),
             onClick: () => setShowApplications(true),
           },
@@ -135,7 +135,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
           {
             icon: <MdOutlineEventAvailable />,
             variant: 'orange' as const,
-            label: 'Completed interviews',
+            label: 'Completed Interviews',
             value: isInterviewsLoading ? undefined : completedInterviews?.total?.toLocaleString(),
             footer: (
               <p className="text-xs text-neutral-400">
@@ -151,7 +151,7 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
           {
             icon: <MdOutlineGroups />,
             variant: 'neutral' as const,
-            label: 'Active team members',
+            label: 'Active Team Members',
             value: isTeamLoading ? undefined : tenantDashboard?.team_size?.toLocaleString(),
             onClick: () => setShowTeamMembers(true),
           },
@@ -170,12 +170,12 @@ const HiringOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> = (
           onClose={() => setActiveDetail(null)}
           icon={<MdOutlineEventAvailable />}
           variant="orange"
-          label="Completed interviews"
+          label="Completed Interviews"
           value={completedInterviews?.total?.toLocaleString()}
           description="Interviews that have been completed across all rounds and formats."
           footer={
             <div className="flex flex-col gap-1">
-              <p className="font-semibold text-neutral-500">Breakdown by type</p>
+              <p className="font-semibold text-neutral-500">Breakdown by Type</p>
               {completedByType.map((t) => (
                 <div key={t.type} className="flex items-center justify-between">
                   <span>{t.label}</span>

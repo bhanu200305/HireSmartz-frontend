@@ -671,8 +671,8 @@ const Login = () => {
                 className="h-10 w-auto object-contain"
               />
             </button>
-            <span className="ai-recruitment-text mt-2 text-xs tracking-widest">
-              AI POWERED RECRUITMENT SOLUTIONS
+            <span className="ai-recruitment-text mt-2 text-xs tracking-widest uppercase">
+              AI Powered Recruitment Solutions
             </span>
           </div>
 
@@ -685,7 +685,7 @@ const Login = () => {
           ) : (
             <form onSubmit={handleSubmit} className="login-tab-fade flex flex-col gap-4">
               <div className="text-center">
-                <h2 className="text-xl font-semibold text-gray-900">Welcome back</h2>
+                <h2 className="text-xl font-semibold text-gray-900">Welcome Back</h2>
                 <p className="mt-1 text-sm text-gray-500">Log in to continue to Careerforce Pro</p>
               </div>
 
@@ -723,7 +723,7 @@ const Login = () => {
                   onChange={(e) => setLocalState({ rememberMe: e.target.checked })}
                   className="custom-checkbox"
                 >
-                  Remember me
+                  Remember Me
                 </Checkbox>
                 <Link to="/forgot-password" className="text-sm text-primary hover:underline">
                   Forgot password?
@@ -767,7 +767,7 @@ const Login = () => {
                   Your account is locked from too many failed attempts. Resetting your password
                   unlocks it immediately.{' '}
                   <Link to="/forgot-password" className="font-medium underline">
-                    Reset password
+                    Reset Password
                   </Link>
                 </p>
               )}

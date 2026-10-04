@@ -126,7 +126,7 @@ const CultureIntroTab: React.FC = () => {
           }
         />
         <Badge status={isPlatformDefault ? 'info' : 'neutral'} dot={false}>
-          {isPlatformDefault ? 'Platform default' : (selectedCompanyLabel ?? 'Company')}
+          {isPlatformDefault ? 'Platform Default' : (selectedCompanyLabel ?? 'Company')}
         </Badge>
       </div>
 

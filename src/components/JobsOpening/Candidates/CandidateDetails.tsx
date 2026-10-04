@@ -1293,7 +1293,7 @@ const CandidateDetails = () => {
                     void saveResumeReview(candidate?.resume_rating ?? null, resumeCommentDraft)
                   }
                 >
-                  {isSavingResumeRating ? 'SAVING…' : 'SAVE'}
+                  {isSavingResumeRating ? 'Saving…' : 'Save'}
                 </Button>
                 <button
                   type="button"
@@ -1398,7 +1398,7 @@ const CandidateDetails = () => {
                   title={
                     (selectedRound.interviewer_ids ?? []).length > 0
                       ? `Interviewers (${(selectedRound.interviewer_ids ?? []).length})`
-                      : 'Set interviewers'
+                      : 'Set Interviewers'
                   }
                 >
                   <button
@@ -1421,7 +1421,7 @@ const CandidateDetails = () => {
                     </span>
                   </Tooltip>
                 ) : (
-                  <Tooltip title="Connect calendar">
+                  <Tooltip title="Connect Calendar">
                     <button
                       type="button"
                       aria-label="Connect calendar"
@@ -1452,8 +1452,8 @@ const CandidateDetails = () => {
                         isUploadingAudio
                           ? 'Uploading…'
                           : hasRecording
-                            ? 'Recording uploaded'
-                            : 'Upload audio recording'
+                            ? 'Recording Uploaded'
+                            : 'Upload Audio Recording'
                       }
                     >
                       <span className="inline-flex">
@@ -1509,7 +1509,7 @@ const CandidateDetails = () => {
                       title={
                         hasBooking
                           ? `Invite sent. The candidate picks a time ${slotSource}.`
-                          : 'Send invite'
+                          : 'Send Invite'
                       }
                     >
                       <span className="inline-flex">
@@ -1561,7 +1561,7 @@ const CandidateDetails = () => {
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        <div className="text-xs font-semibold tracking-wide text-gray-400">
                           Recruiter Score
                         </div>
                         <div className="mt-1 text-2xl font-bold text-green-700">
@@ -1582,8 +1582,8 @@ const CandidateDetails = () => {
                         }
                       >
                         {selectedRoundScore.recruiter_score != null
-                          ? 'EDIT RECRUITER SCORE'
-                          : 'RATE THIS ROUND'}
+                          ? 'Edit Recruiter Score'
+                          : 'Rate This Round'}
                       </Button>
                     </div>
                     <div>
@@ -1660,7 +1660,7 @@ const CandidateDetails = () => {
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        <div className="text-xs font-semibold tracking-wide text-gray-400">
                           AI Score
                         </div>
                         <div className="mt-1 text-2xl font-bold text-primary">
@@ -1670,7 +1670,7 @@ const CandidateDetails = () => {
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        <div className="text-xs font-semibold tracking-wide text-gray-400">
                           Recruiter Score
                         </div>
                         <div className="mt-1 text-2xl font-bold text-green-700">
@@ -1692,8 +1692,8 @@ const CandidateDetails = () => {
                       }
                     >
                       {selectedRoundScore.recruiter_score != null
-                        ? 'EDIT RECRUITER SCORE'
-                        : 'RATE THIS ROUND'}
+                        ? 'Edit Recruiter Score'
+                        : 'Rate This Round'}
                     </Button>
                   </div>
                   {selectedRoundScore.recruiter_score_reason && (
@@ -1865,7 +1865,7 @@ const CandidateDetails = () => {
                               className={`text-sm font-semibold ${isSelected ? 'text-white' : 'text-gray-900 group-hover:text-white'}`}
                             >
                               {index === 0
-                                ? 'Current attempt'
+                                ? 'Current Attempt'
                                 : `Attempt ${bookingHistory!.length - index}`}
                             </div>
                             {index !== 0 && actionTime && (
@@ -2114,7 +2114,7 @@ const CandidateDetails = () => {
               {/* Previous / Next in the listing's order (see useCandidateNavigation). */}
               {candidateNav.isReady && candidateNav.total > 1 && (
                 <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
-                  <Tooltip title="Previous candidate">
+                  <Tooltip title="Previous Candidate">
                     <span className="inline-flex">
                       <button
                         type="button"
@@ -2130,7 +2130,7 @@ const CandidateDetails = () => {
                   <span className="whitespace-nowrap text-xs font-medium text-gray-500 tabular-nums">
                     {candidateNav.position} of {candidateNav.total}
                   </span>
-                  <Tooltip title="Next candidate">
+                  <Tooltip title="Next Candidate">
                     <span className="inline-flex">
                       <button
                         type="button"
@@ -2404,7 +2404,7 @@ const CandidateDetails = () => {
                         onClick={() => void handleResendUploadLink()}
                         disabled={!resumeUploadLinkExpired || isResendingUploadLink}
                       >
-                        {isResendingUploadLink ? 'SENDING…' : 'RESEND UPLOAD LINK'}
+                        {isResendingUploadLink ? 'Sending…' : 'Resend Upload Link'}
                       </Button>
                     </span>
                   </Tooltip>
@@ -2482,7 +2482,7 @@ const CandidateDetails = () => {
               {rounds.length > 0 && (
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm">
                   <div className="min-w-0">
-                    <div className="text-xs text-gray-400">Next step</div>
+                    <div className="text-xs text-gray-400">Next Step</div>
                     <div className="font-semibold text-gray-900">
                       {pipeline.nextRound
                         ? roundLabel(pipeline.nextRound)
@@ -2495,13 +2495,13 @@ const CandidateDetails = () => {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-400">Rounds completed</div>
+                    <div className="text-xs text-gray-400">Rounds Completed</div>
                     <div className="font-semibold text-gray-900">
                       {pipeline.completedCount} / {rounds.length}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-400">Avg. score so far</div>
+                    <div className="text-xs text-gray-400">Avg. Score So Far</div>
                     <div className="font-semibold text-gray-900">
                       {pipeline.avgScore != null ? `${pipeline.avgScore} / ${AI_SCORE_MAX}` : '-'}
                     </div>
@@ -2511,14 +2511,14 @@ const CandidateDetails = () => {
                       <span className="h-2 w-2 rounded-full bg-success" /> Completed
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-warning" /> Current stage
+                      <span className="h-2 w-2 rounded-full bg-warning" /> Current Stage
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-neutral-300" /> Upcoming
                     </span>
                     {pipeline.hasFailure && (
                       <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-danger" /> Needs attention
+                        <span className="h-2 w-2 rounded-full bg-danger" /> Needs Attention
                       </span>
                     )}
                   </div>
@@ -2604,7 +2604,7 @@ const CandidateDetails = () => {
                       {renderResumeAssessment()}
                     </>
                   ) : selectedRound ? (
-                    <WidgetErrorBoundary key={selectedRound.id} label="Round details">
+                    <WidgetErrorBoundary key={selectedRound.id} label="Round Details">
                       {roundDetailBody}
                     </WidgetErrorBoundary>
                   ) : (
@@ -2629,7 +2629,7 @@ const CandidateDetails = () => {
 
       {isSkipOpen && (
         <AntdCommonModal
-          title="Skip round"
+          title="Skip Round"
           subtitle={
             currentRound
               ? `Skip ${roundLabel(currentRound)} and move this candidate to the next round.`
@@ -2660,7 +2660,7 @@ const CandidateDetails = () => {
               disabled={!skipReason.trim() || isSkipping}
               className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
             >
-              {isSkipping ? 'SKIPPING…' : 'SKIP ROUND'}
+              {isSkipping ? 'Skipping…' : 'Skip Round'}
             </Button>
           </div>
         </AntdCommonModal>
@@ -2727,7 +2727,7 @@ const CandidateDetails = () => {
         // same interviewers" fires the reschedule immediately instead of
         // asking for a second confirmation on top of this one.
         <AntdCommonModal
-          title="Request reschedule"
+          title="Request Reschedule"
           subtitle="Keep this round's current panel, or pick different interviewers for the new attempt?"
           open
           onClose={() => {
@@ -2764,7 +2764,7 @@ const CandidateDetails = () => {
         // first (a PANEL booking with none would fall back to an untested
         // auto-compose path — see handleCreateBooking).
         <AntdCommonModal
-          title="Send interview invite"
+          title="Send Interview Invite"
           subtitle={roundLabel(selectedRound)}
           open
           onClose={() => setIsInviteOpen(false)}

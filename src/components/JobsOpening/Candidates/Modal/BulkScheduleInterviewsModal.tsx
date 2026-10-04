@@ -172,7 +172,7 @@ const BulkScheduleInterviewsModal = ({
     <AntdCommonModal
       open={open}
       onClose={onClose}
-      title="Schedule interviews"
+      title="Schedule Interviews"
       subtitle={`${candidates.length} candidate${candidates.length === 1 ? '' : 's'} selected`}
       modalProps={{ width: 560 }}
     >
@@ -211,7 +211,7 @@ const BulkScheduleInterviewsModal = ({
             className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
           >
             {isCreating
-              ? 'SCHEDULING…'
+              ? 'Scheduling…'
               : `SCHEDULE ${readyItems.length} INTERVIEW${readyItems.length === 1 ? '' : 'S'}`}
           </Button>
         </div>

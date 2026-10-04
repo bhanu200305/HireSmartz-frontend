@@ -79,7 +79,7 @@ const TenantAtsIntegrationTab: React.FC = () => {
             ),
           },
           {
-            title: 'Last synced',
+            title: 'Last Synced',
             dataIndex: 'last_synced_at',
             key: 'last_synced_at',
             render: (value: string | null) => value ?? '—',
@@ -103,7 +103,7 @@ const TenantAtsIntegrationTab: React.FC = () => {
       />
 
       <Modal
-        title="Connect an ATS provider"
+        title="Connect an ATS Provider"
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         onOk={() => form.submit()}
@@ -120,7 +120,7 @@ const TenantAtsIntegrationTab: React.FC = () => {
           </Form.Item>
           <Form.Item
             name="tenant_identifier"
-            label="Tenant identifier"
+            label="Tenant Identifier"
             rules={[{ required: true, message: 'Tenant identifier is required' }]}
           >
             <Input placeholder="Your account/subdomain on the provider" />

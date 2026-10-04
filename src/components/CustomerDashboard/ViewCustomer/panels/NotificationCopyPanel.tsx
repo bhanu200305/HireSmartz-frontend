@@ -55,7 +55,7 @@ const NotificationCopyPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => 
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <Typography variant="h6" className="mb-1 block">
-              Notification copy
+              Notification Copy
             </Typography>
             <Typography variant="caption" className="block text-gray-500">
               Every message Careerforce Pro can send on this company&apos;s behalf. Edit the ones

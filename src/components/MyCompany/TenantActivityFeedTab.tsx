@@ -147,7 +147,7 @@ const TenantActivityFeedTab: React.FC<{ tenantId: string; isMaster?: boolean }> 
           <LuSquareActivity size={18} />
         </span>
         <div>
-          <Typography variant="h5">Activity</Typography>
+          <Typography variant="h5">Activity Feed</Typography>
           <Typography variant="body2" className="text-gray-400 mt-0.5">
             Who did what in your company, and when.
           </Typography>
@@ -167,7 +167,7 @@ const TenantActivityFeedTab: React.FC<{ tenantId: string; isMaster?: boolean }> 
           current={page + 1}
           pageSize={PAGE_SIZE}
           total={data?.total ?? 0}
-          itemLabel="Events"
+          itemLabel="events"
           onPageChange={(p) => setPage(p - 1)}
         />
       )}

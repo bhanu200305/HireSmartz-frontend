@@ -270,8 +270,8 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
               setPage(0);
             }}
             options={[
-              { label: 'All job titles', value: 'all' },
-              { label: 'Assigned only', value: 'assigned' },
+              { label: 'All Job Titles', value: 'all' },
+              { label: 'Assigned Only', value: 'assigned' },
             ]}
           />
         </div>

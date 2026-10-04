@@ -34,7 +34,7 @@ const DeliveryAccessSection: React.FC = () => {
   return (
     <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
       <ChartCard
-        title="Bounced or suppressed invite addresses"
+        title="Bounced or Suppressed Invite Addresses"
         subtitle="Invite emails that could not be delivered, or should no longer be emailed"
         isLoading={isSuppressedLoading}
         available={Boolean(suppressed?.addresses.length)}
@@ -44,9 +44,9 @@ const DeliveryAccessSection: React.FC = () => {
           <table className="w-full min-w-[420px] text-left text-sm">
             <thead className="sticky top-0 bg-white">
               <tr className="text-neutral-400">
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Email</th>
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Reason</th>
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Suppressed</th>
+                <th className="pb-2 text-xs font-semibold tracking-wide">Email</th>
+                <th className="pb-2 text-xs font-semibold tracking-wide">Reason</th>
+                <th className="pb-2 text-xs font-semibold tracking-wide">Suppressed</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -63,7 +63,7 @@ const DeliveryAccessSection: React.FC = () => {
       </ChartCard>
 
       <ChartCard
-        title="Recently offboarded members"
+        title="Recently Offboarded Members"
         subtitle="Members whose access was recently removed or deactivated"
         isLoading={isOffboardedLoading}
         available={Boolean(offboarded?.members.length)}
@@ -73,9 +73,9 @@ const DeliveryAccessSection: React.FC = () => {
           <table className="w-full min-w-[420px] text-left text-sm">
             <thead className="sticky top-0 bg-white">
               <tr className="text-neutral-400">
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Member</th>
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Email</th>
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Removed</th>
+                <th className="pb-2 text-xs font-semibold tracking-wide">Member</th>
+                <th className="pb-2 text-xs font-semibold tracking-wide">Email</th>
+                <th className="pb-2 text-xs font-semibold tracking-wide">Removed</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">

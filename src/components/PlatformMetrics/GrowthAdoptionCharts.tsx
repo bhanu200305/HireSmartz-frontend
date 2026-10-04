@@ -130,8 +130,8 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
   const leadFunnelStages = useMemo(() => {
     if (!leadConversion) return [];
     return [
-      { label: 'Total leads', value: leadConversion.total_leads },
-      { label: 'Converted to tenant', value: leadConversion.total_converted },
+      { label: 'Total Leads', value: leadConversion.total_leads },
+      { label: 'Converted to Tenant', value: leadConversion.total_converted },
     ];
   }, [leadConversion]);
 
@@ -174,7 +174,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
 
   const growthTrendChart = (
     <ChartCard
-      title="Customer growth trend"
+      title="Customer Growth Trend"
       subtitle="Pace of customer acquisition over time"
       isLoading={isGrowthLoading}
       available={growthTrendData.length > 0}
@@ -224,7 +224,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       {growthTrendChart}
 
       <ChartCard
-        title="Organization status"
+        title="Organization Status"
         subtitle="Active vs suspended vs pending tenant organizations"
         isLoading={isGrowthLoading}
         available={orgStatusData.length > 0}
@@ -233,7 +233,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       </ChartCard>
 
       <ChartCard
-        title="Lead → confirmed tenant"
+        title="Lead → Confirmed Tenant"
         subtitle={
           leadConversion
             ? `Conversion through the sales pipeline · ${(leadConversion.conversion_rate * 100).toFixed(1)}% converted`
@@ -246,7 +246,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       </ChartCard>
 
       <ChartCard
-        title="User adoption trend"
+        title="User Adoption Trend"
         subtitle="Unique users actively accessing CFP over time"
         isLoading={isLoginsTrendLoading}
         available={Boolean(loginsTrend?.available) && adoptionTrendData.length > 0}
@@ -290,7 +290,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       </ChartCard>
 
       <ChartCard
-        title="Authentication health"
+        title="Authentication Health"
         subtitle="Successful vs failed login attempts by month"
         isLoading={isLoginsTrendLoading}
         available={Boolean(loginsTrend?.available) && authHealthData.length > 0}
@@ -340,7 +340,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       </ChartCard>
 
       <ChartCard
-        title="MFA success"
+        title="MFA Success"
         subtitle="Successful vs unsuccessful MFA attempts"
         isLoading={isMfaLoading}
         available={Boolean(mfa?.available) && mfa!.total > 0}
@@ -350,7 +350,7 @@ const GrowthAdoptionCharts: React.FC<GrowthAdoptionChartsProps> = ({ variant = '
       </ChartCard>
 
       <ChartCard
-        title="Platform usage by device"
+        title="Platform Usage by Device"
         subtitle="Active sessions broken down by device type"
         isLoading={isSessionsLoading}
         available={Boolean(sessions?.available) && deviceUsageData.length > 0}

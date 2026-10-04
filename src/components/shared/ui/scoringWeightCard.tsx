@@ -128,9 +128,7 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
 
       {/* Distribution bar */}
       <div>
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-          Weight Distribution
-        </p>
+        <p className="text-xs font-medium text-gray-500 tracking-wide mb-2">Weight Distribution</p>
         <DistributionBar weights={localWeights} categoryMeta={categoryMeta} />
       </div>
 

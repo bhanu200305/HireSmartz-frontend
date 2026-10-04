@@ -195,7 +195,7 @@ const LocationsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
             width: 100,
             render: (_: unknown, office: OfficeRow) => (
               <div className="flex items-center gap-1">
-                <Tooltip title="Edit office">
+                <Tooltip title="Edit Office">
                   <button
                     type="button"
                     aria-label="Edit office"
@@ -205,7 +205,7 @@ const LocationsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
                     <MdEdit className="text-gray-600" />
                   </button>
                 </Tooltip>
-                <Tooltip title="Delete office">
+                <Tooltip title="Delete Office">
                   <button
                     type="button"
                     aria-label="Delete office"

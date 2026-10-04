@@ -85,7 +85,7 @@ type HiringOverviewChartsProps = {
 
 /**
  * 2.1 "Hiring overview" charts — Hiring funnel / Applications over time /
- * Jobs by status / Interviews by status. `job_opening_id` is omitted
+ * Job openings by status / Interviews by status. `job_opening_id` is omitted
  * everywhere here (org-wide) — see `HiringOverviewStats` for the same
  * pattern on the stat-card row above this.
  */
@@ -149,9 +149,9 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
         const fullName = row.department_id
           ? (nameById.get(row.department_id) ?? 'Unknown')
           : 'Unassigned';
-        return { name: truncateAxisLabel(fullName), fullName, Jobs: row.count };
+        return { name: truncateAxisLabel(fullName), fullName, 'Job Openings': row.count };
       })
-      .sort((a, b) => b.Jobs - a.Jobs);
+      .sort((a, b) => b['Job Openings'] - a['Job Openings']);
   }, [jobsByDepartment, departments]);
 
   const jobsByLocationData = useMemo(() => {
@@ -160,9 +160,9 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
     return jobsByLocation.locations
       .map((row) => {
         const fullName = nameById.get(row.job_location_id) ?? 'Unknown';
-        return { name: truncateAxisLabel(fullName), fullName, Jobs: row.count };
+        return { name: truncateAxisLabel(fullName), fullName, 'Job Openings': row.count };
       })
-      .sort((a, b) => b.Jobs - a.Jobs);
+      .sort((a, b) => b['Job Openings'] - a['Job Openings']);
   }, [jobsByLocation, offices]);
 
   const interviewStatusData = useMemo(
@@ -186,7 +186,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
 
   const appsOverTimeChart = (
     <ChartCard
-      title="Applications over time"
+      title="Applications Over Time"
       subtitle="Daily application volume, trailing 30 days"
       isLoading={isAppsLoading}
       available={appsOverTimeData.length > 0}
@@ -237,23 +237,23 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       {appsOverTimeChart}
 
       <ChartCard
-        title="Jobs by status"
+        title="Job Openings by Status"
         subtitle="Current mix of open, closed and draft job openings"
         isLoading={isJobStatsLoading}
         available={Boolean(jobStats) && jobStats!.total_count > 0}
       >
-        <DonutStat data={jobsByStatusData} centerLabel="Jobs" />
+        <DonutStat data={jobsByStatusData} centerLabel="Job Openings" />
       </ChartCard>
 
       <ChartCard
-        title="Jobs by department"
+        title="Job Openings by Department"
         subtitle="Open, closed and draft job openings, grouped by department"
         isLoading={isJobsByDepartmentLoading || isDepartmentsLoading}
         available={jobsByDepartmentData.length > 0}
       >
         <ScrollableBarChart
           data={jobsByDepartmentData}
-          dataKey="Jobs"
+          dataKey="Job Openings"
           color={COLOR_PRIMARY}
           height={chartHeight}
           tooltipStyle={cardTooltipStyle}
@@ -261,14 +261,14 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       </ChartCard>
 
       <ChartCard
-        title="Jobs by location"
+        title="Job Openings by Location"
         subtitle="Open, closed and draft job openings, grouped by office"
         isLoading={isJobsByLocationLoading || isOfficesLoading}
         available={jobsByLocationData.length > 0}
       >
         <ScrollableBarChart
           data={jobsByLocationData}
-          dataKey="Jobs"
+          dataKey="Job Openings"
           color={COLOR_ACCENT}
           height={chartHeight}
           tooltipStyle={cardTooltipStyle}
@@ -276,7 +276,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       </ChartCard>
 
       <ChartCard
-        title="Hiring funnel"
+        title="Hiring Funnel"
         subtitle="Candidate progression and drop-off by stage"
         isLoading={isFunnelLoading}
         available={funnelStages.length > 0}
@@ -286,7 +286,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       </ChartCard>
 
       <ChartCard
-        title="Interviews by status"
+        title="Interviews by Status"
         subtitle="Round counts across every open job, not yet split by Audio Round / AI Interview / Panel Interview"
         isLoading={isInterviewsLoading}
         available={interviewStatusData.length > 0}
@@ -320,7 +320,7 @@ const HiringOverviewCharts: React.FC<HiringOverviewChartsProps> = ({ variant = '
       </ChartCard>
 
       <ChartCard
-        title="AI score distribution"
+        title="AI Score Distribution"
         subtitle="Candidates grouped by resume-score band"
         isLoading={isResumeScoreLoading}
         available={resumeScoreData.some((band) => band.Candidates > 0)}

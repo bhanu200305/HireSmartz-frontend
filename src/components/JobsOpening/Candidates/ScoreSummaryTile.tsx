@@ -67,7 +67,7 @@ const ScoreSummaryTile = ({ label, icon, score, reason, pendingText }: ScoreSumm
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
           {icon}
         </span>
-        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</span>
+        <span className="text-xs font-semibold tracking-wide text-gray-500">{label}</span>
       </div>
 
       {isScored && tone ? (

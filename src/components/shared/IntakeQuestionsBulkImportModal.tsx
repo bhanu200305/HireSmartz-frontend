@@ -172,7 +172,7 @@ const IntakeQuestionsBulkImportModal: React.FC<Props> = ({
       open={open}
       onCancel={handleClose}
       footer={null}
-      title="Bulk import intake questions"
+      title="Bulk Import Intake Questions"
       destroyOnClose
     >
       <p className="text-sm text-gray-500 mb-4">

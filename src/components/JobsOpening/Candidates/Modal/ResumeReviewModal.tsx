@@ -95,7 +95,7 @@ const ResumeReviewModal = ({
           disabled={isLoading}
           className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
         >
-          {isLoading ? 'SAVING…' : 'SAVE SCORING'}
+          {isLoading ? 'Saving…' : 'Save Scoring'}
         </Button>
       </div>
     </AntdCommonModal>

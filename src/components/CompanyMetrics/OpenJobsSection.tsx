@@ -68,13 +68,15 @@ const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
             <MdOutlineWorkOutline />
           </div>
           <div>
-            <h3 className="font-display text-sm font-semibold text-neutral-900">Open jobs</h3>
-            <p className="text-xs text-neutral-400">Click a job to see its candidate pipeline</p>
+            <h3 className="font-display text-sm font-semibold text-neutral-900">Job Openings</h3>
+            <p className="text-xs text-neutral-400">
+              Click a job opening to see its candidate pipeline
+            </p>
           </div>
         </div>
         <Search
           appname="open jobs section"
-          placeholder="Search jobs..."
+          placeholder="Search job openings..."
           value={search}
           allowClear
           onSearch={setSearch}
@@ -88,16 +90,16 @@ const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
           <table className="min-w-[480px] w-full text-left text-sm">
             <thead>
               <tr className="text-neutral-400">
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Job title</th>
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Status</th>
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Applicants</th>
-                <th className="pb-2 text-xs font-semibold uppercase tracking-wide">Interviews</th>
+                <th className="pb-2 text-xs font-semibold tracking-wide">Job Title</th>
+                <th className="pb-2 text-xs font-semibold tracking-wide">Status</th>
+                <th className="pb-2 text-xs font-semibold tracking-wide">Applicants</th>
+                <th className="pb-2 text-xs font-semibold tracking-wide">Interviews</th>
                 <th
-                  className="cursor-pointer select-none pb-2 text-xs font-semibold uppercase tracking-wide hover:text-neutral-600"
+                  className="cursor-pointer select-none pb-2 text-xs font-semibold tracking-wide hover:text-neutral-600"
                   onClick={toggleDaysOpenSort}
                 >
                   <span className="inline-flex items-center">
-                    Days open
+                    Days Open
                     <SortCaretIcon direction={daysOpenSortDir} />
                   </span>
                 </th>
@@ -154,7 +156,7 @@ const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
 
       {selectedJob && <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
       {isViewAllOpen && (
-        <JobOpeningsListModal title="Open jobs" onClose={() => setIsViewAllOpen(false)} />
+        <JobOpeningsListModal title="Job Openings" onClose={() => setIsViewAllOpen(false)} />
       )}
     </div>
   );

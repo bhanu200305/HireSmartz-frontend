@@ -189,7 +189,7 @@ const HeroMockup = () => {
             <LuCheck className="text-xs" />
           </span>
           <p className="text-xs font-medium text-neutral-700">
-            Top candidate shortlisted automatically
+            Top Candidate Shortlisted Automatically
           </p>
         </div>
       </div>
@@ -208,7 +208,7 @@ const Hero = () => (
     />
     <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-14 px-5 sm:px-8 lg:grid-cols-2">
       <Reveal>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-50 px-3.5 py-1.5 text-xs font-bold tracking-widest text-accent-600 uppercase">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-50 px-3.5 py-1.5 text-xs font-bold tracking-widest uppercase text-accent-600">
           <LuSparkles /> Next-Gen Recruiting
         </span>
         <h1 className="font-display mt-5 text-4xl leading-[1.1] font-extrabold text-neutral-900 sm:text-5xl lg:text-[3.4rem]">
@@ -311,8 +311,8 @@ const TALENT_EVALUATION = [
 const FeaturesSection = () => (
   <section id="solutions" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
     <Reveal className="mx-auto max-w-2xl text-center">
-      <span className="text-xs font-bold tracking-widest text-accent-600 uppercase">
-        What we do
+      <span className="text-xs font-bold tracking-widest uppercase text-accent-600">
+        What We Do
       </span>
       <h2 className="font-display mt-3 text-3xl font-extrabold text-neutral-900 sm:text-4xl">
         Eliminate Hiring Headaches
@@ -324,9 +324,7 @@ const FeaturesSection = () => (
     </Reveal>
 
     <Reveal delayMs={100} className="mt-14">
-      <p className="mb-5 text-sm font-bold tracking-wide text-neutral-400 uppercase">
-        Talent Search
-      </p>
+      <p className="mb-5 text-sm font-bold tracking-wide text-neutral-400">Talent Search</p>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {TALENT_SEARCH.map((f) => (
           <FeatureCard key={f.title} {...f} />
@@ -338,9 +336,7 @@ const FeaturesSection = () => (
       delayMs={150}
       className="mt-10 overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 to-primary-800 p-8 sm:p-10"
     >
-      <p className="mb-5 text-sm font-bold tracking-wide text-accent-300 uppercase">
-        Talent Engagement
-      </p>
+      <p className="mb-5 text-sm font-bold tracking-wide text-accent-300">Talent Engagement</p>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         {TALENT_ENGAGEMENT.map((f) => (
           <FeatureCard key={f.title} {...f} tone="dark" />
@@ -349,9 +345,7 @@ const FeaturesSection = () => (
     </Reveal>
 
     <Reveal delayMs={200} className="mt-10">
-      <p className="mb-5 text-sm font-bold tracking-wide text-neutral-400 uppercase">
-        Talent Evaluation
-      </p>
+      <p className="mb-5 text-sm font-bold tracking-wide text-neutral-400">Talent Evaluation</p>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {TALENT_EVALUATION.map((f) => (
           <FeatureCard key={f.title} {...f} />

@@ -217,7 +217,7 @@ const AddOrganisationUser = () => {
           <MdOutlineArrowBack className="mr-2" /> Back
         </button>
         <Typography variant="h4" className="mb-6 block">
-          Add user
+          Add User
         </Typography>
 
         {deactivatedConflict && (
@@ -240,13 +240,13 @@ const AddOrganisationUser = () => {
 
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <Typography variant="h6" className="block mb-4">
-            Profile details
+            Profile Details
           </Typography>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
             <div>
               <label htmlFor="add-user-first-name" className="text-sm text-gray-600">
-                First name <span className="required-asterisk">*</span>
+                First Name <span className="required-asterisk">*</span>
               </label>
               <Input
                 id="add-user-first-name"
@@ -257,7 +257,7 @@ const AddOrganisationUser = () => {
             </div>
             <div>
               <label htmlFor="add-user-last-name" className="text-sm text-gray-600">
-                Last name
+                Last Name
               </label>
               <Input
                 id="add-user-last-name"
@@ -290,7 +290,7 @@ const AddOrganisationUser = () => {
               />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Phone number</p>
+              <p className="text-sm text-gray-600">Phone Number</p>
               <PhoneNumberField
                 className="mt-1"
                 countryCode={form.country_code}

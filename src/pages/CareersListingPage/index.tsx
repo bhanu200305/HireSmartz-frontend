@@ -268,7 +268,7 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
               {label}
             </p>
             {isRecentlyPosted(job.job_open_date) && (
-              <span className="shrink-0 rounded-full bg-accent-500 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+              <span className="shrink-0 rounded-full bg-accent-500 px-2 py-0.5 text-xs font-bold tracking-wide text-white">
                 New
               </span>
             )}
@@ -632,7 +632,7 @@ export const CareersListingPage = () => {
               >
                 <Option value="any">Any Salary</Option>
                 {salaryBuckets.some((bucket) => bucket.isExempted === true) && (
-                  <OptGroup label="Annual salary">
+                  <OptGroup label="Annual Salary">
                     {salaryBuckets
                       .filter((bucket) => bucket.isExempted === true)
                       .map((bucket) => (
@@ -643,7 +643,7 @@ export const CareersListingPage = () => {
                   </OptGroup>
                 )}
                 {salaryBuckets.some((bucket) => bucket.isExempted === false) && (
-                  <OptGroup label="Hourly salary">
+                  <OptGroup label="Hourly Salary">
                     {salaryBuckets
                       .filter((bucket) => bucket.isExempted === false)
                       .map((bucket) => (
@@ -724,7 +724,7 @@ export const CareersListingPage = () => {
         {isError ? (
           <Result
             status="error"
-            title="Couldn't load open roles"
+            title="Couldn't Load Open Roles"
             subTitle="Please try again in a moment."
           />
         ) : isLoading ? (

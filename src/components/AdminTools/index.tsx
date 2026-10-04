@@ -35,7 +35,7 @@ const AdminTools = () => {
             <MdAdminPanelSettings size={18} />
           </span>
           <div>
-            <h1 className="font-display text-xl font-bold text-gray-900">Admin tools</h1>
+            <h1 className="font-display text-xl font-bold text-gray-900">Admin Tools</h1>
             <p className="text-sm text-gray-500">
               Account recovery and platform-level authentication controls.
             </p>

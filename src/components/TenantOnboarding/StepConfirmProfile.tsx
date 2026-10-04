@@ -89,7 +89,7 @@ const StepConfirmProfile = ({ draft, onBack, onConfirmed }: StepConfirmProfilePr
 
       {colors.length > 0 && (
         <div className="mb-4">
-          <span className="text-sm text-gray-600">Brand colors detected</span>
+          <span className="text-sm text-gray-600">Brand Colors Detected</span>
           <div className="mt-2 flex flex-wrap gap-2">
             {colors.map((color) => (
               <span

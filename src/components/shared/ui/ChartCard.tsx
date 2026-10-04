@@ -62,7 +62,7 @@ const ChartCard: React.FC<ChartCardProps> = ({
         )}
       </div>
       {tag && (
-        <span className="shrink-0 rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+        <span className="shrink-0 rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] font-semibold tracking-wide text-neutral-500">
           {tag}
         </span>
       )}

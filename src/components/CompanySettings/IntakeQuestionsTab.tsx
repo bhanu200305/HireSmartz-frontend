@@ -263,7 +263,7 @@ const IntakeQuestionsTab: React.FC = () => {
           }
         />
         <Badge status={isPlatformDefault ? 'info' : 'neutral'} dot={false}>
-          {isPlatformDefault ? 'Platform default' : (selectedCompanyLabel ?? 'Company')}
+          {isPlatformDefault ? 'Platform Default' : (selectedCompanyLabel ?? 'Company')}
         </Badge>
         {!isLoading && (
           <Badge status={atCap ? 'warning' : 'neutral'} dot={false}>
@@ -356,7 +356,7 @@ const IntakeQuestionsTab: React.FC = () => {
                     >
                       {isSaving ? 'Saving…' : 'Save'}
                     </Button>
-                    <Tooltip title="Remove question">
+                    <Tooltip title="Remove Question">
                       <button
                         type="button"
                         aria-label="Remove question"

@@ -103,7 +103,7 @@ const PushTemplatesTab: React.FC = () => {
   return (
     <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
       <Typography variant="h6" className="mb-1 block">
-        Bulk-revert companies to the platform default
+        Bulk-Revert Companies to the Platform Default
       </Typography>
       <Typography variant="caption" className="mb-4 block text-gray-500">
         Selected companies lose any customized email wording and fall back to the platform default,
@@ -133,7 +133,7 @@ const PushTemplatesTab: React.FC = () => {
           disabled={selectedIds.size === 0 || isPushing}
           className="rounded-3xl bg-primary px-10 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isPushing ? 'Working…' : 'REVERT TO DEFAULT'}
+          {isPushing ? 'Working…' : 'Revert to Default'}
         </Button>
       </div>
 
@@ -203,7 +203,7 @@ const PushTemplatesTab: React.FC = () => {
               onClick={() => handleFinalPush(true)}
               disabled={isPushing}
             >
-              {isPushing ? 'Reverting…' : 'YES, REVERT'}
+              {isPushing ? 'Reverting…' : 'Yes, Revert'}
             </Button>
           </div>
         </div>

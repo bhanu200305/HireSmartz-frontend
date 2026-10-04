@@ -270,7 +270,7 @@ const JobTitlesTab: React.FC = () => {
       width: 90,
       render: (_: unknown, jobTitle: JobTitleRow) => (
         <div className="flex items-center gap-1">
-          <Tooltip title="Edit job title">
+          <Tooltip title="Edit Job Title">
             <button
               type="button"
               aria-label="Edit job title"
@@ -280,7 +280,7 @@ const JobTitlesTab: React.FC = () => {
               <MdEdit className="text-gray-600" />
             </button>
           </Tooltip>
-          <Tooltip title="Delete job title">
+          <Tooltip title="Delete Job Title">
             <button
               type="button"
               aria-label="Delete job title"

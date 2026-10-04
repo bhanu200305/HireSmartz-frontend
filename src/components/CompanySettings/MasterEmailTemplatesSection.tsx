@@ -118,7 +118,7 @@ const MasterEmailTemplatesSection: React.FC = () => {
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <Typography variant="h6" className="mb-1 block">
-            Platform default email templates
+            Platform Default Email Templates
           </Typography>
           <Typography variant="caption" className="block text-gray-500">
             What every tenant receives unless they&apos;ve set their own override.

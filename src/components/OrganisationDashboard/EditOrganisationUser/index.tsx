@@ -211,12 +211,12 @@ const EditOrgUser = () => {
           <MdOutlineArrowBack className="mr-2" /> Back
         </button>
         <Typography variant="h4" className="mb-6 block">
-          Edit user
+          Edit User
         </Typography>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <Typography variant="h6" className="block mb-4">
-            Profile details
+            Profile Details
           </Typography>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
@@ -236,7 +236,7 @@ const EditOrgUser = () => {
             </div>
             <div>
               <label htmlFor="edit-user-first-name" className="text-sm text-gray-600">
-                First name <span className="required-asterisk">*</span>
+                First Name <span className="required-asterisk">*</span>
               </label>
               <Input
                 id="edit-user-first-name"
@@ -247,7 +247,7 @@ const EditOrgUser = () => {
             </div>
             <div>
               <label htmlFor="edit-user-last-name" className="text-sm text-gray-600">
-                Last name
+                Last Name
               </label>
               <Input
                 id="edit-user-last-name"
@@ -268,7 +268,7 @@ const EditOrgUser = () => {
               />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Phone number</p>
+              <p className="text-sm text-gray-600">Phone Number</p>
               <PhoneNumberField
                 className="mt-1"
                 countryCode={form.country_code}
@@ -300,7 +300,7 @@ const EditOrgUser = () => {
 
         <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <Typography variant="h6" className="block">
-            Assign a role
+            Assign a Role
           </Typography>
           <p className="text-xs text-gray-500 mt-1 mb-4">
             This grants a real RBAC role via a separate action from the fields above.

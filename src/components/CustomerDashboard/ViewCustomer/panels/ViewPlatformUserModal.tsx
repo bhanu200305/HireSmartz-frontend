@@ -521,7 +521,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                   ? 'Deactivated'
                   : displayUser.has_set_password
                     ? 'Active'
-                    : 'Pending setup'}
+                    : 'Pending Setup'}
               </Badge>
             </div>
           </div>
@@ -535,7 +535,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                 className="text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5"
                 onClick={() => setShowAssign(true)}
               >
-                + Grant a role
+                + Grant a Role
               </Button>
             )}
           </div>
@@ -615,7 +615,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
 
         <div className="pt-4 border-t border-gray-100">
           <Typography variant="subtitle1" className="mb-1 block">
-            Attached locations
+            Attached Locations
           </Typography>
           <p className="text-xs text-gray-500 mb-3">
             Offices this person is attached to. This is what powers the location switcher on their
@@ -678,7 +678,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                 onClick={handleAttachLocation}
                 disabled={!pendingAttachLocationId || isAttachingLocation}
               >
-                {isAttachingLocation ? 'Attaching…' : '+ Attach location'}
+                {isAttachingLocation ? 'Attaching…' : '+ Attach Location'}
               </Button>
             </div>
           )}
@@ -686,7 +686,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
 
         <div className="pt-4 border-t border-gray-100">
           <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-            <Typography variant="subtitle1">Effective permissions</Typography>
+            <Typography variant="subtitle1">Effective Permissions</Typography>
             {assignmentLocationIds.length > 0 && (
               <Select
                 size="small"

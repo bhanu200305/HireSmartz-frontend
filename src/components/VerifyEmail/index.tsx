@@ -63,7 +63,7 @@ const VerifyEmail = () => {
       <AuthPageShell>
         <div className="flex flex-col items-center gap-3 text-center">
           <FaCheckCircle className="text-4xl text-brand-600" />
-          <h2 className="text-xl font-semibold text-gray-900">Email verified</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Email Verified</h2>
           <p className="text-sm text-gray-500">Redirecting you to log in…</p>
         </div>
       </AuthPageShell>
@@ -75,7 +75,7 @@ const VerifyEmail = () => {
       <AuthPageShell>
         <div className="flex flex-col items-center gap-3 text-center">
           <FaCheckCircle className="text-4xl text-brand-600" />
-          <h2 className="text-xl font-semibold text-gray-900">Already verified</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Already Verified</h2>
           <p className="text-sm text-gray-500">
             This address was confirmed already, go ahead and log in.
           </p>

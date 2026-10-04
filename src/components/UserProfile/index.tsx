@@ -568,7 +568,7 @@ const UserProfile = () => {
                         >
                           <MdOutlineFileUpload className="text-2xl text-[var(--primary)] mx-auto" />
                           <p className="text-xs leading-tight px-3 mt-1 text-[var(--gray-600)]">
-                            Upload photo
+                            Upload Photo
                           </p>
                         </Upload.Dragger>
                       )}
@@ -578,7 +578,7 @@ const UserProfile = () => {
                       {displayName || 'Your Profile'}
                     </h2>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[var(--border)] text-xs font-semibold text-[var(--primary)] uppercase tracking-wide">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[var(--border)] text-xs font-semibold text-[var(--primary)] tracking-wide">
                         <MdOutlineVerified className="text-sm" />
                         {roleLabel}
                       </span>

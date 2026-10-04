@@ -210,7 +210,7 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Tooltip title="Preview file">
+                <Tooltip title="Preview File">
                   <button
                     type="button"
                     onClick={() => setPreviewSource({ kind: 'file', file: selectedFile })}
@@ -220,7 +220,7 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
                     <MdOutlineRemoveRedEye className="text-xl" />
                   </button>
                 </Tooltip>
-                <Tooltip title="Remove file">
+                <Tooltip title="Remove File">
                   <button
                     type="button"
                     onClick={() => setSelectedFile(null)}
@@ -317,7 +317,7 @@ const StaffBulkImport = ({ open, onClose }: StaffBulkImportProps) => {
         open={!!previewSource}
         onClose={() => setPreviewSource(null)}
         title={
-          previewSource?.kind === 'file' ? 'Preview: file to upload' : 'Preview: roster template'
+          previewSource?.kind === 'file' ? 'Preview: File to Upload' : 'Preview: Roster Template'
         }
         source={previewSource}
       />

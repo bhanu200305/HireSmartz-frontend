@@ -277,7 +277,7 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
                   </Button>
                 )}
                 {canDelete && (
-                  <Tooltip title="Remove question">
+                  <Tooltip title="Remove Question">
                     <button
                       type="button"
                       aria-label="Remove question"

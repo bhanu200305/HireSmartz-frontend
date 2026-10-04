@@ -38,7 +38,7 @@ const RecruiterStatCards: React.FC = () => {
           {
             icon: <MdOutlineDescription />,
             variant: 'green' as const,
-            label: 'Total applications',
+            label: 'Total Applications',
             value: isApplicationsLoading ? undefined : totalApplications?.total?.toLocaleString(),
             onClick: () => setShowApplications(true),
           },
@@ -62,7 +62,7 @@ const RecruiterStatCards: React.FC = () => {
       <StatCardRow cards={cards} columns={2} />
       {showApplications && <CandidatesListModal onClose={() => setShowApplications(false)} />}
       {showJobs && (
-        <JobOpeningsListModal title="Active job openings" onClose={() => setShowJobs(false)} />
+        <JobOpeningsListModal title="Active Job Openings" onClose={() => setShowJobs(false)} />
       )}
     </>
   );

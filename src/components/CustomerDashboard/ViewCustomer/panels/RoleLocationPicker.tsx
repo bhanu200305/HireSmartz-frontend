@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Select } from 'antd';
 import { FaPlus } from 'react-icons/fa';
 import CreateRoleModal from '../../../RolesManagement/CreateRoleModal';
+import { systemRoleLabel } from '../../../RolesManagement/data/roleTemplates';
 import { Authorities } from '../../../../constants/authorities.constant';
 import useEffectivePermissions from '../../../../hooks/useEffectivePermissions';
 import type { CreateRolePayload, Role } from '../../../../types';
@@ -136,7 +137,7 @@ const RoleLocationPicker: React.FC<RoleLocationPickerProps> = ({
           showSearch
           optionFilterProp="label"
           options={roles.map((role) => ({
-            label: role.roleName,
+            label: systemRoleLabel(role.roleName),
             value: role.id,
           }))}
         />
@@ -200,7 +201,7 @@ const RoleLocationPicker: React.FC<RoleLocationPickerProps> = ({
             {selectedRole.baseRoleName && (
               <span className="font-normal text-gray-400">
                 {' '}
-                (derived from {selectedRole.baseRoleName})
+                (derived from {systemRoleLabel(selectedRole.baseRoleName)})
               </span>
             )}
           </p>

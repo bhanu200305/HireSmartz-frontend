@@ -8,6 +8,7 @@ import {
   type MessageHistoryItemView,
 } from '../../../api/candidate-service/Candidates/messaging';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
+import { capitalizeFirstLetter } from '../../../shared/utils/validation/input.helpers';
 
 // SMS Communication tab: everything already sent to this candidate
 // (candidate-service `GET /candidates/{id}/messages/history` — recruiter
@@ -110,8 +111,10 @@ const CandidateMessageHistory = ({ candidateId, canSms, onSendSms }: Props) => {
               return (
                 <li key={item.id} className="flex flex-col gap-1 py-2.5">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    <span className="rounded bg-neutral-100 px-1.5 py-px font-semibold uppercase text-neutral-600">
-                      {item.channel}
+                    <span className="rounded bg-neutral-100 px-1.5 py-px font-semibold text-neutral-600">
+                      {item.channel.toLowerCase() === 'sms'
+                        ? 'SMS'
+                        : capitalizeFirstLetter(item.channel.toLowerCase())}
                     </span>
                     <span>
                       {dayjs(when).isValid() ? dayjs(when).format('MMMM D, YYYY · h:mm A') : ''}

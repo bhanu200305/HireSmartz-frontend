@@ -138,7 +138,7 @@ const ForgotPassword = () => {
       {(isLoading || isSubmitting.current) && <Loader />}
 
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-semibold text-gray-900">Forgot password</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Forgot Password</h2>
         <p className="mt-1 text-sm text-gray-500">
           Enter your email to request a temporary password.
         </p>

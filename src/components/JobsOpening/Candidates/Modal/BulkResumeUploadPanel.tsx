@@ -257,7 +257,7 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
         disabled={files.length === 0 || isUploading}
         className="mt-4 w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
       >
-        {isUploading ? 'UPLOADING…' : `UPLOAD (${files.length})`}
+        {isUploading ? 'Uploading…' : `UPLOAD (${files.length})`}
       </Button>
     </div>
   );

@@ -349,7 +349,7 @@ const ViewJobDescription = () => {
                     disabled={watch('description').trim() !== ''}
                     className="text-primary font-semibold text-sm underline hover:opacity-80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed m-0 p-0"
                   >
-                    AI-REGENERATE
+                    AI-Regenerate
                   </Button>
                 </span>
               </Tooltip>

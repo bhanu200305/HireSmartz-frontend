@@ -179,7 +179,7 @@ const PlatformAudit: React.FC = () => {
               loading={isSearchingTenants}
               notFoundContent={isSearchingTenants ? 'Searching…' : 'No companies found'}
               options={[
-                { label: 'Platform / Super Admin only', value: PLATFORM_ONLY_VALUE },
+                { label: 'Platform / Super Admin Only', value: PLATFORM_ONLY_VALUE },
                 ...(tenantResults?.tenants ?? []).map((tenant) => ({
                   label: tenant.company_name,
                   value: tenant.tenant_id,
@@ -276,7 +276,7 @@ const PlatformAudit: React.FC = () => {
             current={page + 1}
             pageSize={pageSize}
             total={data?.total ?? 0}
-            itemLabel="Events"
+            itemLabel="events"
             onPageChange={(p) => setPage(p - 1)}
           />
         )}

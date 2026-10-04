@@ -26,7 +26,9 @@ const RevenueGenerated = () => {
           alt="Coming Soon"
           className="w-32 h-32 object-contain sm:w-48 sm:h-48"
         />
-        <p className="text-xs font-semibold tracking-widest text-neutral-400">COMING SOON</p>
+        <p className="text-xs font-semibold tracking-widest uppercase text-neutral-400">
+          Coming Soon
+        </p>
       </div>
     </div>
   );

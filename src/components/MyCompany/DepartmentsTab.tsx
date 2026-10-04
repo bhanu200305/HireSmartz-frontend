@@ -313,7 +313,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       render: (_: unknown, department: DepartmentRow) => (
         <div className="flex items-center gap-1">
           {canEdit && (
-            <Tooltip title="Edit department">
+            <Tooltip title="Edit Department">
               <button
                 type="button"
                 aria-label="Edit department"
@@ -325,7 +325,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             </Tooltip>
           )}
           {canDelete && (
-            <Tooltip title="Delete department">
+            <Tooltip title="Delete Department">
               <button
                 type="button"
                 aria-label="Delete department"
@@ -436,7 +436,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           {modalState?.mode === 'edit' && (
             <div>
               <label htmlFor="additionalLocations" className="text-sm text-gray-600">
-                Additional locations <span className="text-gray-400">(optional)</span>
+                Additional Locations <span className="text-gray-400">(optional)</span>
               </label>
               <AntSelect
                 id="additionalLocations"

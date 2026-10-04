@@ -16,11 +16,11 @@ import PushTemplatesTab from './PushTemplatesTab';
 type SectionKey = 'email' | 'theme' | 'sms' | 'overrides' | 'bulkRevert';
 
 const SECTIONS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
-  { key: 'email', label: 'Email defaults', icon: <MdEmail size={16} /> },
-  { key: 'theme', label: 'Theme defaults', icon: <MdPalette size={16} /> },
-  { key: 'sms', label: 'SMS defaults', icon: <MdSms size={16} /> },
-  { key: 'overrides', label: 'Tenant overrides', icon: <MdSwapHoriz size={16} /> },
-  { key: 'bulkRevert', label: 'Bulk revert', icon: <MdRestartAlt size={16} /> },
+  { key: 'email', label: 'Email Defaults', icon: <MdEmail size={16} /> },
+  { key: 'theme', label: 'Theme Defaults', icon: <MdPalette size={16} /> },
+  { key: 'sms', label: 'SMS Defaults', icon: <MdSms size={16} /> },
+  { key: 'overrides', label: 'Tenant Overrides', icon: <MdSwapHoriz size={16} /> },
+  { key: 'bulkRevert', label: 'Bulk Revert', icon: <MdRestartAlt size={16} /> },
 ];
 
 /**
@@ -56,7 +56,7 @@ const NotificationTemplatesTab: React.FC = () => {
           <MdOutlineNotifications size={18} />
         </span>
         <div>
-          <p className="text-sm font-semibold text-gray-900">System notification catalog</p>
+          <p className="text-sm font-semibold text-gray-900">System Notification Catalog</p>
           <p className="text-xs text-gray-500">
             Platform defaults and per-tenant overrides for account, security and product emails
             &amp; SMS.

@@ -63,7 +63,7 @@ const ClosureReasonsTab: React.FC = () => {
       columns={[
         { title: 'Reason', dataIndex: 'reason', key: 'reason' },
         {
-          title: 'Requires detail',
+          title: 'Requires Detail',
           key: 'requires_input',
           render: (_, item) => (
             <Badge status={item.requires_input ? 'warning' : 'neutral'}>

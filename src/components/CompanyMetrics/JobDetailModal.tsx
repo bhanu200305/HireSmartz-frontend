@@ -73,7 +73,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
 
   const statusCards: StatCardData[] = [
     {
-      label: 'Total applicants',
+      label: 'Total Applicants',
       value: isTotalLoading ? undefined : totalApplications?.total?.toLocaleString(),
       onClick: () => {
         onClose();
@@ -81,11 +81,11 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
       },
     },
     {
-      label: 'Interview bookings',
+      label: 'Interview Bookings',
       value: isSummaryLoading ? undefined : interviewSummary?.total_bookings?.toLocaleString(),
     },
     {
-      label: 'Completion rate',
+      label: 'Completion Rate',
       value:
         isSummaryLoading || interviewSummary?.completion_rate == null
           ? null
@@ -94,7 +94,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
     {
       // `average` is `null` when nothing has been scored yet, not `0` —
       // API_CONTRACT.md's own distinction, rendered as "-" not "0.0".
-      label: 'Avg AI score',
+      label: 'Avg AI Score',
       value: isAvgScoreLoading
         ? undefined
         : averageResumeScore?.average != null
@@ -125,7 +125,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           <ChartCard
-            title="Candidate status breakdown"
+            title="Candidate Status Breakdown"
             subtitle="Applied, Audio Round, AI Interview, Panel Interview, Selected, Rejected"
             isLoading={isFunnelLoading}
             available={funnelStages.length > 0}
@@ -134,7 +134,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
           </ChartCard>
 
           <ChartCard
-            title="Audio / AI / Panel interviews"
+            title="Audio / AI / Panel Interviews"
             subtitle="Interviews conducted for this job, by round type"
             available={false}
             unavailableLabel={COMING_SOON_ROUND_TYPE}
@@ -143,7 +143,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
           </ChartCard>
 
           <ChartCard
-            title="AI score distribution"
+            title="AI Score Distribution"
             subtitle="Candidates grouped by resume-score band"
             span={2}
             isLoading={isScoreDistributionLoading}

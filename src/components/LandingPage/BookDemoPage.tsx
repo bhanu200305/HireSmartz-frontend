@@ -248,11 +248,11 @@ const DemoIllustration = () => (
     />
 
     <div className="relative">
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 text-xs font-bold tracking-widest text-white uppercase backdrop-blur-sm">
-        Talk to our team
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 text-xs font-bold tracking-widest uppercase text-white backdrop-blur-sm">
+        Talk to Our Team
       </span>
       <h2 className="font-display mt-5 text-3xl leading-tight font-extrabold text-white sm:text-4xl">
-        See Careerforce Pro in action
+        See Careerforce Pro in Action
       </h2>
       <p className="mt-4 max-w-sm text-sm text-white/75">
         Get a personalized walkthrough of how AI-powered hiring can help your team screen faster and
@@ -266,7 +266,7 @@ const DemoIllustration = () => (
           <LuHeadset />
         </span>
         <div>
-          <p className="text-sm font-bold text-white">Loved by recruiting teams</p>
+          <p className="text-sm font-bold text-white">Loved by Recruiting Teams</p>
           <div className="mt-1 flex items-center gap-1 text-accent-300">
             {Array.from({ length: 5 }).map((_, i) => (
               <LuStar key={i} className="fill-current text-xs" />
@@ -283,7 +283,7 @@ const DemoIllustration = () => (
           <LuCalendarCheck />
         </span>
         <div>
-          <p className="text-sm font-bold text-white">A 20-minute walkthrough</p>
+          <p className="text-sm font-bold text-white">A 20-Minute Walkthrough</p>
           <p className="text-xs text-white/70">Pick a time that works for you</p>
         </div>
       </div>
@@ -495,7 +495,7 @@ const BookDemoPage = () => {
               <h1 className="font-display text-3xl font-extrabold text-neutral-900 sm:text-4xl">
                 Contact Us
               </h1>
-              <p className="mt-2 text-neutral-500">Reach out to us for inquiries</p>
+              <p className="mt-2 text-neutral-500">Reach Out to Us for Inquiries</p>
 
               <form onSubmit={handleSubmit} noValidate className="mt-8 flex flex-col gap-5">
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">

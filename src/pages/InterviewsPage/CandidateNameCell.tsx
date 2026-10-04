@@ -16,7 +16,7 @@ export const CandidateNameCell = ({ candidateId }: { candidateId: string }) => {
   }
 
   if (isError || !data) {
-    return <span className="text-sm text-neutral-400">Unknown candidate</span>;
+    return <span className="text-sm text-neutral-400">Unknown Candidate</span>;
   }
 
   const name = [data.first_name, data.last_name].filter(Boolean).join(' ').trim();
@@ -24,7 +24,7 @@ export const CandidateNameCell = ({ candidateId }: { candidateId: string }) => {
   return (
     <div className="min-w-0">
       <div className="truncate font-medium text-neutral-900">
-        {name || <span className="text-neutral-400">Unnamed candidate</span>}
+        {name || <span className="text-neutral-400">Unnamed Candidate</span>}
       </div>
       {data.email_id && <div className="truncate text-xs text-neutral-500">{data.email_id}</div>}
     </div>

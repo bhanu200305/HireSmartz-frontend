@@ -73,7 +73,7 @@ const QuestionRow: React.FC<{
           />
           {canManage && (
             <div className="flex items-center justify-end gap-3">
-              <Tooltip title="Save changes">
+              <Tooltip title="Save Changes">
                 <button
                   className="text-primary hover:text-brand-600 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   disabled={!dirty || saving || !text.trim()}
@@ -90,7 +90,7 @@ const QuestionRow: React.FC<{
                   <MdCheck size={18} />
                 </button>
               </Tooltip>
-              <Tooltip title="Remove question">
+              <Tooltip title="Remove Question">
                 <button
                   className="text-red-500 hover:text-red-700 cursor-pointer"
                   onClick={() => void onDelete()}

@@ -22,37 +22,37 @@ type FlagKey = Exclude<keyof PlatformEntitlements, 'locked_flags'>;
 const FLAGS: { key: FlagKey; label: string; description: string; icon: React.ReactNode }[] = [
   {
     key: 'is_culture_intro_enabled',
-    label: 'Culture intro',
+    label: 'Culture Intro',
     description: 'Show this company\'s "About our culture" section to candidates.',
     icon: <MdOutlineFavorite size={18} />,
   },
   {
     key: 'is_config_score_enabled',
-    label: 'AI candidate scoring',
+    label: 'AI Candidate Scoring',
     description: 'Automatically score resumes and interviews with AI.',
     icon: <MdAutoAwesome size={18} />,
   },
   {
     key: 'is_candidate_intro_enabled',
-    label: 'Candidate intro video',
+    label: 'Candidate Intro Video',
     description: 'Let candidates record a short intro video with their application.',
     icon: <MdOutlineVideocam size={18} />,
   },
   {
     key: 'is_candidate_inquiries_enabled',
-    label: 'Candidate questions',
+    label: 'Candidate Questions',
     description: 'Let candidates ask questions during the application process.',
     icon: <MdOutlineQuestionAnswer size={18} />,
   },
   {
     key: 'is_location_manage_allowed',
-    label: 'Manage own locations',
+    label: 'Manage Own Locations',
     description: 'Let this company add and edit its own office locations.',
     icon: <MdOutlineLocationOn size={18} />,
   },
   {
     key: 'is_hierarchy_enabled',
-    label: 'Org-chart / hierarchy view',
+    label: 'Org-Chart / Hierarchy View',
     description: 'Show the organization chart / reporting hierarchy view.',
     icon: <MdOutlineAccountTree size={18} />,
   },
@@ -146,7 +146,7 @@ const EntitlementsPanel: React.FC<EntitlementsPanelProps> = ({
                     {description}
                   </Typography>
                   {isLocked && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 shrink-0">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold tracking-wide px-1.5 py-0.5 shrink-0">
                       <MdLockOutline size={10} /> Locked
                     </span>
                   )}

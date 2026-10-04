@@ -119,7 +119,7 @@ const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className="font-semibold text-sm text-gray-900">Permissions by location</div>
+        <div className="font-semibold text-sm text-gray-900">Permissions by Location</div>
         <p className="text-xs text-gray-500 mt-0.5 mb-3">
           &quot;Default&quot; is the baseline every location uses unless you give it its own set
           below. Pick a location to customize it.

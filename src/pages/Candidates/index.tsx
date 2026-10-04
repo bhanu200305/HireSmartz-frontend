@@ -19,7 +19,7 @@ import WidgetErrorBoundary from '../../components/shared/ui/WidgetErrorBoundary'
 export const ViewCandidateDetailsPage = () => {
   return (
     <WidgetErrorBoundary
-      label="Candidate details"
+      label="Candidate Details"
       fallback={
         <div className="flex min-h-[60vh] w-full flex-col items-center justify-center gap-3 p-8 text-center">
           <p className="text-base font-medium text-neutral-700">

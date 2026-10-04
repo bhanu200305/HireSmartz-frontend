@@ -188,7 +188,7 @@ export const CandidateFeedbackPage = () => {
   if (done) {
     return (
       <Shell>
-        <h1 className="text-center text-lg font-semibold text-gray-900">Thank you</h1>
+        <h1 className="text-center text-lg font-semibold text-gray-900">Thank You</h1>
         <p className="mt-2 text-center text-sm text-gray-500">
           Your feedback about your {roundLabel} has been shared with the hiring team.
         </p>
@@ -392,7 +392,7 @@ export const RecordingPlaybackPage = () => {
             rel="noopener noreferrer"
             className="mt-5 block w-full rounded-3xl bg-button py-2.5 text-center text-sm font-medium text-white"
           >
-            Open recording
+            Open Recording
           </a>
         ) : (
           <p className="mt-4 break-all text-xs text-gray-400">Reference: {data.external_ref}</p>

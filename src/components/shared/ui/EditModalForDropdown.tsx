@@ -64,7 +64,7 @@ const EditModal: FC<EditModalProps> = ({
             disabled={!editValue.trim() || isLoading}
             className="flex-1 bg-primary text-white py-2 rounded-3xl cursor-pointer hover:bg-primary-dark transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'SAVING...' : 'SAVE'}
+            {isLoading ? 'Saving...' : 'Save'}
           </button>
         </div>
 

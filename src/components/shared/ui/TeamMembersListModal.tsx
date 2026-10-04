@@ -121,7 +121,7 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
     <AntdCommonModal
       open
       onClose={onClose}
-      title="Active team members"
+      title="Active Team Members"
       modalProps={{ width: 780, maskClosable: true }}
       fillHeight
     >
@@ -154,8 +154,8 @@ const TeamMembersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                   setPage(0);
                 }}
                 options={[
-                  { label: 'Active only', value: 'active' },
-                  { label: 'Include deactivated', value: 'all' },
+                  { label: 'Active Only', value: 'active' },
+                  { label: 'Include Deactivated', value: 'all' },
                 ]}
               />
             </div>

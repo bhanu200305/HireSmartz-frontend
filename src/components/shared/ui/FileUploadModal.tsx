@@ -34,7 +34,7 @@ const FileUploadModal = ({
   maxFiles = 30,
   accept = '.xls,.xlsx,.csv',
   title = 'Upload Files',
-  uploadText = 'UPLOAD',
+  uploadText = 'Upload',
 }: FileUploadModalProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -213,7 +213,7 @@ const FileUploadModal = ({
                     <RiDeleteBin6Line
                       className="cursor-pointer text-red-500 ml-2 flex-shrink-0"
                       onClick={() => removeFile(index)}
-                      title="Remove file"
+                      title="Remove File"
                     />
                   </div>
                 ))}
@@ -232,7 +232,7 @@ const FileUploadModal = ({
             {isUploading ? (
               <div className="flex items-center justify-center">
                 <Spin size="small" className="mr-2" />
-                UPLOADING...
+                Uploading...
               </div>
             ) : (
               `${uploadText} (${files.length})`

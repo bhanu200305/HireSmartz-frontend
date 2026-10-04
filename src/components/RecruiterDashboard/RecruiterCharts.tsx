@@ -141,7 +141,7 @@ const RecruiterCharts: React.FC = () => {
   return (
     <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
       <ChartCard
-        title="Applications over time"
+        title="Applications Over Time"
         subtitle="Daily application volume, trailing 30 days"
         isLoading={isAppsLoading}
         available={appsOverTimeData.length > 0}
@@ -180,12 +180,12 @@ const RecruiterCharts: React.FC = () => {
       </ChartCard>
 
       <ChartCard
-        title="Jobs by status"
+        title="Job Openings by Status"
         subtitle="Current mix of open, closed and draft job openings"
         isLoading={isJobStatsLoading}
         available={Boolean(jobStats) && jobStats!.total_count > 0}
       >
-        <DonutStat data={jobsByStatusData} centerLabel="Jobs" />
+        <DonutStat data={jobsByStatusData} centerLabel="Job Openings" />
       </ChartCard>
 
       <ChartCard
@@ -250,7 +250,7 @@ const RecruiterCharts: React.FC = () => {
       </ChartCard>
 
       <ChartCard
-        title="AI score distribution"
+        title="AI Score Distribution"
         subtitle="Candidates grouped by resume-score band (global, for triage)"
         isLoading={isResumeScoreLoading}
         available={resumeScoreData.some((band) => band.Candidates > 0)}

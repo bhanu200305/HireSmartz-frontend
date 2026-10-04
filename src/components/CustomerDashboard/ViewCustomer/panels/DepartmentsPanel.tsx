@@ -165,7 +165,7 @@ const DepartmentsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
             key: 'actions',
             width: 80,
             render: (_: unknown, department: DepartmentRow) => (
-              <Tooltip title="Delete department">
+              <Tooltip title="Delete Department">
                 <button
                   type="button"
                   aria-label="Delete department"

@@ -935,7 +935,7 @@ const JobsOpening = () => {
         },
       {
         key: 'notes',
-        label: 'Add notes',
+        label: 'Add Notes',
         onClick: () =>
           setJobNotesFor({
             id: record.jobOpeningId,
@@ -1078,7 +1078,7 @@ const JobsOpening = () => {
               </Tooltip>
               <Search
                 appname="jobs opening"
-                placeholder="Search job"
+                placeholder="Search job openings"
                 onSearch={handleSearch}
                 allowClear
                 value={filters.text || ''}
@@ -1172,7 +1172,7 @@ const JobsOpening = () => {
                         : 'text-neutral-500 hover:text-neutral-700'
                     )}
                   >
-                    All Jobs
+                    All Job Openings
                   </button>
                   <button
                     type="button"
@@ -1184,7 +1184,7 @@ const JobsOpening = () => {
                         : 'text-neutral-500 hover:text-neutral-700'
                     )}
                   >
-                    My Jobs
+                    My Job Openings
                   </button>
                 </div>
               )}
@@ -1212,9 +1212,9 @@ const JobsOpening = () => {
                     currentSortKey={currentSortKey}
                     onSort={handleSort}
                     span={5}
-                    className="px-4 text-xs font-bold uppercase text-neutral-900"
+                    className="px-4 text-xs font-bold text-neutral-900"
                   >
-                    JOB TITLE
+                    Job Title
                   </COL>
                   <COL
                     sortable
@@ -1222,9 +1222,9 @@ const JobsOpening = () => {
                     currentSortKey={currentSortKey}
                     onSort={handleSort}
                     span={4}
-                    className="px-4 text-xs font-bold uppercase text-neutral-900"
+                    className="px-4 text-xs font-bold text-neutral-900"
                   >
-                    LOCATION
+                    Location
                   </COL>
                   <COL
                     sortable
@@ -1232,30 +1232,24 @@ const JobsOpening = () => {
                     currentSortKey={currentSortKey}
                     onSort={handleSort}
                     span={3}
-                    className="px-4 text-xs font-bold uppercase text-neutral-900"
+                    className="px-4 text-xs font-bold text-neutral-900"
                   >
-                    CANDIDATES
+                    Candidates
                   </COL>
-                  <Col
-                    span={3}
-                    className="px-4 text-xs font-bold uppercase text-neutral-900 break-words"
-                  >
-                    INTERVIEWED
+                  <Col span={3} className="px-4 text-xs font-bold text-neutral-900 break-words">
+                    Interviewed
                   </Col>
-                  <Col
-                    span={3}
-                    className="px-4 text-xs font-bold uppercase text-neutral-900 break-words"
-                  >
-                    SELECTED
+                  <Col span={3} className="px-4 text-xs font-bold text-neutral-900 break-words">
+                    Selected
                   </Col>
-                  <Col span={2} className="px-4 text-xs font-bold uppercase text-neutral-900">
-                    NOT SELECTED
+                  <Col span={2} className="px-4 text-xs font-bold text-neutral-900">
+                    Not Selected
                   </Col>
-                  <Col span={2} className="px-4 text-xs font-bold uppercase text-neutral-900">
-                    STATUS
+                  <Col span={2} className="px-4 text-xs font-bold text-neutral-900">
+                    Status
                   </Col>
-                  <Col span={2} className="px-4 text-xs font-bold uppercase text-neutral-900">
-                    ACTIONS
+                  <Col span={2} className="px-4 text-xs font-bold text-neutral-900">
+                    Actions
                   </Col>
                 </Row>
                 <div className="divide-y divide-neutral-100" onKeyDown={handleJobListKeyDown}>
@@ -1430,7 +1424,7 @@ const JobsOpening = () => {
             current={filters.page + 1}
             pageSize={filters.size || 10}
             total={data?.totalElements ?? 0}
-            itemLabel="Job Openings"
+            itemLabel="job openings"
             onPageChange={(page) => handlePageChange(page - 1)}
           />
         </div>

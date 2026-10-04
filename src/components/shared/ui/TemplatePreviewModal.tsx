@@ -65,7 +65,7 @@ const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
           </div>
         ) : preview?.body_html ? (
           <iframe
-            title="Notification preview"
+            title="Notification Preview"
             sandbox=""
             srcDoc={disableLinksInEmailPreview(preview.body_html)}
             className="w-full flex-1 min-h-0 rounded-lg border border-gray-200"

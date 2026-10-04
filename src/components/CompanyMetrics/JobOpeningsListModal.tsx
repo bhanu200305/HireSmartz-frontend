@@ -46,7 +46,7 @@ const JobOpeningsListModal: React.FC<{
   onClose: () => void;
   title?: string;
   assignedToMe?: boolean;
-}> = ({ onClose, title = 'Active job openings', assignedToMe }) => {
+}> = ({ onClose, title = 'Active Job Openings', assignedToMe }) => {
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('active_job_openings_modal', 10, 100);
@@ -87,7 +87,7 @@ const JobOpeningsListModal: React.FC<{
   // scrollbar to reach them instead of actually triggering one.
   const columns: TableProps<JobRow>['columns'] = [
     {
-      title: 'Job title',
+      title: 'Job Title',
       dataIndex: 'title',
       key: 'title',
       minWidth: 320,
@@ -120,7 +120,7 @@ const JobOpeningsListModal: React.FC<{
       minWidth: 130,
     },
     {
-      title: 'Days open',
+      title: 'Days Open',
       key: 'days_open',
       minWidth: 140,
       sorter: true,
@@ -143,7 +143,7 @@ const JobOpeningsListModal: React.FC<{
           <div className="flex items-center gap-2.5">
             <Search
               appname="job openings modal"
-              placeholder="Search jobs..."
+              placeholder="Search job openings..."
               value={search}
               allowClear
               onSearch={(value) => {

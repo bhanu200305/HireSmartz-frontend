@@ -210,7 +210,7 @@ export const CareersJobDetailPage = () => {
         {isError ? (
           <Result
             status="404"
-            title="Job not found"
+            title="Job Not Found"
             subTitle="This job posting may have been closed or the link is incorrect."
             extra={
               <Button type="primary" onClick={() => navigate(`/careers/${organizationId}`)}>
@@ -256,7 +256,7 @@ export const CareersJobDetailPage = () => {
                   <h2 className="text-base font-bold text-gray-900 mb-3">Skills</h2>
                   {requiredSkills.length > 0 && (
                     <div className="mb-3 last:mb-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                      <p className="text-xs font-semibold tracking-wide text-gray-400 mb-2">
                         Required
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -273,7 +273,7 @@ export const CareersJobDetailPage = () => {
                   )}
                   {optionalSkills.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                      <p className="text-xs font-semibold tracking-wide text-gray-400 mb-2">
                         Optional
                       </p>
                       <div className="flex flex-wrap gap-2">

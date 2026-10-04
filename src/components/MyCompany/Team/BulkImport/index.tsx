@@ -320,7 +320,7 @@ const BulkImport = ({ open, tenantId, onClose, isMaster = false }: BulkImportPro
       <SpreadsheetPreviewModal
         open={!!previewSource}
         onClose={() => setPreviewSource(null)}
-        title="Preview: roster template"
+        title="Preview: Roster Template"
         source={previewSource}
       />
     </AntdCommonModal>

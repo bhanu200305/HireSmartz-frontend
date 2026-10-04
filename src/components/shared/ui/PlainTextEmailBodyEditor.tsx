@@ -99,7 +99,7 @@ const PlainTextEmailBodyEditor: React.FC<PlainTextEmailBodyEditorProps> = ({
       {parsed.ctaLabel !== null && (
         <div>
           <Typography variant="body2" className="mb-1 block font-medium text-gray-700">
-            Button text
+            Button Text
           </Typography>
           <PlaceholderProtectedField
             value={parsed.ctaLabel}

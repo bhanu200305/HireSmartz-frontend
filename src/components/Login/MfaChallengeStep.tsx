@@ -181,7 +181,7 @@ const MfaChallengeStep = ({
       <div className="login-tab-fade flex flex-col items-center gap-3 text-center">
         {isBusy && <Loader />}
         <MdOutlineMailLock className="text-4xl text-red-500" />
-        <h2 className="text-xl font-semibold text-gray-900">Too many attempts</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Too Many Attempts</h2>
         <p className="text-sm text-gray-500">
           This code has been blocked for too many wrong attempts. Request a new one, or recover your
           account if you no longer have access to your two-factor method.
@@ -199,7 +199,7 @@ const MfaChallengeStep = ({
           to="/account-recovery"
           className="w-full rounded-3xl border border-[var(--border)] py-2.5 text-center font-medium text-gray-700"
         >
-          Recover your account
+          Recover Your Account
         </Link>
         <button
           type="button"
@@ -273,7 +273,7 @@ const MfaChallengeStep = ({
               </button>
             ))}
             <Link to="/account-recovery" className="text-gray-500 hover:underline">
-              Recover your account
+              Recover Your Account
             </Link>
           </>
         )}

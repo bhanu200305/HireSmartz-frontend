@@ -50,7 +50,7 @@ const T = {
   en: {
     minutes: 'minutes',
     selectDate: 'Select a date to see available times',
-    confirmTitle: 'Confirm your booking',
+    confirmTitle: 'Confirm Your Booking',
     confirmButton: 'Confirm Booking',
     back: 'Back',
     noSlots: 'No available slots for this day.',
@@ -789,7 +789,7 @@ const AiCallSchedulePage = () => {
               </div>
             ) : selectedSlot ? (
               <div className="flex-1 flex flex-col p-6">
-                <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-1">
+                <p className="text-xs text-gray-400 tracking-wide font-semibold mb-1">
                   {t.confirmTitle}
                 </p>
                 <h3 className="text-base font-semibold text-gray-800 mb-6">

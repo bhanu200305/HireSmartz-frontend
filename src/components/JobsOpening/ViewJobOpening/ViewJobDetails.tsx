@@ -373,7 +373,7 @@ const ViewJobDetails = () => {
       if (option) return { key: id, label: option.name, deactivated: Boolean(option.isDeleted) };
       const user = allUsers?.items?.find((u) => idsMatch(u.user_id, id));
       if (user) return { key: id, label: user.full_name || user.email, muted: true };
-      return { key: id, label: 'Unavailable user', muted: true };
+      return { key: id, label: 'Unavailable User', muted: true };
     });
   const hiringManagerChips = toPeopleChips(selectedHiringManagerIds, hiringManagerOptions);
   const recruiterChips = toPeopleChips(selectedRecruiterIds, recruiterOptions);

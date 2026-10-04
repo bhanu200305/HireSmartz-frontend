@@ -62,7 +62,7 @@ const NotificationSettings = () => {
 
         <div className="flex items-center gap-2">
           <MdOutlineNotifications className="text-xl text-brand-700" />
-          <h1 className="text-2xl font-semibold text-gray-900">Notification settings</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Notification Settings</h1>
         </div>
 
         {isLoading && <Loader />}

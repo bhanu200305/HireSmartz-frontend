@@ -121,7 +121,7 @@ const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean })
         <ParticipantTile trackRef={localCameraTrackRef} className="h-full w-full rounded-2xl" />
       ) : (
         <div className="flex h-full w-full items-center justify-center rounded-2xl bg-neutral-900 text-sm text-neutral-500">
-          Camera off
+          Camera Off
         </div>
       )}
       <PinButton

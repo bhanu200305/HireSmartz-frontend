@@ -85,7 +85,7 @@ const RecruiterRoundScoreModal = ({
     <AntdCommonModal
       open={open}
       onClose={onClose}
-      title="Score this round"
+      title="Score This Round"
       subtitle={roundName}
       modalProps={{ width: 480 }}
     >
@@ -115,7 +115,7 @@ const RecruiterRoundScoreModal = ({
           disabled={isLoading || isDeleting || !isFormValid}
           className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
         >
-          {isLoading ? 'SAVING…' : 'SAVE SCORE'}
+          {isLoading ? 'Saving…' : 'Save Score'}
         </Button>
         {currentScore !== null && (
           <button

@@ -25,6 +25,12 @@ const RESUME_METRIC_LABELS = {
 
 type ResumeMetricLabel = (typeof RESUME_METRIC_LABELS)[keyof typeof RESUME_METRIC_LABELS];
 
+// The modal body itself is locked (overflow hidden, see <Modal styles> below)
+// so this is the single scroll region — bounded by the global modal
+// max-height in index.css rather than its own max-h, which used to exceed
+// that cap and stack a second, competing scrollbar on .ant-modal-body.
+const SCROLL_AREA_CLASS = 'scoring-criteria-scroll flex-1 min-h-0 mt-6 pr-4 pb-4';
+
 type ScoringBreakdownItem = {
   label: ResumeMetricLabel;
   max: number;
@@ -99,7 +105,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
   };
 
   const renderDefaultContent = () => (
-    <div className="-mx-6 max-h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
+    <div className={`${SCROLL_AREA_CLASS} space-y-6`}>
       <h2 className="text-2xl font-semibold text-center mb-8">{title || 'Scoring Criteria'}</h2>
 
       <section className="mb-6">
@@ -179,7 +185,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
   );
 
   const renderAIFinalFeedbackContent = () => (
-    <div className="-mx-6 max-h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
+    <div className={`${SCROLL_AREA_CLASS} space-y-6`}>
       <h2 className="text-2xl font-semibold text-center mb-8">
         Scoring Criteria for Overall AI Score
       </h2>
@@ -231,7 +237,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
   );
 
   const renderInterviewerFinalFeedbackContent = () => (
-    <div className="-mx-6 max-h-[90vh] overflow-y-auto px-6 py-4 space-y-6">
+    <div className={`${SCROLL_AREA_CLASS} space-y-6`}>
       <h2 className="text-2xl font-semibold text-center mb-8">
         Scoring Criteria for Overall Human Score
       </h2>
@@ -271,7 +277,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
     </div>
   );
   const renderInterviewScoringContent = () => (
-    <div className="-mx-6 max-h-[90vh] overflow-y-auto px-6 py-4">
+    <div className={SCROLL_AREA_CLASS}>
       <h2 className="text-2xl font-semibold text-center">Interview Scoring</h2>
       <p className="text-center text-gray-600">
         {subtitle || 'AI Audio Screening / Video Interview'}
@@ -407,7 +413,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
   // check_intake_call_consistency.py (0-5 scale, name-mismatch cap of 1,
   // never folded into any other score).
   const renderIntakeCallScoringContent = () => (
-    <div className="-mx-6 max-h-[90vh] overflow-y-auto px-6 py-4">
+    <div className={SCROLL_AREA_CLASS}>
       <h2 className="text-2xl font-semibold text-center">Intake Call Scoring</h2>
       <p className="text-center text-gray-600">{subtitle || 'Intake Call'}</p>
 
@@ -536,6 +542,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
         maskClosable
         keyboard
         className="custom-modal"
+        styles={{ body: { overflow: 'hidden' } }}
       >
         {renderContent()}
       </Modal>

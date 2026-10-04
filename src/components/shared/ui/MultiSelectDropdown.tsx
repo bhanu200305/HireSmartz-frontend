@@ -240,7 +240,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
       {/* Selected chips */}
       {showSelectedChips && selectedItems.length > 0 && (
         <div className="mt-3 bg-gray-50/50 rounded-xl p-4 border border-gray-100">
-          <p className="text-xs text-gray-400 mb-3 uppercase tracking-wider font-semibold">
+          <p className="text-xs text-gray-400 mb-3 tracking-wider uppercase font-semibold">
             Selected
           </p>
           <div className="flex flex-wrap gap-2">

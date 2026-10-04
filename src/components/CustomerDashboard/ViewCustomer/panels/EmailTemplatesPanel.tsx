@@ -91,7 +91,7 @@ const TenantThemeSection: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <Typography variant="h6" className="mb-1 block">
-            Brand colors
+            Brand Colors
           </Typography>
           <Typography variant="caption" className="block text-gray-500">
             Applies to this company&apos;s candidate-facing mail only, never their invite email,

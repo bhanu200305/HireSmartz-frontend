@@ -46,7 +46,7 @@ const ResumeInlinePreview = ({
           rel="noopener noreferrer"
           className="text-xs font-semibold text-primary-600 hover:underline"
         >
-          Open in new tab ›
+          Open in New Tab ›
         </a>
       )}
     </div>
@@ -83,7 +83,7 @@ const ResumeInlinePreview = ({
       role="button"
       tabIndex={0}
       aria-label={`Open ${candidateName} resume`}
-      title="Open resume"
+      title="Open Resume"
       onClick={onExpand}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {

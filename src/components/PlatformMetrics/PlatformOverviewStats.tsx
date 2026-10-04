@@ -59,21 +59,21 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
     {
       icon: <MdOutlineApartment />,
       variant: 'blue',
-      label: 'Total customers',
+      label: 'Total Customers',
       value: isLoading ? undefined : growth?.total_customers?.toLocaleString(),
       onClick: () => setShowCustomers(true),
     },
     {
       icon: <MdOutlinePersonAddAlt />,
       variant: 'green',
-      label: 'New customers this month',
+      label: 'New Customers This Month',
       value: isLoading ? undefined : growth?.new_customers_this_month?.toLocaleString(),
       onClick: () => setShowNewCustomers(true),
     },
     {
       icon: <MdOutlineGroups />,
       variant: 'orange',
-      label: 'Monthly active users',
+      label: 'Monthly Active Users',
       value: isLoading
         ? undefined
         : logins?.available
@@ -84,7 +84,7 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
     {
       icon: <MdOutlineWifiTethering />,
       variant: 'neutral',
-      label: 'Active sessions',
+      label: 'Active Sessions',
       value: isLoading
         ? undefined
         : sessions?.available
@@ -100,7 +100,7 @@ const PlatformOverviewStats: React.FC<{ columns?: 2 | 3 | 4; tall?: boolean }> =
       {showCustomers && <PlatformTenantsListModal onClose={() => setShowCustomers(false)} />}
       {showNewCustomers && (
         <PlatformTenantsListModal
-          title="New customers this month"
+          title="New Customers This Month"
           createdAfter={startOfCurrentUtcMonth()}
           onClose={() => setShowNewCustomers(false)}
         />

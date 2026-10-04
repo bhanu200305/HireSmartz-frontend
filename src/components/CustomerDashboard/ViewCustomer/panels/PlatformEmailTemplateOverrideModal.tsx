@@ -149,7 +149,7 @@ const PlatformEmailTemplateOverrideModal: React.FC<PlatformEmailTemplateOverride
 
           {hasSms && (
             <div>
-              <p className="mb-1 block text-sm font-medium text-gray-700">SMS message</p>
+              <p className="mb-1 block text-sm font-medium text-gray-700">SMS Message</p>
               <TextArea
                 value={smsMessage}
                 onChange={(e) => setSmsMessage(e.target.value)}

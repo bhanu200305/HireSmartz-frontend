@@ -1,1 +1,1 @@
-export const jobOpeningsHeaders = ['JOB TITLE', 'CANDIDATES', 'TOTAL OPENINGS', 'INTERVIEWED'];
+export const jobOpeningsHeaders = ['Job Title', 'Candidates', 'Total Openings', 'Interviewed'];

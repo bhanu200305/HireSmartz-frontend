@@ -37,7 +37,9 @@ const FeedbackPromptModal: React.FC<FeedbackPromptModalProps> = ({
         <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Complete Feedback</h2>
 
         {/* Subtitle */}
-        <p className="text-base text-gray-700 mb-1 text-center">Great job! how was the interview</p>
+        <p className="text-base text-gray-700 mb-1 text-center">
+          Great job! How was the interview?
+        </p>
         <p className="text-sm text-gray-500 mb-8 text-center max-w-md leading-relaxed">
           Your feedback is vital for the recruitment pipeline. Take a moment to record your thoughts
           while they&apos;re fresh.

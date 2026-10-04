@@ -155,7 +155,7 @@ export const SortableInterviewRounds = ({
         </div>
         {!isAnchorRound && (
           <div className="flex items-center gap-4 shrink-0">
-            <Tooltip title="Edit round">
+            <Tooltip title="Edit Round">
               <button
                 onClick={() => onEdit(round)}
                 className="text-neutral-500 hover:text-neutral-700 cursor-pointer"
@@ -164,7 +164,7 @@ export const SortableInterviewRounds = ({
                 <MdEdit size={18} />
               </button>
             </Tooltip>
-            <Tooltip title="Delete round">
+            <Tooltip title="Delete Round">
               <button
                 className="text-gray-600 hover:text-red-600 cursor-pointer transition-colors"
                 onClick={() => onDelete(round.id)}

@@ -21,7 +21,7 @@ const QrCodePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   return (
     <div className="p-4 flex flex-col items-center text-center">
       <Typography variant="h5" className="mb-1 block">
-        Public jobs QR code
+        Public Job Openings QR Code
       </Typography>
       <Typography variant="body2" className="mb-6 max-w-md">
         Candidates who scan this are taken straight to this company&apos;s public job listing page.

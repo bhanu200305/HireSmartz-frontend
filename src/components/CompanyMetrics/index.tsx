@@ -54,7 +54,7 @@ const CompanyMetrics: React.FC = () => {
 
         <section className="mb-6">
           <Typography variant="subtitle1" className="mb-2 font-semibold text-neutral-900">
-            Hiring overview
+            Hiring Overview
           </Typography>
           <HiringOverviewStats />
         </section>
@@ -72,7 +72,7 @@ const CompanyMetrics: React.FC = () => {
 
         <section>
           <Typography variant="subtitle1" className="mb-2 font-semibold text-neutral-900">
-            Open jobs
+            Job Openings
           </Typography>
           <OpenJobsSection />
         </section>

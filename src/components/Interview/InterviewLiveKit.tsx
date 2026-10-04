@@ -765,7 +765,7 @@ const Interview: React.FC = () => {
       <div className="flex items-center justify-center min-h-screen bg-gray-900">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-4">Interview Link Expired / Invalid</h1>
-          <p className="text-gray-300 mb-6">{state.error || 'Failed to load interview'}</p>
+          <p className="text-gray-300 mb-6">{state.error || 'Failed to Load Interview'}</p>
           <Button type="primary" onClick={() => navigate('/')}>
             Return Home
           </Button>
@@ -1571,7 +1571,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
                       <div>
                         <p className="text-sm font-semibold text-white flex items-center gap-1.5">
                           <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                          Recording in progress
+                          Recording in Progress
                         </p>
                         <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
                           This interview is being recorded, transcribed and analyzed using AI. By
@@ -1635,7 +1635,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
               </Tooltip>
             </Dropdown>
 
-            <Tooltip title={liveKit.mediaState.cameraEnabled ? 'Stop camera' : 'Start camera'}>
+            <Tooltip title={liveKit.mediaState.cameraEnabled ? 'Stop Camera' : 'Start Camera'}>
               <Button
                 type="text"
                 size="small"
@@ -1791,7 +1791,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
             </Tooltip>
 
             {isRecruiter && (
-              <Tooltip title="End interview">
+              <Tooltip title="End Interview">
                 <Button
                   type="text"
                   size="small"
@@ -2021,8 +2021,8 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
               <>
                 {panelQuestions.resume_based.length > 0 && (
                   <div>
-                    <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      Resume-based
+                    <h4 className="mb-2 text-xs font-semibold tracking-wide text-gray-400">
+                      Resume-Based
                     </h4>
                     <ol className="list-decimal space-y-3 pl-5">
                       {panelQuestions.resume_based.map((q, idx) => (
@@ -2048,8 +2048,8 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
 
                 {panelQuestions.jd_based.length > 0 && (
                   <div>
-                    <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      JD-based
+                    <h4 className="mb-2 text-xs font-semibold tracking-wide text-gray-400">
+                      JD-Based
                     </h4>
                     <ol className="list-decimal space-y-3 pl-5">
                       {panelQuestions.jd_based.map((q, idx) => (

@@ -21,15 +21,11 @@ export type SettingsPanelProps = {
 const sections = (devicesSection: ReactNode) => (
   <>
     <div className="mb-5">
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
-        Devices
-      </h4>
+      <h4 className="mb-2 text-xs font-semibold tracking-wide text-neutral-400">Devices</h4>
       {devicesSection}
     </div>
     <div>
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
-        Background
-      </h4>
+      <h4 className="mb-2 text-xs font-semibold tracking-wide text-neutral-400">Background</h4>
       <BackgroundSelector />
     </div>
   </>

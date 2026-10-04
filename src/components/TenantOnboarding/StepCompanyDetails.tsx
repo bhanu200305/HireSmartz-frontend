@@ -205,23 +205,21 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
               silently dropped the moment the lead is approved. */}
           <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-brand-800 sm:grid-cols-4">
             <div>
-              <dt className="font-semibold uppercase tracking-wide text-brand-600">Location</dt>
+              <dt className="font-semibold tracking-wide text-brand-600">Location</dt>
               <dd>{fromGuestOrg.location || '—'}</dd>
             </div>
             <div>
-              <dt className="font-semibold uppercase tracking-wide text-brand-600">Company size</dt>
+              <dt className="font-semibold tracking-wide text-brand-600">Company Size</dt>
               <dd>{fromGuestOrg.companySize ? `${fromGuestOrg.companySize}+ employees` : '—'}</dd>
             </div>
             <div>
-              <dt className="font-semibold uppercase tracking-wide text-brand-600">
-                Requester&apos;s job title
+              <dt className="font-semibold tracking-wide text-brand-600">
+                Requester&apos;s Job Title
               </dt>
               <dd>{fromGuestOrg.jobTitle || '—'}</dd>
             </div>
             <div>
-              <dt className="font-semibold uppercase tracking-wide text-brand-600">
-                Heard about us via
-              </dt>
+              <dt className="font-semibold tracking-wide text-brand-600">Heard About Us Via</dt>
               <dd>{fromGuestOrg.referralSource || '—'}</dd>
             </div>
           </dl>

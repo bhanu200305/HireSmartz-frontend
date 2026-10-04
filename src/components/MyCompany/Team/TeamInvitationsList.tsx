@@ -18,6 +18,7 @@ import {
   useUpdateUserMutation,
 } from '../../../api/organization-service/Users/users';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import { capitalizeFirstLetter } from '../../../shared/utils/validation/input.helpers';
 import { systemRoleLabel } from '../../RolesManagement/data/roleTemplates';
 
 const STATUS_BADGE_BG: Record<string, string> = {
@@ -150,11 +151,11 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                         {systemRoleLabel(invitation.role)}
                       </span>
                       <span
-                        className={`inline-flex items-center rounded-full text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 ${
+                        className={`inline-flex items-center rounded-full text-xs font-semibold tracking-wide px-1.5 py-0.5 ${
                           STATUS_BADGE_BG[invitation.status] || 'bg-gray-100 text-gray-500'
                         }`}
                       >
-                        {invitation.status}
+                        {capitalizeFirstLetter(invitation.status)}
                       </span>
                       <span className="text-xs text-gray-400">
                         · expires{' '}
@@ -172,7 +173,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                     {matchedUserId && (
                       <Tooltip
                         title={
-                          changingEmailFor === invitation.invitation_id ? 'Cancel' : 'Change email'
+                          changingEmailFor === invitation.invitation_id ? 'Cancel' : 'Change Email'
                         }
                       >
                         <button
@@ -190,7 +191,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                         </button>
                       </Tooltip>
                     )}
-                    <Tooltip title="Resend invitation">
+                    <Tooltip title="Resend Invitation">
                       <button
                         type="button"
                         aria-label="Resend invitation"
@@ -201,7 +202,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                         <MdOutlineRefresh size={16} />
                       </button>
                     </Tooltip>
-                    <Tooltip title="Revoke invitation">
+                    <Tooltip title="Revoke Invitation">
                       <button
                         type="button"
                         aria-label="Revoke invitation"

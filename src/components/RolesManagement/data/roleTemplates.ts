@@ -49,7 +49,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
   {
     key: 'cfp_support',
     scope: 'platform',
-    label: 'Customer support',
+    label: 'Customer Support',
     description: 'Read-only on a specific client, time-limited',
     permissions: [
       Authorities.DASHBOARD_VIEW,
@@ -113,11 +113,32 @@ export const getRoleTemplate = (key: string): RoleTemplate | undefined =>
  * literal identifiers, not display strings (see that response model's own
  * docstring) — this is the one place that translates one to the other, so a
  * new system role only needs its label added here, not at every render site.
- * Falls back to the raw key for anything not in this list (a custom role's
- * own name is never looked up here — that name is already exactly what a
- * tenant admin typed in, not an identifier needing translation).
+ * Anything not in this list goes through `humanizeRoleName` instead (see
+ * there for why that leaves a typed-in custom role name untouched).
  */
-export const systemRoleLabel = (key: string): string => getRoleTemplate(key)?.label ?? key;
+export const systemRoleLabel = (key: string): string =>
+  getRoleTemplate(key)?.label ?? humanizeRoleName(key);
+
+// Short role keys that read as acronyms rather than words ("svp" -> "SVP").
+const ROLE_ACRONYMS = new Set(['svp', 'vp', 'avp', 'evp', 'hr', 'cfp', 'ceo', 'cto', 'cfo', 'coo']);
+
+/**
+ * Display-only formatting for a role identifier with no template label
+ * (`regional_hiring_manager` -> "Regional Hiring Manager", `svp` -> "SVP").
+ * Only snake_case/lowercase identifiers are touched — a name with spaces or
+ * capitals is what an admin typed in and is shown exactly as written. The
+ * underlying role name/id sent to the backend never changes.
+ */
+export const humanizeRoleName = (name: string): string => {
+  if (!/^[a-z0-9_]+$/.test(name)) return name;
+  return name
+    .split('_')
+    .filter(Boolean)
+    .map((word) =>
+      ROLE_ACRONYMS.has(word) ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1)
+    )
+    .join(' ');
+};
 
 export const roleTemplatesForScope = (scope: RoleScope): RoleTemplate[] =>
   ROLE_TEMPLATES.filter((template) => template.scope === scope);

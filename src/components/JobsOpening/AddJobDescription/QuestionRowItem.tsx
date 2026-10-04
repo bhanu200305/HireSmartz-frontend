@@ -36,7 +36,7 @@ export const QuestionRowItem = ({
         {question.question}
       </Typography>
       <div className="flex shrink-0 items-center gap-3">
-        <Tooltip title="Edit question">
+        <Tooltip title="Edit Question">
           <button
             type="button"
             className="cursor-pointer text-primary hover:text-brand-600"
@@ -46,7 +46,7 @@ export const QuestionRowItem = ({
             <MdEdit size={18} />
           </button>
         </Tooltip>
-        <Tooltip title="Delete question">
+        <Tooltip title="Delete Question">
           <button
             type="button"
             className="cursor-pointer text-red-500 hover:text-red-700"

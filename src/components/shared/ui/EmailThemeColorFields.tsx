@@ -89,9 +89,7 @@ const EmailThemeColorFields: React.FC<EmailThemeColorFieldsProps> = ({
   <div className="flex flex-col gap-5">
     {THEME_COLOR_GROUPS.map((group) => (
       <div key={group.title}>
-        <h4 className="mb-0.5 text-xs font-bold uppercase tracking-wide text-gray-500">
-          {group.title}
-        </h4>
+        <h4 className="mb-0.5 text-xs font-bold tracking-wide text-gray-500">{group.title}</h4>
         <p className="mb-2 text-xs text-gray-400">{group.description}</p>
         <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-3">
           {group.fields.map(({ key, label, reserved }) => {

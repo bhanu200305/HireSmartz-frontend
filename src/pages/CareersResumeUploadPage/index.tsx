@@ -167,7 +167,7 @@ export const CareersResumeUploadPage = () => {
             <h1 className="text-2xl font-bold text-gray-900 mb-1">
               {linkDetails?.data.first_name
                 ? `Hi ${linkDetails.data.first_name}, upload your resume`
-                : 'Upload your resume'}
+                : 'Upload Your Resume'}
             </h1>
             <p className="text-sm text-gray-500 mb-8">
               Following up on your call. Add your resume below to finish your application.
@@ -254,9 +254,9 @@ export const CareersResumeUploadPage = () => {
                 type="button"
                 onClick={() => void handleSubmit()}
                 disabled={isSubmitting || !recaptchaSiteKey}
-                className="w-full bg-black text-white font-bold tracking-widest text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full bg-black text-white font-bold tracking-widest uppercase text-sm py-3.5 rounded-full hover:bg-gray-800 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
-                {isSubmitting ? 'SUBMITTING…' : 'SUBMIT RESUME'}
+                {isSubmitting ? 'Submitting…' : 'Submit Resume'}
               </button>
             </div>
           </>

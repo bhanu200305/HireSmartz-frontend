@@ -154,7 +154,7 @@ const GuestOrganizations: React.FC = () => {
             current={page + 1}
             pageSize={pageSize}
             total={data?.total ?? 0}
-            itemLabel="Leads"
+            itemLabel="leads"
             onPageChange={(p) => setPage(p - 1)}
           />
         )}

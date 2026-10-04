@@ -248,7 +248,7 @@ const DepartmentsTab: React.FC = () => {
       width: 90,
       render: (_: unknown, department: DepartmentRow) => (
         <div className="flex items-center gap-1">
-          <Tooltip title="Edit department">
+          <Tooltip title="Edit Department">
             <button
               type="button"
               aria-label="Edit department"
@@ -258,7 +258,7 @@ const DepartmentsTab: React.FC = () => {
               <MdEdit className="text-gray-600" />
             </button>
           </Tooltip>
-          <Tooltip title="Delete department">
+          <Tooltip title="Delete Department">
             <button
               type="button"
               aria-label="Delete department"

@@ -120,7 +120,7 @@ const PendingConfirmation = ({
           <p className="font-medium text-gray-900">{email}</p>
           <p className="text-xs text-gray-500">Waiting for you to confirm this address.</p>
         </div>
-        <Badge status="warning">Awaiting confirmation</Badge>
+        <Badge status="warning">Awaiting Confirmation</Badge>
       </div>
       <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row">
         <PasswordInput
@@ -233,7 +233,7 @@ const RecoverySection = () => {
     <section className="rounded-2xl border border-[var(--border)] bg-white p-6">
       <div className="mb-4 flex items-center gap-2">
         <MdOutlineMailLock className="text-xl text-brand-700" />
-        <h3 className="text-lg font-semibold text-gray-900">Recovery email</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Recovery Email</h3>
       </div>
 
       {isLoading && <p className="text-sm text-gray-500">Loading…</p>}

@@ -55,28 +55,28 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     {
       icon: <MdOutlineGroups />,
       variant: 'neutral',
-      label: 'Active users',
+      label: 'Active Users',
       value: isLoading ? undefined : data?.team_size?.toLocaleString(),
       onClick: () => setShowUsers(true),
     },
     {
       icon: <MdOutlineWorkOutline />,
       variant: 'blue',
-      label: 'Open jobs',
+      label: 'Active Job Openings',
       value: isLoading ? undefined : (data?.open_job_count?.toLocaleString() ?? null),
       onClick: () => setActiveDetail('jobs'),
     },
     {
       icon: <MdOutlineDescription />,
       variant: 'green',
-      label: 'Total applications',
+      label: 'Total Applications',
       value: isLoading ? undefined : (data?.total_applications?.toLocaleString() ?? null),
       onClick: () => setActiveDetail('applications'),
     },
     {
       icon: <MdOutlineEventAvailable />,
       variant: 'orange',
-      label: 'Completed interviews',
+      label: 'Completed Interviews',
       value: isLoading ? undefined : (data?.completed_interviews?.toLocaleString() ?? null),
       onClick: () => setActiveDetail('interviews'),
     },
@@ -93,7 +93,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           onClose={() => setActiveDetail(null)}
           icon={<MdOutlineWorkOutline />}
           variant="blue"
-          label="Open jobs"
+          label="Active Job Openings"
           value={data?.open_job_count?.toLocaleString() ?? null}
           description="Job openings this organization currently has published."
         />
@@ -103,7 +103,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           onClose={() => setActiveDetail(null)}
           icon={<MdOutlineDescription />}
           variant="green"
-          label="Total applications"
+          label="Total Applications"
           value={data?.total_applications?.toLocaleString() ?? null}
           description="Total candidate applications received by this organization."
         />
@@ -113,7 +113,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           onClose={() => setActiveDetail(null)}
           icon={<MdOutlineEventAvailable />}
           variant="orange"
-          label="Completed interviews"
+          label="Completed Interviews"
           value={data?.completed_interviews?.toLocaleString() ?? null}
           description="Interviews completed by this organization across all rounds."
         />
@@ -121,7 +121,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         <ChartCard
-          title="Applications over time"
+          title="Applications Over Time"
           subtitle="Weekly application volume and recruitment activity"
           available={false}
           unavailableLabel={COMING_SOON}
@@ -129,15 +129,15 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           <div />
         </ChartCard>
         <ChartCard
-          title="Jobs by status"
+          title="Job Openings by Status"
           subtitle="Open, closed and draft jobs for this tenant"
           isLoading={isJobStatsLoading}
           available={Boolean(jobStats) && jobStats!.total_count > 0}
         >
-          <DonutStat data={jobsByStatusData} centerLabel="Jobs" />
+          <DonutStat data={jobsByStatusData} centerLabel="Job Openings" />
         </ChartCard>
         <ChartCard
-          title="Hiring funnel"
+          title="Hiring Funnel"
           subtitle="Applied → Audio Round → AI Interview → Panel Interview → Selected / Rejected"
           span={2}
           available={false}
@@ -155,7 +155,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           <div />
         </ChartCard>
         <ChartCard
-          title="AI score distribution"
+          title="AI Score Distribution"
           subtitle="Candidates grouped by resume-score band"
           available={false}
           unavailableLabel="Coming soon: no scoring-distribution endpoint yet."

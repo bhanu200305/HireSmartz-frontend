@@ -168,11 +168,11 @@ const RoundSidebarItem = ({
             }`}
             title={
               visuallyFailed
-                ? 'Needs attention'
+                ? 'Needs Attention'
                 : bucket === 'done'
                   ? 'Completed'
                   : isCurrentStage
-                    ? 'Current stage'
+                    ? 'Current Stage'
                     : `Step ${index + 1}`
             }
             aria-hidden
@@ -190,7 +190,7 @@ const RoundSidebarItem = ({
           </span>
         )}
         <span className="text-xs text-gray-800">
-          Status: <span className={`font-semibold uppercase ${statusColor}`}>{statusText}</span>
+          Status: <span className={`font-semibold ${statusColor}`}>{statusText}</span>
         </span>
         {isBlockedOnCalendar && (
           <span className="text-xs font-semibold text-warning-text">

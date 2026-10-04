@@ -640,7 +640,7 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
             <Badge
               status={!row.is_active ? 'neutral' : row.has_set_password ? 'success' : 'warning'}
             >
-              {!row.is_active ? 'Deactivated' : row.has_set_password ? 'Active' : 'Pending setup'}
+              {!row.is_active ? 'Deactivated' : row.has_set_password ? 'Active' : 'Pending Setup'}
             </Badge>
           </div>
         );
@@ -657,7 +657,7 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
           return (
             <div className="flex gap-1">
               {matchedUserId && (
-                <Tooltip title="Change email">
+                <Tooltip title="Change Email">
                   <button
                     type="button"
                     aria-label="Change email"
@@ -671,7 +671,7 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
                   </button>
                 </Tooltip>
               )}
-              <Tooltip title="Resend invitation">
+              <Tooltip title="Resend Invitation">
                 <button
                   type="button"
                   aria-label="Resend invitation"
@@ -682,7 +682,7 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
                   <MdOutlineRefresh />
                 </button>
               </Tooltip>
-              <Tooltip title="Revoke invitation">
+              <Tooltip title="Revoke Invitation">
                 <button
                   type="button"
                   aria-label="Revoke invitation"
@@ -739,8 +739,8 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
                 setPage(0);
               }}
               options={[
-                { label: 'Active only', value: 'active' },
-                { label: 'Include deactivated', value: 'all' },
+                { label: 'Active Only', value: 'active' },
+                { label: 'Include Deactivated', value: 'all' },
               ]}
             />
           </div>
@@ -879,7 +879,7 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
       <AntdCommonModal
         open={changeEmailTarget !== null}
         onClose={cancelChangeEmail}
-        title="Change email"
+        title="Change Email"
       >
         <div className="flex flex-col gap-4">
           <p className="text-sm text-gray-600">

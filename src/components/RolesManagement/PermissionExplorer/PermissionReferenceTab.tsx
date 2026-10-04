@@ -177,7 +177,7 @@ const PermissionReferenceTab: React.FC<PermissionReferenceTabProps> = ({
 
       {canLookupPeople && q && (
         <div className="bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-3">
-          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+          <h4 className="text-xs font-semibold text-gray-500 tracking-wide mb-2">
             People matching &quot;{debouncedSearch}&quot;
           </h4>
           {isSearchingPeople ? (

@@ -74,7 +74,7 @@ const EmailLivePreviewPanel: React.FC<EmailLivePreviewPanelProps> = ({
           )}
           {preview?.body_html ? (
             <iframe
-              title="Live email preview"
+              title="Live Email Preview"
               sandbox=""
               srcDoc={disableLinksInEmailPreview(preview.body_html)}
               className="h-full w-full border-0"

@@ -106,7 +106,7 @@ const DashboardCarousel = ({ slides, initialIndex = 0, className }: DashboardCar
     <div className={clsx('flex h-full min-h-0 w-full flex-col', className)}>
       <div className="shrink-0 pb-2 text-center sm:pb-3">
         <p
-          className="flex items-center justify-center gap-1.5 text-xs font-semibold tracking-wider text-neutral-500 uppercase sm:text-xs"
+          className="flex items-center justify-center gap-1.5 text-xs font-semibold tracking-wider uppercase text-neutral-500 sm:text-xs"
           aria-live="polite"
         >
           {activeSlide.icon && <span className="text-primary-600">{activeSlide.icon}</span>}

@@ -203,7 +203,7 @@ const HiringManagerCharts: React.FC = () => {
       </ChartCard>
 
       <ChartCard
-        title="Hiring by location"
+        title="Hiring by Location"
         subtitle="Selected candidates, grouped by resume-derived location"
         isLoading={isLocationLoading}
         available={locationData.length > 0}

@@ -75,7 +75,7 @@ const SessionRow = ({
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] p-4">
       <div>
         <div className="flex items-center gap-2">
-          <p className="font-medium text-gray-900">{deviceLine || 'Unknown device'}</p>
+          <p className="font-medium text-gray-900">{deviceLine || 'Unknown Device'}</p>
           {isCurrent && <Badge status="info">This device</Badge>}
           <Badge status={STATUS_BADGE[status]}>{status}</Badge>
         </div>
@@ -133,7 +133,7 @@ const SessionsSection = () => {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <MdOutlineDevices className="text-xl text-brand-700" />
-          <h3 className="text-lg font-semibold text-gray-900">Active sessions</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Active Sessions</h3>
         </div>
         {otherSessionCount > 0 && (
           <Button

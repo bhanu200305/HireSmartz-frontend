@@ -134,7 +134,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       ),
     },
     {
-      title: 'Resume score',
+      title: 'Resume Score',
       dataIndex: 'resume_score',
       key: 'resume_score',
       minWidth: 140,
@@ -151,7 +151,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       render: (value: string | null) => value || '-',
     },
     {
-      title: 'Applied date',
+      title: 'Applied Date',
       dataIndex: 'applied_date',
       key: 'applied_date',
       minWidth: 140,
@@ -165,7 +165,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     <AntdCommonModal
       open
       onClose={onClose}
-      title="Total applications"
+      title="Total Applications"
       modalProps={{ width: 860, maskClosable: true }}
       fillHeight
     >

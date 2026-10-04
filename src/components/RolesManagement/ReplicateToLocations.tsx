@@ -58,7 +58,7 @@ const ReplicateToLocations: React.FC<ReplicateToLocationsProps> = ({ targets, on
       disabled={disabled}
       dropdownRender={() => (
         <div className="w-72 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
-          <p className="text-xs font-semibold text-gray-900 mb-1">Replicate to locations</p>
+          <p className="text-xs font-semibold text-gray-900 mb-1">Replicate to Locations</p>
           <p className="text-xs text-gray-500 mb-2.5">
             Copies this exact permission set to every location checked below, overwriting any
             override it already has.

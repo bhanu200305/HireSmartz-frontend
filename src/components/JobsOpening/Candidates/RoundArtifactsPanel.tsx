@@ -375,7 +375,7 @@ const TranscriptViewer = ({ url, roundName }: { url: string; roundName: string }
     ) : (
       <iframe
         src={url}
-        title="Interview transcript"
+        title="Interview Transcript"
         className={`${heightClass} w-full rounded-lg border border-gray-200 bg-white`}
       />
     );
@@ -386,7 +386,7 @@ const TranscriptViewer = ({ url, roundName }: { url: string; roundName: string }
         <div className="max-h-[420px] overflow-y-auto overscroll-contain rounded-lg bg-gray-50 p-4 pb-12">
           {content('h-[380px]')}
         </div>
-        <Tooltip title="Expand transcript">
+        <Tooltip title="Expand Transcript">
           <button
             type="button"
             aria-label="Expand transcript"

@@ -74,7 +74,7 @@ const BulkImportRows: React.FC<BulkImportRowsProps> = ({
     <div className="overflow-x-auto rounded-xl border">
       <div className="min-w-[640px]">
         <div
-          className="grid items-center gap-3 border-b bg-gray-50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500"
+          className="grid items-center gap-3 border-b bg-gray-50 px-3 py-2 text-xs font-medium tracking-wide text-gray-500"
           style={{ gridTemplateColumns: GRID_COLUMNS }}
         >
           <span />

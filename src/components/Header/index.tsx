@@ -764,7 +764,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                 type="button"
                 onClick={() => setShowInterviewCalendar(true)}
                 aria-label="My interview calendar"
-                title="My interview calendar"
+                title="My Interview Calendar"
                 className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100"
               >
                 <BsCalendar4Event size={18} />

@@ -178,7 +178,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
 
   const logoMenuItems: MenuProps['items'] = [
     { key: 'select', label: 'Select new image', icon: <MdOutlineFileUpload /> },
-    { key: 'adjust', label: 'Adjust current logo', icon: <MdOutlineCropRotate /> },
+    { key: 'adjust', label: 'Adjust Current Logo', icon: <MdOutlineCropRotate /> },
   ];
   const handleLogoMenuClick: NonNullable<MenuProps['onClick']> = ({ key }) => {
     if (key === 'select') logoUploadRef.current?.click();
@@ -255,7 +255,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-7">
-        <Typography variant="h5">Company profile</Typography>
+        <Typography variant="h5">Company Profile</Typography>
         {/* isEditMode can only ever become true via this button, so hiding
             it when readOnly (a cfp_support grant, which has no matching
             write route) keeps every other write control below — the logo
@@ -277,7 +277,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
 
       <div className="mb-6 flex flex-col items-center">
         <Typography variant="subtitle2" className="mb-2">
-          Company logo
+          Company Logo
         </Typography>
         {logoPreview ? (
           <div
@@ -336,7 +336,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
             disabled={isUploadingLogo}
           >
             <MdOutlineFileUpload className="text-xl mb-1 text-primary mx-auto" />
-            <p className="text-sm">{isUploadingLogo ? 'Uploading…' : 'Upload logo'}</p>
+            <p className="text-sm">{isUploadingLogo ? 'Uploading…' : 'Upload Logo'}</p>
           </Upload.Dragger>
         ) : (
           <div className="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center text-xl font-semibold text-white">
@@ -346,7 +346,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5 mb-8">
-        <Field label="Company name" required>
+        <Field label="Company Name" required>
           <Input
             value={form.name}
             onChange={handleField('name')}
@@ -363,7 +363,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
             noAutoCapitalize
           />
         </Field>
-        <Field label="Company size">
+        <Field label="Company Size">
           <Input
             value={form.company_size}
             onChange={handleField('company_size')}
@@ -377,7 +377,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
             <Badge status={STATUS_BADGE[profile.status] || 'neutral'}>{profile.status}</Badge>
           </ReadOnlyPill>
         </Field>
-        <Field label="Admin contact">
+        <Field label="Admin Contact">
           <ReadOnlyPill>
             <span className="truncate">{profile.admin_contact || '-'}</span>
           </ReadOnlyPill>
@@ -424,7 +424,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
         onCancel={handleLogoCropCancel}
         onConfirm={handleLogoCropConfirm}
         isSaving={isUploadingLogo}
-        title="Adjust your logo"
+        title="Adjust Your Logo"
         subtitle="Drag to reposition, then zoom or rotate to fit the frame"
       />
     </div>

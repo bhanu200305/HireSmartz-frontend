@@ -91,7 +91,7 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
       title: 'Name',
       key: 'name',
       render: (_: unknown, row: SessionRow) => (
-        <span className="font-semibold text-neutral-900">{row.name ?? 'Platform staff'}</span>
+        <span className="font-semibold text-neutral-900">{row.name ?? 'Platform Staff'}</span>
       ),
     },
     {
@@ -120,7 +120,7 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
       ),
     },
     {
-      title: 'Last activity',
+      title: 'Last Activity',
       key: 'last_activity_at',
       render: (_: unknown, row: SessionRow) => (
         <span className="text-neutral-600">{formattedDateTime(row.last_activity_at)}</span>
@@ -132,7 +132,7 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
     <AntdCommonModal
       open
       onClose={onClose}
-      title="Active sessions"
+      title="Active Sessions"
       modalProps={{ width: 880, maskClosable: true }}
       fillHeight
     >

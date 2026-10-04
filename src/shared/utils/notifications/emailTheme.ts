@@ -67,50 +67,50 @@ export interface ThemeColorGroup {
 
 export const THEME_COLOR_GROUPS: ThemeColorGroup[] = [
   {
-    title: 'Page & layout',
+    title: 'Page & Layout',
     description: 'The header rule, link accents, and the canvas behind the message card.',
     fields: [
-      { key: 'primary_color', label: 'Primary color' },
-      { key: 'secondary_color', label: 'Secondary color' },
-      { key: 'background_color', label: 'Background color' },
+      { key: 'primary_color', label: 'Primary Color' },
+      { key: 'secondary_color', label: 'Secondary Color' },
+      { key: 'background_color', label: 'Background Color' },
     ],
   },
   {
     title: 'Text',
     description: 'Headings and body copy.',
     fields: [
-      { key: 'title_color', label: 'Title color' },
-      { key: 'text_color', label: 'Body text color' },
-      { key: 'greeting_color', label: 'Greeting color', reserved: true },
+      { key: 'title_color', label: 'Title Color' },
+      { key: 'text_color', label: 'Body Text Color' },
+      { key: 'greeting_color', label: 'Greeting Color', reserved: true },
     ],
   },
   {
     title: 'Button',
     description: 'The primary call-to-action button, e.g. "Reset your password".',
     fields: [
-      { key: 'button_background', label: 'Button background' },
-      { key: 'button_text', label: 'Button text' },
-      { key: 'button_border_color', label: 'Button border' },
+      { key: 'button_background', label: 'Button Background' },
+      { key: 'button_text', label: 'Button Text' },
+      { key: 'button_border_color', label: 'Button Border' },
     ],
   },
   {
-    title: 'Highlight box',
+    title: 'Highlight Box',
     description: 'The footnote / callout box under the button.',
     fields: [
-      { key: 'highlight_background', label: 'Highlight background' },
-      { key: 'highlight_text', label: 'Highlight text' },
+      { key: 'highlight_background', label: 'Highlight Background' },
+      { key: 'highlight_text', label: 'Highlight Text' },
     ],
   },
   {
     title: 'Footer',
     description: 'The footer bar and its unsubscribe link.',
     fields: [
-      { key: 'footer_background', label: 'Footer background' },
-      { key: 'footer_text', label: 'Footer text' },
+      { key: 'footer_background', label: 'Footer Background' },
+      { key: 'footer_text', label: 'Footer Text' },
     ],
   },
   {
-    title: 'Second call-to-action',
+    title: 'Second Call-to-Action',
     description: 'Reserved for a future second button; no current template has one.',
     fields: [
       { key: 'action_button_background', label: 'Background', reserved: true },

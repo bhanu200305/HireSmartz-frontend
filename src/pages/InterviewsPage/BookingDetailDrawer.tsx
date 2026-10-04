@@ -63,10 +63,10 @@ const fmt = (iso: string | null): string =>
 type PendingAction = 'cancel' | 'skip' | 'status' | 'substitute' | null;
 
 const RECOMMENDATION_OPTIONS: Array<{ label: string; value: FeedbackRecommendation }> = [
-  { label: 'Strong yes', value: 'strong_yes' },
+  { label: 'Strong Yes', value: 'strong_yes' },
   { label: 'Yes', value: 'yes' },
   { label: 'No', value: 'no' },
-  { label: 'Strong no', value: 'strong_no' },
+  { label: 'Strong No', value: 'strong_no' },
 ];
 
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -77,9 +77,7 @@ const Row = ({ label, children }: { label: string; children: React.ReactNode }) 
 );
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-    {children}
-  </h3>
+  <h3 className="mb-2 mt-6 text-xs font-semibold tracking-wide text-neutral-500">{children}</h3>
 );
 
 export const BookingDetailDrawer = ({
@@ -339,7 +337,7 @@ export const BookingDetailDrawer = ({
       open={open}
       onClose={onClose}
       width={460}
-      title={booking ? 'Interview' : 'Interview details'}
+      title={booking ? 'Interview' : 'Interview Details'}
       styles={{ body: { padding: 0 } }}
     >
       {isLoading || (isFetching && !booking) ? (
@@ -372,7 +370,7 @@ export const BookingDetailDrawer = ({
                 rel="noopener noreferrer"
                 className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
               >
-                View full candidate profile
+                View Full Candidate Profile
                 <LuExternalLink size={14} />
               </a>
             )}
@@ -391,9 +389,9 @@ export const BookingDetailDrawer = ({
                 <Row label="Rescheduled">Yes, moved from an earlier slot</Row>
               )}
               {booking.cancellation_reason && (
-                <Row label="Cancellation reason">{booking.cancellation_reason}</Row>
+                <Row label="Cancellation Reason">{booking.cancellation_reason}</Row>
               )}
-              {booking.skip_reason && <Row label="Skip reason">{booking.skip_reason}</Row>}
+              {booking.skip_reason && <Row label="Skip Reason">{booking.skip_reason}</Row>}
             </div>
 
             <button
@@ -412,7 +410,7 @@ export const BookingDetailDrawer = ({
             {/* Panel interviewers — calendar-connection status */}
             {isPanel && calendarStatus && calendarStatus.interviewers.length > 0 && (
               <>
-                <SectionTitle>Panel interviewers</SectionTitle>
+                <SectionTitle>Panel Interviewers</SectionTitle>
                 <ul className="space-y-1.5 text-sm">
                   {calendarStatus.interviewers.map((iv) => (
                     <li key={iv.interviewer_id} className="flex items-center justify-between gap-3">
@@ -421,7 +419,7 @@ export const BookingDetailDrawer = ({
                       </span>
                       <div className="flex items-center gap-2">
                         <Badge status={iv.calendar_connected ? 'success' : 'warning'} dot={false}>
-                          {iv.calendar_connected ? 'Calendar connected' : 'No calendar'}
+                          {iv.calendar_connected ? 'Calendar Connected' : 'No calendar'}
                         </Badge>
                         {/* interview:write, matching the backend route's own
                             require_permission — canUpdate (interview:update)
@@ -453,7 +451,7 @@ export const BookingDetailDrawer = ({
                 for. */}
             {isPanel && canViewQuestions && (
               <>
-                <SectionTitle>Interview questions</SectionTitle>
+                <SectionTitle>Interview Questions</SectionTitle>
                 {roundQuestions && roundQuestions.questions.length > 0 ? (
                   <ol className="list-decimal space-y-3 pl-5 text-sm">
                     {roundQuestions.questions.map((q) => (
@@ -483,7 +481,7 @@ export const BookingDetailDrawer = ({
             )}
 
             {/* Follow-up notes */}
-            <SectionTitle>Follow-up notes</SectionTitle>
+            <SectionTitle>Follow-Up Notes</SectionTitle>
             {followUps && followUps.requests.length > 0 ? (
               <ul className="space-y-2">
                 {[...followUps.requests]
@@ -522,7 +520,7 @@ export const BookingDetailDrawer = ({
             {/* Live session state — scheduled video rounds only */}
             {sessionState && (
               <>
-                <SectionTitle>Live session</SectionTitle>
+                <SectionTitle>Live Session</SectionTitle>
                 <div className="divide-y divide-neutral-100">
                   <Row label="Room">
                     <Badge
@@ -540,7 +538,7 @@ export const BookingDetailDrawer = ({
                   <Row label="Recording">
                     {sessionState.recording_active ? 'Active' : 'Not recording'}
                   </Row>
-                  <Row label="In the room">{sessionState.participants.length}</Row>
+                  <Row label="In the Room">{sessionState.participants.length}</Row>
                 </div>
               </>
             )}
@@ -641,7 +639,7 @@ export const BookingDetailDrawer = ({
             {/* Interviewer feedback — relayed to Candidate Service, not stored here */}
             {canFollowUp && (
               <>
-                <SectionTitle>Submit feedback</SectionTitle>
+                <SectionTitle>Submit Feedback</SectionTitle>
                 <div className="space-y-3 rounded-lg border border-neutral-200 p-3">
                   <div>
                     <span className="mb-1 block text-xs font-medium text-neutral-600">

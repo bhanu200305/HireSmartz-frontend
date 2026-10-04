@@ -6,8 +6,8 @@
 export type BackgroundBlurLevel = { id: string; label: string; radius: number };
 
 export const BACKGROUND_BLUR_LEVELS: BackgroundBlurLevel[] = [
-  { id: 'blur-light', label: 'Light blur', radius: 10 },
-  { id: 'blur-strong', label: 'Strong blur', radius: 20 },
+  { id: 'blur-light', label: 'Light Blur', radius: 10 },
+  { id: 'blur-strong', label: 'Strong Blur', radius: 20 },
 ];
 
 export type BackgroundImagePreset = { id: string; label: string; imagePath: string };

@@ -40,7 +40,7 @@ const PlatformMetrics: React.FC = () => {
 
         <section className="mb-6">
           <Typography variant="subtitle1" className="mb-2 font-semibold text-neutral-900">
-            Platform overview
+            Platform Overview
           </Typography>
           <PlatformOverviewStats />
         </section>

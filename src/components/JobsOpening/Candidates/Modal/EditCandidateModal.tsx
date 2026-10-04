@@ -114,7 +114,7 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor="edit-candidate-first-name" className="mb-1 block text-sm text-gray-800">
-              First name <span className="required-asterisk">*</span>
+              First Name <span className="required-asterisk">*</span>
             </label>
             <Input
               id="edit-candidate-first-name"
@@ -125,7 +125,7 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
           </div>
           <div>
             <label htmlFor="edit-candidate-last-name" className="mb-1 block text-sm text-gray-800">
-              Last name <span className="required-asterisk">*</span>
+              Last Name <span className="required-asterisk">*</span>
             </label>
             <Input
               id="edit-candidate-last-name"
@@ -169,7 +169,7 @@ const EditCandidateModal = ({ open, onClose, candidate }: EditCandidateModalProp
           disabled={isLoading || !isFormValid}
           className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
         >
-          {isLoading ? 'SAVING…' : 'SAVE CHANGES'}
+          {isLoading ? 'Saving…' : 'Save Changes'}
         </Button>
       </div>
     </AntdCommonModal>

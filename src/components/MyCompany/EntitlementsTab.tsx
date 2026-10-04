@@ -33,37 +33,37 @@ type FlagKey = Exclude<keyof Entitlements, 'locked_flags'>;
 const FLAGS: { key: FlagKey; label: string; description: string; icon: React.ReactNode }[] = [
   {
     key: 'is_culture_intro_enabled',
-    label: 'Culture intro',
+    label: 'Culture Intro',
     description: 'Show a "why work here" intro to candidates.',
     icon: <MdOutlineFavorite size={18} />,
   },
   {
     key: 'is_config_score_enabled',
-    label: 'AI candidate scoring',
+    label: 'AI Candidate Scoring',
     description: 'Score candidates against your configured weights.',
     icon: <MdAutoAwesome size={18} />,
   },
   {
     key: 'is_candidate_intro_enabled',
-    label: 'Candidate intro video',
+    label: 'Candidate Intro Video',
     description: 'Ask candidates for a short intro video.',
     icon: <MdOutlineVideocam size={18} />,
   },
   {
     key: 'is_candidate_inquiries_enabled',
-    label: 'Candidate questions',
+    label: 'Candidate Questions',
     description: 'Let candidates ask questions during the process.',
     icon: <MdOutlineQuestionAnswer size={18} />,
   },
   {
     key: 'is_location_manage_allowed',
-    label: 'Manage own locations',
+    label: 'Manage Own Locations',
     description: 'Let your team add/edit office locations.',
     icon: <MdOutlineLocationOn size={18} />,
   },
   {
     key: 'is_hierarchy_enabled',
-    label: 'Org-chart / hierarchy view',
+    label: 'Org-Chart / Hierarchy View',
     description: 'Enable departments and the org-chart view.',
     icon: <MdOutlineAccountTree size={18} />,
   },
@@ -105,7 +105,7 @@ const EntitlementsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           <MdOutlineTune size={18} />
         </span>
         <div>
-          <Typography variant="h5">Feature settings</Typography>
+          <Typography variant="h5">Feature Settings</Typography>
           <Typography variant="body2" className="text-gray-400 mt-0.5">
             {enabledCount} of {FLAGS.length} features enabled. A locked flag was set by Careerforce
             Pro. Contact support to change it.
@@ -143,7 +143,7 @@ const EntitlementsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                   </Typography>
                   {isLocked && (
                     <Tooltip title="Locked by Careerforce Pro. Contact support to change this.">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 shrink-0">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold tracking-wide px-1.5 py-0.5 shrink-0">
                         <MdLockOutline size={10} /> Locked
                       </span>
                     </Tooltip>

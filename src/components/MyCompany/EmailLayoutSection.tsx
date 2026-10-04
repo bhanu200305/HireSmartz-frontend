@@ -216,7 +216,7 @@ const EmailLayoutSection: React.FC = () => {
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1">
           <div className="flex flex-col divide-y divide-gray-100">
-            <CollapsibleSection title="Banner image">
+            <CollapsibleSection title="Banner Image">
               <Typography variant="caption" className="mb-3 block text-gray-400">
                 Shown at the top of every candidate-facing email. Recommended: under 5 MB, roughly
                 1200×500px.
@@ -247,7 +247,7 @@ const EmailLayoutSection: React.FC = () => {
               />
             </CollapsibleSection>
 
-            <CollapsibleSection title="Brand colors" defaultOpen>
+            <CollapsibleSection title="Brand Colors" defaultOpen>
               <EmailThemeColorFields
                 theme={theme}
                 fallback={CORPORATE_DEFAULTS}

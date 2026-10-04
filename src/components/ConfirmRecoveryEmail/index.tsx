@@ -61,7 +61,7 @@ const ConfirmRecoveryEmail = () => {
       <AuthPageShell>
         <div className="flex flex-col items-center gap-3 text-center">
           <FaCheckCircle className="text-4xl text-brand-600" />
-          <h2 className="text-xl font-semibold text-gray-900">Recovery email confirmed</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Recovery Email Confirmed</h2>
           <p className="text-sm text-gray-500">
             {confirmedEmail} can now be used to recover your account if you ever lose access to your
             primary email and two-factor method.

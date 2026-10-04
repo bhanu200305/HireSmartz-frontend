@@ -44,7 +44,7 @@ const StartAccountRecovery = () => {
       <AuthPageShell>
         <div className="flex flex-col items-center gap-3 text-center">
           <MdOutlineMailLock className="text-4xl text-brand-600" />
-          <h2 className="text-xl font-semibold text-gray-900">Check that inbox</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Check That Inbox</h2>
           <p className="text-sm text-gray-500">
             If this address is a confirmed recovery email, a link is on its way. It expires in 1
             hour. If you never set up a recovery email, no email will arrive. Contact support
@@ -62,7 +62,7 @@ const StartAccountRecovery = () => {
     <AuthPageShell>
       {isLoading && <Loader />}
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-semibold text-gray-900">Recover your account</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Recover Your Account</h2>
         <p className="mt-1 text-sm text-gray-500">
           This only works if you added a recovery email in Settings → Security before losing access.
           It&apos;s a different address from the one you log in with. Recovering will{' '}
