@@ -33,8 +33,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   const isCreateMode = !isViewMode && !isEditMode;
 
-  // A draft id exists before any field is filled, so gate on the
-  // server-verified hasSavedDetails instead.
+  // Gate on server-verified hasSavedDetails, not on the draft id.
   const resolvedJobId = asJobId(reduxJobOpeningId);
   const { data: jdDetailsForGate } = useGetJobDescriptionByIdQuery(
     { jobOpeningId: resolvedJobId },
@@ -84,12 +83,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   const fromDashboard = location.state?.fromDashboard || false;
 
-  // Create wizard: Job Details and AI Job Description are two separate
-  // steps (jobdetails.tsx + JobDescriptionStep.tsx/JobDescriptionPanel.tsx),
-  // same shape as View/Edit below. Scoring Criteria sits right after AI
-  // Job Description; JD Questions (AiQuestionsSetup.tsx) is the one shared
-  // question bank for Audio Screening/AI Video/Hiring Panel - the old
-  // Video Questions step and its screen have been removed.
+  // Create wizard steps.
   const baseSteps = [
     'Job Details',
     'AI Job Description',
@@ -98,8 +92,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     'Questions',
   ];
 
-  // View/Edit keep Job Details and AI Job Description as two separate
-  // read-only tabs, matching the create wizard above.
+  // View/Edit tabs.
   const viewSteps = [
     'Job Details',
     'AI Job Description',
@@ -109,8 +102,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     'Questions',
   ];
   // const allSteps = isViewMode ? viewSteps : baseSteps
-  // View mode drops the Questions tab - it's shown inline under each round
-  // in Interview Setup instead; Edit/Create keep it as its own step.
+  // View mode shows questions inline under each round, so no Questions tab.
   const allSteps = isViewMode
     ? viewSteps.filter((step) => step !== 'Questions')
     : isEditMode
@@ -151,16 +143,12 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     return isViewMode ? stepPaths.view : isEditMode ? stepPaths.edit : stepPaths.create;
   }, [isViewMode, isEditMode, id, aiJobDescriptionId]);
 
-  // A single candidate's page (not the candidate list, which `isCandidatePage`
-  // also matches) — its Back link reads "Back to Candidate List", so it goes
-  // to exactly that instead of wherever the browser history happens to point.
+  // A single candidate's page (not the list); Back goes to the list.
   const isCandidateDetailsPage =
     /\/candidates\/[^/]+\/details/.test(location.pathname) ||
     location.pathname.includes('/candidateDetails/');
 
-  // The candidate list's Back goes to the job listing directly rather than
-  // `navigate(-1)`: after "Back to Candidate List" pushed the list onto the
-  // history, -1 just returned to the candidate that was open before.
+  // Candidate list Back goes to the job listing, not `navigate(-1)`.
   const handleBackNavigation = () => {
     if (isCandidateDetailsPage && id) {
       navigate(`/jobs/view/${id}/candidates`);
@@ -188,12 +176,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
     if (currentTabIndex === -1) return; // Not on a valid tab path
 
-    // Check if current tab is disabled
-    // 5-step create order: 0 Job Details (always open) -> 1 AI Job
-    // Description (needs Job Details saved) -> 2 Scoring Criteria (needs
-    // isScoringUnlocked) -> 3 Interview Setup / 4 Questions (both need
-    // isFormCompleted — set true by JobDescriptionStep's "Next", same as
-    // isTab3Completed originally meant "past the AI Job Description step").
+    // Tab order: 0 Job Details, 1 AI JD, 2 Scoring, 3 Interview Setup, 4 Questions
     const isCurrentTabDisabled =
       (currentTabIndex === 1 && !isTab1Completed) ||
       (currentTabIndex === 2 && !isScoringUnlocked) ||

@@ -305,6 +305,8 @@ export type RoundQuestionsResponse = {
 
 export type JobQuestionsResponse = {
   rounds: RoundQuestionsResponse[];
+  /** Why the last AI-generated batch was rejected by the content check. */
+  generation_error?: string | null;
 };
 
 export type QuestionRequest = {
