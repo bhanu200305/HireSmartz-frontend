@@ -157,8 +157,9 @@ const extendedApi = candidateApi.injectEndpoints({
     // `POST /candidates/{id}/resend-resume-upload-link` (was wired to a
     // `request-resume-upload` route the backend never built). Deliberately
     // narrow on the backend: only for a candidate with NO resume whose 24h
-    // upload window has EXPIRED (409 `ResumeUploadWindowStillActive`
-    // otherwise, 409 `CandidateAlreadyHasResume` once one is on file). Mints
+    // upload window has EXPIRED (422 `RESUME_UPLOAD_WINDOW_STILL_ACTIVE`
+    // otherwise, 409 `CANDIDATE_ALREADY_HAS_RESUME` once one is on file, 404 for an
+    // unknown candidate). Mints
     // a genuinely new link with a renewed 24h window and emails it. No body,
     // `null` data on success. Callers gate the button on the resume stage's
     // own `resume_upload_expired` round status, the same check the backend

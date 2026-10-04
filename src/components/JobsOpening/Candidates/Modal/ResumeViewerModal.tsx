@@ -18,6 +18,10 @@ import DocxRender from '../DocxRender';
 // (DocxRender); legacy .doc renders through Microsoft's Office viewer. An inline-disposition URL from the backend would
 // drop the fetch hop entirely (see INTERVIEW_INTAKE_FLOW_BACKEND_GAPS.md).
 
+// Browser PDF viewer open-parameters: fit the WHOLE page in the frame, with
+// the page thumbnail sidebar open.
+const PDF_FIT_PAGE = '#view=Fit&navpanes=1';
+
 type ResumeViewerModalProps = {
   open: boolean;
   onClose: () => void;
@@ -75,56 +79,21 @@ const ResumeViewerModal = ({
     <AntdCommonModal
       open={open}
       onClose={onClose}
-      title="Resume"
-      subtitle={candidateName}
-      modalProps={{ width: 900, maskClosable: true }}
+      modalProps={{
+        width: 'min(1100px, 96vw)',
+        maskClosable: true,
+        wrapClassName: 'resume-viewer-wrap',
+        rootClassName: 'resume-viewer-root',
+      }}
     >
-      {isFetching ? (
-        <div className="flex justify-center py-10">
-          <Loader />
-        </div>
-      ) : error ? (
-        <p className="text-sm text-red-500">
-          {getCandidateErrorMessage(error, 'Could not load the resume.')}
-        </p>
-      ) : !downloadUrl ? (
-        <p className="text-sm text-gray-500">No resume on file yet.</p>
-      ) : inlineFailed ? (
-        cannotPreview
-      ) : !hasViewer ? (
-        <div className="flex justify-center py-10">
-          <Loader />
-        </div>
-      ) : (
-        // Height computed from the SAME --app-header-height/--app-footer-height
-        // vars index.css uses for `.ant-modal-content`'s own max-height
-        // budget (`calc(100vh - header - footer - 48px)`), minus extra room
-        // for this modal's title/subtitle block, the actions row below the
-        // iframe, and padding — not a guessed vh percentage. A flat guess
-        // can still exceed the modal's real available space once all of
-        // that is counted, which leaves `.modal-content`'s own scroll
-        // fallback engaged ALONGSIDE the PDF viewer's own — this ties the
-        // box to the exact budget so that never happens, and the PDF viewer
-        // is the only thing that ever scrolls.
-        <div
-          className="flex flex-col gap-3 overflow-hidden"
-          style={{
-            height:
-              'calc(100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 248px)',
-          }}
-        >
-          {docxBlob ? (
-            <div className="w-full flex-1 min-h-0 rounded-lg border border-neutral-200 bg-gray-100">
-              <DocxRender blob={docxBlob} variant="full" fallback={cannotPreview} />
-            </div>
-          ) : (
-            <iframe
-              title={`${candidateName} resume`}
-              src={officeViewerUrl ?? blobUrl ?? undefined}
-              className="w-full flex-1 min-h-0 rounded-lg border border-neutral-200"
-            />
-          )}
-          <div className="flex items-center justify-end gap-4">
+      {/* Compact one-line header (title, name, actions) so the resume itself
+          gets the vertical space; `mr-10` clears the modal's close button. */}
+      <div className="mb-3 -mt-1 mr-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <h2 className="font-display text-base font-semibold text-neutral-900">
+          Resume <span className="font-normal text-neutral-500">· {candidateName}</span>
+        </h2>
+        {downloadUrl && hasViewer && !inlineFailed && !isFetching && !error && (
+          <div className="flex items-center gap-4">
             <a
               href={downloadUrl}
               target="_blank"
@@ -145,6 +114,53 @@ const ResumeViewerModal = ({
               Download Resume
             </a>
           </div>
+        )}
+      </div>
+      {isFetching ? (
+        <div className="flex justify-center py-10">
+          <Loader />
+        </div>
+      ) : error ? (
+        <p className="text-sm text-red-500">
+          {getCandidateErrorMessage(error, 'Could not load the resume.')}
+        </p>
+      ) : !downloadUrl ? (
+        <p className="text-sm text-gray-500">No resume on file yet.</p>
+      ) : inlineFailed ? (
+        cannotPreview
+      ) : !hasViewer ? (
+        <div className="flex justify-center py-10">
+          <Loader />
+        </div>
+      ) : (
+        // Wide (see `resume-viewer-wrap` in index.css, which also trims the
+        // modal's own vertical slack) so the page renders large. Height computed from the SAME --app-header-height/--app-footer-height
+        // vars index.css uses for `.ant-modal-content`'s own max-height
+        // budget (`calc(100vh - header - footer - 48px)`), minus extra room
+        // for this modal's title/subtitle block, the actions row below the
+        // iframe, and padding — not a guessed vh percentage. A flat guess
+        // can still exceed the modal's real available space once all of
+        // that is counted, which leaves `.modal-content`'s own scroll
+        // fallback engaged ALONGSIDE the PDF viewer's own — this ties the
+        // box to the exact budget so that never happens, and the PDF viewer
+        // is the only thing that ever scrolls.
+        <div
+          className="flex flex-col gap-3 overflow-hidden"
+          style={{
+            height: 'calc(100vh - 140px)',
+          }}
+        >
+          {docxBlob ? (
+            <div className="w-full flex-1 min-h-0 rounded-lg border border-neutral-200 bg-gray-100">
+              <DocxRender blob={docxBlob} variant="full" fallback={cannotPreview} />
+            </div>
+          ) : (
+            <iframe
+              title={`${candidateName} resume`}
+              src={officeViewerUrl ?? (blobUrl ? `${blobUrl}${PDF_FIT_PAGE}` : undefined)}
+              className="w-full flex-1 min-h-0 rounded-lg border border-neutral-200"
+            />
+          )}
         </div>
       )}
     </AntdCommonModal>

@@ -576,7 +576,10 @@ const CandidatesListing = () => {
                                     : normaliseRoundStatus(candidate.current_round_status) ===
                                         'awaiting_resume_upload'
                                       ? 'Awaiting Resume Upload'
-                                      : formatRoundStatus(candidate.current_round_status)}
+                                      : normaliseRoundStatus(candidate.current_round_status) ===
+                                          'resume_upload_expired'
+                                        ? 'Resume Upload Link Expired'
+                                        : formatRoundStatus(candidate.current_round_status)}
                                 </Link>
                               )}
                             </div>

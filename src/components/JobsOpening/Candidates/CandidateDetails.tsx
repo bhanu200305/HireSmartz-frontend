@@ -11,8 +11,6 @@ import {
   LuPencil,
   LuThumbsDown,
   LuThumbsUp,
-  LuMic,
-  LuVideo,
   LuUsers,
   LuFileText,
   LuChevronLeft,
@@ -69,7 +67,10 @@ import {
   CONCLUDED_BOOKING_STATUSES,
   type InterviewApiError,
 } from '../../../api/interview-service/client';
-import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
+import {
+  getCandidateErrorMessage,
+  getCandidateErrorStatusCode,
+} from '../../../shared/utils/auth/candidateError.helpers';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
@@ -79,6 +80,8 @@ import CandidateDetailsForm from './CandidateDetailsForm';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import AssignJobModal from './Modal/AssignJobModal';
+import ResumeSplitLayout from './ResumeSplitLayout';
+import AiCommentsBox from './AiCommentsBox';
 import ResumeViewerModal from './Modal/ResumeViewerModal';
 import RoundSidebarItem from './RoundSidebarItem';
 import { RoundCandidateFeedback, RoundRecording, RoundTranscript } from './RoundArtifactsPanel';
@@ -108,7 +111,7 @@ import {
   useListTenantDepartmentJobTitlesQuery,
   useListTenantJobTitleCatalogueQuery,
 } from '../../../api/organization-service/Tenants/jobTitles';
-import { roundLabel, formatCallIntent, formatRoundVariant } from './roundDisplay';
+import { roundLabel, formatCallIntent } from './roundDisplay';
 import {
   resolveCurrentRound,
   isRoundConcluded,
@@ -348,6 +351,7 @@ const CandidateDetails = () => {
   // SKIP (beside ADVANCE / REJECT): the backend requires a reason.
   const [isSkipOpen, setIsSkipOpen] = useState(false);
   const [isAssignJobOpen, setIsAssignJobOpen] = useState(false);
+  const [isAiCommentExpanded, setIsAiCommentExpanded] = useState(false);
   const [skipReason, setSkipReason] = useState('');
   const [skipInterviewRound, { isLoading: isSkipping }] = useSkipInterviewRoundMutation();
   // "Scoring Criteria" popup (old app's per-round button): the resume
@@ -853,10 +857,20 @@ const CandidateDetails = () => {
         type: 'success',
       });
     } catch (e) {
+      const status = getCandidateErrorStatusCode(e);
       showToast({
-        message: getCandidateErrorMessage(e, 'Could not resend the upload link'),
+        message:
+          status === 409
+            ? 'This candidate already has a resume on file, so there is nothing to resend.'
+            : status === 422
+              ? 'The candidate’s 24-hour upload window is still open. A new link can be sent once it expires.'
+              : status === 404
+                ? 'Candidate not found.'
+                : getCandidateErrorMessage(e, 'Could not resend the upload link'),
         type: 'error',
       });
+      // 409 means the resume has since arrived: pull the fresh state.
+      if (status === 409) refetchCandidate();
     }
   };
 
@@ -916,8 +930,13 @@ const CandidateDetails = () => {
     }
   };
 
+  // Clicking the star that's already selected clears the rating (antd's
+  // `allowClear` reports 0) — same delete as the old "Remove Scoring" link.
   const handleRateResume = (rating: number) => {
-    if (!rating) return;
+    if (!rating) {
+      if (candidate?.resume_rating) void handleDeleteResumeReview();
+      return;
+    }
     void saveResumeReview(rating, candidate?.resume_review_comment ?? '');
   };
 
@@ -1256,8 +1275,8 @@ const CandidateDetails = () => {
     if (!entry) return [];
     const value = Number(entry.score) || 0;
     const percentage = Math.max(0, Math.min(100, Math.round((value / AI_SCORE_MAX) * 100)));
-    // Muted green / amber / red — same bands, softer tones than pure status colours.
-    const color = percentage >= 80 ? '#5FAE7C' : percentage >= 50 ? '#E8C065' : '#E07A72';
+    // Same bands, vibrant but soft tones rather than pure status colours.
+    const color = percentage >= 80 ? '#3FB97F' : percentage >= 50 ? '#F6BC3F' : '#F0686B';
     return [{ label, percentage, color }];
   });
 
@@ -1279,152 +1298,124 @@ const CandidateDetails = () => {
           intrinsic size, so the PDF viewer's chrome could widen the "fixed"
           preview track and squeeze the text column. `shrink-0` makes the
           preview width a hard cap; `min-w-0` lets the text side wrap. */}
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          {resumeCategoryBars.length > 0 && (
-            <div className="space-y-3.5">
-              {resumeCategoryBars.map((bar) => (
-                <div key={bar.label} className="flex items-center gap-3">
-                  <div className="h-5 w-44 shrink-0 overflow-hidden rounded-md bg-gray-100 xl:w-52">
-                    <div
-                      className="h-full rounded-md"
-                      style={{ width: `${bar.percentage}%`, backgroundColor: bar.color }}
-                    />
-                  </div>
-                  <span className="min-w-0 text-[13px] leading-tight text-gray-800">
-                    {bar.label} – {bar.percentage}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {candidate?.scoring_reason && (
-            <div>
-              <h2 className="mb-1 text-base font-medium">AI Comments</h2>
-              <p className="whitespace-pre-line rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
-                {candidate.scoring_reason}
-              </p>
-            </div>
-          )}
-
-          <div>
-            <h2 className="mb-1 text-base font-medium">Resume Rating</h2>
-            {/* Clickable stars; empty stars in a visible grey (antd's
-                default unfilled colour is near-invisible on white). */}
-            <ConfigProvider theme={{ components: { Rate: { starBg: '#cbd5e1' } } }}>
-              <Rate
-                value={candidate?.resume_rating ?? 0}
-                allowClear={false}
-                disabled={isSavingResumeRating}
-                onChange={(value) => void handleRateResume(value)}
-                tooltips={['Strong No', 'No', 'Neutral', 'Yes', 'Strong Yes']}
-                className="text-xl"
-              />
-            </ConfigProvider>
-            {candidate?.resume_rating ? (
-              <button
-                type="button"
-                onClick={() => void handleDeleteResumeReview()}
-                className="mt-2 block text-xs font-semibold text-red-500 hover:underline cursor-pointer"
-              >
-                Remove Scoring
-              </button>
-            ) : null}
-          </div>
-
-          <div>
-            <h2 className="mb-1 text-base font-medium">Feedback Comments</h2>
-            <Input.TextArea
-              value={resumeCommentDraft}
-              onChange={(e) => setResumeCommentDraft(e.target.value)}
-              placeholder="No feedback comments yet"
-              rows={4}
-              disabled={isSavingResumeRating}
-              className="rounded-lg text-xs"
+      <ResumeSplitLayout
+        fitPreview={Boolean(candidate?.resume_s3_key && candidateId)}
+        freezeSize={isAiCommentExpanded}
+        aside={
+          candidate?.resume_s3_key && candidateId ? (
+            <ResumeInlinePreview
+              candidateId={candidateId}
+              candidateName={candidateDisplayName(candidate)}
+              onExpand={() => setIsResumeViewerOpen(true)}
+              heightClassName="h-full"
             />
-            {isResumeCommentDirty && (
-              <div className="mt-2 flex items-center gap-2">
-                <Button
-                  className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-                  disabled={isSavingResumeRating}
-                  onClick={() =>
-                    void saveResumeReview(candidate?.resume_rating ?? null, resumeCommentDraft)
-                  }
-                >
-                  {isSavingResumeRating ? 'Saving…' : 'Save'}
-                </Button>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-gray-500 hover:underline cursor-pointer"
-                  disabled={isSavingResumeRating}
-                  onClick={() => setResumeCommentDraft(savedResumeComment)}
-                >
-                  Cancel
-                </button>
+          ) : (
+            <div className="flex flex-col items-center gap-3 self-start text-center">
+              <p className="mt-4 text-gray-500">No resume on file yet.</p>
+              <Tooltip
+                title={
+                  resumeUploadLinkExpired
+                    ? undefined
+                    : "Available once the candidate's 24-hour upload window has expired"
+                }
+              >
+                <span className="inline-flex">
+                  <Button
+                    className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => void handleResendUploadLink()}
+                    disabled={!resumeUploadLinkExpired || isResendingUploadLink}
+                  >
+                    {isResendingUploadLink ? 'Sending…' : 'Resend Upload Link'}
+                  </Button>
+                </span>
+              </Tooltip>
+            </div>
+          )
+        }
+      >
+        {resumeCategoryBars.length > 0 && (
+          <div className="space-y-3.5">
+            {resumeCategoryBars.map((bar) => (
+              <div key={bar.label} className="flex items-center gap-3">
+                <div className="h-5 w-44 shrink-0 overflow-hidden rounded-md bg-gray-100 xl:w-52">
+                  <div
+                    className="h-full rounded-md"
+                    style={{ width: `${bar.percentage}%`, backgroundColor: bar.color }}
+                  />
+                </div>
+                <span className="min-w-0 text-[13px] leading-tight text-gray-800">
+                  {bar.label} – {bar.percentage}%
+                </span>
               </div>
-            )}
+            ))}
           </div>
+        )}
+
+        {candidate?.scoring_reason && (
+          <div>
+            <h2 className="mb-1 text-base font-medium">AI Comments</h2>
+            <AiCommentsBox
+              text={candidate.scoring_reason}
+              expanded={isAiCommentExpanded}
+              onToggle={() => setIsAiCommentExpanded((v) => !v)}
+            />
+          </div>
+        )}
+
+        <div>
+          <h2 className="mb-1 text-base font-medium">Resume Rating</h2>
+          {/* Clickable stars; empty stars in a visible grey (antd's
+                default unfilled colour is near-invisible on white). */}
+          <ConfigProvider theme={{ components: { Rate: { starBg: '#cbd5e1' } } }}>
+            <Rate
+              value={candidate?.resume_rating ?? 0}
+              allowClear
+              disabled={isSavingResumeRating}
+              onChange={(value) => void handleRateResume(value)}
+              tooltips={['Strong No', 'No', 'Neutral', 'Yes', 'Strong Yes']}
+              className="text-xl"
+            />
+          </ConfigProvider>
         </div>
 
-        {candidate?.resume_s3_key && candidateId ? (
-          <div className="relative h-[380px] w-full shrink-0 lg:w-[300px]">
-            <div className="absolute inset-0">
-              <ResumeInlinePreview
-                candidateId={candidateId}
-                candidateName={candidateDisplayName(candidate)}
-                onExpand={() => setIsResumeViewerOpen(true)}
-                heightClassName="h-full"
-              />
+        <div>
+          <h2 className="mb-1 text-base font-medium">Feedback Comments</h2>
+          <Input.TextArea
+            value={resumeCommentDraft}
+            onChange={(e) => setResumeCommentDraft(e.target.value)}
+            placeholder="No feedback comments yet"
+            rows={4}
+            disabled={isSavingResumeRating}
+            className="rounded-lg text-xs"
+          />
+          {isResumeCommentDirty && (
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                disabled={isSavingResumeRating}
+                onClick={() =>
+                  void saveResumeReview(candidate?.resume_rating ?? null, resumeCommentDraft)
+                }
+              >
+                {isSavingResumeRating ? 'Saving…' : 'Save'}
+              </Button>
+              <button
+                type="button"
+                className="text-xs font-semibold text-gray-500 hover:underline cursor-pointer"
+                disabled={isSavingResumeRating}
+                onClick={() => setResumeCommentDraft(savedResumeComment)}
+              >
+                Cancel
+              </button>
             </div>
-          </div>
-        ) : (
-          <p className="mt-4 text-center text-gray-500 lg:w-[300px]">No resume available</p>
-        )}
-      </div>
+          )}
+        </div>
+      </ResumeSplitLayout>
     </div>
   );
 
   const roundDetailBody = selectedRound ? (
     <>
-      {!isResumeStage && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
-              {isResumeStage ? (
-                <LuFileText size={18} />
-              ) : isPanelRound ? (
-                <LuUsers size={18} />
-              ) : isAiVideoRound(selectedRound) ? (
-                <LuVideo size={18} />
-              ) : (
-                <LuMic size={18} />
-              )}
-            </span>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-lg font-bold text-gray-900">{roundLabel(selectedRound)}</h3>
-                {(() => {
-                  const variantLabel = formatRoundVariant(
-                    variantForRound(selectedRound) ??
-                      (isAiVideoRound(selectedRound)
-                        ? selectedBooking?.round_snapshot?.presentation_mode
-                        : isPanelRound
-                          ? selectedBooking?.round_snapshot?.delivery_mode
-                          : null)
-                  );
-                  return variantLabel ? (
-                    <span className="rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-700">
-                      {variantLabel}
-                    </span>
-                  ) : null;
-                })()}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {isResumeStage ? (
         // The resume stage is "upload a resume, get it scored" —
         // there is no separate interview to schedule or book for
@@ -2014,7 +2005,7 @@ const CandidateDetails = () => {
             <button
               type="button"
               aria-label="Email candidate"
-              className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary-300 bg-primary-100 text-primary shadow-lg transition-colors hover:bg-primary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
               disabled={!candidate?.email_id}
               onClick={() => setIsEmailOpen(true)}
             >
@@ -2030,7 +2021,7 @@ const CandidateDetails = () => {
             <button
               type="button"
               aria-label="Send SMS"
-              className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary-300 bg-primary-100 text-primary shadow-lg transition-colors hover:bg-primary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
               disabled={!candidate?.contact_no}
               onClick={() => setIsSmsOpen(true)}
             >
@@ -2267,20 +2258,20 @@ const CandidateDetails = () => {
                   >
                     <span className="flex">
                       <Button
-                        className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-primary bg-primary-50 text-primary hover:bg-primary-100"
                         onClick={() =>
                           advanceDisabled ? setIsSkipOpen(true) : setStatusModal('advance')
                         }
                         disabled={actionsLockedForIntakePair}
                       >
-                        <span className="text-white">Advance</span>
+                        <span>Advance</span>
                       </Button>
                     </span>
                   </Tooltip>
                   <Tooltip title={actionsLockedForIntakePair ? intakeLockReason : undefined}>
                     <span className="flex">
                       <Button
-                        className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full border-2 border-red-600 bg-red-50 text-red-600 font-semibold hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-red-600 bg-red-50 text-red-600 hover:bg-red-100"
                         onClick={() => setStatusModal('reject')}
                         disabled={actionsLockedForIntakePair}
                       >
@@ -2299,19 +2290,19 @@ const CandidateDetails = () => {
                   >
                     <span className="flex">
                       <Button
-                        className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full border-2 border-green-500 bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
                         onClick={() => setStatusModal('select')}
                         disabled={actionsLockedForIntakePair}
                       >
-                        <span className="text-green-700 font-semibold">Mark As Selected</span>
+                        <span>Mark As Selected</span>
                       </Button>
                     </span>
                   </Tooltip>
                   <Button
-                    className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full border-2 border-blue-500 bg-blue-50 hover:bg-blue-100"
+                    className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-blue-500 bg-blue-50 text-blue-500 hover:bg-blue-100"
                     onClick={() => setIsAssignJobOpen(true)}
                   >
-                    <span className="text-blue-500 font-semibold">Assign New Job</span>
+                    <span>Assign New Job</span>
                   </Button>
                 </div>
               )}
