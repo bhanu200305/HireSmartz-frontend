@@ -25,7 +25,9 @@ const fields: CatalogField<FormValues>[] = [
 /** This organization's own skill catalogue. Platform-wide skills show too,
  * but only the org's own are editable/removable - `is_organization_specific` gates both. */
 const TenantSkillsTab: React.FC = () => {
-  const { data: skillsData = [], isFetching } = useListActiveSkillsQuery();
+  const { data: skillsData = [], isFetching } = useListActiveSkillsQuery({
+    includeInactive: true,
+  });
   const [orgOnly, setOrgOnly] = useState(false);
   // Org-added skills first; `orgOnly` narrows to just those.
   const skills = useMemo(() => {
