@@ -460,6 +460,18 @@ const EditJobDetail = () => {
     defaultValues: {},
   });
 
+  // English is the default communication language while the field is empty
+  // (not once interviews have started, when the language is locked).
+  const languagesTouchedRef = useRef(false);
+  const languagesValue = watch('languages');
+  useEffect(() => {
+    if (languagesTouchedRef.current || languagesLoading || !jobData?.data) return;
+    if (jobData.data.interviewedCandidateCount) return;
+    if ((languagesValue ?? []).length > 0) return;
+    const english = languageOptions.find((l) => l.name.trim().toLowerCase() === 'english');
+    if (english) setValue('languages', [String(english.id)], { shouldDirty: false });
+  }, [languagesLoading, languageOptions, languagesValue, jobData, setValue]);
+
   // A currently-assigned-but-deactivated shift stays visible (flagged
   // isDeleted) via a targeted by-id lookup, fired only when the selected id
   // isn't already in the active list above.
@@ -2807,7 +2819,10 @@ const EditJobDetail = () => {
                           className="w-full custom-select-jobs placeholder-style"
                           loading={languagesLoading}
                           value={languagesLoading ? [] : (value ?? []).map(String)}
-                          onChange={(next) => onChange(next)}
+                          onChange={(next) => {
+                            languagesTouchedRef.current = true;
+                            onChange(next);
+                          }}
                           options={languageOptions.map((item) => ({
                             label: item.name,
                             value: item.id,

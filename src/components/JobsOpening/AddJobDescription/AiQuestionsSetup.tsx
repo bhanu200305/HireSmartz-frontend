@@ -842,31 +842,23 @@ const AiQuestionsSetup = () => {
                   <Typography variant="subtitle1" className="m-0 font-bold text-gray-900">
                     {activeRound.round_name}
                   </Typography>
-                  {activeRoundDescription && (
-                    <Tooltip title={activeRoundDescription}>
+                  {(activeRoundDescription || activeRoundGuidanceLabels.length > 0) && (
+                    <Tooltip
+                      title={
+                        <div className="flex flex-col gap-1">
+                          {activeRoundDescription && <span>{activeRoundDescription}</span>}
+                          {activeRoundGuidanceLabels.length > 0 && (
+                            <span>Focus areas: {activeRoundGuidanceLabels.join(', ')}</span>
+                          )}
+                        </div>
+                      }
+                    >
                       <MdInfoOutline className="-ml-1.5 text-gray-400" size={15} />
                     </Tooltip>
                   )}
                   <span className="text-sm text-gray-400">
                     {visibleQuestions.length} question{visibleQuestions.length === 1 ? '' : 's'}
                   </span>
-                  {activeRoundGuidanceLabels.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 border-l border-gray-200 pl-3">
-                      <Tooltip title="Questions for this round should probe these focus areas.">
-                        <span className="cursor-help text-xs font-semibold text-gray-600">
-                          Focus Areas:
-                        </span>
-                      </Tooltip>
-                      {activeRoundGuidanceLabels.map((label) => (
-                        <span
-                          key={label}
-                          className="rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700"
-                        >
-                          {label}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_370px]">
@@ -949,7 +941,7 @@ const AiQuestionsSetup = () => {
                       disabled={noEligibleRound}
                     />
                     <UploadAndGenerateHeader
-                      description="Or add faster:"
+                      description="Or add questions faster here:"
                       onGenerate={() => setShowGenerateConsentModal(true)}
                       onUpload={handleFileUpload}
                       onDownloadTemplate={handleDownloadTemplate}
