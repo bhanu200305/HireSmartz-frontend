@@ -27,6 +27,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const aiJobDescriptionId = useSelector(
     (state: RootState) => state.EditJobSlice.aiJobDescription.id
   );
+  const savedDetailsJobId = useSelector((state: RootState) => state.JobSlice.aiJobDescriptionId);
   const isFormCompleted = useSelector((state: RootState) => state.JobSlice.isFormCompleted);
   const editAiJdPassedJobId = useSelector((state: RootState) => state.JobSlice.editAiJdPassedJobId);
   const isScoringCompleted = useSelector((state: RootState) => state.JobSlice.isScoringCompleted);
@@ -34,9 +35,9 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   const isCreateMode = !isViewMode && !isEditMode;
 
-  // Gate on server-verified hasSavedDetails, not on the draft id.
+  // Gate on saved details: the server flag, or the id set on save (the refetch lags).
   const resolvedJobId = asJobId(reduxJobOpeningId);
-  const { data: jdDetailsForGate } = useGetJobDescriptionByIdQuery(
+  const { data: jdDetailsForGate, isFetching: isGateFetching } = useGetJobDescriptionByIdQuery(
     { jobOpeningId: resolvedJobId },
     { skip: !isCreateMode || !resolvedJobId }
   );
@@ -64,7 +65,8 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   // Edited drafts count as complete until the server answers (no flicker).
   const isTab1Completed = isCreateMode
-    ? jdDetailsForGate?.hasSavedDetails === true
+    ? jdDetailsForGate?.hasSavedDetails === true ||
+      (Boolean(resolvedJobId) && savedDetailsJobId === resolvedJobId)
     : isEditingDraft
       ? !editJd || editJd.hasSavedDetails
       : true;
@@ -150,8 +152,14 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     location.pathname.includes('/candidateDetails/');
 
   // Candidate list Back goes to the job listing, not `navigate(-1)`.
+  const returnState = location.state as { returnTo?: string; returnLabel?: string } | null;
+  const returnTo =
+    isCandidateDetailsPage && returnState?.returnTo?.startsWith('/') ? returnState.returnTo : null;
+
   const handleBackNavigation = () => {
-    if (isCandidateDetailsPage && id) {
+    if (returnTo) {
+      navigate(returnTo);
+    } else if (isCandidateDetailsPage && id) {
       navigate(`/jobs/view/${id}/candidates`);
     } else if (fromDashboard) {
       navigate('/');
@@ -162,7 +170,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   // Redirect to first available tab if current tab is disabled (e.g., on page refresh)
   useEffect(() => {
-    if (!isGated || isCandidatePage) return;
+    if (!isGated || isCandidatePage || isGateFetching) return;
 
     const currentPath = location.pathname;
     let currentTabIndex = -1;
@@ -208,6 +216,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     hasSavedInterviewRound,
     isScoringUnlocked,
     isGated,
+    isGateFetching,
     isCandidatePage,
     location.pathname,
     search,
@@ -220,7 +229,13 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       <div className="w-full max-w-6xl mb-3">
         <BackButton
           onClick={handleBackNavigation}
-          label={isCandidateDetailsPage ? 'Back to Candidate List' : 'Back'}
+          label={
+            returnTo
+              ? (returnState?.returnLabel ?? 'Back')
+              : isCandidateDetailsPage
+                ? 'Back to Candidate List'
+                : 'Back'
+          }
         />
       </div>
       <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">

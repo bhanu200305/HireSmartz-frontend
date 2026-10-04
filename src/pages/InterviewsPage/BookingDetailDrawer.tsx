@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Drawer, Select } from 'antd';
 import dayjs from 'dayjs';
 import { LuExternalLink, LuCirclePlay } from 'react-icons/lu';
+import { Link } from 'react-router-dom';
 
 import { Badge } from '../../components/shared/ui/badge';
 import { Button } from '../../components/shared/ui/button';
@@ -377,15 +378,14 @@ export const BookingDetailDrawer = ({
             </div>
 
             {profileHref && (
-              <a
-                href={profileHref}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to={profileHref}
+                state={{ returnTo: '/interviews', returnLabel: 'Back to Calendar' }}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
               >
                 View Full Candidate Profile
                 <LuExternalLink size={14} />
-              </a>
+              </Link>
             )}
 
             <SectionTitle>Overview</SectionTitle>

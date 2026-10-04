@@ -325,6 +325,11 @@ const JobDetails = () => {
   // has run for, so it fires at most once per job.
   const appliedAiFillJobIdRef = useRef<string | null>(null);
   const [enhanceJd] = useEnhanceJdMutation();
+
+  // Preload the next step so Save & Next doesn't wait on its lazy chunk.
+  useEffect(() => {
+    void import('./JobDescriptionStep');
+  }, []);
   const [createOrganizationSkill] = useCreateOrganizationSkillMutation();
   const [updateOrganizationSkill] = useUpdateOrganizationSkillMutation();
   const [deleteOrganizationSkill] = useDeleteOrganizationSkillMutation();

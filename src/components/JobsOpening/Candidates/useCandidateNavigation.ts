@@ -63,7 +63,10 @@ export const useCandidateNavigation = (candidateId?: string, jobOpeningId?: stri
     if (!target) return;
     const jobId = target.job_opening_id ?? args.jobOpeningId;
     if (!jobId) return;
-    const state: CandidateNavState = { candidateNav: { args, index: targetIndex } };
+    const state = {
+      ...(location.state as object | null),
+      candidateNav: { args, index: targetIndex },
+    };
     // Replace, not push: stepping through candidates shouldn't make the
     // browser Back button walk back through every one of them.
     navigate(
