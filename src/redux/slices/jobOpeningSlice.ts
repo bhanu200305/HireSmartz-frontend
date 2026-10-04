@@ -12,12 +12,14 @@ type JobState = {
   /** Same as jobOpeningId on the real contract — JD hangs off the job, not a separate entity. */
   aiJobDescriptionId: string | null;
   isFormCompleted?: boolean;
+  isScoringCompleted?: boolean;
 };
 
 const initialState: JobState = {
   jobOpeningId: '',
   aiJobDescriptionId: null,
   isFormCompleted: false,
+  isScoringCompleted: false,
   details: {
     jobProfileCode: '',
     jobTitle: [],
@@ -85,6 +87,9 @@ const jobSlice = createSlice({
     setIsFormCompleted: (state, action: PayloadAction<boolean>) => {
       state.isFormCompleted = action.payload;
     },
+    setIsScoringCompleted: (state, action: PayloadAction<boolean>) => {
+      state.isScoringCompleted = action.payload;
+    },
     setAiJobDescriptionId: (state, action: PayloadAction<string | null>) => {
       state.aiJobDescriptionId = action.payload;
     },
@@ -105,5 +110,6 @@ export const {
   setAiJobDescriptionId,
   resetJobDescription,
   setIsFormCompleted,
+  setIsScoringCompleted,
 } = jobSlice.actions;
 export default jobSlice.reducer;
