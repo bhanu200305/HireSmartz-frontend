@@ -324,6 +324,24 @@ canvas[data-agora-recording='true'] {
   flex-direction: column;
   max-height: calc(100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 48px);
   overflow: hidden;
+  /*
+   * antd's own close button is a 32px box positioned 12px from this
+   * element's edges (`top`/`insetInlineEnd` both resolve to
+   * (modalHeaderHeight - modalCloseBtnSize) / 2 = (56 - 32) / 2 in antd's
+   * default theme), so it occupies the 12px-44px inset range in the
+   * top-right corner — unconditionally, regardless of what a modal renders,
+   * since AntdCommonModal always sets `title={null}` (see its own comment).
+   * `.ant-modal-body` below is this element's only padded child and fills
+   * whatever width padding leaves it, so its right edge — and therefore any
+   * scrollbar it renders when content overflows — sits exactly at this
+   * padding's inset. The antd default (24px) falls inside the close
+   * button's 12px-44px footprint, which is the actual cause of a scrollbar
+   * rendering flush against/under the close button in any modal that
+   * scrolls via the fallback (e.g. ImageCropModal, or any plain
+   * AntdCommonModal body taller than the viewport). Widening just this
+   * side clears that footprint with room to spare.
+   */
+  padding-right: 52px;
 }
 
 .ant-modal-body {

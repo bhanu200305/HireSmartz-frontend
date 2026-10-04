@@ -507,7 +507,7 @@ const AiCallSchedulePage = () => {
           <div className="bg-gray-50 rounded-xl p-4 text-left text-sm text-gray-700 space-y-3">
             <div className="flex items-center gap-2">
               <LuCalendarDays className="text-(--primary) w-4 h-4 shrink-0" />
-              <span>{selectedDate?.locale(lang).format('dddd, MMMM D, YYYY')}</span>
+              <span>{selectedDate?.locale(lang).format('dddd, MMM D, YYYY')}</span>
             </div>
             <div className="flex items-center gap-2">
               <RxClock className="text-(--primary) w-4 h-4 shrink-0" />
@@ -793,7 +793,7 @@ const AiCallSchedulePage = () => {
                   {t.confirmTitle}
                 </p>
                 <h3 className="text-base font-semibold text-gray-800 mb-6">
-                  {selectedDate.locale(lang).format('dddd, MMMM D, YYYY')}
+                  {selectedDate.locale(lang).format('dddd, MMM D, YYYY')}
                 </h3>
 
                 <div className="border border-(--primary) rounded-xl px-5 py-4 text-center">
@@ -831,7 +831,7 @@ const AiCallSchedulePage = () => {
                 <div className="px-5 pt-5 pb-2 shrink-0">
                   <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                     <LuCalendarDays className="w-4 h-4 text-(--primary)" />
-                    {selectedDate.locale(lang).format('dddd, MMMM D')}
+                    {selectedDate.locale(lang).format('dddd, MMM D')}
                   </h3>
                 </div>
                 <div

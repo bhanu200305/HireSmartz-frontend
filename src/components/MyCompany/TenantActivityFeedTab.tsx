@@ -126,7 +126,7 @@ const TenantActivityFeedTab: React.FC<{ tenantId: string; isMaster?: boolean }> 
         <span className="text-gray-500 text-sm whitespace-nowrap">
           {event.created_at
             ? new Date(event.created_at).toLocaleString('en-US', {
-                month: 'long',
+                month: 'short',
                 day: 'numeric',
                 year: 'numeric',
                 hour: 'numeric',

@@ -41,7 +41,7 @@ const formatSchedule = (start: string | null, timezone: string | null): string =
   if (!start) return 'Not scheduled';
   const d = dayjs(start);
   if (!d.isValid()) return 'Not scheduled';
-  return `${d.format('MMMM D, YYYY, h:mm A')}${timezone ? ` (${timezone})` : ''}`;
+  return `${d.format('MMM D, YYYY, h:mm A')}${timezone ? ` (${timezone})` : ''}`;
 };
 
 const roundLabel = (booking: { sequence_no: number }): string =>

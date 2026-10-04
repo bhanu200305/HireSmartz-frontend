@@ -58,7 +58,7 @@ const TERMINAL: BookingStatus[] = [
 ];
 
 const fmt = (iso: string | null): string =>
-  iso && dayjs(iso).isValid() ? dayjs(iso).format('MMMM D, YYYY, h:mm A') : '-';
+  iso && dayjs(iso).isValid() ? dayjs(iso).format('MMM D, YYYY, h:mm A') : '-';
 
 type PendingAction = 'cancel' | 'skip' | 'status' | 'substitute' | null;
 

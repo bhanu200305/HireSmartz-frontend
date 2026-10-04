@@ -160,7 +160,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                       <span className="text-xs text-gray-400">
                         · expires{' '}
                         {new Date(invitation.expires_at).toLocaleDateString('en-US', {
-                          month: 'long',
+                          month: 'short',
                           day: 'numeric',
                           year: 'numeric',
                         })}

@@ -547,7 +547,7 @@ const CandidatesListing = () => {
                           <Col span={4}>
                             <p className="text-sm text-neutral-900 roboto-font">
                               {dayjs(candidate.applied_date).isValid()
-                                ? dayjs(candidate.applied_date).format('MMMM D, YYYY')
+                                ? dayjs(candidate.applied_date).format('MMM D, YYYY')
                                 : 'N/A'}
                             </p>
                           </Col>

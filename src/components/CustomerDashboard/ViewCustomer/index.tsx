@@ -61,7 +61,7 @@ import NotificationCopyPanel from './panels/NotificationCopyPanel';
 import TenantActivityFeedTab from '../../MyCompany/TenantActivityFeedTab';
 
 const formatMetaDate = (iso: string): string =>
-  new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 const STATUS_BADGE: Record<string, BadgeStatus> = {
   draft: 'neutral',

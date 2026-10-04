@@ -14,7 +14,7 @@ import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
 
 const formatDate = (iso: string | null): string =>
   iso
-    ? new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : '-';
 
 const candidateName = (row: CandidatePoolItem): string =>

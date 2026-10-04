@@ -108,7 +108,12 @@ const ImageCropModal: React.FC<ImageCropModalProps> = ({
       subtitle={subtitle}
       modalProps={{ width: 'min(480px, 92vw)', keyboard: !isProcessing && !isSaving }}
     >
-      <div className="flex max-h-[85vh] flex-col gap-5 overflow-y-auto pr-1">
+      {/* No independent scroll region here — AntdCommonModal's own
+          `.ant-modal-body` fallback scrollbar (see index.css) already caps
+          this against the viewport. A second `overflow-y-auto` wrapper here
+          used to create a nested scroll region of its own, which is where
+          the "two scrollbars" came from. */}
+      <div className="flex flex-col gap-5">
         <div
           className="relative mx-auto w-full shrink-0 overflow-hidden rounded-2xl bg-[var(--gray-900)]"
           // The photo area's own shape must match the crop selection's

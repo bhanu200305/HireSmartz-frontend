@@ -88,7 +88,7 @@ const GuestOrganizations: React.FC = () => {
         <span className="text-sm text-gray-500">
           {lead.created_at
             ? new Date(lead.created_at).toLocaleDateString('en-US', {
-                month: 'long',
+                month: 'short',
                 day: 'numeric',
                 year: 'numeric',
               })

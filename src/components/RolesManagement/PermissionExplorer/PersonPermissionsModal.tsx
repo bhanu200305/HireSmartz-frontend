@@ -153,7 +153,11 @@ const PersonPermissionsModal: React.FC<PersonPermissionsModalProps> = ({
       }
       modalProps={{ width: 640, maskClosable: true }}
     >
-      <div className="max-h-[65vh] overflow-y-auto flex flex-col gap-4">
+      {/* No independent scroll region here — AntdCommonModal's own
+          `.ant-modal-body` fallback scrollbar (see index.css) already caps
+          this against the viewport; a second one here just stacked a nested
+          scrollbar on top of it. */}
+      <div className="flex flex-col gap-4">
         {isLoading ? (
           <div className="py-10 flex items-center justify-center">
             <Loader />

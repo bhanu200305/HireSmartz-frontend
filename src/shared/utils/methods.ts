@@ -189,7 +189,7 @@ export const formattedDate = (startDate: string) => {
   const date = new Date(startDate);
   const formattedDate = date.toLocaleDateString('en-US', {
     day: 'numeric',
-    month: 'long',
+    month: 'short',
     year: 'numeric',
   });
   return formattedDate;

@@ -376,7 +376,7 @@ export const RecordingPlaybackPage = () => {
       </h1>
       {data.start_time && dayjs(data.start_time).isValid() && (
         <p className="mt-1 text-sm text-gray-500">
-          {dayjs(data.start_time).format('dddd, MMMM D, YYYY · h:mm A')}
+          {dayjs(data.start_time).format('dddd, MMM D, YYYY · h:mm A')}
         </p>
       )}
       <div className="mt-4">

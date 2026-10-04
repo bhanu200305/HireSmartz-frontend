@@ -71,7 +71,7 @@ const MySupportAccess: React.FC = () => {
                   render: (_: unknown, row: GrantRow) => (
                     <span className="text-gray-500 text-sm whitespace-nowrap">
                       {new Date(row.granted_at).toLocaleString('en-US', {
-                        month: 'long',
+                        month: 'short',
                         day: 'numeric',
                         year: 'numeric',
                         hour: 'numeric',

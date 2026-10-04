@@ -316,7 +316,7 @@ const AiCallBooking = () => {
             {isConfirmed && (
               <Alert
                 message="Interview Confirmed!"
-                description={`Your video interview has been scheduled for ${bookingData.selectedDate?.format('MMMM D, YYYY')} at ${formatTimeForDisplay(bookingData.selectedTime, timeFormat)} (${bookingData.selectedTimezone}).`}
+                description={`Your video interview has been scheduled for ${bookingData.selectedDate?.format('MMM D, YYYY')} at ${formatTimeForDisplay(bookingData.selectedTime, timeFormat)} (${bookingData.selectedTimezone}).`}
                 type="success"
                 showIcon
                 className="mt-6 rounded-lg max-w-2xl"

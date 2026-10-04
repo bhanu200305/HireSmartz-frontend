@@ -143,7 +143,7 @@ const CustomerTable = () => {
         <span className="text-sm text-gray-500">
           {tenant.created_at
             ? new Date(tenant.created_at).toLocaleDateString('en-US', {
-                month: 'long',
+                month: 'short',
                 day: 'numeric',
                 year: 'numeric',
               })

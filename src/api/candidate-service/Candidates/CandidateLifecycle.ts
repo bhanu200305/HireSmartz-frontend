@@ -46,6 +46,9 @@ export type CandidateView = {
   /** ai-service's verdict on the resume vs. the job — never edited by a recruiter. */
   resume_score: number | null;
   scoring_reason: string | null;
+  /** Per-criterion breakdown behind `resume_score` — `[{ key: 'SKILLS_MATCH', score: 4 }, ...]`,
+   * each 0-5. `null` for candidates scored before candidate-service stored it. */
+  resume_category_scores?: { key: string; score: number }[] | null;
   resume_s3_key: string | null;
 
   /** The recruiter's own take on the resume, beside the AI score — never replacing it. */

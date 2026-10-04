@@ -466,7 +466,7 @@ export const RoundCandidateFeedback = ({ feedback }: RoundCandidateFeedbackProps
         <p className="text-sm text-gray-600">{feedback.candidate_feedback_text}</p>
       )}
       <span className="text-xs text-gray-400">
-        Submitted {dayjs(feedback.candidate_feedback_submitted_at).format('MMMM D, YYYY, h:mm A')}
+        Submitted {dayjs(feedback.candidate_feedback_submitted_at).format('MMM D, YYYY, h:mm A')}
       </span>
     </div>
   );

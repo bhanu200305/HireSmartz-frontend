@@ -1,4 +1,3 @@
-import type { BadgeStatus } from '../../shared';
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
 import {
@@ -10,20 +9,11 @@ import {
   isAiVideoRound,
   isAudioScreeningRound,
   isIntakeCallRound,
-  isInterviewerNoShowRound,
   normaliseRoundStatus,
   type RoundBucket,
 } from './roundProgress';
-import { AI_SCORE_MAX, BUCKET_META, HUMAN_SCORE_MAX, formatWhen } from './roundPipeline';
-import { roundLabel, formatRoundStatus, formatRoundVariant } from './roundDisplay';
-
-const STATUS_TEXT_COLOR: Partial<Record<BadgeStatus, string>> = {
-  success: 'text-success',
-  warning: 'text-warning',
-  neutral: 'text-neutral-500',
-  danger: 'text-danger',
-  info: 'text-info',
-};
+import { AI_SCORE_MAX, BUCKET_META, HUMAN_SCORE_MAX } from './roundPipeline';
+import { roundLabel, formatRoundStatus } from './roundDisplay';
 
 type RoundSidebarItemProps = {
   round: CandidateInterviewRoundView;
@@ -54,16 +44,13 @@ type RoundSidebarItemProps = {
 // can call per-round hooks.
 const RoundSidebarItem = ({
   round,
-  index,
   bucket,
   overdue,
-  isCurrentStage,
   isSelected,
   isResumeScored,
   roundScore,
   resumeScore,
   consistencyScore,
-  variant,
   jobId,
   onSelect,
 }: RoundSidebarItemProps) => {
@@ -109,27 +96,24 @@ const RoundSidebarItem = ({
   const isBlockedOnCalendar =
     isPanelRound && booking?.status === 'draft' && missingCalendarCount > 0;
   const technicalFailure = booking?.call_intent === 'technical_failure';
-  const visuallyFailed = overdue || technicalFailure;
-  const meta = visuallyFailed ? BUCKET_META.failed : BUCKET_META[bucket];
-  // Still the 'failed' bucket, but an interviewer no-show is the company's
-  // failure, not the candidate's — distinct badge color so it never reads
-  // the same as a candidate no-show.
-  const badgeStatus = isInterviewerNoShowRound(round) ? 'info' : meta.badgeStatus;
 
-  const when = formatWhen(round.scheduled_at) ?? formatWhen(round.due_at);
+  // Side-bar colour = the round's state: green done, amber current stage,
+  // grey upcoming, red needs attention (overdue / technical failure).
+  const effectiveBucket = isResumeScored ? 'done' : bucket;
+  const meta = overdue || technicalFailure ? BUCKET_META.failed : BUCKET_META[effectiveBucket];
   const isInterviewRound = round.stage_type === 'interview';
   const roundScoreValue = roundScore?.recruiter_score ?? roundScore?.score;
   const scoreLine =
     round.stage_type === 'resume' && resumeScore !== null
-      ? `Score: ${resumeScore} / ${AI_SCORE_MAX}`
+      ? `Score: ${resumeScore}/${AI_SCORE_MAX}`
       : isIntakeCallRound(round) && consistencyScore !== null
-        ? `Consistency: ${consistencyScore} / ${AI_SCORE_MAX}`
+        ? `Consistency: ${consistencyScore}/${AI_SCORE_MAX}`
         : isInterviewRound && !isIntakeCallRound(round) && roundScoreValue != null
           ? roundScore?.score != null && roundScore?.recruiter_score != null
-            ? `AI: ${roundScore.score} / ${AI_SCORE_MAX} · Recruiter: ${roundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
+            ? `AI: ${roundScore.score}/${AI_SCORE_MAX} · Recruiter: ${roundScore.recruiter_score}/${HUMAN_SCORE_MAX}`
             : roundScore?.recruiter_score != null
-              ? `Recruiter: ${roundScore.recruiter_score} / ${HUMAN_SCORE_MAX}`
-              : `Score: ${roundScore?.score} / ${AI_SCORE_MAX} · AI score`
+              ? `Recruiter: ${roundScore.recruiter_score}/${HUMAN_SCORE_MAX}`
+              : `Score: ${roundScore?.score}/${AI_SCORE_MAX} · AI score`
           : null;
 
   const statusText = overdue
@@ -145,9 +129,6 @@ const RoundSidebarItem = ({
             : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
               ? 'Awaiting resume upload'
               : formatRoundStatus(round.status);
-  // Legend colours (Completed / Current stage / Upcoming / Needs attention)
-  // carried onto the status text itself; interviewer no-show stays blue.
-  const statusColor = STATUS_TEXT_COLOR[badgeStatus] ?? 'text-neutral-500';
 
   // Old app's round tab: centred text stack — bold name, "Status: …",
   // then score / when lines — with roomy padding and no card chrome.
@@ -157,41 +138,15 @@ const RoundSidebarItem = ({
         type="button"
         aria-pressed={isSelected}
         onClick={onSelect}
-        className={`flex w-full flex-col items-center gap-1 px-4 py-4 text-center cursor-pointer transition-colors hover:bg-gray-50 ${
-          isSelected ? 'bg-primary-50/60' : ''
-        }`}
+        className={`flex w-full flex-col items-center gap-1 px-4 py-5 text-center cursor-pointer transition-colors hover:bg-gray-50 ${isSelected ? 'bg-gray-50' : ''}`}
       >
-        <span className="flex max-w-full items-center justify-center gap-2">
-          <span
-            className={`h-2.5 w-2.5 shrink-0 rounded-full ${meta.stepBg} ${
-              isCurrentStage ? 'ring-2 ring-warning/30 ring-offset-1' : ''
-            }`}
-            title={
-              visuallyFailed
-                ? 'Needs Attention'
-                : bucket === 'done'
-                  ? 'Completed'
-                  : isCurrentStage
-                    ? 'Current Stage'
-                    : `Step ${index + 1}`
-            }
-            aria-hidden
-          />
-          <span
-            className={`truncate text-sm font-semibold ${isSelected ? 'text-primary' : 'text-gray-900'}`}
-            title={roundLabel(round)}
-          >
-            {roundLabel(round)}
-          </span>
-        </span>
-        {formatRoundVariant(variant) && (
-          <span className="rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-700">
-            {formatRoundVariant(variant)}
-          </span>
-        )}
-        <span className="text-xs text-gray-800">
-          Status: <span className={`font-semibold ${statusColor}`}>{statusText}</span>
-        </span>
+        <h3
+          className={`max-w-full truncate text-sm font-bold ${isSelected ? 'text-primary' : 'text-gray-900'}`}
+          title={roundLabel(round)}
+        >
+          {roundLabel(round)}
+        </h3>
+        <span className="text-xs font-medium text-gray-900">Status: {statusText}</span>
         {isBlockedOnCalendar && (
           <span className="text-xs font-semibold text-warning-text">
             {`Calendar pending (${missingCalendarCount})`}
@@ -205,7 +160,7 @@ const RoundSidebarItem = ({
         {!overdue && technicalFailure && (
           <span className="text-xs text-danger">The call ended due to a technical issue.</span>
         )}
-        {scoreLine && <span className="text-xs text-gray-800">{scoreLine}</span>}
+        {scoreLine && <span className="text-xs font-medium text-gray-900">{scoreLine}</span>}
         {panelInterviewers.length > 0 && (
           // Picked panel interviewers, same colors as the picker's chips:
           // green = calendar connected, red = not connected.
@@ -235,15 +190,11 @@ const RoundSidebarItem = ({
             ))}
           </span>
         )}
-        {(when || round.duration_minutes != null) && (
-          <span className="text-xs text-gray-500">
-            {[when, round.duration_minutes != null ? `${round.duration_minutes} min` : null]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
+        {round.duration_minutes != null && (
+          <span className="text-[11px] text-gray-500">{`${round.duration_minutes} min`}</span>
         )}
       </button>
-      {isSelected && <span className="absolute left-0 top-0 h-full w-1 bg-primary" aria-hidden />}
+      <span className={`absolute left-0 top-0 h-full w-1 ${meta.stepBg}`} aria-hidden />
     </li>
   );
 };

@@ -26,7 +26,7 @@ import {
   LuCircleCheck,
 } from 'react-icons/lu';
 import { IoChatbubbleEllipses } from 'react-icons/io5';
-import { CommonCard, Button, Badge, InfoHint, showToast } from '../../shared';
+import { Button, Badge, InfoHint, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
@@ -80,6 +80,7 @@ import BulkSendSmsModal from './Modal/BulkSendSmsModal';
 import EditCandidateModal from './Modal/EditCandidateModal';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
+import AssignJobModal from './Modal/AssignJobModal';
 import ResumeViewerModal from './Modal/ResumeViewerModal';
 import RoundSidebarItem from './RoundSidebarItem';
 import { RoundCandidateFeedback, RoundRecording, RoundTranscript } from './RoundArtifactsPanel';
@@ -94,7 +95,6 @@ import {
   interviewTypeForRound,
 } from './roundPipeline';
 import ResumeInlinePreview from './ResumeInlinePreview';
-import ScoreSummaryTile from './ScoreSummaryTile';
 import RoundCollapsibleSection from './RoundCollapsibleSection';
 import RoundDetailTabs from './RoundDetailTabs';
 import ScoringCriteriaModal from './Modal/ScoringCriteriaModal';
@@ -194,7 +194,7 @@ const candidateDisplayName = (c?: CandidateView) =>
   `${c?.first_name ?? ''} ${c?.last_name ?? ''}`.trim() || 'N/A';
 
 const formatDateTime = (value: string | null | undefined) =>
-  value && dayjs(value).isValid() ? dayjs(value).format('MMMM D, YYYY · h:mm A') : null;
+  value && dayjs(value).isValid() ? dayjs(value).format('MMM D, YYYY · h:mm A') : null;
 
 /** "Scored" table cell — AI scores (resume, consistency, round) are out of
  * AI_SCORE_MAX, the recruiter's Human score out of HUMAN_SCORE_MAX (`outOf`).
@@ -348,6 +348,7 @@ const CandidateDetails = () => {
   const [resumeCommentDraft, setResumeCommentDraft] = useState('');
   // SKIP (beside ADVANCE / REJECT): the backend requires a reason.
   const [isSkipOpen, setIsSkipOpen] = useState(false);
+  const [isAssignJobOpen, setIsAssignJobOpen] = useState(false);
   const [skipReason, setSkipReason] = useState('');
   const [skipInterviewRound, { isLoading: isSkipping }] = useSkipInterviewRoundMutation();
   // "Scoring Criteria" popup (old app's per-round button): the resume
@@ -1226,21 +1227,70 @@ const CandidateDetails = () => {
     </Tooltip>
   );
 
+  // The four AI criteria behind the resume score as 0-5 bars (shown as a
+  // percentage), in the fixed order the old app listed them. Empty for a
+  // candidate scored before candidate-service stored the breakdown — nothing
+  // is invented for them.
+  const resumeCategoryBars = Object.entries(RESUME_CRITERIA_LABELS).flatMap(([key, label]) => {
+    const entry = candidate?.resume_category_scores?.find(
+      (c) => String(c.key ?? '').toUpperCase() === key
+    );
+    if (!entry) return [];
+    const value = Number(entry.score) || 0;
+    const percentage = Math.max(0, Math.min(100, Math.round((value / AI_SCORE_MAX) * 100)));
+    const color = percentage >= 80 ? '#2B934E' : percentage >= 50 ? '#FFBF00' : '#FF3B30';
+    return [{ label, percentage, color }];
+  });
+
   const renderResumeAssessment = () => (
-    <CommonCard>
-      {/* flex, not grid-cols-[1fr_240px]: a grid track's own min-width still
-          defaults to its content's intrinsic size, so a wide element dropped
-          into the preview column (the PDF viewer's internal chrome, in
-          particular) can quietly widen that "fixed" 240px track and squeeze
-          the text column down to almost nothing — which is exactly what was
-          making the AI score explanation wrap one word per line. `shrink-0`
-          on the preview side makes 240px an actual hard cap instead of a
-          suggestion; `min-w-0` on the text side is what lets it shrink/wrap
-          instead of being pushed wide. */}
-      <div className="flex flex-col gap-6 p-2 lg:flex-row">
-        <div className="flex min-w-0 flex-1 flex-col gap-6">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm">
+          Resume Score is <b>{candidate?.resume_score ?? 0}</b>/{AI_SCORE_MAX}
+        </p>
+        <Button
+          className="cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
+          onClick={() => setScoringCriteriaFor({ kind: 'resume' })}
+        >
+          <span>Scoring Criteria</span>
+        </Button>
+      </div>
+
+      {/* flex, not a grid: a grid track's min-width defaults to its content's
+          intrinsic size, so the PDF viewer's chrome could widen the "fixed"
+          preview track and squeeze the text column. `shrink-0` makes the
+          preview width a hard cap; `min-w-0` lets the text side wrap. */}
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          {resumeCategoryBars.length > 0 && (
+            <div className="space-y-3.5">
+              {resumeCategoryBars.map((bar) => (
+                <div key={bar.label} className="flex items-center gap-3">
+                  <div className="h-5 w-44 shrink-0 overflow-hidden bg-gray-200 xl:w-52">
+                    <div
+                      className="h-full"
+                      style={{ width: `${bar.percentage}%`, backgroundColor: bar.color }}
+                    />
+                  </div>
+                  <span className="min-w-0 text-[13px] leading-tight text-gray-800">
+                    {bar.label} – {bar.percentage}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {candidate?.scoring_reason && (
+            <div>
+              <h2 className="mb-1 text-base font-medium">AI Comments</h2>
+              <p className="whitespace-pre-line rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                {candidate.scoring_reason}
+              </p>
+            </div>
+          )}
+
           <div>
-            <h4 className="text-base font-semibold text-gray-900">Resume Scoring</h4>
+            <h2 className="mb-1 text-base font-medium">Resume Rating</h2>
             {/* Clickable stars; empty stars in a visible grey (antd's
                 default unfilled colour is near-invisible on white). */}
             <ConfigProvider theme={{ components: { Rate: { starBg: '#cbd5e1' } } }}>
@@ -1249,40 +1299,30 @@ const CandidateDetails = () => {
                 allowClear={false}
                 disabled={isSavingResumeRating}
                 onChange={(value) => void handleRateResume(value)}
-                className="mt-2 text-2xl"
+                tooltips={['Strong No', 'No', 'Neutral', 'Yes', 'Strong Yes']}
+                className="text-xl"
               />
             </ConfigProvider>
-          </div>
-
-          {/* AI resume score and the Intake Call consistency check (a
-              transcript-vs-resume authenticity signal, not re-scored by a
-              recruiter) — stacked, one full-width row each. */}
-          <div className="flex flex-col gap-4">
-            <ScoreSummaryTile
-              label="AI Resume Score"
-              icon={<LuFileText size={16} />}
-              score={candidate?.resume_score}
-              reason={candidate?.scoring_reason}
-              pendingText="Resume not scored yet"
-            />
-            <ScoreSummaryTile
-              label="Intake Call Consistency"
-              icon={<LuMic size={16} />}
-              score={candidate?.consistency_score}
-              reason={candidate?.consistency_score_reason}
-              pendingText="Available after the intake call"
-            />
+            {candidate?.resume_rating ? (
+              <button
+                type="button"
+                onClick={() => void handleDeleteResumeReview()}
+                className="mt-2 block text-xs font-semibold text-red-500 hover:underline cursor-pointer"
+              >
+                Remove Scoring
+              </button>
+            ) : null}
           </div>
 
           <div>
-            <h4 className="text-base font-semibold text-gray-900">Feedback Comments</h4>
+            <h2 className="mb-1 text-base font-medium">Feedback Comments</h2>
             <Input.TextArea
               value={resumeCommentDraft}
               onChange={(e) => setResumeCommentDraft(e.target.value)}
-              placeholder="Add your comments on this resume"
-              autoSize={{ minRows: 4, maxRows: 10 }}
+              placeholder="No feedback comments yet"
+              rows={4}
               disabled={isSavingResumeRating}
-              className="mt-2 rounded-md text-sm"
+              className="rounded-lg text-xs"
             />
             {isResumeCommentDirty && (
               <div className="mt-2 flex items-center gap-2">
@@ -1305,20 +1345,11 @@ const CandidateDetails = () => {
                 </button>
               </div>
             )}
-            {candidate?.resume_rating ? (
-              <button
-                type="button"
-                onClick={() => void handleDeleteResumeReview()}
-                className="mt-2 block text-xs font-semibold text-red-500 hover:underline cursor-pointer"
-              >
-                Remove Scoring
-              </button>
-            ) : null}
           </div>
         </div>
 
-        {candidate?.resume_s3_key && candidateId && (
-          <div className="relative h-[320px] w-full shrink-0 lg:w-60">
+        {candidate?.resume_s3_key && candidateId ? (
+          <div className="relative h-[380px] w-full shrink-0 lg:w-[300px]">
             <div className="absolute inset-0">
               <ResumeInlinePreview
                 candidateId={candidateId}
@@ -1328,50 +1359,52 @@ const CandidateDetails = () => {
               />
             </div>
           </div>
+        ) : (
+          <p className="mt-4 text-center text-gray-500 lg:w-[300px]">No resume available</p>
         )}
       </div>
-    </CommonCard>
+    </div>
   );
 
   const roundDetailBody = selectedRound ? (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
-            {isResumeStage ? (
-              <LuFileText size={18} />
-            ) : isPanelRound ? (
-              <LuUsers size={18} />
-            ) : isAiVideoRound(selectedRound) ? (
-              <LuVideo size={18} />
-            ) : (
-              <LuMic size={18} />
-            )}
-          </span>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-lg font-bold text-gray-900">{roundLabel(selectedRound)}</h3>
-              {(() => {
-                const variantLabel = formatRoundVariant(
-                  variantForRound(selectedRound) ??
-                    (isAiVideoRound(selectedRound)
-                      ? selectedBooking?.round_snapshot?.presentation_mode
-                      : isPanelRound
-                        ? selectedBooking?.round_snapshot?.delivery_mode
-                        : null)
-                );
-                return variantLabel ? (
-                  <span className="rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-700">
-                    {variantLabel}
-                  </span>
-                ) : null;
-              })()}
+      {!isResumeStage && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
+              {isResumeStage ? (
+                <LuFileText size={18} />
+              ) : isPanelRound ? (
+                <LuUsers size={18} />
+              ) : isAiVideoRound(selectedRound) ? (
+                <LuVideo size={18} />
+              ) : (
+                <LuMic size={18} />
+              )}
+            </span>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-bold text-gray-900">{roundLabel(selectedRound)}</h3>
+                {(() => {
+                  const variantLabel = formatRoundVariant(
+                    variantForRound(selectedRound) ??
+                      (isAiVideoRound(selectedRound)
+                        ? selectedBooking?.round_snapshot?.presentation_mode
+                        : isPanelRound
+                          ? selectedBooking?.round_snapshot?.delivery_mode
+                          : null)
+                  );
+                  return variantLabel ? (
+                    <span className="rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-700">
+                      {variantLabel}
+                    </span>
+                  ) : null;
+                })()}
+              </div>
             </div>
           </div>
         </div>
-        {/* Interview rounds show it beside their Summary / Feedback tabs. */}
-        {isResumeStage && scoringCriteriaButton('resume')}
-      </div>
+      )}
 
       {isResumeStage ? (
         // The resume stage is "upload a resume, get it scored" —
@@ -1989,10 +2022,7 @@ const CandidateDetails = () => {
           anywhere on the page without scrolling back to the header. Opens
           the same modals as the header icons. */}
       <div className="fixed right-2 top-1/2 z-40 flex -translate-y-1/2 flex-col gap-3 sm:right-4">
-        <Tooltip
-          placement="left"
-          title={candidate?.email_id ? `Email ${candidate.email_id}` : 'No email on file'}
-        >
+        <Tooltip placement="left" title={candidate?.email_id ? 'Send Email' : 'No email on file'}>
           <span className="animate-float-bob inline-flex">
             <button
               type="button"
@@ -2032,13 +2062,15 @@ const CandidateDetails = () => {
                 type="button"
                 className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full border border-[var(--border)] bg-white px-4 text-sm font-medium text-[var(--primary)] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                 disabled={!candidate}
-                onClick={() => setIsEditOpen(true)}
+                onClick={() => {
+                  // Show the Candidate Details tab behind the modal.
+                  setActiveTab('details');
+                  setIsEditOpen(true);
+                }}
               >
                 Edit Candidate Details
               </button>
-              <Tooltip
-                title={candidate?.email_id ? `Email ${candidate.email_id}` : 'No email on file'}
-              >
+              <Tooltip title={candidate?.email_id ? 'Send Email' : 'No email on file'}>
                 <span className="inline-flex">
                   <button
                     type="button"
@@ -2230,48 +2262,32 @@ const CandidateDetails = () => {
                 // MARK AS SELECTED is offered on every round: the backend
                 // completes the resume stage and skips whatever rounds are
                 // left (candidate-service _status_round_cascade.py).
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <Tooltip
-                    title={
-                      actionsLockedForIntakePair
-                        ? intakeLockReason
-                        : advanceDisabled
-                          ? `Waiting for ${currentRound?.round_name ?? 'this round'} to conclude`
-                          : undefined
-                    }
-                  >
-                    <span className="flex">
-                      <Button
-                        className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full bg-primary disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={() => setStatusModal('advance')}
-                        disabled={advanceDisabled || actionsLockedForIntakePair}
-                      >
-                        <span className="text-white">Advance</span>
-                      </Button>
-                    </span>
-                  </Tooltip>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* One button for both: Advance moves the candidate on
+                      once the current round has concluded; while an
+                      interview round is still unfinished the same button
+                      skips it (asks for a reason first). The resume stage
+                      can only ever be advanced. */}
                   <Tooltip
                     title={
                       actionsLockedForIntakePair
                         ? intakeLockReason
                         : !currentRound
-                          ? 'No round left to skip'
-                          : isResumeStageRound(currentRound)
-                            ? 'Resume Screening can’t be skipped; use Advance or Reject'
-                            : `Skip ${roundLabel(currentRound)}`
+                          ? 'No round left to advance'
+                          : advanceDisabled
+                            ? `${roundLabel(currentRound)} hasn't concluded: Advance will skip it`
+                            : undefined
                     }
                   >
                     <span className="flex">
                       <Button
-                        className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full border-2 border-gray-400 bg-white text-gray-700 font-semibold hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={() => setIsSkipOpen(true)}
-                        disabled={
-                          !currentRound ||
-                          isResumeStageRound(currentRound) ||
-                          actionsLockedForIntakePair
+                        className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() =>
+                          advanceDisabled ? setIsSkipOpen(true) : setStatusModal('advance')
                         }
+                        disabled={actionsLockedForIntakePair}
                       >
-                        <span>Skip</span>
+                        <span className="text-white">Advance</span>
                       </Button>
                     </span>
                   </Tooltip>
@@ -2295,7 +2311,7 @@ const CandidateDetails = () => {
                           : undefined
                     }
                   >
-                    <span className="flex sm:col-span-3">
+                    <span className="flex">
                       <Button
                         className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full border-2 border-green-500 bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={() => setStatusModal('select')}
@@ -2305,6 +2321,12 @@ const CandidateDetails = () => {
                       </Button>
                     </span>
                   </Tooltip>
+                  <Button
+                    className="flex w-full items-center justify-center text-sm px-4 h-[34px] gap-2 rounded-full border-2 border-blue-500 bg-blue-50 hover:bg-blue-100"
+                    onClick={() => setIsAssignJobOpen(true)}
+                  >
+                    <span className="text-blue-500 font-semibold">Assign New Job</span>
+                  </Button>
                 </div>
               )}
               {isTerminal && (
@@ -2479,53 +2501,8 @@ const CandidateDetails = () => {
             // action links in the round detail's action row, and its summary
             // footer in the bar below.
             <div className="flex flex-col gap-3">
-              {rounds.length > 0 && (
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm">
-                  <div className="min-w-0">
-                    <div className="text-xs text-gray-400">Next Step</div>
-                    <div className="font-semibold text-gray-900">
-                      {pipeline.nextRound
-                        ? roundLabel(pipeline.nextRound)
-                        : 'None, pipeline complete'}
-                      {pipeline.nextWhen && (
-                        <span className="ml-1 font-normal text-gray-500">
-                          · {pipeline.nextWhen}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400">Rounds Completed</div>
-                    <div className="font-semibold text-gray-900">
-                      {pipeline.completedCount} / {rounds.length}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400">Avg. Score So Far</div>
-                    <div className="font-semibold text-gray-900">
-                      {pipeline.avgScore != null ? `${pipeline.avgScore} / ${AI_SCORE_MAX}` : '-'}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 lg:ml-auto">
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-success" /> Completed
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-warning" /> Current Stage
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-neutral-300" /> Upcoming
-                    </span>
-                    {pipeline.hasFailure && (
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-danger" /> Needs Attention
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
-                <div className="w-full shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white lg:w-[260px]">
+              <div className="flex flex-col gap-4 lg:min-h-[633px] lg:flex-row lg:items-stretch">
+                <div className="w-full shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white lg:w-1/5">
                   <ul className="flex overflow-x-auto text-sm text-gray-800 lg:flex-col lg:overflow-visible">
                     {roundsLoaded && !hasResumeStageRound && (
                       <li className="relative min-w-[210px] border-r border-gray-100 last:border-r-0 lg:min-w-0 lg:border-r-0">
@@ -2589,20 +2566,9 @@ const CandidateDetails = () => {
                   </ul>
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col gap-3">
+                <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-lg border border-gray-200 bg-white p-5">
                   {isResumeFallbackSelected ? (
-                    <>
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3">
-                        <div className="flex items-center gap-3">
-                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
-                            <LuFileText size={18} />
-                          </span>
-                          <h3 className="text-lg font-bold text-gray-900">Resume Screening</h3>
-                        </div>
-                        {scoringCriteriaButton('resume')}
-                      </div>
-                      {renderResumeAssessment()}
-                    </>
+                    renderResumeAssessment()
                   ) : selectedRound ? (
                     <WidgetErrorBoundary key={selectedRound.id} label="Round Details">
                       {roundDetailBody}
@@ -2627,6 +2593,14 @@ const CandidateDetails = () => {
         </div>
       </div>
 
+      <AssignJobModal
+        open={isAssignJobOpen}
+        onClose={() => setIsAssignJobOpen(false)}
+        candidateId={candidateId ?? ''}
+        candidateName={candidateDisplayName(candidate)}
+        currentJobId={parsedJobId ?? ''}
+        assignedJobTitles={jobTitleName ? [jobTitleName] : []}
+      />
       {isSkipOpen && (
         <AntdCommonModal
           title="Skip Round"

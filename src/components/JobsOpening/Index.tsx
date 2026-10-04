@@ -1327,7 +1327,7 @@ const JobsOpening = () => {
                                   {renderHighlightedField(
                                     jobs.jobOpeningCreatedAt &&
                                       dayjs(jobs.jobOpeningCreatedAt).isValid()
-                                      ? dayjs(jobs.jobOpeningCreatedAt).format('MMMM D, YYYY')
+                                      ? dayjs(jobs.jobOpeningCreatedAt).format('MMM D, YYYY')
                                       : '',
                                     'jobOpeningCreatedAt'
                                   )}

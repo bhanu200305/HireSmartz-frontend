@@ -144,7 +144,7 @@ export const CareersIntakeCallSchedulePage = () => {
             <div className="bg-gray-50 rounded-xl p-4 text-left text-sm text-gray-700 space-y-3 mt-4">
               <div className="flex items-center gap-2">
                 <LuCalendarDays className="text-(--primary) w-4 h-4 shrink-0" />
-                <span>{dayjs(booked.start_time).format('dddd, MMMM D, YYYY')}</span>
+                <span>{dayjs(booked.start_time).format('dddd, MMM D, YYYY')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <RxClock className="text-(--primary) w-4 h-4 shrink-0" />
@@ -270,7 +270,7 @@ export const CareersIntakeCallSchedulePage = () => {
                     Confirm Your Call
                   </p>
                   <h3 className="text-base font-semibold text-gray-800 mb-6">
-                    {selectedDate.format('dddd, MMMM D, YYYY')}
+                    {selectedDate.format('dddd, MMM D, YYYY')}
                   </h3>
 
                   <div className="border border-(--primary) rounded-xl px-5 py-4 text-center">
@@ -313,7 +313,7 @@ export const CareersIntakeCallSchedulePage = () => {
                   <div className="px-5 pt-5 pb-2 shrink-0">
                     <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                       <LuCalendarDays className="w-4 h-4 text-(--primary)" />
-                      {selectedDate.format('dddd, MMMM D')}
+                      {selectedDate.format('dddd, MMM D')}
                     </h3>
                   </div>
                   <div className="flex-1 px-5 pb-5 pt-2 space-y-2 max-h-80 overflow-y-auto">

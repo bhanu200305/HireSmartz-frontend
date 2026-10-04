@@ -470,7 +470,7 @@ const ViewJobDetails = () => {
             value={
               // openDate is an ISO 8601 string; let dayjs parse it natively.
               data?.openDate && dayjs(data.openDate).isValid()
-                ? dayjs(data.openDate).format('MMMM D, YYYY')
+                ? dayjs(data.openDate).format('MMM D, YYYY')
                 : ''
             }
           />

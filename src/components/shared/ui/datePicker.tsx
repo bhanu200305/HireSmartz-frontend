@@ -101,7 +101,7 @@ const DateTimeRangePicker: React.FC<DateTimeProps> = ({ value, onApply, onReset 
             <DatePicker
               variant="borderless"
               className="w-full custom-date-picker placeholder-style"
-              format="MMMM D, YYYY"
+              format="MMM D, YYYY"
               placeholder="Select Start Date"
               value={range.startDate ? dayjs(range.startDate) : null}
               onChange={(date: Dayjs | null) =>
@@ -159,7 +159,7 @@ const DateTimeRangePicker: React.FC<DateTimeProps> = ({ value, onApply, onReset 
             <DatePicker
               variant="borderless"
               className="w-full custom-date-picker placeholder-style"
-              format="MMMM D, YYYY"
+              format="MMM D, YYYY"
               placeholder="Select End Date"
               value={range.endDate ? dayjs(range.endDate) : null}
               onChange={(date: Dayjs | null) =>

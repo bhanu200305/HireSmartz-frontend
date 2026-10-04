@@ -3354,7 +3354,7 @@ const JobDetails = () => {
                           }}
                           variant="borderless"
                           className="w-full custom-date-picker placeholder-style"
-                          format="MMMM D, YYYY"
+                          format="MMM D, YYYY"
                           placeholder="Select Open Date"
                           disabledDate={(current) =>
                             current && current.isBefore(dayjs().startOf('day'))
@@ -3428,7 +3428,7 @@ const JobDetails = () => {
                           }}
                           variant="borderless"
                           className="w-full custom-date-picker placeholder-style"
-                          format="MMMM D, YYYY"
+                          format="MMM D, YYYY"
                           placeholder="Select Close Date"
                           disabledDate={(current) =>
                             current && current.isBefore(dayjs().startOf('day'))

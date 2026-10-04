@@ -470,7 +470,7 @@ const NotesSidePanel = ({
               const showTag = Boolean(tagLabel);
 
               const timeStr = note.createdAt
-                ? dayjs(note.createdAt).format('MMMM D, YYYY, h:mm A')
+                ? dayjs(note.createdAt).format('MMM D, YYYY, h:mm A')
                 : '';
 
               const menuItems: MenuProps['items'] = [

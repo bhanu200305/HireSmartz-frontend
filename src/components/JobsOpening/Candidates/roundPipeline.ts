@@ -75,7 +75,7 @@ export const interviewTypeForRound = (round: CandidateInterviewRoundView): Inter
 };
 
 export const formatWhen = (value: string | null) =>
-  value && dayjs(value).isValid() ? dayjs(value).format('MMMM D, YYYY, h:mm A') : null;
+  value && dayjs(value).isValid() ? dayjs(value).format('MMM D, YYYY, h:mm A') : null;
 
 /** A resume stage with a score reads as Completed — the AI scored it, so
  * that step of the resume+Intake-Call pair is done. The backend still leaves

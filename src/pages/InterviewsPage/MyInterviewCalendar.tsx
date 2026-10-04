@@ -411,10 +411,10 @@ export const MyInterviewCalendar = ({ onSelectBooking }: MyInterviewCalendarProp
     if (group) {
       group.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else if (key < todayKey) {
-      showToast({ message: `${date.format('MMMM D, YYYY')} has already passed.`, type: 'info' });
+      showToast({ message: `${date.format('MMM D, YYYY')} has already passed.`, type: 'info' });
     } else {
       showToast({
-        message: `No interviews scheduled on ${date.format('MMMM D, YYYY')}.`,
+        message: `No interviews scheduled on ${date.format('MMM D, YYYY')}.`,
         type: 'info',
       });
     }
@@ -452,7 +452,7 @@ export const MyInterviewCalendar = ({ onSelectBooking }: MyInterviewCalendarProp
       <div className="flex flex-col gap-4 bg-gradient-to-br from-primary-600 to-accent-500 p-5 text-white sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium text-white/80">{dayjs().format('dddd')}</p>
-          <h2 className="font-display text-2xl font-bold">{dayjs().format('MMMM D, YYYY')}</h2>
+          <h2 className="font-display text-2xl font-bold">{dayjs().format('MMM D, YYYY')}</h2>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-white/90">
             <LuCalendarDays size={15} />
             {todaysBookings.length === 0
@@ -526,7 +526,7 @@ export const MyInterviewCalendar = ({ onSelectBooking }: MyInterviewCalendarProp
                       {dayGroupLabel(group.date)}
                     </h4>
                     <span className="text-xs text-neutral-400">
-                      {group.date.format('MMMM D, YYYY')} · {group.bookings.length}{' '}
+                      {group.date.format('MMM D, YYYY')} · {group.bookings.length}{' '}
                       {group.bookings.length === 1 ? 'interview' : 'interviews'}
                     </span>
                   </div>
