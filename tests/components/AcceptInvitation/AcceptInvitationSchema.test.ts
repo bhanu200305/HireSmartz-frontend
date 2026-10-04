@@ -19,9 +19,12 @@ describe('acceptInvitationSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('accepts a missing last name — it is optional', () => {
+  it('rejects a missing last name — required (product rule, 2026-10-04)', () => {
     const result = acceptInvitationSchema.safeParse({ ...basePayload, lastName: '' });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors.lastName?.[0]).toBe('Last name is required.');
+    }
   });
 
   it('rejects a missing first name — required for every tenant invite', () => {

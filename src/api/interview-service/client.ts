@@ -82,7 +82,17 @@ export interface BookingView {
    * ("when the candidate picked the new call to happen", still null until
    * they do). */
   created_at: string | null;
+  /** The scheduling link ran out unused (reminders at 24h/48h/72h, expiring
+   * ~24h after the last one). `true` means a Reinvite is offered. Added with
+   * the 2026-10-04 reinvite change; absent on older responses. */
+  link_expired?: boolean;
+  /** Reinvites already used for this booking, out of `MAX_REINVITES`. */
+  reinvite_count?: number;
 }
+
+/** Fixed cap on `POST /bookings/{id}/reinvite` (409 `MAX_REINVITES_EXCEEDED`
+ * past it) — the backend doesn't send the cap, so it lives here. */
+export const MAX_REINVITES = 3;
 
 /** `POST /bookings`'s own response, on top of the plain `BookingView` every
  * other booking-returning endpoint gives back. interview-service still
@@ -183,6 +193,11 @@ export type VideoSessionStatus = 'active' | 'ended' | 'failed';
 export interface CallNowView {
   booking_id: string;
   initiated_at: string;
+  /** `false`: AUDIO (Intake Call), the call is placed synchronously — "Calling
+   * you now". `true`: AUDIO_SCREENING, nothing dials yet; the slot is
+   * scheduled and question generation starts, and the real call fires a short
+   * time later — "We'll call you shortly", never "calling now". */
+  questions_pending?: boolean;
 }
 
 /** `GET /scheduling/{token}/slots` — PANEL only. Deliberately NOT a real
@@ -592,6 +607,35 @@ export const interviewApi = createApi({
       }),
       invalidatesTags: (_result, _error, { bookingId }) => [{ type: 'Booking', id: bookingId }],
     }),
+    // `POST /bookings/{id}/reinvite` — for a booking whose scheduling link
+    // ran out unused (`BookingView.link_expired`). `interviewerIds` is PANEL
+    // only (omit for the carried-over roster). 422 `REINVITE_NOT_ELIGIBLE`
+    // (link hasn't expired), 409 `MAX_REINVITES_EXCEEDED`, 409
+    // `CANDIDATE_ALREADY_SELECTED`.
+    reinviteBooking: build.mutation<
+      CreateBookingResponse,
+      { bookingId: string; interviewerIds?: string[] }
+    >({
+      query: ({ bookingId, interviewerIds }) =>
+        platform({
+          url: `/bookings/${bookingId}/reinvite`,
+          method: 'POST',
+          ...(interviewerIds && interviewerIds.length > 0
+            ? { body: { interviewer_ids: interviewerIds } }
+            : {}),
+        }),
+      transformResponse: (
+        response: Omit<CreateBookingResponse, 'envelope_message'>,
+        meta: InterviewQueryMeta | undefined
+      ) => ({
+        ...response,
+        envelope_message: meta?.message,
+      }),
+      invalidatesTags: (_result, _error, { bookingId }) => [
+        { type: 'Booking', id: bookingId },
+        'Booking',
+      ],
+    }),
     listBookings: build.query<
       PaginatedBookings,
       Partial<{
@@ -913,6 +957,7 @@ export const {
   useLazyGetAiSlotsQuery,
   useBookAiSlotMutation,
   useCallNowMutation,
+  useReinviteBookingMutation,
   useGetCandidateFeedbackLinkQuery,
   useSubmitCandidateFeedbackMutation,
   useGetWithdrawalLinkQuery,

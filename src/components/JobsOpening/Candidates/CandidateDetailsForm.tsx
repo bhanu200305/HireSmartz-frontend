@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Input, PhoneNumberField, showToast } from '../../shared';
 import {
   useUpdateCandidateMutation,
@@ -52,16 +52,22 @@ const CandidateDetailsForm = ({
   const [updateCandidate, { isLoading }] = useUpdateCandidateMutation();
 
   // Mirror the record while read-only (including after a save's refetch), and
-  // re-seed on Cancel so unsaved edits are discarded. Skipped while editing so
-  // a background refetch never wipes what the recruiter is typing.
+  // re-seed on Cancel so unsaved edits are discarded. While editing, a
+  // background refetch must not wipe what the recruiter is typing, so it is
+  // skipped, EXCEPT the first time this candidate's data reaches the form:
+  // "Edit Candidate Details" in the header mounts this form already in edit
+  // mode, and without that first seed the fields stayed blank until Cancel.
+  const seededForId = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (isEditing) return;
-    setFirstName(candidate?.first_name ?? '');
-    setLastName(candidate?.last_name ?? '');
-    setEmail(candidate?.email_id ?? '');
-    const split = splitE164(candidate?.contact_no);
+    if (!candidate) return;
+    if (isEditing && seededForId.current === candidate.id) return;
+    setFirstName(candidate.first_name ?? '');
+    setLastName(candidate.last_name ?? '');
+    setEmail(candidate.email_id ?? '');
+    const split = splitE164(candidate.contact_no);
     setCountryCode(split.countryCode || DEFAULT_COUNTRY_CODE);
     setPhone(split.phoneNumber);
+    seededForId.current = candidate.id;
   }, [candidate, isEditing]);
 
   // First name, last name, email and phone are all mandatory.

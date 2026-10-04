@@ -279,7 +279,20 @@ export const BookingDetailDrawer = ({
       setNewInterviewerId(undefined);
     } catch (e) {
       const err = e as InterviewApiError;
-      showToast({ message: err?.message || 'Action failed.', type: 'error' });
+      // Friendly wording for the conflicts the backend names; anything else
+      // falls back to the server's own message.
+      const message =
+        err?.code === 'INTERVIEW_IN_PROGRESS'
+          ? "Can't skip: the interview is in progress."
+          : err?.code === 'BOOKING_TERMINAL'
+            ? 'This round has already concluded.'
+            : err?.code === 'CANDIDATE_ALREADY_SELECTED'
+              ? 'This candidate has already been selected, so the remaining rounds are closed.'
+              : err?.message || 'Action failed.';
+      showToast({
+        message,
+        type: err?.code === 'CANDIDATE_ALREADY_SELECTED' ? 'info' : 'error',
+      });
     }
   };
 

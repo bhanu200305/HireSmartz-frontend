@@ -17,6 +17,7 @@ import {
   LuChevronRight,
   LuListChecks,
   LuCalendarPlus,
+  LuSkipForward,
   LuCalendarCheck,
   LuUpload,
   LuCircleCheck,
@@ -58,6 +59,8 @@ import {
   useGetBookingQuery,
   useGetBookingHistoryQuery,
   useRequestCallRescheduleMutation,
+  useReinviteBookingMutation,
+  MAX_REINVITES,
   useLazyGetCalendarConnectUrlQuery,
   useGetCalendarGrantStatusQuery,
   useGetArtifactsQuery,
@@ -82,6 +85,8 @@ import RecruiterRoundScoreModal from './Modal/RecruiterRoundScoreModal';
 import AssignJobModal from './Modal/AssignJobModal';
 import ResumeSplitLayout from './ResumeSplitLayout';
 import AiCommentsBox from './AiCommentsBox';
+import { markCandidateViewed } from './candidateViewed';
+import { useRecordCandidateViewedMutation } from '../../../api/candidate-service/Candidates/candidateViewedApi';
 import ResumeViewerModal from './Modal/ResumeViewerModal';
 import RoundSidebarItem from './RoundSidebarItem';
 import { RoundCandidateFeedback, RoundRecording, RoundTranscript } from './RoundArtifactsPanel';
@@ -223,6 +228,16 @@ const HeaderInfoRow = ({ label, children }: { label: string; children: ReactNode
 const getInterviewErrorMessage = (error: unknown, fallback: string): string =>
   (error as InterviewApiError)?.message || fallback;
 
+/** 409 `CANDIDATE_ALREADY_SELECTED` - creating a booking, requesting a
+ * reschedule or reinviting after the candidate was marked selected (maybe
+ * moments ago, maybe from another round). Not a failure to retry: this job's
+ * remaining rounds are closed for booking. */
+const isAlreadySelectedError = (error: unknown): boolean =>
+  (error as InterviewApiError)?.code === 'CANDIDATE_ALREADY_SELECTED';
+
+const ALREADY_SELECTED_MESSAGE =
+  'This candidate has already been selected, so the remaining rounds are closed for scheduling.';
+
 /** The interviewer-picker `Select` — colored dropdown dots and selected-chip
  * backgrounds by calendar-connected status, identical UI/behavior whether
  * it's rostering a PANEL round for the first time (Create Booking) or
@@ -353,6 +368,7 @@ const CandidateDetails = () => {
   const [isAssignJobOpen, setIsAssignJobOpen] = useState(false);
   const [isAiCommentExpanded, setIsAiCommentExpanded] = useState(false);
   const [skipReason, setSkipReason] = useState('');
+  const [skipFeedback, setSkipFeedback] = useState('');
   const [skipInterviewRound, { isLoading: isSkipping }] = useSkipInterviewRoundMutation();
   // "Scoring Criteria" popup (old app's per-round button): the resume
   // round's weighted breakdown, or the interview-scoring explainer.
@@ -417,6 +433,9 @@ const CandidateDetails = () => {
   // Hiring Panel's reference question list defaults open (it's the main
   // reason a panelist opens this card) but can be collapsed once reviewed.
   const [isCreatingBooking, setIsCreatingBooking] = useState(false);
+  // Set the first time a booking action answers CANDIDATE_ALREADY_SELECTED:
+  // the scheduling actions grey out instead of erroring on every click.
+  const [bookingsClosed, setBookingsClosed] = useState(false);
   // PANEL round interviewer picker, inline above Create Booking — seeded
   // from whatever's already saved on the round (e.g. set earlier from
   // the action row's Set Interviewers modal) whenever the selected
@@ -448,6 +467,11 @@ const CandidateDetails = () => {
   // currently drilled-into `selectedRound` at all.
   const isRescheduleRoundPanel = rescheduleRound?.round_type === 'PANEL';
   const [rescheduleStep, setRescheduleStep] = useState<'choice' | 'picker'>('choice');
+  // The same keep-roster / choose-different-interviewers modals serve both the
+  // reschedule request and a PANEL reinvite (expired link): only the endpoint
+  // and the wording differ.
+  const [rescheduleMode, setRescheduleMode] = useState<'reschedule' | 'reinvite'>('reschedule');
+  const isReinviteMode = rescheduleMode === 'reinvite';
   // "Send interview invite" dialog behind the round's invite icon.
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [rescheduleInterviewerIds, setRescheduleInterviewerIds] = useState<string[]>([]);
@@ -477,6 +501,22 @@ const CandidateDetails = () => {
     pollingInterval: 20_000,
     skipPollingIfUnfocused: true,
   });
+  // Opening a candidate's profile clears its "New" badge in the list for this user.
+  // Also reported to the backend (POST /candidates/{id}/viewed) so the badge can
+  // become per-person on any device. The browser copy stays until the list's
+  // backend flag ships. Fire-and-forget, once per opened candidate: a failure
+  // never affects the page, and the call is idempotent server-side.
+  const [recordCandidateViewed] = useRecordCandidateViewedMutation();
+  const reportedViewFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!candidate?.id) return;
+    markCandidateViewed(userId, candidate.id);
+    if (reportedViewFor.current === candidate.id) return;
+    reportedViewFor.current = candidate.id;
+    recordCandidateViewed(candidate.id)
+      .unwrap()
+      .catch(() => undefined);
+  }, [candidate?.id, userId, recordCandidateViewed]);
 
   // `candidate.source` is the raw master-data code (e.g. "qr_self_apply");
   // shown as its label from candidate-service's own list, same lookup
@@ -525,19 +565,20 @@ const CandidateDetails = () => {
     .filter((option) => hiringManagerIds.some((id) => idsMatch(option.id, id)))
     .map((option) => option.name);
 
-  const { data: rawRounds = [], isSuccess: roundsLoaded } = useListCandidateInterviewRoundsQuery(
-    candidateId ?? '',
-    {
-      skip: !candidateId,
-      // A round's own status (e.g. PANEL flipping to "Scheduled" once the
-      // candidate actually books a time after every interviewer connects
-      // their calendar) changes from a backend event chain, not from
-      // anything clicked on this screen — poll so the Pipeline board catches
-      // up without a manual refresh, same reasoning as useGetCandidateQuery.
-      pollingInterval: 20_000,
-      skipPollingIfUnfocused: true,
-    }
-  );
+  const {
+    data: rawRounds = [],
+    isSuccess: roundsLoaded,
+    refetch: refetchRounds,
+  } = useListCandidateInterviewRoundsQuery(candidateId ?? '', {
+    skip: !candidateId,
+    // A round's own status (e.g. PANEL flipping to "Scheduled" once the
+    // candidate actually books a time after every interviewer connects
+    // their calendar) changes from a backend event chain, not from
+    // anything clicked on this screen — poll so the Pipeline board catches
+    // up without a manual refresh, same reasoning as useGetCandidateQuery.
+    pollingInterval: 20_000,
+    skipPollingIfUnfocused: true,
+  });
   // The instant-call flow (Intake Call first, resume within 24h) and the
   // resume-first flow get the SAME plan-level round order from the backend —
   // it places the resume stage at the job plan's single Resume Round
@@ -684,16 +725,19 @@ const CandidateDetails = () => {
   useEffect(() => {
     setSelectedAttemptBookingId(null);
   }, [selectedRound?.id]);
-  const { data: selectedBooking } = useGetBookingQuery(selectedRound?.interview_booking_id ?? '', {
-    skip: !selectedRound?.interview_booking_id,
-    // The candidate's scheduling email (and, for PANEL, the round flipping
-    // to "Scheduled") both happen server-side once the last interviewer
-    // connects their calendar — no action on this screen triggers either,
-    // so this has to catch up on its own instead of waiting for a manual
-    // refresh. Same reasoning as useGetCandidateQuery's own polling above.
-    pollingInterval: 20_000,
-    skipPollingIfUnfocused: true,
-  });
+  const { data: selectedBooking, refetch: refetchSelectedBooking } = useGetBookingQuery(
+    selectedRound?.interview_booking_id ?? '',
+    {
+      skip: !selectedRound?.interview_booking_id,
+      // The candidate's scheduling email (and, for PANEL, the round flipping
+      // to "Scheduled") both happen server-side once the last interviewer
+      // connects their calendar — no action on this screen triggers either,
+      // so this has to catch up on its own instead of waiting for a manual
+      // refresh. Same reasoning as useGetCandidateQuery's own polling above.
+      pollingInterval: 20_000,
+      skipPollingIfUnfocused: true,
+    }
+  );
   // The real questions Vapi asked on this call — distinct from job-service's
   // static per-round question bank (`roundQuestions` below), which is a
   // fixed plan, not what actually got asked. Only called for AUDIO/
@@ -732,6 +776,7 @@ const CandidateDetails = () => {
   }, [selectedAttemptBookingId, bookingHistory]);
   const [requestCallReschedule, { isLoading: isRequestingReschedule }] =
     useRequestCallRescheduleMutation();
+  const [reinviteBooking, { isLoading: isReinviting }] = useReinviteBookingMutation();
   const [getCalendarConnectUrl] = useLazyGetCalendarConnectUrlQuery();
   // "CONNECT CALENDAR" below is self-service — it always connects the
   // CURRENT logged-in user's own calendar (getCalendarGrantStatus/
@@ -874,12 +919,25 @@ const CandidateDetails = () => {
     }
   };
 
+  const closeRescheduleFlow = () => {
+    setIsRescheduleConfirmOpen(false);
+    setRescheduleRound(null);
+    setRescheduleStep('choice');
+    setRescheduleInterviewerIds([]);
+    setRescheduleMode('reschedule');
+  };
+
   // `interviewerIds` is PANEL's "choose different interviewers" path only —
   // omitted (undefined), the backend carries the original roster forward
   // automatically. Same degradation as creating a booking the first time,
   // so the toast branches the same way `handleCreateBooking` below does.
   const handleRequestCallReschedule = async (interviewerIds?: string[]) => {
     if (!rescheduleRound?.interview_booking_id) return;
+    if (isReinviteMode) {
+      await runReinvite(rescheduleRound.interview_booking_id, interviewerIds);
+      closeRescheduleFlow();
+      return;
+    }
     try {
       const booking = await requestCallReschedule({
         bookingId: rescheduleRound.interview_booking_id,
@@ -901,15 +959,57 @@ const CandidateDetails = () => {
         });
       }
     } catch (e) {
-      showToast({
-        message: getInterviewErrorMessage(e, 'Could not request a reschedule'),
-        type: 'error',
-      });
+      if (isAlreadySelectedError(e)) {
+        setBookingsClosed(true);
+        showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
+      } else {
+        showToast({
+          message: getInterviewErrorMessage(e, 'Could not request a reschedule'),
+          type: 'error',
+        });
+      }
     } finally {
-      setIsRescheduleConfirmOpen(false);
-      setRescheduleRound(null);
-      setRescheduleStep('choice');
-      setRescheduleInterviewerIds([]);
+      closeRescheduleFlow();
+    }
+  };
+
+  // Reinvite for a booking whose scheduling link ran out unused
+  // (`BookingView.link_expired`): POST /bookings/{id}/reinvite, capped at
+  // MAX_REINVITES. PANEL carries the original roster forward.
+  const runReinvite = async (bookingId: string | null | undefined, interviewerIds?: string[]) => {
+    if (!bookingId) return;
+    try {
+      await reinviteBooking({ bookingId, interviewerIds }).unwrap();
+      showToast({
+        message: 'Reinvite sent: the candidate has been emailed a new link.',
+        type: 'success',
+      });
+      // The reinvite is a NEW booking (new id): pick the round's new
+      // booking up now instead of waiting for the next poll.
+      void refetchRounds();
+    } catch (e) {
+      const code = (e as InterviewApiError)?.code;
+      if (isAlreadySelectedError(e)) {
+        setBookingsClosed(true);
+        showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
+      } else if (code === 'MAX_REINVITES_EXCEEDED') {
+        showToast({
+          message: `The maximum of ${MAX_REINVITES} reinvites has been used for this round.`,
+          type: 'error',
+        });
+        // Screen was out of date: reload the round's state.
+        void refetchSelectedBooking();
+        void refetchRounds();
+      } else if (code === 'REINVITE_NOT_ELIGIBLE') {
+        showToast({ message: 'The scheduling link has not expired yet.', type: 'error' });
+        void refetchSelectedBooking();
+        void refetchRounds();
+      } else {
+        showToast({
+          message: getInterviewErrorMessage(e, 'Could not send the reinvite'),
+          type: 'error',
+        });
+      }
     }
   };
 
@@ -950,9 +1050,16 @@ const CandidateDetails = () => {
   }, [savedResumeComment, candidateId]);
 
   const handleSkipRound = async () => {
-    if (!candidateId || !skipReason.trim()) return;
+    if (!candidateId || !skipReason.trim() || !skipFeedback.trim()) return;
     try {
-      const result = await skipInterviewRound({ candidateId, reason: skipReason.trim() }).unwrap();
+      // skip-round takes a single `reason` (the request model forbids extra
+      // fields), so the recruiter's feedback rides along inside it.
+      const result = await skipInterviewRound({
+        candidateId,
+        reason: `${skipReason.trim()}
+
+Feedback: ${skipFeedback.trim()}`,
+      }).unwrap();
       showToast({
         message: result.skipped_round
           ? `${roundLabel(result.skipped_round)} skipped.`
@@ -961,8 +1068,27 @@ const CandidateDetails = () => {
       });
       setIsSkipOpen(false);
       setSkipReason('');
+      setSkipFeedback('');
     } catch (e) {
-      showToast({ message: getCandidateErrorMessage(e, 'Could not skip round'), type: 'error' });
+      const status = getCandidateErrorStatusCode(e);
+      const serverMessage = getCandidateErrorMessage(e, '');
+      // candidate-service's error body carries no machine code (see
+      // candidateError.helpers), so the 409 cases are told apart by message.
+      let message = serverMessage || 'Could not skip round';
+      if (status === 409) {
+        if (/in[ _-]?progress/i.test(serverMessage)) {
+          message = "Can't skip: the interview is in progress.";
+        } else if (/terminal|concluded|already (finished|skipped|completed)/i.test(serverMessage)) {
+          message = 'This round has already concluded.';
+        } else if (/scored/i.test(serverMessage)) {
+          message = "This round has been scored and can't be skipped.";
+        } else if (/final|selected|rejected|withdrawn/i.test(serverMessage)) {
+          message = 'This candidate is already finished.';
+        }
+        // The round list is stale if the round already moved on.
+        void refetchCandidate();
+      }
+      showToast({ message, type: 'error' });
     }
   };
 
@@ -984,7 +1110,7 @@ const CandidateDetails = () => {
   };
 
   const handleCreateBooking = async (): Promise<boolean> => {
-    if (!candidateId || !parsedJobId || !selectedRound?.round_id) return false;
+    if (!candidateId || !parsedJobId || !selectedRound?.round_id || bookingsClosed) return false;
     // Belt-and-suspenders alongside the button's own `disabled` — a PANEL
     // booking with no roster falls back to interview-service auto-composing
     // it from whichever calendar-connected interviewers are in the pool,
@@ -1054,6 +1180,11 @@ const CandidateDetails = () => {
       // — this is an `InterviewApiError` (see getInterviewErrorMessage's own
       // comment), not the `{status, data}` shape `getPlatformErrorCode`
       // reads, which silently never matched here.
+      if (isAlreadySelectedError(error)) {
+        setBookingsClosed(true);
+        showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
+        return false;
+      }
       const message =
         (error as InterviewApiError)?.code === 'PREVIOUS_ROUND_NOT_CONCLUDED'
           ? 'Please complete the previous round before scheduling this one.'
@@ -1530,30 +1661,112 @@ const CandidateDetails = () => {
                     (isPanelRound &&
                       selectedBooking != null &&
                       CONCLUDED_BOOKING_STATUSES.includes(selectedBooking.status)));
-                const isBusy = isCreatingBooking || isSavingInterviewers || isRequestingReschedule;
-                const reinviteTooltip = canReinvite
-                  ? 'Send re-invite'
-                  : hasBooking
-                    ? 'Re-invite is available once this attempt has concluded'
-                    : 'Re-invite is available after the first invite';
+                const isBusy =
+                  isCreatingBooking ||
+                  isSavingInterviewers ||
+                  isRequestingReschedule ||
+                  isReinviting;
+                // Link ran out unused: the new Reinvite action, with its
+                // "n of MAX_REINVITES used" counter, disabled at the cap.
+                const linkExpired = hasBooking && selectedBooking?.link_expired === true;
+                const reinvitesUsed = selectedBooking?.reinvite_count ?? 0;
+                const reinvitesExhausted = reinvitesUsed >= MAX_REINVITES;
+                // No booking for this round yet: the same button reads
+                // "Send Invite" and opens the first-invite modal (POST /bookings).
+                const noBooking = !hasBooking;
+                const reinviteTooltip = bookingsClosed
+                  ? ALREADY_SELECTED_MESSAGE
+                  : noBooking
+                    ? 'Send the first interview invite'
+                    : linkExpired
+                      ? reinvitesExhausted
+                        ? `All ${MAX_REINVITES} reinvites used`
+                        : `Send reinvite (${reinvitesUsed} of ${MAX_REINVITES} reinvites used)`
+                      : 'Request a reschedule for this concluded attempt';
+                // Neither a first invite nor an expired link: a live,
+                // scheduled or completed booking gets no Send Invite /
+                // Reinvite button. The reschedule action stays only for a
+                // concluded attempt.
+                if (!noBooking && !linkExpired && !canReinvite) return null;
                 return (
-                  <Tooltip title={reinviteTooltip}>
-                    <span className="inline-flex">
-                      <button
-                        type="button"
-                        className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={isBusy || !canReinvite}
-                        onClick={() => {
-                          setRescheduleRound(selectedRound);
-                          setIsRescheduleConfirmOpen(true);
-                        }}
-                      >
-                        Re-invite
-                      </button>
-                    </span>
-                  </Tooltip>
+                  <>
+                    {linkExpired && (
+                      <span className="whitespace-nowrap text-xs text-gray-500">
+                        {reinvitesUsed} of {MAX_REINVITES} reinvites used
+                      </span>
+                    )}
+                    <Tooltip title={reinviteTooltip}>
+                      <span className="inline-flex">
+                        <button
+                          type="button"
+                          className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={
+                            isBusy ||
+                            bookingsClosed ||
+                            (noBooking
+                              ? isIdentityVerificationRound(selectedRound)
+                              : linkExpired
+                                ? reinvitesExhausted
+                                : !canReinvite)
+                          }
+                          onClick={() => {
+                            if (noBooking) {
+                              setIsInviteOpen(true);
+                              return;
+                            }
+                            if (linkExpired) {
+                              if (isPanelRound) {
+                                // PANEL: keep the roster or pick a new one first.
+                                setRescheduleMode('reinvite');
+                                setRescheduleRound(selectedRound);
+                                setIsRescheduleConfirmOpen(true);
+                              } else {
+                                void runReinvite(selectedRound.interview_booking_id);
+                              }
+                              return;
+                            }
+                            setRescheduleRound(selectedRound);
+                            setIsRescheduleConfirmOpen(true);
+                          }}
+                        >
+                          {isReinviting
+                            ? 'Sending…'
+                            : noBooking
+                              ? 'Send Invite'
+                              : linkExpired
+                                ? 'Reinvite'
+                                : 'Reschedule'}
+                        </button>
+                      </span>
+                    </Tooltip>
+                  </>
                 );
               })()}
+              {/* Skip: every round except the Intake Call (and the resume stage,
+                  which has no round tabs). The backend only skips the
+                  candidate's CURRENT round, so it's live only there. */}
+              {!isIntakeCallRound(selectedRound) && (
+                <Tooltip
+                  title={
+                    currentRound?.id === selectedRound.id
+                      ? `Skip ${roundLabel(selectedRound)}`
+                      : 'Only the candidate’s current round can be skipped'
+                  }
+                >
+                  <span className="inline-flex">
+                    <button
+                      type="button"
+                      aria-label="Skip round"
+                      className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-2 border-gray-400 bg-white px-4 text-[13px] font-semibold leading-none text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={currentRound?.id !== selectedRound.id || actionsLockedForIntakePair}
+                      onClick={() => setIsSkipOpen(true)}
+                    >
+                      <LuSkipForward size={16} strokeWidth={2} aria-hidden />
+                      <span>Skip</span>
+                    </button>
+                  </span>
+                </Tooltip>
+              )}
               {/* Identity Verification is never scored, so it gets no button. */}
               {isIntakeCallRound(selectedRound)
                 ? scoringCriteriaButton('intake', roundLabel(selectedRound))
@@ -1999,9 +2212,9 @@ const CandidateDetails = () => {
       {/* Floating Email / SMS dock on the right edge — reachable from
           anywhere on the page without scrolling back to the header. Opens
           the same modals as the header icons. */}
-      <div className="fixed right-2 top-1/2 z-40 flex -translate-y-1/2 flex-col gap-3 sm:right-4">
+      <div className="fixed right-0 top-1/2 z-40 flex -translate-y-1/2 flex-col gap-3">
         <Tooltip placement="left" title={candidate?.email_id ? 'Send Email' : 'No email on file'}>
-          <span className="animate-float-bob inline-flex">
+          <span className="inline-flex">
             <button
               type="button"
               aria-label="Email candidate"
@@ -2017,7 +2230,7 @@ const CandidateDetails = () => {
           placement="left"
           title={candidate?.contact_no ? 'Send SMS' : 'No phone number on file'}
         >
-          <span className="animate-float-bob inline-flex [animation-delay:-1.5s]">
+          <span className="inline-flex">
             <button
               type="button"
               aria-label="Send SMS"
@@ -2570,6 +2783,7 @@ const CandidateDetails = () => {
           onClose={() => {
             setIsSkipOpen(false);
             setSkipReason('');
+            setSkipFeedback('');
           }}
           modalProps={{ width: 480 }}
         >
@@ -2585,10 +2799,21 @@ const CandidateDetails = () => {
               autoSize={{ minRows: 3, maxRows: 6 }}
               className="rounded-md text-sm"
             />
+            <label htmlFor="skip-round-feedback" className="text-sm text-gray-800">
+              Feedback <span className="required-asterisk">*</span>
+            </label>
+            <Input.TextArea
+              id="skip-round-feedback"
+              value={skipFeedback}
+              onChange={(e) => setSkipFeedback(e.target.value)}
+              placeholder="Your feedback on the candidate for this round"
+              autoSize={{ minRows: 3, maxRows: 6 }}
+              className="rounded-md text-sm"
+            />
             <Button
               type="button"
               onClick={() => void handleSkipRound()}
-              disabled={!skipReason.trim() || isSkipping}
+              disabled={!skipReason.trim() || !skipFeedback.trim() || isSkipping}
               className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
             >
               {isSkipping ? 'Skipping…' : 'Skip Round'}
@@ -2653,13 +2878,14 @@ const CandidateDetails = () => {
         // same interviewers" fires the reschedule immediately instead of
         // asking for a second confirmation on top of this one.
         <AntdCommonModal
-          title="Request Reschedule"
-          subtitle="Keep this round's current panel, or pick different interviewers for the new attempt?"
+          title={isReinviteMode ? 'Send Reinvite' : 'Request Reschedule'}
+          subtitle={
+            isReinviteMode
+              ? "Keep this round's current panel, or pick different interviewers for the new invite?"
+              : "Keep this round's current panel, or pick different interviewers for the new attempt?"
+          }
           open
-          onClose={() => {
-            setIsRescheduleConfirmOpen(false);
-            setRescheduleRound(null);
-          }}
+          onClose={closeRescheduleFlow}
           modalProps={{ width: 480 }}
         >
           <div className="flex flex-col gap-3">
@@ -2669,7 +2895,7 @@ const CandidateDetails = () => {
               disabled={isRequestingReschedule}
               className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
             >
-              {isRequestingReschedule ? 'Sending…' : 'Keep The Same Interviewers'}
+              {isRequestingReschedule || isReinviting ? 'Sending…' : 'Keep The Same Interviewers'}
             </Button>
             <Button
               type="button"
@@ -2722,7 +2948,7 @@ const CandidateDetails = () => {
               <Button
                 type="button"
                 onClick={() => setIsInviteOpen(false)}
-                disabled={isCreatingBooking || isSavingInterviewers}
+                disabled={isCreatingBooking || isSavingInterviewers || bookingsClosed}
                 className="flex-1 rounded-full border border-gray-200 py-2.5 text-center text-sm font-semibold text-gray-600 disabled:opacity-50"
               >
                 Cancel
@@ -2753,12 +2979,13 @@ const CandidateDetails = () => {
         // `interviewer_ids` instead of `createBooking`'s.
         <AntdCommonModal
           title="Choose different interviewers"
-          subtitle="This new attempt will be scheduled with the roster picked below."
+          subtitle={
+            isReinviteMode
+              ? 'The new invite will go out with the roster picked below.'
+              : 'This new attempt will be scheduled with the roster picked below.'
+          }
           open
-          onClose={() => {
-            setIsRescheduleConfirmOpen(false);
-            setRescheduleRound(null);
-          }}
+          onClose={closeRescheduleFlow}
           modalProps={{ width: 560 }}
         >
           <div className="flex flex-col gap-4">
@@ -2769,7 +2996,11 @@ const CandidateDetails = () => {
               options={eligibleInterviewers ?? []}
               loading={isLoadingInterviewers}
               calendarConnectedById={interviewerCalendarConnectedById}
-              helperText="Pick at least one panel interviewer to request the reschedule."
+              helperText={
+                isReinviteMode
+                  ? 'Pick at least one panel interviewer to send the reinvite.'
+                  : 'Pick at least one panel interviewer to request the reschedule.'
+              }
             />
             <div className="flex gap-3">
               <Button
@@ -2786,7 +3017,11 @@ const CandidateDetails = () => {
                 disabled={isRequestingReschedule || rescheduleInterviewerIds.length === 0}
                 className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
               >
-                {isRequestingReschedule ? 'Sending…' : 'Request Reschedule'}
+                {isRequestingReschedule || isReinviting
+                  ? 'Sending…'
+                  : isReinviteMode
+                    ? 'Send Reinvite'
+                    : 'Request Reschedule'}
               </Button>
             </div>
           </div>

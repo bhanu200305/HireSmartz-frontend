@@ -145,7 +145,11 @@ const BulkScheduleInterviewsModal = ({
           return {
             name: candidate ? candidateDisplayName(candidate) : 'Candidate',
             ok: r.success,
-            reason: r.error,
+            // CANDIDATE_ALREADY_SELECTED isn't a failure to retry: the
+            // candidate's pipeline for this job is done.
+            reason: /already[_ ]selected/i.test(String(r.error ?? ''))
+              ? 'Already selected: remaining rounds are closed for scheduling.'
+              : r.error,
           };
         })
       );

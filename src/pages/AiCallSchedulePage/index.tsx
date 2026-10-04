@@ -72,6 +72,11 @@ const T = {
     callNowPromptButton: 'Call me now',
     pickTimeInstead: 'Pick a time instead',
     callAlreadyPlaced: 'We’re already calling you. Please keep your phone nearby.',
+    callNowQueuedTitle: "We'll call you shortly",
+    callNowQueuedBody:
+      'Your interview is booked and we’re getting it ready. Your phone will ring in a few minutes. Please be somewhere quiet and keep it nearby.',
+    callNowNotAvailable:
+      'This interview has already been scheduled another way, so we can’t call you right now.',
     contactUnavailable:
       'We don’t have a phone number for you, so we can’t call right now. Please pick a time instead.',
     linkExpiredTitle: 'Scheduling Link Expired',
@@ -130,6 +135,11 @@ const T = {
     callNowPromptButton: 'Llámame ahora',
     pickTimeInstead: 'Elegir un horario',
     callAlreadyPlaced: 'Ya te estamos llamando. Por favor, mantén tu teléfono cerca.',
+    callNowQueuedTitle: 'Te llamaremos en breve',
+    callNowQueuedBody:
+      'Tu entrevista está reservada y la estamos preparando. Tu teléfono sonará en unos minutos. Por favor, estate en un lugar tranquilo y con el teléfono cerca.',
+    callNowNotAvailable:
+      'Esta entrevista ya se programó de otra forma, por lo que no podemos llamarte ahora.',
     contactUnavailable:
       'No tenemos un número de teléfono tuyo, así que no podemos llamarte ahora. Por favor, elige un horario.',
     linkExpiredTitle: 'Enlace de programación vencido',
@@ -279,6 +289,8 @@ const AiCallSchedulePage = () => {
   const [calledNow, setCalledNow] = useState(false);
   // call-now outcomes that change what the page offers (see handleCallNow).
   const [callAlreadyPlaced, setCallAlreadyPlaced] = useState(false);
+  const [callNowQueued, setCallNowQueued] = useState(false);
+  const [callNowScheduledElsewhere, setCallNowScheduledElsewhere] = useState(false);
   const [contactUnavailable, setContactUnavailable] = useState(false);
   const [callNowLinkExpired, setCallNowLinkExpired] = useState(false);
   const [callNowPromptDismissed, setCallNowPromptDismissed] = useState(false);
@@ -415,13 +427,22 @@ const AiCallSchedulePage = () => {
   // call's outcome (answered / no answer / failed) arrives later like any
   // other audio call's, so success here just means "call initiated".
   const handleCallNow = async (): Promise<void> => {
-    if (callAlreadyPlaced || contactUnavailable) return;
+    if (callAlreadyPlaced || contactUnavailable || callNowScheduledElsewhere) return;
     try {
-      await callNow(token).unwrap();
+      const result = await callNow(token).unwrap();
+      // AUDIO_SCREENING only schedules the slot and starts question
+      // generation; the call itself fires shortly after (never "calling now").
+      setCallNowQueued(Boolean(result?.questions_pending));
       setCalledNow(true);
     } catch (error) {
       const apiError = error as InterviewApiError;
-      if (apiError.code === 'CALL_ALREADY_PLACED' || apiError.status === 409) {
+      if (apiError.code === 'CALL_NOW_NOT_AVAILABLE') {
+        // AUDIO_SCREENING only: the booking got scheduled a different way
+        // meanwhile. Not an error to retry: steer back to the slot picker.
+        setCallNowScheduledElsewhere(true);
+        setCallNowPromptDismissed(true);
+        showToast({ message: t.callNowNotAvailable, type: 'info' });
+      } else if (apiError.code === 'CALL_ALREADY_PLACED' || apiError.status === 409) {
         setCallAlreadyPlaced(true);
         showToast({ message: t.callAlreadyPlaced, type: 'info' });
       } else if (apiError.code === 'CANDIDATE_CONTACT_UNAVAILABLE') {
@@ -487,8 +508,12 @@ const AiCallSchedulePage = () => {
       <div className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center">
           <LuCircleCheck className="text-green-500 w-16 h-16 mx-auto mb-4" />
-          <h1 className="text-2xl font-semibold text-gray-800 mb-2">{t.callNowTitle}</h1>
-          <p className="text-gray-500 text-sm">{t.callNowBody}</p>
+          <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+            {callNowQueued ? t.callNowQueuedTitle : t.callNowTitle}
+          </h1>
+          <p className="text-gray-500 text-sm">
+            {callNowQueued ? t.callNowQueuedBody : t.callNowBody}
+          </p>
         </div>
       </div>
     );
@@ -865,18 +890,27 @@ const AiCallSchedulePage = () => {
                     <p
                       className={clsx(
                         'text-xs mb-2 text-center',
-                        callAlreadyPlaced || contactUnavailable ? 'text-amber-600' : 'text-gray-400'
+                        callAlreadyPlaced || contactUnavailable || callNowScheduledElsewhere
+                          ? 'text-amber-600'
+                          : 'text-gray-400'
                       )}
                     >
                       {callAlreadyPlaced
                         ? t.callAlreadyPlaced
-                        : contactUnavailable
-                          ? t.contactUnavailable
-                          : t.callNowHint}
+                        : callNowScheduledElsewhere
+                          ? t.callNowNotAvailable
+                          : contactUnavailable
+                            ? t.contactUnavailable
+                            : t.callNowHint}
                     </p>
                     <button
                       onClick={handleCallNow}
-                      disabled={callNowState.isLoading || callAlreadyPlaced || contactUnavailable}
+                      disabled={
+                        callNowState.isLoading ||
+                        callAlreadyPlaced ||
+                        contactUnavailable ||
+                        callNowScheduledElsewhere
+                      }
                       className="w-full py-2.5 rounded-full border border-(--primary) text-(--primary) text-sm font-semibold hover:bg-(--primary)/5 transition disabled:opacity-60 flex items-center justify-center gap-2 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {callNowState.isLoading ? t.callNowConfirm : t.callNowButton}

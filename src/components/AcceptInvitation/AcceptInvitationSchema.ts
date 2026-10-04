@@ -20,10 +20,10 @@ export const acceptInvitationSchema = z
     // Pydantic model — omitting any of them 422s. All optional on the wire
     // (and left unvalidated here — see `isPlatformInvite` below) purely
     // because a platform invite (Super Admin/staff) doesn't need them.
-    // last_name is genuinely optional end to end (nullable in the DB, never
-    // validated) — kept optional to match.
+    // last_name is required by the product (2026-10-04) even though the
+    // backend still treats it as optional (nullable) — enforced here only.
     firstName: nameValidation({ label: 'First name', required: true }),
-    lastName: nameValidation({ label: 'Last name', required: false }),
+    lastName: nameValidation({ label: 'Last name', required: true }),
     countryCode: z.string().optional(),
     phoneNumber: z.string().optional(),
     // Hidden, non-user-facing field — set from ValidateInvitationResponse's

@@ -1366,7 +1366,6 @@ select:focus {
    left in place at its call sites (harmless — an unused selector, not a
    missing one) rather than touched here. */
 
-
 /* Resume viewer: sits above the sticky header/footer (z-[1100]) and uses
    nearly the whole viewport height, so the fitted resume page is as large as
    it can be. Scoped to this modal only. */

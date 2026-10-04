@@ -1,6 +1,7 @@
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
 import {
+  MAX_REINVITES,
   useGetBookingQuery,
   useGetInterviewerCalendarStatusQuery,
   useGetInterviewersCalendarStatusQuery,
@@ -120,15 +121,17 @@ const RoundSidebarItem = ({
     ? 'Overdue'
     : technicalFailure
       ? 'Technical Failure'
-      : isResumeScored
-        ? 'Completed'
-        : normaliseRoundStatus(round.status) === 'booking_created'
-          ? 'Booking created — waiting to be scheduled'
-          : normaliseRoundStatus(round.status) === 'resume_upload_expired'
-            ? 'Resume upload link expired'
-            : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
-              ? 'Awaiting resume upload'
-              : formatRoundStatus(round.status);
+      : booking?.link_expired && !isResumeScored
+        ? 'Scheduling link expired'
+        : isResumeScored
+          ? 'Completed'
+          : normaliseRoundStatus(round.status) === 'booking_created'
+            ? 'Booking created — waiting to be scheduled'
+            : normaliseRoundStatus(round.status) === 'resume_upload_expired'
+              ? 'Resume upload link expired'
+              : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
+                ? 'Awaiting resume upload'
+                : formatRoundStatus(round.status);
 
   // Old app's round tab: centred text stack — bold name, "Status: …",
   // then score / when lines — with roomy padding and no card chrome.
@@ -155,6 +158,11 @@ const RoundSidebarItem = ({
         {overdue && (
           <span className="text-xs text-danger">
             No update since the scheduled time; may not have gone through.
+          </span>
+        )}
+        {booking?.link_expired && !isResumeScored && (
+          <span className="text-xs text-gray-500">
+            {booking.reinvite_count ?? 0} of {MAX_REINVITES} reinvites used
           </span>
         )}
         {!overdue && technicalFailure && (

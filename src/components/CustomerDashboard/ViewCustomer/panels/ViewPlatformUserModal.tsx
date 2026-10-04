@@ -403,7 +403,9 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
     }
   };
 
-  const isEditFormValid = Boolean(editForm && editForm.first_name.trim().length > 0);
+  const isEditFormValid = Boolean(
+    editForm && editForm.first_name.trim().length > 0 && editForm.last_name.trim().length > 0
+  );
 
   if (!displayUser) return null;
 
@@ -435,7 +437,7 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                 onBlur={handleEmailBlur}
               />
               <Input placeholder="First name *" {...field('first_name')} />
-              <Input placeholder="Last name" {...field('last_name')} />
+              <Input placeholder="Last name *" {...field('last_name')} />
               <NameTitleSelect
                 className="w-full"
                 value={editForm.title}

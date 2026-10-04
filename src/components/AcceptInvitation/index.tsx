@@ -580,7 +580,7 @@ const AcceptInvitation = () => {
                   <Input
                     {...field}
                     type="text"
-                    placeholder="Last name"
+                    placeholder="Last name*"
                     prefix={
                       <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
                         <MdPersonOutline className="text-brand-900 text-sm" />

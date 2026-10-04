@@ -50,6 +50,7 @@ export const CareersInstantCallPage = () => {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const [firstNameError, setFirstNameError] = useState(false);
+  const [lastNameError, setLastNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [smsConsent, setSmsConsent] = useState(false);
@@ -61,6 +62,7 @@ export const CareersInstantCallPage = () => {
 
   const handleSubmit = async () => {
     const noFirstName = !firstName.trim();
+    const noLastName = !lastName.trim();
     const noEmail = !email.trim();
     const noPhone = !phone.trim();
     const badPhone = !noPhone && !isPhoneValidForCountry(phone, countryCode);
@@ -68,6 +70,7 @@ export const CareersInstantCallPage = () => {
     const noCaptcha = !captchaToken;
 
     setFirstNameError(noFirstName);
+    setLastNameError(noLastName);
     setEmailError(noEmail);
     setPhoneError(
       noPhone ? 'Phone number is required' : badPhone ? PHONE_VALIDATION_MESSAGE : null
@@ -75,14 +78,14 @@ export const CareersInstantCallPage = () => {
     setTosError(noTos);
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
 
-    if (noFirstName || noEmail || noPhone || badPhone || noTos || noCaptcha) return;
+    if (noFirstName || noLastName || noEmail || noPhone || badPhone || noTos || noCaptcha) return;
 
     try {
       const res = await startIntakeCall({
         organizationId: organizationId ?? '',
         jobOpeningId: jobId ?? '',
         firstName: firstName.trim(),
-        lastName: lastName.trim() || undefined,
+        lastName: lastName.trim(),
         emailId: email.trim(),
         contactNo: toE164(countryCode, phone),
         termsAccepted: tosConsent,
@@ -200,16 +203,25 @@ export const CareersInstantCallPage = () => {
             </div>
             <div>
               <label htmlFor="lastName" className="block text-sm font-medium text-gray-800 mb-2">
-                Last Name
+                Last Name <span className="text-red-500">*</span>
               </label>
               <Input
                 id="lastName"
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                onChange={(e) => {
+                  setLastName(e.target.value);
+                  if (e.target.value.trim()) setLastNameError(false);
+                }}
                 placeholder="Doe"
                 className="rounded-full"
-                style={{ height: 44, paddingLeft: 16, paddingRight: 16 }}
+                style={{
+                  height: 44,
+                  paddingLeft: 16,
+                  paddingRight: 16,
+                  borderColor: lastNameError ? '#ef4444' : undefined,
+                }}
               />
+              {lastNameError && <p className="text-sm text-red-500 mt-1">Last name is required</p>}
             </div>
           </div>
 

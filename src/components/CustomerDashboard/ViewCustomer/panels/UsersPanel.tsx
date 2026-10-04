@@ -330,8 +330,8 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
   };
 
   const handleAdd = async () => {
-    if (!form.email.trim() || !form.first_name.trim()) {
-      showToast({ message: 'Email and first name are required.', type: 'error' });
+    if (!form.email.trim() || !form.first_name.trim() || !form.last_name.trim()) {
+      showToast({ message: 'Email, first name and last name are required.', type: 'error' });
       return;
     }
     if (form.phone_no.trim() && !isPhoneValidForCountry(form.phone_no, form.country_code)) {
@@ -818,7 +818,7 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input placeholder="First name *" {...field('first_name')} />
-            <Input placeholder="Last name" {...field('last_name')} />
+            <Input placeholder="Last name *" {...field('last_name')} />
           </div>
           <Input placeholder="Email *" type="email" {...field('email')} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

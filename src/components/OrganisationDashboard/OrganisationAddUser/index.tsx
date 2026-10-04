@@ -107,8 +107,8 @@ const AddOrganisationUser = () => {
   });
 
   const handleSubmit = async () => {
-    if (!form.email.trim() || !form.first_name.trim()) {
-      showToast({ message: 'Email and first name are required.', type: 'error' });
+    if (!form.email.trim() || !form.first_name.trim() || !form.last_name.trim()) {
+      showToast({ message: 'Email, first name and last name are required.', type: 'error' });
       return;
     }
     if (form.phone_no.trim() && !isPhoneValidForCountry(form.phone_no, form.country_code)) {
@@ -257,7 +257,7 @@ const AddOrganisationUser = () => {
             </div>
             <div>
               <label htmlFor="add-user-last-name" className="text-sm text-gray-600">
-                Last Name
+                Last Name <span className="required-asterisk">*</span>
               </label>
               <Input
                 id="add-user-last-name"

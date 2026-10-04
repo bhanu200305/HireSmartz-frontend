@@ -66,6 +66,7 @@ export const CareersApplyPage = () => {
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const [resumeRequired, setResumeRequired] = useState(false);
   const [firstNameError, setFirstNameError] = useState(false);
+  const [lastNameError, setLastNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [smsConsent, setSmsConsent] = useState(false);
   const [tosConsent, setTosConsent] = useState(false);
@@ -96,6 +97,7 @@ export const CareersApplyPage = () => {
   const handleSubmit = async () => {
     const noResume = !resume || !!fileError;
     const noFirstName = !firstName.trim();
+    const noLastName = !lastName.trim();
     const noEmail = !email.trim();
     const noTos = !tosConsent;
     const noCaptcha = !captchaToken;
@@ -103,12 +105,23 @@ export const CareersApplyPage = () => {
 
     setResumeRequired(noResume);
     setFirstNameError(noFirstName);
+    setLastNameError(noLastName);
     setEmailError(noEmail);
     setTosError(noTos);
     setPhoneError(badPhone ? PHONE_VALIDATION_MESSAGE : null);
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
 
-    if (noResume || noFirstName || noEmail || noTos || noCaptcha || badPhone || !resume) return;
+    if (
+      noResume ||
+      noFirstName ||
+      noLastName ||
+      noEmail ||
+      noTos ||
+      noCaptcha ||
+      badPhone ||
+      !resume
+    )
+      return;
 
     try {
       const res = await submitApplication({
@@ -116,7 +129,7 @@ export const CareersApplyPage = () => {
         jobOpeningId: jobId ?? '',
         file: resume,
         firstName: firstName.trim(),
-        lastName: lastName.trim() || undefined,
+        lastName: lastName.trim(),
         emailId: email.trim(),
         contactNo: phone.trim() ? toE164(countryCode, phone) : undefined,
         termsAccepted: tosConsent,
@@ -300,16 +313,25 @@ export const CareersApplyPage = () => {
             </div>
             <div>
               <label htmlFor="lastName" className="block text-sm font-medium text-gray-800 mb-2">
-                Last Name
+                Last Name <span className="text-red-500">*</span>
               </label>
               <Input
                 id="lastName"
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                onChange={(e) => {
+                  setLastName(e.target.value);
+                  if (e.target.value.trim()) setLastNameError(false);
+                }}
                 placeholder="Doe"
                 className="rounded-full"
-                style={{ height: 44, paddingLeft: 16, paddingRight: 16 }}
+                style={{
+                  height: 44,
+                  paddingLeft: 16,
+                  paddingRight: 16,
+                  borderColor: lastNameError ? '#ef4444' : undefined,
+                }}
               />
+              {lastNameError && <p className="text-sm text-red-500 mt-1">Last name is required</p>}
             </div>
           </div>
 
