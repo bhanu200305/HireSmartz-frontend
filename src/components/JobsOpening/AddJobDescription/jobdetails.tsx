@@ -20,7 +20,6 @@ import { jobDetailsDraftSchema, jobDetailsSchema } from './AddJobSchema';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   setAiJobDescriptionId,
-  setIsFormCompleted,
   setJobOpeningId,
   updateJobDescription,
   updateJobDetails,
@@ -2501,7 +2500,6 @@ const JobDetails = () => {
       await updateJobOpening({ jobOpeningId: savedId, body: details }).unwrap();
       dispatch(setJobOpeningId(savedId));
       dispatch(setAiJobDescriptionId(savedId));
-      dispatch(setIsFormCompleted(true));
 
       showToast({
         message: 'Job opening has been saved successfully',

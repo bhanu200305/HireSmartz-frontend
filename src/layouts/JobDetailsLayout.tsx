@@ -6,6 +6,10 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { RootState } from '../redux/provider/store';
 import { sanitizedPath } from '../shared/utils/business-logic';
 import { useGetJobDescriptionByIdQuery } from '../api/job-service/JobOpening/ViewJobDescriptionById';
+import {
+  useGetJobOpeningByIdQuery,
+  useGetWizardStateQuery,
+} from '../api/job-service/JobOpening/GetJobOpeningById';
 import { asJobId } from '../api/job-service/jobId';
 
 interface JobDetailsLayoutProps {
@@ -23,7 +27,6 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const aiJobDescriptionId = useSelector(
     (state: RootState) => state.EditJobSlice.aiJobDescription.id
   );
-  const jobDescription = useSelector((state: RootState) => state.JobSlice.description);
   const isFormCompleted = useSelector((state: RootState) => state.JobSlice.isFormCompleted);
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
 
@@ -37,14 +40,39 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     { skip: !isCreateMode || !resolvedJobId }
   );
 
-  // Check step completion in create mode
-  const isTab1Completed = isCreateMode ? jdDetailsForGate?.hasSavedDetails === true : true;
-  const isTab2Completed = isCreateMode
-    ? Object.keys(jobDescription).length > 0 && jobDescription.educationPreference?.length > 0
-    : true;
-  const isTab3Completed = isCreateMode ? isFormCompleted === true : true;
-  const isScoringUnlocked =
-    !isCreateMode || isTab3Completed || (isTab1Completed && isTab2Completed);
+  // A draft being edited is gated like create; published/closed stay open.
+  const editJobId = isEditMode && id ? id : '';
+  const { data: editJob } = useGetJobOpeningByIdQuery(
+    { jobOpeningId: asJobId(editJobId) },
+    { skip: !editJobId }
+  );
+  const isEditingDraft = editJob?.is_draft === true;
+  const { data: editJd } = useGetJobDescriptionByIdQuery(
+    { jobOpeningId: asJobId(editJobId) },
+    { skip: !isEditingDraft }
+  );
+  const isGated = isCreateMode || isEditingDraft;
+
+  // Questions need a saved interview round. Ready until the server answers.
+  const wizardJobId = isCreateMode ? (resolvedJobId ?? '') : isEditingDraft ? editJobId : '';
+  const { data: wizardState } = useGetWizardStateQuery(wizardJobId, { skip: !wizardJobId });
+  const hasSavedInterviewRound =
+    !isGated ||
+    !wizardState ||
+    wizardState.stages.some((s) => s.stage === 'interview_rounds' && s.is_complete);
+
+  // Edited drafts count as complete until the server answers (no flicker).
+  const isTab1Completed = isCreateMode
+    ? jdDetailsForGate?.hasSavedDetails === true
+    : isEditingDraft
+      ? !editJd || editJd.hasSavedDetails
+      : true;
+  const isTab3Completed = isCreateMode
+    ? isFormCompleted === true
+    : isEditingDraft
+      ? !editJd || Boolean(editJd.jobDescription?.trim())
+      : true;
+  const isScoringUnlocked = !isGated || isTab3Completed;
 
   const isActiveTab = (path: string) => location.pathname.includes(path);
 
@@ -167,7 +195,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       (currentTabIndex === 1 && !isTab1Completed) ||
       (currentTabIndex === 2 && !isScoringUnlocked) ||
       (currentTabIndex === 3 && !isTab3Completed) ||
-      (currentTabIndex === 4 && !isTab3Completed);
+      (currentTabIndex === 4 && (!isTab3Completed || !hasSavedInterviewRound));
 
     if (!isCurrentTabDisabled) return; // Current tab is enabled, no redirect needed
 
@@ -179,7 +207,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       if (index === 1 && !isTab1Completed) return false;
       if (index === 2 && !isScoringUnlocked) return false;
       if (index === 3 && !isTab3Completed) return false;
-      if (index === 4 && !isTab3Completed) return false;
+      if (index === 4 && (!isTab3Completed || !hasSavedInterviewRound)) return false;
       return true;
     });
 
@@ -191,6 +219,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   }, [
     isTab1Completed,
     isTab3Completed,
+    hasSavedInterviewRound,
     isScoringUnlocked,
     isCreateMode,
     isCandidatePage,
@@ -219,7 +248,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
                   // Blame whichever earlier step is actually incomplete.
                   let isDisabled = false;
                   let disabledReason = '';
-                  if (isCreateMode) {
+                  if (isGated) {
                     if (index === 1 && !isTab1Completed) {
                       isDisabled = true;
                       disabledReason = 'Complete Job Details first.';
@@ -233,6 +262,9 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
                     } else if ((index === 3 || index === 4) && !isTab3Completed) {
                       isDisabled = true;
                       disabledReason = 'Complete AI Job Description first.';
+                    } else if (index === 4 && !hasSavedInterviewRound) {
+                      isDisabled = true;
+                      disabledReason = 'Complete Interview Setup first.';
                     }
                   }
 
