@@ -469,7 +469,7 @@ const ViewJobDetails = () => {
           </Field>
         </Section>
 
-        <Section title="Opening & Pay">
+        <Section title="Openings & Pay">
           <Field
             label="Open Date"
             value={
