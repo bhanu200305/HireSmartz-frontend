@@ -1,12 +1,5 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
-import { TbBriefcase2 } from 'react-icons/tb';
-import {
-  MdOutlineLocationOn,
-  MdOutlineGroups,
-  MdOutlineAttachMoney,
-  MdOutlineStars,
-} from 'react-icons/md';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
 import { useListJobTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
 import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
@@ -74,23 +67,16 @@ const toSkillChip = (skill: { skillName: string }, index: number): ChipItem => (
 const EMPTY_VALUE = <span className="font-normal text-gray-400">-</span>;
 
 const Section = ({
-  icon,
   title,
   last = false,
   children,
 }: {
-  icon: ReactNode;
   title: string;
   last?: boolean;
   children: ReactNode;
 }) => (
   <section className={`py-5 ${last ? '' : 'border-b border-neutral-100'}`}>
-    <div className="flex items-center gap-2">
-      <span className="flex items-center justify-center rounded-lg bg-primary-50 p-1.5 text-primary-600">
-        {icon}
-      </span>
-      <h3 className="m-0 font-display text-base font-bold text-neutral-900">{title}</h3>
-    </div>
+    <h3 className="m-0 font-display text-base font-bold text-neutral-900">{title}</h3>
     <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
       {children}
     </div>
@@ -146,6 +132,29 @@ const ChipList = ({ items, tone = 'brand' }: { items: ChipItem[]; tone?: 'brand'
   );
 };
 
+const SkillBox = ({ items }: { items: ChipItem[] }) => {
+  if (items.length === 0) return EMPTY_VALUE;
+  return (
+    <div className="max-h-40 overflow-auto rounded-xl border border-gray-200 bg-gray-50 p-3 pr-2">
+      <div className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <span
+            key={item.key}
+            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+              item.deactivated
+                ? 'border-gray-300 bg-gray-100 text-gray-600'
+                : 'border-brand-200 bg-brand-100 text-brand-800'
+            }`}
+          >
+            {item.label}
+            {item.deactivated && <span className="ml-2 text-xs italic">(Deactivated)</span>}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const TextTabs = ({ tabs }: { tabs: { label: string; text?: string | null }[] }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const active = tabs[activeIndex];
@@ -159,7 +168,7 @@ const TextTabs = ({ tabs }: { tabs: { label: string; text?: string | null }[] })
             role="tab"
             aria-selected={index === activeIndex}
             onClick={() => setActiveIndex(index)}
-            className={`-mb-px cursor-pointer rounded-sm border-b-2 px-1 pb-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-200 font-semibold transition-colors ${
+            className={`-mb-px cursor-pointer rounded-sm border-b-2 px-1 pb-2 font-display text-base font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary-200 transition-colors ${
               index === activeIndex
                 ? 'border-primary text-primary'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-800'
@@ -388,21 +397,12 @@ const ViewJobDetails = () => {
     .join(', ');
 
   const data = jobData?.data;
-  const addressLine = [
-    locationAddressLine1,
-    locationAddressLine2,
-    locationCity,
-    [locationState, locationZipCode].filter(Boolean).join(' '),
-    locationCountry,
-  ]
-    .filter(Boolean)
-    .join(', ');
 
   return (
     <>
       {isLoading && <Loader />}
       <div className="flex flex-col">
-        <Section icon={<TbBriefcase2 size={16} />} title="Job Info">
+        <Section title="Job Info">
           <Field label="Job ID" value={data?.jobProfileCode} />
           <Field label="Department">
             {departmentItems.length > 0
@@ -449,13 +449,18 @@ const ViewJobDetails = () => {
           </Field>
         </Section>
 
-        <Section icon={<MdOutlineLocationOn size={16} />} title="Location">
+        <Section title="Location">
           <Field label="Location Name" value={locationDisplayName} />
           <Field label="Location Code" value={locationCode} />
-          <Field className="col-span-full" label="Address" value={addressLine} />
+          <Field label="Address Line 1" value={locationAddressLine1} />
+          <Field label="Address Line 2" value={locationAddressLine2} />
+          <Field label="City" value={locationCity} />
+          <Field label="State" value={locationState} />
+          <Field label="Zip Code" value={locationZipCode} />
+          <Field label="Country" value={locationCountry} />
         </Section>
 
-        <Section icon={<MdOutlineGroups size={16} />} title="Hiring Panel">
+        <Section title="Hiring Panel">
           <Field label="Hiring Managers">
             <ChipList items={hiringManagerChips} />
           </Field>
@@ -464,7 +469,7 @@ const ViewJobDetails = () => {
           </Field>
         </Section>
 
-        <Section icon={<MdOutlineAttachMoney size={16} />} title="Opening & Pay">
+        <Section title="Opening & Pay">
           <Field
             label="Open Date"
             value={
@@ -494,13 +499,15 @@ const ViewJobDetails = () => {
           <Field label="Referral Bonus" value={formatSalary(data?.referralBonus)} />
         </Section>
 
-        <Section icon={<MdOutlineStars size={16} />} title="Skills & Requirements" last>
-          <Field className="sm:col-span-2 lg:col-span-3" label="Required Skills">
-            <ChipList items={(data?.mandatorySkills ?? []).map(toSkillChip)} />
-          </Field>
-          <Field className="sm:col-span-2 lg:col-span-3" label="Optional Skills">
-            <ChipList tone="neutral" items={(data?.optionalSkills ?? []).map(toSkillChip)} />
-          </Field>
+        <Section title="Skills & Requirements" last>
+          <div className="col-span-full grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+            <Field label="Required Skills">
+              <SkillBox items={(data?.mandatorySkills ?? []).map(toSkillChip)} />
+            </Field>
+            <Field label="Optional Skills">
+              <SkillBox items={(data?.optionalSkills ?? []).map(toSkillChip)} />
+            </Field>
+          </div>
           <Field className="col-span-full" label="Education Preference" value={educationNames} />
           <TextTabs
             tabs={[

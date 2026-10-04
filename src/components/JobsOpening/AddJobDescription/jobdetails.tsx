@@ -524,6 +524,16 @@ const JobDetails = () => {
   // A currently-assigned-but-deactivated shift stays visible (flagged
   // isDeleted) via a targeted by-id lookup, fired only when the selected id
   // isn't already in the active list above.
+  // English is the default communication language while the field is empty.
+  const languagesTouchedRef = useRef(false);
+  const languagesValue = watch('languages');
+  useEffect(() => {
+    if (languagesTouchedRef.current || languagesLoading) return;
+    if ((languagesValue ?? []).length > 0) return;
+    const english = languageOptions.find((l) => l.name.trim().toLowerCase() === 'english');
+    if (english) setValue('languages', [String(english.id)], { shouldDirty: false });
+  }, [languagesLoading, languageOptions, languagesValue, setValue]);
+
   const selectedShiftId = (watch('shift') || [])[0];
   const selectedShiftIdStr = selectedShiftId != null ? String(selectedShiftId) : '';
   const shiftMissingFromActiveList =
@@ -2998,7 +3008,10 @@ const JobDetails = () => {
                               loading={languagesLoading}
                               disabled={fieldsLocked}
                               value={languagesLoading ? [] : (value ?? []).map(String)}
-                              onChange={(next) => onChange(next)}
+                              onChange={(next) => {
+                                languagesTouchedRef.current = true;
+                                onChange(next);
+                              }}
                               options={languageOptions.map((item) => ({
                                 label: item.name,
                                 value: item.id,

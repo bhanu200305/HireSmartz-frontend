@@ -28,6 +28,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     (state: RootState) => state.EditJobSlice.aiJobDescription.id
   );
   const isFormCompleted = useSelector((state: RootState) => state.JobSlice.isFormCompleted);
+  const isScoringCompleted = useSelector((state: RootState) => state.JobSlice.isScoringCompleted);
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
 
   const isCreateMode = !isViewMode && !isEditMode;
@@ -73,6 +74,8 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       ? !editJd || Boolean(editJd.jobDescription?.trim())
       : true;
   const isScoringUnlocked = !isGated || isTab3Completed;
+  // Only create mode knows when Scoring Criteria was saved.
+  const isScoringDone = isCreateMode ? isScoringCompleted === true : true;
 
   const isActiveTab = (path: string) => location.pathname.includes(path);
 
@@ -170,7 +173,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   // Redirect to first available tab if current tab is disabled (e.g., on page refresh)
   useEffect(() => {
-    if (!isCreateMode || isCandidatePage) return;
+    if (!isGated || isCandidatePage) return;
 
     const currentPath = location.pathname;
     let currentTabIndex = -1;
@@ -194,20 +197,18 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     const isCurrentTabDisabled =
       (currentTabIndex === 1 && !isTab1Completed) ||
       (currentTabIndex === 2 && !isScoringUnlocked) ||
-      (currentTabIndex === 3 && !isTab3Completed) ||
-      (currentTabIndex === 4 && (!isTab3Completed || !hasSavedInterviewRound));
+      (currentTabIndex === 3 && (!isTab3Completed || !isScoringDone)) ||
+      (currentTabIndex === 4 && (!isTab3Completed || !isScoringDone || !hasSavedInterviewRound));
 
     if (!isCurrentTabDisabled) return; // Current tab is enabled, no redirect needed
-
-    // Don't redirect from interview-setup as it has its own save navigation logic
-    if (currentPath.includes('/interview-setup')) return;
 
     // Find first available tab
     const firstAvailableIndex = currentPaths.findIndex((_: string, index: number) => {
       if (index === 1 && !isTab1Completed) return false;
       if (index === 2 && !isScoringUnlocked) return false;
-      if (index === 3 && !isTab3Completed) return false;
-      if (index === 4 && (!isTab3Completed || !hasSavedInterviewRound)) return false;
+      if (index === 3 && (!isTab3Completed || !isScoringDone)) return false;
+      if (index === 4 && (!isTab3Completed || !isScoringDone || !hasSavedInterviewRound))
+        return false;
       return true;
     });
 
@@ -219,9 +220,10 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   }, [
     isTab1Completed,
     isTab3Completed,
+    isScoringDone,
     hasSavedInterviewRound,
     isScoringUnlocked,
-    isCreateMode,
+    isGated,
     isCandidatePage,
     location.pathname,
     search,
@@ -262,6 +264,9 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
                     } else if ((index === 3 || index === 4) && !isTab3Completed) {
                       isDisabled = true;
                       disabledReason = 'Complete AI Job Description first.';
+                    } else if ((index === 3 || index === 4) && !isScoringDone) {
+                      isDisabled = true;
+                      disabledReason = 'Complete Scoring Criteria first.';
                     } else if (index === 4 && !hasSavedInterviewRound) {
                       isDisabled = true;
                       disabledReason = 'Complete Interview Setup first.';

@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../redux/provider/store';
+import { setIsScoringCompleted } from '../../redux/slices/jobOpeningSlice';
 import { showToast } from '../shared/ui/toast';
 import {
   jobScoringConfigApi,
@@ -282,10 +283,11 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
           <Tooltip title="Save this page and continue.">
             <Button
               className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-              onClick={() =>
+              onClick={() => {
+                dispatch(setIsScoringCompleted(true));
                 // Edit mode needs the job-id-aware route, not the create wizard's bare path.
-                navigate(isEditMode ? `/jobs/edit/${jobId}/interview` : '/interview-setup')
-              }
+                navigate(isEditMode ? `/jobs/edit/${jobId}/interview` : '/interview-setup');
+              }}
             >
               Save &amp; Next
             </Button>

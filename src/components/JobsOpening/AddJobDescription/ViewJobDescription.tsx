@@ -26,7 +26,7 @@ import { RichTextEditor } from '../../shared/ui/RichTextEditor';
 import { formatAiJobDescription } from '../../../shared/utils/business-logic';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
-import { setIsFormCompleted } from '../../../redux/slices/jobOpeningSlice';
+import { setIsFormCompleted, setIsScoringCompleted } from '../../../redux/slices/jobOpeningSlice';
 
 import { useGetTopFivePromptQuery } from '../../../api/ai-service/AiQuestion/AiQuestion';
 
@@ -134,6 +134,7 @@ const ViewJobDescription = () => {
         type: 'success',
       });
       dispatch(setIsFormCompleted(true));
+      dispatch(setIsScoringCompleted(true));
       const fullUrl = getFullURL('/interview-setup', true);
       const safeUrl =
         typeof fullUrl === 'string' && fullUrl.startsWith('/') ? fullUrl : '/interview-setup';
