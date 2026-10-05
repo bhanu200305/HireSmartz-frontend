@@ -131,6 +131,7 @@ const CareersInstantCallPage = lazy(() => import('./pages/CareersInstantCallPage
 const CareersIntakeCallSchedulePage = lazy(() => import('./pages/CareersIntakeCallSchedulePage'));
 const CareersApplySuccessPage = lazy(() => import('./pages/CareersApplySuccessPage'));
 const CareersResumeUploadPage = lazy(() => import('./pages/CareersResumeUploadPage'));
+const CareersSmsConsentPage = lazy(() => import('./pages/CareersSmsConsentPage'));
 const VerificationCallbackPage = lazy(() => import('./pages/VerificationCallbackPage'));
 
 // Lazy load components
@@ -414,6 +415,17 @@ export const Routes: RouteType[] = [
     name: 'CareersResumeUpload',
     path: '/resume-upload/:token',
     component: CareersResumeUploadPage,
+    isOpen: true,
+  },
+  {
+    // The "Get text updates" button in a recruiter-uploaded candidate's
+    // application-received email — `{frontend}/sms-consent/{token}`. Same
+    // reasoning as the resume-upload route above: no account, signed token
+    // only, so it MUST be `isOpen: true` or it falls through to the
+    // auth-required 404 and bounces the candidate to /login.
+    name: 'CareersSmsConsent',
+    path: '/sms-consent/:token',
+    component: CareersSmsConsentPage,
     isOpen: true,
   },
   {

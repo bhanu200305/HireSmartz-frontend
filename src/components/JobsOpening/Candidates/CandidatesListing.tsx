@@ -37,14 +37,12 @@ import { hasFeatureAccess, isAssignedToJob } from '../../../shared/utils/auth/ge
 import { asJobId } from '../../../api/job-service/jobId';
 import {
   useListCandidatesQuery,
+  type CandidateDisplayStatus,
   type CandidateView,
   type ListCandidatesArgs,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
 import { useListCandidateInterviewScoresQuery } from '../../../api/candidate-service/Candidates/scoring';
-import {
-  useListCandidateStatusesQuery,
-  useListApplicationSourcesQuery,
-} from '../../../api/candidate-service/Master/master';
+import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
 import AddCandidateModal from './Modal/AddCandidateModal';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
@@ -56,8 +54,10 @@ import ChangeCandidateStatusModal, {
 import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
 import {
   candidateDisplayName,
-  candidateStatusColor,
-  candidateStatusTooltip,
+  candidateDisplayStatusColor,
+  candidateDisplayStatusLabel,
+  candidateDisplayStatusTooltip,
+  resolveDisplayStatus,
 } from './candidateDisplay';
 import { normaliseRoundStatus } from './roundProgress';
 import type { CandidateNavState } from './useCandidateNavigation';
@@ -118,7 +118,7 @@ const CandidatesListing = () => {
   const parsedJobId = asJobId(id);
 
   const [search, setSearch] = useState('');
-  const [statusCode, setStatusCode] = useState<string | undefined>();
+  const [displayStatus, setDisplayStatus] = useState<CandidateDisplayStatus | undefined>();
   const [source, setSource] = useState<string | undefined>();
   const [sortBy, setSortBy] = useState<NonNullable<ListCandidatesArgs['sortBy']>>('applied_date');
   const [sortOrder, setSortOrder] = useState<NonNullable<ListCandidatesArgs['sortOrder']>>('desc');
@@ -207,7 +207,7 @@ const CandidatesListing = () => {
     {
       jobOpeningId: parsedJobId,
       search: search || undefined,
-      statusCode,
+      displayStatus,
       source,
       sortBy,
       sortOrder,
@@ -217,13 +217,8 @@ const CandidatesListing = () => {
     { skip: !parsedJobId, refetchOnMountOrArgChange: true }
   );
 
-  const { data: statuses = [] } = useListCandidateStatusesQuery();
-  const statusLabelByCode = useMemo(
-    () => new Map(statuses.map((s) => [s.code, s.label])),
-    [statuses]
-  );
   // `candidate.source` is the raw master-data code (e.g. "qr_self_apply") —
-  // same code/label split as candidate statuses above, resolved through the
+  // resolved to its label through the
   // same master endpoint FilterMenu.tsx's Source dropdown already uses,
   // rather than showing the snake_case code as-is.
   const { data: applicationSources = [] } = useListApplicationSourcesQuery();
@@ -266,7 +261,7 @@ const CandidatesListing = () => {
   };
 
   const handleFilterChange = (next: Partial<CandidateListFilterValues>) => {
-    if ('statusCode' in next) setStatusCode(next.statusCode);
+    if ('displayStatus' in next) setDisplayStatus(next.displayStatus);
     if ('source' in next) setSource(next.source);
     setPage(0);
   };
@@ -298,7 +293,7 @@ const CandidatesListing = () => {
       args: {
         jobOpeningId: parsedJobId,
         search: search || undefined,
-        statusCode,
+        displayStatus,
         source,
         sortBy,
         sortOrder,
@@ -395,7 +390,7 @@ const CandidatesListing = () => {
               )}
             </div>
             <div className="w-full lg:w-auto">
-              <FilterMenu filters={{ statusCode, source }} onFilterChange={handleFilterChange} />
+              <FilterMenu filters={{ displayStatus, source }} onFilterChange={handleFilterChange} />
             </div>
           </div>
         </div>
@@ -537,39 +532,60 @@ const CandidatesListing = () => {
                             </p>
                           </Col>
                           <Col span={6}>
-                            <div className="flex flex-col items-start gap-0.5 roboto-font">
-                              <Tooltip title={candidateStatusTooltip(candidate.status_code)}>
-                                <Link
-                                  to={buildDetailsPath(candidate.id)}
-                                  state={detailsNavState(rowIndex)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={`inline-block text-sm hover:underline ${candidateStatusColor(candidate.status_code).text}`}
-                                >
-                                  {candidate.status_label ||
-                                    statusLabelByCode.get(candidate.status_code ?? '') ||
-                                    'Not yet screened'}
-                                </Link>
-                              </Tooltip>
-                              {candidate.current_round_status && (
-                                <Link
-                                  to={buildDetailsPath(candidate.id)}
-                                  state={detailsNavState(rowIndex)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-block text-sm text-neutral-900 hover:underline"
-                                >
-                                  {normaliseRoundStatus(candidate.current_round_status) ===
-                                  'booking_created'
-                                    ? 'Booking created — waiting to be scheduled'
-                                    : normaliseRoundStatus(candidate.current_round_status) ===
-                                        'awaiting_resume_upload'
-                                      ? 'Awaiting Resume Upload'
-                                      : normaliseRoundStatus(candidate.current_round_status) ===
-                                          'resume_upload_expired'
-                                        ? 'Resume Upload Link Expired'
-                                        : formatRoundStatus(candidate.current_round_status)}
-                                </Link>
-                              )}
-                            </div>
+                            {(() => {
+                              // candidate-service's `display_status`; round
+                              // details only mean something while In Process.
+                              const displayStatus = resolveDisplayStatus(candidate);
+                              const roundStatus = candidate.current_round_status;
+                              return (
+                                <div className="flex min-w-0 flex-col items-start gap-0.5 roboto-font">
+                                  <Tooltip title={candidateDisplayStatusTooltip(displayStatus)}>
+                                    <Link
+                                      to={buildDetailsPath(candidate.id)}
+                                      state={detailsNavState(rowIndex)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className={`inline-block text-sm font-medium hover:underline ${candidateDisplayStatusColor(displayStatus).text}`}
+                                    >
+                                      {candidateDisplayStatusLabel(displayStatus)}
+                                    </Link>
+                                  </Tooltip>
+                                  {displayStatus === 'in_process' && (
+                                    <Link
+                                      to={buildDetailsPath(candidate.id)}
+                                      state={detailsNavState(rowIndex)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="inline-block max-w-full text-sm text-neutral-900 hover:underline"
+                                    >
+                                      {/* No round name yet = still at the resume stage. */}
+                                      <span className="font-medium">
+                                        {candidate.current_round_name || 'Resume Review'}
+                                      </span>
+                                      {roundStatus && (
+                                        <span className="text-neutral-600">
+                                          {' · '}
+                                          {/* in_progress = candidate is on the live call
+                                              right now; candidate-service flips it back to
+                                              the round's normal status when they leave.
+                                              Shows on the list's next refresh, not live. */}
+                                          {normaliseRoundStatus(roundStatus) === 'in_progress'
+                                            ? 'Ongoing'
+                                            : normaliseRoundStatus(roundStatus) ===
+                                                'booking_created'
+                                              ? 'Booking created — waiting to be scheduled'
+                                              : normaliseRoundStatus(roundStatus) ===
+                                                  'awaiting_resume_upload'
+                                                ? 'Awaiting Resume Upload'
+                                                : normaliseRoundStatus(roundStatus) ===
+                                                    'resume_upload_expired'
+                                                  ? 'Resume Upload Link Expired'
+                                                  : formatRoundStatus(roundStatus)}
+                                        </span>
+                                      )}
+                                    </Link>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </Col>
                           <Col span={3}>
                             {/* Same four actions as the legacy list: view, edit, notes, email. */}

@@ -23,6 +23,12 @@ import {
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import { slotOptions } from '../../../shared/utils/business-logic';
 import { resolveVariantLabel as formatVariantLabel } from '../../../shared/utils/variantLabel';
+import {
+  type IntakePosition,
+  isRoundOfType,
+  placeIntakeRound,
+  roundTypeIdsOfKind,
+} from '../intakeRoundPlacement';
 
 const { Option } = Select;
 
@@ -49,13 +55,21 @@ const AddNewRound = () => {
   const { data: rounds = [] } = useGetInterviewRoundsByJobIdQuery(resolvedJobId, {
     skip: !resolvedJobId,
   });
-  // Resume and Intake Call are auto-seeded and locked — never addable here.
+  // Resume is auto-seeded and mandatory — never addable here. The optional
+  // Intake Call is addable once per job (it's capped at one), placed as
+  // round 1 or 2 via the position choice below.
+  const resumeTypeIds = roundTypeIdsOfKind(interviewRounds, 'resume');
+  const intakeTypeIds = roundTypeIdsOfKind(interviewRounds, 'intake_call');
+  const jobHasIntake = rounds.some((round) => isRoundOfType(round, intakeTypeIds));
   const addableInterviewRounds = interviewRounds.filter(
-    (round) => round.special_kind !== 'resume' && round.special_kind !== 'intake_call'
+    (round) =>
+      round.special_kind !== 'resume' && (round.special_kind !== 'intake_call' || !jobHasIntake)
   );
 
   const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(null);
   const [showRoundInfo, setShowRoundInfo] = useState(false);
+  const [intakePosition, setIntakePosition] = useState<IntakePosition>('after_resume');
+  const isIntakeSelected = selectedRoundType?.special_kind === 'intake_call';
 
   const {
     control,
@@ -115,23 +129,27 @@ const AddNewRound = () => {
     }
 
     const existing = toInterviewSequencePayload(rounds);
-    const nextSequence = existing.length + 1;
+    const newRound = toInterviewRoundRequest(
+      {
+        roundId: String(data.round),
+        sequence: existing.length + 1,
+        description: data.description,
+        duration: selectedRoundType?.requires_duration ? Number(data.duration) : null,
+        variant: selectedRoundType?.available_variants?.length ? data.variant : null,
+      },
+      { isNew: true }
+    );
+    // Intake Call goes in at round 1 or right after Resume (round 2), never
+    // at the end; every other round type is appended.
+    const payload = isIntakeSelected
+      ? placeIntakeRound(existing, newRound, intakePosition, (round) =>
+          resumeTypeIds.has(String(round.round_id))
+        )
+      : [...existing, newRound];
 
     saveInterviewRound({
       jobOpeningId: resolvedJobId,
-      rounds: [
-        ...existing,
-        toInterviewRoundRequest(
-          {
-            roundId: String(data.round),
-            sequence: nextSequence,
-            description: data.description,
-            duration: selectedRoundType?.requires_duration ? Number(data.duration) : null,
-            variant: selectedRoundType?.available_variants?.length ? data.variant : null,
-          },
-          { isNew: true }
-        ),
-      ],
+      rounds: payload,
     })
       .unwrap()
       .then((res) => {
@@ -276,6 +294,50 @@ const AddNewRound = () => {
                   <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
                 )}
               </Form.Item>
+
+              {isIntakeSelected && (
+                <Form.Item
+                  label={
+                    <span className="text-sm font-semibold text-neutral-700">
+                      Position <span className="required-asterisk">*</span>
+                    </span>
+                  }
+                >
+                  <Radio.Group
+                    value={intakePosition}
+                    onChange={(e) => setIntakePosition(e.target.value)}
+                    optionType="button"
+                    buttonStyle="solid"
+                    className="w-full"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {(
+                        [
+                          ['before_resume', 'Round 1 · Before Resume'],
+                          ['after_resume', 'Round 2 · After Resume'],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <Radio.Button
+                          key={value}
+                          value={value}
+                          className={`text-center ${
+                            intakePosition === value
+                              ? '!bg-primary !text-white !border-primary'
+                              : 'bg-gray-100'
+                          }`}
+                        >
+                          {label}
+                        </Radio.Button>
+                      ))}
+                    </div>
+                  </Radio.Group>
+                  <p className="mt-1.5 text-xs text-neutral-500">
+                    {intakePosition === 'before_resume'
+                      ? 'Candidates applying from the careers page start with the Intake Call and upload their resume afterwards.'
+                      : 'Candidates upload their resume first, then book the Intake Call.'}
+                  </p>
+                </Form.Item>
+              )}
 
               {/* Catalog-driven, not hardcoded to any one round type — shows
                   up for whichever round type has `available_variants` set

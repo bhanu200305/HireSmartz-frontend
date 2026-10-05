@@ -18,6 +18,7 @@ import { asJobId } from '../../../api/job-service/jobId';
 import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import { roundTypeIdsOfKind } from '../intakeRoundPlacement';
 import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 
 const InterviewSetup = () => {
@@ -34,8 +35,8 @@ const InterviewSetup = () => {
     skip: !jobOpeningId,
   });
   const [reorderInterviewRounds, { isLoading: isReordering }] = useReorderInterviewRoundsMutation();
-  // Round-type ids for the fixed Resume / Intake Call anchor rounds —
-  // SortableInterviewRounds uses this to keep them pinned to the top 2.
+  // Round-type ids for the anchor rounds (Resume, and the optional Intake
+  // Call) — SortableInterviewRounds keeps them leading the sequence.
   const { jobOpeningDropdown: roundTypes } = useJobOpeningDropdown('ROUNDS', 'view');
   const anchorRoundTypeIds = useMemo(
     () =>
@@ -46,6 +47,10 @@ const InterviewSetup = () => {
           )
           .map((round) => String(round.id))
       ),
+    [roundTypes]
+  );
+  const intakeRoundTypeIds = useMemo(
+    () => roundTypeIdsOfKind(roundTypes, 'intake_call'),
     [roundTypes]
   );
   const variantLabelOverrides = useMemo(
@@ -197,6 +202,7 @@ const InterviewSetup = () => {
                   setShowDeleteModal(true);
                 }}
                 anchorRoundTypeIds={anchorRoundTypeIds}
+                removableAnchorRoundTypeIds={intakeRoundTypeIds}
                 variantLabelOverrides={variantLabelOverrides}
               />
             )}

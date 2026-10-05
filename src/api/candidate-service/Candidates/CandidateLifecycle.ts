@@ -98,7 +98,18 @@ export type CandidateView = {
    * cards). `null` once there's no outstanding round left to resolve (every
    * round concluded, or none exist yet). */
   current_round_status: string | null;
+  /** List rows only: display name of the round `current_round_status`
+   * belongs to. `null` while the candidate is still at the resume stage. */
+  current_round_name?: string | null;
+  /** List rows only: the candidate's coarse status for the list — the
+   * label and the `display_status` filter both use it. Round details are
+   * meaningful only when this is `in_process`. Optional until every
+   * candidate-service deployment returns it. */
+  display_status?: CandidateDisplayStatus | null;
 };
+
+/** `GET /candidates`' `display_status` — the list's four top-level states. */
+export type CandidateDisplayStatus = 'in_process' | 'selected' | 'rejected' | 'withdrawn';
 
 export type PaginatedCandidates = {
   items: CandidateView[];
@@ -116,6 +127,8 @@ export type ListCandidatesArgs = {
   jobOpeningId?: string;
   search?: string;
   statusCode?: string;
+  /** Filters rows and `total` by `display_status`; combines with every other filter. */
+  displayStatus?: CandidateDisplayStatus;
   source?: string;
   appliedFrom?: string;
   appliedTo?: string;
@@ -295,6 +308,7 @@ const extendedApi = candidateApi.injectEndpoints({
         jobOpeningId,
         search,
         statusCode,
+        displayStatus,
         source,
         appliedFrom,
         appliedTo,
@@ -309,6 +323,7 @@ const extendedApi = candidateApi.injectEndpoints({
           job_opening_id: jobOpeningId,
           search,
           status_code: statusCode,
+          display_status: displayStatus,
           source,
           applied_from: appliedFrom,
           applied_to: appliedTo,

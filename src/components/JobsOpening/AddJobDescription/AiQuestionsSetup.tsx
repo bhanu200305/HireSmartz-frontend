@@ -24,6 +24,7 @@ import {
   jobQuestionsApi,
 } from '../../../api/job-service/JobOpening/jobQuestions';
 import { useListInterviewRoundTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
+import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import {
   useGetJobScoringConfigQuery,
   type JobScoringWeight,
@@ -720,8 +721,19 @@ const AiQuestionsSetup = () => {
     }
   };
 
-  const { data: intakeData } = useGetJobIntakeQuestionsQuery(activeJobOpeningId, {
+  // The Intake Call round is optional (job-service, 2026-10-05): its question
+  // section only belongs here when this job's sequence actually has one.
+  const { data: jobRounds = [] } = useGetInterviewRoundsByJobIdQuery(activeJobOpeningId ?? '', {
     skip: !activeJobOpeningId,
+  });
+  const jobHasIntakeRound = useMemo(() => {
+    const intakeTypeIds = new Set(
+      roundTypes.filter((t) => t.special_kind === 'intake_call').map((t) => String(t.round_id))
+    );
+    return jobRounds.some((round) => intakeTypeIds.has(String(round.round?.id ?? '')));
+  }, [roundTypes, jobRounds]);
+  const { data: intakeData } = useGetJobIntakeQuestionsQuery(activeJobOpeningId, {
+    skip: !activeJobOpeningId || !jobHasIntakeRound,
   });
   const intakeCount = intakeData?.questions?.length ?? 0;
   const questionCountByRound = useMemo(() => {
@@ -757,7 +769,7 @@ const AiQuestionsSetup = () => {
 
   // Intake is its own entry in the round list; otherwise the active round.
   const activeKey = effectiveOpenKey || activeRoundInstanceId || 'intake';
-  const isIntakeActive = activeKey === 'intake';
+  const isIntakeActive = jobHasIntakeRound && activeKey === 'intake';
   // Leaving the Intake tab drops its unsaved edits, so ask first.
   const [pendingSectionKey, setPendingSectionKey] = useState<string | null>(null);
   const requestSelectSection = (key: string) => {
@@ -813,7 +825,7 @@ const AiQuestionsSetup = () => {
 
         <div className="flex flex-col gap-3">
           <nav aria-label="Interview rounds" className="flex flex-wrap gap-2">
-            {activeJobOpeningId && (
+            {activeJobOpeningId && jobHasIntakeRound && (
               <RoundNavItem
                 label="Intake Call"
                 subtitle="Asked on the intake call"

@@ -70,6 +70,22 @@ export type PublicJobDetail = {
   job_mode_name: string | null;
   shift_name: string | null;
   education_preference_name: string | null;
+  /** Where this job's optional Intake Call round sits: `'before_resume'`
+   * (round 1 — the candidate starts with the call), `'after_resume'`
+   * (round 2), or `null` (no Intake Call). Requested from job-service
+   * alongside the 2026-10-05 "Intake Call optional" change; `undefined`
+   * until it ships, in which case the apply flow keeps offering both paths. */
+  intake_call_position?: 'before_resume' | 'after_resume' | null;
+};
+
+/** Which apply path a candidate gets for this job: resume upload, the
+ * instant Intake Call, or (job-service not reporting the position yet) the
+ * old two-option choice. */
+export type PublicApplyPath = 'resume' | 'call' | 'choice';
+
+export const publicApplyPathFor = (job: PublicJobDetail | undefined): PublicApplyPath => {
+  if (!job || job.intake_call_position === undefined) return 'choice';
+  return job.intake_call_position === 'before_resume' ? 'call' : 'resume';
 };
 
 export type ListPublicJobsArgs = {
