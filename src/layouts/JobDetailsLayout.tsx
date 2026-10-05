@@ -201,21 +201,18 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
     if (!isCurrentTabDisabled) return; // Current tab is enabled, no redirect needed
 
-    // Find first available tab
-    const firstAvailableIndex = currentPaths.findIndex((_: string, index: number) => {
-      if (index === 1 && !isTab1Completed) return false;
-      if (index === 2 && !isScoringUnlocked) return false;
-      if (index === 3 && (!isTab3Completed || !isScoringDone)) return false;
-      if (index === 4 && (!isTab3Completed || !isScoringDone || !hasSavedInterviewRound))
-        return false;
+    // Nearest open tab before this one (Job Details is always open).
+    const isOpen = (index: number) => {
+      if (index === 1) return isTab1Completed;
+      if (index === 2) return isScoringUnlocked;
+      if (index === 3) return isTab3Completed && isScoringDone;
+      if (index === 4) return isTab3Completed && isScoringDone && hasSavedInterviewRound;
       return true;
-    });
-
-    // Redirect if available tab found and different from current
-    if (firstAvailableIndex !== -1 && firstAvailableIndex !== currentTabIndex) {
-      const safePath = sanitizedPath(currentPaths[firstAvailableIndex] + search) || '/';
-      navigate(safePath, { replace: true });
-    }
+    };
+    let targetIndex = currentTabIndex - 1;
+    while (targetIndex > 0 && !isOpen(targetIndex)) targetIndex -= 1;
+    const safePath = sanitizedPath(currentPaths[Math.max(targetIndex, 0)] + search) || '/';
+    navigate(safePath, { replace: true });
   }, [
     isTab1Completed,
     isTab3Completed,

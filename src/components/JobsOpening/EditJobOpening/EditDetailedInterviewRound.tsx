@@ -15,7 +15,11 @@ import { asJobId } from '../../../api/job-service/jobId';
 import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
-import { roundTypeIdsOfKind } from '../intakeRoundPlacement';
+import {
+  NO_QUESTION_ROUND_MESSAGE,
+  hasQuestionRound,
+  roundTypeIdsOfKind,
+} from '../intakeRoundPlacement';
 import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 
 const EditDetailedInterviewRounds = () => {
@@ -195,7 +199,10 @@ const EditDetailedInterviewRounds = () => {
           <Button
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
             onClick={() => {
-              // dispatch(resetEditJobState())
+              if (!hasQuestionRound(data ?? [], roundTypes)) {
+                showToast({ message: NO_QUESTION_ROUND_MESSAGE, type: 'error' });
+                return;
+              }
               navigate(`/jobs/edit/${id}/editAiQuestions`);
             }}
           >

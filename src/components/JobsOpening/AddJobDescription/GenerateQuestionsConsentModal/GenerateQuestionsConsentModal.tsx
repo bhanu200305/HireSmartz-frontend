@@ -92,7 +92,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
                 variant="subtitle2"
                 className="text-gray-800 font-semibold font-sora block mb-2"
               >
-                Number of Questions (max {MAX_QUESTION_COUNT} at a time)
+                Number of Questions (up to {MAX_QUESTION_COUNT} at a time)
               </Typography>
               <input
                 type="number"

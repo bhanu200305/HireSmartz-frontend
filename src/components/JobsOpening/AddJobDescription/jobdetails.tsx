@@ -2655,14 +2655,19 @@ const JobDetails = () => {
         locationCountry: selectedLocationDetails?.country,
         skillIds: [...(data.mandatorySkills ?? []), ...(data.optionalSkills ?? [])].map(String),
       };
+      // No description yet (for example a blocked generation): generate it now.
+      const jdIsEmpty = jdBeforeSave !== undefined && !jdBeforeSave.jobDescription?.trim();
       if (
-        jdBeforeSave?.jobDescription &&
-        haveDescriptionInputsChanged(descriptionInputs, jdBeforeSave)
+        jdIsEmpty ||
+        (jdBeforeSave?.jobDescription &&
+          haveDescriptionInputsChanged(descriptionInputs, jdBeforeSave))
       ) {
         try {
           await enhanceJd({ jobOpeningId: savedId, regenerate: true }).unwrap();
           showToast({
-            message: 'Job details changed - regenerating the AI description to match',
+            message: jdIsEmpty
+              ? 'Generating the AI description'
+              : 'Job details changed - regenerating the AI description to match',
             type: 'success',
           });
         } catch (enhanceError) {

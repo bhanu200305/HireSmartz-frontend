@@ -67,3 +67,21 @@ describe('getJobErrorMessage - content guardrail', () => {
     );
   });
 });
+
+describe('getJobErrorMessage - interview round rules', () => {
+  const codeError = (error_code: string) => ({
+    data: { message: 'server text', data: { error_code } },
+  });
+
+  it('explains where the Intake Call can go', () => {
+    expect(getJobErrorMessage(codeError('INTAKE_CALL_POSITION_INVALID'), 'fallback')).toBe(
+      'The Intake Call must be round 1 or 2, before or right after the Resume round.'
+    );
+  });
+
+  it('explains that Resume is required', () => {
+    expect(getJobErrorMessage(codeError('RESUME_ROUND_CANNOT_BE_MODIFIED'), 'fallback')).toBe(
+      'The Resume round is required and cannot be removed or changed.'
+    );
+  });
+});

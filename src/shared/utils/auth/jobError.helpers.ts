@@ -40,11 +40,19 @@ const PERMISSION_ACTION_LABELS: Record<string, string> = {
   'tenant_job_title:read': 'view job titles',
 };
 
+const ROUND_ERROR_MESSAGES: Record<string, string> = {
+  INTAKE_CALL_POSITION_INVALID:
+    'The Intake Call must be round 1 or 2, before or right after the Resume round.',
+  RESUME_ROUND_CANNOT_BE_MODIFIED: 'The Resume round is required and cannot be removed or changed.',
+};
+
 /** The message to show a user — on a PERMISSION_DENIED error, replaces the
  * generic backend text with what they can't do and who to ask. */
 export const getJobErrorMessage = (err: unknown, fallback: string): string => {
   const message = getPlatformErrorMessage(err, fallback);
-  if (getPlatformErrorCode(err) !== 'PERMISSION_DENIED') return message;
+  const code = getPlatformErrorCode(err);
+  if (code && ROUND_ERROR_MESSAGES[code]) return ROUND_ERROR_MESSAGES[code];
+  if (code !== 'PERMISSION_DENIED') return message;
 
   const required = getPlatformErrorDetails(err)?.required;
   const codes = Array.isArray(required) ? required : typeof required === 'string' ? [required] : [];

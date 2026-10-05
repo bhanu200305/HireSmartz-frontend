@@ -11,6 +11,7 @@ import { asJobId } from '../../../api/job-service/jobId';
 import { RootState } from '../../../redux/provider/store';
 import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { useGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 
 /**
@@ -39,10 +40,25 @@ const EditAiJobDescription = () => {
   const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const panelRef = useRef<JobDescriptionPanelHandle>(null);
+  const { refetch: refetchJd } = useGetJobDescriptionByIdQuery(
+    { jobOpeningId },
+    { skip: !jobOpeningId }
+  );
 
   const handleContinueToScoring = async () => {
     const committed = await panelRef.current?.commitPendingEdit();
     if (committed === false) return;
+    // Scoring stays locked without a job description, so say why instead of bouncing back.
+    const latest = await refetchJd()
+      .unwrap()
+      .catch(() => null);
+    if (latest && !latest.jobDescription?.trim()) {
+      showToast({
+        message: 'Add or generate the job description before continuing.',
+        type: 'error',
+      });
+      return;
+    }
     dispatch(setEditAiJdPassedJobId(id ?? null));
     navigate(`/jobs/edit/${id}/scoring-criteria`);
   };

@@ -28,6 +28,8 @@ import {
   isRoundOfType,
   placeIntakeRound,
   roundTypeIdsOfKind,
+  INTAKE_POSITION_NUMBER,
+  addableRoundTypes,
 } from '../intakeRoundPlacement';
 
 const { Option } = Select;
@@ -61,10 +63,7 @@ const AddNewRound = () => {
   const resumeTypeIds = roundTypeIdsOfKind(interviewRounds, 'resume');
   const intakeTypeIds = roundTypeIdsOfKind(interviewRounds, 'intake_call');
   const jobHasIntake = rounds.some((round) => isRoundOfType(round, intakeTypeIds));
-  const addableInterviewRounds = interviewRounds.filter(
-    (round) =>
-      round.special_kind !== 'resume' && (round.special_kind !== 'intake_call' || !jobHasIntake)
-  );
+  const addableInterviewRounds = addableRoundTypes(interviewRounds, jobHasIntake);
 
   const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(null);
   const [showRoundInfo, setShowRoundInfo] = useState(false);
@@ -154,7 +153,9 @@ const AddNewRound = () => {
       .unwrap()
       .then((res) => {
         showToast({
-          message: res?.message || 'Interview round has been saved successfully',
+          message: isIntakeSelected
+            ? `Intake Call round added as round ${INTAKE_POSITION_NUMBER[intakePosition]}`
+            : res?.message || 'Interview round has been saved successfully',
           type: 'success',
         });
         if (jobFromPath) {
