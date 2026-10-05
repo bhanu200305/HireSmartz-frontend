@@ -117,6 +117,17 @@ export const CareersInstantCallPage = () => {
     } catch (err) {
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
+      // candidate-service refuses the instant call (422, field
+      // `job_opening_id`) for a job with no Intake Call round — that job
+      // takes resume applications instead.
+      const errorBody = (err as { status?: number; data?: { data?: { field?: string } } })?.data;
+      if (errorBody?.data?.field === 'job_opening_id') {
+        toast.info('This job takes applications with a resume. Taking you there now.', {
+          autoClose: 5000,
+        });
+        navigate(`/careers/${organizationId}/jobs/${jobId}/apply`, { replace: true });
+        return;
+      }
       const apiMessage = (err as { data?: { message?: string } })?.data?.message;
       toast.error(apiMessage ?? 'Failed to submit. Please try again.', { autoClose: 6000 });
     }

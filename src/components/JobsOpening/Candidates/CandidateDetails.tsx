@@ -241,6 +241,16 @@ const isAlreadySelectedError = (error: unknown): boolean =>
 const ALREADY_SELECTED_MESSAGE =
   'This candidate has already been selected, so the remaining rounds are closed for scheduling.';
 
+/** 409 `INTERVIEW_IN_PROGRESS` - requesting a reschedule while the candidate
+ * is on the live call right now (interview-service 2026-10-05). Not a
+ * failure: it works again once the call ends. Matched on the code, not the
+ * backend message, which currently says "cannot be skipped". */
+const isInterviewInProgressError = (error: unknown): boolean =>
+  (error as InterviewApiError)?.code === 'INTERVIEW_IN_PROGRESS';
+
+const INTERVIEW_IN_PROGRESS_RESCHEDULE_MESSAGE =
+  'The candidate is currently on the call. Try again once it ends.';
+
 /** The interviewer-picker `Select` — colored dropdown dots and selected-chip
  * backgrounds by calendar-connected status, identical UI/behavior whether
  * it's rostering a PANEL round for the first time (Create Booking) or
@@ -482,7 +492,7 @@ const CandidateDetails = () => {
   const isRescheduleRoundPanel = rescheduleRound?.round_type === 'PANEL';
   const [rescheduleStep, setRescheduleStep] = useState<'choice' | 'picker'>('choice');
   // The same keep-roster / choose-different-interviewers modals serve both the
-  // reschedule request and a PANEL reinvite (expired link): only the endpoint
+  // reschedule request and a PANEL reinvite (unused link): only the endpoint
   // and the wording differ.
   const [rescheduleMode, setRescheduleMode] = useState<'reschedule' | 'reinvite'>('reschedule');
   const isReinviteMode = rescheduleMode === 'reinvite';
@@ -980,6 +990,8 @@ const CandidateDetails = () => {
       if (isAlreadySelectedError(e)) {
         setBookingsClosed(true);
         showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
+      } else if (isInterviewInProgressError(e)) {
+        showToast({ message: INTERVIEW_IN_PROGRESS_RESCHEDULE_MESSAGE, type: 'info' });
       } else {
         showToast({
           message: getInterviewErrorMessage(e, 'Could not request a reschedule'),
@@ -991,9 +1003,10 @@ const CandidateDetails = () => {
     }
   };
 
-  // Reinvite for a booking whose scheduling link ran out unused
-  // (`BookingView.link_expired`): POST /bookings/{id}/reinvite, capped at
-  // MAX_REINVITES. PANEL carries the original roster forward.
+  // Reinvite for a booking whose scheduling link hasn't been used yet,
+  // expired or not (no longer gated on expiry, interview-service
+  // 2026-10-05): POST /bookings/{id}/reinvite, capped at MAX_REINVITES.
+  // PANEL carries the original roster forward.
   const runReinvite = async (bookingId: string | null | undefined, interviewerIds?: string[]) => {
     if (!bookingId) return;
     try {
@@ -1019,7 +1032,11 @@ const CandidateDetails = () => {
         void refetchSelectedBooking();
         void refetchRounds();
       } else if (code === 'REINVITE_NOT_ELIGIBLE') {
-        showToast({ message: 'The scheduling link has not expired yet.', type: 'error' });
+        showToast({
+          message:
+            'The candidate has already used this scheduling link, so it can no longer be reinvited.',
+          type: 'error',
+        });
         void refetchSelectedBooking();
         void refetchRounds();
       } else {
@@ -1371,11 +1388,16 @@ const CandidateDetails = () => {
         };
       }
       if (isIntakeCallRound(round)) {
+        // candidate-service now also records the consistency check as this
+        // round's score row, which is what the recruiter's score attaches
+        // to. No row yet (older candidates, or a check still pending): no
+        // human counterpart, same as before.
+        const intakeScore = findRoundScore(scores, round);
         return {
           key: round.id,
           label: roundLabel(round),
           ai: candidate?.consistency_score ?? null,
-          human: undefined,
+          human: intakeScore ? (intakeScore.recruiter_score ?? null) : undefined,
           aiHint: 'Resume consistency score (call transcript vs. resume)',
           excludeFromOverall: true,
         };
@@ -1858,9 +1880,12 @@ const CandidateDetails = () => {
                 )}
               </RoundCollapsibleSection>
 
-              {selectedRoundScore && (
+              {selectedRoundScore && !selectedRoundIsIntakeCall && (
                 // The round's own AI/recruiter score. The per-section
                 // breakdown and the AI's reasoning get their own sections below.
+                // Not for the Intake Call: its score row IS the consistency
+                // check, already shown (score + reason) under Resume
+                // Consistency; the recruiter rates it from the Feedback tab.
                 <RoundCollapsibleSection
                   title="Interview Score"
                   summary={
@@ -1967,7 +1992,7 @@ const CandidateDetails = () => {
                   </RoundCollapsibleSection>
                 )}
 
-              {selectedRoundScore?.scoring_reason && (
+              {selectedRoundScore?.scoring_reason && !selectedRoundIsIntakeCall && (
                 <RoundCollapsibleSection title="Summary">
                   <p className="text-sm leading-relaxed text-gray-600">
                     {selectedRoundScore.scoring_reason}
@@ -2891,6 +2916,7 @@ const CandidateDetails = () => {
           onClose={() => setStatusModal(null)}
           mode={statusModal}
           candidates={[candidate]}
+          currentRound={currentRound}
           onSuccess={() => setStatusModal(null)}
         />
       )}

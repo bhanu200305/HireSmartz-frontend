@@ -12,7 +12,7 @@ import {
   CONCLUDED_BOOKING_STATUSES,
   MAX_REINVITES,
 } from '../../../api/interview-service/client';
-import { roundLabel } from './roundDisplay';
+import { roundLabel, roundReinviteState } from './roundDisplay';
 import {
   isAiVideoRound,
   isAudioScreeningRound,
@@ -148,8 +148,9 @@ const RoundCard = ({
   const score = findRoundScore(scores, round);
 
   const invitedAt = round.invite_sent_at ?? booking?.created_at ?? null;
-  const linkExpired = Boolean(bookingId) && booking?.link_expired === true;
-  const reinvitesUsed = booking?.reinvite_count ?? 0;
+  const reinviteState = roundReinviteState(round, booking);
+  const linkExpired = Boolean(bookingId) && reinviteState.linkExpired;
+  const reinvitesUsed = reinviteState.reinvitesUsed;
   const reinvitesLeft = Math.max(0, MAX_REINVITES - reinvitesUsed);
   const reinvitesExhausted = reinvitesLeft === 0;
 
@@ -157,6 +158,8 @@ const RoundCard = ({
   // automatic invite sent along with Advance leaves `invite_sent_at` set).
   const canInvite =
     isCurrent && status === 'NOT SCHEDULED' && !bookingId && !isIdentityVerificationRound(round);
+  // Invitation sent but not booked = its link is still unused, which is all
+  // POST /bookings/{id}/reinvite needs now (no longer gated on expiry).
   const showReinvite = status === 'INVITATION SENT' && !isTerminal;
   // A concluded attempt can be re-attempted through the reschedule flow.
   const canReschedule =
@@ -174,11 +177,9 @@ const RoundCard = ({
     ? 'This candidate has already been selected.'
     : !bookingId
       ? 'The invitation is being set up. Re-invite is available once it is created.'
-      : !linkExpired
-        ? 'Re-invite is available once the current invitation link expires.'
-        : reinvitesExhausted
-          ? `All ${MAX_REINVITES} reinvites have been used.`
-          : `Send a new invitation link (${reinvitesLeft} of ${MAX_REINVITES} left)`;
+      : reinvitesExhausted
+        ? `All ${MAX_REINVITES} reinvites have been used.`
+        : `Send a new invitation link (${reinvitesLeft} of ${MAX_REINVITES} left)`;
 
   const statusLabel = <span className={`text-xs font-semibold ${header.text}`}>{status}</span>;
 
@@ -218,7 +219,8 @@ const RoundCard = ({
             <div className="flex items-center text-sm text-gray-600">
               <LuClock size={16} className="mr-2" aria-hidden />
               <span>
-                At {formatTime(invitedAt)} (Pending Reattempts: {reinvitesLeft})
+                At {formatTime(invitedAt)}
+                {reinvitesUsed > 0 && ` · Reinvited ${reinvitesUsed}/${MAX_REINVITES}`}
               </span>
               {bookingId && (
                 <Tooltip
@@ -269,9 +271,7 @@ const RoundCard = ({
                 <Button
                   type="button"
                   className={`${actionButton} bg-primary text-white`}
-                  disabled={
-                    isBusy || bookingsClosed || !bookingId || !linkExpired || reinvitesExhausted
-                  }
+                  disabled={isBusy || bookingsClosed || !bookingId || reinvitesExhausted}
                   onClick={() => onReinvite(round)}
                 >
                   Re-invite
