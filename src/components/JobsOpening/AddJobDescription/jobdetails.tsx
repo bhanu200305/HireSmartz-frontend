@@ -1035,8 +1035,7 @@ const JobDetails = () => {
   };
 
   useEffect(() => {
-    // A suggested skill that is selected counts as offered, so removing it
-    // later is never undone.
+    // Selected suggested skills count as offered, so a removal sticks.
     suggestedSkills.forEach((skill) => {
       const id = String(skill.skill_id);
       if (selectedMandatorySkillIds.includes(id) || selectedOptionalSkillIds.includes(id)) {

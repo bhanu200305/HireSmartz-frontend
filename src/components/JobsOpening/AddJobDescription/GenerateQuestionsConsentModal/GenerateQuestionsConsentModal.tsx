@@ -7,7 +7,7 @@ import clsx from 'clsx';
 
 const DEFAULT_QUESTION_COUNT = 10;
 const MIN_QUESTION_COUNT = 1;
-const MAX_QUESTION_COUNT = 30;
+const MAX_QUESTION_COUNT = 25;
 
 const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
   open,
@@ -92,7 +92,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
                 variant="subtitle2"
                 className="text-gray-800 font-semibold font-sora block mb-2"
               >
-                Number of Questions
+                Number of Questions (max {MAX_QUESTION_COUNT} at a time)
               </Typography>
               <input
                 type="number"
