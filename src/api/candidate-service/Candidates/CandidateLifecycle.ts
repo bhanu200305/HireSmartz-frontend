@@ -32,6 +32,8 @@ export type CandidateView = {
   last_name: string | null;
   email_id: string | null;
   contact_no: string | null;
+  /** When the candidate agreed to receive SMS; null means SMS sends are refused. */
+  sms_consent_at?: string | null;
   qualification: string | null;
   address: string | null;
   applied_date: string;

@@ -19,6 +19,7 @@ import {
   isIdentityVerificationRound,
   isIntakeCallRound,
   isResumeStageRound,
+  isRoundSkipped,
   normaliseRoundStatus,
 } from './roundProgress';
 import { findRoundScore } from './roundPipeline';
@@ -55,6 +56,7 @@ const formatDate = (iso: string) => dayjs(iso).format('MMM DD, YYYY');
 const formatTime = (iso: string) => dayjs(iso).format('hh:mm A');
 
 const cardStatusFor = (round: CandidateInterviewRoundView): CardStatus => {
+  if (isRoundSkipped(round)) return 'SKIPPED';
   switch (normaliseRoundStatus(round.status)) {
     case 'completed':
       return 'COMPLETED';

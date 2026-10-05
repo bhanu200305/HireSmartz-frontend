@@ -45,6 +45,14 @@ const ROUND_STATUS_BUCKET: Record<string, RoundBucket> = {
   aborted: 'failed',
 };
 
+/** True when the round was skipped. A skip leaves `skip_reason` / `skipped_at`
+ * on the round, so those count even if `status` later reads `completed` (a
+ * late event from interview-service can overwrite it). */
+export const isRoundSkipped = (round: CandidateInterviewRoundView): boolean =>
+  round.status.trim().toLowerCase() === 'skipped' ||
+  Boolean(round.skip_reason) ||
+  Boolean(round.skipped_at);
+
 export const normaliseRoundStatus = (status: string): string =>
   status
     .trim()

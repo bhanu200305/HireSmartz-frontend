@@ -92,10 +92,21 @@ const isInterviewerFeedbackPending = (e: unknown) =>
 const isRoundAlreadyAdvanced = (e: unknown) =>
   getCandidateErrorStatusCode(e) === 409 && !isInterviewerFeedbackPending(e);
 
-const MODE_LABEL: Record<ChangeCandidateStatusMode, string> = {
+// Wording for the dialog itself (title, confirm button, result line).
+const MODE_TITLE: Record<ChangeCandidateStatusMode, string> = {
   advance: 'Advance',
-  reject: 'Reject',
-  select: 'Mark Selected',
+  reject: 'Reject Candidate',
+  select: 'Mark As Selected',
+};
+const MODE_CONFIRM: Record<ChangeCandidateStatusMode, string> = {
+  advance: 'Confirm Advance',
+  reject: 'Reject Candidate',
+  select: 'Mark As Selected',
+};
+const MODE_DONE: Record<ChangeCandidateStatusMode, string> = {
+  advance: 'Advanced',
+  reject: 'Rejected',
+  select: 'Marked as selected',
 };
 
 // PROJECT_UNDERSTANDING.md §4's documented seeded `master_candidate_status`
@@ -190,7 +201,7 @@ const ChangeCandidateStatusModal = ({
     // why. This is the client-side half of "a rejection needs a reason" until
     // that's closed server-side too.
     if (mode === 'reject' && !reason.trim()) {
-      showToast({ message: 'A reason is required to reject a candidate.', type: 'error' });
+      showToast({ message: 'Please provide a reason for the rejection.', type: 'error' });
       return;
     }
     setIsSubmitting(true);
@@ -339,9 +350,7 @@ const ChangeCandidateStatusModal = ({
             name,
             ok: true,
             detail:
-              item.outcome === 'unchanged'
-                ? 'No change, already at this status'
-                : `Set to "${MODE_LABEL[mode]}"`,
+              item.outcome === 'unchanged' ? 'No change, already at this status' : MODE_DONE[mode],
             needsInvite: false,
           };
         })
@@ -401,8 +410,12 @@ const ChangeCandidateStatusModal = ({
     <AntdCommonModal
       open={open}
       onClose={onClose}
-      title={MODE_LABEL[mode]}
-      subtitle={`${candidates.length} candidate${candidates.length === 1 ? '' : 's'} selected`}
+      title={MODE_TITLE[mode]}
+      subtitle={
+        candidates.length === 1
+          ? candidateDisplayName(candidates[0])
+          : `${candidates.length} candidates selected`
+      }
       modalProps={{ width: 560 }}
     >
       {results ? (
@@ -448,15 +461,30 @@ const ChangeCandidateStatusModal = ({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-gray-600">
-            {isSingleAdvance
-              ? currentRound
-                ? `This completes ${roundLabel(currentRound)} and makes the candidate's next round due.`
-                : "This completes the candidate's current round and makes their next one due."
-              : mode === 'advance'
-                ? "This completes each candidate's current round and makes their next one due. It does NOT send the interview invite; that's a separate step, per candidate, from their Interview Scheduling tab."
-                : `This will set ${candidates.length === 1 ? 'this candidate' : 'these candidates'} to "${MODE_LABEL[mode]}".`}
-          </p>
+          {mode === 'reject' ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <p className="font-semibold">
+                {candidates.length === 1
+                  ? `You are about to reject ${candidateDisplayName(candidates[0])}.`
+                  : `You are about to reject ${candidates.length} candidates.`}
+              </p>
+              <p className="mt-1">
+                This action cannot be undone. {candidates.length === 1 ? 'The candidate' : 'They'}{' '}
+                will be removed from the hiring pipeline and will not progress to any further
+                rounds.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600">
+              {isSingleAdvance
+                ? currentRound
+                  ? `This completes ${roundLabel(currentRound)} and makes the candidate's next round due.`
+                  : "This completes the candidate's current round and makes their next one due."
+                : mode === 'advance'
+                  ? "This completes each candidate's current round and makes their next one due. It does NOT send the interview invite; that's a separate step, per candidate, from their Interview Scheduling tab."
+                  : `You are about to mark ${candidates.length === 1 ? candidateDisplayName(candidates[0]) : `${candidates.length} candidates`} as selected. Any interview rounds still pending will be skipped.`}
+            </p>
+          )}
           {isSingleAdvance && (
             <Checkbox
               id="advance-send-invite"
@@ -503,13 +531,18 @@ const ChangeCandidateStatusModal = ({
           {mode !== 'advance' && (
             <div>
               <label htmlFor="status-change-reason" className="mb-1 block text-sm text-gray-800">
-                Reason {mode === 'reject' && <span className="required-asterisk">*</span>}
+                {mode === 'reject' ? 'Reason for Rejection' : 'Reason (Optional)'}{' '}
+                {mode === 'reject' && <span className="required-asterisk">*</span>}
               </label>
               <TextArea
                 id="status-change-reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Recorded in the candidate's status history"
+                placeholder={
+                  mode === 'reject'
+                    ? "Explain why this candidate is being rejected. This is saved in the candidate's status history."
+                    : "Add a note for the candidate's status history."
+                }
                 rows={3}
                 className="resize-y rounded-lg text-sm"
               />
@@ -523,7 +556,7 @@ const ChangeCandidateStatusModal = ({
             }
             className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
           >
-            {isSubmitting ? <Loader /> : `Confirm ${MODE_LABEL[mode]}`}
+            {isSubmitting ? <Loader /> : MODE_CONFIRM[mode]}
           </Button>
         </div>
       )}

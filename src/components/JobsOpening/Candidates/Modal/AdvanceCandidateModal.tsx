@@ -39,8 +39,8 @@ const FEEDBACK_MAX = 1000;
 
 /** What the round being completed still needs before it can be advanced. */
 export type AdvanceFeedbackRequirement =
-  | { kind: 'resume' }
-  | { kind: 'round'; scoreId: string }
+  | { kind: 'resume'; rating: number; comment: string }
+  | { kind: 'round'; scoreId: string; rating: number; comment: string }
   | null;
 
 type AdvanceCandidateModalProps = {
@@ -83,17 +83,20 @@ const AdvanceCandidateModal = ({
 
   useEffect(() => {
     if (open) {
-      setFeedback('');
-      setRating(0);
+      // Prefilled with whatever is already on file; only the gap is asked for.
+      setFeedback(feedbackRequirement?.comment ?? '');
+      setRating(feedbackRequirement?.rating ?? 0);
       setSendInvite(true);
       setNeedsOverride(false);
       setFeedbackSaved(false);
       setIsSubmitting(false);
     }
+    // Reset only when the dialog opens, not when the prefill data refetches.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const needsFeedback = feedbackRequirement !== null && !feedbackSaved;
-  const needsRating = needsFeedback && feedbackRequirement?.kind === 'round';
+  const needsRating = needsFeedback;
   const isValid = !needsFeedback || (feedback.trim().length > 0 && (!needsRating || rating > 0));
 
   const fromLabel = fromRound ? roundLabel(fromRound) : 'the current round';
@@ -107,7 +110,7 @@ const AdvanceCandidateModal = ({
       await recordResumeReview({
         candidateId: candidate.id,
         body: {
-          rating: candidate.resume_rating || undefined,
+          rating,
           comment: feedback.trim(),
         },
       }).unwrap();
@@ -143,6 +146,9 @@ const AdvanceCandidateModal = ({
         result = await advanceCandidate({
           candidateId: candidate.id,
           overridePendingInterviewerFeedback: needsOverride,
+          // A stale screen (someone else already advanced this candidate)
+          // gets a 409 instead of silently advancing the NEXT round.
+          expectedRoundId: fromRound?.id ?? null,
         }).unwrap();
       } catch (e) {
         const message = getCandidateErrorMessage(e, '');
@@ -153,6 +159,14 @@ const AdvanceCandidateModal = ({
           // The interviewer hasn't submitted yet: ask once, then the same
           // button sends the override.
           setNeedsOverride(true);
+        } else if (getCandidateErrorStatusCode(e) === 409) {
+          showToast({
+            message:
+              'This candidate has already been advanced. The page has been refreshed with the latest round.',
+            type: 'info',
+          });
+          onSuccess();
+          return;
         } else {
           showToast({
             message: message || 'Could not advance this candidate',
@@ -225,7 +239,7 @@ const AdvanceCandidateModal = ({
               <strong>
                 Feedback <span className="required-asterisk">*</span>:
               </strong>{' '}
-              Before proceeding, please provide feedback for the <strong>{fromLabel}</strong>.
+              Before proceeding, please rate and give feedback for the <strong>{fromLabel}</strong>.
             </label>
             {needsRating && (
               <div className="flex items-center gap-2">

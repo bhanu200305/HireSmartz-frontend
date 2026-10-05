@@ -1258,6 +1258,15 @@ const CandidateDetails = () => {
     }
   };
 
+  // SMS needs a phone number AND the candidate's SMS consent (candidate-service
+  // refuses the send otherwise, 422 CANDIDATE_HAS_NO_SMS_CONSENT). `undefined`
+  // (field not returned) is not treated as "no consent".
+  const smsBlockedReason = !candidate?.contact_no
+    ? 'No phone number on file'
+    : candidate.sms_consent_at === null
+      ? 'Candidate has not given SMS consent'
+      : null;
+
   const statusUpper = (candidate?.status_code ?? '').toLowerCase();
   // Matches master.ts's own documented funnel comment — every code marked
   // "(terminal)" there. `withdrawn` was missing here (added 2026-09-14): a
@@ -1334,14 +1343,26 @@ const CandidateDetails = () => {
     !isIdentityVerificationRound(nextRound);
   // The round being completed needs the recruiter's feedback on file first.
   const currentRoundScore = currentRound ? findRoundScore(scores, currentRound) : undefined;
+  // Both a star rating and written feedback are required; whatever is already
+  // on file is prefilled so only the missing part has to be added.
   const advanceFeedbackRequirement: AdvanceFeedbackRequirement = !currentRound
     ? null
     : isResumeStageRound(currentRound)
-      ? candidate?.resume_review_comment?.trim()
+      ? candidate?.resume_rating && candidate.resume_review_comment?.trim()
         ? null
-        : { kind: 'resume' }
-      : currentRoundScore && !currentRoundScore.recruiter_score_reason?.trim()
-        ? { kind: 'round', scoreId: currentRoundScore.id }
+        : {
+            kind: 'resume',
+            rating: candidate?.resume_rating ?? 0,
+            comment: candidate?.resume_review_comment ?? '',
+          }
+      : currentRoundScore &&
+          (!currentRoundScore.recruiter_score || !currentRoundScore.recruiter_score_reason?.trim())
+        ? {
+            kind: 'round',
+            scoreId: currentRoundScore.id,
+            rating: currentRoundScore.recruiter_score ?? 0,
+            comment: currentRoundScore.recruiter_score_reason ?? '',
+          }
         : null;
   // MARK AS SELECTED also appears once the candidate is ON their last round
   // (2026-09-29 product decision) — no need to ADVANCE past it first.
@@ -2220,16 +2241,13 @@ const CandidateDetails = () => {
             </button>
           </span>
         </Tooltip>
-        <Tooltip
-          placement="left"
-          title={candidate?.contact_no ? 'Send SMS' : 'No phone number on file'}
-        >
+        <Tooltip placement="left" title={smsBlockedReason ?? 'Send SMS'}>
           <span className="inline-flex">
             <button
               type="button"
               aria-label="Send SMS"
               className="inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary-300 bg-primary-100 text-primary shadow-lg transition-colors hover:bg-primary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!candidate?.contact_no}
+              disabled={smsBlockedReason !== null}
               onClick={() => setIsSmsOpen(true)}
             >
               <IoChatbubbleEllipses size={19} aria-hidden />
@@ -2267,12 +2285,12 @@ const CandidateDetails = () => {
                   </button>
                 </span>
               </Tooltip>
-              <Tooltip title={candidate?.contact_no ? 'Send SMS' : 'No phone number on file'}>
+              <Tooltip title={smsBlockedReason ?? 'Send SMS'}>
                 <span className="inline-flex">
                   <button
                     type="button"
                     className={candidateHeaderIconCircle}
-                    disabled={!candidate?.contact_no}
+                    disabled={smsBlockedReason !== null}
                     aria-label="Send SMS"
                     onClick={() => setIsSmsOpen(true)}
                   >
@@ -2788,7 +2806,7 @@ const CandidateDetails = () => {
           {activeTab === 'sms' && candidateId && (
             <CandidateMessageHistory
               candidateId={candidateId}
-              canSms={Boolean(candidate?.contact_no)}
+              canSms={smsBlockedReason === null}
               onSendSms={() => setIsSmsOpen(true)}
             />
           )}
@@ -2801,7 +2819,6 @@ const CandidateDetails = () => {
         candidateId={candidateId ?? ''}
         candidateName={candidateDisplayName(candidate)}
         currentJobId={parsedJobId ?? ''}
-        assignedJobTitles={jobTitleName ? [jobTitleName] : []}
       />
       {isSkipOpen && (
         <AntdCommonModal

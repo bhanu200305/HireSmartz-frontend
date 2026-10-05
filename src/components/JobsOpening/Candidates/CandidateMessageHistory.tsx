@@ -80,7 +80,7 @@ const CandidateMessageHistory = ({ candidateId, canSms, onSendSms }: Props) => {
           className="box-border inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-3 text-xs font-semibold leading-none text-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           onClick={onSendSms}
           disabled={!canSms}
-          title={canSms ? undefined : 'No phone number on file'}
+          title={canSms ? undefined : 'Needs a phone number and the candidate’s SMS consent'}
         >
           <LuSquarePen size={13} className="shrink-0" aria-hidden />
           Send SMS

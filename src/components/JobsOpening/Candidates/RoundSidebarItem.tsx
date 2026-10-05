@@ -10,6 +10,7 @@ import {
   isAiVideoRound,
   isAudioScreeningRound,
   isIntakeCallRound,
+  isRoundSkipped,
   normaliseRoundStatus,
   type RoundBucket,
 } from './roundProgress';
@@ -102,7 +103,10 @@ const RoundSidebarItem = ({
   // Side-bar colour = the round's state: green done, amber current stage,
   // grey upcoming, red needs attention (overdue / technical failure).
   const effectiveBucket = isResumeScored ? 'done' : bucket;
-  const meta = overdue || technicalFailure ? BUCKET_META.failed : BUCKET_META[effectiveBucket];
+  const meta =
+    (overdue || technicalFailure) && !isRoundSkipped(round)
+      ? BUCKET_META.failed
+      : BUCKET_META[effectiveBucket];
   const isInterviewRound = round.stage_type === 'interview';
   const roundScoreValue = roundScore?.recruiter_score ?? roundScore?.score;
   const scoreLine =
@@ -120,21 +124,23 @@ const RoundSidebarItem = ({
               : `Score: ${roundScore?.score}/${AI_SCORE_MAX} · AI score`
           : null;
 
-  const statusText = overdue
-    ? 'Overdue'
-    : technicalFailure
-      ? 'Technical Failure'
-      : linkExpired && !isResumeScored
-        ? 'Scheduling link expired'
-        : isResumeScored
-          ? 'Completed'
-          : normaliseRoundStatus(round.status) === 'booking_created'
-            ? 'Booking created — waiting to be scheduled'
-            : normaliseRoundStatus(round.status) === 'resume_upload_expired'
-              ? 'Resume upload link expired'
-              : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
-                ? 'Awaiting resume upload'
-                : formatRoundStatus(round.status);
+  const statusText = isRoundSkipped(round)
+    ? 'Skipped'
+    : overdue
+      ? 'Overdue'
+      : technicalFailure
+        ? 'Technical Failure'
+        : linkExpired && !isResumeScored
+          ? 'Scheduling link expired'
+          : isResumeScored
+            ? 'Completed'
+            : normaliseRoundStatus(round.status) === 'booking_created'
+              ? 'Booking created — waiting to be scheduled'
+              : normaliseRoundStatus(round.status) === 'resume_upload_expired'
+                ? 'Resume upload link expired'
+                : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
+                  ? 'Awaiting resume upload'
+                  : formatRoundStatus(round.status);
 
   // Old app's round tab: centred text stack — bold name, "Status: …",
   // then score / when lines — with roomy padding and no card chrome.

@@ -14,7 +14,7 @@ import {
   LuUsers,
 } from 'react-icons/lu';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { IoArrowRedoOutline } from 'react-icons/io5';
+import { IoArrowRedoOutline, IoChatbubbleEllipses } from 'react-icons/io5';
 import { MdClose, MdEdit, MdOutlineRemoveRedEye } from 'react-icons/md';
 import { FaEnvelope } from 'react-icons/fa';
 import { CommonCard, Button, Badge, showToast } from '../../shared';
@@ -47,6 +47,7 @@ import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
 import AddCandidateModal from './Modal/AddCandidateModal';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
+import BulkSendSmsModal from './Modal/BulkSendSmsModal';
 import BulkScheduleInterviewsModal from './Modal/BulkScheduleInterviewsModal';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
@@ -130,10 +131,12 @@ const CandidatesListing = () => {
   const [isAddCandidateModalOpen, setIsAddCandidateModalOpen] = useState(false);
   const [isJobNotesPanelOpen, setIsJobNotesPanelOpen] = useState(false);
   const [isBulkEmailOpen, setIsBulkEmailOpen] = useState(false);
+  const [isBulkSmsOpen, setIsBulkSmsOpen] = useState(false);
   const [isBulkScheduleOpen, setIsBulkScheduleOpen] = useState(false);
   // Per-row Actions column targets (view and edit are plain navigations).
   const [notesCandidate, setNotesCandidate] = useState<CandidateView | null>(null);
   const [emailCandidate, setEmailCandidate] = useState<CandidateView | null>(null);
+  const [smsCandidate, setSmsCandidate] = useState<CandidateView | null>(null);
   const [statusModal, setStatusModal] = useState<{
     mode: ChangeCandidateStatusMode;
     candidates: CandidateView[];
@@ -653,6 +656,29 @@ const CandidatesListing = () => {
                                   </button>
                                 </span>
                               </Tooltip>
+                              <Tooltip
+                                title={
+                                  !candidate.contact_no
+                                    ? 'No phone number on file'
+                                    : candidate.sms_consent_at === null
+                                      ? 'Candidate has not given SMS consent'
+                                      : `SMS ${candidate.contact_no}`
+                                }
+                              >
+                                <span className="inline-flex">
+                                  <button
+                                    type="button"
+                                    aria-label="Send SMS"
+                                    className="flex cursor-pointer hover:text-[var(--primary)] transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-neutral-900"
+                                    disabled={
+                                      !candidate.contact_no || candidate.sms_consent_at === null
+                                    }
+                                    onClick={() => setSmsCandidate(candidate)}
+                                  >
+                                    <IoChatbubbleEllipses size={17} />
+                                  </button>
+                                </span>
+                              </Tooltip>
                             </div>
                           </Col>
                         </Row>
@@ -728,12 +754,16 @@ const CandidatesListing = () => {
                 <div className="h-8 w-px bg-[var(--border)] hidden sm:block"></div>
 
                 <div className="flex min-w-0 flex-wrap items-center gap-2 md:gap-3">
-                  <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
-                    onClick={() => openStatusModal('advance', selectedCandidates)}
-                  >
-                    <IoArrowRedoOutline size={16} /> Advance
-                  </Button>
+                  <Tooltip title="Open the candidate to advance: a rating and feedback are required for each round.">
+                    <span className="inline-flex">
+                      <Button
+                        className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm h-8 cursor-not-allowed opacity-50"
+                        disabled
+                      >
+                        <IoArrowRedoOutline size={16} /> Advance
+                      </Button>
+                    </span>
+                  </Tooltip>
                   <Button
                     className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
                     onClick={() => openStatusModal('reject', selectedCandidates)}
@@ -752,6 +782,12 @@ const CandidatesListing = () => {
                     onClick={() => setIsBulkEmailOpen(true)}
                   >
                     <LuMail size={16} /> Email
+                  </Button>
+                  <Button
+                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
+                    onClick={() => setIsBulkSmsOpen(true)}
+                  >
+                    <IoChatbubbleEllipses size={16} /> SMS
                   </Button>
                   {canManageCandidates && (
                     <Button
@@ -816,6 +852,16 @@ const CandidatesListing = () => {
         open={!!emailCandidate}
         onClose={() => setEmailCandidate(null)}
         candidates={emailCandidate ? [emailCandidate] : []}
+      />
+      <BulkSendSmsModal
+        open={isBulkSmsOpen}
+        onClose={() => setIsBulkSmsOpen(false)}
+        candidates={selectedCandidates}
+      />
+      <BulkSendSmsModal
+        open={!!smsCandidate}
+        onClose={() => setSmsCandidate(null)}
+        candidates={smsCandidate ? [smsCandidate] : []}
       />
       <AddCandidateModal
         open={isAddCandidateModalOpen}

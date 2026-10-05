@@ -1,56 +1,34 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 import { IoClose, IoSend } from 'react-icons/io5';
-import { jwtDecode } from 'jwt-decode';
 import {
-  useGetSmsConversationThreadQuery,
-  useSendCandidateSmsActionMutation,
+  useListCandidateMessageHistoryQuery,
   useSendCandidateSmsMutation,
-} from '../../api/candidate-service/Candidates/Candidates';
-import type { SmsMessage, SendCandidateSmsResponse } from '../../types';
-import { rtkErrorMessage } from '../../shared/utils/api/rtkErrorMessage';
+} from '../../api/candidate-service/Candidates/messaging';
+import { getCandidateErrorMessage } from '../../shared/utils/auth/candidateError.helpers';
 import { formatPhoneNumber } from '../../shared/utils/methods';
 import { showToast } from '../shared';
-import { RootState } from '../../redux/provider/store';
-import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
-import { getLocalStorageItem } from '../../shared/utils/auth/localstorage.helpers';
-import { StompClient } from '../../services/StompClient';
+
+// Live-interview SMS panel, on candidate-service's messaging API
+// (`POST /candidates/{id}/messages/sms` and `GET .../messages/history`).
+// It used to call the old `/job-opening/candidate-messaging/*` routes and a
+// STOMP websocket, none of which exist in the new backend. History is polled
+// while the panel is open instead of pushed. It lists what has been SENT to
+// the candidate; inbound replies are not part of this history.
 
 type InterviewSmsPanelProps = {
   open: boolean;
   onClose: () => void;
-  candidateId: number;
-  jobOpeningId: number;
+  /** candidate-service candidate id (UUID). */
+  candidateId: string;
   candidateName: string;
   candidatePhone?: string;
-  bookingId?: number | string;
 };
 
-type QuickReplyItem =
-  | {
-      id: string;
-      label: string;
-      mode: 'action';
-      actionType: 'LIVE_JOIN_ASSIST' | 'SEND_INTERVIEW_LINK';
-    }
-  | {
-      id: string;
-      label: string;
-      mode: 'text';
-    };
+const QUICK_REPLIES = ['We are waiting.', "We'll join shortly", 'Please check your connection'];
 
-const QUICK_REPLIES: QuickReplyItem[] = [
-  { id: 'waiting', label: 'We are waiting.', mode: 'action', actionType: 'LIVE_JOIN_ASSIST' },
-  { id: 'join_shortly', label: "We'll join shortly", mode: 'text' },
-  { id: 'check_connection', label: 'Please check your connection', mode: 'text' },
-  {
-    id: 'send_interview_link',
-    label: 'Send Interview Link',
-    mode: 'action',
-    actionType: 'SEND_INTERVIEW_LINK',
-  },
-];
+const SMS_MAX_LEN = 160;
+const POLL_MS = 10_000;
 
 function getInitials(name: string): string {
   return name
@@ -61,147 +39,73 @@ function getInitials(name: string): string {
     .join('');
 }
 
+const deliveryColor = (status: string) => {
+  const s = status.toLowerCase();
+  if (s === 'delivered' || s === 'sent' || s === 'read') return 'text-emerald-600';
+  if (s === 'failed' || s === 'undelivered' || s === 'suppressed') return 'text-red-500';
+  return 'text-gray-500';
+};
+
 const InterviewSmsPanel = ({
   open,
   onClose,
   candidateId,
-  jobOpeningId,
   candidateName,
   candidatePhone,
-  bookingId,
 }: InterviewSmsPanelProps) => {
   const [messageText, setMessageText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { loginToken } = useSelector((state: RootState) => state.LoginSlice);
-  const companyId = useMemo<number | null>(() => {
-    const token = loginToken || getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
-    if (!token) return null;
-    try {
-      const decoded = jwtDecode<{ companyId?: number }>(token);
-      return decoded.companyId ?? null;
-    } catch {
-      return null;
-    }
-  }, [loginToken]);
+  const { data, isLoading, isFetching, isError, refetch } = useListCandidateMessageHistoryQuery(
+    { candidateId, limit: 50 },
+    { skip: !open || !candidateId, pollingInterval: open ? POLL_MS : 0 }
+  );
+  const [sendSms, { isLoading: isSending }] = useSendCandidateSmsMutation();
 
-  const {
-    data: conversationData,
-    isLoading,
-    isFetching,
-    isError,
-    refetch,
-  } = useGetSmsConversationThreadQuery(
-    { candidateId, jobOpeningId, page: 0, size: 50, sortBy: 'createdAt', sortDirection: 'ASC' },
-    {
-      skip: !open || !candidateId || !jobOpeningId,
-    }
+  // Newest-first from the API; the chat reads oldest-first.
+  const messages = useMemo(
+    () => [...(data?.items ?? [])].filter((m) => m.channel.toLowerCase() === 'sms').reverse(),
+    [data]
   );
 
-  useEffect(() => {
-    if (!open || !candidateId || !companyId) return;
-
-    const backendEndpoint = import.meta.env.VITE_BACKEND_ENDPOINT || window.location.host;
-    const wsUrl = `wss://${backendEndpoint.replace(/^https?:\/\//, '')}/ws-sms`;
-    const token = loginToken || getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS);
-
-    const client = new StompClient(wsUrl);
-
-    client.connect(token, () => {
-      const topic = `/topic/sms/company/${companyId}/candidate/${candidateId}`;
-      client.subscribe(topic, () => {
-        void refetch();
-      });
-
-      const companyTopic = `/topic/sms/company/${companyId}`;
-      client.subscribe(companyTopic, (body) => {
-        if (body?.candidateId === candidateId) {
-          void refetch();
-        }
-      });
-    });
-
-    return () => {
-      client.disconnect();
-    };
-  }, [open, candidateId, companyId, loginToken, refetch]);
-
-  const [sendSms, { isLoading: isSendingSms }] = useSendCandidateSmsMutation();
-  const [sendSmsAction, { isLoading: isSendingAction }] = useSendCandidateSmsActionMutation();
-
-  const isSending = isSendingSms || isSendingAction;
-  const messages: SmsMessage[] = conversationData?.content || [];
-
-  const headerName = conversationData?.candidateName || candidateName || 'Candidate';
+  const headerName = candidateName || 'Candidate';
   const headerPhone = useMemo(() => {
-    const rawPhone = String(conversationData?.candidatePhone || candidatePhone || '').trim();
-    if (!rawPhone) return '-';
-
-    const hasLeadingPlus = rawPhone.startsWith('+');
+    const rawPhone = String(candidatePhone || '').trim();
     const digits = rawPhone.replace(/\D/g, '');
     if (!digits) return '-';
-
-    if (digits.length <= 10) {
-      return formatPhoneNumber(digits);
-    }
-
-    const countryDigits = digits.slice(0, digits.length - 10);
-    const localDigits = digits.slice(-10);
-    const countryCode = `${hasLeadingPlus ? '+' : ''}${countryDigits}`;
-    return `${countryCode} ${formatPhoneNumber(localDigits)}`.trim();
-  }, [conversationData?.candidatePhone, candidatePhone]);
+    if (digits.length <= 10) return formatPhoneNumber(digits);
+    const countryCode = `${rawPhone.startsWith('+') ? '+' : ''}${digits.slice(0, digits.length - 10)}`;
+    return `${countryCode} ${formatPhoneNumber(digits.slice(-10))}`.trim();
+  }, [candidatePhone]);
 
   useEffect(() => {
     if (!open) return;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, open]);
 
-  const sendTextMessage = async (text: string): Promise<void> => {
-    const response: SendCandidateSmsResponse = await sendSms({
-      candidateId,
-      jobOpeningId,
-      messageText: text,
-    }).unwrap();
-    showToast({ message: response?.message || 'SMS sent successfully.', type: 'success' });
+  const sendText = async (text: string): Promise<boolean> => {
+    try {
+      const res = await sendSms({ candidateId, body: { smsBody: text } }).unwrap();
+      if (!res.sent) {
+        showToast({
+          message: 'Not sent: another message was sent to this candidate in the last 5 minutes.',
+          type: 'info',
+        });
+        return false;
+      }
+      showToast({ message: 'SMS sent successfully.', type: 'success' });
+      void refetch();
+      return true;
+    } catch (error) {
+      showToast({ message: getCandidateErrorMessage(error, 'Could not send SMS'), type: 'error' });
+      return false;
+    }
   };
 
   const handleSend = async () => {
     const trimmed = messageText.trim();
     if (!trimmed) return;
-
-    try {
-      await sendTextMessage(trimmed);
-      setMessageText('');
-      void refetch();
-    } catch (error) {
-      showToast({ message: rtkErrorMessage(error), type: 'error' });
-    }
-  };
-
-  const handleQuickReply = async (item: QuickReplyItem) => {
-    if (isSending) return;
-
-    try {
-      if (item.mode === 'action') {
-        const response = await sendSmsAction({
-          candidateId,
-          jobOpeningId,
-          actionType: item.actionType,
-          ...(bookingId && { bookingId }),
-        }).unwrap();
-        showToast({
-          message: response.alreadySent
-            ? 'Quick message already sent recently.'
-            : 'Quick message sent successfully.',
-          type: 'success',
-        });
-      } else {
-        await sendTextMessage(item.label);
-      }
-      void refetch();
-    } catch (error) {
-      showToast({ message: rtkErrorMessage(error), type: 'error' });
-    }
+    if (await sendText(trimmed)) setMessageText('');
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -264,52 +168,27 @@ const InterviewSmsPanel = ({
           )}
 
           {messages.map((msg) => {
-            const isOutbound = msg.direction === 'OUTBOUND';
-            const sender = msg.senderName || headerName;
-            const roleLabel =
-              msg.sentByRole || msg.senderType || (isOutbound ? 'Hiring Manager' : 'Candidate');
-            const isAutoGenerated =
-              roleLabel?.toUpperCase() === 'AUTO_GENERATED' || msg.senderType === 'AUTO_GENERATED';
-            const timeText = dayjs(msg.createdAt).format('MMM D, YYYY hh:mm A');
-            const initials = getInitials(sender) || 'U';
-
+            const timeText = dayjs(msg.sent_at ?? msg.created_at).format('MMM D, YYYY hh:mm A');
+            const initials = getInitials('Hiring Team') || 'U';
             return (
-              <div
-                key={msg.id}
-                className={`mb-3 flex ${isOutbound ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[88%] rounded-lg border px-3 py-2 ${
-                    isOutbound
-                      ? 'border-[#9eb3d7] bg-[#d9e3f7] text-[#2f2f2f]'
-                      : 'border-gray-300 bg-white text-[#2f2f2f]'
-                  }`}
-                >
+              <div key={msg.id} className="mb-3 flex justify-end">
+                <div className="max-w-[88%] rounded-lg border border-[#9eb3d7] bg-[#d9e3f7] px-3 py-2 text-[#2f2f2f]">
                   <div className="mb-1 flex items-center gap-2 text-sm">
                     <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#d5deee] text-xs font-semibold text-[#2f5ea8]">
                       {initials}
                     </span>
-                    <span className="font-semibold">{sender}</span>
-                    {!isAutoGenerated && <span className="text-gray-500">({roleLabel})</span>}
+                    <span className="font-semibold">Hiring Team</span>
                   </div>
                   <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {msg.messageText}
+                    {msg.body_text ?? 'Content no longer retained'}
                   </div>
                   <div className="mt-2 flex items-center justify-end gap-1.5 text-xs text-gray-500">
                     <span>{timeText}</span>
-                    {isOutbound && msg.status && (
-                      <span
-                        className={`inline-flex items-center font-medium ${
-                          ['DELIVERED', 'SENT'].includes(msg.status.toUpperCase())
-                            ? 'text-emerald-600'
-                            : ['FAILED', 'UNDELIVERED'].includes(msg.status.toUpperCase())
-                              ? 'text-red-500'
-                              : 'text-gray-500'
-                        }`}
-                      >
-                        • {msg.status.charAt(0).toUpperCase() + msg.status.slice(1).toLowerCase()}
-                      </span>
-                    )}
+                    <span
+                      className={`inline-flex items-center font-medium ${deliveryColor(msg.status)}`}
+                    >
+                      • {msg.status.charAt(0).toUpperCase() + msg.status.slice(1).toLowerCase()}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -324,15 +203,15 @@ const InterviewSmsPanel = ({
         </div>
 
         <div className="mt-2 flex flex-wrap gap-2 rounded-md border border-gray-300 bg-[#e6e6e7] p-2">
-          {QUICK_REPLIES.map((item) => (
+          {QUICK_REPLIES.map((label) => (
             <button
-              key={item.id}
+              key={label}
               type="button"
               disabled={isSending}
-              onClick={() => void handleQuickReply(item)}
+              onClick={() => void sendText(label)}
               className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-[#2f2f2f] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {item.label}
+              {label}
             </button>
           ))}
         </div>
@@ -341,6 +220,7 @@ const InterviewSmsPanel = ({
           <textarea
             rows={1}
             value={messageText}
+            maxLength={SMS_MAX_LEN}
             onChange={(event) => setMessageText(event.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Start Typing..."
