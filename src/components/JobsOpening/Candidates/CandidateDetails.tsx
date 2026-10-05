@@ -77,6 +77,7 @@ import AdvanceCandidateModal, {
   type AdvanceFeedbackRequirement,
 } from './Modal/AdvanceCandidateModal';
 import InterviewSchedulingTab from './InterviewSchedulingTab';
+import NameMissingFlag from './NameMissingFlag';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
@@ -2258,7 +2259,10 @@ const CandidateDetails = () => {
       <div className="flex flex-col mb-4 gap-2">
         <div className="flex-1 bg-white px-6 py-4 shadow-sm rounded-xl">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-200">
-            <h2 className="text-2xl font-bold">{candidateDisplayName(candidate)}</h2>
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
+              <h2 className="text-2xl font-bold">{candidateDisplayName(candidate)}</h2>
+              {candidate?.candidate_name_missing && <NameMissingFlag />}
+            </div>
 
             <div className="flex items-center gap-3 flex-wrap">
               <button

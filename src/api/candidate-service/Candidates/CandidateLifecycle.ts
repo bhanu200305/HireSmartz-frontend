@@ -55,6 +55,8 @@ export type CandidateView = {
   scoring_reason_bullets?: string[] | null;
   /** Per-user "New" flag from candidate-service (cleared once this user opens the profile). */
   is_new_for_me?: boolean;
+  /** ai-service found no extractable name on the resume (distinct from a parse error). */
+  candidate_name_missing?: boolean;
   resume_s3_key: string | null;
 
   /** The recruiter's own take on the resume, beside the AI score — never replacing it. */
