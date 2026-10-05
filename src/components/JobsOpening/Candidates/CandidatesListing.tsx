@@ -64,6 +64,7 @@ import { normaliseRoundStatus } from './roundProgress';
 import type { CandidateNavState } from './useCandidateNavigation';
 import { formatRoundStatus } from './roundDisplay';
 import { AI_SCORE_MAX, scoreBadgeStatus } from './roundPipeline';
+import NameMissingFlag from './NameMissingFlag';
 
 // Candidate list is job-scoped; there is no cross-job list route.
 // `resume_score` of null means "not scored yet", not an error.
@@ -511,6 +512,7 @@ const CandidatesListing = () => {
                                     .join(' ') || 'N/A'}
                                 </span>
                               </Link>
+                              {candidate.candidate_name_missing && <NameMissingFlag />}
                               {candidate.is_new_for_me && (
                                 <Badge status="info" dot={false} className="shrink-0">
                                   New
