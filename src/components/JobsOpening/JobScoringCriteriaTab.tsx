@@ -1,7 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../redux/provider/store';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../../redux/provider/store';
+import { useIsEditingDraft } from '../../hooks/useIsEditingDraft';
 import {
   setEditScoringPassedJobId,
   setIsScoringCompleted,
@@ -59,7 +60,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
   const [resettingSection, setResettingSection] = useState<'resume' | 'interview' | null>(null);
   const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const isEditingDraft = useSelector((state: RootState) => state.EditJobSlice.isDraft);
+  const isEditingDraft = useIsEditingDraft(jobId) === true;
   const showDraftActions = !isEditMode || isEditingDraft;
 
   const handleConfirmCancel = async () => {

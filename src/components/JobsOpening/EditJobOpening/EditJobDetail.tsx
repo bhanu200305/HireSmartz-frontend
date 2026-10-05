@@ -29,6 +29,7 @@ import {
   mergeNewAiSkills,
 } from '../../../shared/utils/jdSync';
 import { lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
+import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 import {
   setEditJobOpeningId,
   updateEditAiJobDescription,
@@ -194,6 +195,7 @@ const EditJobDetail = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const isDraft = useIsEditingDraft(id) === true;
   const parsedJobId = asJobId(id);
   const location = useLocation();
   // Prefer value from route state if present, else fallback to backend
@@ -207,13 +209,12 @@ const EditJobDetail = () => {
   // on every later Redux update (which would clobber live edits).
   const hasSyncedFormForJobIdRef = useRef<string | null>(null);
 
-  const { jobDetails, jobOpeningId, interViewRound, aiJobDescription, isDraft } = useSelector(
+  const { jobDetails, jobOpeningId, interViewRound, aiJobDescription } = useSelector(
     (state: RootState) => ({
       jobDetails: state.EditJobSlice.details,
       interViewRound: state.EditJobSlice.interviewRounds,
       jobOpeningId: state.EditJobSlice.jobOpeningId,
       aiJobDescription: state.EditJobSlice.aiJobDescription,
-      isDraft: state.EditJobSlice.isDraft,
     }),
     shallowEqual
   );

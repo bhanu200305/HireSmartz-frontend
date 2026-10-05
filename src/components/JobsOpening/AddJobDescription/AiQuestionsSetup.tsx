@@ -53,6 +53,7 @@ import UploadAndGenerateHeader, { type ImportWarningItem } from './UploadAndGene
 import InlineQuestionInput from './InlineQuestionInput';
 import QuestionRowItem from './QuestionRowItem';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
+import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 
 const DEFAULT_QUESTION_COUNT = 10;
 const GENERATION_POLL_INTERVAL_MS = 1000;
@@ -213,9 +214,8 @@ const AiQuestionsSetup = () => {
   // Editing an already-published job skips publish and just saves; editing
   // an unpublished draft still goes through validate-then-publish below.
   const isEditRoute = pathname.includes('/edit/') && Boolean(id);
-  const isEditingAlreadyPublishedJob = useSelector(
-    (state: RootState) => isEditRoute && !state.EditJobSlice.isDraft
-  );
+  const isEditingAlreadyPublishedJob =
+    useIsEditingDraft(isEditRoute ? activeJobOpeningId : null) === false;
 
   const { data: roundTypes = [] } = useListInterviewRoundTypesQuery();
   // Rounds without a recruiter-set duration never take Q&A questions.
@@ -274,6 +274,15 @@ const AiQuestionsSetup = () => {
     () => questions.filter((q) => q.interview_round_id === activeRoundInstanceId),
     [questions, activeRoundInstanceId]
   );
+  // After an add, scroll the list so the new question at the bottom is in view.
+  const questionListRef = useRef<HTMLDivElement>(null);
+  const scrollToEndAfterAddRef = useRef(false);
+  useEffect(() => {
+    if (!scrollToEndAfterAddRef.current) return;
+    scrollToEndAfterAddRef.current = false;
+    const list = questionListRef.current;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+  }, [visibleQuestions.length]);
   // Content fingerprint rather than a count, since REPLACE can reduce the count.
   const questionsSnapshotKey = useMemo(() => questions.map((q) => q.id).join(','), [questions]);
 
@@ -533,6 +542,7 @@ const AiQuestionsSetup = () => {
           interview_round_id: activeRoundInstanceId,
         })),
       ];
+      scrollToEndAfterAddRef.current = true;
       await persistQuestions(next);
       showToast({ message: 'Questions added successfully', type: 'success' });
       setInlineInputText('');
@@ -931,10 +941,14 @@ const AiQuestionsSetup = () => {
                         </p>
                       </div>
                     ) : (
-                      <div className="max-h-[46vh] min-h-[120px] space-y-3 overflow-y-auto pr-1">
-                        {visibleQuestions.map((q) => (
+                      <div
+                        ref={questionListRef}
+                        className="max-h-[46vh] min-h-[120px] space-y-3 overflow-y-auto pr-1"
+                      >
+                        {visibleQuestions.map((q, index) => (
                           <QuestionRowItem
                             key={q.id}
+                            number={index + 1}
                             question={{ id: q.id, question: q.question_text }}
                             checked={selectedIds.includes(q.id)}
                             onCheckChange={(checked) => handleSelectOne(q.id, checked)}

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { setEditAiJdPassedJobId } from '../../../redux/slices/jobOpeningSlice';
 import { Tooltip } from 'antd';
 import { Button, showToast } from '../../shared';
@@ -8,9 +8,9 @@ import JobDescriptionPanel, {
   type JobDescriptionPanelHandle,
 } from '../AddJobDescription/JobDescriptionPanel';
 import { asJobId } from '../../../api/job-service/jobId';
-import { RootState } from '../../../redux/provider/store';
 import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 import { useGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 
@@ -36,7 +36,7 @@ const EditAiJobDescription = () => {
   const dispatch = useDispatch();
   const { id } = useParams<{ id: string }>();
   const jobOpeningId = asJobId(id);
-  const isDraft = useSelector((state: RootState) => state.EditJobSlice.isDraft);
+  const isDraft = useIsEditingDraft(id) === true;
   const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const panelRef = useRef<JobDescriptionPanelHandle>(null);

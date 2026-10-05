@@ -1,4 +1,5 @@
 import BackButton from '../components/shared/ui/BackButton';
+import { Button } from '../components/shared';
 import { ReactNode, useEffect, useMemo } from 'react';
 import { Tooltip } from 'antd';
 import { useSelector } from 'react-redux';
@@ -157,6 +158,13 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const isCandidateDetailsPage =
     /\/candidates\/[^/]+\/details/.test(location.pathname) ||
     location.pathname.includes('/candidateDetails/');
+
+  // View mode: a Next button at the bottom opens the following tab.
+  const viewTabIndex = isViewMode
+    ? currentPaths.findIndex((path: string) => location.pathname.includes(path))
+    : -1;
+  const nextViewPath =
+    viewTabIndex >= 0 && viewTabIndex + 1 < allSteps.length ? currentPaths[viewTabIndex + 1] : null;
 
   // Candidate list Back goes to the job listing, not `navigate(-1)`.
   const returnState = location.state as { returnTo?: string; returnLabel?: string } | null;
@@ -319,6 +327,16 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
           </div>
         )}
         {children}
+        {nextViewPath && !isCandidatePage && (
+          <div className="mt-6 flex justify-end">
+            <Button
+              className="text-white bg-button rounded-3xl px-8 py-2 cursor-pointer"
+              onClick={() => navigate(sanitizedPath(nextViewPath + search) || '/')}
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ import { SortableInterviewRounds } from './sortableInterviewRounds';
 import { asJobId } from '../../../api/job-service/jobId';
 import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import {
   NO_QUESTION_ROUND_MESSAGE,
@@ -29,8 +30,8 @@ const EditDetailedInterviewRounds = () => {
   const [selectedRoundId, setSelectedRoundId] = useState<string | number | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const reduxJobOpeningId = useSelector((state: RootState) => state.EditJobSlice.jobOpeningId);
-  const isDraft = useSelector((state: RootState) => state.EditJobSlice.isDraft);
   const jobOpeningId = asJobId(reduxJobOpeningId) || asJobId(id);
+  const isDraft = useIsEditingDraft(jobOpeningId) === true;
   const location = useLocation();
   const [deleteInterviewRound, { isLoading: isDeleting }] = useDeleteInterviewRoundMutation();
   const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
