@@ -81,7 +81,7 @@ const CandidateDetailsForm = ({
     if (!candidate) return;
     if (!isFormValid) {
       showToast({
-        message: 'First name, last name, email and phone are required.',
+        message: 'First Name, last name, email and phone are required.',
         type: 'error',
       });
       return;

@@ -338,7 +338,7 @@ const StepCompanyDetails = ({ onCreated, initialValues }: StepCompanyDetailsProp
             <div className="border-l-2 border-gray-300 h-6 mx-2" />
             <Input
               type="tel"
-              placeholder="Phone number"
+              placeholder="Phone Number"
               value={watch('adminContactPhone')}
               onChange={(e) => {
                 setValue(

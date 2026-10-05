@@ -156,7 +156,7 @@ const AssignJobModal = ({
             onChange={(value) => setSelectedJobId(value)}
             onSearch={setSearch}
             loading={isJobsLoading}
-            placeholder="Search for Job title or Job Id"
+            placeholder="Search for Job Title or Job Id"
             notFoundContent={isJobsLoading ? 'Loading…' : 'No matching job openings'}
             className="w-full [&_.ant-select-selector]:!h-11 [&_.ant-select-selector]:!rounded-lg"
             options={jobs.map((job) => ({

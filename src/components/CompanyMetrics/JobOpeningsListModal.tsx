@@ -143,7 +143,7 @@ const JobOpeningsListModal: React.FC<{
           <div className="flex items-center gap-2.5">
             <Search
               appname="job openings modal"
-              placeholder="Search job openings..."
+              placeholder="Search Job Openings..."
               value={search}
               allowClear
               onSearch={(value) => {

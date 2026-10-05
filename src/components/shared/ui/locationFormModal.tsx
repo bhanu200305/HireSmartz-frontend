@@ -219,7 +219,7 @@ const LocationFormModal = ({
                   ),
                 }));
               }}
-              placeholder="Phone number"
+              placeholder="Phone Number"
               className="border-none focus:ring-0 focus:outline-none w-full"
               maxLength={15}
               onBlur={() => {
@@ -236,7 +236,80 @@ const LocationFormModal = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <div>
+          <label htmlFor="location-city" className="text-sm text-[#2D323A]">
+            City <span className="required-asterisk">*</span>
+          </label>
+          <div className="border-wrapper border border-[var(--border)] p-1 mt-1 w-full rounded-3xl">
+            <Select
+              id="location-city"
+              showSearch
+              optionFilterProp="children"
+              placeholder={formState.state ? 'Select City' : 'Select City (pick a state first)'}
+              disabled={!formState.state}
+              className="w-full custom-select-jobs placeholder-style"
+              value={formState.city || undefined}
+              onChange={onCityChange}
+            >
+              {cityOptions.map((city) => (
+                <Option key={city.value} value={city.value}>
+                  {city.label}
+                </Option>
+              ))}
+            </Select>
+          </div>
+          {validationErrors.city && (
+            <p className="text-red-500 text-xs mt-1">{validationErrors.city}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="location-state" className="text-sm text-[#2D323A]">
+            State <span className="required-asterisk">*</span>
+          </label>
+          <div className="border-wrapper border border-[var(--border)] p-1 mt-1 w-full rounded-3xl">
+            <Select
+              id="location-state"
+              showSearch
+              placeholder={
+                formState.country ? 'Select State' : 'Select State (pick a country first)'
+              }
+              disabled={!formState.country}
+              className="w-full custom-select-jobs placeholder-style"
+              value={formState.state || undefined}
+              onChange={onStateChange}
+            >
+              {stateOptions.map((state) => (
+                <Option key={state.value} value={state.value}>
+                  {state.label}
+                </Option>
+              ))}
+            </Select>
+          </div>
+          {validationErrors.state && (
+            <p className="text-red-500 text-xs mt-1">{validationErrors.state}</p>
+          )}
+        </div>
+        <div>
+          <label htmlFor="location-zip-code" className="text-sm text-[#2D323A]">
+            Zip Code <span className="required-asterisk">*</span>
+          </label>
+          <Input
+            id="location-zip-code"
+            value={formState.zipCode}
+            onChange={(event) =>
+              onFormChange((previous) => ({
+                ...previous,
+                zipCode: event.target.value,
+              }))
+            }
+            placeholder="Zip Code"
+            className="w-full mt-1 px-4 py-2 border rounded-3xl border-[var(--border)]"
+          />
+          {validationErrors.zipCode && (
+            <p className="text-red-500 text-xs mt-1">{validationErrors.zipCode}</p>
+          )}
+        </div>
         <div>
           <label htmlFor="location-country" className="text-sm text-[#2D323A]">
             Country <span className="required-asterisk">*</span>
@@ -260,80 +333,6 @@ const LocationFormModal = ({
           </div>
           {validationErrors.country && (
             <p className="text-red-500 text-xs mt-1">{validationErrors.country}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="location-state" className="text-sm text-[#2D323A]">
-            State <span className="required-asterisk">*</span>
-          </label>
-          <div className="border-wrapper border border-[var(--border)] p-1 mt-1 w-full rounded-3xl">
-            <Select
-              id="location-state"
-              showSearch
-              placeholder="Select State"
-              disabled={!formState.country}
-              className="w-full custom-select-jobs placeholder-style"
-              value={formState.state || undefined}
-              onChange={onStateChange}
-            >
-              {stateOptions.map((state) => (
-                <Option key={state.value} value={state.value}>
-                  {state.label}
-                </Option>
-              ))}
-            </Select>
-          </div>
-          {validationErrors.state && (
-            <p className="text-red-500 text-xs mt-1">{validationErrors.state}</p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="location-city" className="text-sm text-[#2D323A]">
-            City <span className="required-asterisk">*</span>
-          </label>
-          <div className="border-wrapper border border-[var(--border)] p-1 mt-1 w-full rounded-3xl">
-            <Select
-              id="location-city"
-              showSearch
-              optionFilterProp="children"
-              placeholder="Select City"
-              disabled={!formState.state}
-              className="w-full custom-select-jobs placeholder-style"
-              value={formState.city || undefined}
-              onChange={onCityChange}
-            >
-              {cityOptions.map((city) => (
-                <Option key={city.value} value={city.value}>
-                  {city.label}
-                </Option>
-              ))}
-            </Select>
-          </div>
-          {validationErrors.city && (
-            <p className="text-red-500 text-xs mt-1">{validationErrors.city}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <div>
-          <label htmlFor="location-zip-code" className="text-sm text-[#2D323A]">
-            Zip Code <span className="required-asterisk">*</span>
-          </label>
-          <Input
-            id="location-zip-code"
-            value={formState.zipCode}
-            onChange={(event) =>
-              onFormChange((previous) => ({
-                ...previous,
-                zipCode: event.target.value,
-              }))
-            }
-            placeholder="Zip Code"
-            className="w-full mt-1 px-4 py-2 border rounded-3xl border-[var(--border)]"
-          />
-          {validationErrors.zipCode && (
-            <p className="text-red-500 text-xs mt-1">{validationErrors.zipCode}</p>
           )}
         </div>
       </div>

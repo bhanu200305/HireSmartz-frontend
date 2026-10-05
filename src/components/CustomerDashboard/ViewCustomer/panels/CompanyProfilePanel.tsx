@@ -220,7 +220,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
   const handleSave = async () => {
     const parsedSize = form.company_size ? Number(form.company_size) : undefined;
     if (form.company_size && (!Number.isFinite(parsedSize) || Number(parsedSize) < 1)) {
-      showToast({ message: 'Company size must be a positive number.', type: 'error' });
+      showToast({ message: 'Company Size must be a positive number.', type: 'error' });
       return;
     }
     try {
@@ -350,7 +350,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
           <Input
             value={form.name}
             onChange={handleField('name')}
-            placeholder="Company name"
+            placeholder="Company Name"
             disabled={!isEditMode}
           />
         </Field>
@@ -367,7 +367,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
           <Input
             value={form.company_size}
             onChange={handleField('company_size')}
-            placeholder="Company size"
+            placeholder="Company Size"
             disabled={!isEditMode}
           />
         </Field>
@@ -377,7 +377,7 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
             <Badge status={STATUS_BADGE[profile.status] || 'neutral'}>{profile.status}</Badge>
           </ReadOnlyPill>
         </Field>
-        <Field label="Admin Contact">
+        <Field label="Company Contact">
           <ReadOnlyPill>
             <span className="truncate">{profile.admin_contact || '-'}</span>
           </ReadOnlyPill>

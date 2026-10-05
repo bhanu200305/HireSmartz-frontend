@@ -148,7 +148,7 @@ const LoginUsersListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             <div className="flex flex-wrap items-center gap-2.5">
               <Search
                 appname="monthly active users modal"
-                placeholder="Search loaded rows..."
+                placeholder="Search Loaded Rows..."
                 value={search}
                 allowClear
                 onSearch={setSearch}

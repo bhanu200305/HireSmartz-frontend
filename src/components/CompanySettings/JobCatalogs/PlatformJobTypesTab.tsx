@@ -44,8 +44,8 @@ const PlatformJobTypesTab: React.FC = () => {
   return (
     <PlatformCatalogTab<OrganizationJobType, FormValues>
       title="Platform-wide job-type catalog."
-      itemNounSingular="Job type"
-      itemNounPlural="Job types"
+      itemNounSingular="Job Type"
+      itemNounPlural="Job Types"
       items={data?.items}
       total={data?.total}
       serverQuery={query}

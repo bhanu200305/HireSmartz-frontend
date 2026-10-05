@@ -27,9 +27,13 @@ type LocationCascadeFieldsProps = {
   showCity?: boolean;
   disabled?: boolean;
   className?: string;
+  /** Rendered between State and Country, so a form can slot its Zip Code
+   * field into the City, State, Zip Code, Country order. */
+  afterState?: React.ReactNode;
 };
 
 /**
+ * City, State, (optional slot), Country on screen; the data still cascades
  * Country → State → City, three cascading antd Selects backed by the static
  * data in `shared/utils/geo/countryStateCity.ts` (self-hosted, same-origin,
  * no third-party API — see public/data/geo/SOURCE.md). Picking a country
@@ -51,6 +55,7 @@ const LocationCascadeFields: React.FC<LocationCascadeFieldsProps> = ({
   showCity = true,
   disabled,
   className,
+  afterState,
 }) => {
   const [countries, setCountries] = useState<GeoCountry[]>([]);
   const [states, setStates] = useState<GeoState[]>([]);
@@ -157,23 +162,28 @@ const LocationCascadeFields: React.FC<LocationCascadeFieldsProps> = ({
 
   return (
     <>
-      <Select
-        showSearch
-        allowClear
-        placeholder="Country"
-        className={className}
-        disabled={disabled}
-        value={selectedCountryId}
-        onChange={handleCountryChange}
-        onClear={() => onChange({ country: '', state: '', city: '' })}
-        options={countryOptions}
-        filterOption={filterOption}
-      />
+      {showCity && (
+        <Select
+          showSearch
+          allowClear
+          placeholder={selectedStateId ? 'City' : 'City (pick a state first)'}
+          className={className}
+          disabled={disabled || !selectedStateId}
+          value={cities.find((c) => c.name === value.city)?.id}
+          onChange={handleCityChange}
+          onClear={() => onChange({ ...value, city: '' })}
+          options={cityOptions}
+          filterOption={filterOption}
+          notFoundContent={
+            selectedStateId && cities.length === 0 ? 'No cities on file for this state' : undefined
+          }
+        />
+      )}
       {showState && (
         <Select
           showSearch
           allowClear
-          placeholder="State"
+          placeholder={selectedCountryId ? 'State' : 'State (pick a country first)'}
           className={className}
           disabled={disabled || !selectedCountryId}
           value={selectedStateId}
@@ -188,23 +198,19 @@ const LocationCascadeFields: React.FC<LocationCascadeFieldsProps> = ({
           }
         />
       )}
-      {showCity && (
-        <Select
-          showSearch
-          allowClear
-          placeholder="City"
-          className={className}
-          disabled={disabled || !selectedStateId}
-          value={cities.find((c) => c.name === value.city)?.id}
-          onChange={handleCityChange}
-          onClear={() => onChange({ ...value, city: '' })}
-          options={cityOptions}
-          filterOption={filterOption}
-          notFoundContent={
-            selectedStateId && cities.length === 0 ? 'No cities on file for this state' : undefined
-          }
-        />
-      )}
+      {afterState}
+      <Select
+        showSearch
+        allowClear
+        placeholder="Country"
+        className={className}
+        disabled={disabled}
+        value={selectedCountryId}
+        onChange={handleCountryChange}
+        onClear={() => onChange({ country: '', state: '', city: '' })}
+        options={countryOptions}
+        filterOption={filterOption}
+      />
     </>
   );
 };

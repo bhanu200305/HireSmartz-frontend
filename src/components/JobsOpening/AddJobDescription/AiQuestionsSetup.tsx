@@ -60,7 +60,7 @@ const GENERATION_POLL_TIMEOUT_MS = 90_000;
 
 // Human-readable text for each publish-readiness failure code.
 const PUBLISH_CHECK_LABELS: Record<string, string> = {
-  jd_missing: 'Job description is missing',
+  jd_missing: 'Job Description is missing',
   mandatory_fields_incomplete:
     'Some required Job Details fields are missing - check Job Title, Department, Job Type, Open Date, Vacancies, Minimum Experience, Salary Range, and Hiring Manager',
   no_education_preference: 'Education preference is not set',

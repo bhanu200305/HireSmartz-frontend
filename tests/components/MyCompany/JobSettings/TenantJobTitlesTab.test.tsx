@@ -85,7 +85,7 @@ describe('TenantJobTitlesTab', () => {
 
   it('filters the list by search text', () => {
     render(<TenantJobTitlesTab tenantId="tenant-1" />);
-    fireEvent.change(screen.getByPlaceholderText('Search job titles...'), {
+    fireEvent.change(screen.getByPlaceholderText('Search Job Titles...'), {
       target: { value: 'Bar' },
     });
     expect(screen.getByText('Bartender')).toBeInTheDocument();

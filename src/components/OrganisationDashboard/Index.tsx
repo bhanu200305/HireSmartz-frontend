@@ -549,7 +549,7 @@ const OrganisationUserTable = () => {
               }}
               className="w-full custom-select"
               variant="borderless"
-              placeholder="All roles"
+              placeholder="All Roles"
               allowClear
               options={roleOptions}
             />

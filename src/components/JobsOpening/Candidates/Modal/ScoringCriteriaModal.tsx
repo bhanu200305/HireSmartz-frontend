@@ -529,7 +529,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
           <p>Specific claims made during the call are checked against the resume, including:</p>
           <ul className="list-disc ml-7 space-y-2">
             <li>
-              <strong>Roles and Employers</strong> - Job titles and the companies the candidate has
+              <strong>Roles and Employers</strong> - Job Titles and the companies the candidate has
               worked for
             </li>
             <li>

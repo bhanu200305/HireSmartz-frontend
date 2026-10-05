@@ -236,7 +236,7 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <AntSelect
           showSearch
-          placeholder="Select department"
+          placeholder="Select Department"
           value={selectedDepartmentId ?? undefined}
           onChange={(value) => {
             setSelectedDepartmentId(value);
@@ -251,7 +251,7 @@ const TenantDepartmentSettingsTab: React.FC<{ tenantId: string }> = ({ tenantId 
         <div className="w-56">
           <Input
             prefix={<MdSearch className="text-gray-400" />}
-            placeholder="Search job titles..."
+            placeholder="Search Job Titles..."
             value={searchText}
             onChange={(e) => {
               setSearchText(e.target.value);

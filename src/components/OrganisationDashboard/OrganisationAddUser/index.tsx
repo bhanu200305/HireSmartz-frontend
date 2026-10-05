@@ -250,7 +250,7 @@ const AddOrganisationUser = () => {
               </label>
               <Input
                 id="add-user-first-name"
-                placeholder="First name"
+                placeholder="First Name"
                 className="mt-1"
                 {...field('first_name')}
               />
@@ -261,7 +261,7 @@ const AddOrganisationUser = () => {
               </label>
               <Input
                 id="add-user-last-name"
-                placeholder="Last name"
+                placeholder="Last Name"
                 className="mt-1"
                 {...field('last_name')}
               />

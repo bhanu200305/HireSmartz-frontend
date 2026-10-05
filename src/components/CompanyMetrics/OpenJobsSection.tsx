@@ -76,7 +76,7 @@ const OpenJobsSection: React.FC<OpenJobsSectionProps> = ({ status }) => {
         </div>
         <Search
           appname="open jobs section"
-          placeholder="Search job openings..."
+          placeholder="Search Job Openings..."
           value={search}
           allowClear
           onSearch={setSearch}

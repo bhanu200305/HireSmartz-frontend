@@ -24,7 +24,7 @@ describe('tenantDetailsSchema', () => {
     const result = tenantDetailsSchema.safeParse({ ...baseDetails, companyName: '' });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.companyName?.[0]).toBe('Company name is required.');
+      expect(result.error.flatten().fieldErrors.companyName?.[0]).toBe('Company Name is required.');
     }
   });
 
@@ -64,7 +64,7 @@ describe('tenantProfileSchema', () => {
     const result = tenantProfileSchema.safeParse({ name: '' });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.name?.[0]).toBe('Company name is required.');
+      expect(result.error.flatten().fieldErrors.name?.[0]).toBe('Company Name is required.');
     }
   });
 

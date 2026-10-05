@@ -87,13 +87,13 @@ describe('websiteLinkValidation', () => {
 });
 
 describe('nameValidation', () => {
-  const schema = nameValidation({ label: 'First name' });
+  const schema = nameValidation({ label: 'First Name' });
 
   it('rejects an empty value when required', () => {
     const result = schema.safeParse('');
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('First name is required.');
+      expect(result.error.issues[0].message).toBe('First Name is required.');
     }
   });
 

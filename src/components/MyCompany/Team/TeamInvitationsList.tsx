@@ -226,7 +226,7 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                     type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="Corrected email address"
+                    placeholder="Corrected Email Address"
                     className="h-9 flex-1 rounded-lg border border-gray-300 text-sm"
                   />
                   <div className="flex gap-2">

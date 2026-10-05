@@ -319,7 +319,7 @@ export const CareersApplyPage = () => {
                 }}
               />
               {firstNameError && (
-                <p className="text-sm text-red-500 mt-1">First name is required</p>
+                <p className="text-sm text-red-500 mt-1">First Name is required</p>
               )}
             </div>
             <div>
@@ -342,7 +342,7 @@ export const CareersApplyPage = () => {
                   borderColor: lastNameError ? '#ef4444' : undefined,
                 }}
               />
-              {lastNameError && <p className="text-sm text-red-500 mt-1">Last name is required</p>}
+              {lastNameError && <p className="text-sm text-red-500 mt-1">Last Name is required</p>}
             </div>
           </div>
 

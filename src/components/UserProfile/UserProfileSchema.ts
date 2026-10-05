@@ -14,8 +14,8 @@ import { phoneWithCountry } from '../../shared/utils/validation/phoneValidation'
 export const getUserProfileSchema = (phoneRequired: boolean) =>
   z
     .object({
-      firstName: nameValidation({ label: 'First name', required: true }),
-      lastName: nameValidation({ label: 'Last name', required: true }),
+      firstName: nameValidation({ label: 'First Name', required: true }),
+      lastName: nameValidation({ label: 'Last Name', required: true }),
       emailId: emailValidation(),
       phoneNumber: z.string(),
 

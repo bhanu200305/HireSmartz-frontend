@@ -128,7 +128,7 @@ const ResetPassword = () => {
                 {...field}
                 autoComplete="new-password"
                 noAutoCapitalize
-                placeholder="New password*"
+                placeholder="New Password*"
                 prefix={
                   <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
                     <MdLockOutline className="text-brand-900 text-sm" />
@@ -163,7 +163,7 @@ const ResetPassword = () => {
                 {...field}
                 autoComplete="new-password"
                 noAutoCapitalize
-                placeholder="Confirm new password*"
+                placeholder="Confirm New Password*"
                 prefix={
                   <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
                     <MdLockOutline className="text-brand-900 text-sm" />

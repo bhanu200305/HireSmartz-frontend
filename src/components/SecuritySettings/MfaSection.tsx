@@ -163,7 +163,7 @@ const ConfirmEnrolment = ({
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleConfirm();
           }}
-          placeholder="Confirmation code"
+          placeholder="Confirmation Code"
           className="border-[var(--border)] px-4"
         />
         <Button
@@ -457,7 +457,7 @@ const AddMethodButton = ({
             onKeyDown={(e) => {
               if (e.key === 'Enter') submitIfValid();
             }}
-            placeholder="Phone number"
+            placeholder="Phone Number"
             maxLength={15}
             className="!shadow-none w-full border-none bg-transparent py-2.5 focus:outline-none focus:ring-0"
           />

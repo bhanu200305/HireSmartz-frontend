@@ -84,7 +84,7 @@ export const CareersInstantCallPage = () => {
     setLastNameError(noLastName);
     setEmailError(noEmail);
     setPhoneError(
-      noPhone ? 'Phone number is required' : badPhone ? PHONE_VALIDATION_MESSAGE : null
+      noPhone ? 'Phone Number is required' : badPhone ? PHONE_VALIDATION_MESSAGE : null
     );
     setTosError(noTos);
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
@@ -209,7 +209,7 @@ export const CareersInstantCallPage = () => {
                 }}
               />
               {firstNameError && (
-                <p className="text-sm text-red-500 mt-1">First name is required</p>
+                <p className="text-sm text-red-500 mt-1">First Name is required</p>
               )}
             </div>
             <div>
@@ -232,7 +232,7 @@ export const CareersInstantCallPage = () => {
                   borderColor: lastNameError ? '#ef4444' : undefined,
                 }}
               />
-              {lastNameError && <p className="text-sm text-red-500 mt-1">Last name is required</p>}
+              {lastNameError && <p className="text-sm text-red-500 mt-1">Last Name is required</p>}
             </div>
           </div>
 

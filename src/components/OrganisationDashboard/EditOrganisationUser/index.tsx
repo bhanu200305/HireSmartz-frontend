@@ -160,7 +160,7 @@ const EditOrgUser = () => {
 
   const save = async (email?: string) => {
     if (!form.first_name.trim() || !form.last_name.trim()) {
-      showToast({ message: 'First name and last name are required.', type: 'error' });
+      showToast({ message: 'First Name and Last Name are required.', type: 'error' });
       return;
     }
     if (form.phone_no.trim() && !isPhoneValidForCountry(form.phone_no, form.country_code)) {
@@ -244,7 +244,7 @@ const EditOrgUser = () => {
               </label>
               <Input
                 id="edit-user-first-name"
-                placeholder="First name"
+                placeholder="First Name"
                 className="mt-1"
                 {...field('first_name')}
               />
@@ -255,7 +255,7 @@ const EditOrgUser = () => {
               </label>
               <Input
                 id="edit-user-last-name"
-                placeholder="Last name"
+                placeholder="Last Name"
                 className="mt-1"
                 {...field('last_name')}
               />
@@ -346,7 +346,7 @@ const EditOrgUser = () => {
               <p className="text-sm text-gray-600">Role</p>
               <Select
                 className="w-full mt-1"
-                placeholder="Select a role"
+                placeholder="Select a Role"
                 value={assignRoleId}
                 onChange={(value) => setAssignRoleId(value)}
                 showSearch

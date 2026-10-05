@@ -168,7 +168,7 @@ export const phoneWithCountry =
         ctx.addIssue({
           code: 'custom',
           path: [phoneField],
-          message: 'Phone number is required.',
+          message: 'Phone Number is required.',
         });
       }
       return;

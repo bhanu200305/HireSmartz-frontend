@@ -228,7 +228,7 @@ const MfaChallengeStep = ({
         error={codeError}
         value={code}
         onChange={handleCodeChange}
-        placeholder="Verification code"
+        placeholder="Verification Code"
         className="border-[var(--border)] px-4 text-center tracking-[0.3em] focus:ring focus:ring-brand-300"
       />
 

@@ -1575,7 +1575,7 @@ const JobDetails = () => {
         }).unwrap();
 
         showToast({
-          message: 'Job title added successfully',
+          message: 'Job Title added successfully',
           type: 'success',
         });
 
@@ -1655,7 +1655,7 @@ const JobDetails = () => {
         }).unwrap();
         await refetchJobTypes?.();
         setValue('jobType', [createdJobType.id], { shouldValidate: true });
-        showToast({ message: 'Job type added successfully', type: 'success' });
+        showToast({ message: 'Job Type added successfully', type: 'success' });
         return;
       }
 
@@ -1670,7 +1670,7 @@ const JobDetails = () => {
         const createdJobMode = await createJobMode({ job_mode_name: formattedValue }).unwrap();
         await refetchJobModes?.();
         setValue('jobMode', [createdJobMode.id], { shouldValidate: true });
-        showToast({ message: 'Job location added successfully', type: 'success' });
+        showToast({ message: 'Job Location added successfully', type: 'success' });
         return;
       }
     } catch (err) {
@@ -1784,14 +1784,14 @@ const JobDetails = () => {
   // Status Switch next to Edit/Delete - flips is_active, independent of the
   // isDeleted/reuse soft-delete path above.
   const toggleActiveTypeLabels: Record<string, string> = {
-    jobType: 'Job type',
-    jobMode: 'Job location',
+    jobType: 'Job Type',
+    jobMode: 'Job Location',
     shift: 'Shift',
     educationPreference: 'Education preference',
     mandatorySkills: 'Skill',
     optionalSkills: 'Skill',
     department: 'Department',
-    jobTitle: 'Job title',
+    jobTitle: 'Job Title',
   };
 
   const handleToggleActive = async (id: string | number, nextActive: boolean, type: string) => {
@@ -1918,7 +1918,7 @@ const JobDetails = () => {
         }).unwrap();
 
         showToast({
-          message: 'Job title updated successfully',
+          message: 'Job Title updated successfully',
           type: 'success',
         });
       } catch (err) {
@@ -1945,7 +1945,7 @@ const JobDetails = () => {
           isMaster,
         }).unwrap();
 
-        showToast({ message: 'Job type updated successfully', type: 'success' });
+        showToast({ message: 'Job Type updated successfully', type: 'success' });
         refetchJobTypes?.();
       } catch (err) {
         showToast({
@@ -1969,7 +1969,7 @@ const JobDetails = () => {
           job_mode_description: jobModes.find((item) => String(item.id) === String(id))
             ?.job_mode_description,
         }).unwrap();
-        showToast({ message: 'Job location updated successfully', type: 'success' });
+        showToast({ message: 'Job Location updated successfully', type: 'success' });
         refetchJobModes?.();
       } catch (err) {
         showToast({
@@ -2088,7 +2088,7 @@ const JobDetails = () => {
         }).unwrap();
 
         showToast({
-          message: 'Job title removed successfully',
+          message: 'Job Title removed successfully',
           type: 'success',
         });
 
@@ -2120,7 +2120,7 @@ const JobDetails = () => {
     if (type === 'jobType') {
       try {
         await deleteJobType({ jobTypeId: String(id), isMaster }).unwrap();
-        showToast({ message: 'Job type removed successfully', type: 'success' });
+        showToast({ message: 'Job Type removed successfully', type: 'success' });
         clearIfSelected();
         refetchJobTypes?.();
       } catch (err) {
@@ -2138,7 +2138,7 @@ const JobDetails = () => {
     if (type === 'jobMode') {
       try {
         await deleteJobMode(String(id)).unwrap();
-        showToast({ message: 'Job location removed successfully', type: 'success' });
+        showToast({ message: 'Job Location removed successfully', type: 'success' });
         clearIfSelected();
         refetchJobModes?.();
       } catch (err) {
@@ -3022,7 +3022,7 @@ const JobDetails = () => {
                               showSearch
                               optionFilterProp="label"
                               variant="borderless"
-                              placeholder="Select languages"
+                              placeholder="Select Languages"
                               className="w-full custom-select-jobs placeholder-style"
                               loading={languagesLoading}
                               disabled={fieldsLocked}

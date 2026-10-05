@@ -219,7 +219,7 @@ const CustomerTable = () => {
           <div className="flex space-x-4 items-center">
             <Search
               appname="customers"
-              placeholder="Search company..."
+              placeholder="Search Company..."
               onSearch={(value) => {
                 setSearch(value);
                 setPage(0);
