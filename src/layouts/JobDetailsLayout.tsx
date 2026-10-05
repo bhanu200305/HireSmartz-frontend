@@ -30,6 +30,9 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const savedDetailsJobId = useSelector((state: RootState) => state.JobSlice.aiJobDescriptionId);
   const isFormCompleted = useSelector((state: RootState) => state.JobSlice.isFormCompleted);
   const editAiJdPassedJobId = useSelector((state: RootState) => state.JobSlice.editAiJdPassedJobId);
+  const editScoringPassedJobId = useSelector(
+    (state: RootState) => state.JobSlice.editScoringPassedJobId
+  );
   const isScoringCompleted = useSelector((state: RootState) => state.JobSlice.isScoringCompleted);
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
 
@@ -76,8 +79,12 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       ? editAiJdPassedJobId === editJobId && Boolean(editJd?.jobDescription?.trim())
       : true;
   const isScoringUnlocked = !isGated || isTab3Completed;
-  // Only create mode knows when Scoring Criteria was saved.
-  const isScoringDone = isCreateMode ? isScoringCompleted === true : true;
+  // Create and draft edit track when Scoring Criteria was saved.
+  const isScoringDone = isCreateMode
+    ? isScoringCompleted === true
+    : isEditingDraft
+      ? editScoringPassedJobId === editJobId
+      : true;
 
   const isActiveTab = (path: string) => location.pathname.includes(path);
 

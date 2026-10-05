@@ -118,6 +118,7 @@ import {
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { Loader } from '../../shared/ui/loader';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
+import { useOfferedSuggestedSkills } from '../../../hooks/useOfferedSuggestedSkills';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
@@ -786,19 +787,17 @@ const EditJobDetail = () => {
   );
   const suggestedSkills = suggestedSkillsData?.skills ?? [];
   // Each suggestion is auto-added once, so a skill the user removes stays removed.
-  const offeredSuggestedSkillIdsRef = useRef(new Set<string>());
+  const offeredSuggestedSkills = useOfferedSuggestedSkills(id ?? '');
   const unaddedSuggestedSkills = suggestedSkills.filter(
     (skill) =>
-      !offeredSuggestedSkillIdsRef.current.has(String(skill.skill_id)) &&
+      !offeredSuggestedSkills.has(String(skill.skill_id)) &&
       !selectedMandatorySkillIds.includes(skill.skill_id) &&
       !selectedOptionalSkillIds.includes(skill.skill_id)
   );
 
   const handleAddAllSuggestedSkills = () => {
     if (unaddedSuggestedSkills.length === 0) return;
-    unaddedSuggestedSkills.forEach((skill) =>
-      offeredSuggestedSkillIdsRef.current.add(String(skill.skill_id))
-    );
+    unaddedSuggestedSkills.forEach((skill) => offeredSuggestedSkills.add(String(skill.skill_id)));
     const newMandatoryIds = unaddedSuggestedSkills
       .filter((skill) => skill.suggested_skill_type.toLowerCase() === 'required')
       .map((skill) => skill.skill_id);
@@ -829,6 +828,14 @@ const EditJobDetail = () => {
   };
 
   useEffect(() => {
+    // A suggested skill that is selected counts as offered, so removing it
+    // later is never undone.
+    suggestedSkills.forEach((skill) => {
+      const id = String(skill.skill_id);
+      if (selectedMandatorySkillIds.includes(id) || selectedOptionalSkillIds.includes(id)) {
+        offeredSuggestedSkills.add(id);
+      }
+    });
     if (unaddedSuggestedSkills.length === 0) return;
     handleAddAllSuggestedSkills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1227,6 +1234,7 @@ const EditJobDetail = () => {
           for (const skill of fresh.skills) {
             const id = String(skill.skill_id);
             if (currentMandatory.includes(id) || currentOptional.includes(id)) continue;
+            if (offeredSuggestedSkills.has(id)) continue;
             if (newMandatory.includes(id) || newOptional.includes(id)) continue;
             if (skill.skill_type.toLowerCase() === 'required') {
               newMandatory.push(id);
@@ -1325,8 +1333,10 @@ const EditJobDetail = () => {
     const { newMandatoryIds, newOptionalIds, newOptions } = mergeNewAiSkills(
       jdDetailsForSync.skills,
       currentMandatory,
-      currentOptional
+      currentOptional,
+      offeredSuggestedSkills.has
     );
+    [...newMandatoryIds, ...newOptionalIds].forEach(offeredSuggestedSkills.add);
     if (newMandatoryIds.length > 0) {
       setValue('mandatorySkills', [...currentMandatory, ...newMandatoryIds], {
         shouldValidate: true,

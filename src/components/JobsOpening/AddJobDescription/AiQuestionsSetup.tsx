@@ -68,7 +68,7 @@ const PUBLISH_CHECK_LABELS: Record<string, string> = {
   no_mandatory_skill: 'At least one skill must be marked Required, not just Optional',
   no_round: 'At least one interview round is required',
   no_question: 'At least one question is required',
-  no_intake_question: 'Intake call questions are required',
+  no_intake_question: 'Add Intake Call questions, or remove the Intake Call round',
 };
 
 const describeFailedChecks = (checks: string[], roundsMissingQuestions: string[] = []): string =>

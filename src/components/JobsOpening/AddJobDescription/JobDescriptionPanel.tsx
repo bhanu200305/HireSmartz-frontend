@@ -10,6 +10,7 @@ import ReactMarkdown from 'react-markdown';
 import { Loader } from '../../shared/ui/loader';
 import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
 import { useJdStatusPolling } from '../../../hooks/useJdStatusPolling';
+import { useOfferedSuggestedSkills } from '../../../hooks/useOfferedSuggestedSkills';
 import { useForm } from 'react-hook-form';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -58,6 +59,7 @@ const JobDescriptionPanel = forwardRef<JobDescriptionPanelHandle, JobDescription
   ({ aiJobDescriptionId, isEditFlow = false }, ref) => {
     const dispatch = useDispatch();
     const jobOpeningId = asJobId(aiJobDescriptionId);
+    const offeredSuggestedSkills = useOfferedSuggestedSkills(jobOpeningId ?? '');
     const [showRegenerateModal, setShowRegenerateModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isInputFocused, setIsInputFocused] = useState(false);
@@ -154,7 +156,8 @@ const JobDescriptionPanel = forwardRef<JobDescriptionPanelHandle, JobDescription
       const { newMandatoryIds, newOptionalIds, newOptions } = mergeNewAiSkills(
         response.skills,
         currentMandatory,
-        currentOptional
+        currentOptional,
+        offeredSuggestedSkills.has
       );
       const newLabels = Object.fromEntries(newOptions.map((o) => [o.id, o.name]));
       // Redux fields are arrays (`jobType`, `jobMode`, `shift`,

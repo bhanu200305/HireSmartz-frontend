@@ -128,6 +128,7 @@ export type JobDetailsResponse = {
   requirements: string | null;
   other_requirements: string | null;
   benefits: string | null;
+  interviewed_count?: number;
   // Organization-scoped catalogue references, not free text.
   // `education_preference_id` is a single value; `language_ids` is the set
   // of languages this job's communication requires.
