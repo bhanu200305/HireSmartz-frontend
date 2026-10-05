@@ -132,7 +132,7 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           name: form.name.trim(),
           description: form.description.trim(),
         }).unwrap();
-        showToast({ message: 'Job title updated.', type: 'success' });
+        showToast({ message: 'Job Title updated.', type: 'success' });
       } else {
         const [firstDepartmentId, ...extraDepartmentIds] = form.departmentIds;
         // The create endpoint seeds exactly one mapping; the rest are
@@ -157,8 +157,8 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         showToast({
           message:
             form.departmentIds.length > 1
-              ? `Job title added to ${form.departmentIds.length} departments.`
-              : 'Job title added.',
+              ? `Job Title added to ${form.departmentIds.length} departments.`
+              : 'Job Title added.',
           type: 'success',
         });
       }
@@ -179,7 +179,7 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         tenantId,
         jobTitleId: tenantJobTitleFormId(jobTitleToDelete),
       }).unwrap();
-      showToast({ message: 'Job title removed.', type: 'success' });
+      showToast({ message: 'Job Title removed.', type: 'success' });
     } catch (err) {
       showToast({
         message: getOrgErrorMessage(err, 'Failed to remove job title; a job may still use it.'),
@@ -310,7 +310,7 @@ const TenantJobTitlesTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <div className="flex items-center gap-3">
           <Input
             prefix={<MdSearch className="text-gray-400" />}
-            placeholder="Search job titles..."
+            placeholder="Search Job Titles..."
             className="w-64"
             value={searchText}
             onChange={(e) => {

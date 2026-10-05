@@ -12,6 +12,13 @@ import {
   MdAutorenew,
 } from 'react-icons/md';
 import { Button, Input, Textarea, Typography, showToast } from '../shared';
+import PhoneNumberField from '../shared/ui/PhoneNumberField';
+import {
+  PHONE_VALIDATION_MESSAGE,
+  isPhoneValidForCountry,
+  splitE164,
+  toE164,
+} from '../../shared/utils/validation/phoneValidation';
 import { Loader } from '../shared/ui/loader';
 import ImageCropModal from '../shared/ui/ImageCropModal';
 import { Badge, BadgeStatus } from '../shared/ui/badge';
@@ -92,7 +99,9 @@ const toFormState = (
   website_url: profile?.website_url || '',
   culture_intro: cultureIntro,
   company_size: profile?.company_size ? String(profile.company_size) : '',
-  admin_contact: profile?.admin_contact || '',
+  // National number only: the dial code lives in its own state
+  // (`adminContactCode`) and is joined back on save (E.164, `+919876543210`).
+  admin_contact: splitE164(profile?.admin_contact).phoneNumber,
 });
 
 /**
@@ -118,6 +127,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [form, setForm] = useState<ProfileFormState>(toFormState(undefined, ''));
+  const [adminContactCode, setAdminContactCode] = useState('');
   const canEdit = useHasAccess(Authorities.COMPANY_SETTINGS_EDIT);
   const [logoPreview, setLogoPreview] = useState('');
   const [isLogoHovered, setIsLogoHovered] = useState(false);
@@ -165,6 +175,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   useEffect(() => {
     if (profile && cultureIntroValue !== undefined) {
       setForm(toFormState(profile, cultureIntroValue));
+      setAdminContactCode(splitE164(profile.admin_contact).countryCode);
       setLogoPreview(profile.logo_url || '');
     }
   }, [profile, cultureIntroValue]);
@@ -367,6 +378,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
   const handleCancel = () => {
     setForm(toFormState(profile, cultureIntroValue ?? ''));
+    setAdminContactCode(splitE164(profile.admin_contact).countryCode);
     setLogoPreview(profile?.logo_url || '');
     setScrapePreview(null);
     setPendingLogoStorageKey(null);
@@ -377,9 +389,26 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const handleSave = async () => {
     const parsedSize = form.company_size ? Number(form.company_size) : undefined;
     if (form.company_size && (!Number.isFinite(parsedSize) || Number(parsedSize) < 1)) {
-      showToast({ message: 'Company size must be a positive number.', type: 'error' });
+      showToast({ message: 'Company Size must be a positive number.', type: 'error' });
       return;
     }
+    // Untouched contact (even legacy data without a recognisable dial code)
+    // is sent back as stored; an edited one must be a valid number for the
+    // chosen country and goes out as one E.164 string.
+    const original = splitE164(profile?.admin_contact);
+    const contactUnchanged =
+      form.admin_contact === original.phoneNumber && adminContactCode === original.countryCode;
+    if (!contactUnchanged && form.admin_contact.trim()) {
+      if (!adminContactCode || !isPhoneValidForCountry(form.admin_contact, adminContactCode)) {
+        showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
+        return;
+      }
+    }
+    const adminContact = contactUnchanged
+      ? (profile?.admin_contact ?? '')
+      : form.admin_contact.trim()
+        ? toE164(adminContactCode, form.admin_contact)
+        : '';
     setDescriptionError(null);
     try {
       // `logo` is included for either a staged disk/cropped upload
@@ -406,7 +435,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         description: form.description,
         website_url: form.website_url,
         company_size: parsedSize,
-        admin_contact: form.admin_contact,
+        admin_contact: adminContact,
         ...(pendingLogoStorageKey
           ? { logo: pendingLogoStorageKey }
           : scrapedLogoAppliedAsIs
@@ -451,7 +480,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
     { key: 'company_size', label: 'Company Size', icon: <MdGroups size={16} /> },
     {
       key: 'admin_contact',
-      label: 'Admin Contact',
+      label: 'Company Contact',
       icon: <MdPhone size={16} />,
       maxLength: 40,
     },
@@ -603,6 +632,16 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                       </p>
                     )}
                   </>
+                ) : key === 'admin_contact' ? (
+                  <PhoneNumberField
+                    countryCode={adminContactCode}
+                    onCountryCodeChange={setAdminContactCode}
+                    phoneNumber={form.admin_contact}
+                    onPhoneNumberChange={(value) =>
+                      setForm((prev) => ({ ...prev, admin_contact: value }))
+                    }
+                    placeholder="Contact Number"
+                  />
                 ) : (
                   <Input
                     value={form[key]}
@@ -626,7 +665,11 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
               </div>
             ) : (
               <Typography variant="body1" className="whitespace-pre-line break-words text-gray-800">
-                {form[key] || '-'}
+                {key === 'admin_contact'
+                  ? form.admin_contact
+                    ? `${adminContactCode} ${form.admin_contact}`.trim()
+                    : '-'
+                  : form[key] || '-'}
               </Typography>
             )}
           </div>

@@ -170,7 +170,7 @@ export const jobDetailsSchema = z
         }
       ),
     closeDate: z.string().optional(),
-    hiringManagers: z.array(catalogId).min(1, 'Hiring manager is required.'),
+    hiringManagers: z.array(catalogId).min(1, 'Hiring Manager is required.'),
     recruiters: z.array(catalogId).optional(),
     state: z.string().nonempty('State is required.'),
     country: z.string().nonempty('Country is required.'),

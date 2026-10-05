@@ -661,7 +661,7 @@ export const BookingDetailDrawer = ({
                     <Select<FeedbackRecommendation>
                       className="w-full"
                       size="large"
-                      placeholder="Select a recommendation"
+                      placeholder="Select a Recommendation"
                       value={recommendation}
                       options={RECOMMENDATION_OPTIONS}
                       onChange={(v) => setRecommendation(v)}

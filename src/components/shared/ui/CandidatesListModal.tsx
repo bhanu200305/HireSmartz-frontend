@@ -204,7 +204,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           <div className="flex flex-wrap items-center gap-2.5">
             <Search
               appname="total applications modal"
-              placeholder="Search candidates..."
+              placeholder="Search Candidates..."
               value={search}
               allowClear
               onSearch={(value) => {

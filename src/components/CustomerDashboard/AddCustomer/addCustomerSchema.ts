@@ -11,16 +11,16 @@ import {
 
 export const addCustomerSchema = z
   .object({
-    firstNamePrimary: nameValidation({ label: 'First name', required: true }),
-    lastNamePrimary: nameValidation({ label: 'Last name', required: true }),
+    firstNamePrimary: nameValidation({ label: 'First Name', required: true }),
+    lastNamePrimary: nameValidation({ label: 'Last Name', required: true }),
     phonePrimary: z.string(),
     countryCodePrimary: z.string().nonempty('Country code is required.'),
     emailPrimary: emailValidation(),
 
-    companyName: z.string().nonempty('Company name is required.'),
+    companyName: z.string().nonempty('Company Name is required.'),
     addressLine1: z.string().nonempty('Address Line 1 is required.'),
     addressLine2: z.string().optional().or(z.literal('')),
-    locationName: z.string().nonempty('Location name is required.'),
+    locationName: z.string().nonempty('Location Name is required.'),
     locationCode: z.string().optional().or(z.literal('')),
     city: z.string().nonempty('City is required.'),
     state: z.string().nonempty('State is required.'),
@@ -69,7 +69,7 @@ export const addCustomerSchema = z
       if (!data.firstNameSecondary?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'First name is required.',
+          message: 'First Name is required.',
           path: ['firstNameSecondary'],
         });
       }
@@ -77,7 +77,7 @@ export const addCustomerSchema = z
       if (!data.lastNameSecondary?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Last name is required.',
+          message: 'Last Name is required.',
           path: ['lastNameSecondary'],
         });
       }
@@ -85,7 +85,7 @@ export const addCustomerSchema = z
       if (!data.phoneSecondary?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Phone number is required.',
+          message: 'Phone Number is required.',
           path: ['phoneSecondary'],
         });
       } else if (

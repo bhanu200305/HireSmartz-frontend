@@ -152,7 +152,7 @@ const ActiveSessionsListModal: React.FC<{ onClose: () => void }> = ({ onClose })
             <div className="flex flex-wrap items-center gap-2.5">
               <Search
                 appname="active sessions modal"
-                placeholder="Search loaded rows..."
+                placeholder="Search Loaded Rows..."
                 value={search}
                 allowClear
                 onSearch={setSearch}

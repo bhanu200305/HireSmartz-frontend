@@ -23,7 +23,7 @@ describe('acceptInvitationSchema', () => {
     const result = acceptInvitationSchema.safeParse({ ...basePayload, lastName: '' });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.lastName?.[0]).toBe('Last name is required.');
+      expect(result.error.flatten().fieldErrors.lastName?.[0]).toBe('Last Name is required.');
     }
   });
 
@@ -31,7 +31,7 @@ describe('acceptInvitationSchema', () => {
     const result = acceptInvitationSchema.safeParse({ ...basePayload, firstName: '' });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.firstName?.[0]).toBe('First name is required.');
+      expect(result.error.flatten().fieldErrors.firstName?.[0]).toBe('First Name is required.');
     }
   });
 
@@ -39,7 +39,7 @@ describe('acceptInvitationSchema', () => {
     const result = acceptInvitationSchema.safeParse({ ...basePayload, phoneNumber: '' });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.phoneNumber?.[0]).toBe('Phone number is required.');
+      expect(result.error.flatten().fieldErrors.phoneNumber?.[0]).toBe('Phone Number is required.');
     }
   });
 

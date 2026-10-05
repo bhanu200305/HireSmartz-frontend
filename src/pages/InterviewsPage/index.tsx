@@ -140,7 +140,7 @@ export const InterviewsPage = () => {
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <Select<BookingStatus>
             allowClear
-            placeholder="All statuses"
+            placeholder="All Statuses"
             className="w-48"
             value={statusFilter}
             options={BOOKING_STATUS_OPTIONS}
@@ -151,7 +151,7 @@ export const InterviewsPage = () => {
           />
           <Select<InterviewType>
             allowClear
-            placeholder="All types"
+            placeholder="All Types"
             className="w-48"
             value={typeFilter}
             options={INTERVIEW_TYPE_OPTIONS}

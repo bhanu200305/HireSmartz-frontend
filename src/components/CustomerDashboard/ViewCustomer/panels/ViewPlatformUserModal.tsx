@@ -436,8 +436,8 @@ const ViewPlatformUserModal: React.FC<ViewPlatformUserModalProps> = ({
                 defaultValue={editForm.email}
                 onBlur={handleEmailBlur}
               />
-              <Input placeholder="First name *" {...field('first_name')} />
-              <Input placeholder="Last name *" {...field('last_name')} />
+              <Input placeholder="First Name *" {...field('first_name')} />
+              <Input placeholder="Last Name *" {...field('last_name')} />
               <NameTitleSelect
                 className="w-full"
                 value={editForm.title}

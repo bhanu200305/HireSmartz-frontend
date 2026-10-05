@@ -17,7 +17,6 @@ import {
   LuChevronRight,
   LuListChecks,
   LuCalendarPlus,
-  LuSkipForward,
   LuCalendarCheck,
   LuUpload,
   LuCircleCheck,
@@ -74,6 +73,10 @@ import {
   getCandidateErrorMessage,
   getCandidateErrorStatusCode,
 } from '../../../shared/utils/auth/candidateError.helpers';
+import AdvanceCandidateModal, {
+  type AdvanceFeedbackRequirement,
+} from './Modal/AdvanceCandidateModal';
+import InterviewSchedulingTab from './InterviewSchedulingTab';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
@@ -186,7 +189,7 @@ const formatSectionKey = (key: string) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
-type TabKey = 'details' | 'assessment' | 'sms';
+type TabKey = 'details' | 'assessment' | 'scheduling' | 'sms';
 
 // Sidebar entry shown when the pipeline has no resume-stage round of its own
 // (e.g. rounds not loaded / plan without one), so the Resume Assessment card
@@ -344,20 +347,24 @@ const CandidateDetails = () => {
   const candidateNav = useCandidateNavigation(candidateId, parsedJobId);
   const userId = useSelector((state: RootState) => state.LoginSlice.userId);
 
-  // `?tab=` deep links. The Interview Scheduling tab was removed
-  // (2026-09-30) — its per-round scoring and notes live on Assessment and
-  // the header — so its keys (`scheduling`, legacy `summary` from
-  // InterviewLiveKit.tsx's "Complete Full Feedback", legacy `3` from
-  // ActivityFeed.tsx) all land on Assessment. Read once via useState's lazy
-  // initializer so the page never flashes the wrong tab.
+  // `?tab=` deep links. The Interview Scheduling tab is back (invite,
+  // re-invite, reschedule and skip live there); the legacy `summary` (from
+  // InterviewLiveKit.tsx's "Complete Full Feedback") and `3` (from
+  // ActivityFeed.tsx) keys still land on Assessment. Read once via
+  // useState's lazy initializer so the page never flashes the wrong tab.
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     const tabParam = searchParams.get('tab');
-    const validTabs: TabKey[] = ['details', 'assessment', 'sms'];
+    const validTabs: TabKey[] = ['details', 'assessment', 'scheduling', 'sms'];
     if (tabParam && validTabs.includes(tabParam as TabKey)) return tabParam as TabKey;
     if (tabParam === 'resume' || searchParams.get('edit') === 'true') return 'details';
     return 'assessment';
   });
   const [statusModal, setStatusModal] = useState<ChangeCandidateStatusMode | null>(null);
+  const [isAdvanceOpen, setIsAdvanceOpen] = useState(false);
+  // The round the last successful Advance completed. Advance stays disabled
+  // while that round is still the current one (the refreshed list has not
+  // caught up yet), so it can't be clicked twice for the same round.
+  const [advancedFromRoundId, setAdvancedFromRoundId] = useState<string | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [isSmsOpen, setIsSmsOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
@@ -1296,6 +1303,29 @@ const CandidateDetails = () => {
   // plan hasn't loaded/has no rounds yet, which would otherwise trivially
   // satisfy "nothing outstanding".
   const allRoundsCompleted = rounds.length > 0 && currentRound === null;
+  const isAdvanceLocked = currentRound !== null && currentRound.id === advancedFromRoundId;
+  const nextRound = currentRound
+    ? (rounds[rounds.findIndex((r) => r.id === currentRound.id) + 1] ?? null)
+    : null;
+  // The next round can be invited together with Advance, except a PANEL round
+  // (its interviewers are picked when inviting) and Identity Verification.
+  const canAutoInviteNextRound =
+    nextRound !== null &&
+    nextRound.stage_type === 'interview' &&
+    nextRound.round_type !== 'PANEL' &&
+    !(nextRound.round_type == null && /panel/i.test(nextRound.round_name ?? '')) &&
+    !isIdentityVerificationRound(nextRound);
+  // The round being completed needs the recruiter's feedback on file first.
+  const currentRoundScore = currentRound ? findRoundScore(scores, currentRound) : undefined;
+  const advanceFeedbackRequirement: AdvanceFeedbackRequirement = !currentRound
+    ? null
+    : isResumeStageRound(currentRound)
+      ? candidate?.resume_review_comment?.trim()
+        ? null
+        : { kind: 'resume' }
+      : currentRoundScore && !currentRoundScore.recruiter_score_reason?.trim()
+        ? { kind: 'round', scoreId: currentRoundScore.id }
+        : null;
   // MARK AS SELECTED also appears once the candidate is ON their last round
   // (2026-09-29 product decision) — no need to ADVANCE past it first.
   // `rounds` is already in walk order (orderRoundsForFlow), so "last" is
@@ -1730,125 +1760,6 @@ const CandidateDetails = () => {
                     </Tooltip>
                   </>
                 )}
-              {(() => {
-                // Re-invite (a booking whose attempt has concluded) goes
-                // through the same reschedule flow interview-service's
-                // request-reschedule endpoint allows (voice calls once a
-                // `call_intent` exists, PANEL once the booking concluded).
-                // Disabled, with the reason on hover, when it doesn't apply.
-                const hasBooking = Boolean(selectedRound.interview_booking_id);
-                const canReinvite =
-                  hasBooking &&
-                  ((selectedRoundIsVoiceCall && selectedBooking?.call_intent != null) ||
-                    (isPanelRound &&
-                      selectedBooking != null &&
-                      CONCLUDED_BOOKING_STATUSES.includes(selectedBooking.status)));
-                const isBusy =
-                  isCreatingBooking ||
-                  isSavingInterviewers ||
-                  isRequestingReschedule ||
-                  isReinviting;
-                // Link ran out unused: the new Reinvite action, with its
-                // "n of MAX_REINVITES used" counter, disabled at the cap.
-                const linkExpired = hasBooking && selectedBooking?.link_expired === true;
-                const reinvitesUsed = selectedBooking?.reinvite_count ?? 0;
-                const reinvitesExhausted = reinvitesUsed >= MAX_REINVITES;
-                // No booking for this round yet: the same button reads
-                // "Send Invite" and opens the first-invite modal (POST /bookings).
-                const noBooking = !hasBooking;
-                const reinviteTooltip = bookingsClosed
-                  ? ALREADY_SELECTED_MESSAGE
-                  : noBooking
-                    ? 'Send the first interview invite'
-                    : linkExpired
-                      ? reinvitesExhausted
-                        ? `All ${MAX_REINVITES} reinvites used`
-                        : `Send reinvite (${reinvitesUsed} of ${MAX_REINVITES} reinvites used)`
-                      : 'Request a reschedule for this concluded attempt';
-                // Neither a first invite nor an expired link: a live,
-                // scheduled or completed booking gets no Send Invite /
-                // Reinvite button. The reschedule action stays only for a
-                // concluded attempt.
-                if (!noBooking && !linkExpired && !canReinvite) return null;
-                return (
-                  <>
-                    {linkExpired && (
-                      <span className="whitespace-nowrap text-xs text-gray-500">
-                        {reinvitesUsed} of {MAX_REINVITES} reinvites used
-                      </span>
-                    )}
-                    <Tooltip title={reinviteTooltip}>
-                      <span className="inline-flex">
-                        <button
-                          type="button"
-                          className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={
-                            isBusy ||
-                            bookingsClosed ||
-                            (noBooking
-                              ? isIdentityVerificationRound(selectedRound)
-                              : linkExpired
-                                ? reinvitesExhausted
-                                : !canReinvite)
-                          }
-                          onClick={() => {
-                            if (noBooking) {
-                              setIsInviteOpen(true);
-                              return;
-                            }
-                            if (linkExpired) {
-                              if (isPanelRound) {
-                                // PANEL: keep the roster or pick a new one first.
-                                setRescheduleMode('reinvite');
-                                setRescheduleRound(selectedRound);
-                                setIsRescheduleConfirmOpen(true);
-                              } else {
-                                void runReinvite(selectedRound.interview_booking_id);
-                              }
-                              return;
-                            }
-                            setRescheduleRound(selectedRound);
-                            setIsRescheduleConfirmOpen(true);
-                          }}
-                        >
-                          {isReinviting
-                            ? 'Sending…'
-                            : noBooking
-                              ? 'Send Invite'
-                              : linkExpired
-                                ? 'Reinvite'
-                                : 'Reschedule'}
-                        </button>
-                      </span>
-                    </Tooltip>
-                  </>
-                );
-              })()}
-              {/* Skip: every round except the Intake Call (and the resume stage,
-                  which has no round tabs). The backend only skips the
-                  candidate's CURRENT round, so it's live only there. */}
-              {!isIntakeCallRound(selectedRound) && (
-                <Tooltip
-                  title={
-                    currentRound?.id === selectedRound.id
-                      ? `Skip ${roundLabel(selectedRound)}`
-                      : 'Only the candidate’s current round can be skipped'
-                  }
-                >
-                  <span className="inline-flex">
-                    <button
-                      type="button"
-                      aria-label="Skip round"
-                      className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-2 border-gray-400 bg-white px-4 text-[13px] font-semibold leading-none text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={currentRound?.id !== selectedRound.id}
-                      onClick={() => setIsSkipOpen(true)}
-                    >
-                      <LuSkipForward size={16} strokeWidth={2} aria-hidden />
-                      <span>Skip</span>
-                    </button>
-                  </span>
-                </Tooltip>
-              )}
               {/* Identity Verification is never scored, so it gets no button. */}
               {isIntakeCallRound(selectedRound)
                 ? scoringCriteriaButton('intake', roundLabel(selectedRound))
@@ -2528,8 +2439,9 @@ const CandidateDetails = () => {
                       <Button
                         className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-primary bg-primary-50 text-primary hover:bg-primary-100"
                         onClick={() =>
-                          advanceDisabled ? setIsSkipOpen(true) : setStatusModal('advance')
+                          advanceDisabled ? setIsSkipOpen(true) : setIsAdvanceOpen(true)
                         }
+                        disabled={isAdvanceLocked}
                       >
                         <span>Advance</span>
                       </Button>
@@ -2604,6 +2516,7 @@ const CandidateDetails = () => {
             items={[
               { key: 'details', label: 'Candidate Details' },
               { key: 'assessment', label: 'Assessment' },
+              { key: 'scheduling', label: 'Interview Scheduling' },
               { key: 'sms', label: 'SMS Communication' },
             ]}
           />
@@ -2801,6 +2714,52 @@ const CandidateDetails = () => {
             </div>
           )}
 
+          {activeTab === 'scheduling' && candidateId && (
+            <InterviewSchedulingTab
+              candidateId={candidateId}
+              rounds={rounds}
+              roundsLoaded={roundsLoaded}
+              scores={scores}
+              currentRoundId={currentRound?.id ?? null}
+              isTerminal={isTerminal}
+              bookingsClosed={bookingsClosed}
+              isBusy={
+                isCreatingBooking || isSavingInterviewers || isRequestingReschedule || isReinviting
+              }
+              onInvite={(round) => {
+                setSelectedRound(round);
+                setIsInviteOpen(true);
+              }}
+              onReinvite={(round) => {
+                if (round.round_type === 'PANEL') {
+                  // PANEL: keep the roster or pick a new one first.
+                  setSelectedRound(round);
+                  setRescheduleMode('reinvite');
+                  setRescheduleRound(round);
+                  setIsRescheduleConfirmOpen(true);
+                } else {
+                  void runReinvite(round.interview_booking_id);
+                }
+              }}
+              onReschedule={(round) => {
+                setSelectedRound(round);
+                setRescheduleMode('reschedule');
+                setRescheduleRound(round);
+                setIsRescheduleConfirmOpen(true);
+              }}
+              onSkip={() => setIsSkipOpen(true)}
+              onReject={() => setStatusModal('reject')}
+              onSubmitFeedback={(round, score) =>
+                setScoreModalFor({
+                  scoreId: score.id,
+                  roundName: roundLabel(round),
+                  currentScore: score.recruiter_score,
+                  currentReason: score.recruiter_score_reason,
+                })
+              }
+            />
+          )}
+
           {activeTab === 'sms' && candidateId && (
             <CandidateMessageHistory
               candidateId={candidateId}
@@ -2908,6 +2867,24 @@ const CandidateDetails = () => {
             : undefined
         }
       />
+      {isAdvanceOpen && candidate && (
+        <AdvanceCandidateModal
+          open
+          onClose={() => setIsAdvanceOpen(false)}
+          candidate={candidate}
+          fromRound={currentRound}
+          toRound={nextRound}
+          feedbackRequirement={advanceFeedbackRequirement}
+          canAutoInvite={canAutoInviteNextRound}
+          onSuccess={() => {
+            setIsAdvanceOpen(false);
+            // Locked until the refreshed round list moves `currentRound` on.
+            setAdvancedFromRoundId(currentRound?.id ?? null);
+            void refetchRounds();
+            refetchCandidate();
+          }}
+        />
+      )}
       {statusModal && candidate && (
         <ChangeCandidateStatusModal
           open={!!statusModal}

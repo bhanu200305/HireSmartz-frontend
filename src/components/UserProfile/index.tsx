@@ -714,7 +714,7 @@ const UserProfile = () => {
                           <Input
                             type="tel"
                             disabled={!isEditing}
-                            placeholder="Phone number"
+                            placeholder="Phone Number"
                             value={watch('phoneNumber')}
                             onChange={(e) => {
                               setValue(

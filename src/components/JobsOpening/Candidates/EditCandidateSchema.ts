@@ -4,8 +4,8 @@ import { phoneWithCountry } from '../../../shared/utils/validation/phoneValidati
 
 export const editCandidateSchema = z
   .object({
-    firstName: nameValidation({ label: 'First name', required: true }),
-    lastName: nameValidation({ label: 'Last name', required: true }),
+    firstName: nameValidation({ label: 'First Name', required: true }),
+    lastName: nameValidation({ label: 'Last Name', required: true }),
     countryCode: z.string().min(1, 'Country code is required.'),
     phoneNumber: z.string(),
     email: emailValidation(),

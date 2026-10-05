@@ -43,8 +43,8 @@ const JobModesTab: React.FC = () => {
   return (
     <PlatformCatalogTab<PlatformJobMode, FormValues>
       title="Platform-wide job-location catalog."
-      itemNounSingular="Job location"
-      itemNounPlural="Job locations"
+      itemNounSingular="Job Location"
+      itemNounPlural="Job Locations"
       items={data?.items}
       total={data?.total}
       serverQuery={query}

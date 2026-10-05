@@ -150,7 +150,7 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
           <Select
             id="assignRoleSelect"
             className="w-full mt-1"
-            placeholder="Select a role"
+            placeholder="Select a Role"
             value={roleId ?? undefined}
             onChange={(value) => setRoleId(value)}
             showSearch

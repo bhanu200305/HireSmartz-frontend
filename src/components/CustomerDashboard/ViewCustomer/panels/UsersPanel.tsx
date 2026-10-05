@@ -721,7 +721,7 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
           <div className="w-52">
             <Input
               prefix={<MdSearch className="text-gray-400" />}
-              placeholder="Search users..."
+              placeholder="Search Users..."
               value={searchText}
               onChange={(e) => {
                 setSearchText(e.target.value);
@@ -817,8 +817,8 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input placeholder="First name *" {...field('first_name')} />
-            <Input placeholder="Last name *" {...field('last_name')} />
+            <Input placeholder="First Name *" {...field('first_name')} />
+            <Input placeholder="Last Name *" {...field('last_name')} />
           </div>
           <Input placeholder="Email *" type="email" {...field('email')} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -888,7 +888,7 @@ const UsersPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
           </p>
           <Input
             type="email"
-            placeholder="Corrected email address"
+            placeholder="Corrected Email Address"
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
           />

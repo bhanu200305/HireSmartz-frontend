@@ -567,7 +567,7 @@ export const CareersListingPage = () => {
             <Input
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Search by job title"
+              placeholder="Search by Job Title"
               prefix={<SearchOutlined className="text-gray-400" />}
               size="large"
               style={{ borderRadius: 999 }}

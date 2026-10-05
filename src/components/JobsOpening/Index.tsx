@@ -1078,7 +1078,7 @@ const JobsOpening = () => {
               </Tooltip>
               <Search
                 appname="jobs opening"
-                placeholder="Search job openings"
+                placeholder="Search Job Openings"
                 onSearch={handleSearch}
                 allowClear
                 value={filters.text || ''}

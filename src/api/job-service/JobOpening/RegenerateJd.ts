@@ -69,7 +69,7 @@ const extendedApi = jobApi.injectEndpoints({
         return {
           data: {
             success: true,
-            message: 'Job description regeneration started',
+            message: 'Job Description regeneration started',
             data: {
               id: jobOpeningId,
               jobDescription: '',

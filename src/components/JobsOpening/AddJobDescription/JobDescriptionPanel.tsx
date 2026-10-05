@@ -304,7 +304,7 @@ const JobDescriptionPanel = forwardRef<JobDescriptionPanelHandle, JobDescription
         await refetch();
         setPreviewDescription(markdown);
         setSaveError(null);
-        showToast({ message: 'Job description has been updated successfully', type: 'success' });
+        showToast({ message: 'Job Description has been updated successfully', type: 'success' });
         return true;
       } catch (error: any) {
         const message = getJobErrorMessage(error, 'Failed to update job description');

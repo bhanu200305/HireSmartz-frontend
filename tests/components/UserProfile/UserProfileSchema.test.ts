@@ -21,7 +21,7 @@ describe('UserProfileSchema', () => {
     const result = UserProfileSchema.safeParse({ ...basePayload, firstName: '' });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.firstName?.[0]).toBe('First name is required.');
+      expect(result.error.flatten().fieldErrors.firstName?.[0]).toBe('First Name is required.');
     }
   });
 

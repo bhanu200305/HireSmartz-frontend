@@ -141,7 +141,7 @@ const RoleTable: React.FC<RoleTableProps> = ({
   };
 
   const baseRoleColumn: RoleColumn = {
-    title: 'Based on',
+    title: 'Based On',
     key: 'baseRole',
     sorter: true,
     sortOrder: sortOrderFor('baseRole'),

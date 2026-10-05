@@ -87,7 +87,7 @@ const VideoInterviewQuestions = () => {
                 value={currentSelectedRound}
                 onChange={handleRoundChange}
                 className="w-full custom-select placeholder-style border-none shadow-none"
-                placeholder="Select a video round"
+                placeholder="Select a Video Round"
               >
                 {videoRounds.map((round: any) => (
                   <Option key={round.id} value={round.uniqueRoundIdentifier}>

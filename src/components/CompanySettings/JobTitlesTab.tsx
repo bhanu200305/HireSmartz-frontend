@@ -138,7 +138,7 @@ const JobTitlesTab: React.FC = () => {
           // present as '', not when it's omitted from the request.
           description: form.description.trim(),
         }).unwrap();
-        showToast({ message: 'Job title updated.', type: 'success' });
+        showToast({ message: 'Job Title updated.', type: 'success' });
       } else {
         const [firstDepartmentId, ...extraDepartmentIds] = form.departmentIds;
         // The create endpoint seeds exactly one mapping; the rest are
@@ -161,8 +161,8 @@ const JobTitlesTab: React.FC = () => {
         showToast({
           message:
             form.departmentIds.length > 1
-              ? `Job title added to ${form.departmentIds.length} departments.`
-              : 'Job title added.',
+              ? `Job Title added to ${form.departmentIds.length} departments.`
+              : 'Job Title added.',
           type: 'success',
         });
       }
@@ -180,7 +180,7 @@ const JobTitlesTab: React.FC = () => {
     if (!jobTitleToDelete) return;
     try {
       await deleteJobTitle(jobTitleToDelete.job_title_id).unwrap();
-      showToast({ message: 'Job title removed.', type: 'success' });
+      showToast({ message: 'Job Title removed.', type: 'success' });
     } catch (err) {
       showToast({
         message: getOrgErrorMessage(err, 'Failed to remove job title; a company may still use it.'),
@@ -313,7 +313,7 @@ const JobTitlesTab: React.FC = () => {
         <div className="flex items-center gap-3">
           <Input
             prefix={<MdSearch className="text-gray-400" />}
-            placeholder="Search job titles..."
+            placeholder="Search Job Titles..."
             className="w-64"
             value={searchText}
             onChange={(e) => {

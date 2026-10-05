@@ -167,7 +167,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
 
   const handleSubmit = async () => {
     if (!name.trim()) {
-      showToast({ message: 'Department name is required.', type: 'error' });
+      showToast({ message: 'Department Name is required.', type: 'error' });
       return;
     }
     try {
@@ -363,7 +363,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           <div className="w-52">
             <Input
               prefix={<MdSearch className="text-gray-400" />}
-              placeholder="Search departments..."
+              placeholder="Search Departments..."
               value={searchText}
               onChange={(e) => {
                 setSearchText(e.target.value);
@@ -418,7 +418,7 @@ const DepartmentsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
       >
         <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
           <Input
-            placeholder="Department name *"
+            placeholder="Department Name *"
             maxLength={120}
             value={name}
             onChange={(e) => setName(e.target.value)}

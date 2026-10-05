@@ -56,8 +56,8 @@ const TenantJobModesTab: React.FC = () => {
   return (
     <PlatformCatalogTab<OrganizationJobMode, FormValues>
       title="Your company's configured job locations."
-      itemNounSingular="Job location"
-      itemNounPlural="Job locations"
+      itemNounSingular="Job Location"
+      itemNounPlural="Job Locations"
       items={data?.items}
       total={data?.total}
       serverQuery={query}

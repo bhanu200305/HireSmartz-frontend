@@ -113,7 +113,7 @@ describe('phoneWithCountry (zod superRefine)', () => {
     phoneWithCountry('countryCode', 'phone')({ countryCode: '+1', phone: '' }, ctx as any);
 
     expect(issues).toEqual([
-      { code: 'custom', path: ['phone'], message: 'Phone number is required.' },
+      { code: 'custom', path: ['phone'], message: 'Phone Number is required.' },
     ]);
   });
 

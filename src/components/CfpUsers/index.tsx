@@ -241,7 +241,7 @@ const CfpUsers: React.FC = () => {
           <div className="w-52">
             <Input
               prefix={<MdSearch className="text-gray-400" />}
-              placeholder="Search staff..."
+              placeholder="Search Staff..."
               value={searchText}
               onChange={(e) => {
                 setSearchText(e.target.value);
@@ -374,7 +374,7 @@ const CfpUsers: React.FC = () => {
       >
         <div className="flex flex-col gap-4">
           <Input
-            placeholder="Department name *"
+            placeholder="Department Name *"
             value={departmentName}
             onChange={(e) => setDepartmentName(e.target.value)}
           />

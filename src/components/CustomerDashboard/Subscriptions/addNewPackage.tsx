@@ -79,7 +79,7 @@ const AddNewPackage = () => {
                 <Form.Item label="Voice Agent Usage: Calling Minutes">
                   <Input
                     {...register('companyName')}
-                    placeholder="No. of minutes"
+                    placeholder="No. of Minutes"
                     className="bg-white w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
                   />
                   {/* <p className="text-red-500 text-sm">{errors.companyName?.message}</p> */}
@@ -139,7 +139,7 @@ const AddNewPackage = () => {
                 <Form.Item label="Cloud Access and Storage Limit">
                   <Input
                     {...register('addressLine1')}
-                    placeholder="Select as per subscription tiers"
+                    placeholder="Select as per Subscription Tiers"
                     className="bg-white w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
                   />
                   {/* <p className="text-red-500 text-sm">{errors.addressLine1?.message}</p> */}
@@ -148,7 +148,7 @@ const AddNewPackage = () => {
                 <Form.Item label="White Labeling">
                   <Input
                     {...register('addressLine2')}
-                    placeholder="Select platform customization"
+                    placeholder="Select Platform Customization"
                     className="bg-white w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
                   />
                   {/* <p className="text-red-500 text-sm">{errors.addressLine2?.message}</p> */}
