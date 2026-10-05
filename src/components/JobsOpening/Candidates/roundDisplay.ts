@@ -47,3 +47,15 @@ export const formatRoundVariant = (variant: string | null | undefined): string |
   if (value === 'offline') return 'In-person';
   return value.charAt(0).toUpperCase() + value.slice(1);
 };
+
+/** A round's reinvite count and link-expiry, preferring candidate-service's
+ * round view (`reinvite_count` / `scheduling_link_expired`, added
+ * 2026-10-05) and falling back to interview-service's booking for older
+ * responses. One source of truth for every card that shows them. */
+export const roundReinviteState = (
+  round: Pick<CandidateInterviewRoundView, 'reinvite_count' | 'scheduling_link_expired'>,
+  booking?: { reinvite_count?: number; link_expired?: boolean } | null
+) => ({
+  reinvitesUsed: round.reinvite_count ?? booking?.reinvite_count ?? 0,
+  linkExpired: round.scheduling_link_expired ?? booking?.link_expired === true,
+});

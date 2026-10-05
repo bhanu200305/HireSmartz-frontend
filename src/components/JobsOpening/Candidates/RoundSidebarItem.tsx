@@ -14,7 +14,7 @@ import {
   type RoundBucket,
 } from './roundProgress';
 import { AI_SCORE_MAX, BUCKET_META, HUMAN_SCORE_MAX } from './roundPipeline';
-import { roundLabel, formatRoundStatus } from './roundDisplay';
+import { roundLabel, formatRoundStatus, roundReinviteState } from './roundDisplay';
 
 type RoundSidebarItemProps = {
   round: CandidateInterviewRoundView;
@@ -97,6 +97,7 @@ const RoundSidebarItem = ({
   const isBlockedOnCalendar =
     isPanelRound && booking?.status === 'draft' && missingCalendarCount > 0;
   const technicalFailure = booking?.call_intent === 'technical_failure';
+  const { reinvitesUsed, linkExpired } = roundReinviteState(round, booking);
 
   // Side-bar colour = the round's state: green done, amber current stage,
   // grey upcoming, red needs attention (overdue / technical failure).
@@ -108,7 +109,9 @@ const RoundSidebarItem = ({
     round.stage_type === 'resume' && resumeScore !== null
       ? `Score: ${resumeScore}/${AI_SCORE_MAX}`
       : isIntakeCallRound(round) && consistencyScore !== null
-        ? `Consistency: ${consistencyScore}/${AI_SCORE_MAX}`
+        ? roundScore?.recruiter_score != null
+          ? `Consistency: ${consistencyScore}/${AI_SCORE_MAX} · Recruiter: ${roundScore.recruiter_score}/${HUMAN_SCORE_MAX}`
+          : `Consistency: ${consistencyScore}/${AI_SCORE_MAX}`
         : isInterviewRound && !isIntakeCallRound(round) && roundScoreValue != null
           ? roundScore?.score != null && roundScore?.recruiter_score != null
             ? `AI: ${roundScore.score}/${AI_SCORE_MAX} · Recruiter: ${roundScore.recruiter_score}/${HUMAN_SCORE_MAX}`
@@ -121,7 +124,7 @@ const RoundSidebarItem = ({
     ? 'Overdue'
     : technicalFailure
       ? 'Technical Failure'
-      : booking?.link_expired && !isResumeScored
+      : linkExpired && !isResumeScored
         ? 'Scheduling link expired'
         : isResumeScored
           ? 'Completed'
@@ -160,9 +163,9 @@ const RoundSidebarItem = ({
             No update since the scheduled time; may not have gone through.
           </span>
         )}
-        {booking?.link_expired && !isResumeScored && (
+        {linkExpired && !isResumeScored && (
           <span className="text-xs text-gray-500">
-            {booking.reinvite_count ?? 0} of {MAX_REINVITES} reinvites used
+            {reinvitesUsed} of {MAX_REINVITES} reinvites used
           </span>
         )}
         {!overdue && technicalFailure && (
