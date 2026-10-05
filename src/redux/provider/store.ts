@@ -11,6 +11,7 @@ import { orgApi } from '../../api/organization-service/orgApi';
 import { notifApi } from '../../api/notification-service/notifApi';
 import { jobApi } from '../../api/job-service/jobApi';
 import { aiApi } from '../../api/ai-service/aiApi';
+import { auditApi } from '../../api/audit-service/auditApi';
 
 export type RootState = ReturnType<typeof rootReducer>;
 
@@ -32,6 +33,7 @@ const middleware: Middleware[] = [
   notifApi.middleware,
   jobApi.middleware,
   aiApi.middleware,
+  auditApi.middleware,
 ];
 const store = configureStore({
   reducer: persistedReducer,

@@ -8,6 +8,7 @@ import { orgApi } from '../../api/organization-service/orgApi';
 import { notifApi } from '../../api/notification-service/notifApi';
 import { jobApi } from '../../api/job-service/jobApi';
 import { aiApi } from '../../api/ai-service/aiApi';
+import { auditApi } from '../../api/audit-service/auditApi';
 import LoginSlice from '../slices/loginSlice';
 import CompanyFilterSlice from '../slices/companyFilterSlice';
 import RoleFilterSlice from '../slices/roleFilterSlice';
@@ -45,6 +46,7 @@ const rootReducer = combineReducers({
   [notifApi.reducerPath]: notifApi.reducer,
   [jobApi.reducerPath]: jobApi.reducer,
   [aiApi.reducerPath]: aiApi.reducer,
+  [auditApi.reducerPath]: auditApi.reducer,
 });
 
 export default rootReducer;
