@@ -107,6 +107,26 @@ export type SubmitResumeUploadResult = { id: string };
 export type SubmitResumeUploadResponse = CandidatePublicEnvelope<SubmitResumeUploadResult>;
 
 // ---------------------------------------------------------------------------
+// SMS consent link — the "Get text updates" button in a recruiter-uploaded
+// candidate's application-received email. Same signed-token, no-login,
+// GET-details-then-POST shape as the resume-upload link, minus the file.
+// Unlike that link this token never expires; an invalid/tampered token is a
+// generic 404 on both endpoints.
+// ---------------------------------------------------------------------------
+
+export type SmsConsentLinkDetails = {
+  candidate_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  already_consented: boolean;
+};
+
+export type SmsConsentLinkDetailsResponse = CandidatePublicEnvelope<SmsConsentLinkDetails>;
+
+export type ConfirmSmsConsentResult = { candidate_id: string };
+export type ConfirmSmsConsentResponse = CandidatePublicEnvelope<ConfirmSmsConsentResult>;
+
+// ---------------------------------------------------------------------------
 // Intake Call slot picker (Path A, once a booking token exists)
 // ---------------------------------------------------------------------------
 
@@ -252,6 +272,25 @@ export const publicApplyApi = createApi({
       },
     }),
 
+    // GET /public/v1/apply/sms-consent?token=... — greet the candidate and
+    // tell whether they've already opted in.
+    getSmsConsentLinkDetails: build.query<SmsConsentLinkDetailsResponse, string>({
+      query: (token) => ({
+        url: '/apply/sms-consent',
+        params: { token },
+      }),
+    }),
+
+    // POST /public/v1/apply/sms-consent — JSON `{token}`. Idempotent: a
+    // repeat confirm just succeeds again.
+    confirmSmsConsent: build.mutation<ConfirmSmsConsentResponse, string>({
+      query: (token) => ({
+        url: '/apply/sms-consent',
+        method: 'POST',
+        body: { token },
+      }),
+    }),
+
     // GET /public/v1/apply/intake-call-slots?token=&date=&timezone=
     getIntakeCallSlots: build.query<IntakeCallSlotsResponse, GetIntakeCallSlotsArgs>({
       query: ({ token, date, timezone }) => ({
@@ -292,6 +331,8 @@ export const {
   useStartIntakeCallMutation,
   useGetResumeUploadLinkDetailsQuery,
   useSubmitResumeUploadMutation,
+  useGetSmsConsentLinkDetailsQuery,
+  useConfirmSmsConsentMutation,
   useGetIntakeCallSlotsQuery,
   useLazyGetIntakeCallSlotsQuery,
   useBookIntakeCallSlotMutation,

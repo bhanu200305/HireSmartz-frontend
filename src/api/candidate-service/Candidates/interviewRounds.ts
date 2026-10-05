@@ -237,10 +237,16 @@ const extendedApi = candidateApi.injectEndpoints({
       query: ({ candidateId, overridePendingInterviewerFeedback }) => ({
         url: `/candidates/${candidateId}/advance`,
         method: 'POST',
-        // 409 INTERVIEWER_FEEDBACK_PENDING otherwise (needed for AI-run rounds).
-        params: overridePendingInterviewerFeedback
-          ? { override_pending_interviewer_feedback: true }
-          : undefined,
+        params: {
+          // Advancing no longer waits on the Intake Call consistency check
+          // (2026-10-05 product decision, Intake Call made optional) — always
+          // push past candidate-service's 409 RESUME_CONSISTENCY_CHECK_PENDING.
+          override_pending_consistency_check: true,
+          // 409 INTERVIEWER_FEEDBACK_PENDING otherwise (needed for AI-run rounds).
+          ...(overridePendingInterviewerFeedback
+            ? { override_pending_interviewer_feedback: true }
+            : {}),
+        },
       }),
       invalidatesTags: (_result, _error, { candidateId }) => [
         { type: 'Candidate', id: candidateId },

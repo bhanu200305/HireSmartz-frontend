@@ -5,7 +5,10 @@ import { toast } from 'react-toastify';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { EnvironmentOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useStartIntakeCallMutation } from '../../api/candidate-service/PublicApply/index';
-import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
+import {
+  publicApplyPathFor,
+  useGetPublicJobQuery,
+} from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { PhoneNumberField, ResponsiveRecaptcha } from '../../components/shared';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
@@ -41,6 +44,14 @@ export const CareersInstantCallPage = () => {
     { organizationId: organizationId ?? '', jobId: jobId ?? '' },
     { skip: !organizationId || !jobId }
   );
+
+  // A job whose sequence has no Intake Call, or puts it after Resume uses the other apply path — the choice page
+  // routes there already; this catches a direct link or the back button.
+  useEffect(() => {
+    if (publicApplyPathFor(job) === 'resume') {
+      navigate(`/careers/${organizationId}/jobs/${jobId}/apply`, { replace: true });
+    }
+  }, [job, navigate, organizationId, jobId]);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');

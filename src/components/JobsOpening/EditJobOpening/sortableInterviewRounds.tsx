@@ -54,8 +54,12 @@ type SortableInterviewRoundsProps = {
   onEdit: (round: InterviewRound) => void;
   onDelete: (roundId: string | number) => void;
   isEditMode?: boolean;
-  // Round-type ids for fixed anchor rounds (Resume/Intake Call) that must stay in the top 2 slots.
+  // Round-type ids for anchor rounds (Resume, plus the optional Intake Call)
+  // that must lead the sequence — see `violatesAnchorPositions`.
   anchorRoundTypeIds?: Set<string>;
+  // Anchor round types that are optional (Intake Call): still pinned, but
+  // removable, so they keep a delete control. Never editable/retypeable.
+  removableAnchorRoundTypeIds?: Set<string>;
   // Variant display text, merged across round types.
   variantLabelOverrides?: Record<string, string>;
 };
@@ -67,6 +71,7 @@ export const SortableInterviewRounds = ({
   onDelete,
   isEditMode = false,
   anchorRoundTypeIds,
+  removableAnchorRoundTypeIds,
   variantLabelOverrides,
 }: SortableInterviewRoundsProps) => {
   const [items, setItems] = useState<InterviewRound[]>(rounds);
@@ -87,25 +92,28 @@ export const SortableInterviewRounds = ({
     }));
   };
 
-  /** Resume and Intake Call must always occupy the top 2 slots — either
-   * one may lead, but nothing else may be dragged ahead of both of them. */
+  /** The anchor rounds must fill the first slots: Resume alone is round 1;
+   * with the optional Intake Call, the two take rounds 1 and 2 in either
+   * order. Nothing else may be dragged ahead of them. */
   const violatesAnchorPositions = (candidate: InterviewRound[]) => {
     if (!anchorRoundTypeIds || anchorRoundTypeIds.size === 0) return false;
     const isAnchor = (round: InterviewRound) => anchorRoundTypeIds.has(String(round.round?.id));
     const anchorCount = candidate.filter(isAnchor).length;
     if (anchorCount === 0) return false;
-    const topSlots = candidate.slice(0, Math.min(2, candidate.length));
-    const anchorsInTopSlots = topSlots.filter(isAnchor).length;
-    return anchorsInTopSlots < Math.min(anchorCount, 2);
+    return !candidate.slice(0, anchorCount).every(isAnchor);
   };
 
   const handleDrop = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) return;
     const reordered = reorder(fromIndex, toIndex);
     if (violatesAnchorPositions(reordered)) {
+      const hasIntake = reordered.some((round) =>
+        removableAnchorRoundTypeIds?.has(String(round.round?.id))
+      );
       showToast({
-        message:
-          'Resume and Intake Call rounds must stay the top 2 rounds. They can swap places, but no other round can be moved ahead of them.',
+        message: hasIntake
+          ? 'Resume and Intake Call must stay rounds 1 and 2. They can swap places, but no other round can be moved ahead of them.'
+          : 'The Resume round must stay round 1. No other round can be moved ahead of it.',
         type: 'error',
       });
       return;
@@ -118,9 +126,10 @@ export const SortableInterviewRounds = ({
     const badge = getVariantBadge(round.variant, variantLabelOverrides);
     const BadgeIcon = badge?.icon;
     const summary = round.duration ? `${round.duration} min` : '';
-    // Resume and Intake Call are auto-seeded, locked anchor rounds — they
-    // can't be edited or removed, so their controls don't belong here.
+    // Anchor rounds are never edited/retyped here. Resume is mandatory, so it
+    // gets no controls at all; the optional Intake Call can still be deleted.
     const isAnchorRound = anchorRoundTypeIds?.has(String(round.round?.id)) ?? false;
+    const isRemovableAnchor = removableAnchorRoundTypeIds?.has(String(round.round?.id)) ?? false;
 
     return (
       <div
@@ -153,17 +162,19 @@ export const SortableInterviewRounds = ({
             <p className="text-sm text-neutral-500 mt-1 truncate">{round.description}</p>
           )}
         </div>
-        {!isAnchorRound && (
+        {(!isAnchorRound || isRemovableAnchor) && (
           <div className="flex items-center gap-4 shrink-0">
-            <Tooltip title="Edit Round">
-              <button
-                onClick={() => onEdit(round)}
-                className="text-neutral-500 hover:text-neutral-700 cursor-pointer"
-                aria-label="Edit round"
-              >
-                <MdEdit size={18} />
-              </button>
-            </Tooltip>
+            {!isAnchorRound && (
+              <Tooltip title="Edit Round">
+                <button
+                  onClick={() => onEdit(round)}
+                  className="text-neutral-500 hover:text-neutral-700 cursor-pointer"
+                  aria-label="Edit round"
+                >
+                  <MdEdit size={18} />
+                </button>
+              </Tooltip>
+            )}
             <Tooltip title="Delete Round">
               <button
                 className="text-gray-600 hover:text-red-600 cursor-pointer transition-colors"

@@ -132,10 +132,38 @@ const ChangeCandidateStatusModal = ({
           candidates.map((c) => c.id)
         ).unwrap();
         const byId = new Map(itemResults.map((r) => [r.candidate_id, r]));
+        // The Intake Call consistency check no longer gates advancing
+        // (2026-10-05). bulk-advance has no override for it, so push each
+        // candidate it held back through the single endpoint, which does.
+        const consistencyHeld = itemResults.filter(
+          (r) => r.outcome === 'failed' && r.failure_reason === 'resume_consistency_check_pending'
+        );
+        const pushedThrough = new Map<string, boolean>();
+        await Promise.all(
+          consistencyHeld.map(async (r) => {
+            try {
+              const res = await advanceCandidate({ candidateId: r.candidate_id }).unwrap();
+              pushedThrough.set(r.candidate_id, res.next_round !== null);
+            } catch {
+              // Leave it as the original per-item failure below.
+            }
+          })
+        );
         setResults(
           candidates.map((c) => {
             const name = candidateDisplayName(c);
             const item = byId.get(c.id);
+            const pushedHasNextRound = pushedThrough.get(c.id);
+            if (pushedHasNextRound !== undefined) {
+              return {
+                name,
+                ok: true,
+                detail: pushedHasNextRound
+                  ? 'Advanced to next round'
+                  : 'Completed final round, moved to Selected',
+                needsInvite: pushedHasNextRound,
+              };
+            }
             if (!item || item.outcome === 'failed') {
               const slug = item?.failure_reason ?? '';
               return {

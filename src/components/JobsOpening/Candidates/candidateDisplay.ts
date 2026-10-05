@@ -1,4 +1,7 @@
-import type { CandidateView } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
+import type {
+  CandidateDisplayStatus,
+  CandidateView,
+} from '../../../api/candidate-service/Candidates/CandidateLifecycle';
 import type { BadgeStatus } from '../../shared/ui/badge';
 
 // Split out of CandidatesListing.tsx so other candidate views can reuse the
@@ -107,3 +110,55 @@ const STATUS_TOOLTIP_BY_CODE: Record<string, string> = {
 
 export const candidateStatusTooltip = (statusCode: string | null | undefined): string | undefined =>
   STATUS_TOOLTIP_BY_CODE[(statusCode ?? '').toLowerCase()];
+
+/** The candidate list's four top-level states (candidate-service's
+ * `display_status`), in the order the status filter lists them. */
+export const CANDIDATE_DISPLAY_STATUS_OPTIONS: { value: CandidateDisplayStatus; label: string }[] =
+  [
+    { value: 'in_process', label: 'In Process' },
+    { value: 'selected', label: 'Selected' },
+    { value: 'rejected', label: 'Rejected' },
+    { value: 'withdrawn', label: 'Withdrawn' },
+  ];
+
+const DISPLAY_STATUS_LABEL = Object.fromEntries(
+  CANDIDATE_DISPLAY_STATUS_OPTIONS.map((o) => [o.value, o.label])
+) as Record<CandidateDisplayStatus, string>;
+
+// Same palette as the matching `status_code` colours above.
+const DISPLAY_STATUS_COLOR: Record<CandidateDisplayStatus, CandidateStatusColor> = {
+  in_process: CANDIDATE_STATUS_COLOR.interview_scheduled,
+  selected: CANDIDATE_STATUS_COLOR.selected,
+  rejected: CANDIDATE_STATUS_COLOR.rejected,
+  withdrawn: CANDIDATE_STATUS_COLOR.withdrawn,
+};
+
+const DISPLAY_STATUS_TOOLTIP: Record<CandidateDisplayStatus, string> = {
+  in_process: 'Still moving through the hiring rounds.',
+  selected: 'Selected for this role.',
+  rejected: 'Rejected from this job opening.',
+  withdrawn: 'Candidate withdrew their application.',
+};
+
+const REJECTED_STATUS_CODES = new Set(['rejected', 'resume_rejected', 'interview_rejected']);
+
+/** The row's `display_status`, or — for a candidate-service build that
+ * doesn't return it yet — the same four-way split derived from
+ * `status_code` (any rejection, withdrawn, selected, else in process). */
+export const resolveDisplayStatus = (c: CandidateView): CandidateDisplayStatus => {
+  if (c.display_status) return c.display_status;
+  const code = (c.status_code ?? '').toLowerCase();
+  if (REJECTED_STATUS_CODES.has(code)) return 'rejected';
+  if (code === 'withdrawn') return 'withdrawn';
+  if (code === 'selected') return 'selected';
+  return 'in_process';
+};
+
+export const candidateDisplayStatusLabel = (status: CandidateDisplayStatus): string =>
+  DISPLAY_STATUS_LABEL[status] ?? 'In Process';
+
+export const candidateDisplayStatusColor = (status: CandidateDisplayStatus): CandidateStatusColor =>
+  DISPLAY_STATUS_COLOR[status] ?? UNKNOWN_STATUS_COLOR;
+
+export const candidateDisplayStatusTooltip = (status: CandidateDisplayStatus): string | undefined =>
+  DISPLAY_STATUS_TOOLTIP[status];
