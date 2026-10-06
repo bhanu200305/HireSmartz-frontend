@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom';
 import { useSelector, shallowEqual } from 'react-redux';
-import { Col, Row, Tooltip, Checkbox } from 'antd';
+import { Col, Row, Tooltip, Checkbox, Dropdown } from 'antd';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
 import './candidatesListing.css';
@@ -15,7 +16,7 @@ import {
 } from 'react-icons/lu';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { IoArrowRedoOutline, IoChatbubbleEllipses } from 'react-icons/io5';
-import { MdClose, MdEdit, MdOutlineRemoveRedEye } from 'react-icons/md';
+import { MdArrowDropDown, MdClose, MdEdit, MdOutlineRemoveRedEye } from 'react-icons/md';
 import { FaEnvelope } from 'react-icons/fa';
 import { CommonCard, Button, Badge, showToast } from '../../shared';
 import MasterPagination from '../../shared/ui/MasterPagination';
@@ -41,7 +42,6 @@ import {
   type CandidateView,
   type ListCandidatesArgs,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
-import { useListCandidateInterviewScoresQuery } from '../../../api/candidate-service/Candidates/scoring';
 import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
 import AddCandidateModal from './Modal/AddCandidateModal';
@@ -49,6 +49,7 @@ import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
 import BulkSendSmsModal from './Modal/BulkSendSmsModal';
 import BulkScheduleInterviewsModal from './Modal/BulkScheduleInterviewsModal';
+import BulkAdvanceModal from './Modal/BulkAdvanceModal';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
@@ -59,7 +60,6 @@ import {
   candidateDisplayStatusColor,
   candidateDisplayStatusLabel,
   candidateDisplayStatusTooltip,
-  computeAverageScore,
   resolveDisplayStatus,
 } from './candidateDisplay';
 import { normaliseRoundStatus } from './roundProgress';
@@ -76,58 +76,21 @@ type SelectedMap = Record<string, boolean>;
 const buildCurrentSortKey = (sortBy: string, sortOrder: 'asc' | 'desc') =>
   sortOrder === 'desc' ? `-${sortBy}` : sortBy;
 
-// Same "Avg. score so far" figure as roundPipeline.ts's candidate
-// drill-down - the resume score plus every interview round's own score
-// (recruiter's if one was recorded, else the AI's), averaged together. Its
-// own component (not inlined in the row .map() below) because it needs a
-// per-candidate scores query - can't call a hook from inside a loop body.
-// No backend list endpoint returns this pre-aggregated, so it's one query
-// per visible row rather than a single bulk fetch; frontend-only change,
-// same tradeoff roundPipeline.ts already accepts per round.
-const CandidateAverageScoreCell = ({
-  candidateId,
-  resumeScore,
-}: {
-  candidateId: string;
-  resumeScore: number | null;
-}) => {
-  const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId);
-  // recruiter_score and the AI scores are all 0-5 (same as roundPipeline.ts).
-  const avgScore = computeAverageScore(resumeScore, scores);
-
-  if (avgScore === null) {
-    return <span className="text-sm text-neutral-400">—</span>;
-  }
+// The Avg. Score column shows the server's `average_score` (resume score plus
+// every interview score, recruiter's where one exists, one decimal; null when
+// the candidate has no scores yet).
+const CandidateAverageScoreCell = ({ average }: { average: number | null | undefined }) => {
+  if (average === null || average === undefined) return null;
   return (
-    <Badge dot={false} status={scoreBadgeStatus(avgScore)}>
-      {avgScore} / {AI_SCORE_MAX}
+    <Badge dot={false} status={scoreBadgeStatus(average)}>
+      {average} / {AI_SCORE_MAX}
     </Badge>
   );
 };
 
-// Reports one candidate's average score up to the list, so the Avg. Score
-// filter can hide rows outside the chosen band. Same cached scores query the
-// column's cell uses, so it costs no extra request. Only mounted while that
-// filter is active.
-const CandidateScoreProbe = ({
-  candidateId,
-  resumeScore,
-  onAverage,
-}: {
-  candidateId: string;
-  resumeScore: number | null;
-  onAverage: (candidateId: string, average: number | null) => void;
-}) => {
-  const { data: scores, isSuccess } = useListCandidateInterviewScoresQuery(candidateId);
-  const average = isSuccess ? computeAverageScore(resumeScore, scores ?? []) : undefined;
-  useEffect(() => {
-    if (average !== undefined) onAverage(candidateId, average);
-  }, [candidateId, average, onAverage]);
-  return null;
-};
-
-// With the Round filter or the Avg. Score sort on, the list loads up to 200
-// candidates (the API maximum) and is filtered, sorted and paged here.
+// With the Round filter or a browser-side sort (last name, status) on, the list
+// loads up to 200 candidates (the API maximum) and is filtered, sorted and
+// paged here.
 const CLIENT_PAGED_FETCH_LIMIT = 200;
 // Value of the Round filter's "Resume Screening" option (no round id exists).
 const RESUME_ROUND_FILTER = '__resume__';
@@ -148,18 +111,15 @@ const CandidatesListing = () => {
   const [displayStatus, setDisplayStatus] = useState<CandidateDisplayStatus | undefined>();
   const [source, setSource] = useState<string | undefined>();
   const [roundId, setRoundId] = useState<string | undefined>();
-  // Sorting by the Avg. Score column. The backend can't sort by it (the figure
-  // is worked out in the browser per candidate), so while it's active the list
-  // loads up to 200 candidates (the API maximum) and is sorted and paged here.
-  const [avgSortOrder, setAvgSortOrder] = useState<'asc' | 'desc' | null>(null);
-  const isClientPaged = Boolean(roundId) || Boolean(avgSortOrder);
-  // Average score per candidate on this page (filled by CandidateScoreProbe).
-  const [averages, setAverages] = useState<Record<string, number | null>>({});
-  const reportAverage = useCallback((candidateId: string, average: number | null) => {
-    setAverages((prev) =>
-      prev[candidateId] === average ? prev : { ...prev, [candidateId]: average }
-    );
-  }, []);
+  // Sorts the backend has no field for (last name, status) are applied here,
+  // over the same up-to-200 window as the Round filter.
+  const [clientSort, setClientSort] = useState<{
+    key: 'last_name' | 'status';
+    order: 'asc' | 'desc';
+  } | null>(null);
+  // What the Candidate Name header sorts by.
+  const [nameSortMode, setNameSortMode] = useState<'first' | 'last' | 'upload'>('first');
+  const isClientPaged = Boolean(roundId) || Boolean(clientSort);
   const [sortBy, setSortBy] = useState<NonNullable<ListCandidatesArgs['sortBy']>>('applied_date');
   const [sortOrder, setSortOrder] = useState<NonNullable<ListCandidatesArgs['sortOrder']>>('desc');
   const [page, setPage] = useState(0);
@@ -172,6 +132,7 @@ const CandidatesListing = () => {
   const [isBulkEmailOpen, setIsBulkEmailOpen] = useState(false);
   const [isBulkSmsOpen, setIsBulkSmsOpen] = useState(false);
   const [isBulkScheduleOpen, setIsBulkScheduleOpen] = useState(false);
+  const [isBulkAdvanceOpen, setIsBulkAdvanceOpen] = useState(false);
   // Per-row Actions column targets (view and edit are plain navigations).
   const [notesCandidate, setNotesCandidate] = useState<CandidateView | null>(null);
   const [emailCandidate, setEmailCandidate] = useState<CandidateView | null>(null);
@@ -308,27 +269,33 @@ const CandidatesListing = () => {
     });
   }, [fetchedItems, roundId, roundOptions]);
 
-  // Avg. Score sort: wait until every candidate's scores are in, then order
-  // by the average (not-scored candidates last either way). With either
-  // control active the list is paged here instead of by the server.
-  const isScoringPage = Boolean(avgSortOrder) && scopedItems.some((c) => !(c.id in averages));
   const sortedItems = useMemo(() => {
-    if (!avgSortOrder) return scopedItems;
-    const direction = avgSortOrder === 'asc' ? 1 : -1;
-    return [...scopedItems].sort((a, b) => {
-      const x = averages[a.id];
-      const y = averages[b.id];
-      if (x === y) return 0;
-      if (x === null || x === undefined) return 1;
-      if (y === null || y === undefined) return -1;
-      return (x - y) * direction;
-    });
-  }, [scopedItems, avgSortOrder, averages]);
+    if (clientSort) {
+      const dir = clientSort.order === 'asc' ? 1 : -1;
+      const roundIndex = (c: CandidateView) => {
+        const at = roundOptions.findIndex((o) => o.label === c.current_round_name);
+        return c.current_round_name ? (at >= 0 ? at + 1 : roundOptions.length + 1) : 0;
+      };
+      const keyOf = (c: CandidateView) =>
+        clientSort.key === 'last_name'
+          ? (c.last_name ?? '').trim().toLowerCase()
+          : candidateDisplayStatusLabel(resolveDisplayStatus(c)).toLowerCase();
+      return [...scopedItems].sort((a, b) => {
+        const x = keyOf(a);
+        const y = keyOf(b);
+        // Blank last names go last either way.
+        if (clientSort.key === 'last_name' && (!x || !y) && x !== y) return x ? -1 : 1;
+        const byKey = x.localeCompare(y) * dir;
+        if (byKey !== 0 || clientSort.key === 'last_name') return byKey;
+        return (roundIndex(a) - roundIndex(b)) * dir;
+      });
+    }
+    return scopedItems;
+  }, [scopedItems, clientSort, roundOptions]);
   const candidates = useMemo(() => {
     if (!isClientPaged) return fetchedItems;
-    if (isScoringPage) return [];
     return sortedItems.slice(page * pageSize, (page + 1) * pageSize);
-  }, [isClientPaged, fetchedItems, isScoringPage, sortedItems, page, pageSize]);
+  }, [isClientPaged, fetchedItems, sortedItems, page, pageSize]);
   const totalCandidates = isClientPaged ? sortedItems.length : (data?.total ?? 0);
   const selectedIds = Object.keys(selected).filter((cid) => selected[cid]);
   const selectedCount = selectedIds.length;
@@ -352,13 +319,30 @@ const CandidatesListing = () => {
 
   const clearSelection = () => setSelected({});
 
+  const applyNameSort = (mode: 'first' | 'last' | 'upload', direction: 'asc' | 'desc') => {
+    if (mode === 'last') {
+      setClientSort({ key: 'last_name', order: direction });
+    } else {
+      setClientSort(null);
+      // "Last upload" is newest-added first: the applied date is the only
+      // timestamp the list can sort by.
+      setSortBy(mode === 'first' ? 'name' : 'applied_date');
+      setSortOrder(direction);
+    }
+    setPage(0);
+  };
+
   const handleSort = (key: string, direction: SortDirection) => {
-    if (key === 'avg_score') {
-      setAvgSortOrder(direction ?? null);
+    if (key === 'name') {
+      applyNameSort(nameSortMode, direction ?? 'asc');
+      return;
+    }
+    if (key === 'status') {
+      setClientSort({ key: 'status', order: direction ?? 'asc' });
       setPage(0);
       return;
     }
-    setAvgSortOrder(null);
+    setClientSort(null);
     if (!direction) {
       setSortBy('applied_date');
       setSortOrder('desc');
@@ -409,10 +393,10 @@ const CandidatesListing = () => {
         sortBy,
         sortOrder,
       },
-      // Server order (not the Avg. Score order) is what Previous / Next follow.
-      index: isClientPaged
-        ? fetchedItems.indexOf(candidates[rowIndex])
-        : page * pageSize + rowIndex,
+      index: isClientPaged ? sortedItems.indexOf(candidates[rowIndex]) : page * pageSize + rowIndex,
+      // Browser-side sorts/filters: Previous / Next follow the exact order
+      // shown here, since the server can't reproduce it.
+      ...(isClientPaged ? { orderedIds: sortedItems.map((c) => c.id) } : {}),
     },
   });
 
@@ -546,21 +530,57 @@ const CandidatesListing = () => {
                 <COL
                   sortable
                   sortKey="name"
-                  currentSortKey={avgSortOrder ? '' : buildCurrentSortKey(sortBy, sortOrder)}
+                  currentSortKey={
+                    clientSort
+                      ? clientSort.key === 'last_name'
+                        ? buildCurrentSortKey('name', clientSort.order)
+                        : ''
+                      : sortBy === 'name'
+                        ? buildCurrentSortKey('name', sortOrder)
+                        : ''
+                  }
                   onSort={handleSort}
                   span={6}
                 >
-                  Candidate Name
+                  <span className="inline-flex items-center">
+                    Candidate Name
+                    <Dropdown
+                      trigger={['click']}
+                      menu={{
+                        selectedKeys: [nameSortMode],
+                        items: [
+                          { key: 'first', label: 'First Name' },
+                          { key: 'last', label: 'Last Name' },
+                          { key: 'upload', label: 'Last Upload' },
+                        ],
+                        onClick: ({ key, domEvent }) => {
+                          domEvent.stopPropagation();
+                          const mode = key as 'first' | 'last' | 'upload';
+                          setNameSortMode(mode);
+                          applyNameSort(mode, mode === 'upload' ? 'desc' : 'asc');
+                        },
+                      }}
+                    >
+                      <button
+                        type="button"
+                        aria-label="Choose what the name column sorts by"
+                        className="ml-1 flex cursor-pointer items-center rounded text-neutral-500 hover:text-black"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MdArrowDropDown size={18} />
+                      </button>
+                    </Dropdown>
+                  </span>
                 </COL>
-                {/* "Average score" is computed client-side per row (see
-                    CandidateAverageScoreCell), so this sort runs here, over up
-                    to 200 candidates (see avgSortOrder). Combine it with the
-                    Round filter to rank the candidates at one round. */}
+                {/* Sorted by the server (`sort_by=avg_score`), across every
+                    page; candidates with no average go last either way. */}
                 <COL
                   sortable
                   sortKey="avg_score"
                   currentSortKey={
-                    avgSortOrder ? buildCurrentSortKey('avg_score', avgSortOrder) : ''
+                    !clientSort && sortBy === 'avg_score'
+                      ? buildCurrentSortKey('avg_score', sortOrder)
+                      : ''
                   }
                   onSort={handleSort}
                   span={4}
@@ -570,13 +590,27 @@ const CandidatesListing = () => {
                 <COL
                   sortable
                   sortKey="applied_date"
-                  currentSortKey={avgSortOrder ? '' : buildCurrentSortKey(sortBy, sortOrder)}
+                  currentSortKey={
+                    clientSort || sortBy !== 'applied_date'
+                      ? ''
+                      : buildCurrentSortKey(sortBy, sortOrder)
+                  }
                   onSort={handleSort}
                   span={4}
                 >
                   Applied Date
                 </COL>
-                <COL span={6}>
+                <COL
+                  sortable
+                  sortKey="status"
+                  currentSortKey={
+                    clientSort?.key === 'status'
+                      ? buildCurrentSortKey('status', clientSort.order)
+                      : ''
+                  }
+                  onSort={handleSort}
+                  span={6}
+                >
                   <span>Status</span>
                 </COL>
                 <COL span={3}>
@@ -586,16 +620,7 @@ const CandidatesListing = () => {
             </div>
 
             <div className="w-full">
-              {avgSortOrder &&
-                scopedItems.map((c) => (
-                  <CandidateScoreProbe
-                    key={c.id}
-                    candidateId={c.id}
-                    resumeScore={c.resume_score}
-                    onAverage={reportAverage}
-                  />
-                ))}
-              {isLoading || isScoringPage ? (
+              {isLoading ? (
                 <Loader />
               ) : candidates.length > 0 ? (
                 candidates.map((candidate, rowIndex) => (
@@ -656,10 +681,7 @@ const CandidatesListing = () => {
                             </div>
                           </Col>
                           <Col span={4}>
-                            <CandidateAverageScoreCell
-                              candidateId={candidate.id}
-                              resumeScore={candidate.resume_score}
-                            />
+                            <CandidateAverageScoreCell average={candidate.average_score} />
                           </Col>
                           <Col span={4}>
                             <p className="text-sm text-neutral-900 roboto-font">
@@ -868,79 +890,79 @@ const CandidatesListing = () => {
         />
       </div>
 
-      {selectedCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 animate-slideUp">
-          <div className="flex justify-center w-full px-4 mb-4">
-            <div className="inline-flex max-w-[90vw] xl:max-w-[56rem] items-center justify-between gap-3 bg-white border border-[var(--border)] shadow-lg rounded-2xl p-4 md:p-6">
-              <div className="flex min-w-0 items-center gap-3 md:gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary">
-                    <span className="text-white text-xs font-semibold">{selectedCount}</span>
+      {/* Rendered on <body> so no scrolling/transformed parent can clip or
+          hide it when the page is scrolled to the bottom. */}
+      {selectedCount > 0 &&
+        createPortal(
+          <div className="fixed bottom-0 left-0 right-0 z-50 animate-slideUp">
+            <div className="flex justify-center w-full px-4 mb-4">
+              <div className="inline-flex max-w-[90vw] xl:max-w-[56rem] items-center justify-between gap-3 bg-white border border-[var(--border)] shadow-lg rounded-2xl p-4 md:p-6">
+                <div className="flex min-w-0 items-center gap-3 md:gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary">
+                      <span className="text-white text-xs font-semibold">{selectedCount}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold">Candidate(s)</span>
+                      <span className="text-sm font-semibold">Selected</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold">Candidate(s)</span>
-                    <span className="text-sm font-semibold">Selected</span>
-                  </div>
-                </div>
 
-                <div className="h-8 w-px bg-[var(--border)] hidden sm:block"></div>
+                  <div className="h-8 w-px bg-[var(--border)] hidden sm:block"></div>
 
-                <div className="flex min-w-0 flex-wrap items-center gap-2 md:gap-3">
-                  <Tooltip title="Open the candidate to advance: a rating and feedback are required for each round.">
-                    <span className="inline-flex">
-                      <Button
-                        className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-sm h-8 cursor-not-allowed opacity-50"
-                        disabled
-                      >
-                        <IoArrowRedoOutline size={16} /> Advance
-                      </Button>
-                    </span>
-                  </Tooltip>
-                  <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
-                    onClick={() => openStatusModal('reject', selectedCandidates)}
-                  >
-                    <LuThumbsDown size={16} />
-                    Reject
-                  </Button>
-                  <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
-                    onClick={() => openStatusModal('select', selectedCandidates)}
-                  >
-                    <LuThumbsUp size={16} /> Select
-                  </Button>
-                  <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
-                    onClick={() => setIsBulkEmailOpen(true)}
-                  >
-                    <LuMail size={16} /> Email
-                  </Button>
-                  <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
-                    onClick={() => setIsBulkSmsOpen(true)}
-                  >
-                    <IoChatbubbleEllipses size={16} /> SMS
-                  </Button>
-                  {canManageCandidates && (
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 md:gap-3">
+                    <Button
+                      className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
+                      onClick={() => setIsBulkAdvanceOpen(true)}
+                    >
+                      <IoArrowRedoOutline size={16} /> Advance
+                    </Button>
+                    <Button
+                      className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
+                      onClick={() => openStatusModal('reject', selectedCandidates)}
+                    >
+                      <LuThumbsDown size={16} />
+                      Reject
+                    </Button>
+                    <Button
+                      className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
+                      onClick={() => openStatusModal('select', selectedCandidates)}
+                    >
+                      <LuThumbsUp size={16} /> Select
+                    </Button>
                     <Button
                       className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
-                      onClick={() => setIsBulkScheduleOpen(true)}
+                      onClick={() => setIsBulkEmailOpen(true)}
                     >
-                      <LuCalendarPlus size={16} /> Schedule
+                      <LuMail size={16} /> Email
                     </Button>
-                  )}
+                    <Button
+                      className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
+                      onClick={() => setIsBulkSmsOpen(true)}
+                    >
+                      <IoChatbubbleEllipses size={16} /> SMS
+                    </Button>
+                    {canManageCandidates && (
+                      <Button
+                        className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
+                        onClick={() => setIsBulkScheduleOpen(true)}
+                      >
+                        <LuCalendarPlus size={16} /> Schedule
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                <Button
+                  className="cursor-pointer hover:text-gray-800 text-sm h-8 shrink-0"
+                  onClick={clearSelection}
+                >
+                  <MdClose size={22} />
+                </Button>
               </div>
-              <Button
-                className="cursor-pointer hover:text-gray-800 text-sm h-8 shrink-0"
-                onClick={clearSelection}
-              >
-                <MdClose size={22} />
-              </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {statusModal && (
         <ChangeCandidateStatusModal
@@ -956,6 +978,15 @@ const CandidatesListing = () => {
         open={isBulkEmailOpen}
         onClose={() => setIsBulkEmailOpen(false)}
         candidates={selectedCandidates}
+      />
+      <BulkAdvanceModal
+        open={isBulkAdvanceOpen}
+        onClose={() => setIsBulkAdvanceOpen(false)}
+        candidates={selectedCandidates}
+        onDone={() => {
+          clearSelection();
+          refetch();
+        }}
       />
       <BulkScheduleInterviewsModal
         open={isBulkScheduleOpen}

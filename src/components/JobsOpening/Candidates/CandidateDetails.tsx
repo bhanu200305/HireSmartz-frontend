@@ -200,6 +200,18 @@ const formatSectionKey = (key: string) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
+/** A category's non-blank reason phrases. */
+const sectionReasons = (reason: string[] | null | undefined): string[] =>
+  (reason ?? []).map((r) => r.trim()).filter(Boolean);
+
+/** One phrase as-is, two as "a and b", three as "a, b, and c". */
+const joinReasons = (reasons: string[]): string =>
+  reasons.length <= 1
+    ? (reasons[0] ?? '')
+    : reasons.length === 2
+      ? `${reasons[0]} and ${reasons[1]}`
+      : `${reasons.slice(0, -1).join(', ')}, and ${reasons[reasons.length - 1]}`;
+
 type TabKey = 'details' | 'assessment' | 'scheduling' | 'sms';
 
 // Sidebar entry shown when the pipeline has no resume-stage round of its own
@@ -402,6 +414,8 @@ const CandidateDetails = () => {
   const [isSkipOpen, setIsSkipOpen] = useState(false);
   const [isAssignJobOpen, setIsAssignJobOpen] = useState(false);
   const [isAiCommentExpanded, setIsAiCommentExpanded] = useState(false);
+  // The interview round Summary's own expand state (separate from the resume stage's).
+  const [isRoundSummaryExpanded, setIsRoundSummaryExpanded] = useState(false);
   const [skipReason, setSkipReason] = useState('');
   // Content-guardrail message from the server, shown under the feedback box.
   const [skipReasonError, setSkipReasonError] = useState<string | null>(null);
@@ -647,6 +661,11 @@ const CandidateDetails = () => {
           : pickedRound.interviewer_ids,
     };
   }, [pickedRound, liveRound]);
+
+  // A different round starts with its Summary collapsed.
+  useEffect(() => {
+    setIsRoundSummaryExpanded(false);
+  }, [selectedRound?.id]);
 
   // Assessment tab always has something selected in its sidebar, like the
   // old app (which opened on Resume Screening): the first round, or the
@@ -1042,7 +1061,7 @@ const CandidateDetails = () => {
 
   // Reinvite for a booking whose scheduling link hasn't been used yet,
   // expired or not (no longer gated on expiry, interview-service
-  // 2026-10-05): POST /bookings/{id}/reinvite, capped at MAX_REINVITES.
+  // 2026-10-05): POST /bookings/{id}/reinvite, capped at the booking's `max_reinvite_count` (fallback MAX_REINVITES).
   // PANEL carries the original roster forward.
   const runReinvite = async (bookingId: string | null | undefined, interviewerIds?: string[]) => {
     if (!bookingId) return;
@@ -1062,7 +1081,7 @@ const CandidateDetails = () => {
         showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
       } else if (code === 'MAX_REINVITES_EXCEEDED') {
         showToast({
-          message: `The maximum of ${MAX_REINVITES} reinvites has been used for this round.`,
+          message: `The maximum of ${selectedBooking?.max_reinvite_count ?? MAX_REINVITES} reinvites has been used for this round.`,
           type: 'error',
         });
         // Screen was out of date: reload the round's state.
@@ -1135,6 +1154,9 @@ const CandidateDetails = () => {
       const result = await skipInterviewRound({
         candidateId,
         reason: skipReason.trim(),
+        // The round this screen shows as current: a stale screen is refused
+        // (ROUND_ALREADY_ADVANCED) instead of skipping the wrong round.
+        expectedRoundId: currentRound?.id ?? null,
         // Skipping asks for a reason only; feedback is for advancing. The
         // backend's interviewer-feedback gate is for rounds that were run:
         // a deliberate skip, with its reason on record, passes it.
@@ -1153,6 +1175,18 @@ const CandidateDetails = () => {
       const serverMessage = getCandidateErrorMessage(e, '');
       // candidate-service's error body carries no machine code (see
       // candidateError.helpers), so the cases are told apart by status + message.
+      if (status === 409 && /already moved on/i.test(serverMessage)) {
+        // ROUND_ALREADY_ADVANCED: nothing was skipped. Bring the page up to date.
+        showToast({
+          message: 'This candidate has already moved on from that round. The page was refreshed.',
+          type: 'info',
+        });
+        setIsSkipOpen(false);
+        resetSkipForm();
+        void refetchRounds();
+        refetchCandidate();
+        return;
+      }
       if (status === 422 && /guidelines|content/i.test(serverMessage)) {
         // Show the content-check message under the reason box.
         setSkipReasonError(serverMessage);
@@ -2046,14 +2080,14 @@ const CandidateDetails = () => {
                         );
                         const barClass =
                           pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-danger';
-                        return (
+                        const reasons = sectionReasons(section.reason);
+                        const row = (
                           <div
-                            key={section.key}
-                            className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm"
+                            className={`grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm ${reasons.length > 0 ? 'cursor-help' : ''}`}
                           >
                             <span
                               className="truncate text-gray-800"
-                              title={formatSectionKey(section.key)}
+                              title={reasons.length > 0 ? undefined : formatSectionKey(section.key)}
                             >
                               {formatSectionKey(section.key)}
                             </span>
@@ -2068,6 +2102,24 @@ const CandidateDetails = () => {
                             </span>
                           </div>
                         );
+                        // No reasons for this category: no tooltip at all.
+                        return reasons.length > 0 ? (
+                          <Tooltip
+                            key={section.key}
+                            placement="topLeft"
+                            title={
+                              <ul className="m-0 list-disc space-y-1 pl-4 text-xs">
+                                {reasons.map((reason, i) => (
+                                  <li key={i}>{reason}</li>
+                                ))}
+                              </ul>
+                            }
+                          >
+                            {row}
+                          </Tooltip>
+                        ) : (
+                          <div key={section.key}>{row}</div>
+                        );
                       })}
                     </div>
                   </RoundCollapsibleSection>
@@ -2075,9 +2127,19 @@ const CandidateDetails = () => {
 
               {selectedRoundScore?.scoring_reason && !selectedRoundIsIntakeCall && (
                 <RoundCollapsibleSection title="Summary">
-                  <p className="text-sm leading-relaxed text-gray-600">
-                    {selectedRoundScore.scoring_reason}
-                  </p>
+                  <AiCommentsBox
+                    bullets={(selectedRoundScore.section_scores ?? [])
+                      .map((section) => {
+                        const reasons = sectionReasons(section.reason);
+                        return reasons.length > 0
+                          ? `${formatSectionKey(section.key)}: ${joinReasons(reasons)}`
+                          : '';
+                      })
+                      .filter(Boolean)}
+                    text={selectedRoundScore.scoring_reason ?? ''}
+                    expanded={isRoundSummaryExpanded}
+                    onToggle={() => setIsRoundSummaryExpanded((v) => !v)}
+                  />
                 </RoundCollapsibleSection>
               )}
 

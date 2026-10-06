@@ -33,6 +33,11 @@ const ALLOWED_TYPES = [
 const MAX_SIZE_MB = 5;
 const POLL_INTERVAL_MS = 3000;
 const AUTO_CLOSE_DELAY_MS = 1500;
+// No change in parsed_files for this long: stop spinning and tell the user the
+// rest is still being processed in the background.
+const STALL_TIMEOUT_MS = 2 * 60 * 1000;
+// Consecutive failed progress requests before treating the batch the same way.
+const MAX_FAILED_POLLS = 3;
 
 type BulkResumeUploadPanelProps = {
   /** Fires once parsing finishes (not merely once the files are accepted) —
@@ -53,13 +58,61 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   const tenantId = useSessionTenantId();
   const [bulkUploadResumes, { isLoading: isUploading }] = useBulkUploadResumesMutation();
 
-  const { data: batchProgress } = useGetBatchProgressQuery(batchId ?? '', {
+  // The batch whose screen was given up on (no progress for STALL_TIMEOUT_MS,
+  // or the progress request kept failing). Keyed by batch id so a new upload
+  // starts clean.
+  const [stalledBatchId, setStalledBatchId] = useState<string | null>(null);
+  const isStalled = !!batchId && stalledBatchId === batchId;
+  const failedPollsRef = useRef(0);
+
+  // Declared before the query so the polling interval can depend on it; set
+  // from the query result below.
+  const [isFinished, setIsFinished] = useState(false);
+
+  const {
+    data: batchProgress,
+    error: pollError,
+    fulfilledTimeStamp,
+  } = useGetBatchProgressQuery(batchId ?? '', {
     skip: !batchId,
-    pollingInterval: batchId ? POLL_INTERVAL_MS : 0,
+    // Stops once the batch is done or given up on.
+    pollingInterval: batchId && !isFinished && !isStalled ? POLL_INTERVAL_MS : 0,
   });
 
-  const isProcessing =
-    !!batchId && !!batchProgress && batchProgress.parsed_files < batchProgress.valid_files;
+  // Done on ANY real completion signal: the batch's own status, no uploaded
+  // item with a candidate left to parse, or every valid file parsed.
+  const items = batchProgress?.items ?? [];
+  const finished =
+    !!batchId &&
+    !!batchProgress &&
+    (batchProgress.status === 'completed' ||
+      (items.length > 0 && !items.some((i) => i.candidate_id && i.status === 'uploaded')) ||
+      batchProgress.parsed_files >= batchProgress.valid_files);
+  useEffect(() => {
+    setIsFinished(finished);
+  }, [finished]);
+  const isProcessing = !!batchId && !finished && !isStalled;
+  const failedItems = items.filter((i) => i.status === 'failed');
+
+  // A poll that keeps failing is treated like a stall (not "Starting…" forever).
+  useEffect(() => {
+    failedPollsRef.current = 0;
+  }, [fulfilledTimeStamp]);
+  useEffect(() => {
+    if (!pollError || !batchId) return;
+    failedPollsRef.current += 1;
+    if (failedPollsRef.current >= MAX_FAILED_POLLS) setStalledBatchId(batchId);
+  }, [pollError, batchId]);
+
+  // No change in `parsed_files` for STALL_TIMEOUT_MS: stop spinning. Re-armed
+  // whenever the count moves (and from the start, so a batch that never reports
+  // anything is covered too).
+  const parsedFiles = batchProgress?.parsed_files;
+  useEffect(() => {
+    if (!batchId || finished || isStalled) return;
+    const timer = setTimeout(() => setStalledBatchId(batchId), STALL_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [batchId, parsedFiles, finished, isStalled]);
 
   // `onCompleted`/`onDone` come from `AddCandidateModal` as inline
   // functions (`onDone={handleClose}`, `onCompleted={() =>
@@ -123,16 +176,30 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   // the correct, already-scheduled timer, and with the guard now blocking
   // a replacement, nothing ever rescheduled it: onDone() never fired, so
   // the "Done, you can close this now." message just sat there forever.
+  //
+  // Only a batch where everything succeeded closes itself. One with failed
+  // files, or one given up on, stays open (with its list / message) until the
+  // user presses Close; the list is refreshed either way.
   useEffect(() => {
-    if (!batchId || !batchProgress || isProcessing || completedBatchId === batchId) return;
+    if (!batchId || isProcessing || completedBatchId === batchId) return;
+    if (!finished && !isStalled) return;
     onCompletedRef.current();
     setCompletedBatchId(batchId);
-    closeTimerRef.current = setTimeout(() => {
-      setFiles([]);
-      setBatchId(null);
-      onDoneRef.current();
-    }, AUTO_CLOSE_DELAY_MS);
-  }, [batchId, batchProgress, isProcessing, completedBatchId]);
+    if (finished && failedItems.length === 0) {
+      closeTimerRef.current = setTimeout(() => {
+        setFiles([]);
+        setBatchId(null);
+        onDoneRef.current();
+      }, AUTO_CLOSE_DELAY_MS);
+    }
+  }, [batchId, isProcessing, finished, isStalled, failedItems.length, completedBatchId]);
+
+  const handleClose = () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    setFiles([]);
+    setBatchId(null);
+    onDoneRef.current();
+  };
 
   const handleFileSelect = (selectedFiles: File[]) => {
     const accepted: File[] = [];
@@ -204,14 +271,48 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   if (batchId) {
     return (
       <div className="flex flex-col items-center gap-3 py-6">
-        <Spin size="large" />
-        <p className="text-sm text-gray-600 text-center">
-          {batchProgress
-            ? `Processed ${batchProgress.parsed_files} of ${batchProgress.valid_files} resume(s)…`
-            : 'Starting…'}
-        </p>
-        {!isProcessing && batchProgress && (
+        {isProcessing && <Spin size="large" />}
+        {(batchProgress || isProcessing) && (
+          <p className="text-sm text-gray-600 text-center">
+            {batchProgress
+              ? `Processed ${batchProgress.parsed_files} of ${batchProgress.valid_files} resume(s)${isProcessing ? '…' : '.'}`
+              : 'Starting…'}
+          </p>
+        )}
+        {finished && (
           <p className="text-sm font-semibold text-green-600">Done, you can close this now.</p>
+        )}
+        {!finished && isStalled && (
+          <p className="text-sm text-center text-gray-600">
+            Some resumes are still being processed in the background. You can close this and check
+            the candidate list shortly.
+          </p>
+        )}
+        {finished && failedItems.length > 0 && (
+          <div className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+            <p className="mb-1 text-sm font-semibold text-red-700">
+              {failedItems.length === 1
+                ? '1 resume could not be added:'
+                : `${failedItems.length} resumes could not be added:`}
+            </p>
+            <ul className="m-0 max-h-40 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-red-700">
+              {failedItems.map((item, i) => (
+                <li key={`${item.filename}-${i}`}>
+                  <span className="font-semibold">{item.filename}</span>
+                  {item.error_message ? `: ${item.error_message}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {(isStalled || (finished && failedItems.length > 0)) && (
+          <Button
+            type="button"
+            onClick={handleClose}
+            className="mt-1 w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white"
+          >
+            CLOSE
+          </Button>
         )}
       </div>
     );

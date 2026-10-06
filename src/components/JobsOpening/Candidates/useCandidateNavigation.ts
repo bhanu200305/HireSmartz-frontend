@@ -18,6 +18,10 @@ export type CandidateNavState = {
     args: CandidateListNavArgs;
     /** Absolute position in the full (unpaginated) list. */
     index: number;
+    /** Candidate ids in the exact order shown, when the list is sorted or
+     * narrowed in the browser (Status, Last Name, Avg. Score, Round filter)
+     * and the server can't reproduce that order. */
+    orderedIds?: string[];
   };
 };
 
@@ -43,11 +47,44 @@ export const useCandidateNavigation = (candidateId?: string, jobOpeningId?: stri
   const knownIndex = navState?.index ?? 0;
   const offset = Math.max(0, Math.floor(knownIndex / HALF_WINDOW) * HALF_WINDOW - HALF_WINDOW / 2);
 
+  const orderedIds = navState?.orderedIds;
   const hasScope = Boolean(args.jobOpeningId || navState);
   const { data, isFetching } = useListCandidatesQuery(
     { ...args, limit: WINDOW, offset },
-    { skip: !candidateId || !hasScope }
+    { skip: !candidateId || !hasScope || Boolean(orderedIds) }
   );
+
+  // The list's own on-screen order was handed over: step through it directly.
+  if (orderedIds) {
+    const at = candidateId ? orderedIds.indexOf(candidateId) : -1;
+    const goToId = (targetId: string | undefined, targetIndex: number, tab?: string) => {
+      const jobId = args.jobOpeningId ?? jobOpeningId;
+      if (!targetId || !jobId) return;
+      navigate(
+        {
+          pathname: buildCandidateDetailsPath(jobId, targetId),
+          search: tab ? `?tab=${encodeURIComponent(tab)}` : '',
+        },
+        {
+          state: {
+            ...(location.state as object | null),
+            candidateNav: { args, index: targetIndex, orderedIds },
+          },
+          replace: true,
+        }
+      );
+    };
+    return {
+      isReady: at >= 0,
+      isFetching: false,
+      position: at >= 0 ? at + 1 : null,
+      total: orderedIds.length,
+      hasPrev: at > 0,
+      hasNext: at >= 0 && at < orderedIds.length - 1,
+      goPrev: (tab?: string) => goToId(orderedIds[at - 1], at - 1, tab),
+      goNext: (tab?: string) => goToId(orderedIds[at + 1], at + 1, tab),
+    };
+  }
 
   const items = data?.items ?? [];
   const position = items.findIndex((c) => c.id === candidateId);

@@ -1,7 +1,6 @@
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
 import {
-  MAX_REINVITES,
   useGetBookingQuery,
   useGetInterviewerCalendarStatusQuery,
   useGetInterviewersCalendarStatusQuery,
@@ -122,7 +121,7 @@ const RoundSidebarItem = ({
     ['no_show', 'ai_no_show', 'interviewer_no_show'].includes(normaliseRoundStatus(round.status));
   const rescheduleRequested =
     isVoiceCallRound && booking?.call_intent === 'reschedule_requested' && !isRoundSkipped(round);
-  const { reinvitesUsed, linkExpired } = roundReinviteState(round, booking);
+  const { reinvitesUsed, maxReinvites, linkExpired } = roundReinviteState(round, booking);
 
   // Side-bar colour = the round's state: green done, amber current stage,
   // grey upcoming, red needs attention (overdue / technical failure).
@@ -197,7 +196,7 @@ const RoundSidebarItem = ({
         )}
         {linkExpired && !isResumeScored && (
           <span className="text-xs text-gray-500">
-            {reinvitesUsed} of {MAX_REINVITES} reinvites used
+            {reinvitesUsed} of {maxReinvites} reinvites used
           </span>
         )}
         {!overdue && technicalFailure && (

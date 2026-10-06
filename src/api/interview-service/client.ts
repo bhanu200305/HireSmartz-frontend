@@ -36,7 +36,7 @@ export const CONCLUDED_BOOKING_STATUSES: BookingStatus[] = [
   'ai_no_show',
   'failed',
 ];
-export type FeedbackRecommendation = 'strong_yes' | 'yes' | 'no' | 'strong_no';
+export type FeedbackRecommendation = 'strong_yes' | 'yes' | 'neutral' | 'no' | 'strong_no';
 export type InterviewAuth = 'platform' | 'public' | 'booking-link';
 
 /** Frozen copy of the job-service round definition taken when the booking
@@ -88,12 +88,15 @@ export interface BookingView {
    * ~24h after the last one). `true` means a Reinvite is offered. Added with
    * the 2026-10-04 reinvite change; absent on older responses. */
   link_expired?: boolean;
-  /** Reinvites already used for this booking, out of `MAX_REINVITES`. */
+  /** Reinvites already used for this booking, out of `max_reinvite_count`. */
   reinvite_count?: number;
+  /** The live server limit on reinvites; absent on older responses (use
+   * `MAX_REINVITES`). */
+  max_reinvite_count?: number;
 }
 
-/** Fixed cap on `POST /bookings/{id}/reinvite` (409 `MAX_REINVITES_EXCEEDED`
- * past it) — the backend doesn't send the cap, so it lives here. */
+/** Fallback cap on `POST /bookings/{id}/reinvite` (409 `MAX_REINVITES_EXCEEDED`
+ * past it), used only when a booking response carries no `max_reinvite_count`. */
 export const MAX_REINVITES = 3;
 
 /** `POST /bookings`'s own response, on top of the plain `BookingView` every

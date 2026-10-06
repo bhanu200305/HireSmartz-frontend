@@ -1,4 +1,5 @@
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
+import { MAX_REINVITES } from '../../../api/interview-service/client';
 
 // Shared by RoundSidebarItem.tsx (the Assessment round tabs) and CandidateDetails.tsx
 // (the round drill-down a card click opens) so a round is never labeled one
@@ -80,8 +81,10 @@ export const formatRoundVariant = (variant: string | null | undefined): string |
  * responses. One source of truth for every card that shows them. */
 export const roundReinviteState = (
   round: Pick<CandidateInterviewRoundView, 'reinvite_count' | 'scheduling_link_expired'>,
-  booking?: { reinvite_count?: number; link_expired?: boolean } | null
+  booking?: { reinvite_count?: number; max_reinvite_count?: number; link_expired?: boolean } | null
 ) => ({
   reinvitesUsed: round.reinvite_count ?? booking?.reinvite_count ?? 0,
+  // The server's live limit (3 until it says otherwise).
+  maxReinvites: booking?.max_reinvite_count ?? MAX_REINVITES,
   linkExpired: round.scheduling_link_expired ?? booking?.link_expired === true,
 });

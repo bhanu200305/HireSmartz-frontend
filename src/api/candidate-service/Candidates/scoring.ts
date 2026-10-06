@@ -57,7 +57,9 @@ export type CandidateInterviewScoreView = {
    * `[{ key: "communication", score: 4 }, ...]`. `null` on rows scored
    * before this field existed on the wire (candidate-service 2026-09-14);
    * `[]` when ai-service computed no sections for that round. */
-  section_scores: { key: string; score: number }[] | null;
+  /** `reason`: up to 3 short phrases behind the score; null/missing for rounds
+   * scored before this was stored, or a category with none. */
+  section_scores: { key: string; score: number; reason?: string[] | null }[] | null;
   /** Which `CandidateInterviewRoundView.id` this score belongs to. Nullable:
    * interview-service can score a booking that was never planned, and
    * scores recorded before the round-link column existed have no round to
@@ -211,6 +213,9 @@ const extendedApi = candidateApi.injectEndpoints({
   }),
   overrideExisting: false,
 });
+
+// For imperative fetches outside a component (the bulk Advance loop).
+export const scoringEndpoints = extendedApi.endpoints;
 
 export const {
   useRecordResumeReviewMutation,

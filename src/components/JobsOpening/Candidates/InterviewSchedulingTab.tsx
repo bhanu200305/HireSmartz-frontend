@@ -12,7 +12,6 @@ import {
   useGetInterviewerCalendarStatusQuery,
   useGetInterviewersCalendarStatusQuery,
   CONCLUDED_BOOKING_STATUSES,
-  MAX_REINVITES,
 } from '../../../api/interview-service/client';
 import { roundLabel, roundReinviteState } from './roundDisplay';
 import {
@@ -216,7 +215,8 @@ const RoundCard = ({
   const reinviteState = roundReinviteState(round, booking);
   const linkExpired = Boolean(bookingId) && reinviteState.linkExpired;
   const reinvitesUsed = reinviteState.reinvitesUsed;
-  const reinvitesLeft = Math.max(0, MAX_REINVITES - reinvitesUsed);
+  const maxReinvites = reinviteState.maxReinvites;
+  const reinvitesLeft = Math.max(0, maxReinvites - reinvitesUsed);
   const reinvitesExhausted = reinvitesLeft === 0;
 
   // First invite: only for a round that has BECOME DUE (`to_be_scheduled`:
@@ -280,8 +280,8 @@ const RoundCard = ({
       : bookingLoading
         ? 'Checking the invitation…'
         : reinvitesExhausted
-          ? `Reinvite limit reached (${MAX_REINVITES} of ${MAX_REINVITES}).`
-          : `Send a new invitation link (${reinvitesLeft} of ${MAX_REINVITES} left)`;
+          ? `Reinvite limit reached (${maxReinvites} of ${maxReinvites}).`
+          : `Send a new invitation link (${reinvitesLeft} of ${maxReinvites} left)`;
 
   const statusLabel = <span className={`text-xs font-semibold ${header.text}`}>{status}</span>;
 
@@ -322,7 +322,7 @@ const RoundCard = ({
               <LuClock size={16} className="mr-2" aria-hidden />
               <span>
                 At {formatTime(invitedAt)}
-                {reinvitesUsed > 0 && ` · Reinvited ${reinvitesUsed}/${MAX_REINVITES}`}
+                {reinvitesUsed > 0 && ` · Reinvited ${reinvitesUsed}/${maxReinvites}`}
               </span>
               {bookingId && (
                 <Tooltip

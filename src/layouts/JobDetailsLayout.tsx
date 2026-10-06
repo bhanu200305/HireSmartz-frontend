@@ -253,16 +253,23 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   return (
     <div className="flex flex-col items-center px-4 mt-4 w-full">
       <div className="w-full max-w-6xl mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <BackButton
-          onClick={handleBackNavigation}
-          label={
-            returnTo
-              ? (returnState?.returnLabel ?? 'Back')
-              : isCandidateDetailsPage
-                ? 'Back to Candidate List'
-                : 'Back'
-          }
-        />
+        {/* On a candidate's page the two back links stack on the left:
+            Job Openings above, Candidate List below. */}
+        <div className="flex flex-col items-start gap-0.5">
+          {isCandidateDetailsPage && (
+            <BackButton onClick={() => navigate('/jobs')} label="Back to Job Openings" />
+          )}
+          <BackButton
+            onClick={handleBackNavigation}
+            label={
+              returnTo
+                ? (returnState?.returnLabel ?? 'Back')
+                : isCandidateDetailsPage
+                  ? 'Back to Candidate List'
+                  : 'Back'
+            }
+          />
+        </div>
         <div ref={setHeaderSlot} className="flex items-center empty:hidden" />
       </div>
       <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">

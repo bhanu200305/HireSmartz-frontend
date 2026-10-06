@@ -78,6 +78,7 @@ type ChangeCandidateStatusModalProps = {
 const RECOMMENDATION_OPTIONS: { value: InterviewerRecommendation; label: string }[] = [
   { value: 'strong_yes', label: 'Strong Yes' },
   { value: 'yes', label: 'Yes' },
+  { value: 'neutral', label: 'Neutral' },
   { value: 'no', label: 'No' },
   { value: 'strong_no', label: 'Strong No' },
 ];

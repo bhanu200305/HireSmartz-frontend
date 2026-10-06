@@ -68,6 +68,7 @@ type PendingAction = 'cancel' | 'skip' | 'status' | 'substitute' | null;
 const RECOMMENDATION_OPTIONS: Array<{ label: string; value: FeedbackRecommendation }> = [
   { label: 'Strong Yes', value: 'strong_yes' },
   { label: 'Yes', value: 'yes' },
+  { label: 'Neutral', value: 'neutral' },
   { label: 'No', value: 'no' },
   { label: 'Strong No', value: 'strong_no' },
 ];

@@ -112,7 +112,7 @@ export type CandidateInterviewRoundView = {
 /** The interviewer's verdict that can ride along with ADVANCE
  * (`AdvanceCandidateRequest.interviewer_feedback`). Recorded only if the
  * current round has no interviewer feedback yet. */
-export type InterviewerRecommendation = 'strong_yes' | 'yes' | 'no' | 'strong_no';
+export type InterviewerRecommendation = 'strong_yes' | 'yes' | 'neutral' | 'no' | 'strong_no';
 export type AdvanceInterviewerFeedback = {
   recommendation: InterviewerRecommendation;
   notes: string;
@@ -223,6 +223,10 @@ export type SkipInterviewRoundArgs = {
   feedback?: string;
   /** Push past a 409 INTERVIEWER_FEEDBACK_PENDING (the interviewer hasn't submitted yet). */
   overridePendingInterviewerFeedback?: boolean;
+  /** The round the screen shows as current. A stale screen (the candidate
+   * already moved past it) gets 409 ROUND_ALREADY_ADVANCED and nothing is
+   * skipped, the same guard Advance has. */
+  expectedRoundId?: string | null;
 };
 
 /** `invite_sent: false` means this call was treated as a duplicate click (the
@@ -327,12 +331,19 @@ const extendedApi = candidateApi.injectEndpoints({
     // next becomes due" shape as advance, just requires a reason and is
     // recorded as a skip rather than a completion.
     skipInterviewRound: build.mutation<SkipInterviewRoundResultView, SkipInterviewRoundArgs>({
-      query: ({ candidateId, reason, feedback, overridePendingInterviewerFeedback }) => ({
+      query: ({
+        candidateId,
+        reason,
+        feedback,
+        overridePendingInterviewerFeedback,
+        expectedRoundId,
+      }) => ({
         url: `/candidates/${candidateId}/skip-round`,
         method: 'POST',
         body: {
           reason,
           ...(feedback ? { feedback } : {}),
+          ...(expectedRoundId ? { expected_round_id: expectedRoundId } : {}),
           ...(overridePendingInterviewerFeedback
             ? { override_pending_interviewer_feedback: true }
             : {}),
@@ -395,6 +406,9 @@ const extendedApi = candidateApi.injectEndpoints({
   }),
   overrideExisting: false,
 });
+
+// For imperative fetches outside a component (the bulk Advance loop).
+export const interviewRoundsEndpoints = extendedApi.endpoints;
 
 export const {
   useListCandidateInterviewRoundsQuery,

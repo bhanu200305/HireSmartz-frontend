@@ -47,6 +47,9 @@ export type CandidateView = {
 
   /** ai-service's verdict on the resume vs. the job — never edited by a recruiter. */
   resume_score: number | null;
+  /** Average of the resume score and every interview score (recruiter's where
+   * one exists), one decimal; null until the candidate has any score. */
+  average_score?: number | null;
   scoring_reason: string | null;
   /** Per-criterion breakdown behind `resume_score` — `[{ key: 'SKILLS_MATCH', score: 4 }, ...]`,
    * each 0-5. `null` for candidates scored before candidate-service stored it. */
@@ -137,7 +140,7 @@ export type ListCandidatesArgs = {
   appliedFrom?: string;
   appliedTo?: string;
   roundId?: string;
-  sortBy?: 'applied_date' | 'resume_score' | 'name';
+  sortBy?: 'applied_date' | 'resume_score' | 'name' | 'avg_score';
   sortOrder?: 'asc' | 'desc';
   limit?: number;
   offset?: number;

@@ -5,6 +5,7 @@ import {
   restrictPhoneDigitsForCountry,
   toE164,
   splitE164,
+  splitStoredPhone,
   phoneWithCountry,
   PHONE_VALIDATION_MESSAGE,
 } from '../../src/shared/utils/validation/phoneValidation';
@@ -151,5 +152,31 @@ describe('phoneWithCountry (zod superRefine)', () => {
     );
 
     expect(issues).toEqual([]);
+  });
+});
+
+describe('splitStoredPhone', () => {
+  it('never invents a country code for a number written without one', () => {
+    expect(splitStoredPhone('(555) 014-7823')).toEqual({
+      countryCode: '',
+      phoneNumber: '5550147823',
+    });
+  });
+
+  it('splits a number that carries its country code', () => {
+    expect(splitStoredPhone('+919876543210')).toEqual({
+      countryCode: '+91',
+      phoneNumber: '9876543210',
+    });
+  });
+
+  it('reads a 00 prefix as +', () => {
+    expect(splitStoredPhone('00919876543210')).toEqual(splitStoredPhone('+919876543210'));
+  });
+
+  it('returns empty fields for a missing value', () => {
+    expect(splitStoredPhone(null)).toEqual({ countryCode: '', phoneNumber: '' });
+    expect(splitStoredPhone(undefined)).toEqual({ countryCode: '', phoneNumber: '' });
+    expect(splitStoredPhone('')).toEqual({ countryCode: '', phoneNumber: '' });
   });
 });
