@@ -14,6 +14,7 @@ export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   cancelled: 'Canceled',
   no_show: 'No-show',
   interviewer_no_show: 'Interviewer no-show',
+  ai_no_show: 'AI no-show',
   failed: 'Failed',
   rescheduled: 'Rescheduled',
 };
@@ -28,6 +29,8 @@ export const BOOKING_STATUS_BADGE: Record<BookingStatus, BadgeStatus> = {
   // the company's failure, not the candidate's, and the two must never read
   // as the same status at a glance.
   interviewer_no_show: 'info',
+  // The AI interviewer never joined: the company's side, like the interviewer no-show.
+  ai_no_show: 'info',
   failed: 'danger',
   rescheduled: 'warning',
 };

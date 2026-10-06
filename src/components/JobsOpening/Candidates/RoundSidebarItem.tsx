@@ -18,6 +18,7 @@ import { AI_SCORE_MAX, BUCKET_META, HUMAN_SCORE_MAX } from './roundPipeline';
 import {
   roundLabel,
   formatRoundStatus,
+  formatCallIntent,
   roundReinviteState,
   roundStatusLabel,
 } from './roundDisplay';
@@ -77,7 +78,14 @@ const RoundSidebarItem = ({
   // calendar (`try_create_panel_scheduling_link`, interview-service).
   const { data: calendarStatus } = useGetInterviewerCalendarStatusQuery(
     round.interview_booking_id ?? '',
-    { skip: !round.interview_booking_id || !isPanelRound }
+    {
+      skip: !round.interview_booking_id || !isPanelRound,
+      // A calendar connecting / disconnecting shows within about 15 seconds,
+      // the same cadence as the scheduling card and the picker.
+      pollingInterval: 15_000,
+      skipPollingIfUnfocused: true,
+      refetchOnFocus: true,
+    }
   );
   // Before an invite exists, the picked roster (`interviewer_ids`) is
   // resolved against the job-level calendar-status endpoint instead — same
@@ -103,6 +111,17 @@ const RoundSidebarItem = ({
   const isBlockedOnCalendar =
     isPanelRound && booking?.status === 'draft' && missingCalendarCount > 0;
   const technicalFailure = booking?.call_intent === 'technical_failure';
+  // The candidate asked for a new time on a phone / video round: its coarse
+  // status still reads Completed, so the booking's call outcome is what says so.
+  // No-show from the booking too (the round's own status can lag it, and the
+  // AI Video `ai_no_show` has no round-status label of its own).
+  const isNoShow =
+    booking?.status === 'no_show' ||
+    booking?.status === 'ai_no_show' ||
+    booking?.status === 'interviewer_no_show' ||
+    ['no_show', 'ai_no_show', 'interviewer_no_show'].includes(normaliseRoundStatus(round.status));
+  const rescheduleRequested =
+    isVoiceCallRound && booking?.call_intent === 'reschedule_requested' && !isRoundSkipped(round);
   const { reinvitesUsed, linkExpired } = roundReinviteState(round, booking);
 
   // Side-bar colour = the round's state: green done, amber current stage,
@@ -111,7 +130,9 @@ const RoundSidebarItem = ({
   const meta =
     (overdue || technicalFailure) && !isRoundSkipped(round)
       ? BUCKET_META.failed
-      : BUCKET_META[effectiveBucket];
+      : rescheduleRequested
+        ? BUCKET_META.current
+        : BUCKET_META[effectiveBucket];
   const isInterviewRound = round.stage_type === 'interview';
   const roundScoreValue = roundScore?.recruiter_score ?? roundScore?.score;
   const scoreLine =
@@ -131,17 +152,21 @@ const RoundSidebarItem = ({
 
   const statusText = isRoundSkipped(round)
     ? 'Skipped'
-    : overdue
-      ? 'Overdue'
-      : technicalFailure
-        ? 'Technical Failure'
-        : linkExpired && !isResumeScored
-          ? 'Scheduling link expired'
-          : isResumeScored
-            ? 'Completed'
-            : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
-              ? 'Awaiting resume upload'
-              : (roundStatusLabel(round.status) ?? formatRoundStatus(round.status));
+    : rescheduleRequested
+      ? formatCallIntent('reschedule_requested')
+      : isNoShow
+        ? 'No-show'
+        : overdue
+          ? 'Overdue'
+          : technicalFailure
+            ? 'Technical Failure'
+            : linkExpired && !isResumeScored
+              ? 'Scheduling link expired'
+              : isResumeScored
+                ? 'Completed'
+                : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
+                  ? 'Awaiting resume upload'
+                  : (roundStatusLabel(round.status) ?? formatRoundStatus(round.status));
 
   // Old app's round tab: centred text stack — bold name, "Status: …",
   // then score / when lines — with roomy padding and no card chrome.

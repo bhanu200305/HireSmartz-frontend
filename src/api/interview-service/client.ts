@@ -18,6 +18,7 @@ export type BookingStatus =
   | 'cancelled'
   | 'no_show'
   | 'interviewer_no_show'
+  | 'ai_no_show'
   | 'failed'
   | 'rescheduled';
 export type InterviewType = 'audio' | 'audio_screening' | 'ai_video' | 'panel';
@@ -32,6 +33,7 @@ export const CONCLUDED_BOOKING_STATUSES: BookingStatus[] = [
   'cancelled',
   'no_show',
   'interviewer_no_show',
+  'ai_no_show',
   'failed',
 ];
 export type FeedbackRecommendation = 'strong_yes' | 'yes' | 'no' | 'strong_no';

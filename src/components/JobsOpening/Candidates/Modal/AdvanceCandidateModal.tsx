@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Checkbox, Rate, Select } from 'antd';
+import { Checkbox, Rate } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import { Button, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
@@ -7,10 +7,10 @@ import { Loader } from '../../../shared/ui/loader';
 import {
   useAdvanceCandidateMutation,
   type CandidateInterviewRoundView,
-  type InterviewerRecommendation,
 } from '../../../../api/candidate-service/Candidates/interviewRounds';
 import {
   useRecordRecruiterRoundScoreMutation,
+  useRecordRecruiterRoundFeedbackMutation,
   useRecordResumeReviewMutation,
 } from '../../../../api/candidate-service/Candidates/scoring';
 import type { CandidateView } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
@@ -19,6 +19,7 @@ import {
   getCandidateErrorStatusCode,
 } from '../../../../shared/utils/auth/candidateError.helpers';
 import { roundLabel } from '../roundDisplay';
+import { RATING_TO_RECOMMENDATION } from '../../../../shared/utils/ratingRecommendation';
 
 // Single-candidate Advance popup (candidate details page). Replaces the old
 // "Confirm Advance" step for this screen only; the bulk action in the listing
@@ -32,7 +33,8 @@ import { roundLabel } from '../roundDisplay';
 //   2. `POST /candidates/{id}/advance` in ONE call: `expected_round_id` (stale
 //      screen guard), `send_invite` (ticked box: the next round is announced to
 //      interview-service in the same transaction), and, for an interview round,
-//      the body `interviewer_feedback` ({recommendation, notes}), which the
+//      the body `interviewer_feedback` ({recommendation, notes}; the
+//      recommendation is derived from the stars), which the
 //      backend requires before it closes an interview round (409
 //      INTERVIEWER_FEEDBACK_PENDING otherwise). Unticked, the round stays due
 //      and the recruiter sends the invite from the Interview Scheduling tab.
@@ -54,13 +56,6 @@ export type AdvanceFeedbackRequirement =
     }
   | null;
 
-const RECOMMENDATION_OPTIONS: { value: InterviewerRecommendation; label: string }[] = [
-  { value: 'strong_yes', label: 'Strong Yes' },
-  { value: 'yes', label: 'Yes' },
-  { value: 'no', label: 'No' },
-  { value: 'strong_no', label: 'Strong No' },
-];
-
 type AdvanceCandidateModalProps = {
   open: boolean;
   onClose: () => void;
@@ -72,7 +67,8 @@ type AdvanceCandidateModalProps = {
   feedbackRequirement: AdvanceFeedbackRequirement;
   /** Whether the next round can be invited automatically along with Advance. */
   canAutoInvite: boolean;
-  onSuccess: () => void;
+  /** `nextRound` is the round the candidate is now on (null: none, or stale). */
+  onSuccess: (nextRound: CandidateInterviewRoundView | null) => void;
 };
 
 const AdvanceCandidateModal = ({
@@ -87,7 +83,6 @@ const AdvanceCandidateModal = ({
 }: AdvanceCandidateModalProps) => {
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState(0);
-  const [recommendation, setRecommendation] = useState<InterviewerRecommendation | null>(null);
   const [sendInvite, setSendInvite] = useState(true);
   // Feedback already saved by an earlier attempt of this same Confirm (the
   // advance itself failed afterwards): never saved twice.
@@ -97,13 +92,13 @@ const AdvanceCandidateModal = ({
   const [advanceCandidate] = useAdvanceCandidateMutation();
   const [recordResumeReview] = useRecordResumeReviewMutation();
   const [recordRoundScore] = useRecordRecruiterRoundScoreMutation();
+  const [recordRoundFeedback] = useRecordRecruiterRoundFeedbackMutation();
 
   useEffect(() => {
     if (open) {
       // Prefilled with whatever is already on file; only the gap is asked for.
       setFeedback(feedbackRequirement?.comment ?? '');
       setRating(feedbackRequirement?.rating ?? 0);
-      setRecommendation(null);
       setSendInvite(true);
       setFeedbackSaved(false);
       setIsSubmitting(false);
@@ -117,15 +112,11 @@ const AdvanceCandidateModal = ({
   const withRecommendation =
     feedbackRequirement?.kind === 'round' && feedbackRequirement.withRecommendation;
   const needsFeedback = feedbackRequirement !== null;
-  const needsRating =
-    feedbackRequirement !== null &&
-    !feedbackSaved &&
-    (feedbackRequirement.kind === 'resume' || feedbackRequirement.scoreId !== null);
-  const isValid =
-    !needsFeedback ||
-    (feedback.trim().length > 0 &&
-      (!needsRating || rating > 0) &&
-      (!withRecommendation || recommendation !== null));
+  // Every round is rated: the resume review, a round's existing score record,
+  // or the recruiter-feedback endpoint for a round with no score record yet
+  // all take a 1-5 score with the written feedback.
+  const needsRating = feedbackRequirement !== null && !feedbackSaved;
+  const isValid = !needsFeedback || (feedback.trim().length > 0 && (!needsRating || rating > 0));
 
   const fromLabel = fromRound ? roundLabel(fromRound) : 'the current round';
   const toLabel = toRound ? roundLabel(toRound) : null;
@@ -134,7 +125,6 @@ const AdvanceCandidateModal = ({
 
   const saveFeedback = async () => {
     if (!feedbackRequirement || feedbackSaved) return;
-    if (feedbackRequirement.kind === 'round' && feedbackRequirement.scoreId === null) return;
     if (feedbackRequirement.kind === 'resume') {
       await recordResumeReview({
         candidateId: candidate.id,
@@ -143,10 +133,19 @@ const AdvanceCandidateModal = ({
           comment: feedback.trim(),
         },
       }).unwrap();
-    } else {
+    } else if (feedbackRequirement.scoreId !== null) {
       await recordRoundScore({
         candidateId: candidate.id,
-        scoreId: feedbackRequirement.scoreId as string,
+        scoreId: feedbackRequirement.scoreId,
+        body: { recruiterScore: rating, reason: feedback.trim() },
+      }).unwrap();
+    } else {
+      // No score record yet (e.g. an Intake Call whose consistency check
+      // hasn't come back): record the feedback on the round itself.
+      if (!fromRound) throw new Error('No current round to record feedback on');
+      await recordRoundFeedback({
+        candidateId: candidate.id,
+        candidateInterviewRoundId: fromRound.id,
         body: { recruiterScore: rating, reason: feedback.trim() },
       }).unwrap();
     }
@@ -181,8 +180,10 @@ const AdvanceCandidateModal = ({
           // end up half done.
           sendInvite: sendInvite && canAutoInvite,
           interviewerFeedback:
-            withRecommendation && recommendation
-              ? { recommendation, notes: feedback.trim() }
+            // The interviewer verdict the backend needs comes from the stars,
+            // the same mapping the in-call Quick Feedback uses.
+            withRecommendation && rating > 0
+              ? { recommendation: RATING_TO_RECOMMENDATION[rating], notes: feedback.trim() }
               : null,
         }).unwrap();
       } catch (e) {
@@ -204,7 +205,7 @@ const AdvanceCandidateModal = ({
               'This candidate has already been advanced. The page has been refreshed with the latest round.',
             type: 'info',
           });
-          onSuccess();
+          onSuccess(null);
           return;
         } else {
           showToast({
@@ -232,7 +233,7 @@ const AdvanceCandidateModal = ({
       }
       // Stay disabled: the modal closes and the parent keeps Advance locked
       // until the refreshed round list shows the candidate on the next round.
-      onSuccess();
+      onSuccess(result.next_round ?? null);
     } catch {
       setIsSubmitting(false);
     }
@@ -270,7 +271,7 @@ const AdvanceCandidateModal = ({
               <strong>
                 Feedback <span className="required-asterisk">*</span>:
               </strong>{' '}
-              Before proceeding, please {needsRating || withRecommendation ? 'rate and ' : ''}
+              Before proceeding, please {needsRating ? 'rate and ' : ''}
               provide feedback for the <strong>{fromLabel}</strong>.
             </label>
             {needsRating && (
@@ -279,21 +280,6 @@ const AdvanceCandidateModal = ({
                   Rating <span className="required-asterisk">*</span>
                 </span>
                 <Rate value={rating} onChange={setRating} />
-              </div>
-            )}
-            {withRecommendation && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-800">
-                  Recommendation <span className="required-asterisk">*</span>
-                </span>
-                <Select
-                  id="advance-recommendation"
-                  placeholder="Select Recommendation"
-                  value={recommendation ?? undefined}
-                  onChange={(value) => setRecommendation(value)}
-                  options={RECOMMENDATION_OPTIONS}
-                  className="min-w-[180px]"
-                />
               </div>
             )}
             <TextArea
@@ -318,8 +304,15 @@ const AdvanceCandidateModal = ({
         )}
         {toLabel && !canAutoInvite && (
           <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-            The invite for <strong>{toLabel}</strong> is sent from the Interview Scheduling tab (the
-            interviewers are chosen there).
+            {toRound?.round_type === 'PANEL' ? (
+              // Advancing never invites a Hiring Panel round: the recruiter
+              // picks the panel, then invites from the round's card.
+              "Invite the panel from the round's card once interviewers are selected."
+            ) : (
+              <>
+                The invite for <strong>{toLabel}</strong> is sent from the Interview Scheduling tab.
+              </>
+            )}
           </p>
         )}
 

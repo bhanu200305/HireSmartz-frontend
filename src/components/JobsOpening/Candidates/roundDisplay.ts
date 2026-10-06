@@ -20,6 +20,7 @@ const ROUND_STATUS_LABEL: Record<string, string> = {
   skipped: 'Skipped',
   no_show: 'No-show',
   interviewer_no_show: 'No-show',
+  ai_no_show: 'No-show',
   cancelled: 'Cancelled',
   rescheduled: 'Rescheduled',
   resume_upload_expired: 'Upload expired',

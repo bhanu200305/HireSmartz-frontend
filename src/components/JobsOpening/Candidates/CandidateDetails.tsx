@@ -385,6 +385,10 @@ const CandidateDetails = () => {
   });
   const [statusModal, setStatusModal] = useState<ChangeCandidateStatusMode | null>(null);
   const [isAdvanceOpen, setIsAdvanceOpen] = useState(false);
+  // The Hiring Panel round the candidate was just advanced into (pop-up).
+  const [panelPromptRound, setPanelPromptRound] = useState<CandidateInterviewRoundView | null>(
+    null
+  );
   // The round the last successful Advance completed. Advance stays disabled
   // while that round is still the current one (the refreshed list has not
   // caught up yet), so it can't be clicked twice for the same round.
@@ -398,9 +402,9 @@ const CandidateDetails = () => {
   const [isSkipOpen, setIsSkipOpen] = useState(false);
   const [isAssignJobOpen, setIsAssignJobOpen] = useState(false);
   const [isAiCommentExpanded, setIsAiCommentExpanded] = useState(false);
-  const [skipFeedback, setSkipFeedback] = useState('');
+  const [skipReason, setSkipReason] = useState('');
   // Content-guardrail message from the server, shown under the feedback box.
-  const [skipFeedbackError, setSkipFeedbackError] = useState<string | null>(null);
+  const [skipReasonError, setSkipReasonError] = useState<string | null>(null);
   const [skipInterviewRound, { isLoading: isSkipping }] = useSkipInterviewRoundMutation();
   // "Scoring Criteria" popup (old app's per-round button): the resume
   // round's weighted breakdown, or the interview-scoring explainer.
@@ -963,6 +967,23 @@ const CandidateDetails = () => {
     }
   };
 
+  // What the recruiter is told before a Re-invite / Reschedule goes out.
+  const REINVITE_COPY =
+    'This sends the candidate a new invitation link. Their current invitation is replaced. Reinvites are limited to 3 per round.';
+  const rescheduleCopy = (round: CandidateInterviewRoundView | null) => {
+    const status = round ? normaliseRoundStatus(round.status) : '';
+    const noShow = status === 'no_show' || status === 'interviewer_no_show';
+    const base = noShow
+      ? 'The candidate did not attend. This creates a new attempt and emails them a link valid for 24 hours.'
+      : 'This creates a new attempt and emails the candidate a link valid for 24 hours.';
+    // A panel round still booked for the future also frees its calendar slot.
+    const calendar =
+      round?.round_type === 'PANEL' && status === 'scheduled'
+        ? ' The current calendar event will be cancelled.'
+        : '';
+    return base + calendar;
+  };
+
   const closeRescheduleFlow = () => {
     setIsRescheduleConfirmOpen(false);
     setRescheduleRound(null);
@@ -1102,22 +1123,22 @@ const CandidateDetails = () => {
   }, [savedResumeComment, candidateId]);
 
   const resetSkipForm = () => {
-    setSkipFeedback('');
-    setSkipFeedbackError(null);
+    setSkipReason('');
+    setSkipReasonError(null);
   };
 
   const handleSkipRound = async () => {
-    if (!candidateId || !skipFeedback.trim()) return;
-    setSkipFeedbackError(null);
+    if (!candidateId || !skipReason.trim()) return;
+    setSkipReasonError(null);
     try {
-      // One feedback box: the backend requires a `reason` and also stores
-      // `feedback` separately (`skip_feedback`), so the same text fills both.
-      // There is no "skip anyway": the interviewer-feedback gate is never
-      // overridden from here.
+      // Skip needs only a reason (the one box). No feedback is asked for.
       const result = await skipInterviewRound({
         candidateId,
-        reason: skipFeedback.trim(),
-        feedback: skipFeedback.trim(),
+        reason: skipReason.trim(),
+        // Skipping asks for a reason only; feedback is for advancing. The
+        // backend's interviewer-feedback gate is for rounds that were run:
+        // a deliberate skip, with its reason on record, passes it.
+        overridePendingInterviewerFeedback: true,
       }).unwrap();
       showToast({
         message: result.skipped_round
@@ -1132,22 +1153,9 @@ const CandidateDetails = () => {
       const serverMessage = getCandidateErrorMessage(e, '');
       // candidate-service's error body carries no machine code (see
       // candidateError.helpers), so the cases are told apart by status + message.
-      if (
-        status === 409 &&
-        /interviewer'?s? feedback|override_pending_interviewer_feedback/i.test(serverMessage)
-      ) {
-        // Feedback is required at every step, so there is no override: the
-        // round can be skipped once its interviewer feedback is on file.
-        showToast({
-          message:
-            "This round can't be skipped until its interviewer's feedback has been recorded.",
-          type: 'error',
-        });
-        return;
-      }
       if (status === 422 && /guidelines|content/i.test(serverMessage)) {
-        // Show the content-check message under the feedback box.
-        setSkipFeedbackError(serverMessage);
+        // Show the content-check message under the reason box.
+        setSkipReasonError(serverMessage);
         return;
       }
       let message = serverMessage || 'Could not skip round';
@@ -1215,11 +1223,24 @@ const CandidateDetails = () => {
       // saved interviewers ride along on the same publish.
       const sent = await sendRoundInvite(candidateId).unwrap();
       void refetchRounds();
+      // A panel round's candidate mail goes out only once every selected
+      // interviewer has a connected calendar: say which are still missing.
+      const missingInterviewers = isPanelRound
+        ? selectedInterviewerIds
+            .filter((id) => interviewerCalendarConnectedById.get(id) === false)
+            .map(
+              (id) =>
+                (eligibleInterviewers ?? []).find((i) => i.id === id)?.display_name ?? 'Interviewer'
+            )
+        : [];
       showToast({
-        message: sent.invite_sent
-          ? 'Interview invitation sent to the candidate.'
-          : 'An invitation for this round was just sent.',
-        type: sent.invite_sent ? 'success' : 'info',
+        message:
+          missingInterviewers.length > 0
+            ? `Invitation created. The candidate will be emailed once all interviewers have connected their calendars (waiting on ${missingInterviewers.join(', ')}).`
+            : sent.invite_sent
+              ? 'Invitation sent to the candidate.'
+              : 'An invitation for this round was just sent.',
+        type: missingInterviewers.length > 0 || !sent.invite_sent ? 'info' : 'success',
       });
       return true;
     } catch (error) {
@@ -2840,16 +2861,21 @@ const CandidateDetails = () => {
                 setSelectedRound(round);
                 setIsInviteOpen(true);
               }}
+              jobId={parsedJobId || undefined}
+              onSelectInterviewers={(round) => setInterviewersModalFor(round)}
               onReinvite={(round) => {
-                if (round.round_type === 'PANEL') {
-                  // PANEL: keep the roster or pick a new one first.
-                  setSelectedRound(round);
-                  setRescheduleMode('reinvite');
-                  setRescheduleRound(round);
-                  setIsRescheduleConfirmOpen(true);
-                } else {
-                  void runReinvite(round.interview_booking_id);
-                }
+                // Always confirmed first (the wording says what will happen).
+                // PANEL then asks whether to keep the roster or pick a new one.
+                setSelectedRound(round);
+                setRescheduleMode('reinvite');
+                setRescheduleRound(round);
+                setIsRescheduleConfirmOpen(true);
+              }}
+              onReschedule={(round) => {
+                setSelectedRound(round);
+                setRescheduleMode('reschedule');
+                setRescheduleRound(round);
+                setIsRescheduleConfirmOpen(true);
               }}
               canSkip={isJobInCharge}
               onSkip={() => setIsSkipOpen(true)}
@@ -2902,30 +2928,28 @@ const CandidateDetails = () => {
         >
           <div className="flex flex-col gap-6">
             <div className="flex flex-col justify-start">
-              <label htmlFor="skip-round-feedback" className="pb-2 text-sm font-medium">
+              <label htmlFor="skip-round-reason" className="pb-2 text-sm font-medium">
                 Reason <span className="required-asterisk">*</span>
               </label>
               <Textarea
-                id="skip-round-feedback"
+                id="skip-round-reason"
                 className="w-full rounded-3xl border border-gray-300 bg-white p-3 focus:ring focus:ring-blue-300"
                 rows={4}
                 maxLength={1000}
-                value={skipFeedback}
+                value={skipReason}
                 placeholder="Type your reason here....."
                 onChange={(e) => {
-                  setSkipFeedback(e.target.value);
-                  setSkipFeedbackError(null);
+                  setSkipReason(e.target.value);
+                  setSkipReasonError(null);
                 }}
               />
-              {skipFeedbackError && (
-                <p className="mt-1 text-xs text-red-500">{skipFeedbackError}</p>
-              )}
+              {skipReasonError && <p className="mt-1 text-xs text-red-500">{skipReasonError}</p>}
             </div>
             <div className="flex items-center justify-center space-x-2">
               <Button
                 type="button"
                 onClick={() => void handleSkipRound()}
-                disabled={!skipFeedback.trim() || isSkipping}
+                disabled={!skipReason.trim() || isSkipping}
                 className="cursor-pointer rounded-full border bg-primary px-10 py-3 font-bold text-white disabled:opacity-50"
               >
                 {isSkipping ? <Loader /> : <span>SUBMIT</span>}
@@ -2978,14 +3002,53 @@ const CandidateDetails = () => {
           toRound={nextRound}
           feedbackRequirement={advanceFeedbackRequirement}
           canAutoInvite={canAutoInviteNextRound}
-          onSuccess={() => {
+          onSuccess={(newRound) => {
             setIsAdvanceOpen(false);
             // Locked until the refreshed round list moves `currentRound` on.
             setAdvancedFromRoundId(currentRound?.id ?? null);
             void refetchRounds();
             refetchCandidate();
+            // Advancing into a Hiring Panel round: remind the recruiter to pick
+            // the panel and invite. Shown once, right after this advance.
+            if (newRound?.round_type === 'PANEL') setPanelPromptRound(newRound);
           }}
         />
+      )}
+      {panelPromptRound && (
+        // Informational, never a gate: closing it any way (X, Escape, outside
+        // click) is the same as Later. Shown once per advance.
+        <AntdCommonModal
+          title="Next round: Hiring Panel"
+          open
+          onClose={() => setPanelPromptRound(null)}
+          modalProps={{ width: 480 }}
+        >
+          <div className="flex flex-col gap-5">
+            <p className="text-center text-sm text-gray-700">
+              Select the interviewers for this round, then click Invite. The candidate is emailed
+              once every selected interviewer has connected their calendar.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                onClick={() => setPanelPromptRound(null)}
+                className="flex-1 rounded-full border border-gray-200 py-2.5 text-center text-sm font-semibold text-gray-600"
+              >
+                Later
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setInterviewersModalFor(panelPromptRound);
+                  setPanelPromptRound(null);
+                }}
+                className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white"
+              >
+                Select Interviewers
+              </Button>
+            </div>
+          </div>
+        </AntdCommonModal>
       )}
       {statusModal && candidate && (
         <ChangeCandidateStatusModal
@@ -3034,8 +3097,8 @@ const CandidateDetails = () => {
           title={isReinviteMode ? 'Send Reinvite' : 'Request Reschedule'}
           subtitle={
             isReinviteMode
-              ? "Keep this round's current panel, or pick different interviewers for the new invite?"
-              : "Keep this round's current panel, or pick different interviewers for the new attempt?"
+              ? `${REINVITE_COPY} Keep this round's current panel, or pick different interviewers for the new invite?`
+              : `${rescheduleCopy(rescheduleRound)} Keep this round's current panel, or pick different interviewers for the new attempt?`
           }
           open
           onClose={closeRescheduleFlow}
@@ -3188,20 +3251,22 @@ const CandidateDetails = () => {
           }}
           onConfirm={() => void handleRequestCallReschedule()}
           title={
-            // Resume-consistency scoring is Intake Call (AUDIO) specific —
-            // Audio Screening/AI Video rounds don't have one, so this
-            // clause would be misleading there. Driven by `rescheduleRound`,
-            // not `selectedRound` — this modal can open straight from a
-            // round other than the one currently selected.
-            rescheduleRound &&
-            isIntakeCallRound(rescheduleRound) &&
-            candidate?.consistency_score != null
-              ? `Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, the resume-consistency score will be recalculated from it and will overwrite the current score (${candidate.consistency_score} / ${AI_SCORE_MAX}).`
-              : rescheduleRound && isIntakeCallRound(rescheduleRound)
-                ? 'Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, a resume-consistency score will be calculated from it.'
-                : 'Requesting a reschedule will email the candidate a new link, valid for 24 hours.'
+            isReinviteMode
+              ? REINVITE_COPY
+              : // Resume-consistency scoring is Intake Call (AUDIO) specific -
+                // Audio Screening/AI Video rounds don't have one, so this
+                // clause would be misleading there. Driven by `rescheduleRound`,
+                // not `selectedRound` - this modal can open straight from a
+                // round other than the one currently selected.
+                rescheduleRound &&
+                  isIntakeCallRound(rescheduleRound) &&
+                  candidate?.consistency_score != null
+                ? `${rescheduleCopy(rescheduleRound)} Once they complete the new call, the resume-consistency score will be recalculated from it and will overwrite the current score (${candidate.consistency_score} / ${AI_SCORE_MAX}).`
+                : rescheduleRound && isIntakeCallRound(rescheduleRound)
+                  ? `${rescheduleCopy(rescheduleRound)} Once they complete the new call, a resume-consistency score will be calculated from it.`
+                  : rescheduleCopy(rescheduleRound)
           }
-          confirmText="Request Reschedule"
+          confirmText={isReinviteMode ? 'Send Reinvite' : 'Request Reschedule'}
           cancelText="Cancel"
           isLoading={isRequestingReschedule}
         />

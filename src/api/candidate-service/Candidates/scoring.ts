@@ -84,6 +84,18 @@ export type RecruiterRoundScoreResultView = {
   recruiter_score: number;
 };
 
+/** `POST /candidates/{id}/interview-rounds/{round_id}/recruiter-feedback`:
+ * the recruiter's score and reason recorded straight on a ROUND, for a round
+ * that has no score record yet (e.g. an Intake Call whose consistency check
+ * hasn't come back). Same shape as above, except `ai_score` is `null` while
+ * the AI score is still pending. */
+export type RecruiterRoundFeedbackResultView = {
+  score_id: string;
+  candidate_id: string;
+  ai_score: number | null;
+  recruiter_score: number;
+};
+
 /** Cache no longer than `expires_in_seconds` — this is a short-lived presigned URL, not a stable link. */
 export type ResumeDownloadView = {
   download_url: string;
@@ -139,6 +151,26 @@ const extendedApi = candidateApi.injectEndpoints({
       ],
     }),
 
+    // Feedback for a round that has no score record yet, addressed by the
+    // candidate's own round id (`CandidateInterviewRoundView.id`).
+    recordRecruiterRoundFeedback: build.mutation<
+      RecruiterRoundFeedbackResultView,
+      {
+        candidateId: string;
+        candidateInterviewRoundId: string;
+        body: RecordRecruiterRoundScoreRequest;
+      }
+    >({
+      query: ({ candidateId, candidateInterviewRoundId, body }) => ({
+        url: `/candidates/${candidateId}/interview-rounds/${candidateInterviewRoundId}/recruiter-feedback`,
+        method: 'POST',
+        body: { recruiter_score: body.recruiterScore, reason: body.reason },
+      }),
+      invalidatesTags: (_result, _error, { candidateId }) => [
+        { type: 'CandidateInterviewScores', id: candidateId },
+      ],
+    }),
+
     deleteRecruiterRoundScore: build.mutation<null, { candidateId: string; scoreId: string }>({
       query: ({ candidateId, scoreId }) => ({
         url: `/candidates/${candidateId}/interview-scores/${scoreId}/recruiter-score`,
@@ -183,6 +215,7 @@ export const {
   useDeleteResumeReviewMutation,
   useListCandidateInterviewScoresQuery,
   useRecordRecruiterRoundScoreMutation,
+  useRecordRecruiterRoundFeedbackMutation,
   useDeleteRecruiterRoundScoreMutation,
   useGetCandidateResumeDownloadQuery,
   useLazyGetCandidateResumeDownloadQuery,

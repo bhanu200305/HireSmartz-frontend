@@ -7,20 +7,29 @@ import {
   type CandidateInterviewRoundView,
 } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
-import { useGetBookingQuery, MAX_REINVITES } from '../../../api/interview-service/client';
+import {
+  useGetBookingQuery,
+  useGetInterviewerCalendarStatusQuery,
+  useGetInterviewersCalendarStatusQuery,
+  CONCLUDED_BOOKING_STATUSES,
+  MAX_REINVITES,
+} from '../../../api/interview-service/client';
 import { roundLabel, roundReinviteState } from './roundDisplay';
 import {
+  isAiVideoRound,
+  isAudioScreeningRound,
   isIdentityVerificationRound,
+  isIntakeCallRound,
   isResumeStageRound,
   isRoundSkipped,
   normaliseRoundStatus,
 } from './roundProgress';
-import { findRoundScore } from './roundPipeline';
+import { canManageRoundInterviewers, findRoundScore } from './roundPipeline';
 
 // "Interview Scheduling" tab: one card per interview round (the resume stage
 // has no interview to schedule), laid out like the old app's Round Overview.
 // Everything about getting a round scheduled lives here: the first Invite,
-// Re-invite (with the attempts still left) and Skip. The actions
+// Re-invite (with the attempts still left), Reschedule and Skip. The actions
 // themselves run in CandidateDetails (they share its modals); this file only
 // decides what each card shows and which buttons are live.
 
@@ -30,6 +39,7 @@ type CardStatus =
   | 'SCHEDULED'
   | 'ONGOING'
   | 'RESCHEDULED'
+  | 'RESCHEDULE REQUESTED'
   | 'COMPLETED'
   | 'SKIPPED'
   | 'CANCELLED'
@@ -41,6 +51,9 @@ const HEADER_STYLE: Record<CardStatus, { bg: string; text: string }> = {
   SCHEDULED: { bg: 'bg-blue-100', text: 'text-blue-700' },
   ONGOING: { bg: 'bg-blue-100', text: 'text-blue-700' },
   RESCHEDULED: { bg: 'bg-gray-100', text: 'text-gray-700' },
+  // The candidate asked for a new time (nothing has been rebooked yet): needs
+  // attention without being alarm-red like NO-SHOW / CANCELLED.
+  'RESCHEDULE REQUESTED': { bg: 'bg-amber-100', text: 'text-amber-700' },
   COMPLETED: { bg: 'bg-blue-100', text: 'text-blue-700' },
   SKIPPED: { bg: 'bg-red-100', text: 'text-red-700' },
   CANCELLED: { bg: 'bg-red-100', text: 'text-red-700' },
@@ -73,6 +86,7 @@ const cardStatusFor = (round: CandidateInterviewRoundView): CardStatus => {
     case 'aborted':
       return 'CANCELLED';
     case 'no_show':
+    case 'ai_no_show':
     case 'interviewer_no_show':
       return 'NO-SHOW';
     default:
@@ -97,6 +111,11 @@ export type InterviewSchedulingTabProps = {
   isBusy: boolean;
   onInvite: (round: CandidateInterviewRoundView) => void;
   onReinvite: (round: CandidateInterviewRoundView) => void;
+  /** Opens the panel picker (Hiring Panel rounds, before any booking). */
+  onSelectInterviewers: (round: CandidateInterviewRoundView) => void;
+  /** The job, for the pre-booking calendar status of a selected panel. */
+  jobId?: string;
+  onReschedule: (round: CandidateInterviewRoundView) => void;
   /** Only the job's hiring managers and recruiters may skip a round. */
   canSkip: boolean;
   onSkip: () => void;
@@ -115,12 +134,14 @@ type RoundCardProps = Omit<
   'rounds' | 'roundsLoaded' | 'candidateId'
 > & {
   round: CandidateInterviewRoundView;
-  interviewerNames: string[];
+  interviewers: { id: string; name: string }[];
 };
 
 const RoundCard = ({
   round,
-  interviewerNames,
+  interviewers,
+  jobId,
+  onSelectInterviewers,
   scores,
   currentRoundId,
   isTerminal,
@@ -128,6 +149,7 @@ const RoundCard = ({
   isBusy,
   onInvite,
   onReinvite,
+  onReschedule,
   canSkip: mayManage,
   onSkip,
   onReject,
@@ -140,7 +162,52 @@ const RoundCard = ({
     skipPollingIfUnfocused: true,
   });
 
-  const status = cardStatusFor(round);
+  const isPanel = round.round_type === 'PANEL';
+  // Green / red dot per panel interviewer: the booking's own calendar status
+  // once one exists, otherwise the job-level status the picker colours by.
+  // Polled and refetched on focus like the picker, so a calendar connecting
+  // or disconnecting shows up here within about 15 seconds.
+  const rosterIds = interviewers.map((i) => i.id);
+  const { data: bookingCalendar } = useGetInterviewerCalendarStatusQuery(bookingId ?? '', {
+    skip: !isPanel || !bookingId,
+    pollingInterval: 15_000,
+    skipPollingIfUnfocused: true,
+    refetchOnFocus: true,
+  });
+  const { data: jobCalendar } = useGetInterviewersCalendarStatusQuery(
+    { jobId: jobId ?? '', interviewerIds: rosterIds },
+    {
+      skip: !isPanel || Boolean(bookingId) || !jobId || rosterIds.length === 0,
+      pollingInterval: 15_000,
+      skipPollingIfUnfocused: true,
+      refetchOnFocus: true,
+    }
+  );
+  const calendarConnectedById = new Map<string, boolean>(
+    bookingId
+      ? (bookingCalendar?.interviewers ?? []).map((i) => [i.interviewer_id, i.calendar_connected])
+      : (jobCalendar ?? []).map((i) => [i.interviewer_id, i.calendar_connected])
+  );
+  const calendarsPending = interviewers.filter(
+    (i) => calendarConnectedById.get(i.id) === false
+  ).length;
+  const isVoiceCall =
+    isIntakeCallRound(round) || isAudioScreeningRound(round) || isAiVideoRound(round);
+  // Phone / video rounds only (a panel round has no call outcome): a candidate
+  // who asked to reschedule gets its own badge instead of a plain Completed.
+  // A no-show is read from the booking too: the round's own status can lag it
+  // (a skipped round stays Skipped either way, via `cardStatusFor`).
+  const bookingNoShow =
+    booking?.status === 'no_show' ||
+    booking?.status === 'ai_no_show' ||
+    booking?.status === 'interviewer_no_show';
+  const status: CardStatus = isRoundSkipped(round)
+    ? cardStatusFor(round)
+    : isVoiceCall && booking?.call_intent === 'reschedule_requested'
+      ? 'RESCHEDULE REQUESTED'
+      : bookingNoShow
+        ? 'NO-SHOW'
+        : cardStatusFor(round);
   const header = HEADER_STYLE[status];
   const isCurrent = currentRoundId === round.id && !isTerminal;
   const score = findRoundScore(scores, round);
@@ -171,15 +238,35 @@ const RoundCard = ({
   // `cancelled` because the link expired. A booking the candidate has booked
   // (`scheduled`) or any other state is refused (REINVITE_NOT_ELIGIBLE), so
   // the button is hidden for those rather than offered and rejected.
+  // interview-service accepts a reschedule once a call has an outcome recorded
+  // (`call_intent`, set for every concluded result: completed, no-show,
+  // asked to reschedule...), or for a panel booking that has concluded or is
+  // still scheduled for a future time. A Completed card is therefore not
+  // excluded.
+  const canReschedule =
+    !isTerminal &&
+    Boolean(bookingId) &&
+    status !== 'SKIPPED' &&
+    // `call_intent` is set for every concluded call outcome. 'completed'
+    // means the call went fine, so there is nothing to offer a new time for.
+    ((isVoiceCall && booking?.call_intent != null && booking.call_intent !== 'completed') ||
+      (isPanel &&
+        booking != null &&
+        (booking.status === 'scheduled' || CONCLUDED_BOOKING_STATUSES.includes(booking.status))));
   const bookingLoading = Boolean(bookingId) && !booking;
   const reinviteEligible =
     booking != null &&
     (booking.status === 'draft' ||
       (booking.status === 'cancelled' && booking.cancellation_reason === LINK_EXPIRED_REASON));
+  // A booking cancelled only because its link expired unused is still a
+  // Re-invite case (never Reschedule), whatever status the round itself reads.
+  const linkExpiredCancelled =
+    booking?.status === 'cancelled' && booking.cancellation_reason === LINK_EXPIRED_REASON;
   const showReinvite =
-    status === 'INVITATION SENT' &&
     !isTerminal &&
-    (!bookingId || bookingLoading || reinviteEligible);
+    status !== 'SKIPPED' &&
+    ((status === 'INVITATION SENT' && (!bookingId || bookingLoading || reinviteEligible)) ||
+      linkExpiredCancelled);
   // The backend only skips the candidate's current round.
   const canSkip = isCurrent && status !== 'COMPLETED' && status !== 'SKIPPED';
   const skipBlockedMessage =
@@ -193,7 +280,7 @@ const RoundCard = ({
       : bookingLoading
         ? 'Checking the invitation…'
         : reinvitesExhausted
-          ? `All ${MAX_REINVITES} reinvites have been used.`
+          ? `Reinvite limit reached (${MAX_REINVITES} of ${MAX_REINVITES}).`
           : `Send a new invitation link (${reinvitesLeft} of ${MAX_REINVITES} left)`;
 
   const statusLabel = <span className={`text-xs font-semibold ${header.text}`}>{status}</span>;
@@ -256,22 +343,75 @@ const RoundCard = ({
           <p className="text-sm text-gray-500">This interview stage has been skipped.</p>
         ) : null}
 
-        {interviewerNames.length > 0 && status !== 'SKIPPED' && (
+        {interviewers.length > 0 && status !== 'SKIPPED' && (
           <div className="text-sm text-black">
-            <span className="font-bold">Interviewer(s):</span> {interviewerNames.join(' | ')}
+            <span className="font-bold">Interviewer(s):</span>{' '}
+            {interviewers.map((interviewer, index) => {
+              const connected = calendarConnectedById.get(interviewer.id);
+              return (
+                <span key={interviewer.id}>
+                  {index > 0 && ' | '}
+                  {isPanel && (
+                    <Tooltip
+                      title={
+                        connected === undefined
+                          ? 'Calendar status not loaded yet'
+                          : connected
+                            ? 'Calendar connected'
+                            : 'Calendar not connected'
+                      }
+                    >
+                      <span
+                        className={`mr-1 inline-block h-2 w-2 rounded-full align-middle ${
+                          connected === undefined
+                            ? 'bg-gray-300'
+                            : connected
+                              ? 'bg-green-500'
+                              : 'bg-red-500'
+                        }`}
+                      />
+                    </Tooltip>
+                  )}
+                  {interviewer.name}
+                </span>
+              );
+            })}
           </div>
+        )}
+        {isPanel && Boolean(bookingId) && booking?.status === 'draft' && calendarsPending > 0 && (
+          <p className="text-xs font-semibold text-amber-700">
+            Calendar pending ({calendarsPending}): the candidate is emailed once every interviewer
+            has connected.
+          </p>
         )}
 
         <div className="mt-auto flex flex-col gap-2">
+          {isPanel && canManageRoundInterviewers(round) && mayManage && (
+            <Button
+              type="button"
+              className={`${actionButton} border border-primary text-primary`}
+              disabled={isBusy || bookingsClosed}
+              onClick={() => onSelectInterviewers(round)}
+            >
+              {interviewers.length > 0 ? 'Change Interviewers' : 'Select Interviewers'}
+            </Button>
+          )}
+
           {canInvite && (
             <Tooltip
-              title={bookingsClosed ? 'This candidate has already been selected.' : undefined}
+              title={
+                bookingsClosed
+                  ? 'This candidate has already been selected.'
+                  : isPanel && interviewers.length === 0
+                    ? 'Select the panel first.'
+                    : undefined
+              }
             >
               <span className="flex">
                 <Button
                   type="button"
                   className={`${actionButton} bg-primary text-white`}
-                  disabled={isBusy || bookingsClosed}
+                  disabled={isBusy || bookingsClosed || (isPanel && interviewers.length === 0)}
                   onClick={() => onInvite(round)}
                 >
                   Invite
@@ -280,7 +420,11 @@ const RoundCard = ({
             </Tooltip>
           )}
 
-          {showReinvite && (
+          {/* One action for an invited or booked round, chosen by its state:
+              Re-invite while the link is unused, otherwise Reschedule. It never
+              falls through to Reschedule just because the 3 reinvites are
+              used up (Reschedule has no cap, but it is a different action). */}
+          {showReinvite ? (
             <Tooltip title={reinviteTooltip}>
               <span className="flex">
                 <Button
@@ -299,7 +443,26 @@ const RoundCard = ({
                 </Button>
               </span>
             </Tooltip>
-          )}
+          ) : canReschedule ? (
+            <Tooltip
+              title={
+                bookingsClosed
+                  ? 'This candidate has already been selected.'
+                  : 'Offer the candidate a new time for this interview'
+              }
+            >
+              <span className="flex">
+                <Button
+                  type="button"
+                  className={`${actionButton} bg-primary text-white`}
+                  disabled={isBusy || bookingsClosed}
+                  onClick={() => onReschedule(round)}
+                >
+                  Reschedule
+                </Button>
+              </span>
+            </Tooltip>
+          ) : null}
 
           {canGiveFeedback && score && (
             <Button
@@ -356,10 +519,11 @@ const InterviewSchedulingTab = ({
   const { data: eligibleInterviewers = [] } = useListEligibleInterviewersQuery(candidateId, {
     skip: !hasRosters,
   });
-  const namesFor = (round: CandidateInterviewRoundView) =>
-    (round.interviewer_ids ?? []).map(
-      (id) => eligibleInterviewers.find((i) => i.id === id)?.display_name ?? 'Interviewer'
-    );
+  const interviewersFor = (round: CandidateInterviewRoundView) =>
+    (round.interviewer_ids ?? []).map((id) => ({
+      id,
+      name: eligibleInterviewers.find((i) => i.id === id)?.display_name ?? 'Interviewer',
+    }));
 
   return (
     <div className="rounded-lg bg-white px-4 py-4 shadow-sm">
@@ -376,7 +540,7 @@ const InterviewSchedulingTab = ({
             <RoundCard
               key={round.id}
               round={round}
-              interviewerNames={namesFor(round)}
+              interviewers={interviewersFor(round)}
               {...cardProps}
             />
           ))}

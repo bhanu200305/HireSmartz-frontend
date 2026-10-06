@@ -1,9 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Button, Rate, message } from 'antd';
-import {
-  useSubmitFeedbackMutation,
-  type FeedbackRecommendation,
-} from '../../api/interview-service/client';
+import { useSubmitFeedbackMutation } from '../../api/interview-service/client';
+import { RATING_TO_RECOMMENDATION } from '../../shared/utils/ratingRecommendation';
 
 interface QuickFeedbackModalProps {
   open: boolean;
@@ -11,21 +9,6 @@ interface QuickFeedbackModalProps {
   onClose: () => void;
   onSubmitSuccess: () => void;
 }
-
-/**
- * Map the 5-star rating to the real backend's `recommendation` vocabulary
- * (`POST /bookings/{id}/feedback`, `strong_no | no | yes | strong_yes` —
- * see `SubmitFeedbackRequest` in interview-service). There is no "neutral"
- * value there, so a 3-star rating maps to `no` (a deliberate choice, not a
- * gap — flag to product if a different mapping is wanted).
- */
-const RATING_TO_RECOMMENDATION: Record<number, FeedbackRecommendation> = {
-  1: 'strong_no',
-  2: 'no',
-  3: 'no',
-  4: 'yes',
-  5: 'strong_yes',
-};
 
 const MAX_NOTES_LENGTH = 1000;
 
