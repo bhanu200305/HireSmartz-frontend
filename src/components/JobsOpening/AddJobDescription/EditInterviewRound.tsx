@@ -20,6 +20,10 @@ import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers'
 import { slotOptions } from '../../../shared/utils/business-logic';
 import { useState } from 'react';
 import { resolveVariantLabel as formatVariantLabel } from '../../../shared/utils/variantLabel';
+import {
+  firstAvailableVariant,
+  isUnavailableVariant,
+} from '../../../shared/utils/roundInfoContent';
 
 const { Option } = Select;
 
@@ -84,7 +88,7 @@ const EditInterviewRound = () => {
         setValue('description', selectedRound.description || '');
         setValue('roundType', selectedRound.roundType || '');
         setValue('duration', selectedRound.requires_duration ? 30 : null);
-        setValue('variant', selectedRound.available_variants?.[0] ?? null);
+        setValue('variant', firstAvailableVariant(selectedRound.available_variants));
       }
     }
   };
@@ -236,6 +240,8 @@ const EditInterviewRound = () => {
                           <Radio.Button
                             key={variant}
                             value={variant}
+                            disabled={isUnavailableVariant(variant)}
+                            title={isUnavailableVariant(variant) ? 'Not available yet' : undefined}
                             className={`text-center ${
                               field.value === variant
                                 ? '!bg-primary !text-white !border-primary'

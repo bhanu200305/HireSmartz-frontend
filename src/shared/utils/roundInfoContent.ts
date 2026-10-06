@@ -14,6 +14,17 @@ export const getSpecialKindFromRoundName = (roundName?: string | null): SpecialK
 
 export type RoundInfoSection = { title: string; text: string };
 
+/** Identity Verification isn't set up in the backend yet, so it is hidden from round pickers and lists. */
+/** The Avatar video format isn't set up in the backend yet, so it is shown greyed out. */
+export const isUnavailableVariant = (variant?: string | null): boolean => variant === 'avatar';
+
+/** The first variant that can be picked, so a default never lands on a greyed-out one. */
+export const firstAvailableVariant = (variants?: string[] | null): string | null =>
+  variants?.find((variant) => !isUnavailableVariant(variant)) ?? null;
+
+export const isHiddenRoundType = (specialKind?: string | null): boolean =>
+  specialKind === 'verification';
+
 type RoundKind = SpecialKind | 'audio_screening' | 'ai_video' | 'panel';
 
 const AI_VIDEO_VARIANTS = ['soundwave', 'avatar'];
@@ -43,29 +54,21 @@ const ROUND_INFO: Record<RoundKind, RoundInfoSection[]> = {
   resume: [
     {
       title: 'What this round is',
-      text: "Every candidate's resume is reviewed and scored against this job. It is always the first round and cannot be removed.",
+      text: "Every candidate's resume is reviewed and scored against the job. It is always the first round and cannot be removed.",
     },
     {
-      title: 'What it looks at',
-      text: 'Skills, experience, education and how closely the resume matches the job description.',
-    },
-    {
-      title: 'Why it is here',
-      text: 'It quickly separates candidates who fit the role from those who do not, so interview time goes to the right people.',
+      title: 'Focus areas',
+      text: 'Skills, experience and education compared with the job description.',
     },
   ],
   intake_call: [
     {
       title: 'What this round is',
-      text: "A short phone call with our AI assistant that checks the details on the candidate's resume and fills in anything missing. It is optional and always comes right after the Resume round.",
+      text: 'A short AI phone call that checks what the candidate says against their resume.',
     },
     {
-      title: 'What it looks at',
-      text: 'Whether what the candidate says matches their resume: their experience, skills and availability.',
-    },
-    {
-      title: 'Why it is here',
-      text: 'It catches mismatches early and gives you a fuller picture of the candidate before any interview.',
+      title: 'Focus areas',
+      text: 'Whether the call matches the resume or not.',
     },
     {
       title: 'How candidates apply',
@@ -77,23 +80,15 @@ const ROUND_INFO: Record<RoundKind, RoundInfoSection[]> = {
       title: 'What this round is',
       text: 'A check that the candidate is who they say they are.',
     },
-    {
-      title: 'Why it is here',
-      text: 'It confirms identity before the candidate moves further in the process.',
-    },
   ],
   audio_screening: [
     {
       title: 'What this round is',
-      text: 'An AI-led audio interview. The candidate answers the questions you set for this round by voice.',
+      text: 'An AI-led audio interview. The candidate answers your questions by voice.',
     },
     {
-      title: 'What it looks at',
-      text: "Communication and how well the answers fit the role. The focus comes from the questions on this round's tab in Questions.",
-    },
-    {
-      title: 'Why it is here',
-      text: 'It is a quick first screening of many candidates without anyone having to schedule time.',
+      title: 'Focus areas',
+      text: 'Personality Traits, Qualifications, Company Fit, Career Goals.',
     },
   ],
   ai_video: [
@@ -102,26 +97,18 @@ const ROUND_INFO: Record<RoundKind, RoundInfoSection[]> = {
       text: 'An AI-led video interview with a virtual interviewer. The candidate answers your questions on camera.',
     },
     {
-      title: 'What it looks at',
-      text: 'How clearly and confidently the candidate answers, and how well the answers fit the role and the scoring areas you have set.',
-    },
-    {
-      title: 'Why it is here',
-      text: 'It gives every candidate the same interview, so answers are easy to compare, without needing your team in the room.',
+      title: 'Focus areas',
+      text: 'Skills Match.',
     },
   ],
   panel: [
     {
       title: 'What this round is',
-      text: "A live interview with your team's interviewers, held online or in person.",
+      text: "A live interview with your team's interviewers, online or in person.",
     },
     {
-      title: 'What it looks at',
-      text: 'Depth of skills, how the candidate thinks, and how well they would fit the team, using the questions and scoring areas set for this round.',
-    },
-    {
-      title: 'Why it is here',
-      text: 'It is the human judgement before a hiring decision.',
+      title: 'Focus areas',
+      text: 'Skills Match, Personality Traits, Qualifications, Company Fit, Career Goals.',
     },
   ],
 };

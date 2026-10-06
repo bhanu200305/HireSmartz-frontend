@@ -27,6 +27,7 @@ import {
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import FillWithAiWidget from './FillWithAiWidget';
+import { planFieldFills, type FieldSuggestions } from '../../../shared/utils/fieldSuggestions';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
 import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 import { useGetPermittedOfficesQuery } from '../../../api/job-service/JobOpening/GetPermittedOffices';
@@ -463,7 +464,10 @@ const JobDetails = () => {
     );
   const { jobOpeningDropdown: recruiters, loading: recruitersLoading } = useJobOpeningDropdown(
     'RECRUITER',
-    'create'
+    'create',
+    undefined,
+    undefined,
+    selectedLocationIdForUsers
   );
 
   const generateJobProfileCode = () => {
@@ -480,6 +484,21 @@ const JobDetails = () => {
 
     const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
     return `${initials}-${randomPart}`;
+  };
+
+  // "Fill with AI": puts the helper's suggestions on blank fields only.
+  const applyAiSuggestions = (suggestions: FieldSuggestions): string => {
+    const plan = planFieldFills(suggestions, getValues());
+    plan.fills.forEach(({ field, value }) =>
+      setValue(field as never, value as never, { shouldValidate: true, shouldDirty: true })
+    );
+    if (plan.officeId && offices.some((office) => idsMatch(office.office_id, plan.officeId))) {
+      handleLocationChange(plan.officeId);
+      plan.labels.push('Location');
+    }
+    return plan.labels.length > 0
+      ? `Filled: ${plan.labels.join(', ')}. Review before saving.`
+      : 'Nothing new to fill from that description.';
   };
 
   const handleLocationChange = (locationId: string | number) => {
@@ -1088,6 +1107,12 @@ const JobDetails = () => {
     true,
     isFormDirty && !allowNavigation
   );
+
+  // Back on a saved page with no edits there is nothing to save, so Save As Draft and
+  // Save & Next stay off. A missing description still lets Save & Next run to generate it.
+  const jdMissing = jdDetailsForGate !== undefined && !jdDetailsForGate.jobDescription?.trim();
+  const nothingToSave = hasSavedDetails && !isFormDirty && !jdMissing;
+  const nothingToSaveHint = 'No changes to save';
 
   useEffect(() => {
     if (!asJobId(jobOpeningId) && aiJobDescriptionId) {
@@ -2659,17 +2684,20 @@ const JobDetails = () => {
       };
       // No description yet (for example a blocked generation): generate it now.
       const jdIsEmpty = jdBeforeSave !== undefined && !jdBeforeSave.jobDescription?.trim();
+      // Details changed on a job that already has a description: ask before regenerating.
       if (
-        jdIsEmpty ||
-        (jdBeforeSave?.jobDescription &&
-          haveDescriptionInputsChanged(descriptionInputs, jdBeforeSave))
+        !jdIsEmpty &&
+        jdBeforeSave?.jobDescription &&
+        haveDescriptionInputsChanged(descriptionInputs, jdBeforeSave)
       ) {
+        setDetailsChangedJobId(savedId);
+        return;
+      }
+      if (jdIsEmpty) {
         try {
           await enhanceJd({ jobOpeningId: savedId, regenerate: true }).unwrap();
           showToast({
-            message: jdIsEmpty
-              ? 'Generating the AI description'
-              : 'Job details changed - regenerating the AI description to match',
+            message: 'Generating the AI description',
             type: 'success',
           });
         } catch (enhanceError) {
@@ -2684,6 +2712,38 @@ const JobDetails = () => {
       }
     }
 
+    goToDescriptionPage();
+  };
+
+  // Details changed on a job that has a description: Regenerate, Keep Current, or X to stay here.
+  const [detailsChangedJobId, setDetailsChangedJobId] = useState<string | null>(null);
+
+  const handleKeepCurrentJd = (stayOnPage: boolean) => {
+    const jobId = detailsChangedJobId;
+    setDetailsChangedJobId(null);
+    if (stayOnPage || !jobId) {
+      setAllowNavigation(false);
+      return;
+    }
+    goToDescriptionPage();
+  };
+
+  const handleRegenerateAfterChange = async () => {
+    const jobId = detailsChangedJobId;
+    if (!jobId) return;
+    try {
+      await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
+      showToast({ message: 'Regenerating the AI description', type: 'success' });
+    } catch (enhanceError) {
+      showToast({
+        message: getJobErrorMessage(
+          enhanceError,
+          'Could not start regeneration - use Regenerate on the next step.'
+        ),
+        type: 'warning',
+      });
+    }
+    setDetailsChangedJobId(null);
     goToDescriptionPage();
   };
 
@@ -4146,14 +4206,19 @@ const JobDetails = () => {
                 )}
 
                 <div className="flex items-center justify-center mt-6 gap-6">
-                  <Tooltip title="Save progress and come back later.">
-                    <Button
-                      type="button"
-                      className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-                      onClick={() => onSaveDraft(watch())}
-                    >
-                      Save As Draft
-                    </Button>
+                  <Tooltip
+                    title={nothingToSave ? nothingToSaveHint : 'Save progress and come back later.'}
+                  >
+                    <span className="inline-flex">
+                      <Button
+                        type="button"
+                        className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => onSaveDraft(watch())}
+                        disabled={nothingToSave}
+                      >
+                        Save As Draft
+                      </Button>
+                    </span>
                   </Tooltip>
                   <Tooltip title="Delete this job opening and everything in it.">
                     <Button
@@ -4164,24 +4229,29 @@ const JobDetails = () => {
                       Cancel
                     </Button>
                   </Tooltip>
-                  <Tooltip title="Save this page and continue.">
-                    <Button
-                      type="button"
-                      className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-                      onClick={
-                        hasSavedDetails
-                          ? handleContinueToDescription
-                          : handleSubmit(onSubmit, (invalidFields) => {
-                              showToast({
-                                message: 'Please fill all required fields before saving.',
-                                type: 'error',
-                              });
-                              scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
-                            })
-                      }
-                    >
-                      Save & Next
-                    </Button>
+                  <Tooltip
+                    title={nothingToSave ? nothingToSaveHint : 'Save this page and continue.'}
+                  >
+                    <span className="inline-flex">
+                      <Button
+                        type="button"
+                        className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={nothingToSave}
+                        onClick={
+                          hasSavedDetails
+                            ? handleContinueToDescription
+                            : handleSubmit(onSubmit, (invalidFields) => {
+                                showToast({
+                                  message: 'Please fill all required fields before saving.',
+                                  type: 'error',
+                                });
+                                scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
+                              })
+                        }
+                      >
+                        Save & Next
+                      </Button>
+                    </span>
                   </Tooltip>
                 </div>
               </Form>
@@ -4202,6 +4272,15 @@ const JobDetails = () => {
               title="Cancel this job opening? Everything added so far will be permanently deleted."
               confirmText="Cancel Job"
               isLoading={isCancelling}
+            />
+          )}
+          {detailsChangedJobId && (
+            <ConfirmationModal
+              onClose={(close) => handleKeepCurrentJd(close === true)}
+              onConfirm={handleRegenerateAfterChange}
+              title="You have made changes to the job details. Would you like to regenerate the Job Description using AI?"
+              confirmText="Regenerate"
+              cancelText="Keep Current"
             />
           )}
           {showRegenerateConfirmModal && (
@@ -4227,7 +4306,7 @@ const JobDetails = () => {
         </JobDetailsLayout>
       </MainLayout>
       {resolvedJobId && jdDetailsForGate?.entryPath === 'manual' && (
-        <FillWithAiWidget jobOpeningId={resolvedJobId} />
+        <FillWithAiWidget jobOpeningId={resolvedJobId} onSuggestions={applyAiSuggestions} />
       )}
     </>
   );

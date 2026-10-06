@@ -230,6 +230,9 @@ const AiQuestionsSetup = () => {
   const questionSnapshotBeforeGenerateRef = useRef<string | null>(null);
   // Round the in-flight generation targeted - auto-opens its section once done.
   const roundBeingGeneratedForRef = useRef<string | null>(null);
+  // For the completion toast: what the round held before, and whether this was an append.
+  const roundCountBeforeGenerateRef = useRef(0);
+  const generationModeRef = useRef<'ADD' | 'REPLACE'>('REPLACE');
 
   const {
     data: questionsData,
@@ -350,17 +353,43 @@ const AiQuestionsSetup = () => {
     showToast({ message: generationError, type: 'error' });
   }, [isGeneratingQuestions, generationError]);
 
+  const generationNotice = questionsData?.generation_notice;
+
+  // "10 questions added" for an append, "25 questions generated" for a replace.
+  const generatedToastMessage = (roundQuestionCount: number) => {
+    const isAppend = generationModeRef.current === 'ADD';
+    const count = isAppend
+      ? roundQuestionCount - roundCountBeforeGenerateRef.current
+      : roundQuestionCount;
+    if (count <= 0) return 'Questions generated';
+    return `${count} question${count === 1 ? '' : 's'} ${isAppend ? 'added' : 'generated'}`;
+  };
+
   // Stop polling once the list differs from its pre-generation snapshot.
   useEffect(() => {
     if (!isGeneratingQuestions) return;
     if (questionSnapshotBeforeGenerateRef.current === null) return;
     if (questionsSnapshotKey === questionSnapshotBeforeGenerateRef.current) return;
     setIsGeneratingQuestions(false);
-    showToast({ message: 'Questions generated', type: 'success' });
-    if (roundBeingGeneratedForRef.current) {
-      setOpenSectionKey(roundBeingGeneratedForRef.current);
+    const generatedRoundId = roundBeingGeneratedForRef.current;
+    // Fewer than requested: say so, instead of a plain success count.
+    if (generationNotice) {
+      showToast({ message: generationNotice, type: 'info' });
+    } else {
+      showToast({
+        message: generatedToastMessage(
+          generatedRoundId
+            ? questions.filter((q) => q.interview_round_id === generatedRoundId).length
+            : questions.length
+        ),
+        type: 'success',
+      });
+    }
+    if (generatedRoundId) {
+      setOpenSectionKey(generatedRoundId);
       roundBeingGeneratedForRef.current = null;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGeneratingQuestions, questionsSnapshotKey]);
 
   // Safety net so polling doesn't run forever. Does one last refetch before
@@ -435,6 +464,8 @@ const AiQuestionsSetup = () => {
       // Snapshot the current list so the polling effect can detect a change.
       questionSnapshotBeforeGenerateRef.current = questionsSnapshotKey;
       roundBeingGeneratedForRef.current = activeRoundInstanceId;
+      generationModeRef.current = mode;
+      roundCountBeforeGenerateRef.current = visibleQuestions.length;
       if (mode === 'REPLACE') {
         await regenerateJobQuestions({
           jobOpeningId: activeJobOpeningId,

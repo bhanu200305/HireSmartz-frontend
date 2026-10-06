@@ -5,7 +5,6 @@ import { MdClose, MdInfoOutline } from 'react-icons/md';
 import TextArea from 'antd/es/input/TextArea';
 import { useState } from 'react';
 import RoundInfoModal from '../../shared/ui/RoundInfoModal';
-import { getRoundInfoSections } from '../../../shared/utils/roundInfoContent';
 import { useSaveInterviewRoundMutation } from '../../../api/job-service/JobOpening/AddInterviewRound';
 import { SaveInterviewRoundRequest } from '../../../types';
 import { Controller, useForm } from 'react-hook-form';
@@ -22,6 +21,11 @@ import {
   toInterviewSequencePayload,
 } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import {
+  firstAvailableVariant,
+  getRoundInfoSections,
+  isUnavailableVariant,
+} from '../../../shared/utils/roundInfoContent';
 import { slotOptions } from '../../../shared/utils/business-logic';
 import { resolveVariantLabel as formatVariantLabel } from '../../../shared/utils/variantLabel';
 import {
@@ -104,7 +108,7 @@ const AddNewRound = () => {
         setValue('duration', selectedRound.requires_duration ? 30 : null, {
           shouldValidate: true,
         });
-        setValue('variant', selectedRound.available_variants?.[0] ?? null, {
+        setValue('variant', firstAvailableVariant(selectedRound.available_variants), {
           shouldValidate: true,
         });
       }
@@ -294,14 +298,6 @@ const AddNewRound = () => {
                 )}
               </Form.Item>
 
-              {isIntakeSelected && (
-                <p className="mb-4 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
-                  The Intake Call is always round 2, right after Resume. Candidates who apply from
-                  the careers page choose whether to start with the Intake Call or to upload their
-                  resume first; the order here stays the same.
-                </p>
-              )}
-
               {/* Catalog-driven, not hardcoded to any one round type — shows
                   up for whichever round type has `available_variants` set
                   (currently just Hiring Panel: Online/Offline), the same
@@ -331,6 +327,10 @@ const AddNewRound = () => {
                             <Radio.Button
                               key={variant}
                               value={variant}
+                              disabled={isUnavailableVariant(variant)}
+                              title={
+                                isUnavailableVariant(variant) ? 'Not available yet' : undefined
+                              }
                               className={`text-center ${
                                 field.value === variant
                                   ? '!bg-primary !text-white !border-primary'

@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  firstAvailableVariant,
   getRoundInfoSections,
   getSpecialKindFromRoundName,
+  isUnavailableVariant,
 } from '../../../src/shared/utils/roundInfoContent';
 
 describe('getSpecialKindFromRoundName', () => {
@@ -19,30 +21,50 @@ describe('getSpecialKindFromRoundName', () => {
 });
 
 describe('getRoundInfoSections', () => {
-  const titles = (sections: { title: string }[]) => sections.map((s) => s.title);
+  const textOf = (options: Parameters<typeof getRoundInfoSections>[0], title: string) =>
+    getRoundInfoSections(options).find((s) => s.title === title)?.text ?? '';
 
   it('tells the recruiter the candidate can pick resume first or the call first', () => {
-    const sections = getRoundInfoSections({ specialKind: 'intake_call' });
-    const apply = sections.find((s) => s.title === 'How candidates apply');
-    expect(apply?.text).toMatch(/submit their resume first/i);
-    expect(apply?.text).toMatch(/Intake Call first/i);
+    const choice = textOf({ specialKind: 'intake_call' }, 'How candidates apply');
+    expect(choice).toMatch(/submit their resume first/i);
+    expect(choice).toMatch(/take the Intake Call first/i);
   });
 
-  it('explains what, focus and why for the resume round', () => {
-    expect(titles(getRoundInfoSections({ roundName: 'Resume Round' }))).toEqual([
+  it('describes the Intake Call as a consistency check, not resume building', () => {
+    const what = textOf({ specialKind: 'intake_call' }, 'What this round is');
+    expect(what).toMatch(/against their resume/i);
+    expect(what).not.toMatch(/fill|build/i);
+  });
+
+  it('lists the focus areas of each interview round', () => {
+    expect(textOf({ roundName: 'AI Audio Screening' }, 'Focus areas')).toBe(
+      'Personality Traits, Qualifications, Company Fit, Career Goals.'
+    );
+    expect(textOf({ variants: ['avatar'] }, 'Focus areas')).toBe('Skills Match.');
+    expect(textOf({ variants: ['online'] }, 'Focus areas')).toBe(
+      'Skills Match, Personality Traits, Qualifications, Company Fit, Career Goals.'
+    );
+  });
+
+  it('keeps each round to a couple of short sections', () => {
+    expect(getRoundInfoSections({ roundName: 'Resume Round' }).map((s) => s.title)).toEqual([
       'What this round is',
-      'What it looks at',
-      'Why it is here',
+      'Focus areas',
     ]);
-  });
-
-  it('recognises AI video, panel and audio rounds from variant or name', () => {
-    expect(getRoundInfoSections({ variants: ['avatar'] })[0].text).toMatch(/video interview/i);
-    expect(getRoundInfoSections({ variants: ['online'] })[0].text).toMatch(/live interview/i);
-    expect(getRoundInfoSections({ roundName: 'AI Audio Screening' })[0].text).toMatch(/audio/i);
   });
 
   it('gives nothing for an unknown round', () => {
     expect(getRoundInfoSections({ roundName: 'Something New' })).toEqual([]);
+  });
+});
+
+describe('variant helpers', () => {
+  it('greys out Avatar and defaults to the first available variant (Soundwave)', () => {
+    expect(isUnavailableVariant('avatar')).toBe(true);
+    expect(isUnavailableVariant('soundwave')).toBe(false);
+    expect(firstAvailableVariant(['avatar', 'soundwave'])).toBe('soundwave');
+    expect(firstAvailableVariant(['soundwave', 'avatar'])).toBe('soundwave');
+    expect(firstAvailableVariant(['online', 'offline'])).toBe('online');
+    expect(firstAvailableVariant(null)).toBeNull();
   });
 });

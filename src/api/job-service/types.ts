@@ -308,6 +308,8 @@ export type JobQuestionsResponse = {
   rounds: RoundQuestionsResponse[];
   /** Why the last AI-generated batch was rejected by the content check. */
   generation_error?: string | null;
+  /** Set when the last batch added fewer questions than asked for. */
+  generation_notice?: string | null;
 };
 
 export type QuestionRequest = {
