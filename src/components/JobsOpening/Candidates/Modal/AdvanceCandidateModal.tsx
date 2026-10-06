@@ -270,7 +270,8 @@ const AdvanceCandidateModal = ({
               <strong>
                 Feedback <span className="required-asterisk">*</span>:
               </strong>{' '}
-              Before proceeding, please rate and give feedback for the <strong>{fromLabel}</strong>.
+              Before proceeding, please {needsRating || withRecommendation ? 'rate and ' : ''}
+              provide feedback for the <strong>{fromLabel}</strong>.
             </label>
             {needsRating && (
               <div className="flex items-center gap-2">

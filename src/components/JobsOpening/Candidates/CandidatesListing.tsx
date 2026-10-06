@@ -64,7 +64,7 @@ import {
 } from './candidateDisplay';
 import { normaliseRoundStatus } from './roundProgress';
 import type { CandidateNavState } from './useCandidateNavigation';
-import { formatRoundStatus } from './roundDisplay';
+import { formatRoundStatus, roundStatusLabel } from './roundDisplay';
 import { AI_SCORE_MAX, scoreBadgeStatus } from './roundPipeline';
 import NameMissingFlag from './NameMissingFlag';
 
@@ -644,7 +644,7 @@ const CandidatesListing = () => {
                                     .join(' ') || 'N/A'}
                                 </span>
                               </Link>
-                              {candidate.candidate_name_missing && <NameMissingFlag />}
+                              {candidate.resume_name_missing && <NameMissingFlag />}
                               {candidate.is_new_for_me && (
                                 <Badge status="info" dot={false} className="shrink-0">
                                   New
@@ -704,18 +704,16 @@ const CandidatesListing = () => {
                                               right now; candidate-service flips it back to
                                               the round's normal status when they leave.
                                               Shows on the list's next refresh, not live. */}
-                                          {normaliseRoundStatus(roundStatus) === 'in_progress'
-                                            ? 'Ongoing'
+                                          {normaliseRoundStatus(roundStatus) ===
+                                          'awaiting_resume_upload'
+                                            ? 'Awaiting Resume Upload'
                                             : normaliseRoundStatus(roundStatus) ===
-                                                'booking_created'
-                                              ? 'Booking created — waiting to be scheduled'
-                                              : normaliseRoundStatus(roundStatus) ===
-                                                  'awaiting_resume_upload'
-                                                ? 'Awaiting Resume Upload'
-                                                : normaliseRoundStatus(roundStatus) ===
-                                                    'resume_upload_expired'
-                                                  ? 'Resume Upload Link Expired'
-                                                  : formatRoundStatus(roundStatus)}
+                                                'resume_upload_expired'
+                                              ? 'Resume Upload Link Expired'
+                                              : // Same wording as the Interview Scheduling
+                                                // cards: Ongoing, Invitation sent, ...
+                                                (roundStatusLabel(roundStatus) ??
+                                                formatRoundStatus(roundStatus))}
                                         </span>
                                       )}
                                     </Link>

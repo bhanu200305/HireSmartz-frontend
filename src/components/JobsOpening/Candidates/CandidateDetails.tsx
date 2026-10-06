@@ -13,6 +13,7 @@ import {
   LuThumbsDown,
   LuThumbsUp,
   LuUsers,
+  LuSkipForward,
   LuFileText,
   LuChevronLeft,
   LuChevronRight,
@@ -23,7 +24,7 @@ import {
   LuCircleCheck,
 } from 'react-icons/lu';
 import { IoChatbubbleEllipses } from 'react-icons/io5';
-import { Button, Badge, InfoHint, showToast } from '../../shared';
+import { Button, Badge, InfoHint, Textarea, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
@@ -121,6 +122,8 @@ import { useCandidateNavigation } from './useCandidateNavigation';
 import { useJobDetailsHeaderSlot } from '../../../layouts/jobDetailsHeaderSlot';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
+import { isAssignedToJob } from '../../../shared/utils/auth/getAccess';
 import {
   idsMatch,
   tenantJobTitleFormId,
@@ -365,6 +368,8 @@ const CandidateDetails = () => {
   const candidateNav = useCandidateNavigation(candidateId, parsedJobId);
   const headerSlot = useJobDetailsHeaderSlot();
   const userId = useSelector((state: RootState) => state.LoginSlice.userId);
+  const loginRole = useSelector((state: RootState) => state.LoginSlice.role);
+  const effectivePermissions = useEffectivePermissions();
 
   // `?tab=` deep links. The Interview Scheduling tab is back (invite,
   // re-invite, reschedule and skip live there); the legacy `summary` (from
@@ -393,10 +398,8 @@ const CandidateDetails = () => {
   const [isSkipOpen, setIsSkipOpen] = useState(false);
   const [isAssignJobOpen, setIsAssignJobOpen] = useState(false);
   const [isAiCommentExpanded, setIsAiCommentExpanded] = useState(false);
-  const [skipReason, setSkipReason] = useState('');
   const [skipFeedback, setSkipFeedback] = useState('');
-  // Field-level server errors (content guardrail) and the interviewer-feedback gate.
-  const [skipReasonError, setSkipReasonError] = useState<string | null>(null);
+  // Content-guardrail message from the server, shown under the feedback box.
   const [skipFeedbackError, setSkipFeedbackError] = useState<string | null>(null);
   const [skipInterviewRound, { isLoading: isSkipping }] = useSkipInterviewRoundMutation();
   // "Scoring Criteria" popup (old app's per-round button): the resume
@@ -1099,23 +1102,21 @@ const CandidateDetails = () => {
   }, [savedResumeComment, candidateId]);
 
   const resetSkipForm = () => {
-    setSkipReason('');
     setSkipFeedback('');
-    setSkipReasonError(null);
     setSkipFeedbackError(null);
   };
 
   const handleSkipRound = async () => {
-    if (!candidateId || !skipReason.trim() || !skipFeedback.trim()) return;
-    setSkipReasonError(null);
+    if (!candidateId || !skipFeedback.trim()) return;
     setSkipFeedbackError(null);
     try {
-      // `reason` and `feedback` go as separate fields (feedback is stored and
-      // returned separately as `skip_feedback`). There is no "skip anyway":
-      // the interviewer-feedback gate is never overridden from here.
+      // One feedback box: the backend requires a `reason` and also stores
+      // `feedback` separately (`skip_feedback`), so the same text fills both.
+      // There is no "skip anyway": the interviewer-feedback gate is never
+      // overridden from here.
       const result = await skipInterviewRound({
         candidateId,
-        reason: skipReason.trim(),
+        reason: skipFeedback.trim(),
         feedback: skipFeedback.trim(),
       }).unwrap();
       showToast({
@@ -1145,10 +1146,8 @@ const CandidateDetails = () => {
         return;
       }
       if (status === 422 && /guidelines|content/i.test(serverMessage)) {
-        // Show the content-check message beside the field it names.
-        const body = JSON.stringify((e as { data?: unknown })?.data ?? '').toLowerCase();
-        if (body.includes('feedback')) setSkipFeedbackError(serverMessage);
-        else setSkipReasonError(serverMessage);
+        // Show the content-check message under the feedback box.
+        setSkipFeedbackError(serverMessage);
         return;
       }
       let message = serverMessage || 'Could not skip round';
@@ -1364,6 +1363,51 @@ const CandidateDetails = () => {
   // the final entry.
   const isOnLastRound =
     currentRound !== null && rounds.length > 0 && currentRound.id === rounds[rounds.length - 1].id;
+
+  // The header's quick action follows the round the candidate is on:
+  //   advance - the round is finished (or it is the resume stage): the
+  //             manual Advance, with feedback and the invite checkbox;
+  //   skip    - an interview round hasn't finished: the button becomes Skip
+  //             and turns back into Advance once the round concludes;
+  //   last    - the final round: Advance is greyed out, the candidate is
+  //             marked as selected or rejected instead.
+  // Only the job's hiring managers and recruiters may act (a job with none
+  // listed is left open so nobody is locked out).
+  // A candidate who gave the Intake Call first uploads the resume afterwards
+  // through an emailed link; until it arrives the resume stage can't be
+  // advanced (resume is mandatory and there is nothing to rate yet).
+  const awaitingResume =
+    currentRound !== null && isResumeStageRound(currentRound) && !candidate?.resume_s3_key;
+  const quickAction: 'advance' | 'skip' | 'last' | 'none' | 'awaiting_resume' = !currentRound
+    ? 'none'
+    : awaitingResume
+      ? 'awaiting_resume'
+      : isOnLastRound
+        ? 'last'
+        : advanceDisabled
+          ? 'skip'
+          : 'advance';
+  // The app's own "who may act on this job" rule (`isAssignedToJob`): the
+  // job's hiring managers, recruiters and creator, plus the roles above them
+  // (company admin, owner, anyone holding job-delete), who can do everything
+  // in the pipeline. Left open until the job has loaded.
+  const jobDetails = jobOpeningData?.details;
+  const isJobInCharge = !jobOpeningData
+    ? true
+    : isAssignedToJob(
+        {
+          hiringManagerIds: jobDetails?.hiring_manager_ids,
+          recruiterIds: jobDetails?.recruiter_ids,
+          createdById: jobDetails?.created_by,
+        },
+        userId,
+        loginRole,
+        effectivePermissions
+      );
+  const NOT_IN_CHARGE_MESSAGE =
+    'Only the hiring manager or a recruiter on this job, or a company admin, can advance or skip a candidate.';
+  const LAST_ROUND_MESSAGE =
+    'This is the last round. Mark the candidate as selected or reject them.';
 
   // The Intake Call is optional (job-service, 2026-10-05) and its
   // consistency check no longer gates anything: ADVANCE / REJECT / MARK
@@ -1689,11 +1733,12 @@ const CandidateDetails = () => {
           <p className="mt-1 text-gray-700">
             <span className="font-medium">Reason:</span> {selectedRound.skip_reason}
           </p>
-          {selectedRound.skip_feedback && (
-            <p className="mt-1 whitespace-pre-line text-gray-700">
-              <span className="font-medium">Feedback:</span> {selectedRound.skip_feedback}
-            </p>
-          )}
+          {selectedRound.skip_feedback &&
+            selectedRound.skip_feedback !== selectedRound.skip_reason && (
+              <p className="mt-1 whitespace-pre-line text-gray-700">
+                <span className="font-medium">Feedback:</span> {selectedRound.skip_feedback}
+              </p>
+            )}
         </div>
       )}
       {isResumeStage ? (
@@ -2295,7 +2340,7 @@ const CandidateDetails = () => {
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-200">
             <div className="flex min-w-0 flex-wrap items-center gap-3">
               <h2 className="text-2xl font-bold">{candidateDisplayName(candidate)}</h2>
-              {candidate?.candidate_name_missing && <NameMissingFlag />}
+              {candidate?.resume_name_missing && <NameMissingFlag />}
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
@@ -2477,22 +2522,35 @@ const CandidateDetails = () => {
                       can only ever be advanced. */}
                   <Tooltip
                     title={
-                      !currentRound
-                        ? 'No round left to advance'
-                        : advanceDisabled
-                          ? `${roundLabel(currentRound)} hasn't concluded: Advance will skip it`
-                          : undefined
+                      !isJobInCharge
+                        ? NOT_IN_CHARGE_MESSAGE
+                        : quickAction === 'none'
+                          ? 'No round left to advance'
+                          : quickAction === 'awaiting_resume'
+                            ? "Waiting for the candidate's resume. Resume is mandatory and can't be skipped."
+                            : quickAction === 'last'
+                              ? LAST_ROUND_MESSAGE
+                              : quickAction === 'skip' && currentRound
+                                ? `${roundLabel(currentRound)} hasn't finished yet. Skip it, or wait until it finishes to advance.`
+                                : undefined
                     }
                   >
                     <span className="flex">
                       <Button
                         className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-primary bg-primary-50 text-primary hover:bg-primary-100"
                         onClick={() =>
-                          advanceDisabled ? setIsSkipOpen(true) : setIsAdvanceOpen(true)
+                          quickAction === 'skip' ? setIsSkipOpen(true) : setIsAdvanceOpen(true)
                         }
-                        disabled={isAdvanceLocked}
+                        disabled={
+                          !isJobInCharge ||
+                          isAdvanceLocked ||
+                          quickAction === 'last' ||
+                          quickAction === 'awaiting_resume' ||
+                          quickAction === 'none'
+                        }
                       >
-                        <span>Advance</span>
+                        {quickAction === 'skip' && <LuSkipForward size={15} aria-hidden />}
+                        <span>{quickAction === 'skip' ? 'Skip' : 'Advance'}</span>
                       </Button>
                     </span>
                   </Tooltip>
@@ -2526,6 +2584,9 @@ const CandidateDetails = () => {
                   >
                     <span>Assign New Job</span>
                   </Button>
+                  {quickAction === 'last' && (
+                    <p className="text-xs text-gray-500 sm:col-span-2">{LAST_ROUND_MESSAGE}</p>
+                  )}
                 </div>
               )}
               {isTerminal && (
@@ -2790,6 +2851,7 @@ const CandidateDetails = () => {
                   void runReinvite(round.interview_booking_id);
                 }
               }}
+              canSkip={isJobInCharge}
               onSkip={() => setIsSkipOpen(true)}
               onReject={() => setStatusModal('reject')}
               onSubmitFeedback={(round, score) =>
@@ -2821,11 +2883,14 @@ const CandidateDetails = () => {
         currentJobId={parsedJobId ?? ''}
       />
       {isSkipOpen && (
+        // Same layout as the old app's skip popup (careerforcepro-web
+        // InterviewRounds): one question as the title, a single Reason box,
+        // SUBMIT and CANCEL side by side.
         <AntdCommonModal
-          title="Skip Round"
+          title="Please explain why you are skipping the interview"
           subtitle={
             currentRound
-              ? `Skip ${roundLabel(currentRound)} and move this candidate to the next round.`
+              ? `${roundLabel(currentRound)} · ${candidateDisplayName(candidate)}`
               : undefined
           }
           open
@@ -2833,49 +2898,50 @@ const CandidateDetails = () => {
             setIsSkipOpen(false);
             resetSkipForm();
           }}
-          modalProps={{ width: 480 }}
+          modalProps={{ width: 520 }}
         >
-          <div className="flex flex-col gap-3">
-            <label htmlFor="skip-round-reason" className="text-sm text-gray-800">
-              Reason <span className="required-asterisk">*</span>
-            </label>
-            <Input.TextArea
-              id="skip-round-reason"
-              value={skipReason}
-              onChange={(e) => {
-                setSkipReason(e.target.value);
-                setSkipReasonError(null);
-              }}
-              placeholder="Why is this round being skipped?"
-              autoSize={{ minRows: 3, maxRows: 6 }}
-              status={skipReasonError ? 'error' : undefined}
-              className="rounded-md text-sm"
-            />
-            {skipReasonError && <p className="text-xs text-red-500">{skipReasonError}</p>}
-            <label htmlFor="skip-round-feedback" className="text-sm text-gray-800">
-              Feedback <span className="required-asterisk">*</span>
-            </label>
-            <Input.TextArea
-              id="skip-round-feedback"
-              value={skipFeedback}
-              onChange={(e) => {
-                setSkipFeedback(e.target.value);
-                setSkipFeedbackError(null);
-              }}
-              placeholder="Your feedback on the candidate for this round"
-              autoSize={{ minRows: 3, maxRows: 6 }}
-              status={skipFeedbackError ? 'error' : undefined}
-              className="rounded-md text-sm"
-            />
-            {skipFeedbackError && <p className="text-xs text-red-500">{skipFeedbackError}</p>}
-            <Button
-              type="button"
-              onClick={() => void handleSkipRound()}
-              disabled={!skipReason.trim() || !skipFeedback.trim() || isSkipping}
-              className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {isSkipping ? 'Skipping…' : 'Skip Round'}
-            </Button>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col justify-start">
+              <label htmlFor="skip-round-feedback" className="pb-2 text-sm font-medium">
+                Reason <span className="required-asterisk">*</span>
+              </label>
+              <Textarea
+                id="skip-round-feedback"
+                className="w-full rounded-3xl border border-gray-300 bg-white p-3 focus:ring focus:ring-blue-300"
+                rows={4}
+                maxLength={1000}
+                value={skipFeedback}
+                placeholder="Type your reason here....."
+                onChange={(e) => {
+                  setSkipFeedback(e.target.value);
+                  setSkipFeedbackError(null);
+                }}
+              />
+              {skipFeedbackError && (
+                <p className="mt-1 text-xs text-red-500">{skipFeedbackError}</p>
+              )}
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+              <Button
+                type="button"
+                onClick={() => void handleSkipRound()}
+                disabled={!skipFeedback.trim() || isSkipping}
+                className="cursor-pointer rounded-full border bg-primary px-10 py-3 font-bold text-white disabled:opacity-50"
+              >
+                {isSkipping ? <Loader /> : <span>SUBMIT</span>}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setIsSkipOpen(false);
+                  resetSkipForm();
+                }}
+                disabled={isSkipping}
+                className="cursor-pointer rounded-full border border-gray-200 !bg-white px-7 py-3 font-bold"
+              >
+                <span>CANCEL</span>
+              </Button>
+            </div>
           </div>
         </AntdCommonModal>
       )}

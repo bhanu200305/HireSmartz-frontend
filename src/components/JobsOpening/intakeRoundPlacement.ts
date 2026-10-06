@@ -1,8 +1,11 @@
 // Intake Call placement rules for a job's interview sequence (job-service made
-// the round optional 2026-10-05, migration 0011). Resume is mandatory; Intake
-// Call is optional, at most once, and only ever round 1 (before Resume) or
-// round 2 (right after Resume). job-service itself accepts Intake anywhere,
-// so this position rule is enforced here, in the round setup screens.
+// the round optional 2026-10-05, migration 0011). Resume is mandatory and is
+// always round 1; the Intake Call is optional, at most once, and always round 2
+// (right after Resume). The order a CANDIDATE goes through them is their own
+// choice when applying (resume first, or the call first) and only changes
+// their pipeline, never this setup. job-service itself accepts Intake as round
+// 1 or 2, so the stricter Resume-first rule is enforced here, in the round
+// setup screens.
 
 export type IntakePosition = 'before_resume' | 'after_resume';
 
@@ -30,11 +33,6 @@ export const placeIntakeRound = <T extends { sequence: number }>(
   return ordered.map((round, index) => ({ ...round, sequence: index + 1 }));
 };
 
-export const INTAKE_POSITION_NUMBER: Record<IntakePosition, 1 | 2> = {
-  before_resume: 1,
-  after_resume: 2,
-};
-
 type TypeLike = { id: string | number; special_kind?: string | null };
 
 /** Round types to offer when adding a round: Resume never (mandatory, already
@@ -46,7 +44,8 @@ export const addableRoundTypes = <T extends TypeLike>(roundTypes: T[], jobHasInt
   );
 
 /** Round types to offer when editing a round. Its own type stays listed; Intake
- * Call is also offered while the job has none and the round is round 1 or 2. */
+ * Call is also offered while the job has none and the round is round 2 (the
+ * only slot it may take, right after Resume). */
 export const retypableRoundTypes = <T extends TypeLike>(
   roundTypes: T[],
   options: { currentTypeId?: string | number | null; jobHasIntake: boolean; position: number }
@@ -54,7 +53,7 @@ export const retypableRoundTypes = <T extends TypeLike>(
   roundTypes.filter((type) => {
     if (String(type.id) === String(options.currentTypeId ?? '')) return true;
     if (type.special_kind === 'resume') return false;
-    if (type.special_kind === 'intake_call') return !options.jobHasIntake && options.position <= 2;
+    if (type.special_kind === 'intake_call') return !options.jobHasIntake && options.position === 2;
     return true;
   });
 

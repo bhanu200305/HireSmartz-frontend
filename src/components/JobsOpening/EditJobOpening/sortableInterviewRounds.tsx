@@ -92,15 +92,22 @@ export const SortableInterviewRounds = ({
     }));
   };
 
-  /** The anchor rounds must fill the first slots: Resume alone is round 1;
-   * with the optional Intake Call, the two take rounds 1 and 2 in either
-   * order. Nothing else may be dragged ahead of them. */
+  /** The anchor rounds are fixed: Resume is always round 1 and, when the job
+   * has one, the Intake Call is always round 2. They can't swap, and nothing
+   * else may be dragged ahead of them. (Which one a candidate starts with is
+   * the candidate's choice when applying; it never changes this setup.) */
   const violatesAnchorPositions = (candidate: InterviewRound[]) => {
     if (!anchorRoundTypeIds || anchorRoundTypeIds.size === 0) return false;
     const isAnchor = (round: InterviewRound) => anchorRoundTypeIds.has(String(round.round?.id));
+    const isIntake = (round: InterviewRound) =>
+      Boolean(removableAnchorRoundTypeIds?.has(String(round.round?.id)));
     const anchorCount = candidate.filter(isAnchor).length;
     if (anchorCount === 0) return false;
-    return !candidate.slice(0, anchorCount).every(isAnchor);
+    if (!candidate.slice(0, anchorCount).every(isAnchor)) return true;
+    // Resume (an anchor that isn't the Intake Call) must be first; the Intake
+    // Call, if present, second.
+    if (isIntake(candidate[0])) return true;
+    return anchorCount > 1 && !isIntake(candidate[1]);
   };
 
   const handleDrop = (fromIndex: number, toIndex: number) => {
@@ -112,7 +119,7 @@ export const SortableInterviewRounds = ({
       );
       showToast({
         message: hasIntake
-          ? 'Resume and Intake Call must stay rounds 1 and 2. They can swap places, but no other round can be moved ahead of them.'
+          ? 'Resume must stay round 1 and the Intake Call round 2. No other round can be moved ahead of them.'
           : 'The Resume round must stay round 1. No other round can be moved ahead of it.',
         type: 'error',
       });

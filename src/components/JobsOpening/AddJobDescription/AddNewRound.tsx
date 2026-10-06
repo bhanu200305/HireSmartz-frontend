@@ -24,11 +24,9 @@ import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers'
 import { slotOptions } from '../../../shared/utils/business-logic';
 import { resolveVariantLabel as formatVariantLabel } from '../../../shared/utils/variantLabel';
 import {
-  type IntakePosition,
   isRoundOfType,
   placeIntakeRound,
   roundTypeIdsOfKind,
-  INTAKE_POSITION_NUMBER,
   addableRoundTypes,
 } from '../intakeRoundPlacement';
 
@@ -58,8 +56,8 @@ const AddNewRound = () => {
     skip: !resolvedJobId,
   });
   // Resume is auto-seeded and mandatory — never addable here. The optional
-  // Intake Call is addable once per job (it's capped at one), placed as
-  // round 1 or 2 via the position choice below.
+  // Intake Call is addable once per job (it's capped at one), always as
+  // round 2 right after Resume.
   const resumeTypeIds = roundTypeIdsOfKind(interviewRounds, 'resume');
   const intakeTypeIds = roundTypeIdsOfKind(interviewRounds, 'intake_call');
   const jobHasIntake = rounds.some((round) => isRoundOfType(round, intakeTypeIds));
@@ -67,7 +65,6 @@ const AddNewRound = () => {
 
   const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(null);
   const [showRoundInfo, setShowRoundInfo] = useState(false);
-  const [intakePosition, setIntakePosition] = useState<IntakePosition>('after_resume');
   const isIntakeSelected = selectedRoundType?.special_kind === 'intake_call';
 
   const {
@@ -138,10 +135,10 @@ const AddNewRound = () => {
       },
       { isNew: true }
     );
-    // Intake Call goes in at round 1 or right after Resume (round 2), never
-    // at the end; every other round type is appended.
+    // The Intake Call always goes in right after Resume (round 2), never at
+    // the end; every other round type is appended.
     const payload = isIntakeSelected
-      ? placeIntakeRound(existing, newRound, intakePosition, (round) =>
+      ? placeIntakeRound(existing, newRound, 'after_resume', (round) =>
           resumeTypeIds.has(String(round.round_id))
         )
       : [...existing, newRound];
@@ -154,7 +151,7 @@ const AddNewRound = () => {
       .then((res) => {
         showToast({
           message: isIntakeSelected
-            ? `Intake Call round added as round ${INTAKE_POSITION_NUMBER[intakePosition]}`
+            ? 'Intake Call round added as round 2'
             : res?.message || 'Interview round has been saved successfully',
           type: 'success',
         });
@@ -297,47 +294,11 @@ const AddNewRound = () => {
               </Form.Item>
 
               {isIntakeSelected && (
-                <Form.Item
-                  label={
-                    <span className="text-sm font-semibold text-neutral-700">
-                      Position <span className="required-asterisk">*</span>
-                    </span>
-                  }
-                >
-                  <Radio.Group
-                    value={intakePosition}
-                    onChange={(e) => setIntakePosition(e.target.value)}
-                    optionType="button"
-                    buttonStyle="solid"
-                    className="w-full"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {(
-                        [
-                          ['before_resume', 'Round 1 · Before Resume'],
-                          ['after_resume', 'Round 2 · After Resume'],
-                        ] as const
-                      ).map(([value, label]) => (
-                        <Radio.Button
-                          key={value}
-                          value={value}
-                          className={`text-center ${
-                            intakePosition === value
-                              ? '!bg-primary !text-white !border-primary'
-                              : 'bg-gray-100'
-                          }`}
-                        >
-                          {label}
-                        </Radio.Button>
-                      ))}
-                    </div>
-                  </Radio.Group>
-                  <p className="mt-1.5 text-xs text-neutral-500">
-                    {intakePosition === 'before_resume'
-                      ? 'Candidates applying from the careers page start with the Intake Call and upload their resume afterwards.'
-                      : 'Candidates upload their resume first, then book the Intake Call.'}
-                  </p>
-                </Form.Item>
+                <p className="mb-4 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+                  The Intake Call is always round 2, right after Resume. Candidates who apply from
+                  the careers page choose whether to start with the Intake Call or to upload their
+                  resume first; the order here stays the same.
+                </p>
               )}
 
               {/* Catalog-driven, not hardcoded to any one round type — shows

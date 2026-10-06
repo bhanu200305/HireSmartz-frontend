@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  INTAKE_POSITION_NUMBER,
   addableRoundTypes,
   hasQuestionRound,
   retypableRoundTypes,
@@ -50,12 +49,6 @@ describe('placeIntakeRound', () => {
   });
 });
 
-describe('intake position numbers', () => {
-  it('maps each position to its round number', () => {
-    expect(INTAKE_POSITION_NUMBER).toEqual({ before_resume: 1, after_resume: 2 });
-  });
-});
-
 const types = [
   { id: 'resume', special_kind: 'resume' },
   { id: 'intake', special_kind: 'intake_call' },
@@ -82,8 +75,8 @@ describe('retypableRoundTypes', () => {
     ...over,
   });
 
-  it('offers the Intake Call to a round that is round 1 or 2', () => {
-    expect(idsOf(retypableRoundTypes(types, opts({ position: 1 })))).toContain('intake');
+  it('offers the Intake Call only to the round that is round 2, right after Resume', () => {
+    expect(idsOf(retypableRoundTypes(types, opts({ position: 1 })))).not.toContain('intake');
     expect(idsOf(retypableRoundTypes(types, opts({ position: 2 })))).toContain('intake');
   });
 

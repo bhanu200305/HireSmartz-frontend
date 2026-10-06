@@ -97,6 +97,8 @@ export type InterviewSchedulingTabProps = {
   isBusy: boolean;
   onInvite: (round: CandidateInterviewRoundView) => void;
   onReinvite: (round: CandidateInterviewRoundView) => void;
+  /** Only the job's hiring managers and recruiters may skip a round. */
+  canSkip: boolean;
   onSkip: () => void;
   onReject: () => void;
   onSubmitFeedback: (
@@ -126,6 +128,7 @@ const RoundCard = ({
   isBusy,
   onInvite,
   onReinvite,
+  canSkip: mayManage,
   onSkip,
   onReject,
   onSubmitFeedback,
@@ -179,6 +182,8 @@ const RoundCard = ({
     (!bookingId || bookingLoading || reinviteEligible);
   // The backend only skips the candidate's current round.
   const canSkip = isCurrent && status !== 'COMPLETED' && status !== 'SKIPPED';
+  const skipBlockedMessage =
+    'Only the hiring manager or a recruiter on this job, or a company admin, can advance or skip a candidate.';
   const canGiveFeedback = status === 'COMPLETED' && !isTerminal && Boolean(score);
 
   const reinviteTooltip = bookingsClosed
@@ -307,13 +312,18 @@ const RoundCard = ({
           )}
 
           {canSkip && (
-            <Button
-              type="button"
-              className={`${actionButton} border border-gray-300 text-black`}
-              onClick={onSkip}
-            >
-              Skip Round
-            </Button>
+            <Tooltip title={mayManage ? undefined : skipBlockedMessage}>
+              <span className="flex">
+                <Button
+                  type="button"
+                  className={`${actionButton} border border-gray-300 text-black`}
+                  disabled={!mayManage}
+                  onClick={onSkip}
+                >
+                  Skip Round
+                </Button>
+              </span>
+            </Tooltip>
           )}
 
           {isCurrent && (

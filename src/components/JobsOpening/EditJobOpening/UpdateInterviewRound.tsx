@@ -36,7 +36,7 @@ const UpdateInterviewRound = () => {
     skip: !jobOpeningId,
   });
   // Resume is never selectable. Intake Call is offered when the job has none and
-  // this round is round 1 or 2; this round's own type always stays listed.
+  // this round is round 2; this round's own type always stays listed.
   const intakeTypeIds = roundTypeIdsOfKind(interviewRounds, 'intake_call');
   const jobHasIntake = currentRounds.some((round) => isRoundOfType(round, intakeTypeIds));
   const roundPosition =
