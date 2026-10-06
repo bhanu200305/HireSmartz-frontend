@@ -44,7 +44,8 @@ export type CandidateInterviewScoreView = {
   id: string;
   candidate_id: string;
   interview_booking_id: string;
-  score: number;
+  /** `null` for a row opened for recruiter feedback before the AI scored the round. */
+  score: number | null;
   scoring_reason: string | null;
   interview_round_status: boolean | null;
   live_face_match_status: string | null;
@@ -80,7 +81,8 @@ export type RecordRecruiterRoundScoreRequest = {
 export type RecruiterRoundScoreResultView = {
   score_id: string;
   candidate_id: string;
-  ai_score: number;
+  /** `null` while the AI score is still pending. */
+  ai_score: number | null;
   recruiter_score: number;
 };
 

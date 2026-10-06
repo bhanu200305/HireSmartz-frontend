@@ -175,14 +175,25 @@ export const orderRoundsForFlow = (
 export const isStaleResumeRound = (round: CandidateInterviewRoundView): boolean =>
   round.stage_type === 'interview' && round.round_name.trim().toLowerCase() === 'resume round';
 
+/** Whether a round counts as finished for working out the candidate's current
+ * round: skipped, or explicitly advanced by a recruiter. Interview-service
+ * merely reporting `completed` does NOT finish a round (backend fix
+ * 2026-10-06). Once the round view carries `recruiter_advanced_at` that is the
+ * rule; until then the field is `undefined` and the older status check applies
+ * (it cannot tell a reported completion from an advance). */
+export const isRoundFinishedForProgress = (round: CandidateInterviewRoundView): boolean =>
+  round.status === 'skipped' ||
+  (round.recruiter_advanced_at !== undefined
+    ? round.recruiter_advanced_at !== null
+    : round.status === 'completed');
+
 export const resolveCurrentRound = (
   rounds: CandidateInterviewRoundView[]
 ): CandidateInterviewRoundView | null => {
   const outstanding = rounds.filter(
     (r) =>
       !isStaleResumeRound(r) &&
-      r.status !== 'completed' &&
-      r.status !== 'skipped' &&
+      !isRoundFinishedForProgress(r) &&
       (r.stage_type !== 'resume' || r.due_at !== null)
   );
   return outstanding[0] ?? null;

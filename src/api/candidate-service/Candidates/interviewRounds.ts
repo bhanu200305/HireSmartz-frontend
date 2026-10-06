@@ -96,6 +96,13 @@ export type CandidateInterviewRoundView = {
    * `MAX_REINVITES`). Added to the round view 2026-10-05; optional until
    * that candidate-service build is deployed (falls back to the booking's
    * own `reinvite_count`). */
+  /** When a recruiter explicitly advanced the candidate past this round
+   * (candidate-service migration 0021). Set only by Advance, never by
+   * interview-service merely reporting the round as completed, so it is what
+   * says "finished for progression". The round view does not send it yet: an
+   * `undefined` here means "not available", and the page falls back to the
+   * old status-based rule (see `isRoundFinishedForProgress`). */
+  recruiter_advanced_at?: string | null;
   reinvite_count?: number;
   /** The round's current scheduling link ran out unused. Same rollout note
    * as `reinvite_count` (falls back to `BookingView.link_expired`). */
