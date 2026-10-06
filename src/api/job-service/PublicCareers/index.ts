@@ -78,14 +78,15 @@ export type PublicJobDetail = {
   intake_call_position?: 'before_resume' | 'after_resume' | null;
 };
 
-/** Which apply path a candidate gets for this job: resume upload, the
- * instant Intake Call, or (job-service not reporting the position yet) the
- * old two-option choice. */
-export type PublicApplyPath = 'resume' | 'call' | 'choice';
+/** Which apply path a candidate gets for this job: the two-option choice
+ * (resume or instant Intake Call) whenever the job has an Intake Call round
+ * anywhere in its sequence — or job-service isn't reporting the position
+ * yet — and resume upload only when the job has no Intake Call at all. */
+export type PublicApplyPath = 'resume' | 'choice';
 
 export const publicApplyPathFor = (job: PublicJobDetail | undefined): PublicApplyPath => {
   if (!job || job.intake_call_position === undefined) return 'choice';
-  return job.intake_call_position === 'before_resume' ? 'call' : 'resume';
+  return job.intake_call_position === null ? 'resume' : 'choice';
 };
 
 export type ListPublicJobsArgs = {

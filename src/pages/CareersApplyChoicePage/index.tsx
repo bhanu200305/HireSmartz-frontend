@@ -16,9 +16,10 @@ import {
 // no resume yet, `contact_no` required — `CareersInstantCallPage`, new).
 //
 // Since the Intake Call became optional (2026-10-05) the job decides the path:
-// Intake Call as round 1 → straight to the instant call; Resume first or no
-// Intake Call → straight to the resume form. The two-option choice below only
-// shows while job-service doesn't report `intake_call_position` yet.
+// a job with an Intake Call round (before or after Resume) shows the
+// two-option choice below; a job with no Intake Call goes straight to the
+// resume form. The choice also shows while job-service doesn't report
+// `intake_call_position` yet.
 
 export const CareersApplyChoicePage = () => {
   const { organizationId, jobId } = useParams<{ organizationId: string; jobId: string }>();
@@ -37,14 +38,12 @@ export const CareersApplyChoicePage = () => {
   useEffect(() => {
     if (applyPath === 'resume') {
       navigate(`/careers/${organizationId}/jobs/${jobId}/apply`, { replace: true });
-    } else if (applyPath === 'call') {
-      navigate(`/careers/${organizationId}/jobs/${jobId}/apply/call`, { replace: true });
     }
   }, [applyPath, navigate, organizationId, jobId]);
 
   // Nothing to choose between while the job (and so its path) is loading,
   // or once it's known and the redirect above is under way.
-  if (isJobLoading || applyPath !== 'choice') {
+  if (isJobLoading || applyPath === 'resume') {
     return (
       <div className="public-page min-h-screen bg-gray-50 flex items-center justify-center">
         <Spin size="large" />

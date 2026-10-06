@@ -1,6 +1,6 @@
 import BackButton from '../components/shared/ui/BackButton';
 import { Button } from '../components/shared';
-import { ReactNode, useEffect, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -12,6 +12,7 @@ import {
   useGetWizardStateQuery,
 } from '../api/job-service/JobOpening/GetJobOpeningById';
 import { asJobId } from '../api/job-service/jobId';
+import { JobDetailsHeaderSlotContext } from './jobDetailsHeaderSlot';
 
 interface JobDetailsLayoutProps {
   children?: ReactNode;
@@ -21,6 +22,8 @@ interface JobDetailsLayoutProps {
 const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  // Right side of the Back row — see jobDetailsHeaderSlot.ts.
+  const [headerSlot, setHeaderSlot] = useState<HTMLDivElement | null>(null);
   const isViewMode = location.pathname.includes('/jobs/view/');
   const isEditMode = location.pathname.includes('/jobs/edit/');
   const search = location.search;
@@ -238,7 +241,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   return (
     <div className="flex flex-col items-center px-4 mt-4 w-full">
-      <div className="w-full max-w-6xl mb-3">
+      <div className="w-full max-w-6xl mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <BackButton
           onClick={handleBackNavigation}
           label={
@@ -249,6 +252,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
                 : 'Back'
           }
         />
+        <div ref={setHeaderSlot} className="flex items-center empty:hidden" />
       </div>
       <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">
         {!isCandidatePage && (
@@ -326,7 +330,9 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
             </div>
           </div>
         )}
-        {children}
+        <JobDetailsHeaderSlotContext.Provider value={headerSlot}>
+          {children}
+        </JobDetailsHeaderSlotContext.Provider>
         {nextViewPath && !isCandidatePage && (
           <div className="mt-6 flex justify-end">
             <Button

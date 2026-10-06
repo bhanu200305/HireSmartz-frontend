@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { ConfigProvider, Input, Rate, Select, Tabs, Tooltip } from 'antd';
@@ -69,6 +70,8 @@ import {
   useGetArtifactsQuery,
   useGetInterviewersCalendarStatusQuery,
   useUploadOfflineRecordingMutation,
+  toUploadableAudioFile,
+  AUDIO_UPLOAD_ACCEPT,
   useGetQuestionsAskedQuery,
   CONCLUDED_BOOKING_STATUSES,
   type InterviewApiError,
@@ -115,6 +118,7 @@ import { useGetJobScoringConfigQuery } from '../../../api/job-service/JobOpening
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import CandidateMessageHistory from './CandidateMessageHistory';
 import { useCandidateNavigation } from './useCandidateNavigation';
+import { useJobDetailsHeaderSlot } from '../../../layouts/jobDetailsHeaderSlot';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import {
@@ -359,6 +363,7 @@ const CandidateDetails = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const candidateNav = useCandidateNavigation(candidateId, parsedJobId);
+  const headerSlot = useJobDetailsHeaderSlot();
   const userId = useSelector((state: RootState) => state.LoginSlice.userId);
 
   // `?tab=` deep links. The Interview Scheduling tab is back (invite,
@@ -889,14 +894,19 @@ const CandidateDetails = () => {
     // failed upload still fires a change event.
     e.target.value = '';
     if (!file || !selectedRound?.interview_booking_id) return;
-    if (!file.type.startsWith('audio/')) {
+    const audioFile = toUploadableAudioFile(file);
+    if (!audioFile) {
       showToast({ message: 'Please choose an audio file.', type: 'error' });
+      return;
+    }
+    if (audioFile.size === 0) {
+      showToast({ message: 'This audio file is empty.', type: 'error' });
       return;
     }
     try {
       await uploadOfflineRecording({
         bookingId: selectedRound.interview_booking_id,
-        file,
+        file: audioFile,
       }).unwrap();
       showToast({ message: 'Recording uploaded.', type: 'success' });
     } catch (error) {
@@ -1756,7 +1766,7 @@ const CandidateDetails = () => {
                     <input
                       ref={audioFileInputRef}
                       type="file"
-                      accept="audio/*"
+                      accept={AUDIO_UPLOAD_ACCEPT}
                       className="hidden"
                       onChange={(e) => void handleAudioFileSelected(e)}
                     />
@@ -2205,8 +2215,49 @@ const CandidateDetails = () => {
     </>
   ) : null;
 
+  // Previous / Next in the listing's order (see useCandidateNavigation).
+  // Portaled into JobDetailsLayout's Back row so it mirrors "Back to
+  // Candidate List" on the right; inline in the name row as a fallback.
+  const candidateSwitcher =
+    candidateNav.isReady && candidateNav.total > 1 ? (
+      <div
+        className={`flex items-center gap-2 ${headerSlot ? '' : 'border-l border-gray-200 pl-3'}`}
+      >
+        <Tooltip title="Previous Candidate">
+          <span className="inline-flex">
+            <button
+              type="button"
+              className={candidateHeaderIconCircle}
+              disabled={!candidateNav.hasPrev}
+              aria-label="Previous candidate"
+              onClick={() => candidateNav.goPrev(activeTab)}
+            >
+              <LuChevronLeft size={18} strokeWidth={2} aria-hidden />
+            </button>
+          </span>
+        </Tooltip>
+        <span className="whitespace-nowrap text-xs font-medium text-gray-500 tabular-nums">
+          {candidateNav.position} of {candidateNav.total}
+        </span>
+        <Tooltip title="Next Candidate">
+          <span className="inline-flex">
+            <button
+              type="button"
+              className={candidateHeaderIconCircle}
+              disabled={!candidateNav.hasNext}
+              aria-label="Next candidate"
+              onClick={() => candidateNav.goNext(activeTab)}
+            >
+              <LuChevronRight size={18} strokeWidth={2} aria-hidden />
+            </button>
+          </span>
+        </Tooltip>
+      </div>
+    ) : null;
+
   return (
     <>
+      {headerSlot && candidateSwitcher && createPortal(candidateSwitcher, headerSlot)}
       {isCandidateLoading && <Loader />}
       {/* Floating Email / SMS dock on the right edge — reachable from
           anywhere on the page without scrolling back to the header. Opens
@@ -2332,40 +2383,8 @@ const CandidateDetails = () => {
                 )}
                 {candidateDisplayStatusLabel(displayStatus)}
               </span>
-              {/* Previous / Next in the listing's order (see useCandidateNavigation). */}
-              {candidateNav.isReady && candidateNav.total > 1 && (
-                <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
-                  <Tooltip title="Previous Candidate">
-                    <span className="inline-flex">
-                      <button
-                        type="button"
-                        className={candidateHeaderIconCircle}
-                        disabled={!candidateNav.hasPrev}
-                        aria-label="Previous candidate"
-                        onClick={() => candidateNav.goPrev(activeTab)}
-                      >
-                        <LuChevronLeft size={18} strokeWidth={2} aria-hidden />
-                      </button>
-                    </span>
-                  </Tooltip>
-                  <span className="whitespace-nowrap text-xs font-medium text-gray-500 tabular-nums">
-                    {candidateNav.position} of {candidateNav.total}
-                  </span>
-                  <Tooltip title="Next Candidate">
-                    <span className="inline-flex">
-                      <button
-                        type="button"
-                        className={candidateHeaderIconCircle}
-                        disabled={!candidateNav.hasNext}
-                        aria-label="Next candidate"
-                        onClick={() => candidateNav.goNext(activeTab)}
-                      >
-                        <LuChevronRight size={18} strokeWidth={2} aria-hidden />
-                      </button>
-                    </span>
-                  </Tooltip>
-                </div>
-              )}
+              {/* Previous / Next fallback, only when there's no layout Back row to sit in. */}
+              {!headerSlot && candidateSwitcher}
             </div>
           </div>
 
@@ -2770,12 +2789,6 @@ const CandidateDetails = () => {
                 } else {
                   void runReinvite(round.interview_booking_id);
                 }
-              }}
-              onReschedule={(round) => {
-                setSelectedRound(round);
-                setRescheduleMode('reschedule');
-                setRescheduleRound(round);
-                setIsRescheduleConfirmOpen(true);
               }}
               onSkip={() => setIsSkipOpen(true)}
               onReject={() => setStatusModal('reject')}

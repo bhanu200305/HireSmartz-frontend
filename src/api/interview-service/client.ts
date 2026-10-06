@@ -421,6 +421,47 @@ interface InterviewFetchArgs extends FetchArgs {
 
 const createIdempotencyKey = (): string => crypto.randomUUID();
 
+/** Audio extensions a browser often reports with an empty or generic
+ * `File.type` (notably Chrome/Edge on Windows for phone-recorder formats).
+ * upload_offline_recording.py rejects anything whose content type doesn't
+ * start with `audio/`, and the multipart part's type comes straight from
+ * `File.type` — so a real recording would otherwise bounce both here and
+ * server-side. */
+const AUDIO_MIME_BY_EXTENSION: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  opus: 'audio/opus',
+  weba: 'audio/webm',
+  flac: 'audio/flac',
+  amr: 'audio/amr',
+  '3gp': 'audio/3gpp',
+  caf: 'audio/x-caf',
+  aif: 'audio/aiff',
+  aiff: 'audio/aiff',
+  wma: 'audio/x-ms-wma',
+};
+
+/** `accept` for the offline-recording file pickers — `audio/*` alone hides
+ * the formats above whose MIME type the OS doesn't map to audio. */
+export const AUDIO_UPLOAD_ACCEPT = [
+  'audio/*',
+  ...Object.keys(AUDIO_MIME_BY_EXTENSION).map((ext) => `.${ext}`),
+].join(',');
+
+/** The file to send to `uploadOfflineRecording`, re-typed from its
+ * extension when the browser didn't report an `audio/` type, or `null`
+ * when it isn't a recognisable audio file at all. */
+export const toUploadableAudioFile = (file: File): File | null => {
+  if (file.type.startsWith('audio/')) return file;
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const mime = AUDIO_MIME_BY_EXTENSION[extension];
+  return mime ? new File([file], file.name, { type: mime, lastModified: file.lastModified }) : null;
+};
+
 const rawInterviewQuery = fetchBaseQuery({
   baseUrl: INTERVIEW_BASE_URL,
   prepareHeaders: (headers) => {

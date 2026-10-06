@@ -7,17 +7,10 @@ import {
   type CandidateInterviewRoundView,
 } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
-import {
-  useGetBookingQuery,
-  CONCLUDED_BOOKING_STATUSES,
-  MAX_REINVITES,
-} from '../../../api/interview-service/client';
+import { useGetBookingQuery, MAX_REINVITES } from '../../../api/interview-service/client';
 import { roundLabel, roundReinviteState } from './roundDisplay';
 import {
-  isAiVideoRound,
-  isAudioScreeningRound,
   isIdentityVerificationRound,
-  isIntakeCallRound,
   isResumeStageRound,
   isRoundSkipped,
   normaliseRoundStatus,
@@ -27,7 +20,7 @@ import { findRoundScore } from './roundPipeline';
 // "Interview Scheduling" tab: one card per interview round (the resume stage
 // has no interview to schedule), laid out like the old app's Round Overview.
 // Everything about getting a round scheduled lives here: the first Invite,
-// Re-invite (with the attempts still left), Reschedule and Skip. The actions
+// Re-invite (with the attempts still left) and Skip. The actions
 // themselves run in CandidateDetails (they share its modals); this file only
 // decides what each card shows and which buttons are live.
 
@@ -104,7 +97,6 @@ export type InterviewSchedulingTabProps = {
   isBusy: boolean;
   onInvite: (round: CandidateInterviewRoundView) => void;
   onReinvite: (round: CandidateInterviewRoundView) => void;
-  onReschedule: (round: CandidateInterviewRoundView) => void;
   onSkip: () => void;
   onReject: () => void;
   onSubmitFeedback: (
@@ -134,7 +126,6 @@ const RoundCard = ({
   isBusy,
   onInvite,
   onReinvite,
-  onReschedule,
   onSkip,
   onReject,
   onSubmitFeedback,
@@ -149,9 +140,6 @@ const RoundCard = ({
   const status = cardStatusFor(round);
   const header = HEADER_STYLE[status];
   const isCurrent = currentRoundId === round.id && !isTerminal;
-  const isPanel = round.round_type === 'PANEL';
-  const isVoiceCall =
-    isIntakeCallRound(round) || isAudioScreeningRound(round) || isAiVideoRound(round);
   const score = findRoundScore(scores, round);
 
   const invitedAt = round.invite_sent_at ?? booking?.created_at ?? null;
@@ -189,19 +177,6 @@ const RoundCard = ({
     status === 'INVITATION SENT' &&
     !isTerminal &&
     (!bookingId || bookingLoading || reinviteEligible);
-  // A concluded attempt can be re-attempted through the reschedule flow.
-  const canReschedule =
-    !isTerminal &&
-    Boolean(bookingId) &&
-    status !== 'COMPLETED' &&
-    status !== 'SKIPPED' &&
-    ((isVoiceCall && booking?.call_intent != null) ||
-      // interview-service accepts a PANEL reschedule once the booking has
-      // concluded OR while it is still scheduled for a future time (it then
-      // cancels the old calendar event); a still-draft one has nothing to move.
-      (isPanel &&
-        booking != null &&
-        (booking.status === 'scheduled' || CONCLUDED_BOOKING_STATUSES.includes(booking.status))));
   // The backend only skips the candidate's current round.
   const canSkip = isCurrent && status !== 'COMPLETED' && status !== 'SKIPPED';
   const canGiveFeedback = status === 'COMPLETED' && !isTerminal && Boolean(score);
@@ -316,21 +291,6 @@ const RoundCard = ({
                   onClick={() => onReinvite(round)}
                 >
                   Re-invite
-                </Button>
-              </span>
-            </Tooltip>
-          )}
-
-          {canReschedule && (
-            <Tooltip title="Request a new attempt for this concluded interview">
-              <span className="flex">
-                <Button
-                  type="button"
-                  className={`${actionButton} bg-primary text-white`}
-                  disabled={isBusy || bookingsClosed}
-                  onClick={() => onReschedule(round)}
-                >
-                  Reschedule
                 </Button>
               </span>
             </Tooltip>

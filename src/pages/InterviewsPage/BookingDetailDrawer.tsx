@@ -29,6 +29,8 @@ import {
   useSubmitFeedbackMutation,
   useAttachRecordingMutation,
   useUploadOfflineRecordingMutation,
+  toUploadableAudioFile,
+  AUDIO_UPLOAD_ACCEPT,
   type BookingStatus,
   type FeedbackRecommendation,
   type InterviewApiError,
@@ -228,12 +230,17 @@ export const BookingDetailDrawer = ({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('audio/')) {
+    const audioFile = toUploadableAudioFile(file);
+    if (!audioFile) {
       showToast({ message: 'Please choose an audio file.', type: 'error' });
       return;
     }
+    if (audioFile.size === 0) {
+      showToast({ message: 'This audio file is empty.', type: 'error' });
+      return;
+    }
     try {
-      await uploadOfflineRecording({ bookingId: id, file }).unwrap();
+      await uploadOfflineRecording({ bookingId: id, file: audioFile }).unwrap();
       showToast({ message: 'Recording uploaded.', type: 'success' });
     } catch (e2) {
       const err = e2 as InterviewApiError;
@@ -632,7 +639,7 @@ export const BookingDetailDrawer = ({
                       <input
                         ref={audioFileInputRef}
                         type="file"
-                        accept="audio/*"
+                        accept={AUDIO_UPLOAD_ACCEPT}
                         className="hidden"
                         onChange={(e) => void handleAudioFileSelected(e)}
                       />

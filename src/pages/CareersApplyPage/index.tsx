@@ -11,10 +11,7 @@ import {
   FilePdfOutlined,
 } from '@ant-design/icons';
 import { useSubmitPublicApplicationMutation } from '../../api/candidate-service/PublicApply/index';
-import {
-  publicApplyPathFor,
-  useGetPublicJobQuery,
-} from '../../api/job-service/PublicCareers/index';
+import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { PhoneNumberField, ResponsiveRecaptcha } from '../../components/shared';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
@@ -56,14 +53,6 @@ export const CareersApplyPage = () => {
     { organizationId: organizationId ?? '', jobId: jobId ?? '' },
     { skip: !organizationId || !jobId }
   );
-
-  // A job whose sequence starts with the Intake Call (round 1) uses the other apply path — the choice page
-  // routes there already; this catches a direct link or the back button.
-  useEffect(() => {
-    if (publicApplyPathFor(job) === 'call') {
-      navigate(`/careers/${organizationId}/jobs/${jobId}/apply/call`, { replace: true });
-    }
-  }, [job, navigate, organizationId, jobId]);
 
   const [resume, setResume] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
