@@ -168,6 +168,17 @@ export type BookIntakeCallSlotResult = {
 
 export type BookIntakeCallSlotResponse = CandidatePublicEnvelope<BookIntakeCallSlotResult>;
 
+// `POST /public/v1/apply/intake-call-now` — the candidate choosing to be
+// called right now instead of picking a slot (same token as the slot steps).
+// `questions_pending: true` means the call itself follows shortly rather than
+// ringing this instant.
+export type CallIntakeCallNowResult = {
+  initiated_at: string;
+  questions_pending: boolean;
+};
+
+export type CallIntakeCallNowResponse = CandidatePublicEnvelope<CallIntakeCallNowResult>;
+
 // ---------------------------------------------------------------------------
 // ID.me verification callback (§5.3) — this is a redirect TARGET (ID.me
 // sends the candidate's browser here after their identity-proofing flow),
@@ -309,6 +320,16 @@ export const publicApplyApi = createApi({
       }),
     }),
 
+    // POST /public/v1/apply/intake-call-now — "call me now instead" of
+    // picking a slot. Body is just the signed booking token.
+    callIntakeCallNow: build.mutation<CallIntakeCallNowResponse, { token: string }>({
+      query: (body) => ({
+        url: '/apply/intake-call-now',
+        method: 'POST',
+        body,
+      }),
+    }),
+
     // GET /public/v1/verification/callback?code=&state= — a redirect target,
     // not something a form submits to. The landing page component calls this
     // query itself (its route params ARE `code`/`state`, round-tripped by
@@ -336,5 +357,6 @@ export const {
   useGetIntakeCallSlotsQuery,
   useLazyGetIntakeCallSlotsQuery,
   useBookIntakeCallSlotMutation,
+  useCallIntakeCallNowMutation,
   useGetVerificationCallbackQuery,
 } = publicApplyApi;

@@ -3,6 +3,7 @@ import type {
   CandidateView,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
 import type { BadgeStatus } from '../../shared/ui/badge';
+import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
 
 // Split out of CandidatesListing.tsx so other candidate views can reuse the
 // exact same "First Last" formatting the Table view's rows use, without
@@ -152,6 +153,26 @@ export const resolveDisplayStatus = (c: CandidateView): CandidateDisplayStatus =
   if (code === 'withdrawn') return 'withdrawn';
   if (code === 'selected') return 'selected';
   return 'in_process';
+};
+
+// ── Average score ──────────────────────────────────────────────────────
+// The list's "Avg. score" is the resume score plus every interview round's
+// own score (the recruiter's if one was recorded, else the AI's), averaged.
+// The list endpoint neither returns nor sorts on it, so the figure is
+// computed here (see CandidatesListing's score probes) and the Avg. Score
+// column sort runs in the browser.
+
+export const computeAverageScore = (
+  resumeScore: number | null | undefined,
+  scores: Pick<CandidateInterviewScoreView, 'score' | 'recruiter_score'>[]
+): number | null => {
+  const values = [
+    resumeScore,
+    ...scores.map((s) => (s.recruiter_score != null ? s.recruiter_score : s.score)),
+  ].filter((v): v is number => v !== null && v !== undefined);
+  return values.length > 0
+    ? Number((values.reduce((sum, v) => sum + v, 0) / values.length).toFixed(1))
+    : null;
 };
 
 export const candidateDisplayStatusLabel = (status: CandidateDisplayStatus): string =>

@@ -20,6 +20,8 @@ import { CANDIDATE_DISPLAY_STATUS_OPTIONS } from './candidateDisplay';
 export type CandidateListFilterValues = {
   displayStatus?: CandidateDisplayStatus;
   source?: string;
+  /** job-service round id: candidates currently sitting at that round. */
+  roundId?: string;
 };
 
 // Sentinel for the "All" option — never sent to the API; selecting it clears
@@ -29,9 +31,11 @@ const ALL = '__all__';
 type FilterMenuProps = {
   filters: CandidateListFilterValues;
   onFilterChange: (newFilters: Partial<CandidateListFilterValues>) => void;
+  /** The job's interview rounds, for the Round filter. */
+  roundOptions?: { label: string; value: string }[];
 };
 
-const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
+const FilterMenu = ({ filters, onFilterChange, roundOptions = [] }: FilterMenuProps) => {
   const { data: sources = [] } = useListApplicationSourcesQuery();
 
   return (
@@ -73,6 +77,22 @@ const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
               { label: 'All Sources', value: ALL },
               ...sources.map((s) => ({ label: s.label, value: s.code })),
             ]}
+            popupMatchSelectWidth={false}
+          />
+        </div>
+        <div className="cfp-dropdown-trigger w-full sm:w-auto sm:min-w-[200px]">
+          <FilterSelectIcon />
+          <Select
+            placeholder="Round"
+            value={filters.roundId ?? ALL}
+            onChange={(val) => onFilterChange({ roundId: val && val !== ALL ? val : undefined })}
+            allowClear={Boolean(filters.roundId)}
+            showSearch
+            optionFilterProp="label"
+            className="w-full custom-select-jobs placeholder-style"
+            dropdownClassName="rounded-3xl"
+            variant="borderless"
+            options={[{ label: 'All Rounds', value: ALL }, ...roundOptions]}
             popupMatchSelectWidth={false}
           />
         </div>

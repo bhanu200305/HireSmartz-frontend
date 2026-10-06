@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom';
 import { useSelector, shallowEqual } from 'react-redux';
 import { Col, Row, Tooltip, Checkbox } from 'antd';
@@ -53,11 +53,13 @@ import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
 import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
+import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import {
   candidateDisplayName,
   candidateDisplayStatusColor,
   candidateDisplayStatusLabel,
   candidateDisplayStatusTooltip,
+  computeAverageScore,
   resolveDisplayStatus,
 } from './candidateDisplay';
 import { normaliseRoundStatus } from './roundProgress';
@@ -91,14 +93,7 @@ const CandidateAverageScoreCell = ({
 }) => {
   const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId);
   // recruiter_score and the AI scores are all 0-5 (same as roundPipeline.ts).
-  const scoreValues = [
-    resumeScore,
-    ...scores.map((s) => (s.recruiter_score != null ? s.recruiter_score : s.score)),
-  ].filter((v): v is number => v !== null && v !== undefined);
-  const avgScore =
-    scoreValues.length > 0
-      ? Number((scoreValues.reduce((sum, v) => sum + v, 0) / scoreValues.length).toFixed(1))
-      : null;
+  const avgScore = computeAverageScore(resumeScore, scores);
 
   if (avgScore === null) {
     return <span className="text-sm text-neutral-400">—</span>;
@@ -109,6 +104,36 @@ const CandidateAverageScoreCell = ({
     </Badge>
   );
 };
+
+// Reports one candidate's average score up to the list, so the Avg. Score
+// filter can hide rows outside the chosen band. Same cached scores query the
+// column's cell uses, so it costs no extra request. Only mounted while that
+// filter is active.
+const CandidateScoreProbe = ({
+  candidateId,
+  resumeScore,
+  onAverage,
+}: {
+  candidateId: string;
+  resumeScore: number | null;
+  onAverage: (candidateId: string, average: number | null) => void;
+}) => {
+  const { data: scores, isSuccess } = useListCandidateInterviewScoresQuery(candidateId);
+  const average = isSuccess ? computeAverageScore(resumeScore, scores ?? []) : undefined;
+  useEffect(() => {
+    if (average !== undefined) onAverage(candidateId, average);
+  }, [candidateId, average, onAverage]);
+  return null;
+};
+
+// With the Round filter or the Avg. Score sort on, the list loads up to 200
+// candidates (the API maximum) and is filtered, sorted and paged here.
+const CLIENT_PAGED_FETCH_LIMIT = 200;
+// Value of the Round filter's "Resume Screening" option (no round id exists).
+const RESUME_ROUND_FILTER = '__resume__';
+// What candidate-service names the resume stage in `current_round_name`
+// (`RESUME_STAGE_NAME`), the same text the list's status column shows.
+const RESUME_STAGE_LABEL = 'Resume Review';
 
 const CandidatesListing = () => {
   const navigate = useNavigate();
@@ -122,6 +147,19 @@ const CandidatesListing = () => {
   const [search, setSearch] = useState('');
   const [displayStatus, setDisplayStatus] = useState<CandidateDisplayStatus | undefined>();
   const [source, setSource] = useState<string | undefined>();
+  const [roundId, setRoundId] = useState<string | undefined>();
+  // Sorting by the Avg. Score column. The backend can't sort by it (the figure
+  // is worked out in the browser per candidate), so while it's active the list
+  // loads up to 200 candidates (the API maximum) and is sorted and paged here.
+  const [avgSortOrder, setAvgSortOrder] = useState<'asc' | 'desc' | null>(null);
+  const isClientPaged = Boolean(roundId) || Boolean(avgSortOrder);
+  // Average score per candidate on this page (filled by CandidateScoreProbe).
+  const [averages, setAverages] = useState<Record<string, number | null>>({});
+  const reportAverage = useCallback((candidateId: string, average: number | null) => {
+    setAverages((prev) =>
+      prev[candidateId] === average ? prev : { ...prev, [candidateId]: average }
+    );
+  }, []);
   const [sortBy, setSortBy] = useState<NonNullable<ListCandidatesArgs['sortBy']>>('applied_date');
   const [sortOrder, setSortOrder] = useState<NonNullable<ListCandidatesArgs['sortOrder']>>('desc');
   const [page, setPage] = useState(0);
@@ -213,10 +251,13 @@ const CandidatesListing = () => {
       search: search || undefined,
       displayStatus,
       source,
+      // The Resume Screening option has no job-service round behind it, so
+      // it narrows nothing on the server (see `scopedItems` below).
+      roundId: roundId && roundId !== RESUME_ROUND_FILTER ? roundId : undefined,
       sortBy,
       sortOrder,
-      limit: pageSize,
-      offset: page * pageSize,
+      limit: isClientPaged ? CLIENT_PAGED_FETCH_LIMIT : pageSize,
+      offset: isClientPaged ? 0 : page * pageSize,
     },
     { skip: !parsedJobId, refetchOnMountOrArgChange: true }
   );
@@ -230,7 +271,65 @@ const CandidatesListing = () => {
     () => new Map(applicationSources.map((s) => [s.code, s.label])),
     [applicationSources]
   );
-  const candidates = data?.items ?? [];
+  const fetchedItems = useMemo(() => data?.items ?? [], [data]);
+
+  // The job's interview rounds, for the Round filter.
+  const { data: jobRoundPlan } = useGetInterviewRoundsByJobIdQuery(parsedJobId ?? '', {
+    skip: !parsedJobId,
+  });
+  const roundOptions = useMemo(
+    () =>
+      ((jobRoundPlan ?? []) as Array<{ roundId?: string; roundName?: string | null }>)
+        .filter((r) => r.roundId)
+        .map((r) =>
+          // The plan's "Resume Round" is the resume stage, which candidates
+          // are never "sitting at" through a round id.
+          (r.roundName ?? '').trim().toLowerCase() === 'resume round'
+            ? { label: RESUME_STAGE_LABEL, value: RESUME_ROUND_FILTER }
+            : { label: r.roundName || 'Round', value: r.roundId as string }
+        ),
+    [jobRoundPlan]
+  );
+
+  // Round filter: the server's `round_id` match is "has a round row for it
+  // that isn't completed", which includes every round the candidate hasn't
+  // reached yet, so it over-matches. The list rows carry the round each
+  // candidate is really on now (`current_round_name`), so the exact match is
+  // made here, over the (up to 200) candidates the server returned.
+  const scopedItems = useMemo(() => {
+    if (!roundId) return fetchedItems;
+    const wanted = roundOptions.find((o) => o.value === roundId);
+    if (!wanted) return fetchedItems;
+    return fetchedItems.filter((c) => {
+      if (resolveDisplayStatus(c) !== 'in_process') return false;
+      return roundId === RESUME_ROUND_FILTER
+        ? !c.current_round_name || c.current_round_name === RESUME_STAGE_LABEL
+        : c.current_round_name === wanted.label;
+    });
+  }, [fetchedItems, roundId, roundOptions]);
+
+  // Avg. Score sort: wait until every candidate's scores are in, then order
+  // by the average (not-scored candidates last either way). With either
+  // control active the list is paged here instead of by the server.
+  const isScoringPage = Boolean(avgSortOrder) && scopedItems.some((c) => !(c.id in averages));
+  const sortedItems = useMemo(() => {
+    if (!avgSortOrder) return scopedItems;
+    const direction = avgSortOrder === 'asc' ? 1 : -1;
+    return [...scopedItems].sort((a, b) => {
+      const x = averages[a.id];
+      const y = averages[b.id];
+      if (x === y) return 0;
+      if (x === null || x === undefined) return 1;
+      if (y === null || y === undefined) return -1;
+      return (x - y) * direction;
+    });
+  }, [scopedItems, avgSortOrder, averages]);
+  const candidates = useMemo(() => {
+    if (!isClientPaged) return fetchedItems;
+    if (isScoringPage) return [];
+    return sortedItems.slice(page * pageSize, (page + 1) * pageSize);
+  }, [isClientPaged, fetchedItems, isScoringPage, sortedItems, page, pageSize]);
+  const totalCandidates = isClientPaged ? sortedItems.length : (data?.total ?? 0);
   const selectedIds = Object.keys(selected).filter((cid) => selected[cid]);
   const selectedCount = selectedIds.length;
   const selectedCandidates = candidates.filter((c) => selected[c.id]);
@@ -254,6 +353,12 @@ const CandidatesListing = () => {
   const clearSelection = () => setSelected({});
 
   const handleSort = (key: string, direction: SortDirection) => {
+    if (key === 'avg_score') {
+      setAvgSortOrder(direction ?? null);
+      setPage(0);
+      return;
+    }
+    setAvgSortOrder(null);
     if (!direction) {
       setSortBy('applied_date');
       setSortOrder('desc');
@@ -267,6 +372,7 @@ const CandidatesListing = () => {
   const handleFilterChange = (next: Partial<CandidateListFilterValues>) => {
     if ('displayStatus' in next) setDisplayStatus(next.displayStatus);
     if ('source' in next) setSource(next.source);
+    if ('roundId' in next) setRoundId(next.roundId);
     setPage(0);
   };
 
@@ -299,10 +405,14 @@ const CandidatesListing = () => {
         search: search || undefined,
         displayStatus,
         source,
+        roundId,
         sortBy,
         sortOrder,
       },
-      index: page * pageSize + rowIndex,
+      // Server order (not the Avg. Score order) is what Previous / Next follow.
+      index: isClientPaged
+        ? fetchedItems.indexOf(candidates[rowIndex])
+        : page * pageSize + rowIndex,
     },
   });
 
@@ -394,7 +504,11 @@ const CandidatesListing = () => {
               )}
             </div>
             <div className="w-full lg:w-auto">
-              <FilterMenu filters={{ displayStatus, source }} onFilterChange={handleFilterChange} />
+              <FilterMenu
+                filters={{ displayStatus, source, roundId }}
+                onFilterChange={handleFilterChange}
+                roundOptions={roundOptions}
+              />
             </div>
           </div>
         </div>
@@ -432,22 +546,31 @@ const CandidatesListing = () => {
                 <COL
                   sortable
                   sortKey="name"
-                  currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                  currentSortKey={avgSortOrder ? '' : buildCurrentSortKey(sortBy, sortOrder)}
                   onSort={handleSort}
                   span={6}
                 >
                   Candidate Name
                 </COL>
-                {/* Not sortable - "average score" is computed client-side
-                    per row (see CandidateAverageScoreCell), so there's no
-                    single backend field to sort by. */}
-                <COL span={4}>
-                  <span>Avg. Score</span>
+                {/* "Average score" is computed client-side per row (see
+                    CandidateAverageScoreCell), so this sort runs here, over up
+                    to 200 candidates (see avgSortOrder). Combine it with the
+                    Round filter to rank the candidates at one round. */}
+                <COL
+                  sortable
+                  sortKey="avg_score"
+                  currentSortKey={
+                    avgSortOrder ? buildCurrentSortKey('avg_score', avgSortOrder) : ''
+                  }
+                  onSort={handleSort}
+                  span={4}
+                >
+                  Avg. Score
                 </COL>
                 <COL
                   sortable
                   sortKey="applied_date"
-                  currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                  currentSortKey={avgSortOrder ? '' : buildCurrentSortKey(sortBy, sortOrder)}
                   onSort={handleSort}
                   span={4}
                 >
@@ -463,7 +586,16 @@ const CandidatesListing = () => {
             </div>
 
             <div className="w-full">
-              {isLoading ? (
+              {avgSortOrder &&
+                scopedItems.map((c) => (
+                  <CandidateScoreProbe
+                    key={c.id}
+                    candidateId={c.id}
+                    resumeScore={c.resume_score}
+                    onAverage={reportAverage}
+                  />
+                ))}
+              {isLoading || isScoringPage ? (
                 <Loader />
               ) : candidates.length > 0 ? (
                 candidates.map((candidate, rowIndex) => (
@@ -732,7 +864,7 @@ const CandidatesListing = () => {
         <MasterPagination
           current={page + 1}
           pageSize={pageSize}
-          total={data?.total ?? 0}
+          total={totalCandidates}
           itemLabel="candidates"
           onPageChange={(p) => setPage(p - 1)}
         />
