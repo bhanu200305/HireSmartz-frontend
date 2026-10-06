@@ -3,11 +3,7 @@
 // always round 1; the Intake Call is optional, at most once, and always round 2
 // (right after Resume). The order a CANDIDATE goes through them is their own
 // choice when applying (resume first, or the call first) and only changes
-// their pipeline, never this setup. job-service itself accepts Intake as round
-// 1 or 2, so the stricter Resume-first rule is enforced here, in the round
-// setup screens.
-
-export type IntakePosition = 'before_resume' | 'after_resume';
+// their pipeline, never this setup. job-service enforces the same rule.
 
 type RoundTypeLike = { id: string | number; special_kind?: string | null };
 type JobRoundLike = { round?: { id?: string | number | null } | null; sequence: number };
@@ -18,18 +14,16 @@ export const roundTypeIdsOfKind = (roundTypes: RoundTypeLike[], kind: 'resume' |
 export const isRoundOfType = (round: JobRoundLike, typeIds: Set<string>) =>
   typeIds.has(String(round.round?.id ?? ''));
 
-/** Inserts `intake` at round 1 or directly after the Resume round, and
- * renumbers every round's `sequence` to match the new order. */
-export const placeIntakeRound = <T extends { sequence: number }>(
+/** Inserts `intake` directly after the Resume round (round 2), and renumbers
+ * every round's `sequence` to match the new order. */
+export const placeIntakeAfterResume = <T extends { sequence: number }>(
   existing: T[],
   intake: T,
-  position: IntakePosition,
   isResume: (round: T) => boolean
 ): T[] => {
   const ordered = [...existing].sort((a, b) => a.sequence - b.sequence);
   const resumeIndex = ordered.findIndex(isResume);
-  const insertAt = position === 'before_resume' ? 0 : resumeIndex === -1 ? 0 : resumeIndex + 1;
-  ordered.splice(insertAt, 0, intake);
+  ordered.splice(resumeIndex + 1, 0, intake);
   return ordered.map((round, index) => ({ ...round, sequence: index + 1 }));
 };
 

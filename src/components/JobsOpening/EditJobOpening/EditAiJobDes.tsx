@@ -89,7 +89,7 @@ const EditAiJobDescription = () => {
 
   return (
     <>
-      <JobDescriptionPanel ref={panelRef} aiJobDescriptionId={jobOpeningId} isEditFlow />
+      <JobDescriptionPanel ref={panelRef} aiJobDescriptionId={jobOpeningId} />
       <div className="flex items-center justify-center mt-6 gap-6">
         {isDraft && (
           <Tooltip title="Save progress and come back later.">

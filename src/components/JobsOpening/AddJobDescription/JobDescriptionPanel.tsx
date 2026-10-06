@@ -10,12 +10,9 @@ import ReactMarkdown from 'react-markdown';
 import { Loader } from '../../shared/ui/loader';
 import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
 import { useJdStatusPolling } from '../../../hooks/useJdStatusPolling';
-import { useOfferedSuggestedSkills } from '../../../hooks/useOfferedSuggestedSkills';
 import { useForm } from 'react-hook-form';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { updateJobDetails } from '../../../redux/slices/jobOpeningSlice';
-import { updateEditJobDetails } from '../../../redux/slices/editJobOpeningSlice';
+import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 import TurndownService from 'turndown';
 import { RichTextEditor } from '../../shared/ui/RichTextEditor';
@@ -23,7 +20,6 @@ import {
   formatAiJobDescription,
   jdGenerationFailureMessage,
 } from '../../../shared/utils/business-logic';
-import { diffAiOwnedFields, mergeNewAiSkills } from '../../../shared/utils/jdSync';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { makeFirstLetterUpperCase } from '../../../shared/utils/methods';
 import { useGetTopFivePromptQuery } from '../../../api/ai-service/AiQuestion/AiQuestion';
@@ -34,8 +30,6 @@ import { useGetTenantProfileQuery } from '../../../api/organization-service/Tena
 interface JobDescriptionPanelProps {
   /** UUID of the job — JD hangs off the job, not a separate entity. */
   aiJobDescriptionId: string | number | null;
-  /** True when mounted from the Edit wizard — uses EditJobSlice instead of JobSlice. */
-  isEditFlow?: boolean;
 }
 
 export interface JobDescriptionPanelHandle {
@@ -56,10 +50,8 @@ export interface JobDescriptionPanelHandle {
  * leaving the page.
  */
 const JobDescriptionPanel = forwardRef<JobDescriptionPanelHandle, JobDescriptionPanelProps>(
-  ({ aiJobDescriptionId, isEditFlow = false }, ref) => {
-    const dispatch = useDispatch();
+  ({ aiJobDescriptionId }, ref) => {
     const jobOpeningId = asJobId(aiJobDescriptionId);
-    const offeredSuggestedSkills = useOfferedSuggestedSkills(jobOpeningId ?? '');
     const [showRegenerateModal, setShowRegenerateModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isInputFocused, setIsInputFocused] = useState(false);
@@ -71,15 +63,10 @@ const JobDescriptionPanel = forwardRef<JobDescriptionPanelHandle, JobDescription
     const failedToastShownForJobRef = useRef<string | null>(null);
     // Previous jd_status tick, to detect an actual transition into READY.
     const prevJdStatusRef = useRef<string | undefined>(undefined);
-    // True once a completion is observed, until the resulting refetch lands.
-    const awaitingFreshAiFieldsRef = useRef(false);
 
     const { register, getValues, setValue, watch } = useForm({
       defaultValues: { description: '' },
     });
-    const jobDetailsInRedux = useSelector((state: RootState) =>
-      isEditFlow ? state.EditJobSlice.details : state.JobSlice.details
-    );
     const tenantId = useSelector((state: RootState) => state.LoginSlice.tenantId);
     const { data: tenantProfile } = useGetTenantProfileQuery(tenantId ?? '', {
       skip: !tenantId,
@@ -126,17 +113,12 @@ const JobDescriptionPanel = forwardRef<JobDescriptionPanelHandle, JobDescription
       if (!jobOpeningId) return;
       // Wait for a real fetch, not a stale cached status from an earlier view.
       if (jdStatusFetching) return;
-      const previousStatus = prevJdStatusRef.current;
       const currentStatus = jdStatus?.status;
       prevJdStatusRef.current = currentStatus;
 
       if (currentStatus === 'READY') {
         failedToastShownForJobRef.current = null;
         void refetch();
-        // Only flag on an actual GENERATING/PROCESSING -> READY transition, not an already-resting READY.
-        if (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') {
-          awaitingFreshAiFieldsRef.current = true;
-        }
       } else if (currentStatus === 'FAILED' && failedToastShownForJobRef.current !== jobOpeningId) {
         failedToastShownForJobRef.current = jobOpeningId;
         showToast({
@@ -145,76 +127,6 @@ const JobDescriptionPanel = forwardRef<JobDescriptionPanelHandle, JobDescription
         });
       }
     }, [jdStatus?.status, jdStatus?.error_message, jobOpeningId, refetch, jdStatusFetching]);
-
-    // Pushes AI-refreshed fields into Redux once the refetch above resolves. Merges, never overwrites.
-    useEffect(() => {
-      if (!awaitingFreshAiFieldsRef.current || !response) return;
-      awaitingFreshAiFieldsRef.current = false;
-
-      const currentMandatory = (jobDetailsInRedux.mandatorySkills || []).map(String);
-      const currentOptional = (jobDetailsInRedux.optionalSkills || []).map(String);
-      const { newMandatoryIds, newOptionalIds, newOptions } = mergeNewAiSkills(
-        response.skills,
-        currentMandatory,
-        currentOptional,
-        offeredSuggestedSkills.has
-      );
-      const newLabels = Object.fromEntries(newOptions.map((o) => [o.id, o.name]));
-      // Redux fields are arrays (`jobType`, `jobMode`, `shift`,
-      // `educationPreference`); the diff's fields are scalar ids.
-      const {
-        jobTypeId: jobTypeUpdate,
-        jobModeId: jobModeUpdate,
-        shiftId: shiftUpdate,
-        educationPreferenceId: educationPreferenceUpdate,
-        ...otherUpdates
-      } = diffAiOwnedFields(response, {
-        ...jobDetailsInRedux,
-        jobTypeId:
-          jobDetailsInRedux.jobType?.[0] != null ? String(jobDetailsInRedux.jobType[0]) : undefined,
-        jobModeId:
-          jobDetailsInRedux.jobMode?.[0] != null ? String(jobDetailsInRedux.jobMode[0]) : undefined,
-        shiftId:
-          jobDetailsInRedux.shift?.[0] != null ? String(jobDetailsInRedux.shift[0]) : undefined,
-        educationPreferenceId:
-          jobDetailsInRedux.educationPreference?.[0] != null
-            ? String(jobDetailsInRedux.educationPreference[0])
-            : undefined,
-      });
-
-      dispatch(
-        (isEditFlow ? updateEditJobDetails : updateJobDetails)({
-          ...otherUpdates,
-          ...(jobTypeUpdate ? { jobType: [jobTypeUpdate] } : {}),
-          ...(jobModeUpdate ? { jobMode: [jobModeUpdate] } : {}),
-          ...(shiftUpdate ? { shift: [shiftUpdate] } : {}),
-          ...(educationPreferenceUpdate
-            ? { educationPreference: [educationPreferenceUpdate] }
-            : {}),
-          ...(newMandatoryIds.length > 0
-            ? { mandatorySkills: [...currentMandatory, ...newMandatoryIds] }
-            : {}),
-          ...(newOptionalIds.length > 0
-            ? { optionalSkills: [...currentOptional, ...newOptionalIds] }
-            : {}),
-          ...(newOptions.length > 0
-            ? {
-                aiSuggestedSkillLabels: {
-                  ...(jobDetailsInRedux.aiSuggestedSkillLabels || {}),
-                  ...newLabels,
-                },
-              }
-            : {}),
-        })
-      );
-    }, [
-      response,
-      dispatch,
-      isEditFlow,
-      jobDetailsInRedux.mandatorySkills,
-      jobDetailsInRedux.optionalSkills,
-      jobDetailsInRedux.aiSuggestedSkillLabels,
-    ]);
 
     const handlePromptClick = (promptText: string) => {
       setValue('description', promptText);

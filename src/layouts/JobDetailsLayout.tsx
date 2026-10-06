@@ -64,7 +64,14 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   // Questions need a saved interview round. Ready until the server answers.
   const wizardJobId = isCreateMode ? (resolvedJobId ?? '') : isEditingDraft ? editJobId : '';
-  const { data: wizardState } = useGetWizardStateQuery(wizardJobId, { skip: !wizardJobId });
+  const { data: wizardState, isLoading: isWizardLoading } = useGetWizardStateQuery(wizardJobId, {
+    skip: !wizardJobId,
+  });
+  // The server has a saved round, so the JD and scoring steps were passed earlier.
+  const serverShowsRoundsSaved =
+    wizardState?.stages.some((s) => s.stage === 'interview_rounds' && s.is_complete) === true;
+  // A draft's gates can't be judged until its JD has loaded.
+  const isEditJdPending = isEditingDraft && !editJd;
   const hasSavedInterviewRound =
     !isGated ||
     !wizardState ||
@@ -78,16 +85,17 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       ? !editJd || editJd.hasSavedDetails
       : true;
   const isTab3Completed = isCreateMode
-    ? isFormCompleted === true
+    ? isFormCompleted === true || serverShowsRoundsSaved
     : isEditingDraft
-      ? editAiJdPassedJobId === editJobId && Boolean(editJd?.jobDescription?.trim())
+      ? (editAiJdPassedJobId === editJobId && Boolean(editJd?.jobDescription?.trim())) ||
+        serverShowsRoundsSaved
       : true;
   const isScoringUnlocked = !isGated || isTab3Completed;
   // Create and draft edit track when Scoring Criteria was saved.
   const isScoringDone = isCreateMode
-    ? isScoringCompleted === true
+    ? isScoringCompleted === true || serverShowsRoundsSaved
     : isEditingDraft
-      ? editScoringPassedJobId === editJobId
+      ? editScoringPassedJobId === editJobId || serverShowsRoundsSaved
       : true;
 
   const isActiveTab = (path: string) => location.pathname.includes(path);
@@ -188,7 +196,8 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   // Redirect to first available tab if current tab is disabled (e.g., on page refresh)
   useEffect(() => {
-    if (!isGated || isCandidatePage || isGateFetching) return;
+    // Wait for the data the gates depend on, or a reload bounces to an earlier tab.
+    if (!isGated || isCandidatePage || isGateFetching || isEditJdPending || isWizardLoading) return;
 
     const currentPath = location.pathname;
     let currentTabIndex = -1;
@@ -232,6 +241,8 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     isScoringUnlocked,
     isGated,
     isGateFetching,
+    isEditJdPending,
+    isWizardLoading,
     isCandidatePage,
     location.pathname,
     search,

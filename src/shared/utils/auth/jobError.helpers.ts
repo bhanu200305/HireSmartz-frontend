@@ -41,8 +41,8 @@ const PERMISSION_ACTION_LABELS: Record<string, string> = {
 };
 
 const ROUND_ERROR_MESSAGES: Record<string, string> = {
-  INTAKE_CALL_POSITION_INVALID:
-    'The Intake Call must be round 1 or 2, before or right after the Resume round.',
+  INTAKE_CALL_POSITION_INVALID: 'The Intake Call must be round 2, right after the Resume round.',
+  RESUME_ROUND_POSITION_INVALID: 'The Resume round must always be round 1.',
   RESUME_ROUND_CANNOT_BE_MODIFIED: 'The Resume round is required and cannot be removed or changed.',
 };
 

@@ -1158,7 +1158,8 @@ const JobDetails = () => {
     }
   }, [atsJobData, isFromAts, jobDetails, setValue]);
 
-  // AI-fill counterpart to the ATS hydration above; only fills fields not already typed into.
+  // Pre-fills Job Details from an uploaded JD once its parse finishes. Generating or
+  // regenerating the AI description never writes into Job Details.
   useEffect(() => {
     // Wait for a real fetch, not just a stale cached value from an earlier view.
     if (jdStatusFetching) return;
@@ -1166,9 +1167,7 @@ const JobDetails = () => {
     const currentStatus = jdStatusForHydration?.status;
     prevJdStatusForHydrationRef.current = currentStatus;
 
-    const justFinishedGenerating =
-      (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') &&
-      currentStatus === 'READY';
+    const justFinishedGenerating = previousStatus === 'PROCESSING' && currentStatus === 'READY';
 
     // Fallback: refresh once per job the first time status is seen READY,
     // in case the GENERATING -> READY transition was missed.
@@ -1185,6 +1184,8 @@ const JobDetails = () => {
 
     // Re-check permissions now rather than waiting for the next mount.
     void refetchEffectivePermissions();
+
+    if (jdDetailsForGate?.entryPath !== 'upload_jd') return;
 
     void refetchJdDetailsForGate().then((result) => {
       const fresh = result.data;
@@ -1301,6 +1302,7 @@ const JobDetails = () => {
     jdStatusForHydration?.status,
     jdStatusFetching,
     resolvedJobId,
+    jdDetailsForGate?.entryPath,
     refetchJdDetailsForGate,
     refetchSuggestedSkills,
     refetchEffectivePermissions,
@@ -1309,9 +1311,9 @@ const JobDetails = () => {
     trigger,
   ]);
 
-  // Fills any AI-owned fields still blank - never overwrites a typed value.
+  // Uploaded-JD jobs only: fills fields still blank from the parse, never a typed value.
   useEffect(() => {
-    if (!jdDetailsForGate) return;
+    if (!jdDetailsForGate || jdDetailsForGate.entryPath !== 'upload_jd') return;
     const current = getValues();
     // Form fields are arrays (`jobType`, `jobMode`, `shift`,
     // `educationPreference`); backend/diff fields are scalar ids.

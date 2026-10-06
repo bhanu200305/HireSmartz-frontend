@@ -70,11 +70,10 @@ export type PublicJobDetail = {
   job_mode_name: string | null;
   shift_name: string | null;
   education_preference_name: string | null;
-  /** Where this job's optional Intake Call round sits: `'before_resume'`
-   * (round 1 — the candidate starts with the call), `'after_resume'`
-   * (round 2), or `null` (no Intake Call). Requested from job-service
-   * alongside the 2026-10-05 "Intake Call optional" change; `undefined`
-   * until it ships, in which case the apply flow keeps offering both paths. */
+  /** Where this job's optional Intake Call round sits: always `'after_resume'`
+   * (round 2) or `null` (no Intake Call). `'before_resume'` only appears on a
+   * job saved before the rule changed; `undefined` from an older job-service,
+   * in which case the apply flow keeps offering both paths. */
   intake_call_position?: 'before_resume' | 'after_resume' | null;
 };
 

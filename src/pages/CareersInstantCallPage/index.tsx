@@ -45,8 +45,8 @@ export const CareersInstantCallPage = () => {
     { skip: !organizationId || !jobId }
   );
 
-  // A job whose sequence has no Intake Call, or puts it after Resume uses the other apply path — the choice page
-  // routes there already; this catches a direct link or the back button.
+  // A job with no Intake Call has no instant call — send a direct link or the back button
+  // to the resume form.
   useEffect(() => {
     if (publicApplyPathFor(job) === 'resume') {
       navigate(`/careers/${organizationId}/jobs/${jobId}/apply`, { replace: true });

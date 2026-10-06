@@ -1088,16 +1088,15 @@ const EditJobDetail = () => {
     };
   }, [parsedJobId, jobOpeningId, jobDetails, reset]);
 
-  // AI-fill: applies fields AI wrote once generation finishes. Only fills fields still empty.
+  // Pre-fills Job Details from an uploaded JD once its parse finishes. Generating or
+  // regenerating the AI description never writes into Job Details.
   useEffect(() => {
     if (jdStatusFetching) return;
     const previousStatus = prevJdStatusForHydrationRef.current;
     const currentStatus = jdStatusForHydration?.status;
     prevJdStatusForHydrationRef.current = currentStatus;
 
-    const justFinishedProcessing =
-      (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') &&
-      currentStatus === 'READY';
+    const justFinishedProcessing = previousStatus === 'PROCESSING' && currentStatus === 'READY';
     // Fallback: refresh once per job the first time status is seen READY,
     // in case the transition above was missed.
     const notYetSyncedThisJob =
@@ -1112,6 +1111,8 @@ const EditJobDetail = () => {
 
     // Re-check permissions now rather than waiting for the next mount.
     void refetchEffectivePermissions();
+
+    if (jdDetailsForSync?.entryPath !== 'upload_jd') return;
 
     // Job title/department/office location aren't AI-composed text — job-service
     // resolves them against the org catalogue directly on the job opening record
@@ -1279,6 +1280,7 @@ const EditJobDetail = () => {
     jdStatusForHydration?.status,
     jdStatusFetching,
     parsedJobId,
+    jdDetailsForSync?.entryPath,
     triggerGetJobDescriptionById,
     refetch,
     refetchSuggestedSkills,
@@ -1288,9 +1290,9 @@ const EditJobDetail = () => {
     trigger,
   ]);
 
-  // Fills any AI-owned fields still blank - never overwrites a typed value.
+  // Uploaded-JD jobs only: fills fields still blank from the parse, never a typed value.
   useEffect(() => {
-    if (!jdDetailsForSync) return;
+    if (!jdDetailsForSync || jdDetailsForSync.entryPath !== 'upload_jd') return;
     const current = getValues();
     // Form fields are arrays (`jobType`, `jobMode`, `shift`,
     // `educationPreference`); backend/diff fields are scalar ids.

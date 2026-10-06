@@ -15,6 +15,7 @@ import type { IconType } from 'react-icons';
 import { DraggableItem } from '../../shared/ui/DragAndDrop';
 import { showToast } from '../../shared';
 import RoundInfoModal from '../../shared/ui/RoundInfoModal';
+import { getRoundInfoSections } from '../../../shared/utils/roundInfoContent';
 import { resolveVariantLabel } from '../../../shared/utils/variantLabel';
 
 type InterviewRound = {
@@ -54,8 +55,8 @@ type SortableInterviewRoundsProps = {
   onEdit: (round: InterviewRound) => void;
   onDelete: (roundId: string | number) => void;
   isEditMode?: boolean;
-  // Round-type ids for anchor rounds (Resume, plus the optional Intake Call)
-  // that must lead the sequence — see `violatesAnchorPositions`.
+  // Round-type ids for anchor rounds (Resume as round 1, plus the optional
+  // Intake Call as round 2) — see `violatesAnchorPositions`.
   anchorRoundTypeIds?: Set<string>;
   // Anchor round types that are optional (Intake Call): still pinned, but
   // removable, so they keep a delete control. Never editable/retypeable.
@@ -202,6 +203,10 @@ export const SortableInterviewRounds = ({
       roundName={infoRound.round?.name ?? 'Interview round'}
       badgeLabel={getVariantBadge(infoRound.variant, variantLabelOverrides)?.label}
       description={infoRound.description}
+      sections={getRoundInfoSections({
+        roundName: infoRound.round?.name,
+        variants: [infoRound.variant],
+      })}
       onClose={() => setInfoRound(null)}
     />
   );

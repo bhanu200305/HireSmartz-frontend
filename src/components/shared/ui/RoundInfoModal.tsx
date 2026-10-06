@@ -1,11 +1,14 @@
 import { FC } from 'react';
 import { MdClose } from 'react-icons/md';
+import type { RoundInfoSection } from '../../../shared/utils/roundInfoContent';
 
 interface RoundInfoModalProps {
   roundName: string;
   badgeLabel?: string | null;
   /** The round's own description, as saved on the round type. */
   description?: string | null;
+  /** Plain-language explanation of the round; shown instead of the description when given. */
+  sections?: RoundInfoSection[];
   onClose: () => void;
 }
 
@@ -14,6 +17,7 @@ const RoundInfoModal: FC<RoundInfoModalProps> = ({
   roundName,
   badgeLabel,
   description,
+  sections = [],
   onClose,
 }) => (
   <div
@@ -44,9 +48,20 @@ const RoundInfoModal: FC<RoundInfoModalProps> = ({
       </div>
 
       <div className="px-6 py-5 overflow-y-auto">
-        <p className="m-0 text-sm text-neutral-600 leading-relaxed">
-          {description || 'No description has been added for this round.'}
-        </p>
+        {sections.length > 0 ? (
+          <div className="flex flex-col gap-4">
+            {sections.map((section) => (
+              <div key={section.title}>
+                <h3 className="m-0 mb-1 text-sm font-semibold text-neutral-900">{section.title}</h3>
+                <p className="m-0 text-sm text-neutral-600 leading-relaxed">{section.text}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="m-0 text-sm text-neutral-600 leading-relaxed">
+            {description || 'No description has been added for this round.'}
+          </p>
+        )}
       </div>
     </div>
   </div>

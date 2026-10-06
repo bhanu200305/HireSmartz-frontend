@@ -75,7 +75,13 @@ describe('getJobErrorMessage - interview round rules', () => {
 
   it('explains where the Intake Call can go', () => {
     expect(getJobErrorMessage(codeError('INTAKE_CALL_POSITION_INVALID'), 'fallback')).toBe(
-      'The Intake Call must be round 1 or 2, before or right after the Resume round.'
+      'The Intake Call must be round 2, right after the Resume round.'
+    );
+  });
+
+  it('explains that Resume is always round 1', () => {
+    expect(getJobErrorMessage(codeError('RESUME_ROUND_POSITION_INVALID'), 'fallback')).toBe(
+      'The Resume round must always be round 1.'
     );
   });
 

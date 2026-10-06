@@ -3,14 +3,14 @@ import {
   addableRoundTypes,
   hasQuestionRound,
   retypableRoundTypes,
-  placeIntakeRound,
+  placeIntakeAfterResume,
 } from '../../../src/components/JobsOpening/intakeRoundPlacement';
 
 type R = { id: string; sequence: number };
 const isResume = (round: R) => round.id === 'resume';
 const sequenceOf = (rounds: R[]) => rounds.map((r) => r.id);
 
-describe('placeIntakeRound', () => {
+describe('placeIntakeAfterResume', () => {
   const existing: R[] = [
     { id: 'resume', sequence: 1 },
     { id: 'video', sequence: 2 },
@@ -18,14 +18,8 @@ describe('placeIntakeRound', () => {
   const intake: R = { id: 'intake', sequence: 3 };
 
   it('puts the Intake Call right after Resume as round 2', () => {
-    const result = placeIntakeRound(existing, intake, 'after_resume', isResume);
+    const result = placeIntakeAfterResume(existing, intake, isResume);
     expect(sequenceOf(result)).toEqual(['resume', 'intake', 'video']);
-    expect(result.map((r) => r.sequence)).toEqual([1, 2, 3]);
-  });
-
-  it('puts the Intake Call before Resume as round 1', () => {
-    const result = placeIntakeRound(existing, intake, 'before_resume', isResume);
-    expect(sequenceOf(result)).toEqual(['intake', 'resume', 'video']);
     expect(result.map((r) => r.sequence)).toEqual([1, 2, 3]);
   });
 
@@ -34,18 +28,13 @@ describe('placeIntakeRound', () => {
       { id: 'video', sequence: 2 },
       { id: 'resume', sequence: 1 },
     ];
-    const result = placeIntakeRound(shuffled, intake, 'after_resume', isResume);
+    const result = placeIntakeAfterResume(shuffled, intake, isResume);
     expect(sequenceOf(result)).toEqual(['resume', 'intake', 'video']);
   });
 
-  it('goes first when there is no Resume round', () => {
-    const result = placeIntakeRound(
-      [{ id: 'video', sequence: 1 }],
-      intake,
-      'after_resume',
-      isResume
-    );
-    expect(sequenceOf(result)).toEqual(['intake', 'video']);
+  it('works when Resume is the only round', () => {
+    const result = placeIntakeAfterResume([{ id: 'resume', sequence: 1 }], intake, isResume);
+    expect(sequenceOf(result)).toEqual(['resume', 'intake']);
   });
 });
 
@@ -80,7 +69,8 @@ describe('retypableRoundTypes', () => {
     expect(idsOf(retypableRoundTypes(types, opts({ position: 2 })))).toContain('intake');
   });
 
-  it('does not offer it to a round further down, or when the job has one', () => {
+  it('does not offer it to any other round, or when the job has one', () => {
+    expect(idsOf(retypableRoundTypes(types, opts({ position: 1 })))).not.toContain('intake');
     expect(idsOf(retypableRoundTypes(types, opts({ position: 3 })))).not.toContain('intake');
     expect(idsOf(retypableRoundTypes(types, opts({ jobHasIntake: true })))).not.toContain('intake');
   });

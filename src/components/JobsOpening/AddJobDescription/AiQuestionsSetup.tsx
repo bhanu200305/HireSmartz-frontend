@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tooltip } from 'antd';
-import { MdInfoOutline, MdOutlineQuestionAnswer } from 'react-icons/md';
+import { MdClose, MdInfoOutline, MdOutlineQuestionAnswer } from 'react-icons/md';
 import { HiOutlineTrash } from 'react-icons/hi';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -646,10 +646,13 @@ const AiQuestionsSetup = () => {
       try {
         const validation = await validateForPublish(activeJobOpeningId).unwrap();
         const emptyRounds = validation.rounds_missing_questions ?? [];
-        if (emptyRounds.length > 0) {
+        const questionChecks = (validation.failed_checks ?? []).filter(
+          (check) => check === 'no_question' || check === 'no_intake_question'
+        );
+        if (questionChecks.length > 0) {
           setBlockedRoundIds(validation.round_ids_missing_questions ?? []);
           showToast({
-            message: describeFailedChecks(['no_question'], emptyRounds),
+            message: describeFailedChecks(questionChecks, emptyRounds),
             type: 'error',
           });
           return;
@@ -796,6 +799,39 @@ const AiQuestionsSetup = () => {
     (rt) => rt.round_id === activeRound?.round_id
   )?.round_description;
 
+  // Tabs in display order: Intake Call (when the job has one), then each round.
+  // Save & Next walks them; the last one publishes.
+  const sectionKeys = [
+    ...(activeJobOpeningId && jobHasIntakeRound ? ['intake'] : []),
+    ...jdRounds.map((round) => round.round_instance_id),
+  ];
+  const activeSectionIndex = sectionKeys.indexOf(
+    isIntakeActive ? 'intake' : (activeRound?.round_instance_id ?? '')
+  );
+  const nextSectionKey = activeSectionIndex >= 0 ? sectionKeys[activeSectionIndex + 1] : undefined;
+  const isLastSection = nextSectionKey === undefined;
+  const canPublishHere = isEditingAlreadyPublishedJob || (canPublish && isAssignedToThisJob);
+  const handleSaveAndNext = () => {
+    if (!nextSectionKey) return;
+    const sectionIsEmpty = isIntakeActive
+      ? intakeCount === 0
+      : !!activeRound && !questionCountByRound[activeRound.round_instance_id];
+    if (sectionIsEmpty) {
+      if (activeRound) {
+        setBlockedRoundIds((ids) => [...new Set([...ids, activeRound.round_instance_id])]);
+      }
+      showToast({
+        message: `Add at least one question to ${
+          isIntakeActive ? 'the Intake Call' : activeRound?.round_name
+        } before continuing.`,
+        type: 'error',
+      });
+      return;
+    }
+    requestSelectSection(nextSectionKey);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <>
       <div className="flex flex-col gap-3 py-2">
@@ -827,9 +863,19 @@ const AiQuestionsSetup = () => {
         {emptyRoundNames.length > 0 && (
           <div
             role="alert"
-            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
           >
-            Add at least one question to: <strong>{emptyRoundNames.join(', ')}</strong>
+            <span>
+              Add at least one question to: <strong>{emptyRoundNames.join(', ')}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => setBlockedRoundIds([])}
+              aria-label="Dismiss"
+              className="shrink-0 cursor-pointer text-red-500 hover:text-red-700"
+            >
+              <MdClose size={18} />
+            </button>
           </div>
         )}
 
@@ -1066,9 +1112,9 @@ const AiQuestionsSetup = () => {
               : 'Your questions are saved automatically. The job stays a draft until you publish it.'}
           </p>
         )}
-        {(isEditingAlreadyPublishedJob || (canPublish && isAssignedToThisJob)) && (
+        {(!isLastSection || canPublishHere) && (
           <div className="flex justify-center gap-6">
-            {!isEditingAlreadyPublishedJob && (
+            {canPublishHere && !isEditingAlreadyPublishedJob && (
               <Tooltip title="Save progress and come back later.">
                 <Button
                   className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
@@ -1078,7 +1124,7 @@ const AiQuestionsSetup = () => {
                 </Button>
               </Tooltip>
             )}
-            {!isEditingAlreadyPublishedJob && (
+            {canPublishHere && !isEditingAlreadyPublishedJob && (
               <Tooltip title="Delete this job opening and everything in it.">
                 <Button
                   className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2"
@@ -1088,25 +1134,36 @@ const AiQuestionsSetup = () => {
                 </Button>
               </Tooltip>
             )}
-            <Tooltip
-              title={
-                isEditingAlreadyPublishedJob
-                  ? 'Save changes to this published job.'
-                  : 'Publish this job opening live.'
-              }
-            >
-              <Button
-                className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => void handlePublishOrFinish()}
-                disabled={isPublishing || !activeJobOpeningId}
+            {!isLastSection ? (
+              <Tooltip title="Questions are saved. Continue to the next round.">
+                <Button
+                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  onClick={handleSaveAndNext}
+                >
+                  Save &amp; Next
+                </Button>
+              </Tooltip>
+            ) : (
+              <Tooltip
+                title={
+                  isEditingAlreadyPublishedJob
+                    ? 'Save changes to this published job.'
+                    : 'Publish this job opening live.'
+                }
               >
-                {isPublishing
-                  ? 'Publishing…'
-                  : isEditingAlreadyPublishedJob
-                    ? 'Save & Finish'
-                    : '✓ Publish Job Opening'}
-              </Button>
-            </Tooltip>
+                <Button
+                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => void handlePublishOrFinish()}
+                  disabled={isPublishing || !activeJobOpeningId}
+                >
+                  {isPublishing
+                    ? 'Publishing…'
+                    : isEditingAlreadyPublishedJob
+                      ? 'Save & Finish'
+                      : 'Publish Job Opening'}
+                </Button>
+              </Tooltip>
+            )}
           </div>
         )}
         {showCancelConfirm && (

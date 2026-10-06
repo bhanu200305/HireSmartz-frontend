@@ -5,6 +5,7 @@ import { MdClose, MdInfoOutline } from 'react-icons/md';
 import TextArea from 'antd/es/input/TextArea';
 import { useState } from 'react';
 import RoundInfoModal from '../../shared/ui/RoundInfoModal';
+import { getRoundInfoSections } from '../../../shared/utils/roundInfoContent';
 import { useSaveInterviewRoundMutation } from '../../../api/job-service/JobOpening/AddInterviewRound';
 import { SaveInterviewRoundRequest } from '../../../types';
 import { Controller, useForm } from 'react-hook-form';
@@ -25,7 +26,7 @@ import { slotOptions } from '../../../shared/utils/business-logic';
 import { resolveVariantLabel as formatVariantLabel } from '../../../shared/utils/variantLabel';
 import {
   isRoundOfType,
-  placeIntakeRound,
+  placeIntakeAfterResume,
   roundTypeIdsOfKind,
   addableRoundTypes,
 } from '../intakeRoundPlacement';
@@ -138,7 +139,7 @@ const AddNewRound = () => {
     // The Intake Call always goes in right after Resume (round 2), never at
     // the end; every other round type is appended.
     const payload = isIntakeSelected
-      ? placeIntakeRound(existing, newRound, 'after_resume', (round) =>
+      ? placeIntakeAfterResume(existing, newRound, (round) =>
           resumeTypeIds.has(String(round.round_id))
         )
       : [...existing, newRound];
@@ -426,6 +427,11 @@ const AddNewRound = () => {
         <RoundInfoModal
           roundName={selectedRoundType.name}
           description={selectedRoundType.description}
+          sections={getRoundInfoSections({
+            specialKind: selectedRoundType.special_kind,
+            roundName: selectedRoundType.name,
+            variants: selectedRoundType.available_variants,
+          })}
           onClose={() => setShowRoundInfo(false)}
         />
       )}
