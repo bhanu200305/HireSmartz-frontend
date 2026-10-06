@@ -138,3 +138,48 @@ describe('jdGenerationFailureMessage - content guardrail', () => {
     expect(jdGenerationFailureMessage(message)).toBe(message);
   });
 });
+
+describe('formatAiJobDescription — hard line breaks', () => {
+  const block =
+    'Job Title: Marketing Executive  \n' +
+    'Department: Marketing  \n' +
+    'Employment Type: Full-Time  \n' +
+    'Experience: 2-4 years  \n' +
+    'Location: Austin, TX';
+
+  it('keeps the two trailing spaces so each identity field stays on its own line', () => {
+    const lines = formatAiJobDescription(block).split('\n');
+    expect(lines).toHaveLength(5);
+    expect(lines[0]).toBe('**Job Title:** Marketing Executive  ');
+    expect(lines[3]).toBe('**Experience:** 2-4 years  ');
+    expect(lines[4]).toBe('**Location:** Austin, TX');
+  });
+
+  it('adds no trailing spaces to lines that never had them', () => {
+    const result = formatAiJobDescription('Job Title: Marketing Executive\nDepartment: Marketing');
+    expect(result.split('\n').some((line) => line.endsWith(' '))).toBe(false);
+  });
+
+  it('keeps the break on a plain prose line', () => {
+    expect(formatAiJobDescription('First line  \nSecond line')).toBe('First line  \nSecond line');
+  });
+});
+
+describe('editor save keeps hard line breaks', () => {
+  it('turns a <br> back into two trailing spaces', async () => {
+    const { default: TurndownService } = await import('turndown');
+    const markdown = new TurndownService().turndown('<p>Job Title: A<br>Department: B</p>');
+    expect(markdown).toBe('Job Title: A  \nDepartment: B');
+  });
+});
+
+describe('editor round trip', () => {
+  it('keeps a hard break through markdown -> editor -> markdown', async () => {
+    const { markdownToDraft } = await import('markdown-draft-js');
+    const draftToHtml = (await import('draftjs-to-html')).default;
+    const { default: TurndownService } = await import('turndown');
+    const html = draftToHtml(markdownToDraft('Job Title: A  \nDepartment: B'));
+    const markdown = new TurndownService().turndown(html);
+    expect(markdown).toBe('Job Title: A  \nDepartment: B');
+  });
+});

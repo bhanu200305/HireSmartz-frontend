@@ -303,7 +303,13 @@ export const formatAiJobDescription = (text: string): string => {
     }
   );
 
-  const rawLines = withHeadingBreaks.split('\n').map((line) => line.trim());
+  // Trim each line but keep a Markdown hard line break (two trailing spaces), or the
+  // fields of the identity block (Job Title, Department...) run together in one paragraph.
+  const HARD_BREAK = '  ';
+  const rawLines = withHeadingBreaks.split('\n').map((line) => {
+    const trimmed = line.trim();
+    return trimmed && /\S {2,}\r?$/.test(line) ? trimmed + HARD_BREAK : trimmed;
+  });
 
   // Pass 1: a bullet glyph stranded alone on its own line (see
   // AI_JD_BULLET_RE above) isn't a list item by itself — fold it into
@@ -334,7 +340,9 @@ export const formatAiJobDescription = (text: string): string => {
   let inListSection = false;
   let lastWasEmptyLine = true;
 
-  for (const line of lines) {
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    const hardBreak = rawLine !== line ? HARD_BREAK : '';
     if (!line) {
       if (!lastWasEmptyLine) {
         processedLines.push('');
@@ -396,7 +404,7 @@ export const formatAiJobDescription = (text: string): string => {
         !/[.,;]$/.test(trimmedKey) &&
         capitalizedKeyWords.length / keyWords.length >= 0.7;
       if (value && looksLikeLabel) {
-        processedLines.push(`**${trimmedKey}:** ${value}`);
+        processedLines.push(`**${trimmedKey}:** ${value}${hardBreak}`);
         continue;
       }
     }
@@ -419,7 +427,7 @@ export const formatAiJobDescription = (text: string): string => {
       continue;
     }
 
-    processedLines.push(line);
+    processedLines.push(line + hardBreak);
   }
 
   let result = processedLines.join('\n');
