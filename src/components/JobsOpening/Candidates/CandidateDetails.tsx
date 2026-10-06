@@ -39,6 +39,7 @@ import {
   useListCandidateInterviewRoundsQuery,
   useListEligibleInterviewersQuery,
   useSetPanelInterviewersMutation,
+  useSendRoundInviteMutation,
   useSkipInterviewRoundMutation,
   type InterviewerView,
   type CandidateInterviewRoundView,
@@ -52,9 +53,12 @@ import {
 } from '../../../api/candidate-service/Candidates/scoring';
 import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candidates/notes';
 import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
-import { candidateStatusColor } from './candidateDisplay';
 import {
-  useCreateBookingMutation,
+  candidateDisplayStatusColor,
+  candidateDisplayStatusLabel,
+  resolveDisplayStatus,
+} from './candidateDisplay';
+import {
   useGetBookingQuery,
   useGetBookingHistoryQuery,
   useRequestCallRescheduleMutation,
@@ -102,7 +106,6 @@ import {
   canManageRoundInterviewers,
   HUMAN_SCORE_MAX,
   AI_SCORE_MAX,
-  interviewTypeForRound,
 } from './roundPipeline';
 import ResumeInlinePreview from './ResumeInlinePreview';
 import RoundCollapsibleSection from './RoundCollapsibleSection';
@@ -390,7 +393,6 @@ const CandidateDetails = () => {
   // Field-level server errors (content guardrail) and the interviewer-feedback gate.
   const [skipReasonError, setSkipReasonError] = useState<string | null>(null);
   const [skipFeedbackError, setSkipFeedbackError] = useState<string | null>(null);
-  const [skipNeedsOverride, setSkipNeedsOverride] = useState(false);
   const [skipInterviewRound, { isLoading: isSkipping }] = useSkipInterviewRoundMutation();
   // "Scoring Criteria" popup (old app's per-round button): the resume
   // round's weighted breakdown, or the interview-scoring explainer.
@@ -682,7 +684,7 @@ const CandidateDetails = () => {
     useLazyGetCandidateResumeDownloadQuery();
   const [resendResumeUploadLink, { isLoading: isResendingUploadLink }] =
     useResendResumeUploadLinkMutation();
-  const [createBooking] = useCreateBookingMutation();
+  const [sendRoundInvite] = useSendRoundInviteMutation();
   // `round_type` first (candidate-service's real classification), round
   // name only for an unclassifiable round — same rule as
   // `interviewTypeForRound`.
@@ -1033,9 +1035,10 @@ const CandidateDetails = () => {
         void refetchSelectedBooking();
         void refetchRounds();
       } else if (code === 'REINVITE_NOT_ELIGIBLE') {
+        // Covers several cases (link already used, booking already scheduled,
+        // cancelled for another reason), so show the backend's own message.
         showToast({
-          message:
-            'The candidate has already used this scheduling link, so it can no longer be reinvited.',
+          message: getInterviewErrorMessage(e, 'This booking cannot be reinvited right now.'),
           type: 'error',
         });
         void refetchSelectedBooking();
@@ -1090,7 +1093,6 @@ const CandidateDetails = () => {
     setSkipFeedback('');
     setSkipReasonError(null);
     setSkipFeedbackError(null);
-    setSkipNeedsOverride(false);
   };
 
   const handleSkipRound = async () => {
@@ -1099,14 +1101,12 @@ const CandidateDetails = () => {
     setSkipFeedbackError(null);
     try {
       // `reason` and `feedback` go as separate fields (feedback is stored and
-      // returned separately as `skip_feedback`). `skipNeedsOverride` is set
-      // after the backend answered 409 INTERVIEWER_FEEDBACK_PENDING and the
-      // recruiter chose to continue anyway.
+      // returned separately as `skip_feedback`). There is no "skip anyway":
+      // the interviewer-feedback gate is never overridden from here.
       const result = await skipInterviewRound({
         candidateId,
         reason: skipReason.trim(),
         feedback: skipFeedback.trim(),
-        overridePendingInterviewerFeedback: skipNeedsOverride,
       }).unwrap();
       showToast({
         message: result.skipped_round
@@ -1125,9 +1125,13 @@ const CandidateDetails = () => {
         status === 409 &&
         /interviewer'?s? feedback|override_pending_interviewer_feedback/i.test(serverMessage)
       ) {
-        // The interviewer hasn't submitted feedback for this round yet: ask
-        // once, then the same button sends the override.
-        setSkipNeedsOverride(true);
+        // Feedback is required at every step, so there is no override: the
+        // round can be skipped once its interviewer feedback is on file.
+        showToast({
+          message:
+            "This round can't be skipped until its interviewer's feedback has been recorded.",
+          type: 'error',
+        });
         return;
       }
       if (status === 422 && /guidelines|content/i.test(serverMessage)) {
@@ -1173,7 +1177,7 @@ const CandidateDetails = () => {
   };
 
   const handleCreateBooking = async (): Promise<boolean> => {
-    if (!candidateId || !parsedJobId || !selectedRound?.round_id || bookingsClosed) return false;
+    if (!candidateId || !selectedRound || bookingsClosed) return false;
     // Belt-and-suspenders alongside the button's own `disabled` — a PANEL
     // booking with no roster falls back to interview-service auto-composing
     // it from whichever calendar-connected interviewers are in the pool,
@@ -1182,7 +1186,6 @@ const CandidateDetails = () => {
     if (isPanelRound && selectedInterviewerIds.length === 0) return false;
 
     setIsCreatingBooking(true);
-    const interviewType = interviewTypeForRound(selectedRound);
     try {
       // Saved to the round FIRST — same data the Set Interviewers
       // Interviewers picker writes — so the selection is a real, visible
@@ -1195,64 +1198,35 @@ const CandidateDetails = () => {
           interviewerIds: selectedInterviewerIds,
         }).unwrap();
       }
-      const booking = await createBooking({
-        body: {
-          candidate_id: candidateId,
-          job_id: parsedJobId,
-          round_id: selectedRound.round_id,
-          sequence_no: selectedRound.sequence ?? 1,
-          interview_type: interviewType,
-          interviewer_id: null,
-          interviewer_ids: isPanelRound ? selectedInterviewerIds : null,
-          immediate: false,
-          // Without this, interview-service has no way to report this
-          // booking's status/score back to the right round — it silently
-          // never updates, even once the call completes.
-          candidate_interview_round_id: selectedRound.id,
-        },
-      }).unwrap();
-      setSelectedRound({
-        ...selectedRound,
-        interview_booking_id: booking.id,
-        interviewer_ids: isPanelRound ? selectedInterviewerIds : selectedRound.interviewer_ids,
+      // The candidate-service Send Invite (`POST /candidates/{id}/send-invite`),
+      // the recruiter's "go ahead and schedule" for the round that is due: it
+      // stamps the invite on the round and announces it to interview-service,
+      // which creates the booking and emails the candidate (with the
+      // call-now option for recruiter-uploaded candidates). A PANEL round's
+      // saved interviewers ride along on the same publish.
+      const sent = await sendRoundInvite(candidateId).unwrap();
+      void refetchRounds();
+      showToast({
+        message: sent.invite_sent
+          ? 'Interview invitation sent to the candidate.'
+          : 'An invitation for this round was just sent.',
+        type: sent.invite_sent ? 'success' : 'info',
       });
-      // PANEL only — interview-service still creates the booking even when
-      // part of the roster hasn't connected their calendar yet, but the
-      // candidate's scheduling email doesn't go out until everyone has.
-      // Surface that instead of the generic success toast so it's not
-      // mistaken for "fully scheduled". Prefer the backend's own
-      // `envelope_message` (already phrased for display) over building one
-      // from the names ourselves.
-      const pendingNames = booking.pending_calendar_connect_interviewer_names;
-      if (pendingNames && pendingNames.length > 0) {
-        showToast({
-          message:
-            booking.envelope_message ||
-            `Booking created — waiting on ${pendingNames.join(', ')} to connect their calendar before the candidate is scheduled.`,
-          type: 'success',
-        });
-      } else {
-        showToast({ message: 'Booking created successfully.', type: 'success' });
-      }
       return true;
     } catch (error) {
-      // interview-service's own PREVIOUS_ROUND_NOT_CONCLUDED message is
-      // log-style (round numbers, raw candidate/job UUIDs) — not something to
-      // put in a toast, so this one case gets a hand-written message instead
-      // of the backend's own wording. `error.code`/`error.message` directly
-      // — this is an `InterviewApiError` (see getInterviewErrorMessage's own
-      // comment), not the `{status, data}` shape `getPlatformErrorCode`
-      // reads, which silently never matched here.
+      // candidate-service's own refusals (409/422: the resume stage has no
+      // invite, no round is awaiting one, the round is already booked) carry a
+      // readable message; the 'already selected' case still closes bookings.
       if (isAlreadySelectedError(error)) {
         setBookingsClosed(true);
         showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
         return false;
       }
-      const message =
-        (error as InterviewApiError)?.code === 'PREVIOUS_ROUND_NOT_CONCLUDED'
-          ? 'Please complete the previous round before scheduling this one.'
-          : getInterviewErrorMessage(error, 'Could not create booking.');
-      showToast({ message, type: 'error' });
+      showToast({
+        message: getCandidateErrorMessage(error, 'Could not send the invitation.'),
+        type: 'error',
+      });
+      void refetchRounds();
       return false;
     } finally {
       setIsCreatingBooking(false);
@@ -1268,6 +1242,12 @@ const CandidateDetails = () => {
       ? 'Candidate has not given SMS consent'
       : null;
 
+  // The header pill shows the same four top-level states as the candidate list
+  // (In Process / Selected / Rejected / Withdrawn). The raw status label can
+  // sit on a stale intermediate value, e.g. "Consistency Check — Needs Review",
+  // which the backend stamps when the Intake Call check returns and which no
+  // later advance replaces.
+  const displayStatus = candidate ? resolveDisplayStatus(candidate) : 'in_process';
   const statusUpper = (candidate?.status_code ?? '').toLowerCase();
   // Matches master.ts's own documented funnel comment — every code marked
   // "(terminal)" there. `withdrawn` was missing here (added 2026-09-14): a
@@ -1356,15 +1336,18 @@ const CandidateDetails = () => {
             rating: candidate?.resume_rating ?? 0,
             comment: candidate?.resume_review_comment ?? '',
           }
-      : currentRoundScore &&
-          (!currentRoundScore.recruiter_score || !currentRoundScore.recruiter_score_reason?.trim())
-        ? {
-            kind: 'round',
-            scoreId: currentRoundScore.id,
-            rating: currentRoundScore.recruiter_score ?? 0,
-            comment: currentRoundScore.recruiter_score_reason ?? '',
-          }
-        : null;
+      : {
+          // Interview rounds: the backend refuses to close one until its
+          // interviewer's feedback is recorded (409 INTERVIEWER_FEEDBACK_PENDING),
+          // and takes it with the advance itself. The Intake Call is exempt
+          // on the backend, so no recommendation is sent for it. Stars are
+          // saved on the round's score record when it has one.
+          kind: 'round',
+          scoreId: currentRoundScore?.id ?? null,
+          rating: currentRoundScore?.recruiter_score ?? 0,
+          comment: currentRoundScore?.recruiter_score_reason ?? '',
+          withRecommendation: !isIntakeCallRound(currentRound),
+        };
   // MARK AS SELECTED also appears once the candidate is ON their last round
   // (2026-09-29 product decision) — no need to ADVANCE past it first.
   // `rounds` is already in walk order (orderRoundsForFlow), so "last" is
@@ -2335,7 +2318,7 @@ const CandidateDetails = () => {
                         // withdrawn, out of sync with that map's pink, so the
                         // same candidate showed two different colors depending
                         // on which screen you were looking at.
-                        candidateStatusColor(candidate?.status_code).text
+                        candidateDisplayStatusColor(displayStatus).text
                 }`}
               >
                 {statusUpper === 'selected' ? (
@@ -2344,10 +2327,10 @@ const CandidateDetails = () => {
                   <LuThumbsDown size={16} />
                 ) : (
                   <span
-                    className={`w-2 h-2 rounded-full ${candidateStatusColor(candidate?.status_code).dot}`}
+                    className={`w-2 h-2 rounded-full ${candidateDisplayStatusColor(displayStatus).dot}`}
                   />
                 )}
-                {candidate?.status_label || 'Applied'}
+                {candidateDisplayStatusLabel(displayStatus)}
               </span>
               {/* Previous / Next in the listing's order (see useCandidateNavigation). */}
               {candidateNav.isReady && candidateNav.total > 1 && (
@@ -2872,19 +2855,13 @@ const CandidateDetails = () => {
               className="rounded-md text-sm"
             />
             {skipFeedbackError && <p className="text-xs text-red-500">{skipFeedbackError}</p>}
-            {skipNeedsOverride && (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                The interviewer hasn&apos;t submitted feedback for this round yet. You can skip
-                anyway.
-              </p>
-            )}
             <Button
               type="button"
               onClick={() => void handleSkipRound()}
               disabled={!skipReason.trim() || !skipFeedback.trim() || isSkipping}
               className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
             >
-              {isSkipping ? 'Skipping…' : skipNeedsOverride ? 'Skip Anyway' : 'Skip Round'}
+              {isSkipping ? 'Skipping…' : 'Skip Round'}
             </Button>
           </div>
         </AntdCommonModal>

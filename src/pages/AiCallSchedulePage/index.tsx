@@ -307,6 +307,14 @@ const AiCallSchedulePage = () => {
     skip: !token,
   });
   const isPanel = schedulingLink?.interview_type === 'panel';
+  // "Call me now" exists for both phone-call rounds: the Intake Call ('audio')
+  // and Audio Screening ('audio_screening'). The invite email adds
+  // `&action=call_now` for both (interview-service `_scheduling_link.py`) and
+  // `POST /scheduling/{token}/call-now` accepts both; for Audio Screening it
+  // answers `questions_pending` and the call follows shortly.
+  const offersCallNow =
+    schedulingLink?.interview_type === 'audio' ||
+    schedulingLink?.interview_type === 'audio_screening';
   const {
     data: panelInfo,
     error: panelInfoError,
@@ -599,7 +607,7 @@ const AiCallSchedulePage = () => {
         </div>
       );
     }
-    if (schedulingLink.interview_type === 'audio') {
+    if (offersCallNow) {
       return (
         <div className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center">
@@ -885,7 +893,7 @@ const AiCallSchedulePage = () => {
                     ))
                   )}
                 </div>
-                {schedulingLink?.interview_type === 'audio' && (
+                {offersCallNow && (
                   <div className="border-t border-gray-100 px-5 py-4 shrink-0">
                     <p
                       className={clsx(

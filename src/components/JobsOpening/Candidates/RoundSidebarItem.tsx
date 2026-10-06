@@ -15,7 +15,12 @@ import {
   type RoundBucket,
 } from './roundProgress';
 import { AI_SCORE_MAX, BUCKET_META, HUMAN_SCORE_MAX } from './roundPipeline';
-import { roundLabel, formatRoundStatus, roundReinviteState } from './roundDisplay';
+import {
+  roundLabel,
+  formatRoundStatus,
+  roundReinviteState,
+  roundStatusLabel,
+} from './roundDisplay';
 
 type RoundSidebarItemProps = {
   round: CandidateInterviewRoundView;
@@ -134,13 +139,9 @@ const RoundSidebarItem = ({
           ? 'Scheduling link expired'
           : isResumeScored
             ? 'Completed'
-            : normaliseRoundStatus(round.status) === 'booking_created'
-              ? 'Booking created — waiting to be scheduled'
-              : normaliseRoundStatus(round.status) === 'resume_upload_expired'
-                ? 'Resume upload link expired'
-                : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
-                  ? 'Awaiting resume upload'
-                  : formatRoundStatus(round.status);
+            : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
+              ? 'Awaiting resume upload'
+              : (roundStatusLabel(round.status) ?? formatRoundStatus(round.status));
 
   // Old app's round tab: centred text stack — bold name, "Status: …",
   // then score / when lines — with roomy padding and no card chrome.

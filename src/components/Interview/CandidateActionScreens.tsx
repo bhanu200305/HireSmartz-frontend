@@ -54,8 +54,8 @@ const linkErrorText = (error: InterviewApiError | undefined, fallback: string): 
 // real answer from the endpoint at all) is treated as "still waiting", not
 // as a third, permanent outcome — see the state machine below for why that
 // distinction matters.
-const FEEDBACK_PENDING_POLL_MS = 1200;
-const FEEDBACK_PENDING_TIMEOUT_MS = 20000;
+const FEEDBACK_PENDING_POLL_MS = 2500;
+const FEEDBACK_PENDING_TIMEOUT_MS = 60000;
 
 // ---------------------------------------------------------------------------
 // Candidate feedback  —  /feedback?token=

@@ -151,8 +151,8 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
       showToast({
         message:
           sentCount === res.results.length
-            ? `SMS sent to ${sentCount} candidate${sentCount === 1 ? '' : 's'}.`
-            : `SMS sent to ${sentCount} of ${res.results.length}; see skipped reasons below.`,
+            ? `SMS queued for ${sentCount} candidate${sentCount === 1 ? '' : 's'}.`
+            : `SMS queued for ${sentCount} of ${res.results.length}; see skipped reasons below.`,
         type: sentCount > 0 ? 'success' : 'warning',
       });
     } catch (e) {
@@ -220,7 +220,7 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
                   <div key={i} className="flex items-start justify-between gap-3 text-sm">
                     <span className="font-medium text-gray-900">{r.name}</span>
                     {r.sent ? (
-                      <span className="text-green-600 shrink-0">Sent</span>
+                      <span className="text-green-600 shrink-0">Queued</span>
                     ) : (
                       <span className="text-red-500 text-right shrink-0">
                         Not sent: {describeSkippedReason(r.reason)}

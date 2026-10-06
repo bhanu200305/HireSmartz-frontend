@@ -32,25 +32,31 @@ import { findRoundScore } from './roundPipeline';
 // decides what each card shows and which buttons are live.
 
 type CardStatus =
-  | 'NOT SCHEDULED'
+  | 'NOT INVITED'
   | 'INVITATION SENT'
   | 'SCHEDULED'
-  | 'IN PROGRESS'
+  | 'ONGOING'
+  | 'RESCHEDULED'
   | 'COMPLETED'
   | 'SKIPPED'
   | 'CANCELLED'
-  | 'NO SHOW';
+  | 'NO-SHOW';
 
 const HEADER_STYLE: Record<CardStatus, { bg: string; text: string }> = {
-  'NOT SCHEDULED': { bg: 'bg-red-100', text: 'text-red-700' },
+  'NOT INVITED': { bg: 'bg-red-100', text: 'text-red-700' },
   'INVITATION SENT': { bg: 'bg-gray-100', text: 'text-gray-700' },
   SCHEDULED: { bg: 'bg-blue-100', text: 'text-blue-700' },
-  'IN PROGRESS': { bg: 'bg-blue-100', text: 'text-blue-700' },
+  ONGOING: { bg: 'bg-blue-100', text: 'text-blue-700' },
+  RESCHEDULED: { bg: 'bg-gray-100', text: 'text-gray-700' },
   COMPLETED: { bg: 'bg-blue-100', text: 'text-blue-700' },
   SKIPPED: { bg: 'bg-red-100', text: 'text-red-700' },
   CANCELLED: { bg: 'bg-red-100', text: 'text-red-700' },
-  'NO SHOW': { bg: 'bg-red-100', text: 'text-red-700' },
+  'NO-SHOW': { bg: 'bg-red-100', text: 'text-red-700' },
 };
+
+/** `InterviewBooking.cancellation_reason` interview-service sets when a
+ * scheduling link expires unused (`LINK_EXPIRED_REASON`). */
+const LINK_EXPIRED_REASON = 'scheduling link expired unused';
 
 const formatDate = (iso: string) => dayjs(iso).format('MMM DD, YYYY');
 const formatTime = (iso: string) => dayjs(iso).format('hh:mm A');
@@ -63,9 +69,10 @@ const cardStatusFor = (round: CandidateInterviewRoundView): CardStatus => {
     case 'skipped':
       return 'SKIPPED';
     case 'in_progress':
-      return 'IN PROGRESS';
-    case 'scheduled':
+      return 'ONGOING';
     case 'rescheduled':
+      return 'RESCHEDULED';
+    case 'scheduled':
       return round.scheduled_at ? 'SCHEDULED' : 'INVITATION SENT';
     case 'booking_created':
       return 'INVITATION SENT';
@@ -74,13 +81,11 @@ const cardStatusFor = (round: CandidateInterviewRoundView): CardStatus => {
       return 'CANCELLED';
     case 'no_show':
     case 'interviewer_no_show':
-      return 'NO SHOW';
+      return 'NO-SHOW';
     default:
       // to_be_scheduled / pending: invited (automatically with Advance, or
       // by hand) or not at all.
-      return round.invite_sent_at || round.interview_booking_id
-        ? 'INVITATION SENT'
-        : 'NOT SCHEDULED';
+      return round.invite_sent_at || round.interview_booking_id ? 'INVITATION SENT' : 'NOT INVITED';
   }
 };
 
@@ -156,13 +161,34 @@ const RoundCard = ({
   const reinvitesLeft = Math.max(0, MAX_REINVITES - reinvitesUsed);
   const reinvitesExhausted = reinvitesLeft === 0;
 
-  // First invite: only for the round that is due, with nothing sent yet (an
-  // automatic invite sent along with Advance leaves `invite_sent_at` set).
+  // First invite: only for a round that has BECOME DUE (`to_be_scheduled`:
+  // the candidate was advanced to it, or it is the first round) and has no
+  // invite yet. A round not reached yet (`pending`) never gets an Invite
+  // button. If Advance's "send invite" box was ticked the invite already
+  // went out (`invite_sent_at` set), so this only appears when it was left
+  // unticked.
   const canInvite =
-    isCurrent && status === 'NOT SCHEDULED' && !bookingId && !isIdentityVerificationRound(round);
+    isCurrent &&
+    normaliseRoundStatus(round.status) === 'to_be_scheduled' &&
+    status === 'NOT INVITED' &&
+    !bookingId &&
+    !isIdentityVerificationRound(round);
   // Invitation sent but not booked = its link is still unused, which is all
   // POST /bookings/{id}/reinvite needs now (no longer gated on expiry).
-  const showReinvite = status === 'INVITATION SENT' && !isTerminal;
+  // interview-service's reinvite rule (`reinvite_expired_booking.py`): only a
+  // booking whose link is still UNUSED can be reinvited: still `draft`, or
+  // `cancelled` because the link expired. A booking the candidate has booked
+  // (`scheduled`) or any other state is refused (REINVITE_NOT_ELIGIBLE), so
+  // the button is hidden for those rather than offered and rejected.
+  const bookingLoading = Boolean(bookingId) && !booking;
+  const reinviteEligible =
+    booking != null &&
+    (booking.status === 'draft' ||
+      (booking.status === 'cancelled' && booking.cancellation_reason === LINK_EXPIRED_REASON));
+  const showReinvite =
+    status === 'INVITATION SENT' &&
+    !isTerminal &&
+    (!bookingId || bookingLoading || reinviteEligible);
   // A concluded attempt can be re-attempted through the reschedule flow.
   const canReschedule =
     !isTerminal &&
@@ -170,7 +196,12 @@ const RoundCard = ({
     status !== 'COMPLETED' &&
     status !== 'SKIPPED' &&
     ((isVoiceCall && booking?.call_intent != null) ||
-      (isPanel && booking != null && CONCLUDED_BOOKING_STATUSES.includes(booking.status)));
+      // interview-service accepts a PANEL reschedule once the booking has
+      // concluded OR while it is still scheduled for a future time (it then
+      // cancels the old calendar event); a still-draft one has nothing to move.
+      (isPanel &&
+        booking != null &&
+        (booking.status === 'scheduled' || CONCLUDED_BOOKING_STATUSES.includes(booking.status))));
   // The backend only skips the candidate's current round.
   const canSkip = isCurrent && status !== 'COMPLETED' && status !== 'SKIPPED';
   const canGiveFeedback = status === 'COMPLETED' && !isTerminal && Boolean(score);
@@ -179,9 +210,11 @@ const RoundCard = ({
     ? 'This candidate has already been selected.'
     : !bookingId
       ? 'The invitation is being set up. Re-invite is available once it is created.'
-      : reinvitesExhausted
-        ? `All ${MAX_REINVITES} reinvites have been used.`
-        : `Send a new invitation link (${reinvitesLeft} of ${MAX_REINVITES} left)`;
+      : bookingLoading
+        ? 'Checking the invitation…'
+        : reinvitesExhausted
+          ? `All ${MAX_REINVITES} reinvites have been used.`
+          : `Send a new invitation link (${reinvitesLeft} of ${MAX_REINVITES} left)`;
 
   const statusLabel = <span className={`text-xs font-semibold ${header.text}`}>{status}</span>;
 
@@ -273,7 +306,13 @@ const RoundCard = ({
                 <Button
                   type="button"
                   className={`${actionButton} bg-primary text-white`}
-                  disabled={isBusy || bookingsClosed || !bookingId || reinvitesExhausted}
+                  disabled={
+                    isBusy ||
+                    bookingsClosed ||
+                    !bookingId ||
+                    !reinviteEligible ||
+                    reinvitesExhausted
+                  }
                   onClick={() => onReinvite(round)}
                 >
                   Re-invite

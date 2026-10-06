@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Checkbox, Rate } from 'antd';
+import { Checkbox, Rate, Select } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import { Button, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Loader } from '../../../shared/ui/loader';
 import {
   useAdvanceCandidateMutation,
-  useSendRoundInviteMutation,
   type CandidateInterviewRoundView,
+  type InterviewerRecommendation,
 } from '../../../../api/candidate-service/Candidates/interviewRounds';
 import {
   useRecordRecruiterRoundScoreMutation,
@@ -29,19 +29,37 @@ import { roundLabel } from '../roundDisplay';
 //      feedback typed here is saved first (resume stage -> resume review
 //      comment; interview round -> recruiter round score + reason). Advance
 //      is blocked until it is filled.
-//   2. `POST /candidates/{id}/advance`.
-//   3. If "Send interview invite" is ticked, `POST /candidates/{id}/send-invite`
-//      for the round that just became due, so the candidate is invited in the
-//      same step. Unticked, the recruiter sends it later from the Interview
-//      Scheduling tab (Invite button).
+//   2. `POST /candidates/{id}/advance` in ONE call: `expected_round_id` (stale
+//      screen guard), `send_invite` (ticked box: the next round is announced to
+//      interview-service in the same transaction), and, for an interview round,
+//      the body `interviewer_feedback` ({recommendation, notes}), which the
+//      backend requires before it closes an interview round (409
+//      INTERVIEWER_FEEDBACK_PENDING otherwise). Unticked, the round stays due
+//      and the recruiter sends the invite from the Interview Scheduling tab.
 
 const FEEDBACK_MAX = 1000;
 
 /** What the round being completed still needs before it can be advanced. */
 export type AdvanceFeedbackRequirement =
   | { kind: 'resume'; rating: number; comment: string }
-  | { kind: 'round'; scoreId: string; rating: number; comment: string }
+  | {
+      kind: 'round';
+      /** The round's score record, when it has one: the star rating is saved as
+       * the recruiter's score on it. Null: no score yet, so no stars to give. */
+      scoreId: string | null;
+      rating: number;
+      comment: string;
+      /** Interview rounds only: the interviewer's verdict sent with Advance. */
+      withRecommendation: boolean;
+    }
   | null;
+
+const RECOMMENDATION_OPTIONS: { value: InterviewerRecommendation; label: string }[] = [
+  { value: 'strong_yes', label: 'Strong Yes' },
+  { value: 'yes', label: 'Yes' },
+  { value: 'no', label: 'No' },
+  { value: 'strong_no', label: 'Strong No' },
+];
 
 type AdvanceCandidateModalProps = {
   open: boolean;
@@ -69,15 +87,14 @@ const AdvanceCandidateModal = ({
 }: AdvanceCandidateModalProps) => {
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState(0);
+  const [recommendation, setRecommendation] = useState<InterviewerRecommendation | null>(null);
   const [sendInvite, setSendInvite] = useState(true);
-  const [needsOverride, setNeedsOverride] = useState(false);
   // Feedback already saved by an earlier attempt of this same Confirm (the
   // advance itself failed afterwards): never saved twice.
   const [feedbackSaved, setFeedbackSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [advanceCandidate] = useAdvanceCandidateMutation();
-  const [sendRoundInvite] = useSendRoundInviteMutation();
   const [recordResumeReview] = useRecordResumeReviewMutation();
   const [recordRoundScore] = useRecordRecruiterRoundScoreMutation();
 
@@ -86,8 +103,8 @@ const AdvanceCandidateModal = ({
       // Prefilled with whatever is already on file; only the gap is asked for.
       setFeedback(feedbackRequirement?.comment ?? '');
       setRating(feedbackRequirement?.rating ?? 0);
+      setRecommendation(null);
       setSendInvite(true);
-      setNeedsOverride(false);
       setFeedbackSaved(false);
       setIsSubmitting(false);
     }
@@ -95,9 +112,20 @@ const AdvanceCandidateModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const needsFeedback = feedbackRequirement !== null && !feedbackSaved;
-  const needsRating = needsFeedback;
-  const isValid = !needsFeedback || (feedback.trim().length > 0 && (!needsRating || rating > 0));
+  // The recommendation goes out with the advance itself, so it is asked for
+  // until the advance succeeds; the rest is saved once, before it.
+  const withRecommendation =
+    feedbackRequirement?.kind === 'round' && feedbackRequirement.withRecommendation;
+  const needsFeedback = feedbackRequirement !== null;
+  const needsRating =
+    feedbackRequirement !== null &&
+    !feedbackSaved &&
+    (feedbackRequirement.kind === 'resume' || feedbackRequirement.scoreId !== null);
+  const isValid =
+    !needsFeedback ||
+    (feedback.trim().length > 0 &&
+      (!needsRating || rating > 0) &&
+      (!withRecommendation || recommendation !== null));
 
   const fromLabel = fromRound ? roundLabel(fromRound) : 'the current round';
   const toLabel = toRound ? roundLabel(toRound) : null;
@@ -105,7 +133,8 @@ const AdvanceCandidateModal = ({
     `${candidate.first_name ?? ''} ${candidate.last_name ?? ''}`.trim() || 'this candidate';
 
   const saveFeedback = async () => {
-    if (!needsFeedback || !feedbackRequirement) return;
+    if (!feedbackRequirement || feedbackSaved) return;
+    if (feedbackRequirement.kind === 'round' && feedbackRequirement.scoreId === null) return;
     if (feedbackRequirement.kind === 'resume') {
       await recordResumeReview({
         candidateId: candidate.id,
@@ -117,7 +146,7 @@ const AdvanceCandidateModal = ({
     } else {
       await recordRoundScore({
         candidateId: candidate.id,
-        scoreId: feedbackRequirement.scoreId,
+        scoreId: feedbackRequirement.scoreId as string,
         body: { recruiterScore: rating, reason: feedback.trim() },
       }).unwrap();
     }
@@ -145,10 +174,16 @@ const AdvanceCandidateModal = ({
       try {
         result = await advanceCandidate({
           candidateId: candidate.id,
-          overridePendingInterviewerFeedback: needsOverride,
           // A stale screen (someone else already advanced this candidate)
           // gets a 409 instead of silently advancing the NEXT round.
           expectedRoundId: fromRound?.id ?? null,
+          // Announced in the same call, so the advance and the invite can't
+          // end up half done.
+          sendInvite: sendInvite && canAutoInvite,
+          interviewerFeedback:
+            withRecommendation && recommendation
+              ? { recommendation, notes: feedback.trim() }
+              : null,
         }).unwrap();
       } catch (e) {
         const message = getCandidateErrorMessage(e, '');
@@ -156,9 +191,13 @@ const AdvanceCandidateModal = ({
           getCandidateErrorStatusCode(e) === 409 &&
           /interviewer'?s? feedback|override_pending_interviewer_feedback/i.test(message)
         ) {
-          // The interviewer hasn't submitted yet: ask once, then the same
-          // button sends the override.
-          setNeedsOverride(true);
+          // Feedback is required at every step: no "advance anyway". The
+          // recommendation above is what satisfies this, so it only shows up
+          // if the form was bypassed.
+          showToast({
+            message: "This round can't be advanced until its interviewer's feedback is recorded.",
+            type: 'error',
+          });
         } else if (getCandidateErrorStatusCode(e) === 409) {
           showToast({
             message:
@@ -183,19 +222,11 @@ const AdvanceCandidateModal = ({
           type: 'success',
         });
       } else if (sendInvite && canAutoInvite) {
-        try {
-          await sendRoundInvite(candidate.id).unwrap();
-          showToast({
-            message:
-              'Interview scheduling invitation email has been sent to the candidate. If SMS notifications are enabled, an SMS will also be sent.',
-            type: 'success',
-          });
-        } catch (e) {
-          showToast({
-            message: `Candidate advanced, but the invite could not be sent (${getCandidateErrorMessage(e, 'unknown error')}). Use Invite in the Interview Scheduling tab.`,
-            type: 'info',
-          });
-        }
+        showToast({
+          message:
+            'Interview scheduling invitation email has been sent to the candidate. If SMS notifications are enabled, an SMS will also be sent.',
+          type: 'success',
+        });
       } else {
         showToast({ message: 'Candidate advanced to the next round.', type: 'success' });
       }
@@ -249,6 +280,21 @@ const AdvanceCandidateModal = ({
                 <Rate value={rating} onChange={setRating} />
               </div>
             )}
+            {withRecommendation && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-800">
+                  Recommendation <span className="required-asterisk">*</span>
+                </span>
+                <Select
+                  id="advance-recommendation"
+                  placeholder="Select Recommendation"
+                  value={recommendation ?? undefined}
+                  onChange={(value) => setRecommendation(value)}
+                  options={RECOMMENDATION_OPTIONS}
+                  className="min-w-[180px]"
+                />
+              </div>
+            )}
             <TextArea
               id="advance-feedback"
               value={feedback}
@@ -276,13 +322,6 @@ const AdvanceCandidateModal = ({
           </p>
         )}
 
-        {needsOverride && (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            The interviewer hasn&apos;t submitted feedback for this round yet. You can advance
-            anyway.
-          </p>
-        )}
-
         <div className="flex gap-3">
           <Button
             type="button"
@@ -298,7 +337,7 @@ const AdvanceCandidateModal = ({
             disabled={isSubmitting || !isValid}
             className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
           >
-            {isSubmitting ? <Loader /> : needsOverride ? 'ADVANCE ANYWAY' : 'CONFIRM'}
+            {isSubmitting ? <Loader /> : 'CONFIRM'}
           </Button>
         </div>
       </div>

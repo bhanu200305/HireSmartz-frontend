@@ -8,6 +8,31 @@ import type { CandidateInterviewRoundView } from '../../../api/candidate-service
 export const roundLabel = (round: CandidateInterviewRoundView) =>
   round.stage_type === 'resume' ? 'Resume Screening' : round.round_name || 'Round';
 
+/** Round status → the label shown on the Interview Scheduling cards and the
+ * Assessment tab's round list, so both read the same (backend contract):
+ * `booking_created` is an invite waiting on the candidate, not a booking. */
+const ROUND_STATUS_LABEL: Record<string, string> = {
+  to_be_scheduled: 'Not invited',
+  booking_created: 'Invitation sent',
+  scheduled: 'Scheduled',
+  in_progress: 'Ongoing',
+  completed: 'Completed',
+  skipped: 'Skipped',
+  no_show: 'No-show',
+  interviewer_no_show: 'No-show',
+  cancelled: 'Cancelled',
+  rescheduled: 'Rescheduled',
+  resume_upload_expired: 'Upload expired',
+};
+
+export const roundStatusLabel = (status: string): string | null =>
+  ROUND_STATUS_LABEL[
+    status
+      .trim()
+      .toLowerCase()
+      .replace(/[-\s]+/g, '_')
+  ] ?? null;
+
 export const formatRoundStatus = (status: string) =>
   status
     .replace(/[_-]+/g, ' ')

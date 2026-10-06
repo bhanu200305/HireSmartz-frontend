@@ -9,11 +9,12 @@ const SKIP_REASON_LABELS: Record<string, string> = {
   no_email_on_file: 'No email address on file',
   no_phone_on_file: 'No phone number on file',
   no_sms_consent: 'Candidate has not given SMS consent',
-  no_address: 'The email address or phone number is not valid',
-  suppressed_or_opted_out: 'Candidate has opted out or the address is blocked',
+  duplicate: 'Already sent a moment ago.',
+  channel_unavailable: "SMS isn't available right now.",
+  no_address: 'No email or phone on file.',
+  suppressed_or_opted_out: 'This candidate has opted out.',
+  send_failed: "Couldn't send to this candidate. Try again.",
 };
 
 export const describeSkippedReason = (reason: string | null | undefined): string =>
-  reason
-    ? (SKIP_REASON_LABELS[reason] ?? reason.replace(/_/g, ' '))
-    : 'another message was sent to this candidate in the last 5 minutes';
+  reason ? (SKIP_REASON_LABELS[reason] ?? reason.replace(/_/g, ' ')) : 'Already sent a moment ago.';

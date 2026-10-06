@@ -180,6 +180,14 @@ export const CareersApplyPage = () => {
         });
         return;
       }
+      // 502 = the upload was rejected as a duplicate but the cleanup failed:
+      // internal detail, so only a generic retry message is shown.
+      if (fetchErr?.status === 502) {
+        toast.error('Something went wrong while submitting your application. Please try again.', {
+          autoClose: 6000,
+        });
+        return;
+      }
       toast.error(fetchErr?.data?.message ?? 'Failed to submit application. Please try again.', {
         autoClose: 6000,
       });
