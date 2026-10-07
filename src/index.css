@@ -340,24 +340,28 @@ canvas[data-agora-recording='true'] {
   flex-direction: column;
   max-height: calc(100vh - var(--app-header-height, 64px) - var(--app-footer-height, 84px) - 48px);
   overflow: hidden;
-  /*
-   * antd's own close button is a 32px box positioned 12px from this
-   * element's edges (`top`/`insetInlineEnd` both resolve to
-   * (modalHeaderHeight - modalCloseBtnSize) / 2 = (56 - 32) / 2 in antd's
-   * default theme), so it occupies the 12px-44px inset range in the
-   * top-right corner — unconditionally, regardless of what a modal renders,
-   * since AntdCommonModal always sets `title={null}` (see its own comment).
-   * `.ant-modal-body` below is this element's only padded child and fills
-   * whatever width padding leaves it, so its right edge — and therefore any
-   * scrollbar it renders when content overflows — sits exactly at this
-   * padding's inset. The antd default (24px) falls inside the close
-   * button's 12px-44px footprint, which is the actual cause of a scrollbar
-   * rendering flush against/under the close button in any modal that
-   * scrolls via the fallback (e.g. ImageCropModal, or any plain
-   * AntdCommonModal body taller than the viewport). Widening just this
-   * side clears that footprint with room to spare.
-   */
-  padding-right: 52px;
+}
+
+/*
+ * Keeps a scrolling modal's scrollbar clear of the close (X) button.
+ *
+ * antd's close button is a 32px box 12px in from the content's top-right
+ * corner (the 12px-44px inset range), and `.ant-modal-body` — the fallback
+ * scroll container below — ends at the content's 24px right padding, so its
+ * scrollbar sat right under the X. (A `padding-right: 52px` here was meant
+ * to fix that but never applied: antd's own `.ant-modal .ant-modal-content`
+ * padding is the more specific selector.)
+ *
+ * Instead of widening the padding (which would push every modal's content
+ * off-center), the body is stretched 24px into that padding and pads its own
+ * content back by the same 24px: content stays exactly where it was, and the
+ * scrollbar moves out to the modal's edge (0-8px in), clear of the X. Three
+ * classes so it outranks antd's own two-class modal selectors; a call site's
+ * inline `styles.body` still wins (CreateRoleModal opts out that way).
+ */
+.ant-modal-root .ant-modal .ant-modal-body {
+  margin-right: -24px;
+  padding-right: 24px;
 }
 
 .ant-modal-body {
@@ -493,6 +497,17 @@ canvas[data-agora-recording='true'] {
  */
 .ant-drawer {
   z-index: 1200 !important;
+}
+
+/*
+ * antd DatePicker / TimePicker popups were left at antd's default (~1050), so
+ * a picker opened from INSIDE one of the 1200 layers above (the Job Openings
+ * "Date - Time" filter dropdown, a date field in a Drawer) rendered behind
+ * the very panel it was opened from and couldn't be clicked. Just above
+ * those layers; still below the resume viewer (1300), which holds no pickers.
+ */
+.ant-picker-dropdown {
+  z-index: 1250 !important;
 }
 
 /* Centre tooltip text, so a wrapped line sits evenly under the button. */

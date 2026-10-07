@@ -23,10 +23,12 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
   const [questionCountText, setQuestionCountText] = useState(String(DEFAULT_QUESTION_COUNT));
   const [selectedCategoryCodes, setSelectedCategoryCodes] = useState<string[]>([]);
 
-  // Avoid submitting a stale selection from a previous open/round.
+  // Every section starts selected, reset on each open (and when the round's
+  // sections load) so a previous open/round's choice is never submitted.
+  const sectionCodesKey = scoringSectionOptions.map((option) => option.code).join(',');
   useEffect(() => {
-    if (open) setSelectedCategoryCodes([]);
-  }, [open]);
+    if (open) setSelectedCategoryCodes(sectionCodesKey ? sectionCodesKey.split(',') : []);
+  }, [open, sectionCodesKey]);
 
   if (!open) return null;
 
@@ -46,12 +48,17 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
     );
   };
 
+  // All selected (the default) or none selected both mean "every section",
+  // sent as `null` exactly as before; only a narrowed choice sends codes.
+  const isNarrowedSectionChoice =
+    selectedCategoryCodes.length > 0 && selectedCategoryCodes.length < scoringSectionOptions.length;
+
   const handleConfirmClick = () => {
     if (effectiveMode) {
       onConfirm(
         effectiveMode,
         clampedQuestionCount(),
-        showSectionPicker && selectedCategoryCodes.length > 0 ? selectedCategoryCodes : null
+        showSectionPicker && isNarrowedSectionChoice ? selectedCategoryCodes : null
       );
     }
   };
@@ -209,8 +216,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
                 Scoring Sections
               </Typography>
               <Typography variant="caption" className="text-gray-500 font-roboto block mb-2">
-                Pick which sections to generate questions from. Leave nothing selected to use every
-                section.
+                Every section is selected. Untick any you don&apos;t want questions from.
               </Typography>
               <div className="flex flex-wrap gap-2">
                 {scoringSectionOptions.map((option) => {

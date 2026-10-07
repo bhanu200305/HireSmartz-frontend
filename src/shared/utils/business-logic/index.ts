@@ -277,17 +277,20 @@ export const formatAiJobDescription = (text: string): string => {
   const withoutLeakedSections = stripLeakedAiJdSections(text);
 
   // Strip whitespace right inside "**" pairs — CommonMark won't render bold
-  // otherwise (e.g. "**Position Overview: **" stays literal).
-  let normalizedText = withoutLeakedSections.replace(/\*\*\s+/g, '**').replace(/\s+\*\*/g, '**');
+  // otherwise (e.g. "**Position Overview: **" stays literal). Matched as whole
+  // spans on one line, so the space BEFORE an opening "**" (the one that makes
+  // "- **Label**" a list item) or after a closing one is never touched.
+  let normalizedText = withoutLeakedSections.replace(/\*\*[ \t]*([^*\n]+?)[ \t]*\*\*/g, '**$1**');
 
   // A closing "**" glued to the next word can fail to render as bold —
-  // space out every second "**" (the closing one) when it's glued.
+  // space out every second "**" (the closing one) when a letter or digit
+  // follows. Punctuation stays glued: "**Label**:" already renders fine.
   let starIndex = 0;
   normalizedText = normalizedText.replace(/\*\*/g, (match, offset, full) => {
     starIndex++;
     if (starIndex % 2 !== 0) return match;
     const next = full[offset + 2];
-    return next && !/\s/.test(next) ? '** ' : match;
+    return next && /[\p{L}\p{N}]/u.test(next) ? '** ' : match;
   });
 
   // Force a line break around a glued-on section header so the per-line

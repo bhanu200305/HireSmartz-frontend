@@ -380,6 +380,21 @@ const AiQuestionsSetup = () => {
     return `${count} question${count === 1 ? '' : 's'} ${isAppend ? 'added' : 'generated'}`;
   };
 
+  // Freshly generated questions start ticked: every question in the round
+  // that wasn't there before generating (all of them after a replace, just
+  // the new ones after an add).
+  const selectGeneratedQuestions = (
+    latest: { id: string; interview_round_id?: string | null }[],
+    roundId: string | null
+  ) => {
+    const before = new Set((questionSnapshotBeforeGenerateRef.current ?? '').split(','));
+    setSelectedIds(
+      latest
+        .filter((q) => (roundId ? q.interview_round_id === roundId : true) && !before.has(q.id))
+        .map((q) => q.id)
+    );
+  };
+
   // Stop polling once the list differs from its pre-generation snapshot.
   useEffect(() => {
     if (!isGeneratingQuestions) return;
@@ -387,6 +402,7 @@ const AiQuestionsSetup = () => {
     if (questionsSnapshotKey === questionSnapshotBeforeGenerateRef.current) return;
     setIsGeneratingQuestions(false);
     const generatedRoundId = roundBeingGeneratedForRef.current;
+    selectGeneratedQuestions(questions, generatedRoundId);
     // Fewer than requested: say so, instead of a plain success count.
     if (generationNotice) {
       showToast({ message: generationNotice, type: 'info' });
@@ -413,12 +429,11 @@ const AiQuestionsSetup = () => {
     if (!isGeneratingQuestions) return;
     const timeoutId = setTimeout(async () => {
       const result = await refetchQuestions();
-      const latestKey = (result.data?.rounds ?? [])
-        .flatMap((round) => round.questions ?? [])
-        .map((q) => q.id)
-        .join(',');
+      const latestQuestions = (result.data?.rounds ?? []).flatMap((round) => round.questions ?? []);
+      const latestKey = latestQuestions.map((q) => q.id).join(',');
       if (latestKey !== questionSnapshotBeforeGenerateRef.current) {
         setIsGeneratingQuestions(false);
+        selectGeneratedQuestions(latestQuestions, roundBeingGeneratedForRef.current);
         showToast({ message: 'Questions generated', type: 'success' });
         if (roundBeingGeneratedForRef.current) {
           setOpenSectionKey(roundBeingGeneratedForRef.current);
@@ -624,15 +639,16 @@ const AiQuestionsSetup = () => {
   const confirmDelete = () => {
     if (isDeleteInProgress || !activeJobOpeningId) return;
     setIsDeleteInProgress(true);
-    const idsToRemove = new Set(
-      selectedIds.length > 0 ? selectedIds : selectedQuestionId ? [selectedQuestionId] : []
-    );
+    // A row's own trash icon deletes just that row, even while other rows are
+    // ticked (it used to delete every ticked row instead); the header button
+    // deletes the ticked rows.
+    const idsToRemove = new Set(selectedQuestionId ? [selectedQuestionId] : selectedIds);
     const remaining = questions.filter((q) => !idsToRemove.has(q.id)).map(toQuestionRequest);
 
     persistQuestions(remaining)
       .then(() => {
         showToast({ message: 'Deleted successfully', type: 'success' });
-        setSelectedIds([]);
+        setSelectedIds((prev) => prev.filter((id) => !idsToRemove.has(id)));
       })
       .catch((err) =>
         showToast({
@@ -1127,7 +1143,11 @@ const AiQuestionsSetup = () => {
                 setSelectedQuestionId(null);
               }
             }}
-            title={selectedIds.length > 0 ? 'Delete selected questions?' : 'Delete question?'}
+            title={
+              !selectedQuestionId && selectedIds.length > 0
+                ? 'Delete selected questions?'
+                : 'Delete question?'
+            }
             onConfirm={confirmDelete}
             confirmText="Delete"
             isLoading={isDeleteInProgress}

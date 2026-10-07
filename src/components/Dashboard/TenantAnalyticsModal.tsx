@@ -138,8 +138,10 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
         // `visible` while overflow-y isn't computes overflow-x to `auto`
         // too, opening a stray horizontal scrollbar that clips a sliver
         // off this content.
+        // paddingRight 38 = index.css's 24px edge-scrollbar padding + this
+        // modal's own 14px gutter (an inline value replaces the CSS one).
         styles: {
-          body: { overflowX: 'hidden', paddingRight: 14 },
+          body: { overflowX: 'hidden', paddingRight: 38 },
         },
         classNames: { body: 'thin-scrollbar' },
       }}

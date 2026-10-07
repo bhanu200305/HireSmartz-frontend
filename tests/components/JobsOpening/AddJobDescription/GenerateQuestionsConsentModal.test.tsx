@@ -42,3 +42,43 @@ describe('GenerateQuestionsConsentModal question count', () => {
     expect(onConfirm).toHaveBeenCalledWith('REPLACE', 1, null);
   });
 });
+
+describe('GenerateQuestionsConsentModal scoring sections', () => {
+  const sections = [
+    { code: 'SKILLS_MATCH', label: 'Skills Match' },
+    { code: 'PERSONALITY_TRAITS', label: 'Personality Traits' },
+    { code: 'CAREER_GOALS', label: 'Career Goals' },
+  ];
+  const setupSections = () => {
+    const onConfirm = vi.fn();
+    render(
+      <GenerateQuestionsConsentModal
+        open
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+        hasExistingQuestions={false}
+        scoringSectionOptions={sections}
+      />
+    );
+    return { onConfirm };
+  };
+  const chip = (label: string) => screen.getByRole('button', { name: label });
+
+  it('starts with every section selected', () => {
+    setupSections();
+    sections.forEach(({ label }) => expect(chip(label).className).toContain('border-brand-500'));
+  });
+
+  it('sends null (every section) when all are left selected', () => {
+    const { onConfirm } = setupSections();
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
+    expect(onConfirm).toHaveBeenCalledWith('REPLACE', 10, null);
+  });
+
+  it('sends only the sections still selected after unticking one', () => {
+    const { onConfirm } = setupSections();
+    fireEvent.click(chip('Personality Traits'));
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
+    expect(onConfirm).toHaveBeenCalledWith('REPLACE', 10, ['SKILLS_MATCH', 'CAREER_GOALS']);
+  });
+});

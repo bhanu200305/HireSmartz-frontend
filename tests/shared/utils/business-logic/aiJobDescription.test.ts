@@ -102,6 +102,58 @@ describe('formatAiJobDescription — bullet-list continuation vs. new item', () 
   });
 });
 
+describe('formatAiJobDescription — bold lead-in labels in lists', () => {
+  it('keeps "- **Label**: text" lines exactly as written, as separate list items', () => {
+    const text = [
+      '## Key Responsibilities',
+      '- **API Development**: Design, build APIs.',
+      '- **Database Management**: Structure databases.',
+    ].join('\n');
+    const lines = formatAiJobDescription(text).split('\n');
+    expect(lines).toContain('- **API Development**: Design, build APIs.');
+    expect(lines).toContain('- **Database Management**: Structure databases.');
+    expect(lines.join('\n')).not.toContain('-**');
+    expect(lines.join('\n')).not.toContain('** :');
+  });
+
+  it('keeps numbered "1. **Label**: text" items intact', () => {
+    const text = [
+      '## Required Qualifications',
+      '1. **Education**: Bachelor degree in CS.',
+      '2. **Tools**: Git and Docker.',
+    ].join('\n');
+    const result = formatAiJobDescription(text);
+    expect(result).toContain('1. **Education**: Bachelor degree in CS.');
+    expect(result).toContain('2. **Tools**: Git and Docker.');
+  });
+
+  it('keeps the spaces around a bold span in the middle of a bullet', () => {
+    const text = '## Requirements\n- Requires **3+ years** of Python';
+    expect(formatAiJobDescription(text)).toContain('- Requires **3+ years** of Python');
+  });
+
+  it('leaves two bold spans on one line unchanged', () => {
+    const text = '## Skills\n- **Python**, **Django** experience';
+    expect(formatAiJobDescription(text)).toContain('- **Python**, **Django** experience');
+  });
+
+  it('still inserts a space after a closing marker glued to a letter', () => {
+    expect(formatAiJobDescription('Strong **Label**word here')).toContain('**Label** word here');
+  });
+
+  it('still strips the whitespace inside a bold span', () => {
+    // Only recognised as a whole-line bold heading (and promoted to one) once
+    // the space before the closing "**" is gone.
+    const result = formatAiJobDescription('**Position Overview: **');
+    expect(result).toBe('## Position Overview');
+  });
+
+  it('strips the whitespace inside an inline bold span', () => {
+    const result = formatAiJobDescription('## About\n- Uses ** Python ** daily');
+    expect(result).toContain('- Uses **Python** daily');
+  });
+});
+
 describe('jdGenerationFailureMessage', () => {
   it('replaces a raw internal "model ..." message with a friendly one', () => {
     const message = jdGenerationFailureMessage(
