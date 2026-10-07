@@ -57,33 +57,6 @@ export type PublicApplyResult = {
 
 export type PublicApplyResponse = CandidatePublicEnvelope<PublicApplyResult>;
 
-/** `POST /apply/resume-preview` — the QR-apply form's optional "upload →
- * prefill → review" step, same idea as the recruiter Add Candidate modal.
- * Everything parsed is a suggestion: the candidate can edit every field.
- * Uses its own captcha token (reCAPTCHA tokens are single-use, so the real
- * `/apply` submit still needs a fresh one). */
-export type ResumePreviewRequest = {
-  organizationId: string;
-  jobOpeningId: string;
-  file: File;
-  captchaToken: string;
-};
-
-export type ResumePreviewResult = {
-  /** Already stored, but `/apply` doesn't accept it yet — the submit still
-   * sends the file bytes again. */
-  resume_s3_key: string;
-  first_name: string | null;
-  last_name: string | null;
-  email_id: string | null;
-  contact_no: string | null;
-  /** `true`: `contact_no` carries its country code; `false`: it doesn't, so
-   * the candidate must pick one (never guessed); `null`: no phone found. */
-  phone_has_country_code: boolean | null;
-};
-
-export type ResumePreviewResponse = CandidatePublicEnvelope<ResumePreviewResult>;
-
 // ---------------------------------------------------------------------------
 // Path B — instant call, no resume yet (FRONTEND_INTEGRATION_DETAILS.md §5.2)
 // ---------------------------------------------------------------------------
@@ -221,16 +194,6 @@ export const publicApplyApi = createApi({
   baseQuery: fetchBaseQuery({ baseUrl: PUBLIC_BASE_URL }),
   endpoints: (build) => ({
     // POST /public/v1/apply
-    previewPublicResume: build.mutation<ResumePreviewResponse, ResumePreviewRequest>({
-      query: ({ organizationId, jobOpeningId, file, captchaToken }) => {
-        const body = new FormData();
-        body.append('organization_id', organizationId);
-        body.append('job_opening_id', jobOpeningId);
-        body.append('file', file);
-        body.append('captcha_token', captchaToken);
-        return { url: '/apply/resume-preview', method: 'POST', body };
-      },
-    }),
     submitPublicApplication: build.mutation<PublicApplyResponse, PublicApplyRequest>({
       query: ({
         organizationId,
@@ -385,7 +348,6 @@ export const publicApplyApi = createApi({
 });
 
 export const {
-  usePreviewPublicResumeMutation,
   useSubmitPublicApplicationMutation,
   useStartIntakeCallMutation,
   useGetResumeUploadLinkDetailsQuery,
