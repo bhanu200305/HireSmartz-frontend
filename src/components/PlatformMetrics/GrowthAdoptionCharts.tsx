@@ -21,6 +21,7 @@ import {
   useGetMfaMetricsQuery,
   useGetSessionMetricsQuery,
 } from '../../api/organization-service/Platform/metrics';
+import { parseCalendarDate } from '../../shared/utils/calendarDate';
 
 // Brand tokens (src/theme/index.css) — no new colors introduced, same
 // palette every other chart/badge in the app already draws from.
@@ -48,7 +49,7 @@ const formatMonthPeriod = (period: string): string => {
 };
 
 const formatBucketMonth = (isoDate: string): string =>
-  new Date(isoDate).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  parseCalendarDate(isoDate)?.format('MMM YY') ?? isoDate;
 
 const capitalize = (value: string): string =>
   value

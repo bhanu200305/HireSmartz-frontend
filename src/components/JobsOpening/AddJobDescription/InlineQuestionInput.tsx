@@ -17,7 +17,7 @@ export const InlineQuestionInput = ({
   value,
   onChange,
   onSubmit,
-  placeholder = 'Type a question, or paste several - one per line.',
+  placeholder = 'Type a question, or paste a list with one question per line.',
   footnote = '',
   isSubmitting = false,
   disabled = false,
@@ -27,7 +27,7 @@ export const InlineQuestionInput = ({
     <div className="w-full rounded-2xl border border-primary-200 bg-white p-4 shadow-sm">
       <div className="mb-2 flex items-center gap-1.5">
         <span className="text-sm font-semibold text-gray-800">Write Questions</span>
-        <Tooltip title="Type one question, or paste several at once - each line becomes its own question.">
+        <Tooltip title="Type one question, or paste a list with one question on each line. Every line is added as a separate question.">
           <MdInfoOutline className="text-gray-400" size={15} />
         </Tooltip>
       </div>
@@ -45,8 +45,7 @@ export const InlineQuestionInput = ({
           }
         }}
       />
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-xs text-gray-400">Enter adds · Shift+Enter new line</span>
+      <div className="mt-3 flex items-center justify-end gap-3">
         <Tooltip title="Add the question(s) above to this round.">
           <Button
             type="button"

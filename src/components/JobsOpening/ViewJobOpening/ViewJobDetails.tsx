@@ -20,9 +20,9 @@ import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import { useParams } from 'react-router-dom';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Loader } from '../../shared/ui/loader';
-import dayjs from 'dayjs';
 import { JobOpeningByIdResponse } from '../../../types';
 import { asJobId } from '../../../api/job-service/jobId';
+import { parseCalendarDate } from '../../../shared/utils/calendarDate';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/provider/store';
 
@@ -472,12 +472,7 @@ const ViewJobDetails = () => {
         <Section title="Openings & Pay">
           <Field
             label="Open Date"
-            value={
-              // openDate is an ISO 8601 string; let dayjs parse it natively.
-              data?.openDate && dayjs(data.openDate).isValid()
-                ? dayjs(data.openDate).format('MMM D, YYYY')
-                : ''
-            }
+            value={parseCalendarDate(data?.openDate)?.format('MMM D, YYYY') ?? ''}
           />
           <Field label="Openings" value={data?.openings} />
           <Field

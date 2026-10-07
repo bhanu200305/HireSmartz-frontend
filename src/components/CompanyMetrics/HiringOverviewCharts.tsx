@@ -30,6 +30,7 @@ import {
   useGetResumeScoreDistributionQuery,
   RESUME_SCORE_BAND_ORDER,
 } from '../../api/candidate-service/Stats/stats';
+import { parseCalendarDate } from '../../shared/utils/calendarDate';
 
 // Same brand tokens as the Super Admin's GrowthAdoptionCharts (src/theme/index.css)
 // — one shared palette across every KPI chart in the app.
@@ -50,7 +51,7 @@ const truncateAxisLabel = (value: string, maxLength = 10): string =>
   value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 
 const formatDay = (isoDate: string): string =>
-  new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  parseCalendarDate(isoDate)?.format('MMM D') ?? isoDate;
 
 const cardTooltipStyle = {
   borderRadius: 10,

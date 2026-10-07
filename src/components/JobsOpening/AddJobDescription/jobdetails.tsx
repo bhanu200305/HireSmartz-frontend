@@ -141,6 +141,7 @@ import {
   mergeNewAiSkills,
 } from '../../../shared/utils/jdSync';
 import { toMoneyString } from '../../../shared/utils/money';
+import { parseCalendarDate } from '../../../shared/utils/calendarDate';
 
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
@@ -3154,11 +3155,7 @@ const JobDetails = () => {
                             });
                           }}
                           disabled={!hasCultureInfo || fieldsLocked}
-                          style={{
-                            backgroundColor: useCultureIntroValue
-                              ? 'var(--color-primary)'
-                              : undefined,
-                          }}
+                          className="culture-switch"
                         />
                         <span className="text-sm text-gray-700 leading-5">
                           Play Company Culture Introduction at the start of AI Audio Call and AI
@@ -3459,7 +3456,7 @@ const JobDetails = () => {
                         onContextMenu={(e) => e.preventDefault()}
                       >
                         <DatePicker
-                          value={watch('openDate') ? dayjs(watch('openDate'), 'DD-MM-YYYY') : null}
+                          value={parseCalendarDate(watch('openDate'))}
                           onChange={(date) => {
                             setValue('openDate', date ? date.format('DD-MM-YYYY') : '', {
                               shouldValidate: true,
@@ -3482,6 +3479,39 @@ const JobDetails = () => {
                       </div>
                       {errors.openDate && (
                         <p className="text-red-500 text-sm mt-1">{errors.openDate.message}</p>
+                      )}
+                    </Form.Item>
+
+                    <Form.Item label="Close Date">
+                      <div
+                        className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl"
+                        onPaste={(e) => e.preventDefault()}
+                        onContextMenu={(e) => e.preventDefault()}
+                      >
+                        <DatePicker
+                          value={parseCalendarDate(watch('closeDate'))}
+                          onChange={(date) => {
+                            setValue('closeDate', date ? date.format('DD-MM-YYYY') : '', {
+                              shouldValidate: true,
+                            });
+                          }}
+                          variant="borderless"
+                          className="w-full custom-date-picker placeholder-style"
+                          format="MMM D, YYYY"
+                          placeholder="Select Close Date"
+                          disabledDate={(current) =>
+                            current && current.isBefore(dayjs().startOf('day'))
+                          }
+                          onKeyDown={(e) => {
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                              e.preventDefault();
+                            }
+                          }}
+                          disabled={fieldsLocked}
+                        />
+                      </div>
+                      {errors.closeDate && (
+                        <p className="text-red-500 text-sm mt-1">{errors.closeDate.message}</p>
                       )}
                     </Form.Item>
 
@@ -3521,41 +3551,6 @@ const JobDetails = () => {
                       />
                       {errors.openings && (
                         <p className="text-red-500 text-sm mt-1">{errors.openings.message}</p>
-                      )}
-                    </Form.Item>
-
-                    <Form.Item label="Close Date">
-                      <div
-                        className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl"
-                        onPaste={(e) => e.preventDefault()}
-                        onContextMenu={(e) => e.preventDefault()}
-                      >
-                        <DatePicker
-                          value={
-                            watch('closeDate') ? dayjs(watch('closeDate'), 'DD-MM-YYYY') : null
-                          }
-                          onChange={(date) => {
-                            setValue('closeDate', date ? date.format('DD-MM-YYYY') : '', {
-                              shouldValidate: true,
-                            });
-                          }}
-                          variant="borderless"
-                          className="w-full custom-date-picker placeholder-style"
-                          format="MMM D, YYYY"
-                          placeholder="Select Close Date"
-                          disabledDate={(current) =>
-                            current && current.isBefore(dayjs().startOf('day'))
-                          }
-                          onKeyDown={(e) => {
-                            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-                              e.preventDefault();
-                            }
-                          }}
-                          disabled={fieldsLocked}
-                        />
-                      </div>
-                      {errors.closeDate && (
-                        <p className="text-red-500 text-sm mt-1">{errors.closeDate.message}</p>
                       )}
                     </Form.Item>
                   </div>

@@ -1,5 +1,6 @@
 import type { BadgeStatus } from '../shared/ui/badge';
 import type { JobSummary } from '../../api/job-service/JobOpenings/types';
+import { calendarDaysSince } from '../../shared/utils/calendarDate';
 
 /** Shared by `OpenJobsSection` and `JobOpeningsListModal` — one status/age
  * reading for a job row, so the KPI popup and the metrics-page section can
@@ -11,7 +12,6 @@ export const jobStatus = (job: JobSummary): { label: string; badge: BadgeStatus 
 };
 
 export const daysOpen = (openDate: string | null): string => {
-  if (!openDate) return '-';
-  const days = Math.max(0, Math.floor((Date.now() - new Date(openDate).getTime()) / 86400000));
-  return `${days}d`;
+  const days = calendarDaysSince(openDate);
+  return days === null ? '-' : `${days}d`;
 };

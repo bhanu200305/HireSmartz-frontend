@@ -100,6 +100,7 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
       ? {
           id: (location.job_location_id ?? '') as unknown as number,
           name: [location.city, location.state].filter(Boolean).join(', '),
+          code: location.location_code ?? undefined,
           addressLine1: location.address_line_1 ?? undefined,
           addressLine2: location.address_line_2 ?? undefined,
           city: location.city ?? undefined,

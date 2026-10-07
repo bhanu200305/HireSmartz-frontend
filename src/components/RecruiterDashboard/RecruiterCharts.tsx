@@ -20,6 +20,7 @@ import {
   useGetResumeScoreDistributionQuery,
   RESUME_SCORE_BAND_ORDER,
 } from '../../api/candidate-service/Stats/stats';
+import { parseCalendarDate } from '../../shared/utils/calendarDate';
 
 // "AUDIO" | "AVATAR" | "VIDEO" — the fixed round-type vocabulary
 // interviews-by-status groups by (round_type_classification.py).
@@ -50,7 +51,7 @@ const capitalize = (value: string): string =>
     .join(' ');
 
 const formatDay = (isoDate: string): string =>
-  new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  parseCalendarDate(isoDate)?.format('MMM D') ?? isoDate;
 
 const cardTooltipStyle = {
   borderRadius: 10,

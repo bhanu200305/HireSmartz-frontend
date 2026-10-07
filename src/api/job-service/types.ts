@@ -334,6 +334,9 @@ export type FailedQuestionRowResponse = {
 export type SkippedDuplicateRowResponse = {
   row_number: number;
   question_text: string;
+  /** 'existing': already in the job's bank. 'file': repeats an earlier row of this file. */
+  duplicate_of: 'existing' | 'file';
+  first_row_number: number | null;
 };
 
 export type PublishValidationResponse = {

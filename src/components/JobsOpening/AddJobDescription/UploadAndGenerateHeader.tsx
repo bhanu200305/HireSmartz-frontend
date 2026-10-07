@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tooltip } from 'antd';
+import { Modal, Tooltip } from 'antd';
 import { Button, Typography } from '../../shared';
 import {
   HiOutlineRefresh,
@@ -7,12 +7,21 @@ import {
   HiOutlineExclamationCircle,
   HiOutlineDocumentDuplicate,
 } from 'react-icons/hi';
-import { MdDownload, MdInfo } from 'react-icons/md';
+import { MdDownload } from 'react-icons/md';
 
 export interface ImportWarningItem {
   type: 'error' | 'duplicate';
-  message: string;
+  /** The file row, when the import reports one. */
+  row?: number;
+  /** Why this row was skipped, in plain words. */
+  reason: string;
+  /** The question on that row, when the file had one. */
+  questionText?: string | null;
 }
+
+const MAX_SHOWN_QUESTION_CHARS = 400;
+const shortened = (text: string): string =>
+  text.length > MAX_SHOWN_QUESTION_CHARS ? `${text.slice(0, MAX_SHOWN_QUESTION_CHARS)}…` : text;
 
 interface UploadAndGenerateHeaderProps {
   description: string;
@@ -50,6 +59,14 @@ export const UploadAndGenerateHeader = ({
   generateDisabled = false,
 }: UploadAndGenerateHeaderProps) => {
   const skippedCount = failedCount + duplicateCount;
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
+  // A fresh set of skipped rows opens the details once. Keyed on the rows, not the array.
+  const warningsKey = warnings
+    .map((warn) => `${warn.type}:${warn.row ?? ''}:${warn.reason}`)
+    .join('|');
+  React.useEffect(() => {
+    if (warningsKey) setDetailsOpen(true);
+  }, [warningsKey]);
   const generateButton = (
     <Button
       className="border border-primary text-primary bg-white hover:bg-gray-50 flex items-center gap-1.5 px-3.5 py-1.5 font-semibold text-sm rounded-full shadow-sm"
@@ -121,7 +138,13 @@ export const UploadAndGenerateHeader = ({
             className="text-brand-800 m-0 flex items-center flex-wrap gap-1.5"
           >
             <span>
-              Successfully imported <strong>{importedCount}</strong> question(s).
+              {importedCount > 0 ? (
+                <>
+                  Successfully imported <strong>{importedCount}</strong> question(s).
+                </>
+              ) : (
+                <>No new questions were added.</>
+              )}
               {skippedCount > 0 && (
                 <>
                   {' '}
@@ -148,64 +171,106 @@ export const UploadAndGenerateHeader = ({
                 </>
               )}
             </span>
-            {/* Validation detail (which row failed and why) sits behind this
-                icon instead of an always-open block — a hover away rather
-                than pushing the question list down every time a file has
-                any skipped rows. */}
-            {warnings.length > 0 && (
-              <Tooltip
-                title={
-                  <div className="py-1">
-                    <div className="flex items-center justify-between gap-3 px-3 pb-2 mb-1.5 border-b border-gray-100">
-                      <span className="text-xs font-bold text-gray-800 tracking-wide">
-                        Row Issues
-                      </span>
-                      <span className="text-xs font-semibold text-gray-400">
-                        {warnings.length} {warnings.length === 1 ? 'row' : 'rows'}
-                      </span>
-                    </div>
-                    <ul className="flex flex-col gap-1 max-h-48 overflow-y-auto px-1">
-                      {warnings.map((warn, index) => (
-                        <li
-                          key={index}
-                          className={`flex items-start gap-2 text-xs leading-snug px-2 py-1.5 rounded-lg ${
-                            warn.type === 'error'
-                              ? 'text-red-700 bg-red-50/70'
-                              : 'text-amber-800 bg-amber-50/70'
-                          }`}
-                        >
-                          {warn.type === 'error' ? (
-                            <HiOutlineExclamationCircle className="shrink-0 mt-0.5 text-sm" />
-                          ) : (
-                            <HiOutlineDocumentDuplicate className="shrink-0 mt-0.5 text-sm" />
-                          )}
-                          <span className="font-medium">{warn.message}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                }
-                color="#fff"
-                overlayInnerStyle={{
-                  maxWidth: 360,
-                  padding: '10px 4px',
-                  borderRadius: 14,
-                  boxShadow: '0 12px 32px -8px rgba(0,0,0,0.18)',
-                }}
-                placement="bottom"
-              >
-                <span
-                  role="img"
-                  aria-label={`${warnings.length} validation ${warnings.length === 1 ? 'issue' : 'issues'}`}
-                  className="inline-flex items-center justify-center w-5 h-5 rounded-full text-red-600 bg-red-50 ring-1 ring-red-200 hover:bg-red-100 hover:ring-red-300 transition-colors cursor-help shrink-0"
-                >
-                  <MdInfo size={13} />
-                </span>
-              </Tooltip>
-            )}
           </Typography>
+          {warnings.length > 0 && (
+            <button
+              type="button"
+              className="self-start text-xs font-semibold text-brand-500 hover:text-brand-800 cursor-pointer"
+              onClick={() => setDetailsOpen(true)}
+            >
+              View details ({warnings.length})
+            </button>
+          )}
         </div>
       )}
+      <Modal
+        open={detailsOpen && warnings.length > 0}
+        onCancel={() => setDetailsOpen(false)}
+        title="Rows that were skipped"
+        footer={
+          <Button
+            className="rounded-full bg-button px-6 py-1.5 text-sm font-semibold text-white"
+            onClick={() => setDetailsOpen(false)}
+          >
+            Close
+          </Button>
+        }
+        width={560}
+        style={{ top: 72 }}
+        destroyOnClose
+      >
+        <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
+          {[
+            {
+              type: 'error' as const,
+              title: 'Not imported',
+              hint: 'Fix these rows in your file and upload it again.',
+            },
+            {
+              type: 'duplicate' as const,
+              title: 'Skipped duplicates',
+              hint: 'These questions already exist, so there is nothing to fix.',
+            },
+          ].map(({ type, title, hint }) => {
+            const items = warnings.filter((warn) => warn.type === type);
+            if (items.length === 0) return null;
+            const isError = type === 'error';
+            return (
+              <div key={type} className="flex flex-col gap-2">
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5 whitespace-nowrap">
+                    {isError ? (
+                      <HiOutlineExclamationCircle className="shrink-0 text-base text-red-600" />
+                    ) : (
+                      <HiOutlineDocumentDuplicate className="shrink-0 text-base text-amber-700" />
+                    )}
+                    <span
+                      className={`text-sm font-bold ${isError ? 'text-red-700' : 'text-amber-800'}`}
+                    >
+                      {title} ({items.length})
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-500">{hint}</span>
+                </div>
+                <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                  {items.map((warn) => (
+                    <li
+                      key={`${warn.type}-${warn.row ?? warn.reason}-${warn.questionText ?? ''}`}
+                      className={`rounded-xl border bg-white px-3 py-2.5 ${
+                        isError ? 'border-red-100' : 'border-amber-100'
+                      }`}
+                    >
+                      {warn.questionText ? (
+                        <p className="m-0 break-words text-sm font-medium text-gray-900">
+                          &ldquo;{shortened(warn.questionText)}&rdquo;
+                        </p>
+                      ) : (
+                        <p className="m-0 text-sm italic text-gray-500">(empty row)</p>
+                      )}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                        {warn.row !== undefined && (
+                          <span
+                            className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold ${
+                              isError ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            Row {warn.row}
+                          </span>
+                        )}
+                        <span
+                          className={`font-semibold ${isError ? 'text-red-700' : 'text-amber-800'}`}
+                        >
+                          {warn.reason}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      </Modal>
     </div>
   );
 };

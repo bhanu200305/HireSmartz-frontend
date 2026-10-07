@@ -461,7 +461,7 @@ const VideoQuestionsSetup = () => {
           uploadedFileName={uploadedFileName}
           importedCount={importedCount}
           failedCount={skippedCount}
-          warnings={warnings.map((message) => ({ type: 'error' as const, message }))}
+          warnings={warnings.map((reason) => ({ type: 'error' as const, reason }))}
           onClearDetails={() => {
             setUploadedFileName('');
             setWarnings([]);
@@ -523,11 +523,11 @@ const VideoQuestionsSetup = () => {
         )}
         <QuestionFormModal
           open={isEditModalOpen}
-          title="Update Video Question"
+          title="Update Question"
           roundName={activeRoundName}
           categoryId={editedCategoryId}
           questionText={editedQuestionText}
-          submitLabel="Update Question"
+          submitLabel="Save"
           isSubmitting={isEditSubmitting}
           isCategoryLoading={categoryLoading}
           categoryOptions={categoryOptions}

@@ -164,7 +164,6 @@ const JobsOpening = () => {
   const [showCreateJobModal, setShowCreateJobModal] = useState<boolean>(false);
   const [showJdUploadModal, setShowJdUploadModal] = useState<boolean>(false);
   const [jdFiles, setJdFiles] = useState<File[]>([]);
-  const [uploadedJobOpeningId, setUploadedJobOpeningId] = useState<string | null>(null);
   const [jdBatchId, setJdBatchId] = useState<string | null>(null);
   const [jdProgress, setJdProgress] = useState<number>(0);
   const [, setJdProgressMessage] = useState<string>('');
@@ -177,6 +176,8 @@ const JobsOpening = () => {
     []
   );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Set once a finished batch has sent the user to its first job.
+  const batchHandledRef = useRef(false);
   // GET, not a mutation: the backend generates the tenant's one QR on first call
   // and re-resolves it after. Fetched only once the modal is open, on a real UUID tenantId.
   const {
@@ -458,7 +459,12 @@ const JobsOpening = () => {
         processing_count?: number;
         succeeded_count?: number;
         failed_count?: number;
-        items?: { filename: string; status: string; error: string | null }[];
+        items?: {
+          filename: string;
+          status: string;
+          error: string | null;
+          org_job_opening_id?: string | null;
+        }[];
       };
 
       const totalFiles = Number(summary.total_files);
@@ -487,6 +493,29 @@ const JobsOpening = () => {
       const failedItems = (summary.items ?? [])
         .filter((item) => item.status === 'failed')
         .map((item) => ({ filename: item.filename, error: item.error }));
+
+      // Straight to the first job; the rest stay drafts, said in a popup there.
+      const firstJobId = (summary.items ?? []).find(
+        (item) => item.status === 'succeeded' && item.org_job_opening_id
+      )?.org_job_opening_id;
+      if (succeededCount > 0 && firstJobId) {
+        if (batchHandledRef.current) return;
+        batchHandledRef.current = true;
+        setJdBatchId(null);
+        resetJdUploadState();
+        setShowJdUploadModal(false);
+        setShowCreateJobModal(false);
+        refetch();
+        navigate(`/jobs/edit/${firstJobId}/details`, {
+          state: {
+            bulkUploadNotice: {
+              draftCount: succeededCount - 1,
+              failedFiles: failedItems.map((item) => item.filename),
+            },
+          },
+        });
+        return;
+      }
 
       setIsJdUploading(false);
       setIsJdCompleted(true);
@@ -762,7 +791,6 @@ const JobsOpening = () => {
 
   const resetJdUploadState = () => {
     setJdFiles([]);
-    setUploadedJobOpeningId(null);
     setJdBatchId(null);
     setJdProgress(0);
     setJdProgressMessage('');
@@ -786,6 +814,7 @@ const JobsOpening = () => {
       return;
     }
 
+    batchHandledRef.current = false;
     setIsJdUploading(true);
     setIsJdCompleted(false);
     setIsJdPartialFailure(false);
@@ -810,8 +839,15 @@ const JobsOpening = () => {
         return;
       }
 
+      // One file: straight to its details page, where the parsed fields fill in.
       if (filesToUpload.length === 1 && response?.data?.jobOpeningId) {
-        setUploadedJobOpeningId(String(response.data.jobOpeningId));
+        const jobId = String(response.data.jobOpeningId);
+        resetJdUploadState();
+        setShowJdUploadModal(false);
+        setShowCreateJobModal(false);
+        refetch();
+        navigate(`/jobs/edit/${jobId}/details`);
+        return;
       }
 
       setIsJdUploading(false);
@@ -1674,30 +1710,12 @@ const JobsOpening = () => {
                     ? 'The rest of the uploaded jobs have been created as Draft jobs. You can review and publish them from the Job Openings page.'
                     : 'All uploaded jobs have been created as Draft jobs. You can review and publish them from the Job Openings page.'}
                 </p>
-                {jdFiles.length === 1 ? (
-                  <Button
-                    className="text-white bg-button rounded-3xl px-4 py-2"
-                    onClick={() => {
-                      if (uploadedJobOpeningId) {
-                        resetJdUploadState();
-                        setShowJdUploadModal(false);
-                        setShowCreateJobModal(false);
-                        navigate(`/jobs/edit/${uploadedJobOpeningId}/details`);
-                      } else {
-                        handleGoToDraftJobs();
-                      }
-                    }}
-                  >
-                    Go To Job Opening
-                  </Button>
-                ) : (
-                  <Button
-                    className="text-white bg-button rounded-3xl px-4 py-2"
-                    onClick={handleGoToDraftJobs}
-                  >
-                    Go To Job Openings
-                  </Button>
-                )}
+                <Button
+                  className="text-white bg-button rounded-3xl px-4 py-2"
+                  onClick={handleGoToDraftJobs}
+                >
+                  Go To Job Openings
+                </Button>
               </div>
             )}
           </div>

@@ -1,6 +1,6 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { scrollToFirstFormError } from '../../../shared/utils/scrollToFirstFormError';
-import { DatePicker, Form, Select, Switch, Tooltip } from 'antd';
+import { DatePicker, Form, Modal, Select, Switch, Tooltip } from 'antd';
 import TextArea from 'antd/es/input/TextArea';
 import { Button, Input, showToast } from '../../shared';
 import useJobOpeningDropdown, {
@@ -135,6 +135,7 @@ import {
 } from '../../../api/job-service/Shifts/shifts';
 import ShiftFormModal, { computeShiftDurationMinutes } from '../ShiftFormModal';
 import { toMoneyString } from '../../../shared/utils/money';
+import { parseCalendarDate } from '../../../shared/utils/calendarDate';
 
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
@@ -142,10 +143,7 @@ const { Option } = Select;
 
 // openDate/closeDate hold ISO from the backend until touched, then 'DD-MM-YYYY'
 // once the picker rewrites them - parse leniently to handle both shapes.
-const parseFormDate = (value: string) => {
-  const strict = dayjs(value, 'DD-MM-YYYY', true);
-  return strict.isValid() ? strict : dayjs(value);
-};
+const parseFormDate = (value: string) => parseCalendarDate(value) ?? dayjs(value);
 
 // Field order for scroll-to-first-error on failed submit.
 const JOB_DETAILS_FIELD_ORDER = [
@@ -201,6 +199,19 @@ const EditJobDetail = () => {
   const location = useLocation();
   // Prefer value from route state if present, else fallback to backend
   const routeInterviewedCandidateCount = location.state?.interviewedCandidateCount;
+  // Set by a bulk JD upload that sent the user to this, its first job.
+  const bulkUploadNotice = location.state?.bulkUploadNotice as
+    | { draftCount: number; failedFiles: string[] }
+    | undefined;
+  const [bulkNoticeOpen, setBulkNoticeOpen] = useState(Boolean(bulkUploadNotice));
+  const closeBulkNotice = () => {
+    setBulkNoticeOpen(false);
+    // Not `navigate`: the unsaved-changes blocker would see it. Stops a reload re-showing it.
+    window.history.replaceState(
+      { ...window.history.state, usr: { ...location.state, bulkUploadNotice: undefined } },
+      ''
+    );
+  };
 
   const justSavedRef = useRef(false);
   const initialLoadRef = useRef(true);
@@ -2945,9 +2956,7 @@ const EditJobDetail = () => {
                   });
                 }}
                 disabled={!hasCultureInfo || fieldsLocked}
-                style={{
-                  backgroundColor: watch('useCultureIntro') ? 'var(--color-primary)' : undefined,
-                }}
+                className="culture-switch"
               />
               <span className="text-sm text-gray-700 leading-5">
                 Play Company Culture Introduction at the start of AI Audio Call and AI Video
@@ -3258,6 +3267,36 @@ const EditJobDetail = () => {
               )}
             </Form.Item>
 
+            <Form.Item label="Close Date">
+              <Controller
+                name="closeDate"
+                control={control}
+                render={({ field }) => (
+                  <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">
+                    <DatePicker
+                      {...field}
+                      value={field.value ? parseFormDate(field.value) : null}
+                      onChange={(date) => {
+                        const formattedDate = date ? date.format('DD-MM-YYYY') : '';
+                        setValue('closeDate', formattedDate, { shouldValidate: true });
+                      }}
+                      variant="borderless"
+                      className="w-full custom-date-picker placeholder-style"
+                      format="MMM D, YYYY"
+                      placeholder="Select Close Date"
+                      disabledDate={(current) =>
+                        current && current.isBefore(dayjs().startOf('day'))
+                      }
+                      disabled={fieldsLocked}
+                    />
+                  </div>
+                )}
+              />
+              {errors.closeDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.closeDate.message}</p>
+              )}
+            </Form.Item>
+
             <Form.Item
               label={
                 <span>
@@ -3287,36 +3326,6 @@ const EditJobDetail = () => {
               />
               {errors.openings && (
                 <p className="text-red-500 text-sm mt-1">{errors.openings.message}</p>
-              )}
-            </Form.Item>
-
-            <Form.Item label="Close Date">
-              <Controller
-                name="closeDate"
-                control={control}
-                render={({ field }) => (
-                  <div className="border-wrapper border border-[var(--border)] p-1 w-full rounded-3xl">
-                    <DatePicker
-                      {...field}
-                      value={field.value ? parseFormDate(field.value) : null}
-                      onChange={(date) => {
-                        const formattedDate = date ? date.format('DD-MM-YYYY') : '';
-                        setValue('closeDate', formattedDate, { shouldValidate: true });
-                      }}
-                      variant="borderless"
-                      className="w-full custom-date-picker placeholder-style"
-                      format="MMM D, YYYY"
-                      placeholder="Select Close Date"
-                      disabledDate={(current) =>
-                        current && current.isBefore(dayjs().startOf('day'))
-                      }
-                      disabled={fieldsLocked}
-                    />
-                  </div>
-                )}
-              />
-              {errors.closeDate && (
-                <p className="text-red-500 text-sm mt-1">{errors.closeDate.message}</p>
               )}
             </Form.Item>
           </div>
@@ -3981,6 +3990,27 @@ const EditJobDetail = () => {
           </Tooltip>
         </div>
       </Form>
+      <Modal
+        open={bulkNoticeOpen && Boolean(bulkUploadNotice)}
+        title="Bulk upload complete"
+        onOk={closeBulkNotice}
+        onCancel={closeBulkNotice}
+        cancelButtonProps={{ style: { display: 'none' } }}
+        okText="Got it"
+        centered
+      >
+        <p>
+          You are starting with the first job from your upload.
+          {bulkUploadNotice && bulkUploadNotice.draftCount > 0
+            ? ` The other ${bulkUploadNotice.draftCount} ${bulkUploadNotice.draftCount === 1 ? 'job was' : 'jobs were'} saved as drafts. Find ${bulkUploadNotice.draftCount === 1 ? 'it' : 'them'} on the Job Openings page.`
+            : ''}
+        </p>
+        {bulkUploadNotice && bulkUploadNotice.failedFiles.length > 0 && (
+          <p className="text-red-600">
+            {`${bulkUploadNotice.failedFiles.length} file(s) could not be processed: ${bulkUploadNotice.failedFiles.join(', ')}.`}
+          </p>
+        )}
+      </Modal>
       {isBlocked && (
         <ConfirmationModal
           onClose={cancelNavigation}

@@ -128,7 +128,8 @@ export const jobDetailsSchema = z
 
           let selectedDatePart = '';
           const ddMmYyyyMatch = input.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-          const yyyyMmDdMatch = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+          // A saved date arrives as "YYYY-MM-DDT00:00:00Z"; its date part is the day picked.
+          const yyyyMmDdMatch = input.match(/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/);
 
           if (ddMmYyyyMatch) {
             const day = Number(ddMmYyyyMatch[1]);

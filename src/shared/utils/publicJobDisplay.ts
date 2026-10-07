@@ -1,3 +1,4 @@
+import { calendarDaysSince } from './calendarDate';
 import { formatMoney } from './money';
 
 // Shared display formatting for the public, unauthenticated careers pages
@@ -51,9 +52,8 @@ export const formatExperience = (min: number | null, max: number | null): string
  * that as "don't show a posted-date badge," not "posted today." */
 export const formatPostedAgo = (isoDate: string | null): string | null => {
   if (!isoDate) return null;
-  const postedMs = new Date(isoDate).getTime();
-  if (Number.isNaN(postedMs)) return null;
-  const days = Math.max(0, Math.floor((Date.now() - postedMs) / 86_400_000));
+  const days = calendarDaysSince(isoDate);
+  if (days === null) return null;
   if (days === 0) return 'Posted today';
   if (days === 1) return 'Posted yesterday';
   if (days < 30) return `Posted ${days} days ago`;

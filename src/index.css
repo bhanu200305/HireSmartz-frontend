@@ -217,6 +217,22 @@ h6 {
   background: #d1d5db !important;
   box-shadow: none;
 }
+/* Company Culture toggle: brand blue ON, grey OFF. Disabled keeps the light
+ * grey above. */
+.ant-switch.culture-switch:not(.ant-switch-disabled) {
+  background: #9ca3af !important;
+}
+.ant-switch.culture-switch:hover:not(.ant-switch-disabled) {
+  background: #6b7280 !important;
+  box-shadow: 0 0 0 4px rgba(107, 114, 128, 0.18);
+}
+.ant-switch.culture-switch.ant-switch-checked:not(.ant-switch-disabled) {
+  background: var(--primary-600) !important;
+}
+.ant-switch.culture-switch.ant-switch-checked:hover:not(.ant-switch-disabled) {
+  background: var(--primary-700) !important;
+  box-shadow: 0 0 0 4px var(--primary-200);
+}
 .ant-switch .ant-switch-handle::before {
   background: #ffffff;
   box-shadow:

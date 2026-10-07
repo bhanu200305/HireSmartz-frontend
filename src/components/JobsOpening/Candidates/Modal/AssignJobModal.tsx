@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Select } from 'antd';
-import dayjs from 'dayjs';
 import { useSelector } from 'react-redux';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Button, showToast } from '../../../shared';
@@ -14,6 +13,7 @@ import { useJobTitleNameMap } from '../../../../hooks/useJobTitleNameMap';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 import type { RootState } from '../../../../redux/provider/store';
 import { formatMoney } from '../../../../shared/utils/money';
+import { parseCalendarDate } from '../../../../shared/utils/calendarDate';
 
 type AssignJobModalProps = {
   open: boolean;
@@ -172,9 +172,7 @@ const AssignJobModal = ({
               <DetailRow
                 label="Open Date"
                 value={
-                  selectedSummary?.job_open_date
-                    ? dayjs(selectedSummary.job_open_date).format('MMM D, YYYY')
-                    : null
+                  parseCalendarDate(selectedSummary?.job_open_date)?.format('MMM D, YYYY') ?? null
                 }
               />
               <DetailRow

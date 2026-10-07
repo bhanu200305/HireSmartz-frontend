@@ -103,6 +103,21 @@ const getRoundIdsMissingQuestions = (err: unknown): string[] =>
     ? ((getJobErrorDetails(err)?.round_ids_missing_questions as string[] | undefined) ?? [])
     : [];
 
+/** Plain-language reason for a row the import rejected (job-service's wording, reworded). */
+const describeImportError = (error: string): string => {
+  if (/question text is required/i.test(error)) return 'The question is empty';
+  const tooLong = (label: string, regex: RegExp) => {
+    const limit = error.match(regex)?.[1];
+    return limit ? `${label} is too long - the limit is ${limit} characters` : null;
+  };
+  return (
+    tooLong('The question', /question text exceeds (\d+)/i) ??
+    tooLong('The answer', /answer text exceeds (\d+)/i) ??
+    tooLong('The topic/skill', /topic\/skill exceeds (\d+)/i) ??
+    error.charAt(0).toUpperCase() + error.slice(1)
+  );
+};
+
 /** Friendlier copy for NO_ELIGIBLE_INTERVIEW_ROUNDS than the backend's own wording. */
 const describeGenerateQuestionsError = (err: unknown, fallback: string): string => {
   if (getJobErrorCode(err) === 'NO_ELIGIBLE_INTERVIEW_ROUNDS') {
@@ -525,20 +540,40 @@ const AiQuestionsSetup = () => {
         ...(res.failed_rows ?? []).map(
           (row): ImportWarningItem => ({
             type: 'error',
-            message: `Row ${row.row_number}: ${row.error}`,
+            row: row.row_number,
+            reason: describeImportError(row.error),
+            questionText: row.question_text,
           })
         ),
         ...(res.skipped_duplicate_rows ?? []).map(
           (row): ImportWarningItem => ({
             type: 'duplicate',
-            message: `Row ${row.row_number}: duplicate of an existing question - "${row.question_text}"`,
+            row: row.row_number,
+            reason:
+              row.duplicate_of === 'file' && row.first_row_number != null
+                ? `Same question as row ${row.first_row_number} in this file`
+                : "Already in this job's questions",
+            questionText: row.question_text,
           })
         ),
       ]);
       // No same-shape response to upsert here (unlike persistQuestions
       // above) - wait for the real refetch before returning.
       await refetchQuestions();
-      showToast({ message: 'Questions uploaded successfully', type: 'success' });
+      const skipped = (res.failed_rows?.length ?? 0) + (res.skipped_duplicate_rows?.length ?? 0);
+      if ((res.imported_count ?? 0) === 0) {
+        showToast({
+          message: 'No questions were imported. See the details below.',
+          type: 'warning',
+        });
+      } else if (skipped > 0) {
+        showToast({
+          message: `${res.imported_count} imported, ${skipped} skipped. See the details below.`,
+          type: 'warning',
+        });
+      } else {
+        showToast({ message: 'Questions uploaded successfully', type: 'success' });
+      }
     } catch (err) {
       showToast({
         message: describeGenerateQuestionsError(err, 'Error uploading file'),
@@ -1100,9 +1135,9 @@ const AiQuestionsSetup = () => {
         )}
         <QuestionFormModal
           open={isEditModalOpen}
-          title="Update AI Question"
+          title="Update Question"
           questionText={editedQuestionText}
-          submitLabel="Update Question"
+          submitLabel="Save"
           isSubmitting={isEditSubmitting}
           onQuestionChange={setEditedQuestionText}
           onSubmit={handleEditSave}

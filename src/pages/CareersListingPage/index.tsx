@@ -22,6 +22,7 @@ import {
   formatExperience,
   formatPostedAgo,
 } from '../../shared/utils/publicJobDisplay';
+import { calendarDaysSince } from '../../shared/utils/calendarDate';
 
 const { Option, OptGroup } = Select;
 
@@ -176,9 +177,8 @@ const rangesOverlap = (
 const postedWithinDays = (jobOpenDate: string | null, days: number | undefined): boolean => {
   if (days === undefined) return true;
   if (!jobOpenDate) return true;
-  const postedMs = new Date(jobOpenDate).getTime();
-  if (Number.isNaN(postedMs)) return true;
-  return postedMs >= Date.now() - days * 86_400_000;
+  const since = calendarDaysSince(jobOpenDate);
+  return since === null || since <= days;
 };
 
 // Purely cosmetic — gives each card a stable, varied accent instead of every
@@ -211,9 +211,8 @@ const initialsOf = (label: string): string => {
 const NEW_BADGE_WINDOW_DAYS = 3;
 const isRecentlyPosted = (jobOpenDate: string | null): boolean => {
   if (!jobOpenDate) return false;
-  const postedMs = new Date(jobOpenDate).getTime();
-  if (Number.isNaN(postedMs)) return false;
-  return postedMs >= Date.now() - NEW_BADGE_WINDOW_DAYS * 86_400_000;
+  const since = calendarDaysSince(jobOpenDate);
+  return since !== null && since < NEW_BADGE_WINDOW_DAYS;
 };
 
 interface JobCardProps {

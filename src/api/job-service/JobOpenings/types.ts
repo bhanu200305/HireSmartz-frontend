@@ -396,6 +396,8 @@ export type BulkImportQuestionsFailedRow = {
 export type BulkImportQuestionsSkippedRow = {
   row_number: number;
   question_text: string;
+  duplicate_of: 'existing' | 'file';
+  first_row_number: number | null;
 };
 
 export type BulkImportQuestionsResponse = {
