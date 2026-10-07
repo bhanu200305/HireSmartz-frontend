@@ -74,6 +74,41 @@ const failureGroupHeading = (reason: string, count: number): string => {
   return `${subject} could not be added (${reason.trim()}):`;
 };
 
+/** Files that were not added, with the reason each failed. */
+type NotAddedFile = { filename: string; reason: string | null };
+
+/** One group per distinct reason (first-seen order), its files listed beneath,
+ * instead of repeating the same reason after every file name. */
+const groupFailures = (files: NotAddedFile[]) => {
+  const groups = new Map<string, string[]>();
+  files.forEach((file) => {
+    const reason = file.reason?.trim() ?? '';
+    groups.set(reason, [...(groups.get(reason) ?? []), file.filename]);
+  });
+  return Array.from(groups, ([reason, filenames]) => ({ reason, filenames }));
+};
+
+/** The red "could not be added" box: the one message used both on the progress
+ * screen and when every file was rejected up front. */
+const NotAddedList = ({ files }: { files: NotAddedFile[] }) => (
+  <div className="flex max-h-48 w-full flex-col gap-2 overflow-y-auto rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+    {groupFailures(files).map(({ reason, filenames }) => (
+      <div key={reason || 'no-reason'}>
+        <p className="mb-1 text-sm font-semibold text-red-700">
+          {failureGroupHeading(reason, filenames.length)}
+        </p>
+        <ul className="m-0 list-disc space-y-1 pl-5 text-xs text-red-700">
+          {filenames.map((filename, i) => (
+            <li key={`${filename}-${i}`} className="break-all">
+              {filename}
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+);
+
 type BulkResumeUploadPanelProps = {
   /** Fires once parsing finishes (not merely once the files are accepted) —
    * the parent's cue to refetch its candidate list. Same timing UploadCvModal
@@ -88,6 +123,11 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   const [files, setFiles] = useState<File[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [completedBatchId, setCompletedBatchId] = useState<string | null>(null);
+  // Set when EVERY uploaded file was rejected: no batch exists to track, so the
+  // reasons are listed here in the panel itself (no toast, no auto-close).
+  const [rejectedOnly, setRejectedOnly] = useState<{ filename: string; reason: string }[] | null>(
+    null
+  );
 
   const { id: jobOpeningId } = useParams<{ id: string }>();
   const tenantId = useSessionTenantId();
@@ -128,16 +168,6 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   }, [finished]);
   const isProcessing = !!batchId && !finished && !isStalled;
   const failedItems = items.filter((i) => i.status === 'failed');
-  // One heading per distinct reason, its files listed beneath it, instead of
-  // repeating the same reason after every file name. Keeps first-seen order.
-  const failureGroups = (() => {
-    const groups = new Map<string, string[]>();
-    failedItems.forEach((item) => {
-      const reason = item.error_message?.trim() ?? '';
-      groups.set(reason, [...(groups.get(reason) ?? []), item.filename]);
-    });
-    return Array.from(groups, ([reason, filenames]) => ({ reason, filenames }));
-  })();
 
   // A poll that keeps failing is treated like a stall (not "Starting…" forever).
   useEffect(() => {
@@ -243,6 +273,7 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     setFiles([]);
     setBatchId(null);
+    setRejectedOnly(null);
     onDoneRef.current();
   };
 
@@ -283,25 +314,26 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
         files,
       }).unwrap();
 
-      showToast({
-        message: `${res.valid_files} of ${res.total_files} resume(s) accepted and are being processed.`,
-        type: 'success',
-      });
-      if (res.invalid_files.length > 0) {
-        showToast({
-          message: `Rejected: ${res.invalid_files.map((f) => `${f.filename} (${f.reason})`).join(', ')}`,
-          type: 'error',
-        });
-      }
-
+      // Rejected files (duplicates, unreadable ones) are listed in this panel
+      // with their reasons, never in a toast; only a plain all-accepted
+      // confirmation is toasted.
       setFiles([]);
       if (res.valid_files > 0) {
+        if (res.invalid_files.length === 0) {
+          showToast({
+            message: `${res.valid_files} of ${res.total_files} resume(s) accepted and are being processed.`,
+            type: 'success',
+          });
+        }
         // Keep the panel mounted, tracking parse progress, rather than
         // closing immediately — ai-service parsing 30 resumes isn't instant
         // (FRONTEND_INTEGRATION_DETAILS.md §4.2's own "poll, don't assume a
         // fixed completion time").
         setBatchId(res.batch_id);
         setCompletedBatchId(null);
+      } else if (res.invalid_files.length > 0) {
+        // Nothing was accepted: stay open and list why.
+        setRejectedOnly(res.invalid_files.map((f) => ({ filename: f.filename, reason: f.reason })));
       } else {
         onDone();
       }
@@ -332,6 +364,21 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
     return `${added} of ${total} ${plural} added.`;
   })();
 
+  if (rejectedOnly) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-6">
+        <NotAddedList files={rejectedOnly} />
+        <Button
+          type="button"
+          onClick={handleClose}
+          className="mt-1 w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white"
+        >
+          CLOSE
+        </Button>
+      </div>
+    );
+  }
+
   if (batchId) {
     return (
       <div className="flex flex-col items-center gap-3 py-6">
@@ -346,22 +393,12 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
           </p>
         )}
         {finished && failedItems.length > 0 && (
-          <div className="flex max-h-48 w-full flex-col gap-2 overflow-y-auto rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-            {failureGroups.map(({ reason, filenames }) => (
-              <div key={reason || 'no-reason'}>
-                <p className="mb-1 text-sm font-semibold text-red-700">
-                  {failureGroupHeading(reason, filenames.length)}
-                </p>
-                <ul className="m-0 list-disc space-y-1 pl-5 text-xs text-red-700">
-                  {filenames.map((filename, i) => (
-                    <li key={`${filename}-${i}`} className="break-all">
-                      {filename}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          <NotAddedList
+            files={failedItems.map((item) => ({
+              filename: item.filename,
+              reason: item.error_message,
+            }))}
+          />
         )}
         {(isStalled || (finished && failedItems.length > 0)) && (
           <Button

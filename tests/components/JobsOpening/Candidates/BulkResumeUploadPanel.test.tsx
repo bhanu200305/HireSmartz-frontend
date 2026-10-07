@@ -17,6 +17,13 @@ type Progress = {
   }[];
 };
 
+let uploadResponse: {
+  batch_id: string;
+  total_files: number;
+  valid_files: number;
+  invalid_files: { filename: string; reason: string }[];
+};
+const showToastMock = vi.fn();
 let progress: Progress | undefined;
 let pollError: unknown;
 const pollingIntervals: number[] = [];
@@ -24,8 +31,7 @@ const pollingIntervals: number[] = [];
 vi.mock('../../../../src/api/candidate-service/Candidates/CandidateLifecycle', () => ({
   useBulkUploadResumesMutation: () => [
     () => ({
-      unwrap: () =>
-        Promise.resolve({ batch_id: 'b1', total_files: 4, valid_files: 4, invalid_files: [] }),
+      unwrap: () => Promise.resolve(uploadResponse),
     }),
     { isLoading: false },
   ],
@@ -35,7 +41,9 @@ vi.mock('../../../../src/api/candidate-service/Candidates/CandidateLifecycle', (
   },
 }));
 vi.mock('../../../../src/hooks/useSessionTenantId', () => ({ useSessionTenantId: () => 't1' }));
-vi.mock('../../../../src/components/shared/ui/toast', () => ({ showToast: vi.fn() }));
+vi.mock('../../../../src/components/shared/ui/toast', () => ({
+  showToast: (...args: unknown[]) => showToastMock(...args),
+}));
 
 import BulkResumeUploadPanel from '../../../../src/components/JobsOpening/Candidates/Modal/BulkResumeUploadPanel';
 
@@ -76,6 +84,8 @@ describe('BulkResumeUploadPanel progress', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     progress = undefined;
+    uploadResponse = { batch_id: 'b1', total_files: 4, valid_files: 4, invalid_files: [] };
+    showToastMock.mockReset();
     pollError = undefined;
     pollingIntervals.length = 0;
   });
@@ -213,5 +223,43 @@ describe('BulkResumeUploadPanel progress', () => {
     expect(onDone).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('CLOSE'));
     expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('lists rejected files in the panel, with no toast and no auto-close, when none were accepted', async () => {
+    uploadResponse = {
+      batch_id: 'b1',
+      total_files: 2,
+      valid_files: 0,
+      invalid_files: [
+        { filename: 'a.pdf', reason: 'this resume was already uploaded for this job' },
+        { filename: 'b.pdf', reason: 'this resume was already uploaded for this job' },
+      ],
+    };
+    const { onDone } = await renderPanel();
+    expect(
+      screen.getByText(
+        '2 resumes could not be added because they were already uploaded for this job:'
+      )
+    ).toBeTruthy();
+    expect(screen.getByText('a.pdf')).toBeTruthy();
+    expect(showToastMock).not.toHaveBeenCalled();
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(onDone).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('CLOSE'));
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no toast when some were accepted and some rejected (the screen lists them)', async () => {
+    uploadResponse = {
+      batch_id: 'b1',
+      total_files: 3,
+      valid_files: 1,
+      invalid_files: [{ filename: 'dup.pdf', reason: 'duplicate' }],
+    };
+    progress = batch({ parsed_files: 0, valid_files: 1, items: [] });
+    await renderPanel();
+    expect(showToastMock).not.toHaveBeenCalled();
   });
 });

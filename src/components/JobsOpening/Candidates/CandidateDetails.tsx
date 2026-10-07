@@ -2456,6 +2456,18 @@ const CandidateDetails = () => {
       </div>
     ) : null;
 
+  // Shown under the header when the resume gave no email and/or phone number.
+  const missingEmail = Boolean(candidate) && !candidate?.email_id?.trim();
+  const missingPhone = Boolean(candidate) && !candidate?.contact_no?.trim();
+  const missingContactNotice =
+    missingEmail && missingPhone
+      ? "No email or phone number found in candidate's resume. Actions like email, text, scheduling invites and notifications won't work until they are added."
+      : missingEmail
+        ? "No email found in candidate's resume. Actions like email and scheduling invites won't work until it is added."
+        : missingPhone
+          ? "No phone number found in candidate's resume. Actions like text and notifications won't work until it is added."
+          : null;
+
   return (
     <>
       {headerSlot && candidateSwitcher && createPortal(candidateSwitcher, headerSlot)}
@@ -2762,20 +2774,22 @@ const CandidateDetails = () => {
             </div>
           </div>
 
-          {/* Only reachable via bulk resume upload — every other intake
-              path (recruiter Add Candidate, both public apply flows) now
-              requires email server-side. ai-service's resume parsing
-              just didn't find one here. Warn rather than disable: the
-              pipeline actions above don't themselves need an email to
-              function (REJECT/ADVANCE are internal status moves), it's
-              downstream things like scheduling emails that would
-              silently go nowhere. */}
-          {candidate && !candidate.email_id && (
-            <div className="mt-4 flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-              <p className="text-xs text-amber-800">
-                No email on file for this candidate — actions that email them (scheduling invites,
-                notifications) won&apos;t work until one is added.
-              </p>
+          {/* Email and/or phone missing (the resume had none, e.g. a bulk resume
+              upload): say which, and which actions won't work, with a way
+              straight into editing them. */}
+          {candidate && missingContactNotice && (
+            <div className="mt-4 flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+              <p className="text-xs text-red-700">{missingContactNotice}</p>
+              <button
+                type="button"
+                className="shrink-0 cursor-pointer rounded-full border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                onClick={() => {
+                  setActiveTab('details');
+                  setIsEditingDetails(true);
+                }}
+              >
+                Add Details
+              </button>
             </div>
           )}
         </div>
