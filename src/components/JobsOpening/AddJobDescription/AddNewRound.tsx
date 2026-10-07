@@ -21,8 +21,19 @@ import {
   toInterviewSequencePayload,
 } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import {
+  firstAvailableVariant,
+  getRoundInfoSections,
+  isUnavailableVariant,
+} from '../../../shared/utils/roundInfoContent';
 import { slotOptions } from '../../../shared/utils/business-logic';
 import { resolveVariantLabel as formatVariantLabel } from '../../../shared/utils/variantLabel';
+import {
+  isRoundOfType,
+  placeIntakeAfterResume,
+  roundTypeIdsOfKind,
+  addableRoundTypes,
+} from '../intakeRoundPlacement';
 
 const { Option } = Select;
 
@@ -49,13 +60,17 @@ const AddNewRound = () => {
   const { data: rounds = [] } = useGetInterviewRoundsByJobIdQuery(resolvedJobId, {
     skip: !resolvedJobId,
   });
-  // Resume and Intake Call are auto-seeded and locked — never addable here.
-  const addableInterviewRounds = interviewRounds.filter(
-    (round) => round.special_kind !== 'resume' && round.special_kind !== 'intake_call'
-  );
+  // Resume is auto-seeded and mandatory — never addable here. The optional
+  // Intake Call is addable once per job (it's capped at one), always as
+  // round 2 right after Resume.
+  const resumeTypeIds = roundTypeIdsOfKind(interviewRounds, 'resume');
+  const intakeTypeIds = roundTypeIdsOfKind(interviewRounds, 'intake_call');
+  const jobHasIntake = rounds.some((round) => isRoundOfType(round, intakeTypeIds));
+  const addableInterviewRounds = addableRoundTypes(interviewRounds, jobHasIntake);
 
   const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(null);
   const [showRoundInfo, setShowRoundInfo] = useState(false);
+  const isIntakeSelected = selectedRoundType?.special_kind === 'intake_call';
 
   const {
     control,
@@ -93,7 +108,7 @@ const AddNewRound = () => {
         setValue('duration', selectedRound.requires_duration ? 30 : null, {
           shouldValidate: true,
         });
-        setValue('variant', selectedRound.available_variants?.[0] ?? null, {
+        setValue('variant', firstAvailableVariant(selectedRound.available_variants), {
           shouldValidate: true,
         });
       }
@@ -115,28 +130,34 @@ const AddNewRound = () => {
     }
 
     const existing = toInterviewSequencePayload(rounds);
-    const nextSequence = existing.length + 1;
+    const newRound = toInterviewRoundRequest(
+      {
+        roundId: String(data.round),
+        sequence: existing.length + 1,
+        description: data.description,
+        duration: selectedRoundType?.requires_duration ? Number(data.duration) : null,
+        variant: selectedRoundType?.available_variants?.length ? data.variant : null,
+      },
+      { isNew: true }
+    );
+    // The Intake Call always goes in right after Resume (round 2), never at
+    // the end; every other round type is appended.
+    const payload = isIntakeSelected
+      ? placeIntakeAfterResume(existing, newRound, (round) =>
+          resumeTypeIds.has(String(round.round_id))
+        )
+      : [...existing, newRound];
 
     saveInterviewRound({
       jobOpeningId: resolvedJobId,
-      rounds: [
-        ...existing,
-        toInterviewRoundRequest(
-          {
-            roundId: String(data.round),
-            sequence: nextSequence,
-            description: data.description,
-            duration: selectedRoundType?.requires_duration ? Number(data.duration) : null,
-            variant: selectedRoundType?.available_variants?.length ? data.variant : null,
-          },
-          { isNew: true }
-        ),
-      ],
+      rounds: payload,
     })
       .unwrap()
       .then((res) => {
         showToast({
-          message: res?.message || 'Interview round has been saved successfully',
+          message: isIntakeSelected
+            ? 'Intake Call round added as round 2'
+            : res?.message || 'Interview round has been saved successfully',
           type: 'success',
         });
         if (jobFromPath) {
@@ -306,6 +327,10 @@ const AddNewRound = () => {
                             <Radio.Button
                               key={variant}
                               value={variant}
+                              disabled={isUnavailableVariant(variant)}
+                              title={
+                                isUnavailableVariant(variant) ? 'Not available yet' : undefined
+                              }
                               className={`text-center ${
                                 field.value === variant
                                   ? '!bg-primary !text-white !border-primary'
@@ -402,6 +427,11 @@ const AddNewRound = () => {
         <RoundInfoModal
           roundName={selectedRoundType.name}
           description={selectedRoundType.description}
+          sections={getRoundInfoSections({
+            specialKind: selectedRoundType.special_kind,
+            roundName: selectedRoundType.name,
+            variants: selectedRoundType.available_variants,
+          })}
           onClose={() => setShowRoundInfo(false)}
         />
       )}

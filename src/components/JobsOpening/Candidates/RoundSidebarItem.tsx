@@ -1,7 +1,6 @@
 import type { CandidateInterviewRoundView } from '../../../api/candidate-service/Candidates/interviewRounds';
 import type { CandidateInterviewScoreView } from '../../../api/candidate-service/Candidates/scoring';
 import {
-  MAX_REINVITES,
   useGetBookingQuery,
   useGetInterviewerCalendarStatusQuery,
   useGetInterviewersCalendarStatusQuery,
@@ -10,11 +9,18 @@ import {
   isAiVideoRound,
   isAudioScreeningRound,
   isIntakeCallRound,
+  isRoundSkipped,
   normaliseRoundStatus,
   type RoundBucket,
 } from './roundProgress';
 import { AI_SCORE_MAX, BUCKET_META, HUMAN_SCORE_MAX } from './roundPipeline';
-import { roundLabel, formatRoundStatus } from './roundDisplay';
+import {
+  roundLabel,
+  formatRoundStatus,
+  formatCallIntent,
+  roundReinviteState,
+  roundStatusLabel,
+} from './roundDisplay';
 
 type RoundSidebarItemProps = {
   round: CandidateInterviewRoundView;
@@ -71,7 +77,14 @@ const RoundSidebarItem = ({
   // calendar (`try_create_panel_scheduling_link`, interview-service).
   const { data: calendarStatus } = useGetInterviewerCalendarStatusQuery(
     round.interview_booking_id ?? '',
-    { skip: !round.interview_booking_id || !isPanelRound }
+    {
+      skip: !round.interview_booking_id || !isPanelRound,
+      // A calendar connecting / disconnecting shows within about 15 seconds,
+      // the same cadence as the scheduling card and the picker.
+      pollingInterval: 15_000,
+      skipPollingIfUnfocused: true,
+      refetchOnFocus: true,
+    }
   );
   // Before an invite exists, the picked roster (`interviewer_ids`) is
   // resolved against the job-level calendar-status endpoint instead — same
@@ -97,18 +110,37 @@ const RoundSidebarItem = ({
   const isBlockedOnCalendar =
     isPanelRound && booking?.status === 'draft' && missingCalendarCount > 0;
   const technicalFailure = booking?.call_intent === 'technical_failure';
+  // The candidate asked for a new time on a phone / video round: its coarse
+  // status still reads Completed, so the booking's call outcome is what says so.
+  // No-show from the booking too (the round's own status can lag it, and the
+  // AI Video `ai_no_show` has no round-status label of its own).
+  const isNoShow =
+    booking?.status === 'no_show' ||
+    booking?.status === 'ai_no_show' ||
+    booking?.status === 'interviewer_no_show' ||
+    ['no_show', 'ai_no_show', 'interviewer_no_show'].includes(normaliseRoundStatus(round.status));
+  const rescheduleRequested =
+    isVoiceCallRound && booking?.call_intent === 'reschedule_requested' && !isRoundSkipped(round);
+  const { reinvitesUsed, maxReinvites, linkExpired } = roundReinviteState(round, booking);
 
   // Side-bar colour = the round's state: green done, amber current stage,
   // grey upcoming, red needs attention (overdue / technical failure).
   const effectiveBucket = isResumeScored ? 'done' : bucket;
-  const meta = overdue || technicalFailure ? BUCKET_META.failed : BUCKET_META[effectiveBucket];
+  const meta =
+    (overdue || technicalFailure) && !isRoundSkipped(round)
+      ? BUCKET_META.failed
+      : rescheduleRequested
+        ? BUCKET_META.current
+        : BUCKET_META[effectiveBucket];
   const isInterviewRound = round.stage_type === 'interview';
   const roundScoreValue = roundScore?.recruiter_score ?? roundScore?.score;
   const scoreLine =
     round.stage_type === 'resume' && resumeScore !== null
       ? `Score: ${resumeScore}/${AI_SCORE_MAX}`
       : isIntakeCallRound(round) && consistencyScore !== null
-        ? `Consistency: ${consistencyScore}/${AI_SCORE_MAX}`
+        ? roundScore?.recruiter_score != null
+          ? `Consistency: ${consistencyScore}/${AI_SCORE_MAX} · Recruiter: ${roundScore.recruiter_score}/${HUMAN_SCORE_MAX}`
+          : `Consistency: ${consistencyScore}/${AI_SCORE_MAX}`
         : isInterviewRound && !isIntakeCallRound(round) && roundScoreValue != null
           ? roundScore?.score != null && roundScore?.recruiter_score != null
             ? `AI: ${roundScore.score}/${AI_SCORE_MAX} · Recruiter: ${roundScore.recruiter_score}/${HUMAN_SCORE_MAX}`
@@ -117,21 +149,23 @@ const RoundSidebarItem = ({
               : `Score: ${roundScore?.score}/${AI_SCORE_MAX} · AI score`
           : null;
 
-  const statusText = overdue
-    ? 'Overdue'
-    : technicalFailure
-      ? 'Technical Failure'
-      : booking?.link_expired && !isResumeScored
-        ? 'Scheduling link expired'
-        : isResumeScored
-          ? 'Completed'
-          : normaliseRoundStatus(round.status) === 'booking_created'
-            ? 'Booking created — waiting to be scheduled'
-            : normaliseRoundStatus(round.status) === 'resume_upload_expired'
-              ? 'Resume upload link expired'
-              : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
-                ? 'Awaiting resume upload'
-                : formatRoundStatus(round.status);
+  const statusText = isRoundSkipped(round)
+    ? 'Skipped'
+    : rescheduleRequested
+      ? formatCallIntent('reschedule_requested')
+      : isNoShow
+        ? 'No-show'
+        : overdue
+          ? 'Overdue'
+          : technicalFailure
+            ? 'Technical Failure'
+            : linkExpired && !isResumeScored
+              ? 'Scheduling link expired'
+              : isResumeScored
+                ? 'Completed'
+                : normaliseRoundStatus(round.status) === 'awaiting_resume_upload'
+                  ? 'Awaiting resume upload'
+                  : (roundStatusLabel(round.status) ?? formatRoundStatus(round.status));
 
   // Old app's round tab: centred text stack — bold name, "Status: …",
   // then score / when lines — with roomy padding and no card chrome.
@@ -160,9 +194,9 @@ const RoundSidebarItem = ({
             No update since the scheduled time; may not have gone through.
           </span>
         )}
-        {booking?.link_expired && !isResumeScored && (
+        {linkExpired && !isResumeScored && (
           <span className="text-xs text-gray-500">
-            {booking.reinvite_count ?? 0} of {MAX_REINVITES} reinvites used
+            {reinvitesUsed} of {maxReinvites} reinvites used
           </span>
         )}
         {!overdue && technicalFailure && (

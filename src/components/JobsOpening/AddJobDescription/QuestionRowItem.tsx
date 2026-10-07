@@ -6,6 +6,8 @@ import { MdEdit } from 'react-icons/md';
 
 interface QuestionRowItemProps {
   question: { id: string | number; question: string };
+  /** 1-based position in the list, derived from the render order so it never goes stale. */
+  number?: number;
   checked: boolean;
   onCheckChange: (checked: boolean) => void;
   onEdit: () => void;
@@ -14,6 +16,7 @@ interface QuestionRowItemProps {
 
 export const QuestionRowItem = ({
   question,
+  number,
   checked,
   onCheckChange,
   onEdit,
@@ -32,6 +35,11 @@ export const QuestionRowItem = ({
         aria-label="Select question"
         className="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-primary focus:ring-primary"
       />
+      {number !== undefined && (
+        <span className="mt-0.5 min-w-6 shrink-0 text-sm font-semibold text-gray-500">
+          {number}.
+        </span>
+      )}
       <Typography variant="body2" className="m-0 min-w-0 flex-1 leading-normal text-gray-800">
         {question.question}
       </Typography>

@@ -1,75 +1,72 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Textarea, showToast } from '../../shared';
-import { useEnhanceJdMutation } from '../../../api/job-service/JobOpening/JdUpload';
-import { useJdStatusPolling } from '../../../hooks/useJdStatusPolling';
+import {
+  useGetFieldSuggestionsQuery,
+  useRequestFieldSuggestionsMutation,
+} from '../../../api/job-service/JobOpening/SuggestJobFields';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import type { FieldSuggestions } from '../../../shared/utils/fieldSuggestions';
 
 interface FillWithAiWidgetProps {
   jobOpeningId: string;
+  /** Puts the suggestions on the form, blank fields only. Returns a short summary of what was filled. */
+  onSuggestions: (suggestions: FieldSuggestions) => string;
 }
 
-// Matches EnhanceJdRequest.instruction's `max_length=2000` on the backend
-// (services/job-service/app/modules/jobs/api/requests.py) — no minimum
-// there, so none enforced here either beyond "typed something".
-const INSTRUCTION_MAX_LENGTH = 2000;
+// Matches the backend limit on the description.
+const TEXT_MAX_LENGTH = 2000;
+const POLL_INTERVAL_MS = 1500;
+const POLL_TIMEOUT_MS = 60_000;
 
 /**
- * Floating "fill with AI" affordance for the Job Details create wizard —
- * replaces the earlier separate AI-Prompt entry point/page. Every job here
- * is a normal Manual-entry draft; this is just a more discoverable way to
- * reach the same `/jd/enhance` capability the "GENERATE DESCRIPTION"/
- * "REFINE" box on the AI Job Description step already uses; see
- * enhance_jd.py's docstring — it composes the JD from scratch off whatever
- * Job Details fields already happen to be filled in (even none) plus this
- * instruction, so it works before or after any manual filling.
+ * Floating helper on Job Details: describe the role and AI fills the empty fields it can
+ * find. It never writes the job description and saves nothing; the user still reviews
+ * the form and presses Save & Next.
  */
-const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
+const FillWithAiWidget = ({ jobOpeningId, onSuggestions }: FillWithAiWidgetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [promptText, setPromptText] = useState('');
-  const [enhanceJd, { isLoading: isSubmitting }] = useEnhanceJdMutation();
-  const {
-    data: jdStatus,
-    timedOut: jdStatusTimedOut,
-    isFetching: jdStatusFetching,
-  } = useJdStatusPolling(jobOpeningId);
-  const isGenerating =
-    !jdStatusFetching &&
-    !jdStatusTimedOut &&
-    (jdStatus?.status === 'GENERATING' || jdStatus?.status === 'PROCESSING');
-  // JobDescriptionPanel's FAILED handling doesn't mount here, so show our own
-  // toast; track per-job id so switching jobs doesn't suppress a new failure.
-  const failedToastShownForJobRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (
-      jobOpeningId &&
-      !jdStatusFetching &&
-      jdStatus?.status === 'FAILED' &&
-      failedToastShownForJobRef.current !== jobOpeningId
-    ) {
-      failedToastShownForJobRef.current = jobOpeningId;
-      showToast({
-        message: jdStatus.error_message || 'Failed to generate the job description.',
-        type: 'error',
-      });
-    }
-  }, [jobOpeningId, jdStatus?.status, jdStatus?.error_message, jdStatusFetching]);
+  const [isWaiting, setIsWaiting] = useState(false);
+  const [requestSuggestions, { isLoading: isSubmitting }] = useRequestFieldSuggestionsMutation();
+  const { data: result } = useGetFieldSuggestionsQuery(jobOpeningId, {
+    skip: !isWaiting,
+    pollingInterval: POLL_INTERVAL_MS,
+    refetchOnMountOrArgChange: true,
+  });
+  const onSuggestionsRef = useRef(onSuggestions);
+  onSuggestionsRef.current = onSuggestions;
 
-  if (!jobOpeningId) return null;
+  useEffect(() => {
+    if (!isWaiting || !result) return;
+    if (result.status === 'READY' && result.suggestions) {
+      setIsWaiting(false);
+      showToast({ message: onSuggestionsRef.current(result.suggestions), type: 'success' });
+      setPromptText('');
+      setIsOpen(false);
+    } else if (result.status === 'FAILED') {
+      setIsWaiting(false);
+      showToast({ message: result.message || 'Could not read that description.', type: 'error' });
+    }
+  }, [isWaiting, result]);
+
+  useEffect(() => {
+    if (!isWaiting) return;
+    const timeoutId = setTimeout(() => {
+      setIsWaiting(false);
+      showToast({ message: 'This is taking too long. Please try again.', type: 'warning' });
+    }, POLL_TIMEOUT_MS);
+    return () => clearTimeout(timeoutId);
+  }, [isWaiting]);
 
   const handleSubmit = async () => {
     const trimmed = promptText.trim();
     if (!trimmed) return;
     try {
-      await enhanceJd({ jobOpeningId, instruction: trimmed }).unwrap();
-      showToast({
-        message: 'Generating your job description with AI',
-        type: 'success',
-      });
-      setPromptText('');
-      setIsOpen(false);
+      await requestSuggestions({ jobOpeningId, text: trimmed }).unwrap();
+      setIsWaiting(true);
     } catch (error) {
       showToast({
-        message: getJobErrorMessage(error, 'Failed to start AI generation. Please try again.'),
+        message: getJobErrorMessage(error, 'Could not start. Please try again.'),
         type: 'error',
       });
     }
@@ -95,16 +92,16 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
             </button>
           </div>
           <p className="text-xs text-gray-500 mb-3">
-            Describe the role - AI drafts the job description from this, and from anything
-            you&apos;ve already filled in below.
+            Describe the role and AI fills the empty fields below it can find. Anything you have
+            already typed stays as it is, and nothing is saved until you press Save &amp; Next.
           </p>
           <Textarea
             value={promptText}
             onChange={(e) => setPromptText(e.target.value)}
-            placeholder="e.g. Senior Backend Engineer, 5+ years, Python and distributed systems, hybrid in Bangalore..."
+            placeholder="e.g. Senior Backend Engineer, 5+ years, 2 openings, hybrid in Bangalore, $90-130k..."
             rows={4}
-            maxLength={INSTRUCTION_MAX_LENGTH}
-            disabled={isSubmitting || isGenerating}
+            maxLength={TEXT_MAX_LENGTH}
+            disabled={isSubmitting || isWaiting}
             noAutoCapitalize
             className="text-sm"
           />
@@ -112,9 +109,9 @@ const FillWithAiWidget = ({ jobOpeningId }: FillWithAiWidgetProps) => {
             className="w-full mt-3 text-white bg-button rounded-full py-2 flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleSubmit}
             loading={isSubmitting}
-            disabled={isSubmitting || isGenerating || !promptText.trim()}
+            disabled={isSubmitting || isWaiting || !promptText.trim()}
           >
-            {isGenerating ? 'Writing Your JD…' : 'Generate'}
+            {isWaiting ? 'Reading…' : 'Fill Fields'}
           </Button>
         </div>
       )}

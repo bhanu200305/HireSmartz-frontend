@@ -14,7 +14,13 @@ import { SortableInterviewRounds } from './sortableInterviewRounds';
 import { asJobId } from '../../../api/job-service/jobId';
 import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import {
+  NO_QUESTION_ROUND_MESSAGE,
+  hasQuestionRound,
+  roundTypeIdsOfKind,
+} from '../intakeRoundPlacement';
 import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 
 const EditDetailedInterviewRounds = () => {
@@ -24,8 +30,8 @@ const EditDetailedInterviewRounds = () => {
   const [selectedRoundId, setSelectedRoundId] = useState<string | number | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const reduxJobOpeningId = useSelector((state: RootState) => state.EditJobSlice.jobOpeningId);
-  const isDraft = useSelector((state: RootState) => state.EditJobSlice.isDraft);
   const jobOpeningId = asJobId(reduxJobOpeningId) || asJobId(id);
+  const isDraft = useIsEditingDraft(jobOpeningId) === true;
   const location = useLocation();
   const [deleteInterviewRound, { isLoading: isDeleting }] = useDeleteInterviewRoundMutation();
   const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
@@ -33,9 +39,8 @@ const EditDetailedInterviewRounds = () => {
   const { data, isLoading, refetch } = useGetInterviewRoundsByJobIdQuery(jobOpeningId, {
     skip: !jobOpeningId,
   });
-  // Round-type ids for the fixed Resume / Intake Call anchor rounds — same
-  // pinning rule InterviewSetup (create flow) applies, kept consistent here
-  // so the anchor rounds can't be dragged out of the top 2 in edit mode either.
+  // Round-type ids for the anchor rounds (Resume, and the optional Intake
+  // Call) — same pinning rule InterviewSetup (create flow) applies.
   const { jobOpeningDropdown: roundTypes } = useJobOpeningDropdown('ROUNDS', 'view');
   const anchorRoundTypeIds = useMemo(
     () =>
@@ -46,6 +51,10 @@ const EditDetailedInterviewRounds = () => {
           )
           .map((round) => String(round.id))
       ),
+    [roundTypes]
+  );
+  const intakeRoundTypeIds = useMemo(
+    () => roundTypeIdsOfKind(roundTypes, 'intake_call'),
     [roundTypes]
   );
   const variantLabelOverrides = useMemo(
@@ -162,6 +171,7 @@ const EditDetailedInterviewRounds = () => {
             setShowDeleteModal(true);
           }}
           anchorRoundTypeIds={anchorRoundTypeIds}
+          removableAnchorRoundTypeIds={intakeRoundTypeIds}
           variantLabelOverrides={variantLabelOverrides}
         />
       )}
@@ -190,7 +200,10 @@ const EditDetailedInterviewRounds = () => {
           <Button
             className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
             onClick={() => {
-              // dispatch(resetEditJobState())
+              if (!hasQuestionRound(data ?? [], roundTypes)) {
+                showToast({ message: NO_QUESTION_ROUND_MESSAGE, type: 'error' });
+                return;
+              }
               navigate(`/jobs/edit/${id}/editAiQuestions`);
             }}
           >

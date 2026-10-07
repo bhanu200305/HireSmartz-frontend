@@ -555,7 +555,7 @@ const AcceptInvitation = () => {
                   <Input
                     {...field}
                     type="text"
-                    placeholder="First name*"
+                    placeholder="First Name*"
                     prefix={
                       <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
                         <MdPersonOutline className="text-brand-900 text-sm" />
@@ -580,7 +580,7 @@ const AcceptInvitation = () => {
                   <Input
                     {...field}
                     type="text"
-                    placeholder="Last name*"
+                    placeholder="Last Name*"
                     prefix={
                       <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
                         <MdPersonOutline className="text-brand-900 text-sm" />
@@ -640,7 +640,7 @@ const AcceptInvitation = () => {
                       <Input
                         {...field}
                         type="tel"
-                        placeholder="Phone number*"
+                        placeholder="Phone Number*"
                         maxLength={15}
                         prefix={
                           <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
@@ -715,7 +715,7 @@ const AcceptInvitation = () => {
                     {...field}
                     autoComplete="new-password"
                     noAutoCapitalize
-                    placeholder="Confirm password*"
+                    placeholder="Confirm Password*"
                     prefix={
                       <div className="w-8 h-8 flex items-center justify-center rounded-full bg-brand-100 mr-1">
                         <MdLockOutline className="text-brand-900 text-sm" />

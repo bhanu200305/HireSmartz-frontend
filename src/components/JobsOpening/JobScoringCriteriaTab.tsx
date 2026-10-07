@@ -2,7 +2,11 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../redux/provider/store';
-import { setIsScoringCompleted } from '../../redux/slices/jobOpeningSlice';
+import { useIsEditingDraft } from '../../hooks/useIsEditingDraft';
+import {
+  setEditScoringPassedJobId,
+  setIsScoringCompleted,
+} from '../../redux/slices/jobOpeningSlice';
 import { showToast } from '../shared/ui/toast';
 import {
   jobScoringConfigApi,
@@ -56,6 +60,8 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
   const [resettingSection, setResettingSection] = useState<'resume' | 'interview' | null>(null);
   const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const isEditingDraft = useIsEditingDraft(jobId) === true;
+  const showDraftActions = !isEditMode || isEditingDraft;
 
   const handleConfirmCancel = async () => {
     if (jobId) {
@@ -260,7 +266,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
 
       {!isViewMode && (
         <div className="mt-8 flex justify-center gap-6">
-          {!isEditMode && (
+          {showDraftActions && (
             <Tooltip title="Save progress and come back later.">
               <Button
                 className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
@@ -270,7 +276,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
               </Button>
             </Tooltip>
           )}
-          {!isEditMode && (
+          {showDraftActions && (
             <Tooltip title="Delete this job opening and everything in it.">
               <Button
                 className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2"
@@ -285,6 +291,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
               className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
               onClick={() => {
                 dispatch(setIsScoringCompleted(true));
+                dispatch(setEditScoringPassedJobId(jobId || null));
                 // Edit mode needs the job-id-aware route, not the create wizard's bare path.
                 navigate(isEditMode ? `/jobs/edit/${jobId}/interview` : '/interview-setup');
               }}

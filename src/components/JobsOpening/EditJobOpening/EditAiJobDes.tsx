@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { setEditAiJdPassedJobId } from '../../../redux/slices/jobOpeningSlice';
 import { Tooltip } from 'antd';
 import { Button, showToast } from '../../shared';
@@ -8,9 +8,10 @@ import JobDescriptionPanel, {
   type JobDescriptionPanelHandle,
 } from '../AddJobDescription/JobDescriptionPanel';
 import { asJobId } from '../../../api/job-service/jobId';
-import { RootState } from '../../../redux/provider/store';
 import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
+import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
+import { useGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 
 /**
@@ -35,14 +36,29 @@ const EditAiJobDescription = () => {
   const dispatch = useDispatch();
   const { id } = useParams<{ id: string }>();
   const jobOpeningId = asJobId(id);
-  const isDraft = useSelector((state: RootState) => state.EditJobSlice.isDraft);
+  const isDraft = useIsEditingDraft(id) === true;
   const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const panelRef = useRef<JobDescriptionPanelHandle>(null);
+  const { refetch: refetchJd } = useGetJobDescriptionByIdQuery(
+    { jobOpeningId },
+    { skip: !jobOpeningId }
+  );
 
   const handleContinueToScoring = async () => {
     const committed = await panelRef.current?.commitPendingEdit();
     if (committed === false) return;
+    // Scoring stays locked without a job description, so say why instead of bouncing back.
+    const latest = await refetchJd()
+      .unwrap()
+      .catch(() => null);
+    if (latest && !latest.jobDescription?.trim()) {
+      showToast({
+        message: 'Add or generate the job description before continuing.',
+        type: 'error',
+      });
+      return;
+    }
     dispatch(setEditAiJdPassedJobId(id ?? null));
     navigate(`/jobs/edit/${id}/scoring-criteria`);
   };
@@ -73,7 +89,7 @@ const EditAiJobDescription = () => {
 
   return (
     <>
-      <JobDescriptionPanel ref={panelRef} aiJobDescriptionId={jobOpeningId} isEditFlow />
+      <JobDescriptionPanel ref={panelRef} aiJobDescriptionId={jobOpeningId} />
       <div className="flex items-center justify-center mt-6 gap-6">
         {isDraft && (
           <Tooltip title="Save progress and come back later.">

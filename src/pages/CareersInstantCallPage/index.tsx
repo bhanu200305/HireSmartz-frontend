@@ -5,7 +5,10 @@ import { toast } from 'react-toastify';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { EnvironmentOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useStartIntakeCallMutation } from '../../api/candidate-service/PublicApply/index';
-import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
+import {
+  publicApplyPathFor,
+  useGetPublicJobQuery,
+} from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { PhoneNumberField, ResponsiveRecaptcha } from '../../components/shared';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
@@ -42,6 +45,14 @@ export const CareersInstantCallPage = () => {
     { skip: !organizationId || !jobId }
   );
 
+  // A job with no Intake Call has no instant call — send a direct link or the back button
+  // to the resume form.
+  useEffect(() => {
+    if (publicApplyPathFor(job) === 'resume') {
+      navigate(`/careers/${organizationId}/jobs/${jobId}/apply`, { replace: true });
+    }
+  }, [job, navigate, organizationId, jobId]);
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -73,7 +84,7 @@ export const CareersInstantCallPage = () => {
     setLastNameError(noLastName);
     setEmailError(noEmail);
     setPhoneError(
-      noPhone ? 'Phone number is required' : badPhone ? PHONE_VALIDATION_MESSAGE : null
+      noPhone ? 'Phone Number is required' : badPhone ? PHONE_VALIDATION_MESSAGE : null
     );
     setTosError(noTos);
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
@@ -106,6 +117,17 @@ export const CareersInstantCallPage = () => {
     } catch (err) {
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
+      // candidate-service refuses the instant call (422, field
+      // `job_opening_id`) for a job with no Intake Call round — that job
+      // takes resume applications instead.
+      const errorBody = (err as { status?: number; data?: { data?: { field?: string } } })?.data;
+      if (errorBody?.data?.field === 'job_opening_id') {
+        toast.info('This job takes applications with a resume. Taking you there now.', {
+          autoClose: 5000,
+        });
+        navigate(`/careers/${organizationId}/jobs/${jobId}/apply`, { replace: true });
+        return;
+      }
       const apiMessage = (err as { data?: { message?: string } })?.data?.message;
       toast.error(apiMessage ?? 'Failed to submit. Please try again.', { autoClose: 6000 });
     }
@@ -198,7 +220,7 @@ export const CareersInstantCallPage = () => {
                 }}
               />
               {firstNameError && (
-                <p className="text-sm text-red-500 mt-1">First name is required</p>
+                <p className="text-sm text-red-500 mt-1">First Name is required</p>
               )}
             </div>
             <div>
@@ -221,7 +243,7 @@ export const CareersInstantCallPage = () => {
                   borderColor: lastNameError ? '#ef4444' : undefined,
                 }}
               />
-              {lastNameError && <p className="text-sm text-red-500 mt-1">Last name is required</p>}
+              {lastNameError && <p className="text-sm text-red-500 mt-1">Last Name is required</p>}
             </div>
           </div>
 

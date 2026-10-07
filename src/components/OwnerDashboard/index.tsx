@@ -15,6 +15,7 @@ import useFetchRoles from '../../hooks/useRoles';
 import { useListUsersQuery, type OrgUser } from '../../api/organization-service/Users/users';
 import { useGetJobOpeningsQuery } from '../../api/job-service/JobOpening/GetJobOpening';
 import { setJobOpeningFilters } from '../../redux/slices/jobOpeningFilterSlice';
+import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 
 import { setOrgUserFilters } from '../../redux/slices/OrgUserFilterSlice';
 import { StatusFilters } from '../shared/ui/tableHeadbar';
@@ -133,6 +134,17 @@ const OwnerDashboard = () => {
     }
   );
   const jobCount = jobOpeningsData?.totalElements || 0;
+  // job-service only returns the title id; the mapper's fallback is the job code.
+  const { titleMap, isLoading: isTitlesLoading } = useJobTitleNameMap();
+  const jobRows = useMemo(
+    () =>
+      (jobOpeningsData?.data ?? []).map((job) => ({
+        ...job,
+        jobTitleName:
+          (job.jobTitleId && titleMap[job.jobTitleId]) || (isTitlesLoading ? '' : 'Untitled job'),
+      })),
+    [jobOpeningsData, titleMap, isTitlesLoading]
+  );
   const handleJobStatusChange = (filters: StatusFilters) => {
     dispatch(
       setJobOpeningFilters({
@@ -238,7 +250,7 @@ const OwnerDashboard = () => {
               <CustomerTable
                 headers={jobOpeningsHeaders}
                 title="Job Openings"
-                data={jobOpeningsData?.data || []}
+                data={jobRows}
                 role={role.type}
                 icon={jobPostingImage}
                 onStatusChange={handleJobStatusChange}

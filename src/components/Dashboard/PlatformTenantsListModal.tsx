@@ -148,7 +148,7 @@ const PlatformTenantsListModal: React.FC<{
           <div className="flex items-center gap-2.5">
             <Search
               appname="platform tenants modal"
-              placeholder="Search company..."
+              placeholder="Search Company..."
               value={search}
               allowClear
               onSearch={(value) => {

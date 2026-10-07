@@ -54,8 +54,8 @@ const linkErrorText = (error: InterviewApiError | undefined, fallback: string): 
 // real answer from the endpoint at all) is treated as "still waiting", not
 // as a third, permanent outcome — see the state machine below for why that
 // distinction matters.
-const FEEDBACK_PENDING_POLL_MS = 1200;
-const FEEDBACK_PENDING_TIMEOUT_MS = 20000;
+const FEEDBACK_PENDING_POLL_MS = 2500;
+const FEEDBACK_PENDING_TIMEOUT_MS = 60000;
 
 // ---------------------------------------------------------------------------
 // Candidate feedback  —  /feedback?token=
@@ -77,7 +77,7 @@ export const CandidateFeedbackPage = () => {
   const withinPendingWindow =
     firstPendingAt !== null && Date.now() - firstPendingAt < FEEDBACK_PENDING_TIMEOUT_MS;
 
-  const { data, isLoading, isError, error } = useGetCandidateFeedbackLinkQuery(token, {
+  const { data, isLoading, isFetching, isError, error } = useGetCandidateFeedbackLinkQuery(token, {
     skip: !token,
     pollingInterval: withinPendingWindow ? FEEDBACK_PENDING_POLL_MS : 0,
   });
@@ -110,9 +110,16 @@ export const CandidateFeedbackPage = () => {
   // on a REAL answer: a genuine success, or one of the two definitive
   // codes above. Any other error while already inside the window leaves
   // the window running, so polling just quietly retries instead.
+  //
+  // `!isFetching` matters: while each poll is in flight RTK Query reports
+  // the request as pending, which flips `isError` back to false even though
+  // the last real answer was still FEEDBACK_PENDING. Reading that in-flight
+  // moment as "no error" used to clear the window on every poll, flashing
+  // the empty form between loader frames (and restarting the 60s timeout
+  // each time). Only a settled response may close the window.
   if (isPendingResponse && firstPendingAt === null) {
     setFirstPendingAt(Date.now());
-  } else if (firstPendingAt !== null && (!isError || isDefinitivePermanentError)) {
+  } else if (firstPendingAt !== null && !isFetching && (!isError || isDefinitivePermanentError)) {
     setFirstPendingAt(null);
   }
 

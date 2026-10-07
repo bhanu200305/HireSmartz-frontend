@@ -10,6 +10,7 @@ import { useListJobTypesQuery } from '../../../../api/job-service/JobOpening/cat
 import { useListTenantDepartmentsQuery } from '../../../../api/organization-service/Tenants/departments';
 import { useAssignCandidateToJobMutation } from '../../../../api/candidate-service/Candidates/assignJob';
 import { useSessionTenantId } from '../../../../hooks/useSessionTenantId';
+import { useJobTitleNameMap } from '../../../../hooks/useJobTitleNameMap';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 import type { RootState } from '../../../../redux/provider/store';
 
@@ -20,8 +21,6 @@ type AssignJobModalProps = {
   candidateName: string;
   /** The job this candidate is on now: never offered as a target. */
   currentJobId: string;
-  /** Titles of every job the candidate is already considered for. */
-  assignedJobTitles: string[];
 };
 
 const formatSalary = (value: number | null | undefined) =>
@@ -48,7 +47,7 @@ const DetailRow = ({ label, value }: { label: string; value?: string | number | 
   </p>
 );
 
-// "Assign Candidate to Another Job Opening": pick a published job, see its
+// "Assign <name> to New Job": pick a published job, see its
 // details, assign. The job list/detail reads are real job-service calls; the
 // assign itself needs the new candidate-service endpoint described in
 // api/candidate-service/Candidates/assignJob.ts.
@@ -58,7 +57,6 @@ const AssignJobModal = ({
   candidateId,
   candidateName,
   currentJobId,
-  assignedJobTitles,
 }: AssignJobModalProps) => {
   const tenantId = useSessionTenantId();
   const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
@@ -66,17 +64,30 @@ const AssignJobModal = ({
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>();
   const [assignCandidateToJob, { isLoading: isAssigning }] = useAssignCandidateToJobMutation();
 
+  // The list only carries `job_title_id` (its `title` is null), so the name is
+  // resolved through the tenant's job-title catalogue, like the Job Openings
+  // page does. The same reason the search runs here: the server can't match a
+  // title it doesn't have.
+  const { titleMap } = useJobTitleNameMap();
+  const titleOf = (job: { title: string | null; job_title_id: string | null }) =>
+    job.title || (job.job_title_id ? titleMap[job.job_title_id] : '') || 'Untitled job';
+
   const { data: jobList, isFetching: isJobsLoading } = useGetJobOpeningsListLegacyQuery(
-    { status: 'published', text: search.trim() || undefined, page_size: 50 },
+    { status: 'published', page_size: 100 },
     { skip: !open }
   );
-  const jobs = useMemo(
-    () =>
-      (jobList?.items ?? []).filter(
-        (job) => job.org_job_opening_id !== currentJobId && !job.is_closed
-      ),
-    [jobList, currentJobId]
-  );
+  const jobs = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (jobList?.items ?? [])
+      .filter((job) => job.org_job_opening_id !== currentJobId && !job.is_closed)
+      .filter(
+        (job) =>
+          !term ||
+          titleOf(job).toLowerCase().includes(term) ||
+          job.job_profile_code.toLowerCase().includes(term)
+      );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobList, currentJobId, search, titleMap]);
   const selectedSummary = jobs.find((job) => job.org_job_opening_id === selectedJobId);
 
   const { data: jobDetail } = useGetJobOpeningByIdQuery(
@@ -116,7 +127,7 @@ const AssignJobModal = ({
     if (!selectedJobId) return;
     try {
       await assignCandidateToJob({ candidateId, jobOpeningId: selectedJobId }).unwrap();
-      showToast({ message: 'Candidate assigned to the job opening.', type: 'success' });
+      showToast({ message: `${candidateName} assigned to the job opening.`, type: 'success' });
       handleClose();
     } catch (e) {
       showToast({
@@ -130,19 +141,11 @@ const AssignJobModal = ({
     <AntdCommonModal
       open={open}
       onClose={handleClose}
-      title="Assign Candidate to Another Job Opening"
-      subtitle="Select a job opening where this candidate should be considered."
+      title={`Assign ${candidateName} to New Job`}
+      subtitle={`Select a job opening where ${candidateName} should be considered.`}
       modalProps={{ width: 640 }}
     >
       <div className="flex flex-col gap-5">
-        <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
-          <h3 className="text-lg font-semibold text-gray-900">{candidateName}</h3>
-          <p className="mt-3 text-xs font-medium text-gray-500">Assigned Jobs:</p>
-          <p className="text-xs font-semibold text-gray-900">
-            {assignedJobTitles.length > 0 ? assignedJobTitles.join(', ') : 'None'}
-          </p>
-        </div>
-
         <div>
           <label htmlFor="assign-job-select" className="mb-1 block text-sm text-gray-800">
             Job Opening <span className="required-asterisk">*</span>
@@ -156,12 +159,12 @@ const AssignJobModal = ({
             onChange={(value) => setSelectedJobId(value)}
             onSearch={setSearch}
             loading={isJobsLoading}
-            placeholder="Search for Job title or Job Id"
+            placeholder="Search for Job Title or Job Id"
             notFoundContent={isJobsLoading ? 'Loading…' : 'No matching job openings'}
             className="w-full [&_.ant-select-selector]:!h-11 [&_.ant-select-selector]:!rounded-lg"
             options={jobs.map((job) => ({
               value: job.org_job_opening_id,
-              label: `${job.title ?? 'Untitled job'} (${job.job_profile_code})`,
+              label: `${titleOf(job)} (${job.job_profile_code})`,
             }))}
           />
         </div>
@@ -179,7 +182,10 @@ const AssignJobModal = ({
                     : null
                 }
               />
-              <DetailRow label="Job Title" value={selectedSummary?.title} />
+              <DetailRow
+                label="Job Title"
+                value={selectedSummary ? titleOf(selectedSummary) : null}
+              />
               <DetailRow label="Number of Openings" value={selectedSummary?.vacancies} />
               <DetailRow label="Job Type" value={jobTypeName} />
               <DetailRow label="Salary" value={salary} />
@@ -206,7 +212,7 @@ const AssignJobModal = ({
             disabled={!selectedJobId || isAssigning}
             className="rounded-full bg-primary px-8 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
-            {isAssigning ? 'ASSIGNING…' : 'ASSIGN CANDIDATE'}
+            {isAssigning ? 'ASSIGNING…' : 'ASSIGN'}
           </Button>
         </div>
       </div>

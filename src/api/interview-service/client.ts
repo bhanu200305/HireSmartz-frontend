@@ -18,6 +18,7 @@ export type BookingStatus =
   | 'cancelled'
   | 'no_show'
   | 'interviewer_no_show'
+  | 'ai_no_show'
   | 'failed'
   | 'rescheduled';
 export type InterviewType = 'audio' | 'audio_screening' | 'ai_video' | 'panel';
@@ -32,9 +33,10 @@ export const CONCLUDED_BOOKING_STATUSES: BookingStatus[] = [
   'cancelled',
   'no_show',
   'interviewer_no_show',
+  'ai_no_show',
   'failed',
 ];
-export type FeedbackRecommendation = 'strong_yes' | 'yes' | 'no' | 'strong_no';
+export type FeedbackRecommendation = 'strong_yes' | 'yes' | 'neutral' | 'no' | 'strong_no';
 export type InterviewAuth = 'platform' | 'public' | 'booking-link';
 
 /** Frozen copy of the job-service round definition taken when the booking
@@ -86,12 +88,15 @@ export interface BookingView {
    * ~24h after the last one). `true` means a Reinvite is offered. Added with
    * the 2026-10-04 reinvite change; absent on older responses. */
   link_expired?: boolean;
-  /** Reinvites already used for this booking, out of `MAX_REINVITES`. */
+  /** Reinvites already used for this booking, out of `max_reinvite_count`. */
   reinvite_count?: number;
+  /** The live server limit on reinvites; absent on older responses (use
+   * `MAX_REINVITES`). */
+  max_reinvite_count?: number;
 }
 
-/** Fixed cap on `POST /bookings/{id}/reinvite` (409 `MAX_REINVITES_EXCEEDED`
- * past it) — the backend doesn't send the cap, so it lives here. */
+/** Fallback cap on `POST /bookings/{id}/reinvite` (409 `MAX_REINVITES_EXCEEDED`
+ * past it), used only when a booking response carries no `max_reinvite_count`. */
 export const MAX_REINVITES = 3;
 
 /** `POST /bookings`'s own response, on top of the plain `BookingView` every
@@ -420,6 +425,47 @@ interface InterviewFetchArgs extends FetchArgs {
 }
 
 const createIdempotencyKey = (): string => crypto.randomUUID();
+
+/** Audio extensions a browser often reports with an empty or generic
+ * `File.type` (notably Chrome/Edge on Windows for phone-recorder formats).
+ * upload_offline_recording.py rejects anything whose content type doesn't
+ * start with `audio/`, and the multipart part's type comes straight from
+ * `File.type` — so a real recording would otherwise bounce both here and
+ * server-side. */
+const AUDIO_MIME_BY_EXTENSION: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  opus: 'audio/opus',
+  weba: 'audio/webm',
+  flac: 'audio/flac',
+  amr: 'audio/amr',
+  '3gp': 'audio/3gpp',
+  caf: 'audio/x-caf',
+  aif: 'audio/aiff',
+  aiff: 'audio/aiff',
+  wma: 'audio/x-ms-wma',
+};
+
+/** `accept` for the offline-recording file pickers — `audio/*` alone hides
+ * the formats above whose MIME type the OS doesn't map to audio. */
+export const AUDIO_UPLOAD_ACCEPT = [
+  'audio/*',
+  ...Object.keys(AUDIO_MIME_BY_EXTENSION).map((ext) => `.${ext}`),
+].join(',');
+
+/** The file to send to `uploadOfflineRecording`, re-typed from its
+ * extension when the browser didn't report an `audio/` type, or `null`
+ * when it isn't a recognisable audio file at all. */
+export const toUploadableAudioFile = (file: File): File | null => {
+  if (file.type.startsWith('audio/')) return file;
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const mime = AUDIO_MIME_BY_EXTENSION[extension];
+  return mime ? new File([file], file.name, { type: mime, lastModified: file.lastModified }) : null;
+};
 
 const rawInterviewQuery = fetchBaseQuery({
   baseUrl: INTERVIEW_BASE_URL,

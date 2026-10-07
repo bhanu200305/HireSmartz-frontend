@@ -91,6 +91,31 @@ export type CandidateInterviewRoundView = {
    * migration 0023) specifically to replace the frontend's old heuristic of
    * inferring the flow from `awaiting_resume_upload` in the status history. */
   follows_intake_call: boolean;
+  /** Reinvites sent for this round's scheduling link — 0 is the original
+   * invite; capped at interview-service's `max_reinvite_count` (default 3,
+   * `MAX_REINVITES`). Added to the round view 2026-10-05; optional until
+   * that candidate-service build is deployed (falls back to the booking's
+   * own `reinvite_count`). */
+  /** When a recruiter explicitly advanced the candidate past this round
+   * (candidate-service migration 0021). Set only by Advance, never by
+   * interview-service merely reporting the round as completed, so it is what
+   * says "finished for progression". The round view does not send it yet: an
+   * `undefined` here means "not available", and the page falls back to the
+   * old status-based rule (see `isRoundFinishedForProgress`). */
+  recruiter_advanced_at?: string | null;
+  reinvite_count?: number;
+  /** The round's current scheduling link ran out unused. Same rollout note
+   * as `reinvite_count` (falls back to `BookingView.link_expired`). */
+  scheduling_link_expired?: boolean;
+};
+
+/** The interviewer's verdict that can ride along with ADVANCE
+ * (`AdvanceCandidateRequest.interviewer_feedback`). Recorded only if the
+ * current round has no interviewer feedback yet. */
+export type InterviewerRecommendation = 'strong_yes' | 'yes' | 'neutral' | 'no' | 'strong_no';
+export type AdvanceInterviewerFeedback = {
+  recommendation: InterviewerRecommendation;
+  notes: string;
 };
 
 /** One row of org-service's live interviewer directory, as returned to the
@@ -173,7 +198,6 @@ export const BULK_ADVANCE_FAILURE_LABELS: Record<string, string> = {
   no_interview_rounds_planned: 'No interview rounds planned for this candidate',
   job_opening_not_found: "This candidate's job opening no longer exists",
   candidate_in_final_status: 'This candidate is already finished',
-  resume_consistency_check_pending: 'Waiting on the intake-call consistency check',
   interviewer_feedback_pending: "The interviewer's feedback hasn't been recorded yet",
 };
 
@@ -199,6 +223,10 @@ export type SkipInterviewRoundArgs = {
   feedback?: string;
   /** Push past a 409 INTERVIEWER_FEEDBACK_PENDING (the interviewer hasn't submitted yet). */
   overridePendingInterviewerFeedback?: boolean;
+  /** The round the screen shows as current. A stale screen (the candidate
+   * already moved past it) gets 409 ROUND_ALREADY_ADVANCED and nothing is
+   * skipped, the same guard Advance has. */
+  expectedRoundId?: string | null;
 };
 
 /** `invite_sent: false` means this call was treated as a duplicate click (the
@@ -232,15 +260,38 @@ const extendedApi = candidateApi.injectEndpoints({
 
     advanceCandidate: build.mutation<
       AdvanceCandidateResultView,
-      { candidateId: string; overridePendingInterviewerFeedback?: boolean }
+      {
+        candidateId: string;
+        overridePendingInterviewerFeedback?: boolean;
+        /** The round the screen thinks is current. A stale screen (someone
+         * already advanced past it) gets 409 ROUND_ALREADY_ADVANCED instead
+         * of silently advancing the NEXT round. */
+        expectedRoundId?: string | null;
+        /** Also send the next round's interview invite (default: no). */
+        sendInvite?: boolean;
+        interviewerFeedback?: AdvanceInterviewerFeedback | null;
+      }
     >({
-      query: ({ candidateId, overridePendingInterviewerFeedback }) => ({
+      query: ({
+        candidateId,
+        overridePendingInterviewerFeedback,
+        expectedRoundId,
+        sendInvite,
+        interviewerFeedback,
+      }) => ({
         url: `/candidates/${candidateId}/advance`,
         method: 'POST',
-        // 409 INTERVIEWER_FEEDBACK_PENDING otherwise (needed for AI-run rounds).
-        params: overridePendingInterviewerFeedback
-          ? { override_pending_interviewer_feedback: true }
-          : undefined,
+        // All flags are query params; only the feedback is body
+        // (candidate-service routers.py advance_candidate).
+        params: {
+          ...(expectedRoundId ? { expected_round_id: expectedRoundId } : {}),
+          ...(sendInvite ? { send_invite: true } : {}),
+          // 409 INTERVIEWER_FEEDBACK_PENDING otherwise (needed for AI-run rounds).
+          ...(overridePendingInterviewerFeedback
+            ? { override_pending_interviewer_feedback: true }
+            : {}),
+        },
+        ...(interviewerFeedback ? { body: { interviewer_feedback: interviewerFeedback } } : {}),
       }),
       invalidatesTags: (_result, _error, { candidateId }) => [
         { type: 'Candidate', id: candidateId },
@@ -280,12 +331,19 @@ const extendedApi = candidateApi.injectEndpoints({
     // next becomes due" shape as advance, just requires a reason and is
     // recorded as a skip rather than a completion.
     skipInterviewRound: build.mutation<SkipInterviewRoundResultView, SkipInterviewRoundArgs>({
-      query: ({ candidateId, reason, feedback, overridePendingInterviewerFeedback }) => ({
+      query: ({
+        candidateId,
+        reason,
+        feedback,
+        overridePendingInterviewerFeedback,
+        expectedRoundId,
+      }) => ({
         url: `/candidates/${candidateId}/skip-round`,
         method: 'POST',
         body: {
           reason,
           ...(feedback ? { feedback } : {}),
+          ...(expectedRoundId ? { expected_round_id: expectedRoundId } : {}),
           ...(overridePendingInterviewerFeedback
             ? { override_pending_interviewer_feedback: true }
             : {}),
@@ -348,6 +406,9 @@ const extendedApi = candidateApi.injectEndpoints({
   }),
   overrideExisting: false,
 });
+
+// For imperative fetches outside a component (the bulk Advance loop).
+export const interviewRoundsEndpoints = extendedApi.endpoints;
 
 export const {
   useListCandidateInterviewRoundsQuery,

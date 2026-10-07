@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom';
 import { useSelector, shallowEqual } from 'react-redux';
-import { Col, Row, Tooltip, Checkbox } from 'antd';
+import { Col, Row, Tooltip, Checkbox, Dropdown } from 'antd';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
 import './candidatesListing.css';
@@ -14,8 +15,8 @@ import {
   LuUsers,
 } from 'react-icons/lu';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { IoArrowRedoOutline } from 'react-icons/io5';
-import { MdClose, MdEdit, MdOutlineRemoveRedEye } from 'react-icons/md';
+import { IoArrowRedoOutline, IoChatbubbleEllipses } from 'react-icons/io5';
+import { MdArrowDropDown, MdClose, MdEdit, MdOutlineRemoveRedEye } from 'react-icons/md';
 import { FaEnvelope } from 'react-icons/fa';
 import { CommonCard, Button, Badge, showToast } from '../../shared';
 import MasterPagination from '../../shared/ui/MasterPagination';
@@ -37,32 +38,35 @@ import { hasFeatureAccess, isAssignedToJob } from '../../../shared/utils/auth/ge
 import { asJobId } from '../../../api/job-service/jobId';
 import {
   useListCandidatesQuery,
+  type CandidateDisplayStatus,
   type CandidateView,
   type ListCandidatesArgs,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
-import { useListCandidateInterviewScoresQuery } from '../../../api/candidate-service/Candidates/scoring';
-import {
-  useListCandidateStatusesQuery,
-  useListApplicationSourcesQuery,
-} from '../../../api/candidate-service/Master/master';
+import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
 import AddCandidateModal from './Modal/AddCandidateModal';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
+import BulkSendSmsModal from './Modal/BulkSendSmsModal';
 import BulkScheduleInterviewsModal from './Modal/BulkScheduleInterviewsModal';
+import BulkAdvanceModal from './Modal/BulkAdvanceModal';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
 import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
+import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import {
   candidateDisplayName,
-  candidateStatusColor,
-  candidateStatusTooltip,
+  candidateDisplayStatusColor,
+  candidateDisplayStatusLabel,
+  candidateDisplayStatusTooltip,
+  resolveDisplayStatus,
 } from './candidateDisplay';
 import { normaliseRoundStatus } from './roundProgress';
 import type { CandidateNavState } from './useCandidateNavigation';
-import { formatRoundStatus } from './roundDisplay';
+import { formatRoundStatus, roundStatusLabel } from './roundDisplay';
 import { AI_SCORE_MAX, scoreBadgeStatus } from './roundPipeline';
+import NameMissingFlag from './NameMissingFlag';
 
 // Candidate list is job-scoped; there is no cross-job list route.
 // `resume_score` of null means "not scored yet", not an error.
@@ -72,41 +76,27 @@ type SelectedMap = Record<string, boolean>;
 const buildCurrentSortKey = (sortBy: string, sortOrder: 'asc' | 'desc') =>
   sortOrder === 'desc' ? `-${sortBy}` : sortBy;
 
-// Same "Avg. score so far" figure as roundPipeline.ts's candidate
-// drill-down - the resume score plus every interview round's own score
-// (recruiter's if one was recorded, else the AI's), averaged together. Its
-// own component (not inlined in the row .map() below) because it needs a
-// per-candidate scores query - can't call a hook from inside a loop body.
-// No backend list endpoint returns this pre-aggregated, so it's one query
-// per visible row rather than a single bulk fetch; frontend-only change,
-// same tradeoff roundPipeline.ts already accepts per round.
-const CandidateAverageScoreCell = ({
-  candidateId,
-  resumeScore,
-}: {
-  candidateId: string;
-  resumeScore: number | null;
-}) => {
-  const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId);
-  // recruiter_score and the AI scores are all 0-5 (same as roundPipeline.ts).
-  const scoreValues = [
-    resumeScore,
-    ...scores.map((s) => (s.recruiter_score != null ? s.recruiter_score : s.score)),
-  ].filter((v): v is number => v !== null && v !== undefined);
-  const avgScore =
-    scoreValues.length > 0
-      ? Number((scoreValues.reduce((sum, v) => sum + v, 0) / scoreValues.length).toFixed(1))
-      : null;
-
-  if (avgScore === null) {
-    return <span className="text-sm text-neutral-400">—</span>;
-  }
+// The Avg. Score column shows the server's `average_score` (resume score plus
+// every interview score, recruiter's where one exists, one decimal; null when
+// the candidate has no scores yet).
+const CandidateAverageScoreCell = ({ average }: { average: number | null | undefined }) => {
+  if (average === null || average === undefined) return null;
   return (
-    <Badge dot={false} status={scoreBadgeStatus(avgScore)}>
-      {avgScore} / {AI_SCORE_MAX}
+    <Badge dot={false} status={scoreBadgeStatus(average)}>
+      {average} / {AI_SCORE_MAX}
     </Badge>
   );
 };
+
+// With the Round filter or a browser-side sort (last name, status) on, the list
+// loads up to 200 candidates (the API maximum) and is filtered, sorted and
+// paged here.
+const CLIENT_PAGED_FETCH_LIMIT = 200;
+// Value of the Round filter's "Resume Screening" option (no round id exists).
+const RESUME_ROUND_FILTER = '__resume__';
+// What candidate-service names the resume stage in `current_round_name`
+// (`RESUME_STAGE_NAME`), the same text the list's status column shows.
+const RESUME_STAGE_LABEL = 'Resume Review';
 
 const CandidatesListing = () => {
   const navigate = useNavigate();
@@ -118,8 +108,18 @@ const CandidatesListing = () => {
   const parsedJobId = asJobId(id);
 
   const [search, setSearch] = useState('');
-  const [statusCode, setStatusCode] = useState<string | undefined>();
+  const [displayStatus, setDisplayStatus] = useState<CandidateDisplayStatus | undefined>();
   const [source, setSource] = useState<string | undefined>();
+  const [roundId, setRoundId] = useState<string | undefined>();
+  // Sorts the backend has no field for (last name, status) are applied here,
+  // over the same up-to-200 window as the Round filter.
+  const [clientSort, setClientSort] = useState<{
+    key: 'last_name' | 'status';
+    order: 'asc' | 'desc';
+  } | null>(null);
+  // What the Candidate Name header sorts by.
+  const [nameSortMode, setNameSortMode] = useState<'first' | 'last' | 'upload'>('first');
+  const isClientPaged = Boolean(roundId) || Boolean(clientSort);
   const [sortBy, setSortBy] = useState<NonNullable<ListCandidatesArgs['sortBy']>>('applied_date');
   const [sortOrder, setSortOrder] = useState<NonNullable<ListCandidatesArgs['sortOrder']>>('desc');
   const [page, setPage] = useState(0);
@@ -130,10 +130,13 @@ const CandidatesListing = () => {
   const [isAddCandidateModalOpen, setIsAddCandidateModalOpen] = useState(false);
   const [isJobNotesPanelOpen, setIsJobNotesPanelOpen] = useState(false);
   const [isBulkEmailOpen, setIsBulkEmailOpen] = useState(false);
+  const [isBulkSmsOpen, setIsBulkSmsOpen] = useState(false);
   const [isBulkScheduleOpen, setIsBulkScheduleOpen] = useState(false);
+  const [isBulkAdvanceOpen, setIsBulkAdvanceOpen] = useState(false);
   // Per-row Actions column targets (view and edit are plain navigations).
   const [notesCandidate, setNotesCandidate] = useState<CandidateView | null>(null);
   const [emailCandidate, setEmailCandidate] = useState<CandidateView | null>(null);
+  const [smsCandidate, setSmsCandidate] = useState<CandidateView | null>(null);
   const [statusModal, setStatusModal] = useState<{
     mode: ChangeCandidateStatusMode;
     candidates: CandidateView[];
@@ -207,23 +210,21 @@ const CandidatesListing = () => {
     {
       jobOpeningId: parsedJobId,
       search: search || undefined,
-      statusCode,
+      displayStatus,
       source,
+      // The Resume Screening option has no job-service round behind it, so
+      // it narrows nothing on the server (see `scopedItems` below).
+      roundId: roundId && roundId !== RESUME_ROUND_FILTER ? roundId : undefined,
       sortBy,
       sortOrder,
-      limit: pageSize,
-      offset: page * pageSize,
+      limit: isClientPaged ? CLIENT_PAGED_FETCH_LIMIT : pageSize,
+      offset: isClientPaged ? 0 : page * pageSize,
     },
     { skip: !parsedJobId, refetchOnMountOrArgChange: true }
   );
 
-  const { data: statuses = [] } = useListCandidateStatusesQuery();
-  const statusLabelByCode = useMemo(
-    () => new Map(statuses.map((s) => [s.code, s.label])),
-    [statuses]
-  );
   // `candidate.source` is the raw master-data code (e.g. "qr_self_apply") —
-  // same code/label split as candidate statuses above, resolved through the
+  // resolved to its label through the
   // same master endpoint FilterMenu.tsx's Source dropdown already uses,
   // rather than showing the snake_case code as-is.
   const { data: applicationSources = [] } = useListApplicationSourcesQuery();
@@ -231,7 +232,71 @@ const CandidatesListing = () => {
     () => new Map(applicationSources.map((s) => [s.code, s.label])),
     [applicationSources]
   );
-  const candidates = data?.items ?? [];
+  const fetchedItems = useMemo(() => data?.items ?? [], [data]);
+
+  // The job's interview rounds, for the Round filter.
+  const { data: jobRoundPlan } = useGetInterviewRoundsByJobIdQuery(parsedJobId ?? '', {
+    skip: !parsedJobId,
+  });
+  const roundOptions = useMemo(
+    () =>
+      ((jobRoundPlan ?? []) as Array<{ roundId?: string; roundName?: string | null }>)
+        .filter((r) => r.roundId)
+        .map((r) =>
+          // The plan's "Resume Round" is the resume stage, which candidates
+          // are never "sitting at" through a round id.
+          (r.roundName ?? '').trim().toLowerCase() === 'resume round'
+            ? { label: RESUME_STAGE_LABEL, value: RESUME_ROUND_FILTER }
+            : { label: r.roundName || 'Round', value: r.roundId as string }
+        ),
+    [jobRoundPlan]
+  );
+
+  // Round filter: the server's `round_id` match is "has a round row for it
+  // that isn't completed", which includes every round the candidate hasn't
+  // reached yet, so it over-matches. The list rows carry the round each
+  // candidate is really on now (`current_round_name`), so the exact match is
+  // made here, over the (up to 200) candidates the server returned.
+  const scopedItems = useMemo(() => {
+    if (!roundId) return fetchedItems;
+    const wanted = roundOptions.find((o) => o.value === roundId);
+    if (!wanted) return fetchedItems;
+    return fetchedItems.filter((c) => {
+      if (resolveDisplayStatus(c) !== 'in_process') return false;
+      return roundId === RESUME_ROUND_FILTER
+        ? !c.current_round_name || c.current_round_name === RESUME_STAGE_LABEL
+        : c.current_round_name === wanted.label;
+    });
+  }, [fetchedItems, roundId, roundOptions]);
+
+  const sortedItems = useMemo(() => {
+    if (clientSort) {
+      const dir = clientSort.order === 'asc' ? 1 : -1;
+      const roundIndex = (c: CandidateView) => {
+        const at = roundOptions.findIndex((o) => o.label === c.current_round_name);
+        return c.current_round_name ? (at >= 0 ? at + 1 : roundOptions.length + 1) : 0;
+      };
+      const keyOf = (c: CandidateView) =>
+        clientSort.key === 'last_name'
+          ? (c.last_name ?? '').trim().toLowerCase()
+          : candidateDisplayStatusLabel(resolveDisplayStatus(c)).toLowerCase();
+      return [...scopedItems].sort((a, b) => {
+        const x = keyOf(a);
+        const y = keyOf(b);
+        // Blank last names go last either way.
+        if (clientSort.key === 'last_name' && (!x || !y) && x !== y) return x ? -1 : 1;
+        const byKey = x.localeCompare(y) * dir;
+        if (byKey !== 0 || clientSort.key === 'last_name') return byKey;
+        return (roundIndex(a) - roundIndex(b)) * dir;
+      });
+    }
+    return scopedItems;
+  }, [scopedItems, clientSort, roundOptions]);
+  const candidates = useMemo(() => {
+    if (!isClientPaged) return fetchedItems;
+    return sortedItems.slice(page * pageSize, (page + 1) * pageSize);
+  }, [isClientPaged, fetchedItems, sortedItems, page, pageSize]);
+  const totalCandidates = isClientPaged ? sortedItems.length : (data?.total ?? 0);
   const selectedIds = Object.keys(selected).filter((cid) => selected[cid]);
   const selectedCount = selectedIds.length;
   const selectedCandidates = candidates.filter((c) => selected[c.id]);
@@ -254,7 +319,30 @@ const CandidatesListing = () => {
 
   const clearSelection = () => setSelected({});
 
+  const applyNameSort = (mode: 'first' | 'last' | 'upload', direction: 'asc' | 'desc') => {
+    if (mode === 'last') {
+      setClientSort({ key: 'last_name', order: direction });
+    } else {
+      setClientSort(null);
+      // "Last upload" is newest-added first: the applied date is the only
+      // timestamp the list can sort by.
+      setSortBy(mode === 'first' ? 'name' : 'applied_date');
+      setSortOrder(direction);
+    }
+    setPage(0);
+  };
+
   const handleSort = (key: string, direction: SortDirection) => {
+    if (key === 'name') {
+      applyNameSort(nameSortMode, direction ?? 'asc');
+      return;
+    }
+    if (key === 'status') {
+      setClientSort({ key: 'status', order: direction ?? 'asc' });
+      setPage(0);
+      return;
+    }
+    setClientSort(null);
     if (!direction) {
       setSortBy('applied_date');
       setSortOrder('desc');
@@ -266,8 +354,9 @@ const CandidatesListing = () => {
   };
 
   const handleFilterChange = (next: Partial<CandidateListFilterValues>) => {
-    if ('statusCode' in next) setStatusCode(next.statusCode);
+    if ('displayStatus' in next) setDisplayStatus(next.displayStatus);
     if ('source' in next) setSource(next.source);
+    if ('roundId' in next) setRoundId(next.roundId);
     setPage(0);
   };
 
@@ -298,12 +387,16 @@ const CandidatesListing = () => {
       args: {
         jobOpeningId: parsedJobId,
         search: search || undefined,
-        statusCode,
+        displayStatus,
         source,
+        roundId,
         sortBy,
         sortOrder,
       },
-      index: page * pageSize + rowIndex,
+      index: isClientPaged ? sortedItems.indexOf(candidates[rowIndex]) : page * pageSize + rowIndex,
+      // Browser-side sorts/filters: Previous / Next follow the exact order
+      // shown here, since the server can't reproduce it.
+      ...(isClientPaged ? { orderedIds: sortedItems.map((c) => c.id) } : {}),
     },
   });
 
@@ -395,7 +488,11 @@ const CandidatesListing = () => {
               )}
             </div>
             <div className="w-full lg:w-auto">
-              <FilterMenu filters={{ statusCode, source }} onFilterChange={handleFilterChange} />
+              <FilterMenu
+                filters={{ displayStatus, source, roundId }}
+                onFilterChange={handleFilterChange}
+                roundOptions={roundOptions}
+              />
             </div>
           </div>
         </div>
@@ -433,28 +530,87 @@ const CandidatesListing = () => {
                 <COL
                   sortable
                   sortKey="name"
-                  currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                  currentSortKey={
+                    clientSort
+                      ? clientSort.key === 'last_name'
+                        ? buildCurrentSortKey('name', clientSort.order)
+                        : ''
+                      : sortBy === 'name'
+                        ? buildCurrentSortKey('name', sortOrder)
+                        : ''
+                  }
                   onSort={handleSort}
                   span={6}
                 >
-                  Candidate Name
+                  <span className="inline-flex items-center">
+                    Candidate Name
+                    <Dropdown
+                      trigger={['click']}
+                      menu={{
+                        selectedKeys: [nameSortMode],
+                        items: [
+                          { key: 'first', label: 'First Name' },
+                          { key: 'last', label: 'Last Name' },
+                          { key: 'upload', label: 'Last Upload' },
+                        ],
+                        onClick: ({ key, domEvent }) => {
+                          domEvent.stopPropagation();
+                          const mode = key as 'first' | 'last' | 'upload';
+                          setNameSortMode(mode);
+                          applyNameSort(mode, mode === 'upload' ? 'desc' : 'asc');
+                        },
+                      }}
+                    >
+                      <button
+                        type="button"
+                        aria-label="Choose what the name column sorts by"
+                        className="ml-1 flex cursor-pointer items-center rounded text-neutral-500 hover:text-black"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MdArrowDropDown size={18} />
+                      </button>
+                    </Dropdown>
+                  </span>
                 </COL>
-                {/* Not sortable - "average score" is computed client-side
-                    per row (see CandidateAverageScoreCell), so there's no
-                    single backend field to sort by. */}
-                <COL span={4}>
-                  <span>Avg. Score</span>
+                {/* Sorted by the server (`sort_by=avg_score`), across every
+                    page; candidates with no average go last either way. */}
+                <COL
+                  sortable
+                  sortKey="avg_score"
+                  currentSortKey={
+                    !clientSort && sortBy === 'avg_score'
+                      ? buildCurrentSortKey('avg_score', sortOrder)
+                      : ''
+                  }
+                  onSort={handleSort}
+                  span={4}
+                >
+                  Avg. Score
                 </COL>
                 <COL
                   sortable
                   sortKey="applied_date"
-                  currentSortKey={buildCurrentSortKey(sortBy, sortOrder)}
+                  currentSortKey={
+                    clientSort || sortBy !== 'applied_date'
+                      ? ''
+                      : buildCurrentSortKey(sortBy, sortOrder)
+                  }
                   onSort={handleSort}
                   span={4}
                 >
                   Applied Date
                 </COL>
-                <COL span={6}>
+                <COL
+                  sortable
+                  sortKey="status"
+                  currentSortKey={
+                    clientSort?.key === 'status'
+                      ? buildCurrentSortKey('status', clientSort.order)
+                      : ''
+                  }
+                  onSort={handleSort}
+                  span={6}
+                >
                   <span>Status</span>
                 </COL>
                 <COL span={3}>
@@ -513,6 +669,7 @@ const CandidatesListing = () => {
                                     .join(' ') || 'N/A'}
                                 </span>
                               </Link>
+                              {candidate.resume_name_missing && <NameMissingFlag />}
                               {candidate.is_new_for_me && (
                                 <Badge status="info" dot={false} className="shrink-0">
                                   New
@@ -524,10 +681,7 @@ const CandidatesListing = () => {
                             </div>
                           </Col>
                           <Col span={4}>
-                            <CandidateAverageScoreCell
-                              candidateId={candidate.id}
-                              resumeScore={candidate.resume_score}
-                            />
+                            <CandidateAverageScoreCell average={candidate.average_score} />
                           </Col>
                           <Col span={4}>
                             <p className="text-sm text-neutral-900 roboto-font">
@@ -537,39 +691,58 @@ const CandidatesListing = () => {
                             </p>
                           </Col>
                           <Col span={6}>
-                            <div className="flex flex-col items-start gap-0.5 roboto-font">
-                              <Tooltip title={candidateStatusTooltip(candidate.status_code)}>
-                                <Link
-                                  to={buildDetailsPath(candidate.id)}
-                                  state={detailsNavState(rowIndex)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={`inline-block text-sm hover:underline ${candidateStatusColor(candidate.status_code).text}`}
-                                >
-                                  {candidate.status_label ||
-                                    statusLabelByCode.get(candidate.status_code ?? '') ||
-                                    'Not yet screened'}
-                                </Link>
-                              </Tooltip>
-                              {candidate.current_round_status && (
-                                <Link
-                                  to={buildDetailsPath(candidate.id)}
-                                  state={detailsNavState(rowIndex)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-block text-sm text-neutral-900 hover:underline"
-                                >
-                                  {normaliseRoundStatus(candidate.current_round_status) ===
-                                  'booking_created'
-                                    ? 'Booking created — waiting to be scheduled'
-                                    : normaliseRoundStatus(candidate.current_round_status) ===
-                                        'awaiting_resume_upload'
-                                      ? 'Awaiting Resume Upload'
-                                      : normaliseRoundStatus(candidate.current_round_status) ===
-                                          'resume_upload_expired'
-                                        ? 'Resume Upload Link Expired'
-                                        : formatRoundStatus(candidate.current_round_status)}
-                                </Link>
-                              )}
-                            </div>
+                            {(() => {
+                              // candidate-service's `display_status`; round
+                              // details only mean something while In Process.
+                              const displayStatus = resolveDisplayStatus(candidate);
+                              const roundStatus = candidate.current_round_status;
+                              return (
+                                <div className="flex min-w-0 flex-col items-start gap-0.5 roboto-font">
+                                  <Tooltip title={candidateDisplayStatusTooltip(displayStatus)}>
+                                    <Link
+                                      to={buildDetailsPath(candidate.id)}
+                                      state={detailsNavState(rowIndex)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className={`inline-block text-sm font-medium hover:underline ${candidateDisplayStatusColor(displayStatus).text}`}
+                                    >
+                                      {candidateDisplayStatusLabel(displayStatus)}
+                                    </Link>
+                                  </Tooltip>
+                                  {displayStatus === 'in_process' && (
+                                    <Link
+                                      to={buildDetailsPath(candidate.id)}
+                                      state={detailsNavState(rowIndex)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="inline-block max-w-full text-sm text-neutral-900 hover:underline"
+                                    >
+                                      {/* No round name yet = still at the resume stage. */}
+                                      <span className="font-medium">
+                                        {candidate.current_round_name || 'Resume Review'}
+                                      </span>
+                                      {roundStatus && (
+                                        <span className="text-neutral-600">
+                                          {' · '}
+                                          {/* in_progress = candidate is on the live call
+                                              right now; candidate-service flips it back to
+                                              the round's normal status when they leave.
+                                              Shows on the list's next refresh, not live. */}
+                                          {normaliseRoundStatus(roundStatus) ===
+                                          'awaiting_resume_upload'
+                                            ? 'Awaiting Resume Upload'
+                                            : normaliseRoundStatus(roundStatus) ===
+                                                'resume_upload_expired'
+                                              ? 'Resume Upload Link Expired'
+                                              : // Same wording as the Interview Scheduling
+                                                // cards: Ongoing, Invitation sent, ...
+                                                (roundStatusLabel(roundStatus) ??
+                                                formatRoundStatus(roundStatus))}
+                                        </span>
+                                      )}
+                                    </Link>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </Col>
                           <Col span={3}>
                             {/* Same four actions as the legacy list: view, edit, notes, email. */}
@@ -637,6 +810,29 @@ const CandidatesListing = () => {
                                   </button>
                                 </span>
                               </Tooltip>
+                              <Tooltip
+                                title={
+                                  !candidate.contact_no
+                                    ? 'No phone number on file'
+                                    : candidate.sms_consent_at === null
+                                      ? 'Candidate has not given SMS consent'
+                                      : `SMS ${candidate.contact_no}`
+                                }
+                              >
+                                <span className="inline-flex">
+                                  <button
+                                    type="button"
+                                    aria-label="Send SMS"
+                                    className="flex cursor-pointer hover:text-[var(--primary)] transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-neutral-900"
+                                    disabled={
+                                      !candidate.contact_no || candidate.sms_consent_at === null
+                                    }
+                                    onClick={() => setSmsCandidate(candidate)}
+                                  >
+                                    <IoChatbubbleEllipses size={17} />
+                                  </button>
+                                </span>
+                              </Tooltip>
                             </div>
                           </Col>
                         </Row>
@@ -688,75 +884,85 @@ const CandidatesListing = () => {
         <MasterPagination
           current={page + 1}
           pageSize={pageSize}
-          total={data?.total ?? 0}
+          total={totalCandidates}
           itemLabel="candidates"
           onPageChange={(p) => setPage(p - 1)}
         />
       </div>
 
-      {selectedCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 animate-slideUp">
-          <div className="flex justify-center w-full px-4 mb-4">
-            <div className="inline-flex max-w-[90vw] xl:max-w-[56rem] items-center justify-between gap-3 bg-white border border-[var(--border)] shadow-lg rounded-2xl p-4 md:p-6">
-              <div className="flex min-w-0 items-center gap-3 md:gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary">
-                    <span className="text-white text-xs font-semibold">{selectedCount}</span>
+      {/* Rendered on <body> so no scrolling/transformed parent can clip or
+          hide it when the page is scrolled to the bottom. */}
+      {selectedCount > 0 &&
+        createPortal(
+          <div className="fixed bottom-0 left-0 right-0 z-50 animate-slideUp">
+            <div className="flex justify-center w-full px-4 mb-4">
+              <div className="inline-flex max-w-[90vw] xl:max-w-[56rem] items-center justify-between gap-3 bg-white border border-[var(--border)] shadow-lg rounded-2xl p-4 md:p-6">
+                <div className="flex min-w-0 items-center gap-3 md:gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary">
+                      <span className="text-white text-xs font-semibold">{selectedCount}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold">Candidate(s)</span>
+                      <span className="text-sm font-semibold">Selected</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold">Candidate(s)</span>
-                    <span className="text-sm font-semibold">Selected</span>
-                  </div>
-                </div>
 
-                <div className="h-8 w-px bg-[var(--border)] hidden sm:block"></div>
+                  <div className="h-8 w-px bg-[var(--border)] hidden sm:block"></div>
 
-                <div className="flex min-w-0 flex-wrap items-center gap-2 md:gap-3">
-                  <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
-                    onClick={() => openStatusModal('advance', selectedCandidates)}
-                  >
-                    <IoArrowRedoOutline size={16} /> Advance
-                  </Button>
-                  <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
-                    onClick={() => openStatusModal('reject', selectedCandidates)}
-                  >
-                    <LuThumbsDown size={16} />
-                    Reject
-                  </Button>
-                  <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
-                    onClick={() => openStatusModal('select', selectedCandidates)}
-                  >
-                    <LuThumbsUp size={16} /> Select
-                  </Button>
-                  <Button
-                    className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
-                    onClick={() => setIsBulkEmailOpen(true)}
-                  >
-                    <LuMail size={16} /> Email
-                  </Button>
-                  {canManageCandidates && (
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 md:gap-3">
+                    <Button
+                      className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
+                      onClick={() => setIsBulkAdvanceOpen(true)}
+                    >
+                      <IoArrowRedoOutline size={16} /> Advance
+                    </Button>
+                    <Button
+                      className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
+                      onClick={() => openStatusModal('reject', selectedCandidates)}
+                    >
+                      <LuThumbsDown size={16} />
+                      Reject
+                    </Button>
+                    <Button
+                      className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8"
+                      onClick={() => openStatusModal('select', selectedCandidates)}
+                    >
+                      <LuThumbsUp size={16} /> Select
+                    </Button>
                     <Button
                       className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
-                      onClick={() => setIsBulkScheduleOpen(true)}
+                      onClick={() => setIsBulkEmailOpen(true)}
                     >
-                      <LuCalendarPlus size={16} /> Schedule
+                      <LuMail size={16} /> Email
                     </Button>
-                  )}
+                    <Button
+                      className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
+                      onClick={() => setIsBulkSmsOpen(true)}
+                    >
+                      <IoChatbubbleEllipses size={16} /> SMS
+                    </Button>
+                    {canManageCandidates && (
+                      <Button
+                        className="flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 cursor-pointer hover:bg-neutral-100 text-sm h-8 bg-white text-gray-900"
+                        onClick={() => setIsBulkScheduleOpen(true)}
+                      >
+                        <LuCalendarPlus size={16} /> Schedule
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                <Button
+                  className="cursor-pointer hover:text-gray-800 text-sm h-8 shrink-0"
+                  onClick={clearSelection}
+                >
+                  <MdClose size={22} />
+                </Button>
               </div>
-              <Button
-                className="cursor-pointer hover:text-gray-800 text-sm h-8 shrink-0"
-                onClick={clearSelection}
-              >
-                <MdClose size={22} />
-              </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {statusModal && (
         <ChangeCandidateStatusModal
@@ -772,6 +978,15 @@ const CandidatesListing = () => {
         open={isBulkEmailOpen}
         onClose={() => setIsBulkEmailOpen(false)}
         candidates={selectedCandidates}
+      />
+      <BulkAdvanceModal
+        open={isBulkAdvanceOpen}
+        onClose={() => setIsBulkAdvanceOpen(false)}
+        candidates={selectedCandidates}
+        onDone={() => {
+          clearSelection();
+          refetch();
+        }}
       />
       <BulkScheduleInterviewsModal
         open={isBulkScheduleOpen}
@@ -800,6 +1015,16 @@ const CandidatesListing = () => {
         open={!!emailCandidate}
         onClose={() => setEmailCandidate(null)}
         candidates={emailCandidate ? [emailCandidate] : []}
+      />
+      <BulkSendSmsModal
+        open={isBulkSmsOpen}
+        onClose={() => setIsBulkSmsOpen(false)}
+        candidates={selectedCandidates}
+      />
+      <BulkSendSmsModal
+        open={!!smsCandidate}
+        onClose={() => setSmsCandidate(null)}
+        candidates={smsCandidate ? [smsCandidate] : []}
       />
       <AddCandidateModal
         open={isAddCandidateModalOpen}

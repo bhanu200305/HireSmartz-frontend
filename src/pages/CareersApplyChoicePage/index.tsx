@@ -1,23 +1,55 @@
 import { useEffect } from 'react';
+import { Spin } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { LuArrowRight, LuFileText, LuPhoneCall } from 'react-icons/lu';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
+import {
+  publicApplyPathFor,
+  useGetPublicJobQuery,
+} from '../../api/job-service/PublicCareers/index';
 
 // New — no legacy equivalent to rewire. Splits candidate-service's two
 // genuinely different apply paths (FRONTEND_INTEGRATION_DETAILS.md §5) into
 // an explicit choice before the candidate commits to one: Path A
 // (resume-first, `CareersApplyPage`, already real) vs Path B (instant call,
 // no resume yet, `contact_no` required — `CareersInstantCallPage`, new).
+//
+// Since the Intake Call became optional (2026-10-05) the job decides the path:
+// a job with an Intake Call round (before or after Resume) shows the
+// two-option choice below; a job with no Intake Call goes straight to the
+// resume form. The choice also shows while job-service doesn't report
+// `intake_call_position` yet.
 
 export const CareersApplyChoicePage = () => {
   const { organizationId, jobId } = useParams<{ organizationId: string; jobId: string }>();
   const navigate = useNavigate();
   const { companyName, logoUrl } = usePublicCareersBranding(organizationId);
+  const { data: job, isLoading: isJobLoading } = useGetPublicJobQuery(
+    { organizationId: organizationId ?? '', jobId: jobId ?? '' },
+    { skip: !organizationId || !jobId }
+  );
+  const applyPath = publicApplyPathFor(job);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
+
+  useEffect(() => {
+    if (applyPath === 'resume') {
+      navigate(`/careers/${organizationId}/jobs/${jobId}/apply`, { replace: true });
+    }
+  }, [applyPath, navigate, organizationId, jobId]);
+
+  // Nothing to choose between while the job (and so its path) is loading,
+  // or once it's known and the redirect above is under way.
+  if (isJobLoading || applyPath === 'resume') {
+    return (
+      <div className="public-page min-h-screen bg-gray-50 flex items-center justify-center">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   return (
     <div className="public-page min-h-screen bg-gray-50 flex flex-col">

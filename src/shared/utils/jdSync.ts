@@ -174,7 +174,8 @@ export type AiSyncedSkill = { skill_id: string; skill_label: string; skill_type:
 export const mergeNewAiSkills = (
   freshSkills: AiSyncedSkill[] | undefined,
   currentMandatoryIds: string[],
-  currentOptionalIds: string[]
+  currentOptionalIds: string[],
+  isAlreadyOffered: (id: string) => boolean = () => false
 ): {
   newMandatoryIds: string[];
   newOptionalIds: string[];
@@ -186,6 +187,7 @@ export const mergeNewAiSkills = (
   for (const skill of freshSkills ?? []) {
     const id = String(skill.skill_id);
     if (currentMandatoryIds.includes(id) || currentOptionalIds.includes(id)) continue;
+    if (isAlreadyOffered(id)) continue;
     if (newMandatoryIds.includes(id) || newOptionalIds.includes(id)) continue;
     if (skill.skill_type.toLowerCase() === 'required') {
       newMandatoryIds.push(id);

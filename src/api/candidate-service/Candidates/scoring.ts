@@ -44,7 +44,8 @@ export type CandidateInterviewScoreView = {
   id: string;
   candidate_id: string;
   interview_booking_id: string;
-  score: number;
+  /** `null` for a row opened for recruiter feedback before the AI scored the round. */
+  score: number | null;
   scoring_reason: string | null;
   interview_round_status: boolean | null;
   live_face_match_status: string | null;
@@ -56,7 +57,9 @@ export type CandidateInterviewScoreView = {
    * `[{ key: "communication", score: 4 }, ...]`. `null` on rows scored
    * before this field existed on the wire (candidate-service 2026-09-14);
    * `[]` when ai-service computed no sections for that round. */
-  section_scores: { key: string; score: number }[] | null;
+  /** `reason`: up to 3 short phrases behind the score; null/missing for rounds
+   * scored before this was stored, or a category with none. */
+  section_scores: { key: string; score: number; reason?: string[] | null }[] | null;
   /** Which `CandidateInterviewRoundView.id` this score belongs to. Nullable:
    * interview-service can score a booking that was never planned, and
    * scores recorded before the round-link column existed have no round to
@@ -80,7 +83,20 @@ export type RecordRecruiterRoundScoreRequest = {
 export type RecruiterRoundScoreResultView = {
   score_id: string;
   candidate_id: string;
-  ai_score: number;
+  /** `null` while the AI score is still pending. */
+  ai_score: number | null;
+  recruiter_score: number;
+};
+
+/** `POST /candidates/{id}/interview-rounds/{round_id}/recruiter-feedback`:
+ * the recruiter's score and reason recorded straight on a ROUND, for a round
+ * that has no score record yet (e.g. an Intake Call whose consistency check
+ * hasn't come back). Same shape as above, except `ai_score` is `null` while
+ * the AI score is still pending. */
+export type RecruiterRoundFeedbackResultView = {
+  score_id: string;
+  candidate_id: string;
+  ai_score: number | null;
   recruiter_score: number;
 };
 
@@ -139,6 +155,26 @@ const extendedApi = candidateApi.injectEndpoints({
       ],
     }),
 
+    // Feedback for a round that has no score record yet, addressed by the
+    // candidate's own round id (`CandidateInterviewRoundView.id`).
+    recordRecruiterRoundFeedback: build.mutation<
+      RecruiterRoundFeedbackResultView,
+      {
+        candidateId: string;
+        candidateInterviewRoundId: string;
+        body: RecordRecruiterRoundScoreRequest;
+      }
+    >({
+      query: ({ candidateId, candidateInterviewRoundId, body }) => ({
+        url: `/candidates/${candidateId}/interview-rounds/${candidateInterviewRoundId}/recruiter-feedback`,
+        method: 'POST',
+        body: { recruiter_score: body.recruiterScore, reason: body.reason },
+      }),
+      invalidatesTags: (_result, _error, { candidateId }) => [
+        { type: 'CandidateInterviewScores', id: candidateId },
+      ],
+    }),
+
     deleteRecruiterRoundScore: build.mutation<null, { candidateId: string; scoreId: string }>({
       query: ({ candidateId, scoreId }) => ({
         url: `/candidates/${candidateId}/interview-scores/${scoreId}/recruiter-score`,
@@ -178,11 +214,15 @@ const extendedApi = candidateApi.injectEndpoints({
   overrideExisting: false,
 });
 
+// For imperative fetches outside a component (the bulk Advance loop).
+export const scoringEndpoints = extendedApi.endpoints;
+
 export const {
   useRecordResumeReviewMutation,
   useDeleteResumeReviewMutation,
   useListCandidateInterviewScoresQuery,
   useRecordRecruiterRoundScoreMutation,
+  useRecordRecruiterRoundFeedbackMutation,
   useDeleteRecruiterRoundScoreMutation,
   useGetCandidateResumeDownloadQuery,
   useLazyGetCandidateResumeDownloadQuery,

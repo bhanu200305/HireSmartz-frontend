@@ -26,7 +26,7 @@ describe('addCustomerSchema — primary contact', () => {
     const result = addCustomerSchema.safeParse({ ...basePayload, companyName: '' });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.companyName?.[0]).toBe('Company name is required.');
+      expect(result.error.flatten().fieldErrors.companyName?.[0]).toBe('Company Name is required.');
     }
   });
 
@@ -49,8 +49,8 @@ describe('addCustomerSchema — conditional secondary contact', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       const fieldErrors = result.error.flatten().fieldErrors;
-      expect(fieldErrors.lastNameSecondary?.[0]).toBe('Last name is required.');
-      expect(fieldErrors.phoneSecondary?.[0]).toBe('Phone number is required.');
+      expect(fieldErrors.lastNameSecondary?.[0]).toBe('Last Name is required.');
+      expect(fieldErrors.phoneSecondary?.[0]).toBe('Phone Number is required.');
       expect(fieldErrors.countryCodeSecondary?.[0]).toBe('Country code is required.');
       expect(fieldErrors.emailSecondary?.[0]).toBe('Email is required.');
       expect(fieldErrors.roleIdSecondary?.[0]).toBe('Role is required.');

@@ -8,6 +8,7 @@ import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidat
 import { Button, Input, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import TemplatePreviewModal from '../../../shared/ui/TemplatePreviewModal';
+import { describeSkippedReason } from './messageSkipReasons';
 import type { CandidateView } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
 
 // New — candidate-service's own bulk email
@@ -125,7 +126,11 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
         open={open}
         onClose={onClose}
         title="Send Email"
-        subtitle={`${candidates.length} candidate${candidates.length === 1 ? '' : 's'} selected`}
+        subtitle={
+          candidates.length === 1
+            ? candidateDisplayName(candidates[0])
+            : `${candidates.length} candidates selected`
+        }
         modalProps={{ width: 520 }}
       >
         {results.length === 0 ? (
@@ -205,7 +210,7 @@ const BulkEmailCandidatesModal = ({ open, onClose, candidates }: BulkEmailCandid
                     <span className="text-green-600 shrink-0">Sent</span>
                   ) : (
                     <span className="text-red-500 text-right shrink-0">
-                      Skipped{r.reason ? `: ${r.reason}` : ''}
+                      Not sent: {describeSkippedReason(r.reason)}
                     </span>
                   )}
                 </div>

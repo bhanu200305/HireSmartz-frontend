@@ -111,6 +111,41 @@ export const canManageRoundInterviewers = (round: CandidateInterviewRoundView) =
   !round.interview_booking_id &&
   !isRoundConcluded(round);
 
+// The score row for one round. Normally linked by `candidate_interview_round_id`,
+// but candidate-service leaves that null on rows it couldn't resolve to a round
+// (scores recorded before its 2026-09-11 backfill, or a booking it never
+// planned) — those still carry the round's booking id, so fall back to that.
+// Only UNLINKED rows are eligible for the fallback, so a score already linked
+// to a different round can never be claimed by this one.
+// A round can hold several scores (one per attempt, after a reschedule) and
+// candidate-service returns them in no guaranteed order, so the LATEST
+// attempt (newest `created_at`) wins, never just the first match.
+const latestScore = (
+  matches: CandidateInterviewScoreView[]
+): CandidateInterviewScoreView | undefined =>
+  matches.reduce<CandidateInterviewScoreView | undefined>((latest, s) => {
+    if (!latest) return s;
+    const t = s.created_at ? Date.parse(s.created_at) : NaN;
+    const latestT = latest.created_at ? Date.parse(latest.created_at) : NaN;
+    if (Number.isNaN(t)) return latest;
+    return Number.isNaN(latestT) || t > latestT ? s : latest;
+  }, undefined);
+
+export const findRoundScore = (
+  scores: CandidateInterviewScoreView[],
+  round: CandidateInterviewRoundView
+): CandidateInterviewScoreView | undefined =>
+  latestScore(scores.filter((s) => s.candidate_interview_round_id === round.id)) ??
+  (round.interview_booking_id
+    ? latestScore(
+        scores.filter(
+          (s) =>
+            s.candidate_interview_round_id == null &&
+            s.interview_booking_id === round.interview_booking_id
+        )
+      )
+    : undefined);
+
 export const summarisePipeline = (
   rounds: CandidateInterviewRoundView[],
   scores: CandidateInterviewScoreView[],

@@ -55,7 +55,7 @@ const SetRecoveryEmailForm = ({ onPending }: { onPending: (email: string) => voi
             setEmail(e.target.value.replace(/\s/g, ''));
             if (emailError) setEmailError('');
           }}
-          placeholder="Recovery email address"
+          placeholder="Recovery Email Address"
           className="border-[var(--border)] px-4"
         />
         {emailError && <p className="mt-1 px-2 text-sm text-red-500">{emailError}</p>}

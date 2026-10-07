@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { ConfigProvider, Input, Rate, Select, Tabs, Tooltip } from 'antd';
@@ -12,18 +13,18 @@ import {
   LuThumbsDown,
   LuThumbsUp,
   LuUsers,
+  LuSkipForward,
   LuFileText,
   LuChevronLeft,
   LuChevronRight,
   LuListChecks,
   LuCalendarPlus,
-  LuSkipForward,
   LuCalendarCheck,
   LuUpload,
   LuCircleCheck,
 } from 'react-icons/lu';
 import { IoChatbubbleEllipses } from 'react-icons/io5';
-import { Button, Badge, InfoHint, showToast } from '../../shared';
+import { Button, Badge, InfoHint, Textarea, showToast } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
@@ -40,6 +41,7 @@ import {
   useListCandidateInterviewRoundsQuery,
   useListEligibleInterviewersQuery,
   useSetPanelInterviewersMutation,
+  useSendRoundInviteMutation,
   useSkipInterviewRoundMutation,
   type InterviewerView,
   type CandidateInterviewRoundView,
@@ -53,9 +55,12 @@ import {
 } from '../../../api/candidate-service/Candidates/scoring';
 import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candidates/notes';
 import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
-import { candidateStatusColor } from './candidateDisplay';
 import {
-  useCreateBookingMutation,
+  candidateDisplayStatusColor,
+  candidateDisplayStatusLabel,
+  resolveDisplayStatus,
+} from './candidateDisplay';
+import {
   useGetBookingQuery,
   useGetBookingHistoryQuery,
   useRequestCallRescheduleMutation,
@@ -66,6 +71,8 @@ import {
   useGetArtifactsQuery,
   useGetInterviewersCalendarStatusQuery,
   useUploadOfflineRecordingMutation,
+  toUploadableAudioFile,
+  AUDIO_UPLOAD_ACCEPT,
   useGetQuestionsAskedQuery,
   CONCLUDED_BOOKING_STATUSES,
   type InterviewApiError,
@@ -74,6 +81,11 @@ import {
   getCandidateErrorMessage,
   getCandidateErrorStatusCode,
 } from '../../../shared/utils/auth/candidateError.helpers';
+import AdvanceCandidateModal, {
+  type AdvanceFeedbackRequirement,
+} from './Modal/AdvanceCandidateModal';
+import InterviewSchedulingTab from './InterviewSchedulingTab';
+import NameMissingFlag from './NameMissingFlag';
 import ChangeCandidateStatusModal, {
   type ChangeCandidateStatusMode,
 } from './Modal/ChangeCandidateStatusModal';
@@ -92,23 +104,26 @@ import { RoundCandidateFeedback, RoundRecording, RoundTranscript } from './Round
 import PanelInterviewersModal from './Modal/PanelInterviewersModal';
 import {
   summarisePipeline,
+  findRoundScore,
   isResumeScored,
   hasRoundRecordings,
   canManageRoundInterviewers,
   HUMAN_SCORE_MAX,
   AI_SCORE_MAX,
-  interviewTypeForRound,
 } from './roundPipeline';
 import ResumeInlinePreview from './ResumeInlinePreview';
 import RoundCollapsibleSection from './RoundCollapsibleSection';
 import RoundDetailTabs from './RoundDetailTabs';
-import ScoringCriteriaModal from './Modal/ScoringCriteriaModal';
+import ScoringCriteriaModal, { type InterviewScoringRoundType } from './Modal/ScoringCriteriaModal';
 import { useGetJobScoringConfigQuery } from '../../../api/job-service/JobOpening/jobScoringConfig';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import CandidateMessageHistory from './CandidateMessageHistory';
 import { useCandidateNavigation } from './useCandidateNavigation';
+import { useJobDetailsHeaderSlot } from '../../../layouts/jobDetailsHeaderSlot';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
+import useEffectivePermissions from '../../../hooks/useEffectivePermissions';
+import { isAssignedToJob } from '../../../shared/utils/auth/getAccess';
 import {
   idsMatch,
   tenantJobTitleFormId,
@@ -185,7 +200,19 @@ const formatSectionKey = (key: string) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
-type TabKey = 'details' | 'assessment' | 'sms';
+/** A category's non-blank reason phrases. */
+const sectionReasons = (reason: string[] | null | undefined): string[] =>
+  (reason ?? []).map((r) => r.trim()).filter(Boolean);
+
+/** One phrase as-is, two as "a and b", three as "a, b, and c". */
+const joinReasons = (reasons: string[]): string =>
+  reasons.length <= 1
+    ? (reasons[0] ?? '')
+    : reasons.length === 2
+      ? `${reasons[0]} and ${reasons[1]}`
+      : `${reasons.slice(0, -1).join(', ')}, and ${reasons[reasons.length - 1]}`;
+
+type TabKey = 'details' | 'assessment' | 'scheduling' | 'sms';
 
 // Sidebar entry shown when the pipeline has no resume-stage round of its own
 // (e.g. rounds not loaded / plan without one), so the Resume Assessment card
@@ -236,6 +263,16 @@ const isAlreadySelectedError = (error: unknown): boolean =>
 
 const ALREADY_SELECTED_MESSAGE =
   'This candidate has already been selected, so the remaining rounds are closed for scheduling.';
+
+/** 409 `INTERVIEW_IN_PROGRESS` - requesting a reschedule while the candidate
+ * is on the live call right now (interview-service 2026-10-05). Not a
+ * failure: it works again once the call ends. Matched on the code, not the
+ * backend message, which currently says "cannot be skipped". */
+const isInterviewInProgressError = (error: unknown): boolean =>
+  (error as InterviewApiError)?.code === 'INTERVIEW_IN_PROGRESS';
+
+const INTERVIEW_IN_PROGRESS_RESCHEDULE_MESSAGE =
+  'The candidate is currently on the call. Try again once it ends.';
 
 /** The interviewer-picker `Select` — colored dropdown dots and selected-chip
  * backgrounds by calendar-connected status, identical UI/behavior whether
@@ -341,22 +378,33 @@ const CandidateDetails = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const candidateNav = useCandidateNavigation(candidateId, parsedJobId);
+  const headerSlot = useJobDetailsHeaderSlot();
   const userId = useSelector((state: RootState) => state.LoginSlice.userId);
+  const loginRole = useSelector((state: RootState) => state.LoginSlice.role);
+  const effectivePermissions = useEffectivePermissions();
 
-  // `?tab=` deep links. The Interview Scheduling tab was removed
-  // (2026-09-30) — its per-round scoring and notes live on Assessment and
-  // the header — so its keys (`scheduling`, legacy `summary` from
-  // InterviewLiveKit.tsx's "Complete Full Feedback", legacy `3` from
-  // ActivityFeed.tsx) all land on Assessment. Read once via useState's lazy
-  // initializer so the page never flashes the wrong tab.
+  // `?tab=` deep links. The Interview Scheduling tab is back (invite,
+  // re-invite, reschedule and skip live there); the legacy `summary` (from
+  // InterviewLiveKit.tsx's "Complete Full Feedback") and `3` (from
+  // ActivityFeed.tsx) keys still land on Assessment. Read once via
+  // useState's lazy initializer so the page never flashes the wrong tab.
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     const tabParam = searchParams.get('tab');
-    const validTabs: TabKey[] = ['details', 'assessment', 'sms'];
+    const validTabs: TabKey[] = ['details', 'assessment', 'scheduling', 'sms'];
     if (tabParam && validTabs.includes(tabParam as TabKey)) return tabParam as TabKey;
     if (tabParam === 'resume' || searchParams.get('edit') === 'true') return 'details';
     return 'assessment';
   });
   const [statusModal, setStatusModal] = useState<ChangeCandidateStatusMode | null>(null);
+  const [isAdvanceOpen, setIsAdvanceOpen] = useState(false);
+  // The Hiring Panel round the candidate was just advanced into (pop-up).
+  const [panelPromptRound, setPanelPromptRound] = useState<CandidateInterviewRoundView | null>(
+    null
+  );
+  // The round the last successful Advance completed. Advance stays disabled
+  // while that round is still the current one (the refreshed list has not
+  // caught up yet), so it can't be clicked twice for the same round.
+  const [advancedFromRoundId, setAdvancedFromRoundId] = useState<string | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [isSmsOpen, setIsSmsOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
@@ -366,22 +414,24 @@ const CandidateDetails = () => {
   const [isSkipOpen, setIsSkipOpen] = useState(false);
   const [isAssignJobOpen, setIsAssignJobOpen] = useState(false);
   const [isAiCommentExpanded, setIsAiCommentExpanded] = useState(false);
+  // The interview round Summary's own expand state (separate from the resume stage's).
+  const [isRoundSummaryExpanded, setIsRoundSummaryExpanded] = useState(false);
   const [skipReason, setSkipReason] = useState('');
-  const [skipFeedback, setSkipFeedback] = useState('');
-  // Field-level server errors (content guardrail) and the interviewer-feedback gate.
+  // Content-guardrail message from the server, shown under the feedback box.
   const [skipReasonError, setSkipReasonError] = useState<string | null>(null);
-  const [skipFeedbackError, setSkipFeedbackError] = useState<string | null>(null);
-  const [skipNeedsOverride, setSkipNeedsOverride] = useState(false);
   const [skipInterviewRound, { isLoading: isSkipping }] = useSkipInterviewRoundMutation();
   // "Scoring Criteria" popup (old app's per-round button): the resume
   // round's weighted breakdown, or the interview-scoring explainer.
   const [scoringCriteriaFor, setScoringCriteriaFor] = useState<{
     kind: 'resume' | 'interview' | 'intake';
     subtitle?: string;
+    // Interview rounds only: ai-service scores each round type differently.
+    interviewRoundType?: InterviewScoringRoundType;
   } | null>(null);
-  // The job's own resume weights (same source the old app read), fetched
-  // only while the resume popup is open; the modal falls back to its
-  // default breakdown if they can't be loaded.
+  // The job's own resume / interview weights (job override, else the
+  // organization's, else the platform default — the same weights ai-service
+  // scores with), fetched only while a resume or interview popup is open;
+  // the modal falls back to the platform defaults if they can't be loaded.
   // The job's round plan — the only place a round's variant (AI Video:
   // soundwave/avatar, Hiring Panel: online/offline) lives; the candidate's
   // round view doesn't carry it. Matched by round_id + sequence, falling back
@@ -401,7 +451,7 @@ const CandidateDetails = () => {
     return (exact ?? (sameType.length === 1 ? sameType[0] : undefined))?.variant ?? null;
   };
   const { data: jobScoringConfig } = useGetJobScoringConfigQuery(parsedJobId ?? '', {
-    skip: !parsedJobId || scoringCriteriaFor?.kind !== 'resume',
+    skip: !parsedJobId || !scoringCriteriaFor || scoringCriteriaFor.kind === 'intake',
   });
   const [isResumeViewerOpen, setIsResumeViewerOpen] = useState(false);
   // Candidate Details tab's edit mode. The listing's Edit action lands here
@@ -456,7 +506,7 @@ const CandidateDetails = () => {
   // any) is about to be replaced before they commit to a new call.
   const [isRescheduleConfirmOpen, setIsRescheduleConfirmOpen] = useState(false);
   // Which round the confirm modal/mutation actually act on — deliberately
-  // separate from `selectedRound`. The Call Outcome card's own button sets
+  // separate from `selectedRound`. The round header's Re-invite button sets
   // this to `selectedRound` (same round already open), but the reschedule
   // per-card "Request reschedule" button needs to trigger the exact same
   // flow is shared by every entry point.
@@ -471,7 +521,7 @@ const CandidateDetails = () => {
   const isRescheduleRoundPanel = rescheduleRound?.round_type === 'PANEL';
   const [rescheduleStep, setRescheduleStep] = useState<'choice' | 'picker'>('choice');
   // The same keep-roster / choose-different-interviewers modals serve both the
-  // reschedule request and a PANEL reinvite (expired link): only the endpoint
+  // reschedule request and a PANEL reinvite (unused link): only the endpoint
   // and the wording differ.
   const [rescheduleMode, setRescheduleMode] = useState<'reschedule' | 'reinvite'>('reschedule');
   const isReinviteMode = rescheduleMode === 'reinvite';
@@ -612,6 +662,11 @@ const CandidateDetails = () => {
     };
   }, [pickedRound, liveRound]);
 
+  // A different round starts with its Summary collapsed.
+  useEffect(() => {
+    setIsRoundSummaryExpanded(false);
+  }, [selectedRound?.id]);
+
   // Assessment tab always has something selected in its sidebar, like the
   // old app (which opened on Resume Screening): the first round, or the
   // Resume Assessment fallback entry when there's no resume-stage round.
@@ -639,6 +694,12 @@ const CandidateDetails = () => {
   ]);
   const { data: scores = [] } = useListCandidateInterviewScoresQuery(candidateId ?? '', {
     skip: !candidateId,
+    // AI round scores land via an async event chain (ai-service →
+    // candidate-service), so poll like the candidate/rounds queries —
+    // otherwise a score that arrives while the page is open never unlocks
+    // the round's Feedback tab until a manual reload.
+    pollingInterval: 20_000,
+    skipPollingIfUnfocused: true,
   });
   // Same args as CandidateRecruiterNotesPanel's own list query (limit 100),
   // so both share one cached request. Used for the header Notes badge count
@@ -654,7 +715,7 @@ const CandidateDetails = () => {
     useLazyGetCandidateResumeDownloadQuery();
   const [resendResumeUploadLink, { isLoading: isResendingUploadLink }] =
     useResendResumeUploadLinkMutation();
-  const [createBooking] = useCreateBookingMutation();
+  const [sendRoundInvite] = useSendRoundInviteMutation();
   // `round_type` first (candidate-service's real classification), round
   // name only for an unclassifiable round — same rule as
   // `interviewTypeForRound`.
@@ -859,14 +920,19 @@ const CandidateDetails = () => {
     // failed upload still fires a change event.
     e.target.value = '';
     if (!file || !selectedRound?.interview_booking_id) return;
-    if (!file.type.startsWith('audio/')) {
+    const audioFile = toUploadableAudioFile(file);
+    if (!audioFile) {
       showToast({ message: 'Please choose an audio file.', type: 'error' });
+      return;
+    }
+    if (audioFile.size === 0) {
+      showToast({ message: 'This audio file is empty.', type: 'error' });
       return;
     }
     try {
       await uploadOfflineRecording({
         bookingId: selectedRound.interview_booking_id,
-        file,
+        file: audioFile,
       }).unwrap();
       showToast({ message: 'Recording uploaded.', type: 'success' });
     } catch (error) {
@@ -920,6 +986,23 @@ const CandidateDetails = () => {
     }
   };
 
+  // What the recruiter is told before a Re-invite / Reschedule goes out.
+  const REINVITE_COPY =
+    'This sends the candidate a new invitation link. Their current invitation is replaced. Reinvites are limited to 3 per round.';
+  const rescheduleCopy = (round: CandidateInterviewRoundView | null) => {
+    const status = round ? normaliseRoundStatus(round.status) : '';
+    const noShow = status === 'no_show' || status === 'interviewer_no_show';
+    const base = noShow
+      ? 'The candidate did not attend. This creates a new attempt and emails them a link valid for 24 hours.'
+      : 'This creates a new attempt and emails the candidate a link valid for 24 hours.';
+    // A panel round still booked for the future also frees its calendar slot.
+    const calendar =
+      round?.round_type === 'PANEL' && status === 'scheduled'
+        ? ' The current calendar event will be cancelled.'
+        : '';
+    return base + calendar;
+  };
+
   const closeRescheduleFlow = () => {
     setIsRescheduleConfirmOpen(false);
     setRescheduleRound(null);
@@ -963,6 +1046,8 @@ const CandidateDetails = () => {
       if (isAlreadySelectedError(e)) {
         setBookingsClosed(true);
         showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
+      } else if (isInterviewInProgressError(e)) {
+        showToast({ message: INTERVIEW_IN_PROGRESS_RESCHEDULE_MESSAGE, type: 'info' });
       } else {
         showToast({
           message: getInterviewErrorMessage(e, 'Could not request a reschedule'),
@@ -974,9 +1059,10 @@ const CandidateDetails = () => {
     }
   };
 
-  // Reinvite for a booking whose scheduling link ran out unused
-  // (`BookingView.link_expired`): POST /bookings/{id}/reinvite, capped at
-  // MAX_REINVITES. PANEL carries the original roster forward.
+  // Reinvite for a booking whose scheduling link hasn't been used yet,
+  // expired or not (no longer gated on expiry, interview-service
+  // 2026-10-05): POST /bookings/{id}/reinvite, capped at the booking's `max_reinvite_count` (fallback MAX_REINVITES).
+  // PANEL carries the original roster forward.
   const runReinvite = async (bookingId: string | null | undefined, interviewerIds?: string[]) => {
     if (!bookingId) return;
     try {
@@ -995,14 +1081,19 @@ const CandidateDetails = () => {
         showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
       } else if (code === 'MAX_REINVITES_EXCEEDED') {
         showToast({
-          message: `The maximum of ${MAX_REINVITES} reinvites has been used for this round.`,
+          message: `The maximum of ${selectedBooking?.max_reinvite_count ?? MAX_REINVITES} reinvites has been used for this round.`,
           type: 'error',
         });
         // Screen was out of date: reload the round's state.
         void refetchSelectedBooking();
         void refetchRounds();
       } else if (code === 'REINVITE_NOT_ELIGIBLE') {
-        showToast({ message: 'The scheduling link has not expired yet.', type: 'error' });
+        // Covers several cases (link already used, booking already scheduled,
+        // cancelled for another reason), so show the backend's own message.
+        showToast({
+          message: getInterviewErrorMessage(e, 'This booking cannot be reinvited right now.'),
+          type: 'error',
+        });
         void refetchSelectedBooking();
         void refetchRounds();
       } else {
@@ -1052,26 +1143,24 @@ const CandidateDetails = () => {
 
   const resetSkipForm = () => {
     setSkipReason('');
-    setSkipFeedback('');
     setSkipReasonError(null);
-    setSkipFeedbackError(null);
-    setSkipNeedsOverride(false);
   };
 
   const handleSkipRound = async () => {
-    if (!candidateId || !skipReason.trim() || !skipFeedback.trim()) return;
+    if (!candidateId || !skipReason.trim()) return;
     setSkipReasonError(null);
-    setSkipFeedbackError(null);
     try {
-      // `reason` and `feedback` go as separate fields (feedback is stored and
-      // returned separately as `skip_feedback`). `skipNeedsOverride` is set
-      // after the backend answered 409 INTERVIEWER_FEEDBACK_PENDING and the
-      // recruiter chose to continue anyway.
+      // Skip needs only a reason (the one box). No feedback is asked for.
       const result = await skipInterviewRound({
         candidateId,
         reason: skipReason.trim(),
-        feedback: skipFeedback.trim(),
-        overridePendingInterviewerFeedback: skipNeedsOverride,
+        // The round this screen shows as current: a stale screen is refused
+        // (ROUND_ALREADY_ADVANCED) instead of skipping the wrong round.
+        expectedRoundId: currentRound?.id ?? null,
+        // Skipping asks for a reason only; feedback is for advancing. The
+        // backend's interviewer-feedback gate is for rounds that were run:
+        // a deliberate skip, with its reason on record, passes it.
+        overridePendingInterviewerFeedback: true,
       }).unwrap();
       showToast({
         message: result.skipped_round
@@ -1086,20 +1175,21 @@ const CandidateDetails = () => {
       const serverMessage = getCandidateErrorMessage(e, '');
       // candidate-service's error body carries no machine code (see
       // candidateError.helpers), so the cases are told apart by status + message.
-      if (
-        status === 409 &&
-        /interviewer'?s? feedback|override_pending_interviewer_feedback/i.test(serverMessage)
-      ) {
-        // The interviewer hasn't submitted feedback for this round yet: ask
-        // once, then the same button sends the override.
-        setSkipNeedsOverride(true);
+      if (status === 409 && /already moved on/i.test(serverMessage)) {
+        // ROUND_ALREADY_ADVANCED: nothing was skipped. Bring the page up to date.
+        showToast({
+          message: 'This candidate has already moved on from that round. The page was refreshed.',
+          type: 'info',
+        });
+        setIsSkipOpen(false);
+        resetSkipForm();
+        void refetchRounds();
+        refetchCandidate();
         return;
       }
       if (status === 422 && /guidelines|content/i.test(serverMessage)) {
-        // Show the content-check message beside the field it names.
-        const body = JSON.stringify((e as { data?: unknown })?.data ?? '').toLowerCase();
-        if (body.includes('feedback')) setSkipFeedbackError(serverMessage);
-        else setSkipReasonError(serverMessage);
+        // Show the content-check message under the reason box.
+        setSkipReasonError(serverMessage);
         return;
       }
       let message = serverMessage || 'Could not skip round';
@@ -1138,7 +1228,7 @@ const CandidateDetails = () => {
   };
 
   const handleCreateBooking = async (): Promise<boolean> => {
-    if (!candidateId || !parsedJobId || !selectedRound?.round_id || bookingsClosed) return false;
+    if (!candidateId || !selectedRound || bookingsClosed) return false;
     // Belt-and-suspenders alongside the button's own `disabled` — a PANEL
     // booking with no roster falls back to interview-service auto-composing
     // it from whichever calendar-connected interviewers are in the pool,
@@ -1147,7 +1237,6 @@ const CandidateDetails = () => {
     if (isPanelRound && selectedInterviewerIds.length === 0) return false;
 
     setIsCreatingBooking(true);
-    const interviewType = interviewTypeForRound(selectedRound);
     try {
       // Saved to the round FIRST — same data the Set Interviewers
       // Interviewers picker writes — so the selection is a real, visible
@@ -1160,70 +1249,69 @@ const CandidateDetails = () => {
           interviewerIds: selectedInterviewerIds,
         }).unwrap();
       }
-      const booking = await createBooking({
-        body: {
-          candidate_id: candidateId,
-          job_id: parsedJobId,
-          round_id: selectedRound.round_id,
-          sequence_no: selectedRound.sequence ?? 1,
-          interview_type: interviewType,
-          interviewer_id: null,
-          interviewer_ids: isPanelRound ? selectedInterviewerIds : null,
-          immediate: false,
-          // Without this, interview-service has no way to report this
-          // booking's status/score back to the right round — it silently
-          // never updates, even once the call completes.
-          candidate_interview_round_id: selectedRound.id,
-        },
-      }).unwrap();
-      setSelectedRound({
-        ...selectedRound,
-        interview_booking_id: booking.id,
-        interviewer_ids: isPanelRound ? selectedInterviewerIds : selectedRound.interviewer_ids,
+      // The candidate-service Send Invite (`POST /candidates/{id}/send-invite`),
+      // the recruiter's "go ahead and schedule" for the round that is due: it
+      // stamps the invite on the round and announces it to interview-service,
+      // which creates the booking and emails the candidate (with the
+      // call-now option for recruiter-uploaded candidates). A PANEL round's
+      // saved interviewers ride along on the same publish.
+      const sent = await sendRoundInvite(candidateId).unwrap();
+      void refetchRounds();
+      // A panel round's candidate mail goes out only once every selected
+      // interviewer has a connected calendar: say which are still missing.
+      const missingInterviewers = isPanelRound
+        ? selectedInterviewerIds
+            .filter((id) => interviewerCalendarConnectedById.get(id) === false)
+            .map(
+              (id) =>
+                (eligibleInterviewers ?? []).find((i) => i.id === id)?.display_name ?? 'Interviewer'
+            )
+        : [];
+      showToast({
+        message:
+          missingInterviewers.length > 0
+            ? `Invitation created. The candidate will be emailed once all interviewers have connected their calendars (waiting on ${missingInterviewers.join(', ')}).`
+            : sent.invite_sent
+              ? 'Invitation sent to the candidate.'
+              : 'An invitation for this round was just sent.',
+        type: missingInterviewers.length > 0 || !sent.invite_sent ? 'info' : 'success',
       });
-      // PANEL only — interview-service still creates the booking even when
-      // part of the roster hasn't connected their calendar yet, but the
-      // candidate's scheduling email doesn't go out until everyone has.
-      // Surface that instead of the generic success toast so it's not
-      // mistaken for "fully scheduled". Prefer the backend's own
-      // `envelope_message` (already phrased for display) over building one
-      // from the names ourselves.
-      const pendingNames = booking.pending_calendar_connect_interviewer_names;
-      if (pendingNames && pendingNames.length > 0) {
-        showToast({
-          message:
-            booking.envelope_message ||
-            `Booking created — waiting on ${pendingNames.join(', ')} to connect their calendar before the candidate is scheduled.`,
-          type: 'success',
-        });
-      } else {
-        showToast({ message: 'Booking created successfully.', type: 'success' });
-      }
       return true;
     } catch (error) {
-      // interview-service's own PREVIOUS_ROUND_NOT_CONCLUDED message is
-      // log-style (round numbers, raw candidate/job UUIDs) — not something to
-      // put in a toast, so this one case gets a hand-written message instead
-      // of the backend's own wording. `error.code`/`error.message` directly
-      // — this is an `InterviewApiError` (see getInterviewErrorMessage's own
-      // comment), not the `{status, data}` shape `getPlatformErrorCode`
-      // reads, which silently never matched here.
+      // candidate-service's own refusals (409/422: the resume stage has no
+      // invite, no round is awaiting one, the round is already booked) carry a
+      // readable message; the 'already selected' case still closes bookings.
       if (isAlreadySelectedError(error)) {
         setBookingsClosed(true);
         showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
         return false;
       }
-      const message =
-        (error as InterviewApiError)?.code === 'PREVIOUS_ROUND_NOT_CONCLUDED'
-          ? 'Please complete the previous round before scheduling this one.'
-          : getInterviewErrorMessage(error, 'Could not create booking.');
-      showToast({ message, type: 'error' });
+      showToast({
+        message: getCandidateErrorMessage(error, 'Could not send the invitation.'),
+        type: 'error',
+      });
+      void refetchRounds();
       return false;
     } finally {
       setIsCreatingBooking(false);
     }
   };
 
+  // SMS needs a phone number AND the candidate's SMS consent (candidate-service
+  // refuses the send otherwise, 422 CANDIDATE_HAS_NO_SMS_CONSENT). `undefined`
+  // (field not returned) is not treated as "no consent".
+  const smsBlockedReason = !candidate?.contact_no
+    ? 'No phone number on file'
+    : candidate.sms_consent_at === null
+      ? 'Candidate has not given SMS consent'
+      : null;
+
+  // The header pill shows the same four top-level states as the candidate list
+  // (In Process / Selected / Rejected / Withdrawn). The raw status label can
+  // sit on a stale intermediate value, e.g. "Consistency Check — Needs Review",
+  // which the backend stamps when the Intake Call check returns and which no
+  // later advance replaces.
+  const displayStatus = candidate ? resolveDisplayStatus(candidate) : 'in_process';
   const statusUpper = (candidate?.status_code ?? '').toLowerCase();
   // Matches master.ts's own documented funnel comment — every code marked
   // "(terminal)" there. `withdrawn` was missing here (added 2026-09-14): a
@@ -1244,9 +1332,8 @@ const CandidateDetails = () => {
   // duplicate that check inline via a `round_name` string match instead of
   // reusing it, which was also the older, fragile version of the check
   // (see that helper's own doc comment for why `round_type` replaced it).
-  // Reusing the one shared definition means this file's round detail and
-  // `planHasIntakeCall`/`currentRoundInIntakePair` below can never disagree
-  // about which round is the Intake Call.
+  // Reusing the one shared definition means this file and the sidebar can
+  // never disagree about which round is the Intake Call.
   const selectedRoundIsIntakeCall = Boolean(selectedRound && isIntakeCallRound(selectedRound));
   // Call-intent card (added 2026-09-13, extended to AI Video 2026-09-14)
   // applies to all three voice/video rounds interview-service derives an
@@ -1263,9 +1350,7 @@ const CandidateDetails = () => {
   // round detail can show this round's own AI Assessment card without
   // duplicating that table's chart/status branching, which this card
   // doesn't need.
-  const selectedRoundScore = selectedRound
-    ? scores.find((s) => s.candidate_interview_round_id === selectedRound.id)
-    : undefined;
+  const selectedRoundScore = selectedRound ? findRoundScore(scores, selectedRound) : undefined;
 
   // ADVANCE completes whichever round `resolveCurrentRound` says the
   // candidate is on right now and marks the next one due — it does not
@@ -1289,6 +1374,44 @@ const CandidateDetails = () => {
   // plan hasn't loaded/has no rounds yet, which would otherwise trivially
   // satisfy "nothing outstanding".
   const allRoundsCompleted = rounds.length > 0 && currentRound === null;
+  const isAdvanceLocked = currentRound !== null && currentRound.id === advancedFromRoundId;
+  const nextRound = currentRound
+    ? (rounds[rounds.findIndex((r) => r.id === currentRound.id) + 1] ?? null)
+    : null;
+  // The next round can be invited together with Advance, except a PANEL round
+  // (its interviewers are picked when inviting) and Identity Verification.
+  const canAutoInviteNextRound =
+    nextRound !== null &&
+    nextRound.stage_type === 'interview' &&
+    nextRound.round_type !== 'PANEL' &&
+    !(nextRound.round_type == null && /panel/i.test(nextRound.round_name ?? '')) &&
+    !isIdentityVerificationRound(nextRound);
+  // The round being completed needs the recruiter's feedback on file first.
+  const currentRoundScore = currentRound ? findRoundScore(scores, currentRound) : undefined;
+  // Both a star rating and written feedback are required; whatever is already
+  // on file is prefilled so only the missing part has to be added.
+  const advanceFeedbackRequirement: AdvanceFeedbackRequirement = !currentRound
+    ? null
+    : isResumeStageRound(currentRound)
+      ? candidate?.resume_rating && candidate.resume_review_comment?.trim()
+        ? null
+        : {
+            kind: 'resume',
+            rating: candidate?.resume_rating ?? 0,
+            comment: candidate?.resume_review_comment ?? '',
+          }
+      : {
+          // Interview rounds: the backend refuses to close one until its
+          // interviewer's feedback is recorded (409 INTERVIEWER_FEEDBACK_PENDING),
+          // and takes it with the advance itself. The Intake Call is exempt
+          // on the backend, so no recommendation is sent for it. Stars are
+          // saved on the round's score record when it has one.
+          kind: 'round',
+          scoreId: currentRoundScore?.id ?? null,
+          rating: currentRoundScore?.recruiter_score ?? 0,
+          comment: currentRoundScore?.recruiter_score_reason ?? '',
+          withRecommendation: !isIntakeCallRound(currentRound),
+        };
   // MARK AS SELECTED also appears once the candidate is ON their last round
   // (2026-09-29 product decision) — no need to ADVANCE past it first.
   // `rounds` is already in walk order (orderRoundsForFlow), so "last" is
@@ -1296,22 +1419,55 @@ const CandidateDetails = () => {
   const isOnLastRound =
     currentRound !== null && rounds.length > 0 && currentRound.id === rounds[rounds.length - 1].id;
 
-  // Resume Review and the Intake Call are one unit at the head of any pipeline
-  // that has an Intake Call round: the AI scores the resume, then the call's
-  // transcript is checked against that resume for consistency. Neither round
-  // advances on its own — ADVANCE / REJECT / MARK SELECTED stay hidden until
-  // the consistency score lands (candidate-service stamps
-  // `resume_consistency_review` at the same time). Once it's in, the normal
-  // actions come back. Jobs with no Intake Call round are unaffected.
-  const planHasIntakeCall = rounds.some(isIntakeCallRound);
-  const consistencyScorePending =
-    candidate?.consistency_score === null || candidate?.consistency_score === undefined;
-  const currentRoundInIntakePair =
-    currentRound !== null && (isResumeStageRound(currentRound) || isIntakeCallRound(currentRound));
-  const actionsLockedForIntakePair =
-    planHasIntakeCall && currentRoundInIntakePair && consistencyScorePending;
-  const intakeLockReason =
-    'Unlocks once the Intake Call consistency check completes (comparing the call transcript against the resume).';
+  // The header's quick action follows the round the candidate is on:
+  //   advance - the round is finished (or it is the resume stage): the
+  //             manual Advance, with feedback and the invite checkbox;
+  //   skip    - an interview round hasn't finished: the button becomes Skip
+  //             and turns back into Advance once the round concludes;
+  //   last    - the final round: Advance is greyed out, the candidate is
+  //             marked as selected or rejected instead.
+  // Only the job's hiring managers and recruiters may act (a job with none
+  // listed is left open so nobody is locked out).
+  // A candidate who gave the Intake Call first uploads the resume afterwards
+  // through an emailed link; until it arrives the resume stage can't be
+  // advanced (resume is mandatory and there is nothing to rate yet).
+  const awaitingResume =
+    currentRound !== null && isResumeStageRound(currentRound) && !candidate?.resume_s3_key;
+  const quickAction: 'advance' | 'skip' | 'last' | 'none' | 'awaiting_resume' = !currentRound
+    ? 'none'
+    : awaitingResume
+      ? 'awaiting_resume'
+      : isOnLastRound
+        ? 'last'
+        : advanceDisabled
+          ? 'skip'
+          : 'advance';
+  // The app's own "who may act on this job" rule (`isAssignedToJob`): the
+  // job's hiring managers, recruiters and creator, plus the roles above them
+  // (company admin, owner, anyone holding job-delete), who can do everything
+  // in the pipeline. Left open until the job has loaded.
+  const jobDetails = jobOpeningData?.details;
+  const isJobInCharge = !jobOpeningData
+    ? true
+    : isAssignedToJob(
+        {
+          hiringManagerIds: jobDetails?.hiring_manager_ids,
+          recruiterIds: jobDetails?.recruiter_ids,
+          createdById: jobDetails?.created_by,
+        },
+        userId,
+        loginRole,
+        effectivePermissions
+      );
+  const NOT_IN_CHARGE_MESSAGE =
+    'Only the hiring manager or a recruiter on this job, or a company admin, can advance or skip a candidate.';
+  const LAST_ROUND_MESSAGE =
+    'This is the last round. Mark the candidate as selected or reject them.';
+
+  // The Intake Call is optional (job-service, 2026-10-05) and its
+  // consistency check no longer gates anything: ADVANCE / REJECT / MARK
+  // SELECTED / SKIP stay live on the Resume and Intake Call rounds whether or
+  // not a consistency score has landed.
 
   // Header card's "Scored" table — one row per real round, per-round
   // sources (resume stage: AI resume score + the
@@ -1346,16 +1502,21 @@ const CandidateDetails = () => {
         };
       }
       if (isIntakeCallRound(round)) {
+        // candidate-service now also records the consistency check as this
+        // round's score row, which is what the recruiter's score attaches
+        // to. No row yet (older candidates, or a check still pending): no
+        // human counterpart, same as before.
+        const intakeScore = findRoundScore(scores, round);
         return {
           key: round.id,
           label: roundLabel(round),
           ai: candidate?.consistency_score ?? null,
-          human: undefined,
+          human: intakeScore ? (intakeScore.recruiter_score ?? null) : undefined,
           aiHint: 'Resume consistency score (call transcript vs. resume)',
           excludeFromOverall: true,
         };
       }
-      const roundScore = scores.find((s) => s.candidate_interview_round_id === round.id);
+      const roundScore = findRoundScore(scores, round);
       return {
         key: round.id,
         label: roundLabel(round),
@@ -1407,16 +1568,21 @@ const CandidateDetails = () => {
   const resumeMatchMetrics = (jobScoringConfig?.data?.resumeConfig?.weights ?? []).map((w) => ({
     label: RESUME_CRITERIA_LABELS[w.categoryName] ?? w.displayName ?? w.categoryName,
     max: w.weightPercentage,
+    description: w.description,
   }));
 
   // Icon-only (label on hover) so it doesn't crowd each round's header.
-  const scoringCriteriaButton = (kind: 'resume' | 'interview' | 'intake', subtitle?: string) => (
+  const scoringCriteriaButton = (
+    kind: 'resume' | 'interview' | 'intake',
+    subtitle?: string,
+    interviewRoundType?: InterviewScoringRoundType
+  ) => (
     <Tooltip title="Scoring Criteria">
       <button
         type="button"
         aria-label="Scoring Criteria"
         className={`${candidateHeaderIconCircle} shrink-0`}
-        onClick={() => setScoringCriteriaFor({ kind, subtitle })}
+        onClick={() => setScoringCriteriaFor({ kind, subtitle, interviewRoundType })}
       >
         <LuListChecks size={18} strokeWidth={2} aria-hidden />
       </button>
@@ -1444,9 +1610,27 @@ const CandidateDetails = () => {
   const renderResumeAssessment = () => (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm">
-          Resume Score is <b>{candidate?.resume_score ?? 0}</b>/{AI_SCORE_MAX}
-        </p>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <p>
+            Resume Score is <b>{candidate?.resume_score ?? 0}</b>/{AI_SCORE_MAX}
+          </p>
+          {/* Only for a pipeline with the (optional) Intake Call round: the
+              call transcript checked against this resume. */}
+          {rounds.some(isIntakeCallRound) && (
+            <Tooltip title={candidate?.consistency_score_reason || undefined}>
+              <p className="text-gray-600">
+                Consistency (Intake Call):{' '}
+                {candidate?.consistency_score != null ? (
+                  <>
+                    <b className="text-gray-900">{candidate.consistency_score}</b>/{AI_SCORE_MAX}
+                  </>
+                ) : (
+                  <span className="text-gray-400">Pending</span>
+                )}
+              </p>
+            </Tooltip>
+          )}
+        </div>
         <Button
           className="cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
           onClick={() => setScoringCriteriaFor({ kind: 'resume' })}
@@ -1532,18 +1716,6 @@ const CandidateDetails = () => {
           </div>
         )}
 
-        {(candidate?.scoring_reason || (candidate?.scoring_reason_bullets ?? []).length > 0) && (
-          <div>
-            <h2 className="mb-1 text-base font-medium">AI Comments</h2>
-            <AiCommentsBox
-              bullets={candidate?.scoring_reason_bullets ?? null}
-              text={candidate?.scoring_reason ?? ''}
-              expanded={isAiCommentExpanded}
-              onToggle={() => setIsAiCommentExpanded((v) => !v)}
-            />
-          </div>
-        )}
-
         <div>
           <h2 className="mb-1 text-base font-medium">Resume Rating</h2>
           {/* Clickable stars; empty stars in a visible grey (antd's
@@ -1592,6 +1764,18 @@ const CandidateDetails = () => {
             </div>
           )}
         </div>
+
+        {(candidate?.scoring_reason || (candidate?.scoring_reason_bullets ?? []).length > 0) && (
+          <div>
+            <h2 className="mb-1 text-base font-medium">AI Comments</h2>
+            <AiCommentsBox
+              bullets={candidate?.scoring_reason_bullets ?? null}
+              text={candidate?.scoring_reason ?? ''}
+              expanded={isAiCommentExpanded}
+              onToggle={() => setIsAiCommentExpanded((v) => !v)}
+            />
+          </div>
+        )}
       </ResumeSplitLayout>
     </div>
   );
@@ -1604,11 +1788,12 @@ const CandidateDetails = () => {
           <p className="mt-1 text-gray-700">
             <span className="font-medium">Reason:</span> {selectedRound.skip_reason}
           </p>
-          {selectedRound.skip_feedback && (
-            <p className="mt-1 whitespace-pre-line text-gray-700">
-              <span className="font-medium">Feedback:</span> {selectedRound.skip_feedback}
-            </p>
-          )}
+          {selectedRound.skip_feedback &&
+            selectedRound.skip_feedback !== selectedRound.skip_reason && (
+              <p className="mt-1 whitespace-pre-line text-gray-700">
+                <span className="font-medium">Feedback:</span> {selectedRound.skip_feedback}
+              </p>
+            )}
         </div>
       )}
       {isResumeStage ? (
@@ -1681,7 +1866,7 @@ const CandidateDetails = () => {
                     <input
                       ref={audioFileInputRef}
                       type="file"
-                      accept="audio/*"
+                      accept={AUDIO_UPLOAD_ACCEPT}
                       className="hidden"
                       onChange={(e) => void handleAudioFileSelected(e)}
                     />
@@ -1712,131 +1897,16 @@ const CandidateDetails = () => {
                     </Tooltip>
                   </>
                 )}
-              {(() => {
-                // Re-invite (a booking whose attempt has concluded) goes
-                // through the same reschedule flow interview-service's
-                // request-reschedule endpoint allows (voice calls once a
-                // `call_intent` exists, PANEL once the booking concluded).
-                // Disabled, with the reason on hover, when it doesn't apply.
-                const hasBooking = Boolean(selectedRound.interview_booking_id);
-                const canReinvite =
-                  hasBooking &&
-                  ((selectedRoundIsVoiceCall && selectedBooking?.call_intent != null) ||
-                    (isPanelRound &&
-                      selectedBooking != null &&
-                      CONCLUDED_BOOKING_STATUSES.includes(selectedBooking.status)));
-                const isBusy =
-                  isCreatingBooking ||
-                  isSavingInterviewers ||
-                  isRequestingReschedule ||
-                  isReinviting;
-                // Link ran out unused: the new Reinvite action, with its
-                // "n of MAX_REINVITES used" counter, disabled at the cap.
-                const linkExpired = hasBooking && selectedBooking?.link_expired === true;
-                const reinvitesUsed = selectedBooking?.reinvite_count ?? 0;
-                const reinvitesExhausted = reinvitesUsed >= MAX_REINVITES;
-                // No booking for this round yet: the same button reads
-                // "Send Invite" and opens the first-invite modal (POST /bookings).
-                const noBooking = !hasBooking;
-                const reinviteTooltip = bookingsClosed
-                  ? ALREADY_SELECTED_MESSAGE
-                  : noBooking
-                    ? 'Send the first interview invite'
-                    : linkExpired
-                      ? reinvitesExhausted
-                        ? `All ${MAX_REINVITES} reinvites used`
-                        : `Send reinvite (${reinvitesUsed} of ${MAX_REINVITES} reinvites used)`
-                      : 'Request a reschedule for this concluded attempt';
-                // Neither a first invite nor an expired link: a live,
-                // scheduled or completed booking gets no Send Invite /
-                // Reinvite button. The reschedule action stays only for a
-                // concluded attempt.
-                if (!noBooking && !linkExpired && !canReinvite) return null;
-                return (
-                  <>
-                    {linkExpired && (
-                      <span className="whitespace-nowrap text-xs text-gray-500">
-                        {reinvitesUsed} of {MAX_REINVITES} reinvites used
-                      </span>
-                    )}
-                    <Tooltip title={reinviteTooltip}>
-                      <span className="inline-flex">
-                        <button
-                          type="button"
-                          className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={
-                            isBusy ||
-                            bookingsClosed ||
-                            (noBooking
-                              ? isIdentityVerificationRound(selectedRound)
-                              : linkExpired
-                                ? reinvitesExhausted
-                                : !canReinvite)
-                          }
-                          onClick={() => {
-                            if (noBooking) {
-                              setIsInviteOpen(true);
-                              return;
-                            }
-                            if (linkExpired) {
-                              if (isPanelRound) {
-                                // PANEL: keep the roster or pick a new one first.
-                                setRescheduleMode('reinvite');
-                                setRescheduleRound(selectedRound);
-                                setIsRescheduleConfirmOpen(true);
-                              } else {
-                                void runReinvite(selectedRound.interview_booking_id);
-                              }
-                              return;
-                            }
-                            setRescheduleRound(selectedRound);
-                            setIsRescheduleConfirmOpen(true);
-                          }}
-                        >
-                          {isReinviting
-                            ? 'Sending…'
-                            : noBooking
-                              ? 'Send Invite'
-                              : linkExpired
-                                ? 'Reinvite'
-                                : 'Reschedule'}
-                        </button>
-                      </span>
-                    </Tooltip>
-                  </>
-                );
-              })()}
-              {/* Skip: every round except the Intake Call (and the resume stage,
-                  which has no round tabs). The backend only skips the
-                  candidate's CURRENT round, so it's live only there. */}
-              {!isIntakeCallRound(selectedRound) && (
-                <Tooltip
-                  title={
-                    currentRound?.id === selectedRound.id
-                      ? `Skip ${roundLabel(selectedRound)}`
-                      : 'Only the candidate’s current round can be skipped'
-                  }
-                >
-                  <span className="inline-flex">
-                    <button
-                      type="button"
-                      aria-label="Skip round"
-                      className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-2 border-gray-400 bg-white px-4 text-[13px] font-semibold leading-none text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={currentRound?.id !== selectedRound.id || actionsLockedForIntakePair}
-                      onClick={() => setIsSkipOpen(true)}
-                    >
-                      <LuSkipForward size={16} strokeWidth={2} aria-hidden />
-                      <span>Skip</span>
-                    </button>
-                  </span>
-                </Tooltip>
-              )}
               {/* Identity Verification is never scored, so it gets no button. */}
               {isIntakeCallRound(selectedRound)
                 ? scoringCriteriaButton('intake', roundLabel(selectedRound))
                 : isIdentityVerificationRound(selectedRound)
                   ? null
-                  : scoringCriteriaButton('interview', roundLabel(selectedRound))}
+                  : scoringCriteriaButton(
+                      'interview',
+                      roundLabel(selectedRound),
+                      isAiVideoRound(selectedRound) ? 'ai_video' : isPanelRound ? 'panel' : 'audio'
+                    )}
             </>
           }
           feedback={
@@ -1925,9 +1995,12 @@ const CandidateDetails = () => {
                 )}
               </RoundCollapsibleSection>
 
-              {selectedRoundScore && (
+              {selectedRoundScore && !selectedRoundIsIntakeCall && (
                 // The round's own AI/recruiter score. The per-section
                 // breakdown and the AI's reasoning get their own sections below.
+                // Not for the Intake Call: its score row IS the consistency
+                // check, already shown (score + reason) under Resume
+                // Consistency; the recruiter rates it from the Feedback tab.
                 <RoundCollapsibleSection
                   title="Interview Score"
                   summary={
@@ -2007,14 +2080,14 @@ const CandidateDetails = () => {
                         );
                         const barClass =
                           pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-danger';
-                        return (
+                        const reasons = sectionReasons(section.reason);
+                        const row = (
                           <div
-                            key={section.key}
-                            className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm"
+                            className={`grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm ${reasons.length > 0 ? 'cursor-help' : ''}`}
                           >
                             <span
                               className="truncate text-gray-800"
-                              title={formatSectionKey(section.key)}
+                              title={reasons.length > 0 ? undefined : formatSectionKey(section.key)}
                             >
                               {formatSectionKey(section.key)}
                             </span>
@@ -2029,16 +2102,44 @@ const CandidateDetails = () => {
                             </span>
                           </div>
                         );
+                        // No reasons for this category: no tooltip at all.
+                        return reasons.length > 0 ? (
+                          <Tooltip
+                            key={section.key}
+                            placement="topLeft"
+                            title={
+                              <ul className="m-0 list-disc space-y-1 pl-4 text-xs">
+                                {reasons.map((reason, i) => (
+                                  <li key={i}>{reason}</li>
+                                ))}
+                              </ul>
+                            }
+                          >
+                            {row}
+                          </Tooltip>
+                        ) : (
+                          <div key={section.key}>{row}</div>
+                        );
                       })}
                     </div>
                   </RoundCollapsibleSection>
                 )}
 
-              {selectedRoundScore?.scoring_reason && (
+              {selectedRoundScore?.scoring_reason && !selectedRoundIsIntakeCall && (
                 <RoundCollapsibleSection title="Summary">
-                  <p className="text-sm leading-relaxed text-gray-600">
-                    {selectedRoundScore.scoring_reason}
-                  </p>
+                  <AiCommentsBox
+                    bullets={(selectedRoundScore.section_scores ?? [])
+                      .map((section) => {
+                        const reasons = sectionReasons(section.reason);
+                        return reasons.length > 0
+                          ? `${formatSectionKey(section.key)}: ${joinReasons(reasons)}`
+                          : '';
+                      })
+                      .filter(Boolean)}
+                    text={selectedRoundScore.scoring_reason ?? ''}
+                    expanded={isRoundSummaryExpanded}
+                    onToggle={() => setIsRoundSummaryExpanded((v) => !v)}
+                  />
                 </RoundCollapsibleSection>
               )}
 
@@ -2056,34 +2157,6 @@ const CandidateDetails = () => {
                   <p className="text-sm text-gray-600">Not available</p>
                 )}
               </RoundCollapsibleSection>
-
-              {selectedRoundIsVoiceCall && (
-                // What actually happened on the call — completed, asked to
-                // reschedule, said not interested, never picked up, or cut off.
-                // Backed by interview-service's `GET /bookings/{id}`
-                // (`selectedBooking`), not candidate-service.
-                <RoundCollapsibleSection
-                  title="Call Outcome"
-                  summary={
-                    selectedBooking?.call_intent != null
-                      ? formatCallIntent(selectedBooking.call_intent)
-                      : undefined
-                  }
-                >
-                  <div className="text-lg font-bold text-primary">
-                    {formatCallIntent(selectedBooking?.call_intent ?? null)}
-                  </div>
-                  {selectedBooking?.call_intent_reason ? (
-                    <p className="mt-1 text-sm text-gray-600">
-                      {selectedBooking.call_intent_reason}
-                    </p>
-                  ) : selectedBooking?.call_intent == null ? (
-                    <p className="mt-1 text-sm text-gray-400">
-                      Not available yet — updates once this call has ended.
-                    </p>
-                  ) : null}
-                </RoundCollapsibleSection>
-              )}
 
               {selectedRoundIsIntakeCall && (
                 // Same transcript-vs-resume authenticity signal shown on the
@@ -2270,8 +2343,49 @@ const CandidateDetails = () => {
     </>
   ) : null;
 
+  // Previous / Next in the listing's order (see useCandidateNavigation).
+  // Portaled into JobDetailsLayout's Back row so it mirrors "Back to
+  // Candidate List" on the right; inline in the name row as a fallback.
+  const candidateSwitcher =
+    candidateNav.isReady && candidateNav.total > 1 ? (
+      <div
+        className={`flex items-center gap-2 ${headerSlot ? '' : 'border-l border-gray-200 pl-3'}`}
+      >
+        <Tooltip title="Previous Candidate">
+          <span className="inline-flex">
+            <button
+              type="button"
+              className={candidateHeaderIconCircle}
+              disabled={!candidateNav.hasPrev}
+              aria-label="Previous candidate"
+              onClick={() => candidateNav.goPrev(activeTab)}
+            >
+              <LuChevronLeft size={18} strokeWidth={2} aria-hidden />
+            </button>
+          </span>
+        </Tooltip>
+        <span className="whitespace-nowrap text-xs font-medium text-gray-500 tabular-nums">
+          {candidateNav.position} of {candidateNav.total}
+        </span>
+        <Tooltip title="Next Candidate">
+          <span className="inline-flex">
+            <button
+              type="button"
+              className={candidateHeaderIconCircle}
+              disabled={!candidateNav.hasNext}
+              aria-label="Next candidate"
+              onClick={() => candidateNav.goNext(activeTab)}
+            >
+              <LuChevronRight size={18} strokeWidth={2} aria-hidden />
+            </button>
+          </span>
+        </Tooltip>
+      </div>
+    ) : null;
+
   return (
     <>
+      {headerSlot && candidateSwitcher && createPortal(candidateSwitcher, headerSlot)}
       {isCandidateLoading && <Loader />}
       {/* Floating Email / SMS dock on the right edge — reachable from
           anywhere on the page without scrolling back to the header. Opens
@@ -2290,16 +2404,13 @@ const CandidateDetails = () => {
             </button>
           </span>
         </Tooltip>
-        <Tooltip
-          placement="left"
-          title={candidate?.contact_no ? 'Send SMS' : 'No phone number on file'}
-        >
+        <Tooltip placement="left" title={smsBlockedReason ?? 'Send SMS'}>
           <span className="inline-flex">
             <button
               type="button"
               aria-label="Send SMS"
               className="inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary-300 bg-primary-100 text-primary shadow-lg transition-colors hover:bg-primary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!candidate?.contact_no}
+              disabled={smsBlockedReason !== null}
               onClick={() => setIsSmsOpen(true)}
             >
               <IoChatbubbleEllipses size={19} aria-hidden />
@@ -2310,7 +2421,10 @@ const CandidateDetails = () => {
       <div className="flex flex-col mb-4 gap-2">
         <div className="flex-1 bg-white px-6 py-4 shadow-sm rounded-xl">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-200">
-            <h2 className="text-2xl font-bold">{candidateDisplayName(candidate)}</h2>
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
+              <h2 className="text-2xl font-bold">{candidateDisplayName(candidate)}</h2>
+              {candidate?.resume_name_missing && <NameMissingFlag />}
+            </div>
 
             <div className="flex items-center gap-3 flex-wrap">
               <button
@@ -2337,12 +2451,12 @@ const CandidateDetails = () => {
                   </button>
                 </span>
               </Tooltip>
-              <Tooltip title={candidate?.contact_no ? 'Send SMS' : 'No phone number on file'}>
+              <Tooltip title={smsBlockedReason ?? 'Send SMS'}>
                 <span className="inline-flex">
                   <button
                     type="button"
                     className={candidateHeaderIconCircle}
-                    disabled={!candidate?.contact_no}
+                    disabled={smsBlockedReason !== null}
                     aria-label="Send SMS"
                     onClick={() => setIsSmsOpen(true)}
                   >
@@ -2383,7 +2497,7 @@ const CandidateDetails = () => {
                         // withdrawn, out of sync with that map's pink, so the
                         // same candidate showed two different colors depending
                         // on which screen you were looking at.
-                        candidateStatusColor(candidate?.status_code).text
+                        candidateDisplayStatusColor(displayStatus).text
                 }`}
               >
                 {statusUpper === 'selected' ? (
@@ -2392,45 +2506,13 @@ const CandidateDetails = () => {
                   <LuThumbsDown size={16} />
                 ) : (
                   <span
-                    className={`w-2 h-2 rounded-full ${candidateStatusColor(candidate?.status_code).dot}`}
+                    className={`w-2 h-2 rounded-full ${candidateDisplayStatusColor(displayStatus).dot}`}
                   />
                 )}
-                {candidate?.status_label || 'Applied'}
+                {candidateDisplayStatusLabel(displayStatus)}
               </span>
-              {/* Previous / Next in the listing's order (see useCandidateNavigation). */}
-              {candidateNav.isReady && candidateNav.total > 1 && (
-                <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
-                  <Tooltip title="Previous Candidate">
-                    <span className="inline-flex">
-                      <button
-                        type="button"
-                        className={candidateHeaderIconCircle}
-                        disabled={!candidateNav.hasPrev}
-                        aria-label="Previous candidate"
-                        onClick={() => candidateNav.goPrev(activeTab)}
-                      >
-                        <LuChevronLeft size={18} strokeWidth={2} aria-hidden />
-                      </button>
-                    </span>
-                  </Tooltip>
-                  <span className="whitespace-nowrap text-xs font-medium text-gray-500 tabular-nums">
-                    {candidateNav.position} of {candidateNav.total}
-                  </span>
-                  <Tooltip title="Next Candidate">
-                    <span className="inline-flex">
-                      <button
-                        type="button"
-                        className={candidateHeaderIconCircle}
-                        disabled={!candidateNav.hasNext}
-                        aria-label="Next candidate"
-                        onClick={() => candidateNav.goNext(activeTab)}
-                      >
-                        <LuChevronRight size={18} strokeWidth={2} aria-hidden />
-                      </button>
-                    </span>
-                  </Tooltip>
-                </div>
-              )}
+              {/* Previous / Next fallback, only when there's no layout Back row to sit in. */}
+              {!headerSlot && candidateSwitcher}
             </div>
           </div>
 
@@ -2511,8 +2593,7 @@ const CandidateDetails = () => {
             <div className="flex min-w-0 flex-col justify-center gap-3 border-t border-gray-200 pt-4 lg:border-t-0 lg:border-l lg:border-gray-300 lg:pl-6 lg:pt-0">
               {!isTerminal && (
                 // Always visible while the candidate is still in the
-                // pipeline. During the Intake Call consistency check they
-                // stay on screen, greyed out, with the reason on hover.
+                // pipeline.
                 // MARK AS SELECTED is offered on every round: the backend
                 // completes the resume stage and skips whatever rounds are
                 // left (candidate-service _status_round_cascade.py).
@@ -2524,52 +2605,57 @@ const CandidateDetails = () => {
                       can only ever be advanced. */}
                   <Tooltip
                     title={
-                      actionsLockedForIntakePair
-                        ? intakeLockReason
-                        : !currentRound
+                      !isJobInCharge
+                        ? NOT_IN_CHARGE_MESSAGE
+                        : quickAction === 'none'
                           ? 'No round left to advance'
-                          : advanceDisabled
-                            ? `${roundLabel(currentRound)} hasn't concluded: Advance will skip it`
-                            : undefined
+                          : quickAction === 'awaiting_resume'
+                            ? "Waiting for the candidate's resume. Resume is mandatory and can't be skipped."
+                            : quickAction === 'last'
+                              ? LAST_ROUND_MESSAGE
+                              : quickAction === 'skip' && currentRound
+                                ? `${roundLabel(currentRound)} hasn't finished yet. Skip it, or wait until it finishes to advance.`
+                                : undefined
                     }
                   >
                     <span className="flex">
                       <Button
                         className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-primary bg-primary-50 text-primary hover:bg-primary-100"
                         onClick={() =>
-                          advanceDisabled ? setIsSkipOpen(true) : setStatusModal('advance')
+                          quickAction === 'skip' ? setIsSkipOpen(true) : setIsAdvanceOpen(true)
                         }
-                        disabled={actionsLockedForIntakePair}
+                        disabled={
+                          !isJobInCharge ||
+                          isAdvanceLocked ||
+                          quickAction === 'last' ||
+                          quickAction === 'awaiting_resume' ||
+                          quickAction === 'none'
+                        }
                       >
-                        <span>Advance</span>
+                        {quickAction === 'skip' && <LuSkipForward size={15} aria-hidden />}
+                        <span>{quickAction === 'skip' ? 'Skip' : 'Advance'}</span>
                       </Button>
                     </span>
                   </Tooltip>
-                  <Tooltip title={actionsLockedForIntakePair ? intakeLockReason : undefined}>
-                    <span className="flex">
-                      <Button
-                        className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-red-600 bg-red-50 text-red-600 hover:bg-red-100"
-                        onClick={() => setStatusModal('reject')}
-                        disabled={actionsLockedForIntakePair}
-                      >
-                        <span>Reject</span>
-                      </Button>
-                    </span>
-                  </Tooltip>
+                  <span className="flex">
+                    <Button
+                      className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-red-600 bg-red-50 text-red-600 hover:bg-red-100"
+                      onClick={() => setStatusModal('reject')}
+                    >
+                      <span>Reject</span>
+                    </Button>
+                  </span>
                   <Tooltip
                     title={
-                      actionsLockedForIntakePair
-                        ? intakeLockReason
-                        : !isOnLastRound && !allRoundsCompleted
-                          ? 'Select now: any remaining rounds will be skipped'
-                          : undefined
+                      !isOnLastRound && !allRoundsCompleted
+                        ? 'Select now: any remaining rounds will be skipped'
+                        : undefined
                     }
                   >
                     <span className="flex">
                       <Button
                         className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-green-500 bg-green-50 text-green-700 hover:bg-green-100"
                         onClick={() => setStatusModal('select')}
-                        disabled={actionsLockedForIntakePair}
                       >
                         <span>Mark As Selected</span>
                       </Button>
@@ -2581,6 +2667,9 @@ const CandidateDetails = () => {
                   >
                     <span>Assign New Job</span>
                   </Button>
+                  {quickAction === 'last' && (
+                    <p className="text-xs text-gray-500 sm:col-span-2">{LAST_ROUND_MESSAGE}</p>
+                  )}
                 </div>
               )}
               {isTerminal && (
@@ -2620,6 +2709,7 @@ const CandidateDetails = () => {
             items={[
               { key: 'details', label: 'Candidate Details' },
               { key: 'assessment', label: 'Assessment' },
+              { key: 'scheduling', label: 'Interview Scheduling' },
               { key: 'sms', label: 'SMS Communication' },
             ]}
           />
@@ -2781,7 +2871,7 @@ const CandidateDetails = () => {
                         isResumeScored={isResumeScored(round, candidate?.resume_score ?? null)}
                         roundScore={
                           round.stage_type === 'interview'
-                            ? scores.find((sc) => sc.candidate_interview_round_id === round.id)
+                            ? findRoundScore(scores, round)
                             : undefined
                         }
                         resumeScore={candidate?.resume_score ?? null}
@@ -2817,10 +2907,56 @@ const CandidateDetails = () => {
             </div>
           )}
 
+          {activeTab === 'scheduling' && candidateId && (
+            <InterviewSchedulingTab
+              candidateId={candidateId}
+              rounds={rounds}
+              roundsLoaded={roundsLoaded}
+              scores={scores}
+              currentRoundId={currentRound?.id ?? null}
+              isTerminal={isTerminal}
+              bookingsClosed={bookingsClosed}
+              isBusy={
+                isCreatingBooking || isSavingInterviewers || isRequestingReschedule || isReinviting
+              }
+              onInvite={(round) => {
+                setSelectedRound(round);
+                setIsInviteOpen(true);
+              }}
+              jobId={parsedJobId || undefined}
+              onSelectInterviewers={(round) => setInterviewersModalFor(round)}
+              onReinvite={(round) => {
+                // Always confirmed first (the wording says what will happen).
+                // PANEL then asks whether to keep the roster or pick a new one.
+                setSelectedRound(round);
+                setRescheduleMode('reinvite');
+                setRescheduleRound(round);
+                setIsRescheduleConfirmOpen(true);
+              }}
+              onReschedule={(round) => {
+                setSelectedRound(round);
+                setRescheduleMode('reschedule');
+                setRescheduleRound(round);
+                setIsRescheduleConfirmOpen(true);
+              }}
+              canSkip={isJobInCharge}
+              onSkip={() => setIsSkipOpen(true)}
+              onReject={() => setStatusModal('reject')}
+              onSubmitFeedback={(round, score) =>
+                setScoreModalFor({
+                  scoreId: score.id,
+                  roundName: roundLabel(round),
+                  currentScore: score.recruiter_score,
+                  currentReason: score.recruiter_score_reason,
+                })
+              }
+            />
+          )}
+
           {activeTab === 'sms' && candidateId && (
             <CandidateMessageHistory
               candidateId={candidateId}
-              canSms={Boolean(candidate?.contact_no)}
+              canSms={smsBlockedReason === null}
               onSendSms={() => setIsSmsOpen(true)}
             />
           )}
@@ -2833,14 +2969,16 @@ const CandidateDetails = () => {
         candidateId={candidateId ?? ''}
         candidateName={candidateDisplayName(candidate)}
         currentJobId={parsedJobId ?? ''}
-        assignedJobTitles={jobTitleName ? [jobTitleName] : []}
       />
       {isSkipOpen && (
+        // Same layout as the old app's skip popup (careerforcepro-web
+        // InterviewRounds): one question as the title, a single Reason box,
+        // SUBMIT and CANCEL side by side.
         <AntdCommonModal
-          title="Skip Round"
+          title="Please explain why you are skipping the interview"
           subtitle={
             currentRound
-              ? `Skip ${roundLabel(currentRound)} and move this candidate to the next round.`
+              ? `${roundLabel(currentRound)} · ${candidateDisplayName(candidate)}`
               : undefined
           }
           open
@@ -2848,55 +2986,48 @@ const CandidateDetails = () => {
             setIsSkipOpen(false);
             resetSkipForm();
           }}
-          modalProps={{ width: 480 }}
+          modalProps={{ width: 520 }}
         >
-          <div className="flex flex-col gap-3">
-            <label htmlFor="skip-round-reason" className="text-sm text-gray-800">
-              Reason <span className="required-asterisk">*</span>
-            </label>
-            <Input.TextArea
-              id="skip-round-reason"
-              value={skipReason}
-              onChange={(e) => {
-                setSkipReason(e.target.value);
-                setSkipReasonError(null);
-              }}
-              placeholder="Why is this round being skipped?"
-              autoSize={{ minRows: 3, maxRows: 6 }}
-              status={skipReasonError ? 'error' : undefined}
-              className="rounded-md text-sm"
-            />
-            {skipReasonError && <p className="text-xs text-red-500">{skipReasonError}</p>}
-            <label htmlFor="skip-round-feedback" className="text-sm text-gray-800">
-              Feedback <span className="required-asterisk">*</span>
-            </label>
-            <Input.TextArea
-              id="skip-round-feedback"
-              value={skipFeedback}
-              onChange={(e) => {
-                setSkipFeedback(e.target.value);
-                setSkipFeedbackError(null);
-              }}
-              placeholder="Your feedback on the candidate for this round"
-              autoSize={{ minRows: 3, maxRows: 6 }}
-              status={skipFeedbackError ? 'error' : undefined}
-              className="rounded-md text-sm"
-            />
-            {skipFeedbackError && <p className="text-xs text-red-500">{skipFeedbackError}</p>}
-            {skipNeedsOverride && (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                The interviewer hasn&apos;t submitted feedback for this round yet. You can skip
-                anyway.
-              </p>
-            )}
-            <Button
-              type="button"
-              onClick={() => void handleSkipRound()}
-              disabled={!skipReason.trim() || !skipFeedback.trim() || isSkipping}
-              className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {isSkipping ? 'Skipping…' : skipNeedsOverride ? 'Skip Anyway' : 'Skip Round'}
-            </Button>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col justify-start">
+              <label htmlFor="skip-round-reason" className="pb-2 text-sm font-medium">
+                Reason <span className="required-asterisk">*</span>
+              </label>
+              <Textarea
+                id="skip-round-reason"
+                className="w-full rounded-3xl border border-gray-300 bg-white p-3 focus:ring focus:ring-blue-300"
+                rows={4}
+                maxLength={1000}
+                value={skipReason}
+                placeholder="Type your reason here....."
+                onChange={(e) => {
+                  setSkipReason(e.target.value);
+                  setSkipReasonError(null);
+                }}
+              />
+              {skipReasonError && <p className="mt-1 text-xs text-red-500">{skipReasonError}</p>}
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+              <Button
+                type="button"
+                onClick={() => void handleSkipRound()}
+                disabled={!skipReason.trim() || isSkipping}
+                className="cursor-pointer rounded-full border bg-primary px-10 py-3 font-bold text-white disabled:opacity-50"
+              >
+                {isSkipping ? <Loader /> : <span>SUBMIT</span>}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setIsSkipOpen(false);
+                  resetSkipForm();
+                }}
+                disabled={isSkipping}
+                className="cursor-pointer rounded-full border border-gray-200 !bg-white px-7 py-3 font-bold"
+              >
+                <span>CANCEL</span>
+              </Button>
+            </div>
           </div>
         </AntdCommonModal>
       )}
@@ -2913,13 +3044,81 @@ const CandidateDetails = () => {
         subtitle={scoringCriteriaFor?.subtitle}
         footer={null}
         matchMetrics={scoringCriteriaFor?.kind === 'resume' ? resumeMatchMetrics : undefined}
+        interviewRoundType={scoringCriteriaFor?.interviewRoundType}
+        interviewWeights={
+          scoringCriteriaFor?.kind === 'interview'
+            ? (jobScoringConfig?.data?.interviewConfig?.weights ?? []).map((w) => ({
+                label: w.displayName ?? formatSectionKey(w.categoryName),
+                description: w.description,
+                weight: w.weightPercentage,
+              }))
+            : undefined
+        }
       />
+      {isAdvanceOpen && candidate && (
+        <AdvanceCandidateModal
+          open
+          onClose={() => setIsAdvanceOpen(false)}
+          candidate={candidate}
+          fromRound={currentRound}
+          toRound={nextRound}
+          feedbackRequirement={advanceFeedbackRequirement}
+          canAutoInvite={canAutoInviteNextRound}
+          onSuccess={(newRound) => {
+            setIsAdvanceOpen(false);
+            // Locked until the refreshed round list moves `currentRound` on.
+            setAdvancedFromRoundId(currentRound?.id ?? null);
+            void refetchRounds();
+            refetchCandidate();
+            // Advancing into a Hiring Panel round: remind the recruiter to pick
+            // the panel and invite. Shown once, right after this advance.
+            if (newRound?.round_type === 'PANEL') setPanelPromptRound(newRound);
+          }}
+        />
+      )}
+      {panelPromptRound && (
+        // Informational, never a gate: closing it any way (X, Escape, outside
+        // click) is the same as Later. Shown once per advance.
+        <AntdCommonModal
+          title="Next round: Hiring Panel"
+          open
+          onClose={() => setPanelPromptRound(null)}
+          modalProps={{ width: 480 }}
+        >
+          <div className="flex flex-col gap-5">
+            <p className="text-center text-sm text-gray-700">
+              Select the interviewers for this round, then click Invite. The candidate is emailed
+              once every selected interviewer has connected their calendar.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                onClick={() => setPanelPromptRound(null)}
+                className="flex-1 rounded-full border border-gray-200 py-2.5 text-center text-sm font-semibold text-gray-600"
+              >
+                Later
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setInterviewersModalFor(panelPromptRound);
+                  setPanelPromptRound(null);
+                }}
+                className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white"
+              >
+                Select Interviewers
+              </Button>
+            </div>
+          </div>
+        </AntdCommonModal>
+      )}
       {statusModal && candidate && (
         <ChangeCandidateStatusModal
           open={!!statusModal}
           onClose={() => setStatusModal(null)}
           mode={statusModal}
           candidates={[candidate]}
+          currentRound={currentRound}
           onSuccess={() => setStatusModal(null)}
         />
       )}
@@ -2960,8 +3159,8 @@ const CandidateDetails = () => {
           title={isReinviteMode ? 'Send Reinvite' : 'Request Reschedule'}
           subtitle={
             isReinviteMode
-              ? "Keep this round's current panel, or pick different interviewers for the new invite?"
-              : "Keep this round's current panel, or pick different interviewers for the new attempt?"
+              ? `${REINVITE_COPY} Keep this round's current panel, or pick different interviewers for the new invite?`
+              : `${rescheduleCopy(rescheduleRound)} Keep this round's current panel, or pick different interviewers for the new attempt?`
           }
           open
           onClose={closeRescheduleFlow}
@@ -3114,20 +3313,22 @@ const CandidateDetails = () => {
           }}
           onConfirm={() => void handleRequestCallReschedule()}
           title={
-            // Resume-consistency scoring is Intake Call (AUDIO) specific —
-            // Audio Screening/AI Video rounds don't have one, so this
-            // clause would be misleading there. Driven by `rescheduleRound`,
-            // not `selectedRound` — this modal can open straight from a
-            // round other than the one currently selected.
-            rescheduleRound &&
-            isIntakeCallRound(rescheduleRound) &&
-            candidate?.consistency_score != null
-              ? `Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, the resume-consistency score will be recalculated from it and will overwrite the current score (${candidate.consistency_score} / ${AI_SCORE_MAX}).`
-              : rescheduleRound && isIntakeCallRound(rescheduleRound)
-                ? 'Requesting a reschedule will email the candidate a new link, valid for 24 hours. Once they complete the new call, a resume-consistency score will be calculated from it.'
-                : 'Requesting a reschedule will email the candidate a new link, valid for 24 hours.'
+            isReinviteMode
+              ? REINVITE_COPY
+              : // Resume-consistency scoring is Intake Call (AUDIO) specific -
+                // Audio Screening/AI Video rounds don't have one, so this
+                // clause would be misleading there. Driven by `rescheduleRound`,
+                // not `selectedRound` - this modal can open straight from a
+                // round other than the one currently selected.
+                rescheduleRound &&
+                  isIntakeCallRound(rescheduleRound) &&
+                  candidate?.consistency_score != null
+                ? `${rescheduleCopy(rescheduleRound)} Once they complete the new call, the resume-consistency score will be recalculated from it and will overwrite the current score (${candidate.consistency_score} / ${AI_SCORE_MAX}).`
+                : rescheduleRound && isIntakeCallRound(rescheduleRound)
+                  ? `${rescheduleCopy(rescheduleRound)} Once they complete the new call, a resume-consistency score will be calculated from it.`
+                  : rescheduleCopy(rescheduleRound)
           }
-          confirmText="Request Reschedule"
+          confirmText={isReinviteMode ? 'Send Reinvite' : 'Request Reschedule'}
           cancelText="Cancel"
           isLoading={isRequestingReschedule}
         />

@@ -196,7 +196,7 @@ const MeetingAccessScreen: React.FC = () => {
             <>
               <Select
                 className="w-full mb-4"
-                placeholder="Select microphone"
+                placeholder="Select Microphone"
                 value={state.selectedAudioDevice}
                 onChange={(value) =>
                   setState((prev) => ({
@@ -248,7 +248,7 @@ const MeetingAccessScreen: React.FC = () => {
             <>
               <Select
                 className="w-full mb-4"
-                placeholder="Select camera"
+                placeholder="Select Camera"
                 value={state.selectedVideoDevice}
                 onChange={(value) =>
                   setState((prev) => ({

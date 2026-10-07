@@ -218,7 +218,7 @@ const SearchCandidateListing = () => {
             <div className="flex space-x-4 items-center">
               <Search
                 appname="Candidate"
-                placeholder="Search candidates"
+                placeholder="Search Candidates"
                 onSearch={handleSearch}
                 allowClear
                 value={localSearchQuery}

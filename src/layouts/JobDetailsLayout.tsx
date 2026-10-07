@@ -1,5 +1,6 @@
 import BackButton from '../components/shared/ui/BackButton';
-import { ReactNode, useEffect, useMemo } from 'react';
+import { Button } from '../components/shared';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -11,6 +12,7 @@ import {
   useGetWizardStateQuery,
 } from '../api/job-service/JobOpening/GetJobOpeningById';
 import { asJobId } from '../api/job-service/jobId';
+import { JobDetailsHeaderSlotContext } from './jobDetailsHeaderSlot';
 
 interface JobDetailsLayoutProps {
   children?: ReactNode;
@@ -20,6 +22,8 @@ interface JobDetailsLayoutProps {
 const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  // Right side of the Back row — see jobDetailsHeaderSlot.ts.
+  const [headerSlot, setHeaderSlot] = useState<HTMLDivElement | null>(null);
   const isViewMode = location.pathname.includes('/jobs/view/');
   const isEditMode = location.pathname.includes('/jobs/edit/');
   const search = location.search;
@@ -30,6 +34,9 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const savedDetailsJobId = useSelector((state: RootState) => state.JobSlice.aiJobDescriptionId);
   const isFormCompleted = useSelector((state: RootState) => state.JobSlice.isFormCompleted);
   const editAiJdPassedJobId = useSelector((state: RootState) => state.JobSlice.editAiJdPassedJobId);
+  const editScoringPassedJobId = useSelector(
+    (state: RootState) => state.JobSlice.editScoringPassedJobId
+  );
   const isScoringCompleted = useSelector((state: RootState) => state.JobSlice.isScoringCompleted);
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
 
@@ -57,7 +64,14 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   // Questions need a saved interview round. Ready until the server answers.
   const wizardJobId = isCreateMode ? (resolvedJobId ?? '') : isEditingDraft ? editJobId : '';
-  const { data: wizardState } = useGetWizardStateQuery(wizardJobId, { skip: !wizardJobId });
+  const { data: wizardState, isLoading: isWizardLoading } = useGetWizardStateQuery(wizardJobId, {
+    skip: !wizardJobId,
+  });
+  // The server has a saved round, so the JD and scoring steps were passed earlier.
+  const serverShowsRoundsSaved =
+    wizardState?.stages.some((s) => s.stage === 'interview_rounds' && s.is_complete) === true;
+  // A draft's gates can't be judged until its JD has loaded.
+  const isEditJdPending = isEditingDraft && !editJd;
   const hasSavedInterviewRound =
     !isGated ||
     !wizardState ||
@@ -71,13 +85,18 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       ? !editJd || editJd.hasSavedDetails
       : true;
   const isTab3Completed = isCreateMode
-    ? isFormCompleted === true
+    ? isFormCompleted === true || serverShowsRoundsSaved
     : isEditingDraft
-      ? editAiJdPassedJobId === editJobId && Boolean(editJd?.jobDescription?.trim())
+      ? (editAiJdPassedJobId === editJobId && Boolean(editJd?.jobDescription?.trim())) ||
+        serverShowsRoundsSaved
       : true;
   const isScoringUnlocked = !isGated || isTab3Completed;
-  // Only create mode knows when Scoring Criteria was saved.
-  const isScoringDone = isCreateMode ? isScoringCompleted === true : true;
+  // Create and draft edit track when Scoring Criteria was saved.
+  const isScoringDone = isCreateMode
+    ? isScoringCompleted === true || serverShowsRoundsSaved
+    : isEditingDraft
+      ? editScoringPassedJobId === editJobId || serverShowsRoundsSaved
+      : true;
 
   const isActiveTab = (path: string) => location.pathname.includes(path);
 
@@ -151,6 +170,13 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     /\/candidates\/[^/]+\/details/.test(location.pathname) ||
     location.pathname.includes('/candidateDetails/');
 
+  // View mode: a Next button at the bottom opens the following tab.
+  const viewTabIndex = isViewMode
+    ? currentPaths.findIndex((path: string) => location.pathname.includes(path))
+    : -1;
+  const nextViewPath =
+    viewTabIndex >= 0 && viewTabIndex + 1 < allSteps.length ? currentPaths[viewTabIndex + 1] : null;
+
   // Candidate list Back goes to the job listing, not `navigate(-1)`.
   const returnState = location.state as { returnTo?: string; returnLabel?: string } | null;
   const returnTo =
@@ -170,7 +196,8 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   // Redirect to first available tab if current tab is disabled (e.g., on page refresh)
   useEffect(() => {
-    if (!isGated || isCandidatePage || isGateFetching) return;
+    // Wait for the data the gates depend on, or a reload bounces to an earlier tab.
+    if (!isGated || isCandidatePage || isGateFetching || isEditJdPending || isWizardLoading) return;
 
     const currentPath = location.pathname;
     let currentTabIndex = -1;
@@ -194,21 +221,18 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
     if (!isCurrentTabDisabled) return; // Current tab is enabled, no redirect needed
 
-    // Find first available tab
-    const firstAvailableIndex = currentPaths.findIndex((_: string, index: number) => {
-      if (index === 1 && !isTab1Completed) return false;
-      if (index === 2 && !isScoringUnlocked) return false;
-      if (index === 3 && (!isTab3Completed || !isScoringDone)) return false;
-      if (index === 4 && (!isTab3Completed || !isScoringDone || !hasSavedInterviewRound))
-        return false;
+    // Nearest open tab before this one (Job Details is always open).
+    const isOpen = (index: number) => {
+      if (index === 1) return isTab1Completed;
+      if (index === 2) return isScoringUnlocked;
+      if (index === 3) return isTab3Completed && isScoringDone;
+      if (index === 4) return isTab3Completed && isScoringDone && hasSavedInterviewRound;
       return true;
-    });
-
-    // Redirect if available tab found and different from current
-    if (firstAvailableIndex !== -1 && firstAvailableIndex !== currentTabIndex) {
-      const safePath = sanitizedPath(currentPaths[firstAvailableIndex] + search) || '/';
-      navigate(safePath, { replace: true });
-    }
+    };
+    let targetIndex = currentTabIndex - 1;
+    while (targetIndex > 0 && !isOpen(targetIndex)) targetIndex -= 1;
+    const safePath = sanitizedPath(currentPaths[Math.max(targetIndex, 0)] + search) || '/';
+    navigate(safePath, { replace: true });
   }, [
     isTab1Completed,
     isTab3Completed,
@@ -217,6 +241,8 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     isScoringUnlocked,
     isGated,
     isGateFetching,
+    isEditJdPending,
+    isWizardLoading,
     isCandidatePage,
     location.pathname,
     search,
@@ -226,17 +252,25 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   return (
     <div className="flex flex-col items-center px-4 mt-4 w-full">
-      <div className="w-full max-w-6xl mb-3">
-        <BackButton
-          onClick={handleBackNavigation}
-          label={
-            returnTo
-              ? (returnState?.returnLabel ?? 'Back')
-              : isCandidateDetailsPage
-                ? 'Back to Candidate List'
-                : 'Back'
-          }
-        />
+      <div className="w-full max-w-6xl mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        {/* On a candidate's page the two back links stack on the left:
+            Job Openings above, Candidate List below. */}
+        <div className="flex flex-col items-start gap-0.5">
+          {isCandidateDetailsPage && (
+            <BackButton onClick={() => navigate('/jobs')} label="Back to Job Openings" />
+          )}
+          <BackButton
+            onClick={handleBackNavigation}
+            label={
+              returnTo
+                ? (returnState?.returnLabel ?? 'Back')
+                : isCandidateDetailsPage
+                  ? 'Back to Candidate List'
+                  : 'Back'
+            }
+          />
+        </div>
+        <div ref={setHeaderSlot} className="flex items-center empty:hidden" />
       </div>
       <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">
         {!isCandidatePage && (
@@ -314,7 +348,19 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
             </div>
           </div>
         )}
-        {children}
+        <JobDetailsHeaderSlotContext.Provider value={headerSlot}>
+          {children}
+        </JobDetailsHeaderSlotContext.Provider>
+        {nextViewPath && !isCandidatePage && (
+          <div className="mt-6 flex justify-end">
+            <Button
+              className="text-white bg-button rounded-3xl px-8 py-2 cursor-pointer"
+              onClick={() => navigate(sanitizedPath(nextViewPath + search) || '/')}
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

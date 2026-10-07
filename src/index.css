@@ -479,6 +479,11 @@ canvas[data-agora-recording='true'] {
   z-index: 1200 !important;
 }
 
+/* Centre tooltip text, so a wrapped line sits evenly under the button. */
+.ant-tooltip-inner {
+  text-align: center;
+}
+
 .ant-tabs-tab:focus {
   outline: none !important;
   box-shadow: none !important;

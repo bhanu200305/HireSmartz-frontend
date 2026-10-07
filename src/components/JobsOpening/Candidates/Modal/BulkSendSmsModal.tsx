@@ -3,11 +3,13 @@ import TextArea from 'antd/es/input/TextArea';
 import {
   useSendBulkCandidateSmsMutation,
   usePreviewCandidateSmsMutation,
+  useGenerateSmsContentMutation,
 } from '../../../../api/candidate-service/Candidates/messaging';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 import { Button, Input, showToast } from '../../../shared';
 import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import TemplatePreviewModal from '../../../shared/ui/TemplatePreviewModal';
+import { describeSkippedReason } from './messageSkipReasons';
 import type { CandidateView } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
 import { toTitleCase } from './smsHelpers';
 
@@ -43,6 +45,7 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
   const [sendBulkSms, { isLoading: isSending }] = useSendBulkCandidateSmsMutation();
   const [previewSms, { data: preview, isLoading: isPreviewing }] = usePreviewCandidateSmsMutation();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [generateSms, { isLoading: isGenerating }] = useGenerateSmsContentMutation();
   // The real preview endpoint (`POST /candidates/{id}/messages/sms/preview`)
   // is single-candidate only, same as email's — offer it only when exactly
   // one recipient is selected.
@@ -61,7 +64,9 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
       // still edits/replaces it before sending, but starting from "Hi
       // <Name>," means the candidate reliably gets addressed by name
       // without the recruiter having to remember to type it themselves.
-      const firstName = toTitleCase(candidates[0]?.first_name ?? '');
+      // Only for a single recipient: a bulk send reaches everyone with the
+      // same text, so one candidate's name must not lead it.
+      const firstName = candidates.length === 1 ? toTitleCase(candidates[0]?.first_name ?? '') : '';
       setMessage(firstName ? `Hi ${firstName}, ` : '');
       setResults([]);
       setIsPreviewOpen(false);
@@ -81,6 +86,40 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
       setIsPreviewOpen(true);
     } catch (e) {
       showToast({ message: getCandidateErrorMessage(e, 'Could not build preview'), type: 'error' });
+    }
+  };
+
+  // AI suggestion: whatever the recruiter typed after the greeting is the
+  // intent ("ask them to confirm Friday's interview"); the endpoint is
+  // single-candidate. The reply replaces the box, capped to the SMS limit.
+  const handleSuggest = async () => {
+    const target = candidates[0];
+    const greeting = toTitleCase(target?.first_name ?? '');
+    const greetingText = greeting ? `Hi ${greeting},` : '';
+    const intent = (
+      greetingText && message.trim().toLowerCase().startsWith(greetingText.toLowerCase())
+        ? message.trim().slice(greetingText.length)
+        : message
+    ).trim();
+    if (!target || intent.length < 3) {
+      showToast({
+        message: 'Type what the message should say, then click Suggest with AI.',
+        type: 'info',
+      });
+      return;
+    }
+    try {
+      const res = await generateSms({ candidateId: target.id, body: { intent } }).unwrap();
+      if (!res.message.trim()) {
+        showToast({ message: 'No suggestion available right now. Try again.', type: 'info' });
+        return;
+      }
+      setMessage(res.message.trim().slice(0, SMS_MAX_LEN));
+    } catch (e) {
+      showToast({
+        message: getCandidateErrorMessage(e, 'Could not generate a suggestion'),
+        type: 'error',
+      });
     }
   };
 
@@ -112,8 +151,8 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
       showToast({
         message:
           sentCount === res.results.length
-            ? `SMS sent to ${sentCount} candidate${sentCount === 1 ? '' : 's'}.`
-            : `SMS sent to ${sentCount} of ${res.results.length}; see skipped reasons below.`,
+            ? `SMS queued for ${sentCount} candidate${sentCount === 1 ? '' : 's'}.`
+            : `SMS queued for ${sentCount} of ${res.results.length}; see skipped reasons below.`,
         type: sentCount > 0 ? 'success' : 'warning',
       });
     } catch (e) {
@@ -181,10 +220,10 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
                   <div key={i} className="flex items-start justify-between gap-3 text-sm">
                     <span className="font-medium text-gray-900">{r.name}</span>
                     {r.sent ? (
-                      <span className="text-green-600 shrink-0">Sent</span>
+                      <span className="text-green-600 shrink-0">Queued</span>
                     ) : (
                       <span className="text-red-500 text-right shrink-0">
-                        Skipped{r.reason ? `: ${r.reason}` : ''}
+                        Not sent: {describeSkippedReason(r.reason)}
                       </span>
                     )}
                   </div>
@@ -194,6 +233,16 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
           )}
           {results.length === 0 ? (
             <div className="flex gap-3">
+              {canPreview && (
+                <Button
+                  type="button"
+                  onClick={() => void handleSuggest()}
+                  disabled={isGenerating || isSending}
+                  className="rounded-full border border-gray-300 px-5 py-2.5 text-center text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {isGenerating ? 'Suggesting…' : 'Suggest with AI'}
+                </Button>
+              )}
               {canPreview && (
                 <Button
                   type="button"

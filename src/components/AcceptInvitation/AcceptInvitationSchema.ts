@@ -22,8 +22,8 @@ export const acceptInvitationSchema = z
     // because a platform invite (Super Admin/staff) doesn't need them.
     // last_name is required by the product (2026-10-04) even though the
     // backend still treats it as optional (nullable) — enforced here only.
-    firstName: nameValidation({ label: 'First name', required: true }),
-    lastName: nameValidation({ label: 'Last name', required: true }),
+    firstName: nameValidation({ label: 'First Name', required: true }),
+    lastName: nameValidation({ label: 'Last Name', required: true }),
     countryCode: z.string().optional(),
     phoneNumber: z.string().optional(),
     // Hidden, non-user-facing field — set from ValidateInvitationResponse's
@@ -80,7 +80,7 @@ export const acceptInvitationSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['phoneNumber'],
-        message: 'Phone number is required.',
+        message: 'Phone Number is required.',
       });
       return;
     }

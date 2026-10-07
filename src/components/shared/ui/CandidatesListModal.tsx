@@ -23,6 +23,20 @@ import {
 } from '../../HiringManagerDashboard/useJobOpeningNameMap';
 import { PAGE_SIZE_OPTIONS } from '../../../constants/app.constants';
 import { AI_SCORE_MAX } from '../../JobsOpening/Candidates/roundPipeline';
+import {
+  candidateDisplayStatusLabel,
+  resolveDisplayStatus,
+} from '../../JobsOpening/Candidates/candidateDisplay';
+import { formatRoundStatus } from '../../JobsOpening/Candidates/roundDisplay';
+import type { BadgeStatus } from './badge';
+
+// candidate-service's `display_status` -> the shared Badge colours.
+const DISPLAY_STATUS_BADGE: Record<ReturnType<typeof resolveDisplayStatus>, BadgeStatus> = {
+  in_process: 'info',
+  selected: 'success',
+  rejected: 'danger',
+  withdrawn: 'neutral',
+};
 
 // Candidate / Resume score / Applied date are the only three columns
 // candidate-service can actually sort by (`ListCandidatesArgs.sortBy`) — see
@@ -71,7 +85,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     limit: pageSize,
     offset: page * pageSize,
     search: search || undefined,
-    statusCode: filters.statusCode,
+    displayStatus: filters.displayStatus,
     source: filters.source,
     sortBy: sort.sortBy,
     sortOrder: sort.sortOrder,
@@ -128,10 +142,26 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     {
       title: 'Status',
       key: 'status',
-      minWidth: 130,
-      render: (_: unknown, row: CandidateRow) => (
-        <Badge status="neutral">{row.status_label ?? row.status_code ?? 'Applied'}</Badge>
-      ),
+      minWidth: 170,
+      render: (_: unknown, row: CandidateRow) => {
+        const displayStatus = resolveDisplayStatus(row);
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <Badge status={DISPLAY_STATUS_BADGE[displayStatus]}>
+              {candidateDisplayStatusLabel(displayStatus)}
+            </Badge>
+            {/* Round details only while In Process; no round name yet = resume stage. */}
+            {displayStatus === 'in_process' && (
+              <span className="text-xs text-gray-600">
+                {row.current_round_name || 'Resume Review'}
+                {row.current_round_status
+                  ? ` · ${formatRoundStatus(row.current_round_status)}`
+                  : ''}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: 'Resume Score',
@@ -174,7 +204,7 @@ const CandidatesListModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           <div className="flex flex-wrap items-center gap-2.5">
             <Search
               appname="total applications modal"
-              placeholder="Search candidates..."
+              placeholder="Search Candidates..."
               value={search}
               allowClear
               onSearch={(value) => {

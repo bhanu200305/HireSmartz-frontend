@@ -1,9 +1,8 @@
 import { Select } from 'antd';
-import {
-  useListCandidateStatusesQuery,
-  useListApplicationSourcesQuery,
-} from '../../../api/candidate-service/Master/master';
+import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
+import type { CandidateDisplayStatus } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
 import { FilterSelectIcon } from '../../shared/ui/FilterSelectIcon';
+import { CANDIDATE_DISPLAY_STATUS_OPTIONS } from './candidateDisplay';
 
 // Rewritten against candidate-service's real master data
 // (`GET /candidate-master/candidate-statuses`, `GET /candidate-master/application-sources`) —
@@ -14,10 +13,15 @@ import { FilterSelectIcon } from '../../shared/ui/FilterSelectIcon';
 // fetch codes, never hardcode them). Sole consumer is `CandidatesListing.tsx`
 // — safe to replace in place, unlike the other legacy modal components in
 // this folder that `CandidateDetails.tsx` still depends on.
+//
+// The status filter sends `display_status` (the list's four top-level
+// states), not `status_code`, so the dropdown labels match the status column.
 
 export type CandidateListFilterValues = {
-  statusCode?: string;
+  displayStatus?: CandidateDisplayStatus;
   source?: string;
+  /** job-service round id: candidates currently sitting at that round. */
+  roundId?: string;
 };
 
 // Sentinel for the "All" option — never sent to the API; selecting it clears
@@ -27,10 +31,11 @@ const ALL = '__all__';
 type FilterMenuProps = {
   filters: CandidateListFilterValues;
   onFilterChange: (newFilters: Partial<CandidateListFilterValues>) => void;
+  /** The job's interview rounds, for the Round filter. */
+  roundOptions?: { label: string; value: string }[];
 };
 
-const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
-  const { data: statuses = [] } = useListCandidateStatusesQuery();
+const FilterMenu = ({ filters, onFilterChange, roundOptions = [] }: FilterMenuProps) => {
   const { data: sources = [] } = useListApplicationSourcesQuery();
 
   return (
@@ -40,18 +45,19 @@ const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
           <FilterSelectIcon />
           <Select
             placeholder="Status"
-            value={filters.statusCode ?? ALL}
-            onChange={(val) => onFilterChange({ statusCode: val && val !== ALL ? val : undefined })}
-            allowClear={Boolean(filters.statusCode)}
+            value={filters.displayStatus ?? ALL}
+            onChange={(val) =>
+              onFilterChange({
+                displayStatus: val && val !== ALL ? (val as CandidateDisplayStatus) : undefined,
+              })
+            }
+            allowClear={Boolean(filters.displayStatus)}
             showSearch
             optionFilterProp="label"
             className="w-full custom-select-jobs placeholder-style"
             dropdownClassName="rounded-3xl"
             variant="borderless"
-            options={[
-              { label: 'All Statuses', value: ALL },
-              ...statuses.map((s) => ({ label: s.label, value: s.code })),
-            ]}
+            options={[{ label: 'All Statuses', value: ALL }, ...CANDIDATE_DISPLAY_STATUS_OPTIONS]}
             popupMatchSelectWidth={false}
           />
         </div>
@@ -71,6 +77,22 @@ const FilterMenu = ({ filters, onFilterChange }: FilterMenuProps) => {
               { label: 'All Sources', value: ALL },
               ...sources.map((s) => ({ label: s.label, value: s.code })),
             ]}
+            popupMatchSelectWidth={false}
+          />
+        </div>
+        <div className="cfp-dropdown-trigger w-full sm:w-auto sm:min-w-[200px]">
+          <FilterSelectIcon />
+          <Select
+            placeholder="Round"
+            value={filters.roundId ?? ALL}
+            onChange={(val) => onFilterChange({ roundId: val && val !== ALL ? val : undefined })}
+            allowClear={Boolean(filters.roundId)}
+            showSearch
+            optionFilterProp="label"
+            className="w-full custom-select-jobs placeholder-style"
+            dropdownClassName="rounded-3xl"
+            variant="borderless"
+            options={[{ label: 'All Rounds', value: ALL }, ...roundOptions]}
             popupMatchSelectWidth={false}
           />
         </div>

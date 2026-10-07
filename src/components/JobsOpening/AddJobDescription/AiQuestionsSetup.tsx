@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tooltip } from 'antd';
-import { MdInfoOutline, MdOutlineQuestionAnswer } from 'react-icons/md';
+import { MdClose, MdInfoOutline, MdOutlineQuestionAnswer } from 'react-icons/md';
 import { HiOutlineTrash } from 'react-icons/hi';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -24,6 +24,7 @@ import {
   jobQuestionsApi,
 } from '../../../api/job-service/JobOpening/jobQuestions';
 import { useListInterviewRoundTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
+import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import {
   useGetJobScoringConfigQuery,
   type JobScoringWeight,
@@ -52,6 +53,7 @@ import UploadAndGenerateHeader, { type ImportWarningItem } from './UploadAndGene
 import InlineQuestionInput from './InlineQuestionInput';
 import QuestionRowItem from './QuestionRowItem';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
+import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 
 const DEFAULT_QUESTION_COUNT = 10;
 const GENERATION_POLL_INTERVAL_MS = 1000;
@@ -59,7 +61,7 @@ const GENERATION_POLL_TIMEOUT_MS = 90_000;
 
 // Human-readable text for each publish-readiness failure code.
 const PUBLISH_CHECK_LABELS: Record<string, string> = {
-  jd_missing: 'Job description is missing',
+  jd_missing: 'Job Description is missing',
   mandatory_fields_incomplete:
     'Some required Job Details fields are missing - check Job Title, Department, Job Type, Open Date, Vacancies, Minimum Experience, Salary Range, and Hiring Manager',
   no_education_preference: 'Education preference is not set',
@@ -68,7 +70,7 @@ const PUBLISH_CHECK_LABELS: Record<string, string> = {
   no_mandatory_skill: 'At least one skill must be marked Required, not just Optional',
   no_round: 'At least one interview round is required',
   no_question: 'At least one question is required',
-  no_intake_question: 'Intake call questions are required',
+  no_intake_question: 'Add Intake Call questions, or remove the Intake Call round',
 };
 
 const describeFailedChecks = (checks: string[], roundsMissingQuestions: string[] = []): string =>
@@ -212,9 +214,8 @@ const AiQuestionsSetup = () => {
   // Editing an already-published job skips publish and just saves; editing
   // an unpublished draft still goes through validate-then-publish below.
   const isEditRoute = pathname.includes('/edit/') && Boolean(id);
-  const isEditingAlreadyPublishedJob = useSelector(
-    (state: RootState) => isEditRoute && !state.EditJobSlice.isDraft
-  );
+  const isEditingAlreadyPublishedJob =
+    useIsEditingDraft(isEditRoute ? activeJobOpeningId : null) === false;
 
   const { data: roundTypes = [] } = useListInterviewRoundTypesQuery();
   // Rounds without a recruiter-set duration never take Q&A questions.
@@ -229,6 +230,9 @@ const AiQuestionsSetup = () => {
   const questionSnapshotBeforeGenerateRef = useRef<string | null>(null);
   // Round the in-flight generation targeted - auto-opens its section once done.
   const roundBeingGeneratedForRef = useRef<string | null>(null);
+  // For the completion toast: what the round held before, and whether this was an append.
+  const roundCountBeforeGenerateRef = useRef(0);
+  const generationModeRef = useRef<'ADD' | 'REPLACE'>('REPLACE');
 
   const {
     data: questionsData,
@@ -273,6 +277,15 @@ const AiQuestionsSetup = () => {
     () => questions.filter((q) => q.interview_round_id === activeRoundInstanceId),
     [questions, activeRoundInstanceId]
   );
+  // After an add, scroll the list so the new question at the bottom is in view.
+  const questionListRef = useRef<HTMLDivElement>(null);
+  const scrollToEndAfterAddRef = useRef(false);
+  useEffect(() => {
+    if (!scrollToEndAfterAddRef.current) return;
+    scrollToEndAfterAddRef.current = false;
+    const list = questionListRef.current;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+  }, [visibleQuestions.length]);
   // Content fingerprint rather than a count, since REPLACE can reduce the count.
   const questionsSnapshotKey = useMemo(() => questions.map((q) => q.id).join(','), [questions]);
 
@@ -340,17 +353,43 @@ const AiQuestionsSetup = () => {
     showToast({ message: generationError, type: 'error' });
   }, [isGeneratingQuestions, generationError]);
 
+  const generationNotice = questionsData?.generation_notice;
+
+  // "10 questions added" for an append, "25 questions generated" for a replace.
+  const generatedToastMessage = (roundQuestionCount: number) => {
+    const isAppend = generationModeRef.current === 'ADD';
+    const count = isAppend
+      ? roundQuestionCount - roundCountBeforeGenerateRef.current
+      : roundQuestionCount;
+    if (count <= 0) return 'Questions generated';
+    return `${count} question${count === 1 ? '' : 's'} ${isAppend ? 'added' : 'generated'}`;
+  };
+
   // Stop polling once the list differs from its pre-generation snapshot.
   useEffect(() => {
     if (!isGeneratingQuestions) return;
     if (questionSnapshotBeforeGenerateRef.current === null) return;
     if (questionsSnapshotKey === questionSnapshotBeforeGenerateRef.current) return;
     setIsGeneratingQuestions(false);
-    showToast({ message: 'Questions generated', type: 'success' });
-    if (roundBeingGeneratedForRef.current) {
-      setOpenSectionKey(roundBeingGeneratedForRef.current);
+    const generatedRoundId = roundBeingGeneratedForRef.current;
+    // Fewer than requested: say so, instead of a plain success count.
+    if (generationNotice) {
+      showToast({ message: generationNotice, type: 'info' });
+    } else {
+      showToast({
+        message: generatedToastMessage(
+          generatedRoundId
+            ? questions.filter((q) => q.interview_round_id === generatedRoundId).length
+            : questions.length
+        ),
+        type: 'success',
+      });
+    }
+    if (generatedRoundId) {
+      setOpenSectionKey(generatedRoundId);
       roundBeingGeneratedForRef.current = null;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGeneratingQuestions, questionsSnapshotKey]);
 
   // Safety net so polling doesn't run forever. Does one last refetch before
@@ -425,6 +464,8 @@ const AiQuestionsSetup = () => {
       // Snapshot the current list so the polling effect can detect a change.
       questionSnapshotBeforeGenerateRef.current = questionsSnapshotKey;
       roundBeingGeneratedForRef.current = activeRoundInstanceId;
+      generationModeRef.current = mode;
+      roundCountBeforeGenerateRef.current = visibleQuestions.length;
       if (mode === 'REPLACE') {
         await regenerateJobQuestions({
           jobOpeningId: activeJobOpeningId,
@@ -532,6 +573,7 @@ const AiQuestionsSetup = () => {
           interview_round_id: activeRoundInstanceId,
         })),
       ];
+      scrollToEndAfterAddRef.current = true;
       await persistQuestions(next);
       showToast({ message: 'Questions added successfully', type: 'success' });
       setInlineInputText('');
@@ -635,10 +677,13 @@ const AiQuestionsSetup = () => {
       try {
         const validation = await validateForPublish(activeJobOpeningId).unwrap();
         const emptyRounds = validation.rounds_missing_questions ?? [];
-        if (emptyRounds.length > 0) {
+        const questionChecks = (validation.failed_checks ?? []).filter(
+          (check) => check === 'no_question' || check === 'no_intake_question'
+        );
+        if (questionChecks.length > 0) {
           setBlockedRoundIds(validation.round_ids_missing_questions ?? []);
           showToast({
-            message: describeFailedChecks(['no_question'], emptyRounds),
+            message: describeFailedChecks(questionChecks, emptyRounds),
             type: 'error',
           });
           return;
@@ -720,8 +765,19 @@ const AiQuestionsSetup = () => {
     }
   };
 
-  const { data: intakeData } = useGetJobIntakeQuestionsQuery(activeJobOpeningId, {
+  // The Intake Call round is optional (job-service, 2026-10-05): its question
+  // section only belongs here when this job's sequence actually has one.
+  const { data: jobRounds = [] } = useGetInterviewRoundsByJobIdQuery(activeJobOpeningId ?? '', {
     skip: !activeJobOpeningId,
+  });
+  const jobHasIntakeRound = useMemo(() => {
+    const intakeTypeIds = new Set(
+      roundTypes.filter((t) => t.special_kind === 'intake_call').map((t) => String(t.round_id))
+    );
+    return jobRounds.some((round) => intakeTypeIds.has(String(round.round?.id ?? '')));
+  }, [roundTypes, jobRounds]);
+  const { data: intakeData } = useGetJobIntakeQuestionsQuery(activeJobOpeningId, {
+    skip: !activeJobOpeningId || !jobHasIntakeRound,
   });
   const intakeCount = intakeData?.questions?.length ?? 0;
   const questionCountByRound = useMemo(() => {
@@ -757,7 +813,7 @@ const AiQuestionsSetup = () => {
 
   // Intake is its own entry in the round list; otherwise the active round.
   const activeKey = effectiveOpenKey || activeRoundInstanceId || 'intake';
-  const isIntakeActive = activeKey === 'intake';
+  const isIntakeActive = jobHasIntakeRound && activeKey === 'intake';
   // Leaving the Intake tab drops its unsaved edits, so ask first.
   const [pendingSectionKey, setPendingSectionKey] = useState<string | null>(null);
   const requestSelectSection = (key: string) => {
@@ -773,6 +829,39 @@ const AiQuestionsSetup = () => {
   const activeRoundDescription = roundTypes.find(
     (rt) => rt.round_id === activeRound?.round_id
   )?.round_description;
+
+  // Tabs in display order: Intake Call (when the job has one), then each round.
+  // Save & Next walks them; the last one publishes.
+  const sectionKeys = [
+    ...(activeJobOpeningId && jobHasIntakeRound ? ['intake'] : []),
+    ...jdRounds.map((round) => round.round_instance_id),
+  ];
+  const activeSectionIndex = sectionKeys.indexOf(
+    isIntakeActive ? 'intake' : (activeRound?.round_instance_id ?? '')
+  );
+  const nextSectionKey = activeSectionIndex >= 0 ? sectionKeys[activeSectionIndex + 1] : undefined;
+  const isLastSection = nextSectionKey === undefined;
+  const canPublishHere = isEditingAlreadyPublishedJob || (canPublish && isAssignedToThisJob);
+  const handleSaveAndNext = () => {
+    if (!nextSectionKey) return;
+    const sectionIsEmpty = isIntakeActive
+      ? intakeCount === 0
+      : !!activeRound && !questionCountByRound[activeRound.round_instance_id];
+    if (sectionIsEmpty) {
+      if (activeRound) {
+        setBlockedRoundIds((ids) => [...new Set([...ids, activeRound.round_instance_id])]);
+      }
+      showToast({
+        message: `Add at least one question to ${
+          isIntakeActive ? 'the Intake Call' : activeRound?.round_name
+        } before continuing.`,
+        type: 'error',
+      });
+      return;
+    }
+    requestSelectSection(nextSectionKey);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <>
@@ -805,15 +894,25 @@ const AiQuestionsSetup = () => {
         {emptyRoundNames.length > 0 && (
           <div
             role="alert"
-            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
           >
-            Add at least one question to: <strong>{emptyRoundNames.join(', ')}</strong>
+            <span>
+              Add at least one question to: <strong>{emptyRoundNames.join(', ')}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => setBlockedRoundIds([])}
+              aria-label="Dismiss"
+              className="shrink-0 cursor-pointer text-red-500 hover:text-red-700"
+            >
+              <MdClose size={18} />
+            </button>
           </div>
         )}
 
         <div className="flex flex-col gap-3">
           <nav aria-label="Interview rounds" className="flex flex-wrap gap-2">
-            {activeJobOpeningId && (
+            {activeJobOpeningId && jobHasIntakeRound && (
               <RoundNavItem
                 label="Intake Call"
                 subtitle="Asked on the intake call"
@@ -919,10 +1018,14 @@ const AiQuestionsSetup = () => {
                         </p>
                       </div>
                     ) : (
-                      <div className="max-h-[46vh] min-h-[120px] space-y-3 overflow-y-auto pr-1">
-                        {visibleQuestions.map((q) => (
+                      <div
+                        ref={questionListRef}
+                        className="max-h-[46vh] min-h-[120px] space-y-3 overflow-y-auto pr-1"
+                      >
+                        {visibleQuestions.map((q, index) => (
                           <QuestionRowItem
                             key={q.id}
+                            number={index + 1}
                             question={{ id: q.id, question: q.question_text }}
                             checked={selectedIds.includes(q.id)}
                             onCheckChange={(checked) => handleSelectOne(q.id, checked)}
@@ -1040,9 +1143,9 @@ const AiQuestionsSetup = () => {
               : 'Your questions are saved automatically. The job stays a draft until you publish it.'}
           </p>
         )}
-        {(isEditingAlreadyPublishedJob || (canPublish && isAssignedToThisJob)) && (
+        {(!isLastSection || canPublishHere) && (
           <div className="flex justify-center gap-6">
-            {!isEditingAlreadyPublishedJob && (
+            {canPublishHere && !isEditingAlreadyPublishedJob && (
               <Tooltip title="Save progress and come back later.">
                 <Button
                   className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
@@ -1052,7 +1155,7 @@ const AiQuestionsSetup = () => {
                 </Button>
               </Tooltip>
             )}
-            {!isEditingAlreadyPublishedJob && (
+            {canPublishHere && !isEditingAlreadyPublishedJob && (
               <Tooltip title="Delete this job opening and everything in it.">
                 <Button
                   className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2"
@@ -1062,25 +1165,36 @@ const AiQuestionsSetup = () => {
                 </Button>
               </Tooltip>
             )}
-            <Tooltip
-              title={
-                isEditingAlreadyPublishedJob
-                  ? 'Save changes to this published job.'
-                  : 'Publish this job opening live.'
-              }
-            >
-              <Button
-                className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => void handlePublishOrFinish()}
-                disabled={isPublishing || !activeJobOpeningId}
+            {!isLastSection ? (
+              <Tooltip title="Questions are saved. Continue to the next round.">
+                <Button
+                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  onClick={handleSaveAndNext}
+                >
+                  Save &amp; Next
+                </Button>
+              </Tooltip>
+            ) : (
+              <Tooltip
+                title={
+                  isEditingAlreadyPublishedJob
+                    ? 'Save changes to this published job.'
+                    : 'Publish this job opening live.'
+                }
               >
-                {isPublishing
-                  ? 'Publishing…'
-                  : isEditingAlreadyPublishedJob
-                    ? 'Save & Finish'
-                    : '✓ Publish Job Opening'}
-              </Button>
-            </Tooltip>
+                <Button
+                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => void handlePublishOrFinish()}
+                  disabled={isPublishing || !activeJobOpeningId}
+                >
+                  {isPublishing
+                    ? 'Publishing…'
+                    : isEditingAlreadyPublishedJob
+                      ? 'Save & Finish'
+                      : 'Publish Job Opening'}
+                </Button>
+              </Tooltip>
+            )}
           </div>
         )}
         {showCancelConfirm && (

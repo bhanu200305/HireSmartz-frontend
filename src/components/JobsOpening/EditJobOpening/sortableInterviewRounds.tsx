@@ -15,6 +15,7 @@ import type { IconType } from 'react-icons';
 import { DraggableItem } from '../../shared/ui/DragAndDrop';
 import { showToast } from '../../shared';
 import RoundInfoModal from '../../shared/ui/RoundInfoModal';
+import { getRoundInfoSections } from '../../../shared/utils/roundInfoContent';
 import { resolveVariantLabel } from '../../../shared/utils/variantLabel';
 
 type InterviewRound = {
@@ -54,8 +55,12 @@ type SortableInterviewRoundsProps = {
   onEdit: (round: InterviewRound) => void;
   onDelete: (roundId: string | number) => void;
   isEditMode?: boolean;
-  // Round-type ids for fixed anchor rounds (Resume/Intake Call) that must stay in the top 2 slots.
+  // Round-type ids for anchor rounds (Resume as round 1, plus the optional
+  // Intake Call as round 2) — see `violatesAnchorPositions`.
   anchorRoundTypeIds?: Set<string>;
+  // Anchor round types that are optional (Intake Call): still pinned, but
+  // removable, so they keep a delete control. Never editable/retypeable.
+  removableAnchorRoundTypeIds?: Set<string>;
   // Variant display text, merged across round types.
   variantLabelOverrides?: Record<string, string>;
 };
@@ -67,6 +72,7 @@ export const SortableInterviewRounds = ({
   onDelete,
   isEditMode = false,
   anchorRoundTypeIds,
+  removableAnchorRoundTypeIds,
   variantLabelOverrides,
 }: SortableInterviewRoundsProps) => {
   const [items, setItems] = useState<InterviewRound[]>(rounds);
@@ -87,25 +93,35 @@ export const SortableInterviewRounds = ({
     }));
   };
 
-  /** Resume and Intake Call must always occupy the top 2 slots — either
-   * one may lead, but nothing else may be dragged ahead of both of them. */
+  /** The anchor rounds are fixed: Resume is always round 1 and, when the job
+   * has one, the Intake Call is always round 2. They can't swap, and nothing
+   * else may be dragged ahead of them. (Which one a candidate starts with is
+   * the candidate's choice when applying; it never changes this setup.) */
   const violatesAnchorPositions = (candidate: InterviewRound[]) => {
     if (!anchorRoundTypeIds || anchorRoundTypeIds.size === 0) return false;
     const isAnchor = (round: InterviewRound) => anchorRoundTypeIds.has(String(round.round?.id));
+    const isIntake = (round: InterviewRound) =>
+      Boolean(removableAnchorRoundTypeIds?.has(String(round.round?.id)));
     const anchorCount = candidate.filter(isAnchor).length;
     if (anchorCount === 0) return false;
-    const topSlots = candidate.slice(0, Math.min(2, candidate.length));
-    const anchorsInTopSlots = topSlots.filter(isAnchor).length;
-    return anchorsInTopSlots < Math.min(anchorCount, 2);
+    if (!candidate.slice(0, anchorCount).every(isAnchor)) return true;
+    // Resume (an anchor that isn't the Intake Call) must be first; the Intake
+    // Call, if present, second.
+    if (isIntake(candidate[0])) return true;
+    return anchorCount > 1 && !isIntake(candidate[1]);
   };
 
   const handleDrop = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) return;
     const reordered = reorder(fromIndex, toIndex);
     if (violatesAnchorPositions(reordered)) {
+      const hasIntake = reordered.some((round) =>
+        removableAnchorRoundTypeIds?.has(String(round.round?.id))
+      );
       showToast({
-        message:
-          'Resume and Intake Call rounds must stay the top 2 rounds. They can swap places, but no other round can be moved ahead of them.',
+        message: hasIntake
+          ? 'Resume must stay round 1 and the Intake Call round 2. No other round can be moved ahead of them.'
+          : 'The Resume round must stay round 1. No other round can be moved ahead of it.',
         type: 'error',
       });
       return;
@@ -118,9 +134,10 @@ export const SortableInterviewRounds = ({
     const badge = getVariantBadge(round.variant, variantLabelOverrides);
     const BadgeIcon = badge?.icon;
     const summary = round.duration ? `${round.duration} min` : '';
-    // Resume and Intake Call are auto-seeded, locked anchor rounds — they
-    // can't be edited or removed, so their controls don't belong here.
+    // Anchor rounds are never edited/retyped here. Resume is mandatory, so it
+    // gets no controls at all; the optional Intake Call can still be deleted.
     const isAnchorRound = anchorRoundTypeIds?.has(String(round.round?.id)) ?? false;
+    const isRemovableAnchor = removableAnchorRoundTypeIds?.has(String(round.round?.id)) ?? false;
 
     return (
       <div
@@ -153,17 +170,19 @@ export const SortableInterviewRounds = ({
             <p className="text-sm text-neutral-500 mt-1 truncate">{round.description}</p>
           )}
         </div>
-        {!isAnchorRound && (
+        {(!isAnchorRound || isRemovableAnchor) && (
           <div className="flex items-center gap-4 shrink-0">
-            <Tooltip title="Edit Round">
-              <button
-                onClick={() => onEdit(round)}
-                className="text-neutral-500 hover:text-neutral-700 cursor-pointer"
-                aria-label="Edit round"
-              >
-                <MdEdit size={18} />
-              </button>
-            </Tooltip>
+            {!isAnchorRound && (
+              <Tooltip title="Edit Round">
+                <button
+                  onClick={() => onEdit(round)}
+                  className="text-neutral-500 hover:text-neutral-700 cursor-pointer"
+                  aria-label="Edit round"
+                >
+                  <MdEdit size={18} />
+                </button>
+              </Tooltip>
+            )}
             <Tooltip title="Delete Round">
               <button
                 className="text-gray-600 hover:text-red-600 cursor-pointer transition-colors"
@@ -184,6 +203,10 @@ export const SortableInterviewRounds = ({
       roundName={infoRound.round?.name ?? 'Interview round'}
       badgeLabel={getVariantBadge(infoRound.variant, variantLabelOverrides)?.label}
       description={infoRound.description}
+      sections={getRoundInfoSections({
+        roundName: infoRound.round?.name,
+        variants: [infoRound.variant],
+      })}
       onClose={() => setInfoRound(null)}
     />
   );

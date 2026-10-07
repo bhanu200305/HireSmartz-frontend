@@ -9,12 +9,9 @@ import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateEr
 import {
   isPhoneValidForCountry,
   PHONE_VALIDATION_MESSAGE,
-  splitE164,
+  splitStoredPhone,
   toE164,
 } from '../../../shared/utils/validation/phoneValidation';
-
-// Same default every other phone field in this app starts from.
-const DEFAULT_COUNTRY_CODE = '+1';
 
 // Shared look for every field, read-only or editable. Disabled fields get the
 // browser's not-allowed cursor (circle with a slash) on hover — the old app's
@@ -47,8 +44,13 @@ const CandidateDetailsForm = ({
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  // No default code: a stored number without one is shown as written, and the
+  // recruiter picks a code only if they change the phone.
+  const [countryCode, setCountryCode] = useState('');
   const [phone, setPhone] = useState('');
+  // The phone as seeded, so a save that didn't touch it never re-sends or
+  // re-validates it (the stored number may have no country code).
+  const seededPhone = useRef({ countryCode: '', phone: '' });
   const [updateCandidate, { isLoading }] = useUpdateCandidateMutation();
 
   // Mirror the record while read-only (including after a save's refetch), and
@@ -64,9 +66,10 @@ const CandidateDetailsForm = ({
     setFirstName(candidate.first_name ?? '');
     setLastName(candidate.last_name ?? '');
     setEmail(candidate.email_id ?? '');
-    const split = splitE164(candidate.contact_no);
-    setCountryCode(split.countryCode || DEFAULT_COUNTRY_CODE);
+    const split = splitStoredPhone(candidate.contact_no);
+    setCountryCode(split.countryCode);
     setPhone(split.phoneNumber);
+    seededPhone.current = { countryCode: split.countryCode, phone: split.phoneNumber };
     seededForId.current = candidate.id;
   }, [candidate, isEditing]);
 
@@ -81,7 +84,7 @@ const CandidateDetailsForm = ({
     if (!candidate) return;
     if (!isFormValid) {
       showToast({
-        message: 'First name, last name, email and phone are required.',
+        message: 'First Name, last name, email and phone are required.',
         type: 'error',
       });
       return;
@@ -90,20 +93,30 @@ const CandidateDetailsForm = ({
       showToast({ message: 'Enter a valid email address.', type: 'error' });
       return;
     }
-    if (!isPhoneValidForCountry(phone, countryCode)) {
-      showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
-      return;
+    const phoneChanged =
+      countryCode !== seededPhone.current.countryCode || phone !== seededPhone.current.phone;
+    if (phoneChanged) {
+      if (!countryCode) {
+        showToast({ message: 'Select a country code.', type: 'error' });
+        return;
+      }
+      if (!isPhoneValidForCountry(phone, countryCode)) {
+        showToast({ message: PHONE_VALIDATION_MESSAGE, type: 'error' });
+        return;
+      }
     }
 
     const body: Record<string, string> = {};
     const nextFirst = firstName.trim();
     const nextLast = lastName.trim();
     const nextEmail = email.trim();
-    const nextPhone = phone.trim() ? toE164(countryCode, phone) : '';
     if (nextFirst !== (candidate.first_name ?? '')) body.first_name = nextFirst;
     if (nextLast !== (candidate.last_name ?? '')) body.last_name = nextLast;
     if (nextEmail !== (candidate.email_id ?? '')) body.email_id = nextEmail;
-    if (nextPhone !== (candidate.contact_no ?? '')) body.contact_no = nextPhone;
+    if (phoneChanged) {
+      const nextPhone = toE164(countryCode, phone);
+      if (nextPhone !== (candidate.contact_no ?? '')) body.contact_no = nextPhone;
+    }
 
     if (Object.keys(body).length === 0) {
       onDone();
@@ -161,7 +174,7 @@ const CandidateDetailsForm = ({
         <div className="min-w-0">
           {label('candidate-details-phone', 'Phone Number', true)}
           <PhoneNumberField
-            countryCode={countryCode}
+            countryCode={countryCode || undefined}
             onCountryCodeChange={setCountryCode}
             phoneNumber={phone}
             onPhoneNumberChange={setPhone}
@@ -170,14 +183,14 @@ const CandidateDetailsForm = ({
           />
         </div>
         <div className="min-w-0">
-          {label('candidate-details-email', 'Email ID', true)}
+          {label('candidate-details-email', 'Email Address', true)}
           <Input
             id="candidate-details-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={disabled}
-            placeholder="Email ID"
+            placeholder="Email Address"
             className={FIELD_CLASS}
           />
         </div>

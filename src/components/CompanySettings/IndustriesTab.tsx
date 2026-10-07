@@ -287,7 +287,7 @@ const IndustriesTab: React.FC = () => {
         <div className="flex items-center gap-3">
           <Input
             prefix={<MdSearch className="text-gray-400" />}
-            placeholder="Search industries..."
+            placeholder="Search Industries..."
             className="w-64"
             value={searchText}
             onChange={(e) => {

@@ -149,6 +149,23 @@ export const splitE164 = (
 };
 
 /**
+ * Splits a candidate's stored `contact_no`, which is kept exactly as written on
+ * the resume and so is NOT always E.164. Only a value that carries its country
+ * code (`+...`, or `00...` read as `+`) is split; anything else is returned as
+ * digits with no country code, never guessing one (splitE164 would read the
+ * leading digits of "(555) 014-7823" as Brazil's +55).
+ */
+export const splitStoredPhone = (
+  value: string | null | undefined
+): { countryCode: string; phoneNumber: string } => {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return { countryCode: '', phoneNumber: '' };
+  if (trimmed.startsWith('+')) return splitE164(trimmed);
+  if (trimmed.startsWith('00')) return splitE164(`+${trimmed.slice(2)}`);
+  return { countryCode: '', phoneNumber: trimmed.replace(/\D/g, '') };
+};
+
+/**
  * A zod `.superRefine()` step for an object schema that has both a
  * dial-code field and a national-number field — phone validity depends on
  * both together, which a single field-level `.regex()` can never express
@@ -168,7 +185,7 @@ export const phoneWithCountry =
         ctx.addIssue({
           code: 'custom',
           path: [phoneField],
-          message: 'Phone number is required.',
+          message: 'Phone Number is required.',
         });
       }
       return;

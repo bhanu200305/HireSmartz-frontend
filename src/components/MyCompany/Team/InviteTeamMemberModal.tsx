@@ -201,7 +201,7 @@ const InviteTeamMemberForm = ({
                 showSearch
                 optionFilterProp="label"
                 className="w-full mt-1"
-                placeholder="Select department"
+                placeholder="Select Department"
                 options={departments.map((department) => ({
                   label: department.name,
                   value: String(department.id),
@@ -227,7 +227,7 @@ const InviteTeamMemberForm = ({
                 {...field}
                 onChange={field.onChange}
                 loading={isLoadingRoles}
-                placeholder="Select a role"
+                placeholder="Select a Role"
                 showSearch
                 optionFilterProp="label"
                 className="w-full mt-1"

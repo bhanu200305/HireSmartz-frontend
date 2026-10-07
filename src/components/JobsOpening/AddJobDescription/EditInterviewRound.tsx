@@ -1,3 +1,4 @@
+import { isRoundOfType, retypableRoundTypes, roundTypeIdsOfKind } from '../intakeRoundPlacement';
 import { Form, Radio, Select } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { showToast } from '../../shared';
@@ -19,6 +20,10 @@ import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers'
 import { slotOptions } from '../../../shared/utils/business-logic';
 import { useState } from 'react';
 import { resolveVariantLabel as formatVariantLabel } from '../../../shared/utils/variantLabel';
+import {
+  firstAvailableVariant,
+  isUnavailableVariant,
+} from '../../../shared/utils/roundInfoContent';
 
 const { Option } = Select;
 
@@ -35,14 +40,19 @@ const EditInterviewRound = () => {
   const { data: currentRounds = [] } = useGetInterviewRoundsByJobIdQuery(jobOpeningId, {
     skip: !jobOpeningId,
   });
-  // Resume and Intake Call are auto-seeded and locked — never selectable
-  // here, except to keep this round's own current type visible if it's
-  // one of them.
-  const selectableInterviewRounds = interviewRounds.filter(
-    (round) =>
-      (round.special_kind !== 'resume' && round.special_kind !== 'intake_call') ||
-      String(round.id) === String(roundData?.round)
-  );
+  // Resume is never selectable. Intake Call is offered when the job has none and
+  // this round is round 2; this round's own type always stays listed.
+  const intakeTypeIds = roundTypeIdsOfKind(interviewRounds, 'intake_call');
+  const jobHasIntake = currentRounds.some((round) => isRoundOfType(round, intakeTypeIds));
+  const roundPosition =
+    [...currentRounds]
+      .sort((a, b) => a.sequence - b.sequence)
+      .findIndex((round) => String(round.id) === String(roundData?.roundId)) + 1;
+  const selectableInterviewRounds = retypableRoundTypes(interviewRounds, {
+    currentTypeId: roundData?.round,
+    jobHasIntake,
+    position: roundPosition || Number.MAX_SAFE_INTEGER,
+  });
   const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(
     () => interviewRounds.find((round) => String(round.id) === String(roundData?.round)) ?? null
   );
@@ -78,7 +88,7 @@ const EditInterviewRound = () => {
         setValue('description', selectedRound.description || '');
         setValue('roundType', selectedRound.roundType || '');
         setValue('duration', selectedRound.requires_duration ? 30 : null);
-        setValue('variant', selectedRound.available_variants?.[0] ?? null);
+        setValue('variant', firstAvailableVariant(selectedRound.available_variants));
       }
     }
   };
@@ -230,6 +240,8 @@ const EditInterviewRound = () => {
                           <Radio.Button
                             key={variant}
                             value={variant}
+                            disabled={isUnavailableVariant(variant)}
+                            title={isUnavailableVariant(variant) ? 'Not available yet' : undefined}
                             className={`text-center ${
                               field.value === variant
                                 ? '!bg-primary !text-white !border-primary'

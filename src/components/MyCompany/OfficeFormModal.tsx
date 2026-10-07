@@ -203,32 +203,34 @@ const OfficeFormModal: React.FC<OfficeFormModalProps> = ({
     >
       <div onKeyDown={handleEnterToSubmit}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input placeholder="Address line 1 *" maxLength={200} {...field('address_line_1')} />
-          <Input placeholder="Address line 2" maxLength={200} {...field('address_line_2')} />
+          <Input placeholder="Address Line 1 *" maxLength={200} {...field('address_line_1')} />
+          <Input placeholder="Address Line 2" maxLength={200} {...field('address_line_2')} />
           <LocationCascadeFields
             value={{ country: form.country, state: form.state, city: form.city }}
             onChange={handleLocationChange}
             className="w-full"
+            afterState={
+              <div>
+                <Input
+                  placeholder="Zip Code"
+                  maxLength={20}
+                  value={form.zip_code}
+                  onChange={handleZipCodeChange}
+                  suffix={
+                    isLookingUpPostalCode ? (
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-300 border-t-primary-500" />
+                    ) : undefined
+                  }
+                />
+                {!form.country && (
+                  <p className="mt-1 px-2 text-xs text-neutral-400">
+                    Pick a country below to auto-fill state &amp; city from this zip code.
+                  </p>
+                )}
+              </div>
+            }
           />
-          <div>
-            <Input
-              placeholder="Zip code"
-              maxLength={20}
-              value={form.zip_code}
-              onChange={handleZipCodeChange}
-              suffix={
-                isLookingUpPostalCode ? (
-                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-300 border-t-primary-500" />
-                ) : undefined
-              }
-            />
-            {!form.country && (
-              <p className="mt-1 px-2 text-xs text-neutral-400">
-                Pick a country above to auto-fill state &amp; city from this zip code.
-              </p>
-            )}
-          </div>
-          <Input placeholder="Location code" maxLength={50} {...field('location_code')} />
+          <Input placeholder="Location Code" maxLength={50} {...field('location_code')} />
         </div>
 
         <button

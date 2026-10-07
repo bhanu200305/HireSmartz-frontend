@@ -29,6 +29,8 @@ import {
   useSubmitFeedbackMutation,
   useAttachRecordingMutation,
   useUploadOfflineRecordingMutation,
+  toUploadableAudioFile,
+  AUDIO_UPLOAD_ACCEPT,
   type BookingStatus,
   type FeedbackRecommendation,
   type InterviewApiError,
@@ -66,6 +68,7 @@ type PendingAction = 'cancel' | 'skip' | 'status' | 'substitute' | null;
 const RECOMMENDATION_OPTIONS: Array<{ label: string; value: FeedbackRecommendation }> = [
   { label: 'Strong Yes', value: 'strong_yes' },
   { label: 'Yes', value: 'yes' },
+  { label: 'Neutral', value: 'neutral' },
   { label: 'No', value: 'no' },
   { label: 'Strong No', value: 'strong_no' },
 ];
@@ -228,12 +231,17 @@ export const BookingDetailDrawer = ({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('audio/')) {
+    const audioFile = toUploadableAudioFile(file);
+    if (!audioFile) {
       showToast({ message: 'Please choose an audio file.', type: 'error' });
       return;
     }
+    if (audioFile.size === 0) {
+      showToast({ message: 'This audio file is empty.', type: 'error' });
+      return;
+    }
     try {
-      await uploadOfflineRecording({ bookingId: id, file }).unwrap();
+      await uploadOfflineRecording({ bookingId: id, file: audioFile }).unwrap();
       showToast({ message: 'Recording uploaded.', type: 'success' });
     } catch (e2) {
       const err = e2 as InterviewApiError;
@@ -632,7 +640,7 @@ export const BookingDetailDrawer = ({
                       <input
                         ref={audioFileInputRef}
                         type="file"
-                        accept="audio/*"
+                        accept={AUDIO_UPLOAD_ACCEPT}
                         className="hidden"
                         onChange={(e) => void handleAudioFileSelected(e)}
                       />
@@ -661,7 +669,7 @@ export const BookingDetailDrawer = ({
                     <Select<FeedbackRecommendation>
                       className="w-full"
                       size="large"
-                      placeholder="Select a recommendation"
+                      placeholder="Select a Recommendation"
                       value={recommendation}
                       options={RECOMMENDATION_OPTIONS}
                       onChange={(v) => setRecommendation(v)}

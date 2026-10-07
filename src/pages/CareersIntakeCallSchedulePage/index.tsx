@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import clsx from 'clsx';
-import { LuChevronLeft, LuChevronRight, LuCalendarDays, LuCircleCheck } from 'react-icons/lu';
+import {
+  LuChevronLeft,
+  LuChevronRight,
+  LuCalendarDays,
+  LuCircleCheck,
+  LuPhone,
+} from 'react-icons/lu';
 import { RxClock } from 'react-icons/rx';
 import { Loader } from '../../components/shared/ui/loader';
 import { PublicFooter } from '../../components/shared/PublicFooter';
@@ -11,6 +17,7 @@ import { AI_SCHEDULE_WINDOW_DAYS, AI_SLOT_MIN_LEAD_MINUTES } from '../../constan
 import {
   useLazyGetIntakeCallSlotsQuery,
   useBookIntakeCallSlotMutation,
+  useCallIntakeCallNowMutation,
 } from '../../api/candidate-service/PublicApply/index';
 import { getCandidateErrorMessage } from '../../shared/utils/auth/candidateError.helpers';
 
@@ -33,9 +40,10 @@ import { getCandidateErrorMessage } from '../../shared/utils/auth/candidateError
 // its own existing candidate-service hooks (`useLazyGetIntakeCallSlotsQuery`/
 // `useBookIntakeCallSlotMutation`) rather than switching to interview-
 // service's client, and skips features that don't apply to a resume-first
-// public apply (the AI-voice consent modal, "call me now instead", the
+// public apply (the AI-voice consent modal and the
 // language/timezone-search dropdowns) — this round is a plain phone call,
 // not an AI-conducted interview, and never carried those before either.
+// It does offer "Call me now instead" (`POST .../apply/intake-call-now`).
 
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
@@ -64,6 +72,11 @@ export const CareersIntakeCallSchedulePage = () => {
   const [fetchSlots, { data: slotsData, isFetching: isLoadingSlots }] =
     useLazyGetIntakeCallSlotsQuery();
   const [bookSlot, { isLoading: isBooking }] = useBookIntakeCallSlotMutation();
+  // "Call me now instead" (`POST /public/v1/apply/intake-call-now`): only ever
+  // from a button press, never on page load (link scanners GET every link).
+  const [callNow, { isLoading: isCallingNow }] = useCallIntakeCallNowMutation();
+  const [calledNow, setCalledNow] = useState<{ queued: boolean } | null>(null);
+  const [callNowError, setCallNowError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token || !selectedDate) return;
@@ -74,6 +87,18 @@ export const CareersIntakeCallSchedulePage = () => {
     setSelectedDate(date);
     setSelectedSlot(null);
     setBookingError(null);
+  };
+
+  const handleCallNow = async (): Promise<void> => {
+    setCallNowError(null);
+    try {
+      const res = await callNow({ token }).unwrap();
+      setCalledNow({ queued: Boolean(res.data.questions_pending) });
+    } catch (e) {
+      setCallNowError(
+        getCandidateErrorMessage(e, "We couldn't start the call. Please pick a time.")
+      );
+    }
   };
 
   const handleBook = async (): Promise<void> => {
@@ -123,6 +148,34 @@ export const CareersIntakeCallSchedulePage = () => {
           This scheduling link is missing its token. Please use the link from your application
           confirmation instead of navigating here directly.
         </p>
+      </div>
+    );
+  }
+
+  if (calledNow) {
+    return (
+      <div className="public-page min-h-screen bg-gray-50 flex flex-col">
+        <header className="bg-gray-900 shadow-md text-white px-4 h-12 flex items-center justify-center shrink-0">
+          {logoUrl ? (
+            <img src={logoUrl} alt={companyName ?? 'Company logo'} className="h-9 object-contain" />
+          ) : (
+            <span className="text-white font-bold text-xl tracking-widest">CFP</span>
+          )}
+        </header>
+        <main className="flex-1 flex items-center justify-center px-4 py-10">
+          <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center">
+            <LuCircleCheck className="text-green-500 w-16 h-16 mx-auto mb-4" />
+            <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+              {calledNow.queued ? 'Iris Will Call You Shortly' : 'Iris Is Calling You Now'}
+            </h1>
+            <p className="text-gray-500 text-sm">
+              {calledNow.queued
+                ? 'Please keep your phone nearby. Your call will start in a few moments.'
+                : 'Please pick up your phone. The call is starting now.'}
+            </p>
+          </div>
+        </main>
+        <PublicFooter />
       </div>
     );
   }
@@ -343,6 +396,29 @@ export const CareersIntakeCallSchedulePage = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="border-t border-gray-100 px-6 py-4">
+            <p className="text-xs text-gray-400 text-center mb-2">
+              Prefer to talk right away? Iris can call you now instead of waiting for a time slot.
+            </p>
+            {callNowError && (
+              <p className="text-red-500 text-xs text-center mb-2">{callNowError}</p>
+            )}
+            <button
+              type="button"
+              onClick={() => void handleCallNow()}
+              disabled={isCallingNow || isBooking}
+              className="w-full py-2.5 rounded-full border border-(--primary) text-(--primary) text-sm font-semibold hover:bg-(--primary)/5 transition disabled:opacity-60 flex items-center justify-center gap-2 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isCallingNow ? (
+                <Loader />
+              ) : (
+                <>
+                  <LuPhone className="w-4 h-4" /> Instant Call With Iris
+                </>
+              )}
+            </button>
           </div>
         </div>
       </main>

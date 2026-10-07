@@ -7,7 +7,7 @@ import { phoneWithCountry } from '../../shared/utils/validation/phoneValidation'
 
 export const tenantDetailsSchema = z
   .object({
-    companyName: z.string().nonempty('Company name is required.'),
+    companyName: z.string().nonempty('Company Name is required.'),
     // Optional on organization-service's CreateTenantInput — a value here
     // triggers an ai-service branding scrape, which is a nice-to-have preview,
     // not a requirement to create the tenant. websiteLinkValidation() already
@@ -29,7 +29,7 @@ export const tenantDetailsSchema = z
 export type TenantDetailsFormValues = z.infer<typeof tenantDetailsSchema>;
 
 export const tenantProfileSchema = z.object({
-  name: z.string().nonempty('Company name is required.'),
+  name: z.string().nonempty('Company Name is required.'),
   // Matches ai-service's own hard cap on the scraped description
   // (_MAX_DESCRIPTION_CHARS in scrape_organization_website.py) — this used
   // to be stricter (600) than what the backend could actually hand back

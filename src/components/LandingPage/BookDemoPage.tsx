@@ -96,15 +96,15 @@ const demoRequestObjectSchema = z.object({
   firstName: z
     .string()
     .trim()
-    .min(2, 'First name must be at least 2 characters.')
-    .max(100, 'First name must be under 100 characters.')
-    .regex(NAME_REGEX, 'First name can only contain letters (and single spaces between words).'),
+    .min(2, 'First Name must be at least 2 characters.')
+    .max(100, 'First Name must be under 100 characters.')
+    .regex(NAME_REGEX, 'First Name can only contain letters (and single spaces between words).'),
   lastName: z
     .string()
     .trim()
-    .min(2, 'Last name must be at least 2 characters.')
-    .max(100, 'Last name must be under 100 characters.')
-    .regex(NAME_REGEX, 'Last name can only contain letters (and single spaces between words).'),
+    .min(2, 'Last Name must be at least 2 characters.')
+    .max(100, 'Last Name must be under 100 characters.')
+    .regex(NAME_REGEX, 'Last Name can only contain letters (and single spaces between words).'),
   workEmail: z
     .string()
     .trim()
@@ -117,12 +117,12 @@ const demoRequestObjectSchema = z.object({
     .string()
     .min(1, 'Please select a country code.')
     .regex(PHONE_COUNTRY_CODE_REGEX, 'Invalid country code.'),
-  phone: z.string().trim().min(1, 'Phone number is required.'),
+  phone: z.string().trim().min(1, 'Phone Number is required.'),
   company: z
     .string()
     .trim()
-    .min(2, 'Company name must be at least 2 characters.')
-    .max(200, 'Company name must be under 200 characters.')
+    .min(2, 'Company Name must be at least 2 characters.')
+    .max(200, 'Company Name must be under 200 characters.')
     .regex(COMPANY_REGEX, 'Enter a valid company name.'),
   city: z
     .string()
@@ -140,8 +140,8 @@ const demoRequestObjectSchema = z.object({
   jobTitle: z
     .string()
     .trim()
-    .min(2, 'Job title must be at least 2 characters.')
-    .max(150, 'Job title must be under 150 characters.')
+    .min(2, 'Job Title must be at least 2 characters.')
+    .max(150, 'Job Title must be under 150 characters.')
     .regex(JOB_TITLE_REGEX, 'Enter a valid job title.'),
   companySize: z.string().min(1, 'Please select your company size.'),
   hearAboutUs: z.string().min(1, 'Please let us know how you heard about us.'),
@@ -192,8 +192,8 @@ const INITIAL_STATE: FormState = {
 };
 
 const FIELD_LABELS: Record<keyof FormState, string> = {
-  firstName: 'First name',
-  lastName: 'Last name',
+  firstName: 'First Name',
+  lastName: 'Last Name',
   workEmail: 'Work Email',
   countryCode: 'Country Code',
   phone: 'Phone',
@@ -568,7 +568,7 @@ const BookDemoPage = () => {
                       inputMode="numeric"
                       pattern="[0-9]*"
                       className="w-full border-none px-2.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
-                      placeholder="Phone number"
+                      placeholder="Phone Number"
                       maxLength={15}
                       value={form.phone}
                       onChange={(e) => handlePhoneChange(e.target.value)}
@@ -607,7 +607,7 @@ const BookDemoPage = () => {
                         className="w-full"
                         variant="borderless"
                         size="large"
-                        placeholder="Select country"
+                        placeholder="Select Country"
                         value={selectedCountryId}
                         onChange={handleCountrySelect}
                         showSearch
@@ -627,7 +627,7 @@ const BookDemoPage = () => {
                         className="w-full"
                         variant="borderless"
                         size="large"
-                        placeholder="Select state"
+                        placeholder="Select State"
                         disabled={!selectedCountryId}
                         value={selectedStateId}
                         onChange={handleStateSelect}
@@ -648,7 +648,7 @@ const BookDemoPage = () => {
                         className="w-full"
                         variant="borderless"
                         size="large"
-                        placeholder="Select city"
+                        placeholder="Select City"
                         disabled={!selectedStateId}
                         value={cities.find((c) => c.name === form.city)?.id}
                         onChange={handleCitySelect}
@@ -684,7 +684,7 @@ const BookDemoPage = () => {
                       className="w-full"
                       variant="borderless"
                       size="large"
-                      placeholder="Select company size"
+                      placeholder="Select Company Size"
                       value={form.companySize || undefined}
                       onChange={(value) => handleChange('companySize', value)}
                       options={COMPANY_SIZE_OPTIONS.map((size) => ({
@@ -702,7 +702,7 @@ const BookDemoPage = () => {
                       className="w-full"
                       variant="borderless"
                       size="large"
-                      placeholder="Select an option"
+                      placeholder="Select an Option"
                       value={form.hearAboutUs || undefined}
                       onChange={handleHearAboutUsChange}
                       options={HEAR_ABOUT_US_OPTIONS.map((option) => ({

@@ -1101,21 +1101,18 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
     }
   }, [interviewTokenFromUrl]);
 
-  const smsCandidateId = Number(
-    token.candidateId ?? decodedInterviewToken.candidateId ?? token.participantIdentity
+  // candidate-service candidate id (UUID). A non-UUID value (old numeric
+  // ids) can't be messaged through the new API, so the SMS panel stays hidden.
+  const smsCandidateId = String(
+    token.candidateId ?? decodedInterviewToken.candidateId ?? token.participantIdentity ?? ''
   );
-  const smsJobOpeningId = Number(decodedInterviewToken.jobId ?? decodedInterviewToken.jobOpeningId);
   const smsCandidateName =
     decodedInterviewToken.candidateName || token.participantName || 'Candidate';
   const smsCandidatePhone =
     decodedInterviewToken.candidatePhone || decodedInterviewToken.phoneNumber || '';
-  const smsBookingId = decodedInterviewToken.bookingId || token.bookingId || '';
   const canUseSmsPanel =
     isRecruiter &&
-    Number.isFinite(smsCandidateId) &&
-    smsCandidateId > 0 &&
-    Number.isFinite(smsJobOpeningId) &&
-    smsJobOpeningId > 0;
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(smsCandidateId);
 
   /**
    * Handle score input change for scoring questions.
@@ -1822,10 +1819,8 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
             open={isSmsPanelOpen}
             onClose={() => setIsSmsPanelOpen(false)}
             candidateId={smsCandidateId}
-            jobOpeningId={smsJobOpeningId}
             candidateName={smsCandidateName}
             candidatePhone={smsCandidatePhone}
-            bookingId={smsBookingId}
           />
         )}
       </div>

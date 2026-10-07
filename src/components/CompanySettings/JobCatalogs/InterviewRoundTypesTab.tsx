@@ -6,6 +6,7 @@ import {
 } from '../../../api/job-service/Platform/masterInterviewRounds';
 import PlatformCatalogTab, { type CatalogServerQuery } from './PlatformCatalogTab';
 import type { CatalogField } from './CatalogFormFields';
+import { isHiddenRoundType } from '../../../shared/utils/roundInfoContent';
 
 // Only name, description and variant labels are editable.
 type RoundTypeFormValues = {
@@ -67,14 +68,16 @@ const InterviewRoundTypesTab: React.FC = () => {
     sortDir: query.sortDir,
   });
   const [updateRoundType] = useUpdatePlatformInterviewRoundTypeMutation();
+  const visibleItems = data?.items.filter((item) => !isHiddenRoundType(item.special_kind));
+  const hiddenCount = (data?.items.length ?? 0) - (visibleItems?.length ?? 0);
 
   return (
     <PlatformCatalogTab<PlatformInterviewRoundType, RoundTypeFormValues>
       title="Platform-wide interview-round-type catalog."
       itemNounSingular="Round type"
       itemNounPlural="Round types"
-      items={data?.items}
-      total={data?.total}
+      items={visibleItems}
+      total={data ? data.total - hiddenCount : undefined}
       serverQuery={query}
       onServerQueryChange={setQuery}
       isLoading={isLoading}

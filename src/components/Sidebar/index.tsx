@@ -32,6 +32,8 @@ import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 // stripped the "F" mark's gradient too, so the logo's colors used to change
 // depending on whether the sidebar was collapsed.
 const ICON_LOGO_SRC = '/logoSmall.svg';
+// Full brand logo (icon + wordmark) shown when the sidebar is expanded.
+const FULL_LOGO_SRC = '/cfpLogo.svg';
 
 // Both widths every page's content column needs to know, to reserve the
 // right amount of space — kept here (not computed ad hoc) since MainLayout
@@ -269,16 +271,14 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={`flex items-center gap-2.5 py-5 cursor-pointer ${isCollapsed ? 'justify-center px-2' : 'px-5'}`}
         onClick={() => navigate('/')}
       >
-        <img
-          src={ICON_LOGO_SRC}
-          alt="Careerforce Pro"
-          className="h-8 w-8 shrink-0 object-contain"
-        />
-        {!isCollapsed && (
-          <span className="font-display text-base font-bold tracking-tight whitespace-nowrap">
-            <span style={{ color: '#11b7dd' }}>careerforce</span>{' '}
-            <span style={{ color: '#0F40A2' }}>pro</span>
-          </span>
+        {isCollapsed ? (
+          <img
+            src={ICON_LOGO_SRC}
+            alt="Careerforce Pro"
+            className="h-8 w-8 shrink-0 object-contain"
+          />
+        ) : (
+          <img src={FULL_LOGO_SRC} alt="Careerforce Pro" className="h-8 w-auto object-contain" />
         )}
       </div>
 

@@ -32,6 +32,8 @@ export type CandidateView = {
   last_name: string | null;
   email_id: string | null;
   contact_no: string | null;
+  /** When the candidate agreed to receive SMS; null means SMS sends are refused. */
+  sms_consent_at?: string | null;
   qualification: string | null;
   address: string | null;
   applied_date: string;
@@ -45,6 +47,9 @@ export type CandidateView = {
 
   /** ai-service's verdict on the resume vs. the job — never edited by a recruiter. */
   resume_score: number | null;
+  /** Average of the resume score and every interview score (recruiter's where
+   * one exists), one decimal; null until the candidate has any score. */
+  average_score?: number | null;
   scoring_reason: string | null;
   /** Per-criterion breakdown behind `resume_score` — `[{ key: 'SKILLS_MATCH', score: 4 }, ...]`,
    * each 0-5. `null` for candidates scored before candidate-service stored it. */
@@ -53,6 +58,8 @@ export type CandidateView = {
   scoring_reason_bullets?: string[] | null;
   /** Per-user "New" flag from candidate-service (cleared once this user opens the profile). */
   is_new_for_me?: boolean;
+  /** ai-service found no extractable name on the resume (distinct from a parse error). */
+  resume_name_missing?: boolean;
   resume_s3_key: string | null;
 
   /** The recruiter's own take on the resume, beside the AI score — never replacing it. */
@@ -98,7 +105,18 @@ export type CandidateView = {
    * cards). `null` once there's no outstanding round left to resolve (every
    * round concluded, or none exist yet). */
   current_round_status: string | null;
+  /** List rows only: display name of the round `current_round_status`
+   * belongs to. `null` while the candidate is still at the resume stage. */
+  current_round_name?: string | null;
+  /** List rows only: the candidate's coarse status for the list — the
+   * label and the `display_status` filter both use it. Round details are
+   * meaningful only when this is `in_process`. Optional until every
+   * candidate-service deployment returns it. */
+  display_status?: CandidateDisplayStatus | null;
 };
+
+/** `GET /candidates`' `display_status` — the list's four top-level states. */
+export type CandidateDisplayStatus = 'in_process' | 'selected' | 'rejected' | 'withdrawn';
 
 export type PaginatedCandidates = {
   items: CandidateView[];
@@ -116,11 +134,13 @@ export type ListCandidatesArgs = {
   jobOpeningId?: string;
   search?: string;
   statusCode?: string;
+  /** Filters rows and `total` by `display_status`; combines with every other filter. */
+  displayStatus?: CandidateDisplayStatus;
   source?: string;
   appliedFrom?: string;
   appliedTo?: string;
   roundId?: string;
-  sortBy?: 'applied_date' | 'resume_score' | 'name';
+  sortBy?: 'applied_date' | 'resume_score' | 'name' | 'avg_score';
   sortOrder?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
@@ -295,6 +315,7 @@ const extendedApi = candidateApi.injectEndpoints({
         jobOpeningId,
         search,
         statusCode,
+        displayStatus,
         source,
         appliedFrom,
         appliedTo,
@@ -309,6 +330,7 @@ const extendedApi = candidateApi.injectEndpoints({
           job_opening_id: jobOpeningId,
           search,
           status_code: statusCode,
+          display_status: displayStatus,
           source,
           applied_from: appliedFrom,
           applied_to: appliedTo,

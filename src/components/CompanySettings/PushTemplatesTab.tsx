@@ -115,7 +115,7 @@ const PushTemplatesTab: React.FC = () => {
         mode="multiple"
         showSearch
         allowClear
-        placeholder="Search and select companies…"
+        placeholder="Search and Select Companies…"
         filterOption={false}
         loading={isSearching}
         value={Array.from(selectedIds)}

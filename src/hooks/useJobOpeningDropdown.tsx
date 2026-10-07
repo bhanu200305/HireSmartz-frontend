@@ -12,8 +12,8 @@ import { useGetOrganizationShiftsQuery } from '../api/job-service/Shifts/shifts'
 import { useListUsersQuery } from '../api/organization-service/Users/users';
 import { useListPlatformTenantUsersQuery } from '../api/organization-service/Platform/users';
 import { useListPlatformTenantsQuery } from '../api/organization-service/Platform/tenants';
-import { useGetPermissionMatrixQuery } from '../api/organization-service/Roles/permissionMatrix';
-import { Authorities } from '../constants/authorities.constant';
+import { isHiddenRoundType } from '../shared/utils/roundInfoContent';
+import { useGetAssignableUsersQuery } from '../api/job-service/JobOpening/GetAssignableUsers';
 import { useMemo, useState } from 'react';
 import { formatTime12h } from '../utils/formatTime';
 import { useSelector } from 'react-redux';
@@ -113,35 +113,48 @@ const useJobOpeningDropdown = (
     },
     { skip: skip || !needsPeople || isMaster }
   );
-  // Company Admin can also act as HM/recruiter on a job - merged into both
-  // lists below rather than requiring a separate role grant.
-  const tenantCompanyAdmins = useListUsersQuery(
-    { limit: 200, role: 'company_admin' },
-    { skip: skip || !needsPeople || isMaster }
-  );
   const platformUsers = useListPlatformTenantUsersQuery(
     { tenantId: tenantId ?? '', limit: 200 },
     { skip: skip || !needsPeople || !isMaster || !tenantId }
   );
   const users = isMaster ? platformUsers : tenantUsers;
 
-  // Who holds job:write at the job's selected location.
-  const hmLocationPermissions = useGetPermissionMatrixQuery(
+  // Who may work on a job at the selected location: hiring managers need job:write there,
+  // recruiters job:read. job-service answers for any caller (job-service also checks on save).
+  const isAssigneeEndpoint = endpoint === 'HIRING_MANAGER' || endpoint === 'RECRUITER';
+  const candidateUserIds = useMemo(() => {
+    if (!isAssigneeEndpoint) return [];
+    const expectedRole = endpoint === 'HIRING_MANAGER' ? 'hiring_manager' : 'recruiter';
+    const ids = (users.data?.items ?? [])
+      .filter((user) => {
+        if (!user.has_set_password) return false;
+        return (user.role ?? '')
+          .split(',')
+          .map((r) => r.trim())
+          .includes(expectedRole);
+      })
+      .map((user) => user.user_id);
+    return [...new Set(ids)].slice(0, 300);
+  }, [isAssigneeEndpoint, endpoint, users.data]);
+  const locationPermissions = useGetAssignableUsersQuery(
     {
-      tenantId: isMaster ? tenantId : undefined,
-      codes: [Authorities.JOB_OPENING_CREATE],
-      locationId: locationId ? String(locationId) : undefined,
+      locationId: locationId ? String(locationId) : '',
+      ...(endpoint === 'RECRUITER'
+        ? { recruiterIds: candidateUserIds }
+        : { hiringManagerIds: candidateUserIds }),
     },
-    { skip: skip || endpoint !== 'HIRING_MANAGER' || !locationId }
+    {
+      skip: skip || isMaster || !isAssigneeEndpoint || !locationId || candidateUserIds.length === 0,
+    }
   );
-  const permittedHmUserIds = useMemo(() => {
-    if (!locationId || !hmLocationPermissions.data) return null;
-    const ids = new Set<string>();
-    hmLocationPermissions.data.Organization_User_Permissions.forEach((org) =>
-      org.Users_Permission.forEach((user) => ids.add(user.User_Id))
-    );
-    return ids;
-  }, [locationId, hmLocationPermissions.data]);
+  const permittedUserIds = useMemo(() => {
+    if (!locationId || !locationPermissions.data) return null;
+    const allowed =
+      endpoint === 'RECRUITER'
+        ? locationPermissions.data.recruiter_ids
+        : locationPermissions.data.hiring_manager_ids;
+    return new Set(allowed);
+  }, [locationId, endpoint, locationPermissions.data]);
 
   const [searchSkills, skillsResult] = useLazySearchSkillsQuery();
   // Full active catalogue, shown until the recruiter types 2+ characters
@@ -177,41 +190,30 @@ const useJobOpeningDropdown = (
             description: item.job_mode_description ?? undefined,
           }));
         case 'ROUNDS':
-          return (roundTypes.data ?? []).map((item) => ({
-            id: item.round_id,
-            name: item.round_name,
-            description: item.round_description ?? undefined,
-            requires_duration: item.requires_duration,
-            available_variants: item.available_variants,
-            variant_labels: item.variant_labels,
-            max_occurrences: item.max_occurrences,
-            special_kind: item.special_kind,
-          }));
+          return (roundTypes.data ?? [])
+            .filter((item) => !isHiddenRoundType(item.special_kind))
+            .map((item) => ({
+              id: item.round_id,
+              name: item.round_name,
+              description: item.round_description ?? undefined,
+              requires_duration: item.requires_duration,
+              available_variants: item.available_variants,
+              variant_labels: item.variant_labels,
+              max_occurrences: item.max_occurrences,
+              special_kind: item.special_kind,
+            }));
         case 'HIRING_MANAGER':
         case 'RECRUITER': {
           const expectedRole = endpoint === 'HIRING_MANAGER' ? 'hiring_manager' : 'recruiter';
-          const combined = [
-            ...(users.data?.items ?? []),
-            ...(tenantCompanyAdmins.data?.items ?? []),
-          ];
-          const deduped = [...new Map(combined.map((user) => [user.user_id, user])).values()];
-          return deduped
+          // Only people explicitly given the role; a Company Admin appears only if they hold it.
+          return (users.data?.items ?? [])
             .filter((user) => {
               // has_set_password, not is_active (true from invite).
               if (!user.has_set_password) return false;
               const roles = (user.role ?? '').split(',').map((r) => r.trim());
-              const isCompanyAdmin = roles.includes('company_admin');
-              if (!roles.includes(expectedRole) && !isCompanyAdmin) return false;
-              // HM only: must hold job:write at this specific location.
-              if (
-                endpoint === 'HIRING_MANAGER' &&
-                permittedHmUserIds &&
-                !isCompanyAdmin &&
-                !permittedHmUserIds.has(user.user_id)
-              ) {
-                return false;
-              }
-              return true;
+              if (!roles.includes(expectedRole)) return false;
+              // Must hold the job permission at this specific location.
+              return !permittedUserIds || permittedUserIds.has(user.user_id);
             })
             .map((user) => ({
               id: user.user_id,
@@ -266,8 +268,7 @@ const useJobOpeningDropdown = (
     languages.data,
     shifts.data,
     users.data,
-    tenantCompanyAdmins.data,
-    permittedHmUserIds,
+    permittedUserIds,
     skillsResult.data,
     hasActiveSkillSearch,
     preloadedSkills.data,
@@ -312,10 +313,9 @@ const useJobOpeningDropdown = (
     languages.isFetching ||
     shifts.isFetching ||
     users.isFetching ||
-    tenantCompanyAdmins.isFetching ||
     preloadedSkills.isFetching ||
     skillsResult.isFetching ||
-    hmLocationPermissions.isFetching;
+    locationPermissions.isFetching;
 
   // Awaitable so callers can refetch before setValue, letting the new id
   // already exist in options when the form re-renders instead of showing a raw uuid.
@@ -329,7 +329,6 @@ const useJobOpeningDropdown = (
     if (endpoint === 'SHIFT') await shifts.refetch();
     if (needsPeople) {
       await users.refetch();
-      await tenantCompanyAdmins.refetch();
     }
     if (isSkillsEndpoint(endpoint)) await preloadedSkills.refetch();
   };

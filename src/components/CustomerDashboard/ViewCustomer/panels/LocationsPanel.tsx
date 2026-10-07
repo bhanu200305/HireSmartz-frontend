@@ -242,7 +242,7 @@ const LocationsPanel: React.FC<{ tenantId: string; readOnly?: boolean }> = ({
           <div className="w-52">
             <Input
               prefix={<MdSearch className="text-gray-400" />}
-              placeholder="Search locations..."
+              placeholder="Search Locations..."
               value={searchText}
               onChange={(e) => {
                 setSearchText(e.target.value);

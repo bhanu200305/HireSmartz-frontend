@@ -169,7 +169,7 @@ const ViewJobDescription = () => {
       }
 
       showToast({
-        message: result.message || 'Job description has been regenerated successfully',
+        message: result.message || 'Job Description has been regenerated successfully',
         type: 'success',
       });
       setValue('description', '');
@@ -256,7 +256,7 @@ const ViewJobDescription = () => {
           setPreviewDescription(markdown);
           setSaveError(null);
           showToast({
-            message: 'Job description has been updated successfully',
+            message: 'Job Description has been updated successfully',
             type: 'success',
           });
         } catch (error: any) {

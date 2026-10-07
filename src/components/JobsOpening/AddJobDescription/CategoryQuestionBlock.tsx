@@ -89,6 +89,7 @@ export const CategoryQuestionBlock = ({
             >
               <QuestionRowItem
                 question={question}
+                number={index + 1}
                 checked={selectedIds.includes(question.id)}
                 onCheckChange={(checked) => onSelectOne(question.id, checked)}
                 onEdit={() => onEdit(question)}

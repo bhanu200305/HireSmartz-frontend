@@ -56,7 +56,7 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
     useCultureIntro: details?.use_culture_intro,
     isDraft: job.is_draft,
     isClosed: job.is_closed,
-    interviewedCandidateCount: 0,
+    interviewedCandidateCount: details?.interviewed_count ?? 0,
     responsibilities: details?.responsibilities ?? '',
     otherRequirements: details?.other_requirements ?? '',
     benefits: details?.benefits ?? '',

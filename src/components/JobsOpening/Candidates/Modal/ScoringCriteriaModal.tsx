@@ -2,6 +2,12 @@ import React from 'react';
 import { Modal } from 'antd';
 import { useModalCloseAttention } from '../../../shared/ui/useModalCloseAttention';
 
+/** ai-service scores each interview round type with a different prompt:
+ * AI Audio Screening on answer quality, AI Video on alignment with the
+ * resume, and the interviewer-led Hiring Panel on consistency with the
+ * earlier AI Video round. */
+export type InterviewScoringRoundType = 'audio' | 'ai_video' | 'panel';
+
 type ScoringCriteriaModalProps = {
   visible: boolean;
   onClose: () => void;
@@ -13,6 +19,15 @@ type ScoringCriteriaModalProps = {
     label: string;
     value?: string;
     max: number;
+    description?: string;
+  }[];
+  interviewRoundType?: InterviewScoringRoundType;
+  /** This job's resolved INTERVIEW weights (job, else organization, else
+   * platform default) — the same ones ai-service weights the round with. */
+  interviewWeights?: {
+    label: string;
+    description?: string;
+    weight: number;
   }[];
 };
 
@@ -31,10 +46,141 @@ type ResumeMetricLabel = (typeof RESUME_METRIC_LABELS)[keyof typeof RESUME_METRI
 // that cap and stack a second, competing scrollbar on .ant-modal-body.
 const SCROLL_AREA_CLASS = 'scoring-criteria-scroll flex-1 min-h-0 mt-6 pr-4 pb-4';
 
+const CARD_CLASS = 'bg-white border border-gray-200 rounded-md p-4 text-sm';
+
 type ScoringBreakdownItem = {
-  label: ResumeMetricLabel;
+  label: string;
   max: number;
   description: string;
+};
+
+// job-service's master_scoring_category descriptions (RESUME stage) — used
+// when the job's own scoring config doesn't carry one.
+const RESUME_METRIC_DESCRIPTIONS: Record<ResumeMetricLabel, string> = {
+  [RESUME_METRIC_LABELS.SKILLS_MATCH]: 'Match between candidate skills and JD requirements',
+  [RESUME_METRIC_LABELS.EXPERIENCE_MATCH]: 'Relevance and depth of professional experience',
+  [RESUME_METRIC_LABELS.QUALIFICATIONS]: 'Education, certifications, formal qualifications',
+  [RESUME_METRIC_LABELS.KEYWORD_PRESENCE]: 'Presence of key JD-specific terms',
+};
+
+// Platform default RESUME weights (master_scoring_category) — what a job
+// with no organization or job override is scored with.
+const DEFAULT_SCORING_BREAKDOWN: ScoringBreakdownItem[] = (
+  [
+    [RESUME_METRIC_LABELS.SKILLS_MATCH, 40],
+    [RESUME_METRIC_LABELS.EXPERIENCE_MATCH, 30],
+    [RESUME_METRIC_LABELS.QUALIFICATIONS, 20],
+    [RESUME_METRIC_LABELS.KEYWORD_PRESENCE, 10],
+  ] as const
+).map(([label, max]) => ({ label, max, description: RESUME_METRIC_DESCRIPTIONS[label] }));
+
+// Platform default INTERVIEW weights and descriptions (master_scoring_category).
+const DEFAULT_INTERVIEW_WEIGHTS = [
+  {
+    label: 'Skills Match',
+    description: 'Technical depth, tool fluency, and clarity of explanation',
+    weight: 40,
+  },
+  {
+    label: 'Personality Traits',
+    description: 'Adaptability, collaboration, ownership, resilience',
+    weight: 20,
+  },
+  {
+    label: 'Qualifications',
+    description: 'Education, certifications, and relevant experience',
+    weight: 15,
+  },
+  {
+    label: 'Company Fit',
+    description: 'Role understanding, cultural and working-style alignment',
+    weight: 15,
+  },
+  {
+    label: 'Career Goals',
+    description: 'Motivation, growth mindset, and career alignment',
+    weight: 10,
+  },
+];
+
+// Same colours and bands as the category bars on the Resume Screening tab
+// (CandidateDetails.tsx): a category's 0-5 score shown as a percentage.
+const RESUME_BAR_BANDS = [
+  { color: '#3FB97F', label: '4-5 out of 5 (80-100%)', meaning: 'Strong match' },
+  { color: '#F6BC3F', label: '3 out of 5 (60%)', meaning: 'Partial match' },
+  { color: '#F0686B', label: '0-2 out of 5 (0-40%)', meaning: 'Weak or no match' },
+];
+
+// Per-answer 1-5 rubric, per round type — condensed from ai-service's
+// ANALYZE_TRANSCRIPT_PROMPT (audio), RESUME_ALIGNMENT_PROMPT (AI Video) and
+// CONSISTENCY_PROMPT (Hiring Panel).
+const INTERVIEW_RUBRICS: Record<
+  InterviewScoringRoundType,
+  { intro: string[]; scaleNote: string; scale: { score: string; text: string }[] }
+> = {
+  audio: {
+    intro: [
+      'The AI reviews the call transcript and scores each of the candidate’s answers on how well it demonstrates the competency the question is testing.',
+    ],
+    scaleNote: 'Each answer is scored on how well it demonstrates the competency being tested.',
+    scale: [
+      {
+        score: '5 - Exceptional',
+        text: 'Vivid, specific and impactful examples; a model answer (rare)',
+      },
+      { score: '4 - Strong', text: 'Clearly demonstrated with relevant, specific examples' },
+      { score: '3 - Partial', text: 'Partly demonstrated; lacks depth or specificity' },
+      { score: '2 - Minimal', text: 'Generic statement with no real context or example' },
+      { score: '1 - Not Demonstrated', text: 'No demonstration, or an irrelevant answer' },
+    ],
+  },
+  ai_video: {
+    intro: [
+      'This round is a resume alignment check. The AI compares the candidate’s spoken answers with the claims on their resume and, where available, the job description, to confirm the candidate can substantiate what the resume states.',
+      'Where a question has nothing on the resume to compare against, the answer is judged on its general credibility instead.',
+    ],
+    scaleNote: 'Each answer is scored on how well it aligns with the candidate’s resume.',
+    scale: [
+      {
+        score: '5 - Exceptional',
+        text: 'Goes beyond the resume claim with convincing, fully consistent detail (rare)',
+      },
+      { score: '4 - Strong', text: 'Clearly substantiates a specific resume claim' },
+      {
+        score: '3 - Partial',
+        text: 'Partly aligns with a resume claim but lacks the depth the resume implies',
+      },
+      { score: '2 - Minimal', text: 'Generic; does not substantiate any specific resume claim' },
+      { score: '1 - Not Aligned', text: 'Contradicts, or has no connection to, the resume' },
+    ],
+  },
+  panel: {
+    intro: [
+      'This round is a consistency check. The AI compares what the candidate says in this interviewer-led round with what they said in the earlier AI Video round and with their resume.',
+      'This score requires a completed AI Video round for the same candidate. The interviewer’s own feedback and the recruiter’s score are recorded separately and do not change this AI score.',
+    ],
+    scaleNote:
+      'Each answer is scored on how consistent it is with the earlier AI Video round and the resume.',
+    scale: [
+      {
+        score: '5 - Exceptional',
+        text: 'Reinforces the earlier round and the resume with credible additional detail (rare)',
+      },
+      {
+        score: '4 - Consistent',
+        text: 'Clearly consistent with both the earlier round and the resume',
+      },
+      {
+        score: '3 - Broadly Consistent',
+        text: 'Consistent overall, but introduces new, unsupported claims',
+      },
+      { score: '2 - Unclear', text: 'Too vague to rule out a contradiction' },
+      {
+        score: '1 - Contradictory',
+        text: 'Directly contradicts the earlier round or the resume',
+      },
+    ],
+  },
 };
 
 const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
@@ -44,141 +190,109 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
   footer,
   subtitle,
   matchMetrics,
+  interviewRoundType,
+  interviewWeights,
 }) => {
   const withCloseAttention = useModalCloseAttention();
-  const METRIC_DESCRIPTION_MAP: Record<ResumeMetricLabel, string> = {
-    [RESUME_METRIC_LABELS.SKILLS_MATCH]:
-      'Evaluates resumes based on exact matches to the required skills listed in the job description.',
-    [RESUME_METRIC_LABELS.EXPERIENCE_MATCH]:
-      'Quantifies relevant roles and years of experience to determine job alignment.',
-    [RESUME_METRIC_LABELS.QUALIFICATIONS]:
-      'Assesses education levels and certifications for relevant matches.',
-    [RESUME_METRIC_LABELS.KEYWORD_PRESENCE]:
-      'Scores based on the presence of specific terms from the job description.',
-  };
-
-  const DEFAULT_SCORING_BREAKDOWN: ScoringBreakdownItem[] = [
-    {
-      label: RESUME_METRIC_LABELS.SKILLS_MATCH,
-      max: 40,
-      description: METRIC_DESCRIPTION_MAP[RESUME_METRIC_LABELS.SKILLS_MATCH],
-    },
-    {
-      label: RESUME_METRIC_LABELS.EXPERIENCE_MATCH,
-      max: 30,
-      description: METRIC_DESCRIPTION_MAP[RESUME_METRIC_LABELS.EXPERIENCE_MATCH],
-    },
-    {
-      label: RESUME_METRIC_LABELS.QUALIFICATIONS,
-      max: 20,
-      description: METRIC_DESCRIPTION_MAP[RESUME_METRIC_LABELS.QUALIFICATIONS],
-    },
-    {
-      label: RESUME_METRIC_LABELS.KEYWORD_PRESENCE,
-      max: 10,
-      description: METRIC_DESCRIPTION_MAP[RESUME_METRIC_LABELS.KEYWORD_PRESENCE],
-    },
-  ];
 
   const dynamicScoringBreakdown: ScoringBreakdownItem[] =
     matchMetrics
-      ?.map((metric) => {
-        const max = Number(metric.max) || 0;
-        const label = metric.label as ResumeMetricLabel;
-
-        return {
-          label,
-          max,
-          description: METRIC_DESCRIPTION_MAP[label] || '',
-        };
-      })
+      ?.map((metric) => ({
+        label: metric.label,
+        max: Number(metric.max) || 0,
+        description:
+          metric.description || RESUME_METRIC_DESCRIPTIONS[metric.label as ResumeMetricLabel] || '',
+      }))
       .filter((metric) => metric.description) || [];
 
   const scoringBreakdown =
     dynamicScoringBreakdown.length > 0 ? dynamicScoringBreakdown : DEFAULT_SCORING_BREAKDOWN;
 
-  const POINTS_ALLOCATION_PREFIX_MAP: Record<ResumeMetricLabel, string> = {
-    [RESUME_METRIC_LABELS.SKILLS_MATCH]: '+10 points per matching skill',
-    [RESUME_METRIC_LABELS.EXPERIENCE_MATCH]: '+5 points per relevant year/role',
-    [RESUME_METRIC_LABELS.QUALIFICATIONS]: '+10 points per matching degree or certification',
-    [RESUME_METRIC_LABELS.KEYWORD_PRESENCE]: '+2 points per job description-specific term',
-  };
+  const sectionHeading = (text: string) => <h3 className="text-lg font-semibold mb-2">{text}</h3>;
 
   const renderDefaultContent = () => (
     <div className={`${SCROLL_AREA_CLASS} space-y-6`}>
       <h2 className="text-2xl font-semibold text-center mb-8">{title || 'Scoring Criteria'}</h2>
 
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">Scoring Breakdown</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-1">
-          <p className="pb-2">
-            The System uses a weighted system to score resumes based on various criteria. Below is
-            the detailed breakdown:
-          </p>
-          <ul className="list-disc ml-7 space-y-2">
-            {scoringBreakdown.map((metric) => (
-              <li key={metric.label}>
-                {metric.label}: {metric.max}% - {metric.description}
-              </li>
-            ))}
-          </ul>
-          <div className="flex items-center gap-8 pt-4 flex-wrap">
-            <div className="flex items-center space-x-2">
-              <span className="w-12 h-4 rounded-xl bg-[#2B934E]"></span>
-              <span>Percentage ≥ 80%</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="w-12 h-4 rounded-xl bg-[#FFBF00]"></span>
-              <span>Percentage ≥ 50 && Percentage ≤ 79</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="w-12 h-4 rounded-xl bg-[#FF3B30]"></span>
-              <span>Percentage ≥ 1 && Percentage ≤ 49</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* commented out as per new design, can be added back if needed in the future */}
-      {/* <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">Deductions</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm">
-          <p className="pb-2">Points are deducted for missing critical requirements:</p>
-          <ul className="list-disc ml-7 space-y-2">
-            <li>
-              Deduct 10 to 20 points for missing essential tools, degrees, or certifications deemed
-              mandatory in the job description.
-            </li>
-          </ul>
-        </div>
-      </section> */}
-
       <section>
-        <h3 className="text-lg font-semibold mb-2">Scoring Breakdown</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4">
-          <p className="mb-4">
-            This section outlines the allocation of points across different criteria:
+        {sectionHeading('Scoring Categories')}
+        <div className={`${CARD_CLASS} space-y-3`}>
+          <p>
+            The AI scores the resume against this job&apos;s description across four weighted
+            categories. The weights below are the ones configured for this job.
           </p>
-          <div>
-            <table className="w-full border-collapse table-fixed text-left">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] border-collapse text-left">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="p-3 font-semibold border-gray-200">Criteria</th>
-                  <th className="p-3 font-semibold border-gray-200">Points Allocation</th>
+                  <th className="p-3 font-semibold border border-gray-200">Category</th>
+                  <th className="p-3 font-semibold border border-gray-200">What It Measures</th>
+                  <th className="p-3 font-semibold border border-gray-200 w-24 text-right">
+                    Weight
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {scoringBreakdown.map((metric) => (
                   <tr key={metric.label}>
-                    <td className="p-3 border border-gray-200">{metric.label}</td>
-                    <td className="p-3 border border-gray-200">
-                      {POINTS_ALLOCATION_PREFIX_MAP[metric.label]} (Maximum: {metric.max} points)
-                    </td>
+                    <td className="p-3 border border-gray-200 font-medium">{metric.label}</td>
+                    <td className="p-3 border border-gray-200">{metric.description}</td>
+                    <td className="p-3 border border-gray-200 text-right">{metric.max}%</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+      <section>
+        {sectionHeading('How the Resume Score Is Calculated')}
+        <div className={`${CARD_CLASS} space-y-3`}>
+          <p>
+            <strong>1. Each category is scored from 0 to 5</strong> based on how well the resume
+            matches the job description, with two short reasons for the score.
+          </p>
+          <p>
+            <strong>2. The Resume Score is the weighted average</strong> of the category scores,
+            using the weights above, rounded to the nearest whole number (0 to 5).
+          </p>
+          <p>
+            <strong>3. Fit for this role is scored, not general resume quality.</strong> A resume
+            with no real relevance to the role scores 0-1 in the affected categories, even if it is
+            a strong resume for a different job.
+          </p>
+          <p>
+            If the job has no description, the resume is scored on its general strength and clarity
+            instead.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        {sectionHeading('Formula')}
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm font-mono break-words">
+          Resume Score ={' '}
+          {scoringBreakdown.map((metric) => `(${metric.label} × ${metric.max}%)`).join(' + ')}
+        </div>
+      </section>
+
+      <section>
+        {sectionHeading('Category Bar Colours')}
+        <div className={CARD_CLASS}>
+          <ul className="space-y-2">
+            {RESUME_BAR_BANDS.map((band) => (
+              <li key={band.label} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span
+                  className="h-4 w-12 shrink-0 rounded-xl"
+                  style={{ backgroundColor: band.color }}
+                  aria-hidden
+                />
+                <span className="font-medium">{band.label}</span>
+                <span className="text-gray-600">- {band.meaning}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     </div>
@@ -276,139 +390,116 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
       </section>
     </div>
   );
-  const renderInterviewScoringContent = () => (
-    <div className={SCROLL_AREA_CLASS}>
-      <h2 className="text-2xl font-semibold text-center">Interview Scoring</h2>
-      <p className="text-center text-gray-600">
-        {subtitle || 'AI Audio Screening / Video Interview'}
-      </p>
-
-      <section className="mb-6 mt-6">
-        <h3 className="text-lg font-semibold mb-2">How the Interview Is Scored</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-4">
-          <p>
-            The AI listens to the candidate&apos;s spoken answers and evaluates them across a few
-            key areas to understand overall suitability for the role.
-          </p>
+  // Interview rounds: matches ai-service's score_interview_round.py — a
+  // per-answer 1-5 rubric that depends on the round type, aggregated as a
+  // weighted average using this job's INTERVIEW category weights.
+  const renderInterviewScoringContent = () => {
+    const rubric = INTERVIEW_RUBRICS[interviewRoundType ?? 'audio'];
+    const weights =
+      interviewWeights && interviewWeights.length > 0
+        ? interviewWeights
+        : DEFAULT_INTERVIEW_WEIGHTS;
+    return (
+      <div className={`${SCROLL_AREA_CLASS} space-y-6`}>
+        <div>
+          <h2 className="text-2xl font-semibold text-center">Interview Scoring</h2>
+          <p className="text-center text-gray-600">{subtitle || 'Interview Round'}</p>
         </div>
-      </section>
 
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">Scoring Scale (1-5)</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-3">
-          <p>Each score ranges from 1 to 5, based only on what the candidate actually says.</p>
-          <ul className="list-disc ml-7 space-y-2">
-            <li>
-              <strong>5 - Excellent</strong>: Clear, confident answers with strong examples
-            </li>
-            <li>
-              <strong>4 - Good</strong>: Clear answers with some supporting details
-            </li>
-            <li>
-              <strong>3 - Average</strong>: Basic answers with limited depth
-            </li>
-            <li>
-              <strong>2 - Below Average</strong>: Weak or unclear answers
-            </li>
-            <li>
-              <strong>1 - No Evidence</strong>: Not mentioned or not demonstrated
-            </li>
-          </ul>
-        </div>
-      </section>
+        <section>
+          {sectionHeading('What This Round Measures')}
+          <div className={`${CARD_CLASS} space-y-3`}>
+            {rubric.intro.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+        </section>
 
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">Categories Analyzed</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-3">
-          <p>The interview is evaluated across these five categories:</p>
-          <ul className="list-disc ml-7 space-y-2">
-            <li>
-              <strong>Skills </strong>- Technical skills, soft skills, and communication{' '}
-              <em>(Communication is always included.)</em>
-            </li>
-            <li>
-              <strong>Qualifications </strong>- Education, certifications, and work experience
-            </li>
-            <li>
-              <strong>Personality Traits </strong>- Confidence, teamwork, adaptability, attitude
-            </li>
-            <li>
-              <strong>Career Goals </strong>- Motivation, aspirations, growth mindset
-            </li>
-            <li>
-              <strong>Company Fit </strong>- Cultural alignment and role understanding
-            </li>
-          </ul>
-        </div>
-      </section>
+        <section>
+          {sectionHeading('Answer Scoring Scale (1-5)')}
+          <div className={`${CARD_CLASS} space-y-3`}>
+            <p>{rubric.scaleNote}</p>
+            <ul className="list-disc ml-7 space-y-2">
+              {rubric.scale.map((item) => (
+                <li key={item.score}>
+                  <strong>{item.score}</strong>: {item.text}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
 
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">How each Category Score is calculated</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-3">
-          <p>
-            <strong>1.Each interview question is scored first</strong> on a 1-5 scale, based on how
-            clearly and effectively the candidate answers.
-          </p>
-          <p>
-            <strong>2.Question scores are grouped</strong> into the relevant categories above. (For
-            example, communication-focused questions contribute to Skills.)
-          </p>
-          <p>
-            <strong>3.The category score is the average</strong> of all question scores mapped to
-            that category.
-          </p>
-          <p>
-            This means a category score reflects{' '}
-            <strong>overall performance across all related questions</strong>, not just a single
-            answer.
-          </p>
-        </div>
-      </section>
+        <section>
+          {sectionHeading('Categories and Weights')}
+          <div className={`${CARD_CLASS} space-y-3`}>
+            <p>
+              Each answer is scored only in the categories its question actually tests. Logistics,
+              scheduling and courtesy exchanges are not scored. The weights below are the ones
+              configured for this job.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[420px] border-collapse text-left">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-3 font-semibold border border-gray-200">Category</th>
+                    <th className="p-3 font-semibold border border-gray-200">What It Measures</th>
+                    <th className="p-3 font-semibold border border-gray-200 w-24 text-right">
+                      Weight
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weights.map((w) => (
+                    <tr key={w.label}>
+                      <td className="p-3 border border-gray-200 font-medium">{w.label}</td>
+                      <td className="p-3 border border-gray-200">{w.description || '-'}</td>
+                      <td className="p-3 border border-gray-200 text-right">{w.weight}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
 
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">How the Final Score Is Calculated</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-3">
-          <ul className="list-disc ml-7 space-y-2">
-            <li>
-              Each category score is multiplied by its <strong>assigned weight</strong> (set by the
-              company).
-            </li>
-            <li>
-              If a category is <strong>not discussed at all</strong>, its weight is shared among the
-              other categories.
-            </li>
-            <li>
-              Poor or weak answers are still counted and <strong>are not ignored</strong>.
-            </li>
-          </ul>
-        </div>
-      </section>
+        <section>
+          {sectionHeading('How the Final Score Is Calculated')}
+          <div className={`${CARD_CLASS} space-y-3`}>
+            <p>
+              <strong>1. Each answer is scored from 1 to 5</strong> in every category its question
+              tests.
+            </p>
+            <p>
+              <strong>2. All answer scores are combined into a weighted average</strong> using the
+              category weights above. Categories that did not come up in the round are left out, so
+              the remaining weights are rebalanced automatically.
+            </p>
+            <p>
+              <strong>3. Contradictions lower the score.</strong> If an answer contradicts something
+              the candidate said in an earlier round, that answer&apos;s scores are capped at 2.
+            </p>
+            <p>
+              <strong>4. The result is rounded to the nearest whole number</strong>, giving the
+              final score out of 5. Each category&apos;s own score is the rounded average of its
+              answer scores.
+            </p>
+            <p>
+              A score of <strong>0</strong> means the candidate gave no substantive answers (for
+              example, the call was not answered or only rescheduling was discussed), so no
+              competency could be assessed.
+            </p>
+          </div>
+        </section>
 
-      <section>
-        <h3 className="text-lg font-semibold mb-2">Final Interview Score (1-5)</h3>
-        <div className="bg-white border border-gray-200 rounded-md p-4 text-sm space-y-3">
-          <p>
-            The final score is a <strong>weighted average</strong>, shown on the same{' '}
-            <strong>1-5 scale</strong>:
-          </p>
-          <p>
-            <strong>
-              Final Score =
-              <br />
-              (Skills x Weight) + (Qualifications x Weight) +
-              <br />
-              (Personality Traits x Weight) + (Career Goals x Weight) +
-              <br />
-              (Company Fit x Weight)
-            </strong>
-          </p>
-          <p>
-            <em>(Weights always total 100% across the categories that were discussed)</em>
-          </p>
-        </div>
-      </section>
-    </div>
-  );
+        <section>
+          {sectionHeading('Formula')}
+          <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm font-mono break-words">
+            Final Score = Sum of (answer score × category weight) ÷ Sum of the weights applied
+          </div>
+        </section>
+      </div>
+    );
+  };
   // Intake Call: matches ai-service's INTAKE_CONSISTENCY_PROMPT and
   // check_intake_call_consistency.py (0-5 scale, name-mismatch cap of 1,
   // never folded into any other score).
@@ -438,7 +529,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
           <p>Specific claims made during the call are checked against the resume, including:</p>
           <ul className="list-disc ml-7 space-y-2">
             <li>
-              <strong>Roles and Employers</strong> - Job titles and the companies the candidate has
+              <strong>Roles and Employers</strong> - Job Titles and the companies the candidate has
               worked for
             </li>
             <li>
@@ -516,8 +607,9 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
             score.
           </p>
           <p>
-            Pipeline actions for the candidate (Advance, Skip, and Reject) become available once
-            this check has been completed.
+            While this check is pending, the Resume Screening and Intake Call stages stay locked:
+            Advance, Skip, Reject and Mark as Selected become available once the consistency score
+            has been recorded.
           </p>
         </div>
       </section>

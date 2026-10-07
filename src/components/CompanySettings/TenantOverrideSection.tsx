@@ -56,7 +56,7 @@ const TenantOverrideSection: React.FC = () => {
         <Select
           showSearch
           allowClear
-          placeholder="Search companies by name…"
+          placeholder="Search Companies by Name…"
           filterOption={false}
           loading={isSearching}
           value={selectedTenantId}

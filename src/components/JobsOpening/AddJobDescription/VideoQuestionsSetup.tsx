@@ -433,7 +433,7 @@ const VideoQuestionsSetup = () => {
                     setSelectedIds([]);
                   }}
                   className="w-full custom-select placeholder-style border-none shadow-none"
-                  placeholder="Select video round"
+                  placeholder="Select Video Round"
                 >
                   {videoRounds.map((r) => (
                     <Option key={r.id} value={r.id}>

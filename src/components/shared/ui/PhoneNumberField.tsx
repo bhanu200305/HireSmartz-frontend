@@ -26,7 +26,7 @@ const PhoneNumberField: React.FC<PhoneNumberFieldProps> = ({
   onCountryCodeChange,
   phoneNumber,
   onPhoneNumberChange,
-  placeholder = 'Phone number',
+  placeholder = 'Phone Number',
   disabled,
   className,
 }) => {

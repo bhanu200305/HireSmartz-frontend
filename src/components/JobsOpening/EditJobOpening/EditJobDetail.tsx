@@ -29,6 +29,7 @@ import {
   mergeNewAiSkills,
 } from '../../../shared/utils/jdSync';
 import { lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
+import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 import {
   setEditJobOpeningId,
   updateEditAiJobDescription,
@@ -118,6 +119,7 @@ import {
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { Loader } from '../../shared/ui/loader';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
+import { useOfferedSuggestedSkills } from '../../../hooks/useOfferedSuggestedSkills';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
@@ -193,6 +195,7 @@ const EditJobDetail = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const isDraft = useIsEditingDraft(id) === true;
   const parsedJobId = asJobId(id);
   const location = useLocation();
   // Prefer value from route state if present, else fallback to backend
@@ -206,13 +209,12 @@ const EditJobDetail = () => {
   // on every later Redux update (which would clobber live edits).
   const hasSyncedFormForJobIdRef = useRef<string | null>(null);
 
-  const { jobDetails, jobOpeningId, interViewRound, aiJobDescription, isDraft } = useSelector(
+  const { jobDetails, jobOpeningId, interViewRound, aiJobDescription } = useSelector(
     (state: RootState) => ({
       jobDetails: state.EditJobSlice.details,
       interViewRound: state.EditJobSlice.interviewRounds,
       jobOpeningId: state.EditJobSlice.jobOpeningId,
       aiJobDescription: state.EditJobSlice.aiJobDescription,
-      isDraft: state.EditJobSlice.isDraft,
     }),
     shallowEqual
   );
@@ -345,7 +347,9 @@ const EditJobDetail = () => {
   const { jobOpeningDropdown: recruiters, loading: recruitersLoading } = useJobOpeningDropdown(
     'RECRUITER',
     'edit',
-    parsedJobId
+    parsedJobId,
+    undefined,
+    selectedLocationIdForUsers
   );
 
   const [updateJobType] = useUpdateJobTypeMutation();
@@ -786,19 +790,17 @@ const EditJobDetail = () => {
   );
   const suggestedSkills = suggestedSkillsData?.skills ?? [];
   // Each suggestion is auto-added once, so a skill the user removes stays removed.
-  const offeredSuggestedSkillIdsRef = useRef(new Set<string>());
+  const offeredSuggestedSkills = useOfferedSuggestedSkills(id ?? '');
   const unaddedSuggestedSkills = suggestedSkills.filter(
     (skill) =>
-      !offeredSuggestedSkillIdsRef.current.has(String(skill.skill_id)) &&
+      !offeredSuggestedSkills.has(String(skill.skill_id)) &&
       !selectedMandatorySkillIds.includes(skill.skill_id) &&
       !selectedOptionalSkillIds.includes(skill.skill_id)
   );
 
   const handleAddAllSuggestedSkills = () => {
     if (unaddedSuggestedSkills.length === 0) return;
-    unaddedSuggestedSkills.forEach((skill) =>
-      offeredSuggestedSkillIdsRef.current.add(String(skill.skill_id))
-    );
+    unaddedSuggestedSkills.forEach((skill) => offeredSuggestedSkills.add(String(skill.skill_id)));
     const newMandatoryIds = unaddedSuggestedSkills
       .filter((skill) => skill.suggested_skill_type.toLowerCase() === 'required')
       .map((skill) => skill.skill_id);
@@ -829,6 +831,13 @@ const EditJobDetail = () => {
   };
 
   useEffect(() => {
+    // Selected suggested skills count as offered, so a removal sticks.
+    suggestedSkills.forEach((skill) => {
+      const id = String(skill.skill_id);
+      if (selectedMandatorySkillIds.includes(id) || selectedOptionalSkillIds.includes(id)) {
+        offeredSuggestedSkills.add(id);
+      }
+    });
     if (unaddedSuggestedSkills.length === 0) return;
     handleAddAllSuggestedSkills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -898,6 +907,12 @@ const EditJobDetail = () => {
     true,
     isFormDirty && !allowNavigation
   );
+
+  // No edits means nothing to save, so Save As Draft and Save & Next stay off. A missing
+  // description still lets Save & Next run to generate it.
+  const jdMissing = jdDetailsForSync !== undefined && !jdDetailsForSync.jobDescription?.trim();
+  const nothingToSave = Boolean(initialFormValues) && !isFormDirty && !jdMissing;
+  const nothingToSaveHint = 'No changes to save';
 
   // Helper function to update form with job data
   const updateFormWithJobData = (jobData: any) => {
@@ -1081,16 +1096,15 @@ const EditJobDetail = () => {
     };
   }, [parsedJobId, jobOpeningId, jobDetails, reset]);
 
-  // AI-fill: applies fields AI wrote once generation finishes. Only fills fields still empty.
+  // Pre-fills Job Details from an uploaded JD once its parse finishes. Generating or
+  // regenerating the AI description never writes into Job Details.
   useEffect(() => {
     if (jdStatusFetching) return;
     const previousStatus = prevJdStatusForHydrationRef.current;
     const currentStatus = jdStatusForHydration?.status;
     prevJdStatusForHydrationRef.current = currentStatus;
 
-    const justFinishedProcessing =
-      (previousStatus === 'GENERATING' || previousStatus === 'PROCESSING') &&
-      currentStatus === 'READY';
+    const justFinishedProcessing = previousStatus === 'PROCESSING' && currentStatus === 'READY';
     // Fallback: refresh once per job the first time status is seen READY,
     // in case the transition above was missed.
     const notYetSyncedThisJob =
@@ -1105,6 +1119,8 @@ const EditJobDetail = () => {
 
     // Re-check permissions now rather than waiting for the next mount.
     void refetchEffectivePermissions();
+
+    if (jdDetailsForSync?.entryPath !== 'upload_jd') return;
 
     // Job title/department/office location aren't AI-composed text — job-service
     // resolves them against the org catalogue directly on the job opening record
@@ -1227,6 +1243,7 @@ const EditJobDetail = () => {
           for (const skill of fresh.skills) {
             const id = String(skill.skill_id);
             if (currentMandatory.includes(id) || currentOptional.includes(id)) continue;
+            if (offeredSuggestedSkills.has(id)) continue;
             if (newMandatory.includes(id) || newOptional.includes(id)) continue;
             if (skill.skill_type.toLowerCase() === 'required') {
               newMandatory.push(id);
@@ -1271,6 +1288,7 @@ const EditJobDetail = () => {
     jdStatusForHydration?.status,
     jdStatusFetching,
     parsedJobId,
+    jdDetailsForSync?.entryPath,
     triggerGetJobDescriptionById,
     refetch,
     refetchSuggestedSkills,
@@ -1280,9 +1298,9 @@ const EditJobDetail = () => {
     trigger,
   ]);
 
-  // Fills any AI-owned fields still blank - never overwrites a typed value.
+  // Uploaded-JD jobs only: fills fields still blank from the parse, never a typed value.
   useEffect(() => {
-    if (!jdDetailsForSync) return;
+    if (!jdDetailsForSync || jdDetailsForSync.entryPath !== 'upload_jd') return;
     const current = getValues();
     // Form fields are arrays (`jobType`, `jobMode`, `shift`,
     // `educationPreference`); backend/diff fields are scalar ids.
@@ -1325,8 +1343,10 @@ const EditJobDetail = () => {
     const { newMandatoryIds, newOptionalIds, newOptions } = mergeNewAiSkills(
       jdDetailsForSync.skills,
       currentMandatory,
-      currentOptional
+      currentOptional,
+      offeredSuggestedSkills.has
     );
+    [...newMandatoryIds, ...newOptionalIds].forEach(offeredSuggestedSkills.add);
     if (newMandatoryIds.length > 0) {
       setValue('mandatorySkills', [...currentMandatory, ...newMandatoryIds], {
         shouldValidate: true,
@@ -1555,7 +1575,7 @@ const EditJobDetail = () => {
         }).unwrap();
 
         showToast({
-          message: 'Job title added successfully',
+          message: 'Job Title added successfully',
           type: 'success',
         });
 
@@ -1634,7 +1654,7 @@ const EditJobDetail = () => {
         }).unwrap();
         await refetchJobTypes?.();
         setValue('jobType', [createdJobType.id], { shouldValidate: true });
-        showToast({ message: 'Job type added successfully', type: 'success' });
+        showToast({ message: 'Job Type added successfully', type: 'success' });
         return;
       }
 
@@ -1649,7 +1669,7 @@ const EditJobDetail = () => {
         const createdJobMode = await createJobMode({ job_mode_name: formattedValue }).unwrap();
         await refetchJobModes?.();
         setValue('jobMode', [createdJobMode.id], { shouldValidate: true });
-        showToast({ message: 'Job location added successfully', type: 'success' });
+        showToast({ message: 'Job Location added successfully', type: 'success' });
         return;
       }
     } catch (err) {
@@ -1711,14 +1731,14 @@ const EditJobDetail = () => {
   // Status Switch next to Edit/Delete - flips is_active, independent of the
   // isDeleted/reuse soft-delete path above.
   const toggleActiveTypeLabels: Record<string, string> = {
-    jobType: 'Job type',
-    jobMode: 'Job location',
+    jobType: 'Job Type',
+    jobMode: 'Job Location',
     shift: 'Shift',
     educationPreference: 'Education preference',
     mandatorySkills: 'Skill',
     optionalSkills: 'Skill',
     department: 'Department',
-    jobTitle: 'Job title',
+    jobTitle: 'Job Title',
   };
 
   const handleToggleActive = async (id: string | number, nextActive: boolean, type: string) => {
@@ -1831,7 +1851,7 @@ const EditJobDetail = () => {
         }).unwrap();
 
         showToast({
-          message: 'Job title updated successfully',
+          message: 'Job Title updated successfully',
           type: 'success',
         });
       } catch (err) {
@@ -1857,7 +1877,7 @@ const EditJobDetail = () => {
             ?.job_type_description,
           isMaster: false,
         }).unwrap();
-        showToast({ message: 'Job type updated successfully', type: 'success' });
+        showToast({ message: 'Job Type updated successfully', type: 'success' });
         refetchJobTypes?.();
       } catch (err) {
         showToast({
@@ -1881,7 +1901,7 @@ const EditJobDetail = () => {
           job_mode_description: jobModes.find((item) => String(item.id) === String(id))
             ?.job_mode_description,
         }).unwrap();
-        showToast({ message: 'Job location updated successfully', type: 'success' });
+        showToast({ message: 'Job Location updated successfully', type: 'success' });
         refetchJobModes?.();
       } catch (err) {
         showToast({
@@ -1998,7 +2018,7 @@ const EditJobDetail = () => {
         }).unwrap();
 
         showToast({
-          message: 'Job title removed successfully',
+          message: 'Job Title removed successfully',
           type: 'success',
         });
 
@@ -2030,7 +2050,7 @@ const EditJobDetail = () => {
     if (type === 'jobType') {
       try {
         await deleteJobType({ jobTypeId: String(id), isMaster: false }).unwrap();
-        showToast({ message: 'Job type removed successfully', type: 'success' });
+        showToast({ message: 'Job Type removed successfully', type: 'success' });
         clearIfSelected();
         refetchJobTypes?.();
       } catch (err) {
@@ -2048,7 +2068,7 @@ const EditJobDetail = () => {
     if (type === 'jobMode') {
       try {
         await deleteJobMode(String(id)).unwrap();
-        showToast({ message: 'Job location removed successfully', type: 'success' });
+        showToast({ message: 'Job Location removed successfully', type: 'success' });
         clearIfSelected();
         refetchJobModes?.();
       } catch (err) {
@@ -2369,6 +2389,38 @@ const EditJobDetail = () => {
     navigate(`/jobs/edit/${id}/AiJobDescription/${finalAiJobDescription.id}`);
   };
 
+  // Details changed on a job that has a description: Regenerate, Keep Current, or X to stay here.
+  const [detailsChangedJobId, setDetailsChangedJobId] = useState<string | null>(null);
+
+  const handleKeepCurrentJd = (stayOnPage: boolean) => {
+    const jobId = detailsChangedJobId;
+    setDetailsChangedJobId(null);
+    if (stayOnPage || !jobId) {
+      setAllowNavigation(false);
+      return;
+    }
+    goToDescriptionPage(jobId);
+  };
+
+  const handleRegenerateAfterChange = async () => {
+    const jobId = detailsChangedJobId;
+    if (!jobId) return;
+    try {
+      await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
+      showToast({ message: 'Regenerating the AI description', type: 'success' });
+    } catch (enhanceError) {
+      showToast({
+        message: getJobErrorMessage(
+          enhanceError,
+          'Could not start regeneration - use Regenerate on the next step.'
+        ),
+        type: 'warning',
+      });
+    }
+    setDetailsChangedJobId(null);
+    goToDescriptionPage(jobId);
+  };
+
   const handleCancelRegenerate = () => {
     if (!pendingContinueJobId) return;
     const jobId = pendingContinueJobId;
@@ -2478,14 +2530,22 @@ const EditJobDetail = () => {
         locationCountry: selectedLocationDetails?.country,
         skillIds: [...(data.mandatorySkills ?? []), ...(data.optionalSkills ?? [])].map(String),
       };
+      // No description yet (for example a blocked generation): generate it now.
+      const jdIsEmpty = jdBeforeSave !== undefined && !jdBeforeSave.jobDescription?.trim();
+      // Details changed on a job that already has a description: ask before regenerating.
       if (
+        !jdIsEmpty &&
         jdBeforeSave?.jobDescription &&
         haveDescriptionInputsChanged(descriptionInputs, jdBeforeSave)
       ) {
+        setDetailsChangedJobId(jobId);
+        return;
+      }
+      if (jdIsEmpty) {
         try {
           await enhanceJd({ jobOpeningId: jobId, regenerate: true }).unwrap();
           showToast({
-            message: 'Job details changed - regenerating the AI description to match',
+            message: 'Generating the AI description',
             type: 'success',
           });
         } catch (enhanceError) {
@@ -2829,7 +2889,7 @@ const EditJobDetail = () => {
                           optionFilterProp="label"
                           variant="borderless"
                           disabled={isDisabled || fieldsLocked}
-                          placeholder="Select languages"
+                          placeholder="Select Languages"
                           className="w-full custom-select-jobs placeholder-style"
                           loading={languagesLoading}
                           value={languagesLoading ? [] : (value ?? []).map(String)}
@@ -3866,15 +3926,19 @@ const EditJobDetail = () => {
         )}
         <div className="flex items-center justify-center mt-6 gap-6">
           {isDraft && (
-            <Tooltip title="Save progress and come back later.">
-              <Button
-                type="button"
-                className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-                onClick={() => onSaveDraft(watch())}
-                disabled={isUpdatingDraft || !canEditThisJob}
-              >
-                Save As Draft
-              </Button>
+            <Tooltip
+              title={nothingToSave ? nothingToSaveHint : 'Save progress and come back later.'}
+            >
+              <span className="inline-flex">
+                <Button
+                  type="button"
+                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => onSaveDraft(watch())}
+                  disabled={isUpdatingDraft || !canEditThisJob || nothingToSave}
+                >
+                  Save As Draft
+                </Button>
+              </span>
             </Tooltip>
           )}
           {isDraft && (
@@ -3888,21 +3952,23 @@ const EditJobDetail = () => {
               </Button>
             </Tooltip>
           )}
-          <Tooltip title="Save this page and continue.">
-            <Button
-              type="button"
-              className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-              onClick={handleSubmit(onSubmit, (invalidFields) => {
-                showToast({
-                  message: 'Please fill all required fields before saving.',
-                  type: 'error',
-                });
-                scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
-              })}
-              disabled={isFetchingJobData || !canEditThisJob}
-            >
-              Save & Next
-            </Button>
+          <Tooltip title={nothingToSave ? nothingToSaveHint : 'Save this page and continue.'}>
+            <span className="inline-flex">
+              <Button
+                type="button"
+                className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSubmit(onSubmit, (invalidFields) => {
+                  showToast({
+                    message: 'Please fill all required fields before saving.',
+                    type: 'error',
+                  });
+                  scrollToFirstFormError(invalidFields, JOB_DETAILS_FIELD_ORDER);
+                })}
+                disabled={isFetchingJobData || !canEditThisJob || nothingToSave}
+              >
+                Save & Next
+              </Button>
+            </span>
           </Tooltip>
         </div>
       </Form>
@@ -3921,6 +3987,16 @@ const EditJobDetail = () => {
           title="Cancel this job opening? Everything added so far will be permanently deleted."
           confirmText="Cancel Job"
           isLoading={isCancelling}
+        />
+      )}
+      {detailsChangedJobId && (
+        <ConfirmationModal
+          onClose={(close) => handleKeepCurrentJd(close === true)}
+          onConfirm={handleRegenerateAfterChange}
+          title="You have made changes to the job details. Would you like to regenerate the Job Description using AI?"
+          confirmText="Regenerate"
+          cancelText="Keep Current"
+          isLoading={isRegenerating}
         />
       )}
       {showRegenerateConfirmModal && (
