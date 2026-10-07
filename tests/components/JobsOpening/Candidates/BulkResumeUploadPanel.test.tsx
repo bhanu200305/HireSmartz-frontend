@@ -89,11 +89,92 @@ describe('BulkResumeUploadPanel progress', () => {
     });
     const { onCompleted, onDone } = await renderPanel();
     expect(onCompleted).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(/Done, you can close this now/)).toBeTruthy();
+    expect(screen.getByText('4 of 4 resumes added.')).toBeTruthy();
+    expect(screen.queryByText(/Done, you can close this now/)).toBeNull();
     await act(async () => {
       vi.advanceTimersByTime(2000);
     });
     expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts every uploaded file, including ones rejected as duplicates', async () => {
+    // 5 uploaded, 4 rejected up front as already uploaded, 1 accepted and parsed.
+    const dup = (name: string) => ({
+      filename: name,
+      status: 'failed',
+      candidate_id: null,
+      error_message: 'this resume was already uploaded for this job',
+    });
+    progress = batch({
+      status: 'completed',
+      total_files: 5,
+      valid_files: 1,
+      parsed_files: 1,
+      items: [
+        { filename: 'new.pdf', status: 'parsed', candidate_id: 'c1', error_message: null },
+        dup('a.pdf'),
+        dup('b.pdf'),
+        dup('c.pdf'),
+        dup('d.pdf'),
+      ],
+    });
+    await renderPanel();
+    expect(screen.getByText('1 of 5 resumes added.')).toBeTruthy();
+    expect(screen.queryByText(/Processed 1 of 1/)).toBeNull();
+    // The reason is said once, in the heading — not repeated per file.
+    expect(
+      screen.getByText(
+        '4 resumes could not be added because they were already uploaded for this job:'
+      )
+    ).toBeTruthy();
+    expect(screen.queryAllByText(/already uploaded for this job/)).toHaveLength(1);
+    ['a.pdf', 'b.pdf', 'c.pdf', 'd.pdf'].forEach((name) =>
+      expect(screen.getByText(name)).toBeTruthy()
+    );
+  });
+
+  it('groups failed files under one heading per reason', async () => {
+    const failed = (name: string, reason: string | null) => ({
+      filename: name,
+      status: 'failed',
+      candidate_id: null,
+      error_message: reason,
+    });
+    progress = batch({
+      status: 'completed',
+      total_files: 5,
+      valid_files: 1,
+      parsed_files: 1,
+      items: [
+        { filename: 'ok.pdf', status: 'parsed', candidate_id: 'c1', error_message: null },
+        failed('a.pdf', 'this resume was already uploaded for this job'),
+        failed('b.pdf', 'this resume was already uploaded for this job'),
+        failed('big.pdf', 'must be under 5MB'),
+        failed('odd.pdf', 'Parser timed out'),
+      ],
+    });
+    await renderPanel();
+    expect(
+      screen.getByText(
+        '2 resumes could not be added because they were already uploaded for this job:'
+      )
+    ).toBeTruthy();
+    expect(
+      screen.getByText("1 resume could not be added because it's larger than 5MB:")
+    ).toBeTruthy();
+    expect(screen.getByText('1 resume could not be added (Parser timed out):')).toBeTruthy();
+  });
+
+  it('shows progress against the total while still processing', async () => {
+    // 5 uploaded, 1 rejected up front, 2 of the 4 accepted parsed so far.
+    progress = batch({
+      total_files: 5,
+      valid_files: 4,
+      parsed_files: 2,
+      items: [{ filename: 'a.pdf', status: 'uploaded', candidate_id: 'c1', error_message: null }],
+    });
+    await renderPanel();
+    expect(screen.getByText('Processed 3 of 5 resumes…')).toBeTruthy();
   });
 
   it('finishes on the item list alone and keeps failed files open with their reason', async () => {
