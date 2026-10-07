@@ -6,7 +6,6 @@ import { ZodTypeAny } from 'zod';
 import { jwtDecode } from 'jwt-decode';
 import dayjs from 'dayjs';
 import { StatusModalType } from './enums';
-import { FeedItem } from '../../api/audit-service/Dashboard/ActivityStream';
 import { STATUS_MAP } from '../../constants/statusConstant';
 
 export const validateDraft = <T>(data: Partial<T>, schema: ZodTypeAny) => {
@@ -586,28 +585,6 @@ export const findAllMatches = (text: string, highlight: string) => {
   return merged;
 };
 
-export const mapStreamItemToFeedItem = (eventData: any): FeedItem | null => {
-  try {
-    const data = eventData?.payload || eventData;
-
-    if (!data || !data.id) {
-      return null;
-    }
-
-    const mappedItem: FeedItem = {
-      id: data.id,
-      title: data.title,
-      createdAt: data.createdAt,
-      entityType: data.entityType,
-      jobOpeningId: data.jobOpeningId,
-      candidateId: data.candidateId,
-      titleParams: data.titleParams || {},
-    };
-    return mappedItem;
-  } catch {
-    return null;
-  }
-};
 export const formatStatus = (status: any) => {
   if (!status) return 'N/A';
 

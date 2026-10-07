@@ -116,6 +116,7 @@ const MyCompanyPage = lazy(() => import('./pages/MyCompanyPage'));
 const CompanyMetricsPage = lazy(() => import('./pages/CompanyMetricsPage'));
 const CompanySettingsPage = lazy(() => import('./pages/CompanySettingsPage'));
 const PlatformAuditPage = lazy(() => import('./pages/PlatformAuditPage'));
+const PlatformActivityPage = lazy(() => import('./pages/PlatformActivityPage'));
 const PlatformMetricsPage = lazy(() => import('./pages/PlatformMetricsPage'));
 const GuestOrganizationsPage = lazy(() => import('./pages/GuestOrganizationsPage'));
 const CalendarSettingsPage = lazy(() => import('./pages/CalendarSettingsPage'));
@@ -302,6 +303,11 @@ export const Routes: RouteType[] = [
     name: 'PlatformAudit',
     path: '/platform-audit',
     component: PlatformAuditPage,
+  },
+  {
+    name: 'PlatformActivity',
+    path: '/platform-activity',
+    component: PlatformActivityPage,
   },
   {
     name: 'PlatformMetrics',

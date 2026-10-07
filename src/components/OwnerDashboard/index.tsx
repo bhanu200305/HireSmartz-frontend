@@ -171,8 +171,14 @@ const OwnerDashboard = () => {
   // permission this user doesn't hold at their active location disappears
   // on switch, rather than every widget always showing regardless of role
   // or location the way the old role.name checks did.
-  const canViewActivity = useHasAccess(Authorities.ACTIVITY_FEED);
   const canViewJobOpenings = useHasAccess(Authorities.JOB_OPENING_VIEW);
+  // Gated on job:read, not ACTIVITY_FEED ('activity:view'): no backend role
+  // holds 'activity:view', so that gate hid this tab from everyone.
+  // audit-service's GET /v1/audit/activity serves audit:read (company view)
+  // or job:read (assigned-jobs view); every role that reaches this dashboard
+  // and holds audit:read also holds job:read (company_admin), and the one
+  // that holds neither (interviewer) would only get a 403.
+  const canViewActivity = canViewJobOpenings;
   const canViewInterviews = useHasAccess(Authorities.CANDIDATE_VIEW);
 
   const greeting = (() => {

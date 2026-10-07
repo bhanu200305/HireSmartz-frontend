@@ -12,7 +12,7 @@ import CompanyLocationsTab from './CompanyLocationsTab';
 import DepartmentsTab from './DepartmentsTab';
 import EntitlementsTab from './EntitlementsTab';
 import TeamTab from './Team';
-import TenantActivityFeedTab from './TenantActivityFeedTab';
+import ActivityCard from '../ActivityFeed';
 import InterviewQuestionsTab from './InterviewQuestionsTab';
 import CultureIntroTab from './CultureIntroTab';
 import ScoringCriteriaOwnerTab from './ScoringCriteriaOwnerTab';
@@ -208,7 +208,10 @@ const MyCompany: React.FC = () => {
         canViewActivity && {
           key: '6',
           label: 'Activity Feed',
-          children: <TenantActivityFeedTab tenantId={tenantId} />,
+          // audit-service's GET /v1/audit/activity (jobs, candidates,
+          // interviews, team) — replaces org-service's tenant activity trail,
+          // which only carried org-profile changes.
+          children: <ActivityCard fullPage embedded />,
         },
       ].filter(Boolean) as TabsProps['items'],
     },

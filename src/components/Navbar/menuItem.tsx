@@ -23,7 +23,7 @@ import { HiOutlineSpeakerphone } from 'react-icons/hi';
 // MY_COMPANY_VIEW, JOB_OPENING_VIEW nor ACTIVITY_FEED — filtering this list
 // down to what they can see yields, in order: Dashboard, Companies, Company
 // Settings, Roles & Permissions, CFP Users, Admin, Finances, Subscriptions,
-// Platform Metrics, Audit Log, Book a Demo Leads. The tenant-only entries
+// Platform Metrics, Activity Feed, Book a Demo Leads. The tenant-only entries
 // interleaved here (Company/my-company, Job Openings, Activity Feed) sit
 // wherever's natural for a tenant caller's own nav, since a Master Super
 // Admin never holds their authority and never sees them.
@@ -169,35 +169,32 @@ const MenuItems = [
     // component against, so nav and destination finally agree on who can
     // see it.
     //
-    // Displayed as "Audit Log" (see Sidebar's label override) — same GET
-    // /v1/tenants/{tenant_id}/activity trail of this tenant's own admin
-    // actions (invites, role grants, profile/office/department edits, …)
-    // that name describes more plainly, and the label a Company Admin
-    // asked for to sit alongside Super Admin's own "Audit Log" entry below.
+    // Displayed as "Activity Feed" (see Sidebar's label override), same as
+    // the hiring manager/recruiter and platform entries below. Opens
+    // audit-service's Activity Feed (/my-activity, the
+    // company-wide view for this role) — not org-service's
+    // /v1/tenants/{tenant_id}/activity trail (ActivityFeedPage at
+    // /activityFeed), which only carries company-settings changes. That page
+    // and its route are kept, just unlinked, so this can be pointed back.
     //
-    // Internal `name` kept as "Tenant Audit Log", NOT "Audit Log" —
-    // Sidebar's own gating filter matches by `item.name`, and the two
-    // "Audit Log"-displayed entries need genuinely different gates (this
-    // one tenant-only, the platform one below tenant-NEVER). A brief
-    // version of this file gave both the literal name "Audit Log", which
-    // made Sidebar's tenant-only filter (matching by that name) catch BOTH
-    // entries — including the platform one, which then always failed its
-    // now-incorrectly-applied `Boolean(tenantId)` check and disappeared for
-    // every Super Admin. `key={item.name}` in Sidebar's list render also
-    // needs these to be unique, independent of the collision above.
+    // Internal `name` kept as "Tenant Audit Log", distinct from "Activity"
+    // and "Platform Activity" below although all three display the same
+    // label — Sidebar's gating filter matches by `item.name` and each needs
+    // its own gate (this one tenant-only, the platform one tenant-NEVER);
+    // `key={item.name}` in Sidebar's list render also needs them unique.
     //
     // Tenant-only, same as "Company"/"Company Metrics" above and for the
     // same reason: a platform caller's static permission set happens to
-    // include COMPANY_SETTINGS_EDIT too, but `/activityFeed` (ActivityFeedPage)
-    // reads `tenantId ?? ''` — a dead fetch for them. See Sidebar's own
-    // tenantId guard for this entry.
+    // include COMPANY_SETTINGS_EDIT too, but the tenant feed has nothing to
+    // show them (they have their own "Platform Activity" below). See
+    // Sidebar's own tenantId guard for this entry.
     //
     // COMPANY_SETTINGS_EDIT, NOT COMPANY_SETTINGS_VIEW — see "Company"
     // above for why: `organization:read` is no longer admin-exclusive since
     // migration 0063, `organization:update` still is.
     name: 'Tenant Audit Log',
     icon: <LuSquareActivity size={18} />,
-    path: '/activityFeed',
+    path: '/my-activity',
     requiredAuthority: Authorities.COMPANY_SETTINGS_EDIT,
   },
   {
@@ -205,8 +202,8 @@ const MenuItems = [
     // Authorities catalog entry scoped to exactly {hiring_manager,
     // recruiter} and no one else, so Sidebar filters this one on role
     // directly (isHiringManagerOrRecruiterRole). Shows this user's own
-    // activity — see MyActivityPage — distinct from Company Admin's
-    // tenant-wide "Audit Log"/"Activity" (Tenant Audit Log entry above).
+    // assigned jobs' activity — see MyActivityPage — distinct from Company
+    // Admin's company-wide view (Tenant Audit Log entry above).
     name: 'Activity',
     icon: <LuSquareActivity size={18} />,
     path: '/my-activity',
@@ -250,11 +247,24 @@ const MenuItems = [
     requiredAuthority: Authorities.PLATFORM_VIEW,
   },
   {
-    name: 'Audit Log',
+    // audit-service's platform Activity Feed (PlatformActivityPage). Sidebar
+    // also hides it from cfp_support, who holds platform:read but not
+    // audit:read and would only get a 403.
+    name: 'Platform Activity',
     icon: <LuSquareActivity size={18} />,
-    path: ['/platform-audit'],
+    path: ['/platform-activity'],
     requiredAuthority: Authorities.PLATFORM_VIEW,
   },
+  // Super Admin's old Audit Log (org-service's /v1/platform/audit/events)
+  // hidden for now — next to "Activity Feed" it read as a second, competing
+  // activity screen. PlatformAuditPage and the /platform-audit route are
+  // kept; restore this entry to bring it back.
+  // {
+  //   name: 'Audit Log',
+  //   icon: <LuSquareActivity size={18} />,
+  //   path: ['/platform-audit'],
+  //   requiredAuthority: Authorities.PLATFORM_VIEW,
+  // },
   {
     name: 'Book a Demo Leads',
     icon: <HiOutlineSpeakerphone size={18} />,
