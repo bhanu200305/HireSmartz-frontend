@@ -190,7 +190,7 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
           </ChartCard>
           <ChartCard
             title="Hiring Funnel"
-            subtitle="Applied → Audio Round → AI Interview → Panel Interview → Selected / Rejected"
+            subtitle="Applied → AI Audio Call → AI Video Interview → Panel Interview → Selected / Rejected"
             span={2}
             available={false}
             unavailableLabel={COMING_SOON}
@@ -199,7 +199,7 @@ const TenantAnalyticsModal: React.FC<{ tenant: PlatformTenantSummary; onClose: (
           </ChartCard>
           <ChartCard
             title="Interviews by Status & Type"
-            subtitle="Status split by Audio Round, AI Interview & Panel Interview"
+            subtitle="Status split by AI Audio Call, AI Video Interview & Panel Interview"
             tag="Grouped Bar"
             available={false}
             unavailableLabel={COMING_SOON}

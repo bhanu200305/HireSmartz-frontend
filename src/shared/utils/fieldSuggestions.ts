@@ -1,4 +1,5 @@
 import type { JobDetailsState } from '../../types';
+import { toMoneyString } from './money';
 
 /** Values the "Fill with AI" helper found; a key exists only where a match was found. */
 export type FieldSuggestions = {
@@ -73,11 +74,11 @@ export const planFieldFills = (
     const status = period === 'annual' ? 'true' : 'false';
     let salaryFilled = false;
     if (isBlank(current[minField]) && min != null) {
-      add(minField, String(min), 'Salary');
+      add(minField, toMoneyString(min), 'Salary');
       salaryFilled = true;
     }
     if (isBlank(current[maxField]) && max != null) {
-      add(maxField, String(max), 'Salary');
+      add(maxField, toMoneyString(max), 'Salary');
       salaryFilled = true;
     }
     if (salaryFilled && !(current.exemptionStatus ?? []).includes(status)) {

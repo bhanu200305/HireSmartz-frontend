@@ -36,9 +36,9 @@ export const BOOKING_STATUS_BADGE: Record<BookingStatus, BadgeStatus> = {
 };
 
 export const INTERVIEW_TYPE_LABELS: Record<InterviewType, string> = {
-  audio: 'Intake call',
-  audio_screening: 'AI Audio Screening',
-  ai_video: 'AI video',
+  audio: 'Intake Call',
+  audio_screening: 'AI Audio Call',
+  ai_video: 'AI Video Interview',
   panel: 'Panel',
 };
 

@@ -7,7 +7,7 @@ const jobData = {
     interviewRounds: [
       {
         id: 1,
-        round: { id: 'r-resume', name: 'Resume Round' },
+        round: { id: 'r-resume', name: 'Resume Screening' },
         description: 'AI resume screening.',
         duration: null,
         variant: null,
@@ -28,7 +28,7 @@ const jobData = {
       },
       {
         id: 4,
-        round: { id: 'r-video', name: 'AI Video Round' },
+        round: { id: 'r-video', name: 'AI Video Interview' },
         description: '',
         duration: 45,
         variant: 'soundwave',
@@ -42,7 +42,7 @@ const jobData = {
 };
 
 const roundTypes = [
-  { id: 'r-resume', name: 'Resume Round', special_kind: 'resume', variant_labels: undefined },
+  { id: 'r-resume', name: 'Resume Screening', special_kind: 'resume', variant_labels: undefined },
   {
     id: 'r-intake',
     name: 'Renamed Intake',
@@ -55,7 +55,7 @@ const roundTypes = [
     special_kind: null,
     variant_labels: { online: 'Remote Panel' },
   },
-  { id: 'r-video', name: 'AI Video Round', special_kind: null, variant_labels: undefined },
+  { id: 'r-video', name: 'AI Video Interview', special_kind: null, variant_labels: undefined },
 ];
 
 vi.mock('../../../../src/api/job-service/JobOpening/GetJobOpeningById', () => ({
@@ -84,10 +84,10 @@ describe('ViewInterviewRounds', () => {
 
   it('shows one numbered pill per round and the first round by default', () => {
     renderPage();
-    expect(screen.getByRole('button', { name: '1. Resume Round' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '1. Resume Screening' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '3. Hiring Panel Round' })).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: '1. Resume Round' }).getAttribute('aria-current')
+      screen.getByRole('button', { name: '1. Resume Screening' }).getAttribute('aria-current')
     ).toBe('true');
     expect(screen.getByText('AI resume screening.')).toBeTruthy();
   });
@@ -116,7 +116,7 @@ describe('ViewInterviewRounds', () => {
 
   it('says so when a round has no questions', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: '4. AI Video Round' }));
+    fireEvent.click(screen.getByRole('button', { name: '4. AI Video Interview' }));
     expect(screen.getByText('No questions added.')).toBeTruthy();
   });
 });

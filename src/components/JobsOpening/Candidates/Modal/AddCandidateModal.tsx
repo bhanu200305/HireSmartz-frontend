@@ -23,8 +23,8 @@ const AddCandidateModal = ({ open, onClose, onBulkImportCompleted }: AddCandidat
   <AntdCommonModal
     open={open}
     onClose={onClose}
-    title="Add Candidate"
-    subtitle="Upload one or more resumes to add candidates to this job"
+    title="Upload Resume"
+    subtitle="Upload one or more resumes to this job"
     modalProps={{ width: 560 }}
   >
     {/* Mounted only while open, so every opening starts with an empty

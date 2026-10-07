@@ -2,6 +2,7 @@ import type { SaveJobDetailsRequest, JobSkillPayload, JobLocationPayload } from 
 import type { JobDetailsState } from '../../types';
 import type { TenantOffice } from '../organization-service/Tenants/offices';
 import type { SuggestedSkill } from './JobOpenings/types';
+import { toMoneyOrNull } from '../../shared/utils/money';
 
 type BuildSaveDetailsArgs = {
   data: Partial<JobDetailsState> & {
@@ -68,12 +69,6 @@ const toIsoDateTime = (value: unknown): string | null => {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 };
 
-const toIntOrNull = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === '') return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.round(n) : null;
-};
-
 /**
  * Map the wizard form state onto PUT /job-openings/{id}/details.
  * education_preference_id/language_ids are catalogue references, not free
@@ -136,11 +131,11 @@ export const buildSaveJobDetailsPayload = ({
     vacancies: data.openings ?? null,
     min_experience_req: data.minExperience ?? null,
     max_experience_req: data.maxExperience ?? null,
-    exempt_lower_salary_range: toIntOrNull(data.exemptMinSalary),
-    exempt_upper_salary_range: toIntOrNull(data.exemptMaxSalary),
-    non_exempt_lower_salary_range: toIntOrNull(data.nonExemptMinSalary),
-    non_exempt_upper_salary_range: toIntOrNull(data.nonExemptMaxSalary),
-    referral_bonus: toIntOrNull(data.referralBonus),
+    exempt_lower_salary_range: toMoneyOrNull(data.exemptMinSalary),
+    exempt_upper_salary_range: toMoneyOrNull(data.exemptMaxSalary),
+    non_exempt_lower_salary_range: toMoneyOrNull(data.nonExemptMinSalary),
+    non_exempt_upper_salary_range: toMoneyOrNull(data.nonExemptMaxSalary),
+    referral_bonus: toMoneyOrNull(data.referralBonus),
     responsibilities: data.responsibilities || null,
     requirements: data.requirements || null,
     other_requirements: data.otherRequirements || null,

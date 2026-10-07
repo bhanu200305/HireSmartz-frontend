@@ -927,7 +927,7 @@ const JobsOpening = () => {
       !record.isDraft &&
         !record.isClosed && {
           key: 'add-candidate',
-          label: 'Add Candidate',
+          label: 'Upload Resume',
           onClick: () =>
             navigate(`/jobs/view/${record.jobOpeningId}/candidates`, {
               state: { openAddCandidate: true },
@@ -999,7 +999,7 @@ const JobsOpening = () => {
       if (item.key === 'duplicate') {
         return hasFeatureAccess('job_opening', 'create', role, authorities);
       }
-      // Same gate as the ADD CANDIDATE button on the candidates page itself.
+      // Same gate as the Upload Resume button on the candidates page itself.
       if (item.key === 'add-candidate') {
         return (
           hasFeatureAccess('job_opening', 'edit', role, authorities) ||

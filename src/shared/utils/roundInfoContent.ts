@@ -2,7 +2,9 @@ type SpecialKind = 'resume' | 'intake_call' | 'verification';
 
 // Fallback when the round type's special_kind isn't available.
 const NAME_TO_SPECIAL_KIND: Record<string, SpecialKind> = {
+  'resume screening': 'resume',
   'resume round': 'resume',
+  'intake call': 'intake_call',
   'intake call round': 'intake_call',
   'identity verification': 'verification',
 };

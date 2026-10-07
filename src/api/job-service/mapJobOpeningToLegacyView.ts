@@ -1,5 +1,6 @@
 import type { JobOpeningByIdResponse, JobDetailsState, InterviewRoundState } from '../../types';
 import type { JobDetailsResponse, JobOpeningDetailResponse, InterviewRoundResponse } from './types';
+import { toMoneyString } from '../../shared/utils/money';
 
 type LegacyJobData = JobOpeningByIdResponse['data'];
 
@@ -154,16 +155,20 @@ export const mapDetailsToJobDetailsState = (
     state: details.locations?.[0]?.state ?? '',
     openings: details.vacancies,
     exemptMinSalary:
-      details.exempt_lower_salary_range != null ? String(details.exempt_lower_salary_range) : null,
+      details.exempt_lower_salary_range != null
+        ? toMoneyString(details.exempt_lower_salary_range)
+        : null,
     exemptMaxSalary:
-      details.exempt_upper_salary_range != null ? String(details.exempt_upper_salary_range) : null,
+      details.exempt_upper_salary_range != null
+        ? toMoneyString(details.exempt_upper_salary_range)
+        : null,
     nonExemptMinSalary:
       details.non_exempt_lower_salary_range != null
-        ? String(details.non_exempt_lower_salary_range)
+        ? toMoneyString(details.non_exempt_lower_salary_range)
         : null,
     nonExemptMaxSalary:
       details.non_exempt_upper_salary_range != null
-        ? String(details.non_exempt_upper_salary_range)
+        ? toMoneyString(details.non_exempt_upper_salary_range)
         : null,
     minExperience: details.min_experience_req != null ? Number(details.min_experience_req) : null,
     maxExperience: details.max_experience_req != null ? Number(details.max_experience_req) : null,

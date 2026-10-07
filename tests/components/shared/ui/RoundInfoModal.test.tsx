@@ -20,14 +20,14 @@ describe('RoundInfoModal', () => {
   });
 
   it('says so when the round has no description', () => {
-    render(<RoundInfoModal roundName="Resume Round" description={null} onClose={vi.fn()} />);
+    render(<RoundInfoModal roundName="Resume Screening" description={null} onClose={vi.fn()} />);
     expect(screen.getByText('No description has been added for this round.')).toBeTruthy();
   });
 
   it('closes from the cross and from the backdrop, but not from inside the panel', () => {
     const onClose = vi.fn();
     const { container } = render(
-      <RoundInfoModal roundName="Resume Round" description="x" onClose={onClose} />
+      <RoundInfoModal roundName="Resume Screening" description="x" onClose={onClose} />
     );
     fireEvent.click(screen.getByText('x'));
     expect(onClose).not.toHaveBeenCalled();

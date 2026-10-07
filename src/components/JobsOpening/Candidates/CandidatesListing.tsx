@@ -196,8 +196,10 @@ const CandidatesListing = () => {
 
   const isDraft = jobOpeningData?.data?.isDraft || false;
   const isClosed = jobOpeningData?.data?.isClosed || false;
+  // Same rule as the list's Edit action; here only a draft can be edited.
+  const canEditDraft = isDraft && !!jobOpeningData && canWriteJobNotes;
 
-  // Opened via "Add Candidate" from the job openings list actions menu -
+  // Opened via "Upload Resume" from the job openings list actions menu -
   // consume the flag once so it doesn't reopen on a later back/forward nav.
   useEffect(() => {
     if (location.state?.openAddCandidate) {
@@ -243,9 +245,9 @@ const CandidatesListing = () => {
       ((jobRoundPlan ?? []) as Array<{ roundId?: string; roundName?: string | null }>)
         .filter((r) => r.roundId)
         .map((r) =>
-          // The plan's "Resume Round" is the resume stage, which candidates
+          // The plan's "Resume Screening" round is the resume stage, which candidates
           // are never "sitting at" through a round id.
-          (r.roundName ?? '').trim().toLowerCase() === 'resume round'
+          ['resume screening', 'resume round'].includes((r.roundName ?? '').trim().toLowerCase())
             ? { label: RESUME_STAGE_LABEL, value: RESUME_ROUND_FILTER }
             : { label: r.roundName || 'Round', value: r.roundId as string }
         ),
@@ -463,13 +465,23 @@ const CandidatesListing = () => {
                 </Button>
               )}
 
+              {canEditDraft && (
+                <Button
+                  className="box-border flex h-11 min-w-[170px] items-center justify-center gap-2 rounded-full border border-primary bg-white px-5 font-semibold text-primary"
+                  onClick={() => navigate(`/jobs/edit/${parsedJobId}/details`)}
+                >
+                  <MdEdit size={18} />
+                  <span>Edit</span>
+                </Button>
+              )}
+
               {canManageCandidates && (
                 <Tooltip
                   title={
                     isDraft
-                      ? 'Cannot add candidates to draft job openings'
+                      ? 'Cannot upload resumes to draft job openings'
                       : isClosed
-                        ? 'Cannot add candidates to closed job openings'
+                        ? 'Cannot upload resumes to closed job openings'
                         : ''
                   }
                 >
@@ -481,7 +493,7 @@ const CandidatesListing = () => {
                       }
                       disabled={isDraft || isClosed}
                     >
-                      Add Candidate
+                      Upload Resume
                     </Button>
                   </span>
                 </Tooltip>

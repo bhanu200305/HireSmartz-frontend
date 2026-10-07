@@ -140,6 +140,7 @@ import {
   diffAiOwnedFields,
   mergeNewAiSkills,
 } from '../../../shared/utils/jdSync';
+import { toMoneyString } from '../../../shared/utils/money';
 
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
@@ -1247,7 +1248,7 @@ const JobDetails = () => {
         appliedAnything = true;
       }
       if (fresh.exemptMinSalary != null && !current.exemptMinSalary) {
-        setValue('exemptMinSalary', String(fresh.exemptMinSalary), { shouldValidate: true });
+        setValue('exemptMinSalary', toMoneyString(fresh.exemptMinSalary), { shouldValidate: true });
         const currentStatus = getValues('exemptionStatus') ?? [];
         if (!currentStatus.includes('true')) {
           setValue('exemptionStatus', [...currentStatus, 'true'], { shouldValidate: true });
@@ -1255,11 +1256,13 @@ const JobDetails = () => {
         appliedAnything = true;
       }
       if (fresh.exemptMaxSalary != null && !current.exemptMaxSalary) {
-        setValue('exemptMaxSalary', String(fresh.exemptMaxSalary), { shouldValidate: true });
+        setValue('exemptMaxSalary', toMoneyString(fresh.exemptMaxSalary), { shouldValidate: true });
         appliedAnything = true;
       }
       if (fresh.nonExemptMinSalary != null && !current.nonExemptMinSalary) {
-        setValue('nonExemptMinSalary', String(fresh.nonExemptMinSalary), { shouldValidate: true });
+        setValue('nonExemptMinSalary', toMoneyString(fresh.nonExemptMinSalary), {
+          shouldValidate: true,
+        });
         const currentStatus = getValues('exemptionStatus') ?? [];
         if (!currentStatus.includes('false')) {
           setValue('exemptionStatus', [...currentStatus, 'false'], { shouldValidate: true });
@@ -1267,7 +1270,9 @@ const JobDetails = () => {
         appliedAnything = true;
       }
       if (fresh.nonExemptMaxSalary != null && !current.nonExemptMaxSalary) {
-        setValue('nonExemptMaxSalary', String(fresh.nonExemptMaxSalary), { shouldValidate: true });
+        setValue('nonExemptMaxSalary', toMoneyString(fresh.nonExemptMaxSalary), {
+          shouldValidate: true,
+        });
         appliedAnything = true;
       }
       // Merge in AI-suggested skills not already selected, split by type.
@@ -3156,8 +3161,8 @@ const JobDetails = () => {
                           }}
                         />
                         <span className="text-sm text-gray-700 leading-5">
-                          Play Company Culture Introduction at the start of AI Audio Screening and
-                          AI Video Interview
+                          Play Company Culture Introduction at the start of AI Audio Call and AI
+                          Video Interview
                         </span>
                       </div>
                     </Form.Item>
@@ -3772,7 +3777,7 @@ const JobDetails = () => {
                           <CurrencyInput
                             value={field.value ?? ''}
                             onValueChange={(value) => {
-                              field.onChange(value ? Number(value) : null);
+                              field.onChange(Number(value) ? value : null);
                             }}
                             decimalsLimit={2}
                             decimalScale={2}

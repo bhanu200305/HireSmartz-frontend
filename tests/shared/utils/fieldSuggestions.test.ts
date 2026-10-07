@@ -60,6 +60,17 @@ describe('planFieldFills', () => {
     expect(plan.fills[1].value).toEqual(['true', 'false']);
   });
 
+  it('keeps the cents of a suggested hourly rate', () => {
+    const plan = planFieldFills(
+      { salary_min: 16.9, salary_max: 21.45, salary_period: 'hourly' },
+      { nonExemptMinSalary: null, nonExemptMaxSalary: null, exemptionStatus: [] }
+    );
+    expect(plan.fills.slice(0, 2).map((f) => [f.field, f.value])).toEqual([
+      ['nonExemptMinSalary', '16.90'],
+      ['nonExemptMaxSalary', '21.45'],
+    ]);
+  });
+
   it('suggests the location only while none is picked', () => {
     expect(planFieldFills({ office_id: 'o1' }, { officeLocation: [] }).officeId).toBe('o1');
     expect(

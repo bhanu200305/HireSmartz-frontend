@@ -9,7 +9,7 @@ export const GROUPED_INTERNAL_STATUS_OPTIONS = [
     value: 'Resume-Review Awaited',
   },
   {
-    label: 'AI Audio Screening',
+    label: 'AI Audio Call',
     value: 'AI',
     children: [
       { label: 'Canceled', value: 'AI Audio Screening-Cancelled' },
@@ -24,7 +24,7 @@ export const GROUPED_INTERNAL_STATUS_OPTIONS = [
     ],
   },
   {
-    label: 'Video Interview',
+    label: 'AI Video Interview',
     value: 'VIDEO',
     children: [
       { label: 'Canceled', value: 'Video Interview-Cancelled' },

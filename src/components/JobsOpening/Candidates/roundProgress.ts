@@ -170,10 +170,11 @@ export const orderRoundsForFlow = (
  * `orderRoundsForFlow` has moved the resume stage for an instant-call
  * candidate. Every caller passes the same (possibly reordered) array.
  */
-// A stale real round named "Resume Round", distinct from the synthetic
+// A stale real round named "Resume Screening" (or the old "Resume Round"), distinct from the synthetic
 // "resume" stage (always shown as "Resume Screening").
 export const isStaleResumeRound = (round: CandidateInterviewRoundView): boolean =>
-  round.stage_type === 'interview' && round.round_name.trim().toLowerCase() === 'resume round';
+  round.stage_type === 'interview' &&
+  ['resume screening', 'resume round'].includes(round.round_name.trim().toLowerCase());
 
 /** Whether a round counts as finished for working out the candidate's current
  * round: skipped, or explicitly advanced by a recruiter. Interview-service

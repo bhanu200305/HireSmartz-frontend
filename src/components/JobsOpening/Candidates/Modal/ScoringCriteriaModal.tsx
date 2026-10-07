@@ -156,11 +156,11 @@ const INTERVIEW_RUBRICS: Record<
   },
   panel: {
     intro: [
-      'This round is a consistency check. The AI compares what the candidate says in this interviewer-led round with what they said in the earlier AI Video round and with their resume.',
-      'This score requires a completed AI Video round for the same candidate. The interviewer’s own feedback and the recruiter’s score are recorded separately and do not change this AI score.',
+      'This round is a consistency check. The AI compares what the candidate says in this interviewer-led round with what they said in the earlier AI Video Interview and with their resume.',
+      'This score requires a completed AI Video Interview for the same candidate. The interviewer’s own feedback and the recruiter’s score are recorded separately and do not change this AI score.',
     ],
     scaleNote:
-      'Each answer is scored on how consistent it is with the earlier AI Video round and the resume.',
+      'Each answer is scored on how consistent it is with the earlier AI Video Interview and the resume.',
     scale: [
       {
         score: '5 - Exceptional',
@@ -323,9 +323,9 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
             </li>
 
             <li>
-              <strong>AI Audio Screening Score: 20%</strong>
+              <strong>AI Audio Call Score: 20%</strong>
               <p className="ml-2">
-                Derived from candidate’s performance in the AI Audio Screening round.
+                Derived from candidate’s performance in the AI Audio Call round.
               </p>
             </li>
 
@@ -343,8 +343,8 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
       <section>
         <h3 className="text-lg font-semibold mb-2">Formula</h3>
         <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm font-mono">
-          Overall AI Score = (Resume Score × 20%) + (AI Audio Score × 20%) + (Average AI Video
-          Scores × 60%)
+          Overall AI Score = (Resume Score × 20%) + (AI Audio Call Score × 20%) + (Average AI Video
+          Interview Scores × 60%)
         </div>
       </section>
     </div>

@@ -106,7 +106,7 @@ const getRoundIdsMissingQuestions = (err: unknown): string[] =>
 /** Friendlier copy for NO_ELIGIBLE_INTERVIEW_ROUNDS than the backend's own wording. */
 const describeGenerateQuestionsError = (err: unknown, fallback: string): string => {
   if (getJobErrorCode(err) === 'NO_ELIGIBLE_INTERVIEW_ROUNDS') {
-    return 'Add an AI Video, Hiring Panel, or AI Audio Screening round to the Interview Sequence before generating questions.';
+    return 'Add an AI Video Interview, Hiring Panel, or AI Audio Call round to the Interview Sequence before generating questions.';
   }
   return getJobErrorMessage(err, fallback);
 };
@@ -886,8 +886,8 @@ const AiQuestionsSetup = () => {
 
         {noEligibleRound && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Add an AI Video, Hiring Panel, or AI Audio Screening round to the Interview Sequence
-            before adding questions.
+            Add an AI Video Interview, Hiring Panel, or AI Audio Call round to the Interview
+            Sequence before adding questions.
           </div>
         )}
 

@@ -134,6 +134,7 @@ import {
   useDeactivateOrganizationShiftMutation,
 } from '../../../api/job-service/Shifts/shifts';
 import ShiftFormModal, { computeShiftDurationMinutes } from '../ShiftFormModal';
+import { toMoneyString } from '../../../shared/utils/money';
 
 const CurrencyInput = lazy(() => import('react-currency-input-field'));
 
@@ -957,19 +958,23 @@ const EditJobDetail = () => {
       ),
       referralBonus:
         jobData.data.referralBonus != null && !isNaN(Number(jobData.data.referralBonus))
-          ? Number(jobData.data.referralBonus)
+          ? toMoneyString(jobData.data.referralBonus)
           : null,
       shift: jobData.data.shiftId ? [String(jobData.data.shiftId)] : [],
       languages: jobData.data.languages || [],
       openings: jobData.data.openings ? Number(jobData.data.openings) : null,
       exemptMinSalary:
-        jobData.data.exemptMinSalary != null ? String(jobData.data.exemptMinSalary) : null,
+        jobData.data.exemptMinSalary != null ? toMoneyString(jobData.data.exemptMinSalary) : null,
       exemptMaxSalary:
-        jobData.data.exemptMaxSalary != null ? String(jobData.data.exemptMaxSalary) : null,
+        jobData.data.exemptMaxSalary != null ? toMoneyString(jobData.data.exemptMaxSalary) : null,
       nonExemptMinSalary:
-        jobData.data.nonExemptMinSalary != null ? String(jobData.data.nonExemptMinSalary) : null,
+        jobData.data.nonExemptMinSalary != null
+          ? toMoneyString(jobData.data.nonExemptMinSalary)
+          : null,
       nonExemptMaxSalary:
-        jobData.data.nonExemptMaxSalary != null ? String(jobData.data.nonExemptMaxSalary) : null,
+        jobData.data.nonExemptMaxSalary != null
+          ? toMoneyString(jobData.data.nonExemptMaxSalary)
+          : null,
       exemptionStatus: [
         ...(jobData.data.exemptMinSalary != null || jobData.data.exemptMaxSalary != null
           ? ['true']
@@ -1206,7 +1211,9 @@ const EditJobDetail = () => {
           appliedAnything = true;
         }
         if (fresh.exemptMinSalary != null && !current.exemptMinSalary) {
-          setValue('exemptMinSalary', String(fresh.exemptMinSalary), { shouldValidate: true });
+          setValue('exemptMinSalary', toMoneyString(fresh.exemptMinSalary), {
+            shouldValidate: true,
+          });
           const currentStatus = getValues('exemptionStatus') ?? [];
           if (!currentStatus.includes('true')) {
             setValue('exemptionStatus', [...currentStatus, 'true'], { shouldValidate: true });
@@ -1214,11 +1221,13 @@ const EditJobDetail = () => {
           appliedAnything = true;
         }
         if (fresh.exemptMaxSalary != null && !current.exemptMaxSalary) {
-          setValue('exemptMaxSalary', String(fresh.exemptMaxSalary), { shouldValidate: true });
+          setValue('exemptMaxSalary', toMoneyString(fresh.exemptMaxSalary), {
+            shouldValidate: true,
+          });
           appliedAnything = true;
         }
         if (fresh.nonExemptMinSalary != null && !current.nonExemptMinSalary) {
-          setValue('nonExemptMinSalary', String(fresh.nonExemptMinSalary), {
+          setValue('nonExemptMinSalary', toMoneyString(fresh.nonExemptMinSalary), {
             shouldValidate: true,
           });
           const currentStatus = getValues('exemptionStatus') ?? [];
@@ -1228,7 +1237,7 @@ const EditJobDetail = () => {
           appliedAnything = true;
         }
         if (fresh.nonExemptMaxSalary != null && !current.nonExemptMaxSalary) {
-          setValue('nonExemptMaxSalary', String(fresh.nonExemptMaxSalary), {
+          setValue('nonExemptMaxSalary', toMoneyString(fresh.nonExemptMaxSalary), {
             shouldValidate: true,
           });
           appliedAnything = true;
@@ -2941,7 +2950,7 @@ const EditJobDetail = () => {
                 }}
               />
               <span className="text-sm text-gray-700 leading-5">
-                Play Company Culture Introduction at the start of AI Audio Screening and AI Video
+                Play Company Culture Introduction at the start of AI Audio Call and AI Video
                 Interview
               </span>
             </div>
@@ -3541,7 +3550,7 @@ const EditJobDetail = () => {
                 <CurrencyInput
                   value={field.value ?? ''}
                   onValueChange={(value) => {
-                    field.onChange(value ? Number(value) : null);
+                    field.onChange(Number(value) ? value : null);
                   }}
                   decimalsLimit={2}
                   decimalScale={2}

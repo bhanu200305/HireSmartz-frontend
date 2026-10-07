@@ -43,14 +43,11 @@ import { Authorities } from '../../constants/authorities.constant';
  * charts) instead of the "coming soon" placeholder it used to show.
  */
 // interviews-by-status's fixed 3-bucket vocabulary (round_type_classification.py)
-// mapped to the product-facing labels this card's footer already promises —
-// "Audio" for the Intake/Audio-Screening rounds, "AI" for an AI-avatar-
-// conducted interview, "Panel" for a human-panel round (conducted over
-// video). Any round type that doesn't classify into one of these three
-// (e.g. Identity Verification) is excluded upstream, not given a 4th bucket.
+// mapped to display names. Round types outside these (e.g. Identity Verification)
+// are excluded upstream.
 const ROUND_TYPE_LABELS: Record<string, string> = {
-  AUDIO: 'Audio',
-  AVATAR: 'AI',
+  AUDIO: 'AI Audio Call',
+  AVATAR: 'AI Video Interview',
   VIDEO: 'Panel',
 };
 const ROUND_TYPE_ORDER = ['AUDIO', 'AVATAR', 'VIDEO'];

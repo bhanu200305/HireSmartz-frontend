@@ -13,6 +13,7 @@ import { useSessionTenantId } from '../../../../hooks/useSessionTenantId';
 import { useJobTitleNameMap } from '../../../../hooks/useJobTitleNameMap';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 import type { RootState } from '../../../../redux/provider/store';
+import { formatMoney } from '../../../../shared/utils/money';
 
 type AssignJobModalProps = {
   open: boolean;
@@ -24,13 +25,7 @@ type AssignJobModalProps = {
 };
 
 const formatSalary = (value: number | null | undefined) =>
-  value == null
-    ? ''
-    : new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        maximumFractionDigits: 0,
-      }).format(value);
+  value == null ? '' : formatMoney(value);
 
 const salaryRange = (min: number | null | undefined, max: number | null | undefined) =>
   min != null && max != null

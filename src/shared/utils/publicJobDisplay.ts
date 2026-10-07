@@ -1,3 +1,5 @@
+import { formatMoney } from './money';
+
 // Shared display formatting for the public, unauthenticated careers pages
 // (CareersListingPage, CareersJobDetailPage) — pulled out to a single file
 // so a fix (or a bug) doesn't have to be made twice. Both pages read
@@ -8,7 +10,9 @@
 // experience fields as JSON strings on the wire — see that file's own
 // `toNumber` comment) — every function here can assume real `number | null`.
 
-const fmtAmount = (n: number): string => (n >= 1000 ? `$${Math.round(n / 1000)}K` : `$${n}`);
+// "K" only for an exact thousand, so no amount is ever rounded.
+const fmtAmount = (n: number): string =>
+  n >= 1000 && n % 1000 === 0 ? `$${n / 1000}K` : formatMoney(n);
 
 const formatOneRange = (min: number | null, max: number | null, suffix: string): string | null => {
   if (min === null && max === null) return null;

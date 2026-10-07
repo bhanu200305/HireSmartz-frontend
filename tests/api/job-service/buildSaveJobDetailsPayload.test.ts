@@ -68,3 +68,31 @@ describe('buildSaveJobDetailsPayload — skill source tagging', () => {
     ]);
   });
 });
+
+describe('buildSaveJobDetailsPayload — salary', () => {
+  it('sends the typed amounts with their cents, not rounded', () => {
+    const result = buildSaveJobDetailsPayload({
+      data: {
+        nonExemptMinSalary: '16.90',
+        nonExemptMaxSalary: '21.45',
+        exemptMinSalary: '85000.50',
+        exemptMaxSalary: '95000',
+      },
+      suggestedSkills: [],
+    });
+
+    expect(result.non_exempt_lower_salary_range).toBe(16.9);
+    expect(result.non_exempt_upper_salary_range).toBe(21.45);
+    expect(result.exempt_lower_salary_range).toBe(85000.5);
+    expect(result.exempt_upper_salary_range).toBe(95000);
+  });
+
+  it('sends the referral bonus with its cents', () => {
+    const result = buildSaveJobDetailsPayload({
+      data: { referralBonus: '100.50' },
+      suggestedSkills: [],
+    });
+
+    expect(result.referral_bonus).toBe(100.5);
+  });
+});

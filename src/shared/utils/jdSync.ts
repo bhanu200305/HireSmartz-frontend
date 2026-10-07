@@ -1,3 +1,5 @@
+import { toMoneyString } from './money';
+
 /**
  * jdSync.ts — keeps the AI Job Description and Job Details in sync, both
  * directions. Shared by AddJobDescription/jobdetails.tsx,
@@ -134,16 +136,16 @@ export const diffAiOwnedFields = (
     updates.maxExperience = Number(fresh.maxExperience);
   }
   if (fresh.exemptMinSalary != null && normalizeNumber(current.exemptMinSalary) == null) {
-    updates.exemptMinSalary = String(fresh.exemptMinSalary);
+    updates.exemptMinSalary = toMoneyString(fresh.exemptMinSalary);
   }
   if (fresh.exemptMaxSalary != null && normalizeNumber(current.exemptMaxSalary) == null) {
-    updates.exemptMaxSalary = String(fresh.exemptMaxSalary);
+    updates.exemptMaxSalary = toMoneyString(fresh.exemptMaxSalary);
   }
   if (fresh.nonExemptMinSalary != null && normalizeNumber(current.nonExemptMinSalary) == null) {
-    updates.nonExemptMinSalary = String(fresh.nonExemptMinSalary);
+    updates.nonExemptMinSalary = toMoneyString(fresh.nonExemptMinSalary);
   }
   if (fresh.nonExemptMaxSalary != null && normalizeNumber(current.nonExemptMaxSalary) == null) {
-    updates.nonExemptMaxSalary = String(fresh.nonExemptMaxSalary);
+    updates.nonExemptMaxSalary = toMoneyString(fresh.nonExemptMaxSalary);
   }
   if (fresh.vacancies != null && normalizeNumber(current.vacancies) == null) {
     updates.vacancies = Number(fresh.vacancies);

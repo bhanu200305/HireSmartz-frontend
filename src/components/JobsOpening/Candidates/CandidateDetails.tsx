@@ -3251,9 +3251,9 @@ const CandidateDetails = () => {
               {isPanelRound
                 ? 'from the panel’s connected calendar.'
                 : isAiVideoRound(selectedRound)
-                  ? 'from the available AI Video slots.'
+                  ? 'from the available AI Video Interview slots.'
                   : isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound)
-                    ? 'from the available AI audio slots.'
+                    ? 'from the available AI Audio Call slots.'
                     : 'from the available slots.'}
             </p>
             {isPanelRound && (
