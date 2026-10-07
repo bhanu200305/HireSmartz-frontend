@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import dayjs from 'dayjs';
-import { LuSquarePen } from 'react-icons/lu';
+import { LuSquarePen, LuTriangleAlert } from 'react-icons/lu';
 import { Badge, Button, type BadgeStatus } from '../../shared';
 import { Loader } from '../../shared/ui/loader';
 import {
@@ -41,11 +41,13 @@ const messageText = (item: MessageHistoryItemView) => {
 
 type Props = {
   candidateId: string;
-  canSms: boolean;
+  /** Why SMS can't be sent (no SMS consent, or no phone number); null when it can. */
+  smsBlockedReason: string | null;
   onSendSms: () => void;
 };
 
-const CandidateMessageHistory = ({ candidateId, canSms, onSendSms }: Props) => {
+const CandidateMessageHistory = ({ candidateId, smsBlockedReason, onSendSms }: Props) => {
+  const canSms = smsBlockedReason === null;
   const [channel, setChannel] = useState<ChannelFilter>('sms');
   const [limit, setLimit] = useState(PAGE_SIZE);
   const { data, isFetching, error } = useListCandidateMessageHistoryQuery(
@@ -80,7 +82,7 @@ const CandidateMessageHistory = ({ candidateId, canSms, onSendSms }: Props) => {
           className="box-border inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-3 text-xs font-semibold leading-none text-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           onClick={onSendSms}
           disabled={!canSms}
-          title={canSms ? undefined : 'Needs a phone number and the candidate’s SMS consent'}
+          title={smsBlockedReason ?? undefined}
         >
           <LuSquarePen size={13} className="shrink-0" aria-hidden />
           Send SMS
@@ -88,6 +90,16 @@ const CandidateMessageHistory = ({ candidateId, canSms, onSendSms }: Props) => {
       </div>
 
       <div className="px-4 py-3">
+        {/* Says why Send SMS is disabled, instead of only on hover. */}
+        {channel === 'sms' && smsBlockedReason && (
+          <p
+            role="status"
+            className="mb-3 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+          >
+            <LuTriangleAlert size={15} className="mt-0.5 shrink-0" aria-hidden />
+            {smsBlockedReason}
+          </p>
+        )}
         {isFetching && !data ? (
           <div className="flex justify-center py-6">
             <Loader />

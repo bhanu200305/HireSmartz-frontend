@@ -3038,7 +3038,7 @@ const CandidateDetails = () => {
           {activeTab === 'sms' && candidateId && (
             <CandidateMessageHistory
               candidateId={candidateId}
-              canSms={smsBlockedReason === null}
+              smsBlockedReason={smsBlockedReason}
               onSendSms={() => setIsSmsOpen(true)}
             />
           )}
