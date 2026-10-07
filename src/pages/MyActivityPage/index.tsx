@@ -1,14 +1,11 @@
 import ActivityFeed from '../../components/Dashboard/ActivityFeed';
 
 /**
- * Hiring Manager/Recruiter's "Activity" nav tab — reuses the same
- * ActivityFeed widget (components/Dashboard/ActivityFeed.tsx) Company
- * Admin's dashboard already renders behind Authorities.ACTIVITY_FEED (a
- * frontend-only flag no real login ever holds, per its own "No backend
- * permission" comment in authorities.constant.ts). Same component, same
- * `/dashboard/activities/search` data source — it'll show "no recent
- * activity found" until that endpoint returns real data; see the backend
- * requirements noted where this tab was added.
+ * Full Activity Feed page — Hiring Manager/Recruiter's "Activity" nav tab and
+ * the target of the dashboard widget's "View all activities". Same component
+ * as the dashboard widget (components/Dashboard/ActivityFeed.tsx), backed by
+ * audit-service's GET /v1/audit/activity, which scopes the events to the
+ * signed-in user's own permissions.
  */
 const MyActivityPage = () => <ActivityFeed fullPage />;
 
