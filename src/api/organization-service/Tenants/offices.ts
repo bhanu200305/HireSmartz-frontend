@@ -77,6 +77,8 @@ export type ListTenantOfficesArgs = {
    * tenant session listing its own offices.
    */
   isMaster?: boolean;
+  /** `false` lists active offices only, for pickers. Omitted lists every office. */
+  includeInactive?: boolean;
 };
 
 const officesBasePath = ({ tenantId, isMaster }: ListTenantOfficesArgs): string =>
@@ -85,7 +87,10 @@ const officesBasePath = ({ tenantId, isMaster }: ListTenantOfficesArgs): string 
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     listTenantOffices: build.query<TenantOffice[], ListTenantOfficesArgs>({
-      query: (args) => officesBasePath(args),
+      query: ({ includeInactive, ...args }) => ({
+        url: officesBasePath(args),
+        params: includeInactive === false ? { include_inactive: false } : undefined,
+      }),
       providesTags: (_result, _error, { tenantId }) => [{ type: 'TenantOffices', id: tenantId }],
     }),
     addTenantOffice: build.mutation<AddTenantOfficeResponse, AddTenantOfficeRequest>({

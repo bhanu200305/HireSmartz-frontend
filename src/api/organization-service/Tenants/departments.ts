@@ -16,7 +16,8 @@ export type ListTenantDepartmentsArgs = {
    * mirror is `GET /v1/platform/tenants/{id}/departments`.
    */
   isMaster?: boolean;
-  /** Include deactivated departments - off by default. */
+  /** `true` asks for deactivated departments too; `false` lists active ones
+   * only, for pickers. Omitted leaves it to the server's default. */
   includeInactive?: boolean;
 };
 
@@ -97,7 +98,7 @@ const extendedApi = orgApi.injectEndpoints({
         const { includeInactive, ...rest } = toDepartmentsArgs(arg);
         return {
           url: departmentsBasePath(rest),
-          params: includeInactive ? { include_inactive: true } : undefined,
+          params: includeInactive === undefined ? undefined : { include_inactive: includeInactive },
         };
       },
       transformResponse: unwrapDepartments,

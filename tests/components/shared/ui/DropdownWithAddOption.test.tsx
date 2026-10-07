@@ -75,3 +75,28 @@ describe('DropdownWithAddOption — status toggle', () => {
     expect(onToggleActive).toHaveBeenCalledWith('1', false, 'jobTitle');
   });
 });
+
+describe('DropdownWithAddOption — switched-off options', () => {
+  it('lists a deactivated option but does not let it be picked', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <DropdownWithAddOption
+        value={undefined}
+        onChange={onChange}
+        options={[
+          { id: '1', name: 'Bartender', isActive: true },
+          { id: '2', name: 'Barista', isActive: false },
+        ]}
+        type="jobTitle"
+      />
+    );
+
+    await user.click(screen.getByRole('combobox'));
+
+    const off = screen.getByText('Barista').closest('.ant-select-item-option');
+    const on = screen.getByText('Bartender').closest('.ant-select-item-option');
+    expect(off?.classList.contains('ant-select-item-option-disabled')).toBe(true);
+    expect(on?.classList.contains('ant-select-item-option-disabled')).toBe(false);
+  });
+});

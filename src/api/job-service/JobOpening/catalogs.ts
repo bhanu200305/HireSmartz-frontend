@@ -65,17 +65,21 @@ export type SearchJobTypesArgs = {
 
 type JobTypeListRow = OrganizationJobType & Partial<MasterJobType>;
 
+/** One row shared by the list and search mappers, so neither can drop a
+ * field (a missing `is_active` makes every status switch read "on"). */
+export const toJobTypeRow = (item: JobTypeListRow): OrganizationJobType => ({
+  id: item.id || item.job_type_id || '',
+  job_type_name: item.job_type_name,
+  job_type_description: item.job_type_description,
+  created_by: item.created_by,
+  is_deleted: item.is_deleted,
+  is_active: item.is_active,
+});
+
 /** Exported for direct unit testing. */
 export const transformJobTypesResponse = (response: {
   job_types?: JobTypeListRow[];
-}): OrganizationJobType[] =>
-  (response.job_types ?? []).map((item) => ({
-    id: item.id || item.job_type_id || '',
-    job_type_name: item.job_type_name,
-    job_type_description: item.job_type_description,
-    is_deleted: item.is_deleted,
-    is_active: item.is_active,
-  }));
+}): OrganizationJobType[] => (response.job_types ?? []).map(toJobTypeRow);
 
 const catalogsApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
@@ -107,13 +111,7 @@ const catalogsApi = jobApi.injectEndpoints({
         page?: number;
         page_size?: number;
       }) => ({
-        items: (response.job_types ?? []).map((item) => ({
-          id: item.id || item.job_type_id || '',
-          job_type_name: item.job_type_name,
-          job_type_description: item.job_type_description,
-          created_by: item.created_by,
-          is_deleted: item.is_deleted,
-        })),
+        items: (response.job_types ?? []).map(toJobTypeRow),
         total: response.total ?? (response.job_types ?? []).length,
         page: response.page ?? 1,
         pageSize: response.page_size ?? 20,

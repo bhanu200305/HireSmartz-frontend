@@ -89,9 +89,12 @@ const AddOrganisationUser = () => {
     userId: string;
     email: string;
   } | null>(null);
-  const { data: departments } = useListTenantDepartmentsQuery(tenantId ?? '', { skip: !tenantId });
+  const { data: departments } = useListTenantDepartmentsQuery(
+    { tenantId: tenantId ?? '', includeInactive: false },
+    { skip: !tenantId }
+  );
   const { data: offices } = useListTenantOfficesQuery(
-    { tenantId: tenantId ?? '', isMaster: false },
+    { tenantId: tenantId ?? '', isMaster: false, includeInactive: false },
     { skip: !tenantId }
   );
   const { roles, createRole } = useRolesCatalog({
