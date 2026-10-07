@@ -37,6 +37,7 @@ const TenantEducationPreferencesTab: React.FC = () => {
     search: query.search || undefined,
     sortBy: query.sortBy,
     sortDir: query.sortDir,
+    includeInactive: true,
   });
   const [create] = useCreateEducationPreferenceMutation();
   const [update] = useUpdateEducationPreferenceMutation();

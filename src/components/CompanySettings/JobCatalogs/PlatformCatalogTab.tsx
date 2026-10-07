@@ -192,6 +192,23 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
     }
   };
 
+  const handleToggle = async (item: TItem, next: boolean) => {
+    if (!onToggleActive) return;
+    const noun = itemNounSingular.toLowerCase();
+    try {
+      await onToggleActive(item, next);
+      showToast({
+        message: `${itemNounSingular} ${next ? 'activated' : 'deactivated'}.`,
+        type: 'success',
+      });
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, `Failed to ${next ? 'activate' : 'deactivate'} ${noun}.`),
+        type: 'error',
+      });
+    }
+  };
+
   const handleDelete = async () => {
     if (!itemToDelete || !onDelete) return;
     setIsDeleting(true);
@@ -246,8 +263,8 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
             activateLabel={`Activate ${itemNounSingular.toLowerCase()}`}
             deactivateLabel={`Deactivate ${itemNounSingular.toLowerCase()}`}
             deactivateConfirmTitle={`Deactivate "${labelOf(item)}"?`}
-            onActivate={() => onToggleActive(item, true)}
-            onDeactivate={() => onToggleActive(item, false)}
+            onActivate={() => handleToggle(item, true)}
+            onDeactivate={() => handleToggle(item, false)}
           />
         ) : null,
     },

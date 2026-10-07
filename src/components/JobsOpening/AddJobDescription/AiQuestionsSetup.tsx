@@ -105,7 +105,7 @@ const getRoundIdsMissingQuestions = (err: unknown): string[] =>
 
 /** Plain-language reason for a row the import rejected (job-service's wording, reworded). */
 const describeImportError = (error: string): string => {
-  if (/question text is required/i.test(error)) return 'The question is empty';
+  if (/question text is required/i.test(error)) return 'The row contains no text';
   const tooLong = (label: string, regex: RegExp) => {
     const limit = error.match(regex)?.[1];
     return limit ? `${label} is too long - the limit is ${limit} characters` : null;
@@ -288,18 +288,19 @@ const AiQuestionsSetup = () => {
       jdRounds.some((round) => round.round_instance_id === selectedRoundInstanceId) &&
       selectedRoundInstanceId) ||
     defaultRoundInstanceId;
+  // The API lists the newest batch first.
   const visibleQuestions = useMemo(
     () => questions.filter((q) => q.interview_round_id === activeRoundInstanceId),
     [questions, activeRoundInstanceId]
   );
-  // After an add, scroll the list so the new question at the bottom is in view.
+  // After an add, scroll the list to the top where the new question is.
   const questionListRef = useRef<HTMLDivElement>(null);
   const scrollToEndAfterAddRef = useRef(false);
   useEffect(() => {
     if (!scrollToEndAfterAddRef.current) return;
     scrollToEndAfterAddRef.current = false;
     const list = questionListRef.current;
-    if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+    if (list) list.scrollTo({ top: 0, behavior: 'smooth' });
   }, [visibleQuestions.length]);
   // Content fingerprint rather than a count, since REPLACE can reduce the count.
   const questionsSnapshotKey = useMemo(() => questions.map((q) => q.id).join(','), [questions]);

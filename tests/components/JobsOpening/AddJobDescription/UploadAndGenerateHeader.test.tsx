@@ -52,7 +52,8 @@ describe('UploadAndGenerateHeader import details', () => {
     expect(screen.getByText('Rows that were skipped')).toBeTruthy();
     expect(screen.getByText('Not imported (2)')).toBeTruthy();
     expect(screen.getByText('Skipped duplicates (2)')).toBeTruthy();
-    expect(screen.getByText(/Fix these rows in your file/)).toBeTruthy();
+    expect(screen.getByText(/The question already exists/)).toBeTruthy();
+    expect(screen.queryByText(/Fix these rows/)).toBeNull();
     expect(screen.getByText('Row 4')).toBeTruthy();
     expect(screen.getByText('Question text is required')).toBeTruthy();
     expect(screen.getByText('Row 9')).toBeTruthy();
@@ -78,5 +79,26 @@ describe('UploadAndGenerateHeader import details', () => {
 
     fireEvent.click(screen.getByText('View details (4)'));
     expect(screen.getByText('Not imported (2)')).toBeTruthy();
+  });
+});
+
+describe('UploadAndGenerateHeader clear button', () => {
+  it('is a cross icon with no text, and clears the details', () => {
+    const onClear = vi.fn();
+    render(
+      <UploadAndGenerateHeader
+        description=""
+        onGenerate={vi.fn()}
+        onUpload={vi.fn()}
+        onDownloadTemplate={vi.fn()}
+        uploadedFileName="questions.xlsx"
+        importedCount={1}
+        onClearDetails={onClear}
+      />
+    );
+
+    expect(screen.queryByText(/Clear Details/i)).toBeNull();
+    fireEvent.click(screen.getByLabelText('Clear details'));
+    expect(onClear).toHaveBeenCalledTimes(1);
   });
 });

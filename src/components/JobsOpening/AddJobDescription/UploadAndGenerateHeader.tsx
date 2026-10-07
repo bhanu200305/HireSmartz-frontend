@@ -7,7 +7,7 @@ import {
   HiOutlineExclamationCircle,
   HiOutlineDocumentDuplicate,
 } from 'react-icons/hi';
-import { MdDownload } from 'react-icons/md';
+import { MdClose, MdDownload } from 'react-icons/md';
 
 export interface ImportWarningItem {
   type: 'error' | 'duplicate';
@@ -126,10 +126,12 @@ export const UploadAndGenerateHeader = ({
             </Typography>
             {onClearDetails && (
               <button
-                className="text-brand-500 hover:text-brand-800 text-xs font-semibold cursor-pointer"
+                type="button"
+                aria-label="Clear details"
+                className="text-brand-500 hover:text-brand-800 cursor-pointer"
                 onClick={onClearDetails}
               >
-                Clear Details [x]
+                <MdClose size={18} />
               </button>
             )}
           </div>
@@ -204,12 +206,12 @@ export const UploadAndGenerateHeader = ({
             {
               type: 'error' as const,
               title: 'Not imported',
-              hint: 'Fix these rows in your file and upload it again.',
+              hint: null,
             },
             {
               type: 'duplicate' as const,
               title: 'Skipped duplicates',
-              hint: 'These questions already exist, so there is nothing to fix.',
+              hint: 'The question already exists, so these were not added.',
             },
           ].map(({ type, title, hint }) => {
             const items = warnings.filter((warn) => warn.type === type);
@@ -230,7 +232,7 @@ export const UploadAndGenerateHeader = ({
                       {title} ({items.length})
                     </span>
                   </div>
-                  <span className="text-xs text-gray-500">{hint}</span>
+                  {hint && <span className="text-xs text-gray-500">{hint}</span>}
                 </div>
                 <ul className="m-0 flex list-none flex-col gap-2 p-0">
                   {items.map((warn) => (
