@@ -18,6 +18,7 @@ import {
   roundLabel,
   formatRoundStatus,
   formatCallIntent,
+  formatRoundVariant,
   roundReinviteState,
   roundStatusLabel,
 } from './roundDisplay';
@@ -58,6 +59,7 @@ const RoundSidebarItem = ({
   roundScore,
   resumeScore,
   consistencyScore,
+  variant,
   jobId,
   onSelect,
 }: RoundSidebarItemProps) => {
@@ -122,6 +124,12 @@ const RoundSidebarItem = ({
   const rescheduleRequested =
     isVoiceCallRound && booking?.call_intent === 'reschedule_requested' && !isRoundSkipped(round);
   const { reinvitesUsed, maxReinvites, linkExpired } = roundReinviteState(round, booking);
+  // Hiring Panel only: Online / In-person, from the job's round plan, else
+  // the booking's own snapshot. AI Video's variant (soundwave/avatar) means
+  // something else entirely, so it doesn't get this tag.
+  const deliveryModeTag = isPanelRound
+    ? formatRoundVariant(variant ?? booking?.round_snapshot?.delivery_mode)
+    : null;
 
   // Side-bar colour = the round's state: green done, amber current stage,
   // grey upcoming, red needs attention (overdue / technical failure).
@@ -177,12 +185,19 @@ const RoundSidebarItem = ({
         onClick={onSelect}
         className={`flex w-full flex-col items-center gap-1 px-4 py-5 text-center cursor-pointer transition-colors hover:bg-gray-50 ${isSelected ? 'bg-gray-50' : ''}`}
       >
-        <h3
-          className={`max-w-full truncate text-sm font-bold ${isSelected ? 'text-primary' : 'text-gray-900'}`}
-          title={roundLabel(round)}
-        >
-          {roundLabel(round)}
-        </h3>
+        <span className="flex max-w-full items-center justify-center gap-1.5">
+          <h3
+            className={`min-w-0 truncate text-sm font-bold ${isSelected ? 'text-primary' : 'text-gray-900'}`}
+            title={roundLabel(round)}
+          >
+            {roundLabel(round)}
+          </h3>
+          {deliveryModeTag && (
+            <span className="shrink-0 rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+              {deliveryModeTag}
+            </span>
+          )}
+        </span>
         <span className="text-xs font-medium text-gray-900">Status: {statusText}</span>
         {isBlockedOnCalendar && (
           <span className="text-xs font-semibold text-warning-text">

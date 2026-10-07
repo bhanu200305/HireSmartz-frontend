@@ -913,6 +913,24 @@ const CandidateDetails = () => {
   const [uploadOfflineRecording, { isLoading: isUploadingAudio }] =
     useUploadOfflineRecordingMutation();
   const audioFileInputRef = useRef<HTMLInputElement>(null);
+  // Rounds whose audio was uploaded in this session and whose AI score
+  // hasn't landed yet. There is no backend "processing" flag for this — the
+  // round's score (polled above) going from empty to populated is the only
+  // real signal, so the "Scoring…" state is local and clears itself then.
+  const [scoringRoundIds, setScoringRoundIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (scoringRoundIds.size === 0) return;
+    const scoredIds = [...scoringRoundIds].filter((id) => {
+      const round = rounds.find((r) => r.id === id);
+      return round ? findRoundScore(scores, round)?.score != null : false;
+    });
+    if (scoredIds.length === 0) return;
+    setScoringRoundIds((prev) => {
+      const next = new Set(prev);
+      scoredIds.forEach((id) => next.delete(id));
+      return next;
+    });
+  }, [scores, rounds, scoringRoundIds]);
 
   const handleAudioFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -929,12 +947,14 @@ const CandidateDetails = () => {
       showToast({ message: 'This audio file is empty.', type: 'error' });
       return;
     }
+    const uploadedRoundId = selectedRound.id;
     try {
       await uploadOfflineRecording({
         bookingId: selectedRound.interview_booking_id,
         file: audioFile,
       }).unwrap();
-      showToast({ message: 'Recording uploaded.', type: 'success' });
+      setScoringRoundIds((prev) => new Set(prev).add(uploadedRoundId));
+      showToast({ message: 'Audio uploaded. The AI will score this round.', type: 'success' });
     } catch (error) {
       showToast({
         message: getInterviewErrorMessage(error, 'Could not upload the recording.'),
@@ -1351,6 +1371,9 @@ const CandidateDetails = () => {
   // duplicating that table's chart/status branching, which this card
   // doesn't need.
   const selectedRoundScore = selectedRound ? findRoundScore(scores, selectedRound) : undefined;
+  const isSelectedRoundScoring = Boolean(
+    selectedRound && scoringRoundIds.has(selectedRound.id) && selectedRoundScore?.score == null
+  );
 
   // ADVANCE completes whichever round `resolveCurrentRound` says the
   // candidate is on right now and marks the next one due — it does not
@@ -1875,7 +1898,7 @@ const CandidateDetails = () => {
                         isUploadingAudio
                           ? 'Uploading…'
                           : hasRecording
-                            ? 'Recording Uploaded'
+                            ? 'Audio already uploaded for this round.'
                             : 'Upload Audio Recording'
                       }
                     >
@@ -1995,6 +2018,20 @@ const CandidateDetails = () => {
                 )}
               </RoundCollapsibleSection>
 
+              {!selectedRoundScore && isSelectedRoundScoring && (
+                // Audio just uploaded and no score row exists yet — holds the
+                // Interview Score slot until the AI's score lands.
+                <RoundCollapsibleSection title="Interview Score" summary="Scoring…">
+                  <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <span
+                      className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent"
+                      aria-hidden
+                    />
+                    <span>Scoring… The AI score will appear here once it&apos;s ready.</span>
+                  </div>
+                </RoundCollapsibleSection>
+              )}
+
               {selectedRoundScore && !selectedRoundIsIntakeCall && (
                 // The round's own AI/recruiter score. The per-section
                 // breakdown and the AI's reasoning get their own sections below.
@@ -2004,12 +2041,16 @@ const CandidateDetails = () => {
                 <RoundCollapsibleSection
                   title="Interview Score"
                   summary={
-                    selectedRoundScore.score == null && selectedRoundScore.recruiter_score == null
+                    selectedRoundScore.score == null &&
+                    selectedRoundScore.recruiter_score == null &&
+                    !isSelectedRoundScoring
                       ? undefined
                       : [
                           selectedRoundScore.score != null
                             ? `AI ${selectedRoundScore.score}/${AI_SCORE_MAX}`
-                            : null,
+                            : isSelectedRoundScoring
+                              ? 'AI Scoring…'
+                              : null,
                           selectedRoundScore.recruiter_score != null
                             ? `Recruiter ${selectedRoundScore.recruiter_score}/${HUMAN_SCORE_MAX}`
                             : null,
@@ -2025,9 +2066,13 @@ const CandidateDetails = () => {
                           AI Score
                         </div>
                         <div className="mt-1 text-2xl font-bold text-primary">
-                          {selectedRoundScore.score != null
-                            ? `${selectedRoundScore.score} / ${AI_SCORE_MAX}`
-                            : '-'}
+                          {selectedRoundScore.score != null ? (
+                            `${selectedRoundScore.score} / ${AI_SCORE_MAX}`
+                          ) : isSelectedRoundScoring ? (
+                            <span className="text-base font-semibold text-gray-500">Scoring…</span>
+                          ) : (
+                            '-'
+                          )}
                         </div>
                       </div>
                       <div>
