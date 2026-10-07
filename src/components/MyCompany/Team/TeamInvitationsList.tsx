@@ -168,7 +168,10 @@ const TeamInvitationsList: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                     </div>
                   </div>
                 </div>
-                {invitation.status === 'pending' && (
+                {/* An expired invite is still pending in the backend (the list only
+                    labels it Expired), and resend pushes its expiry forward, so
+                    it gets the same actions as a pending one. */}
+                {(invitation.status === 'pending' || invitation.status === 'expired') && (
                   <div className="flex gap-1 shrink-0">
                     {matchedUserId && (
                       <Tooltip
