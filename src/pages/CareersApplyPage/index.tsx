@@ -10,7 +10,10 @@ import {
   DeleteOutlined,
   FilePdfOutlined,
 } from '@ant-design/icons';
-import { useSubmitPublicApplicationMutation } from '../../api/candidate-service/PublicApply/index';
+import {
+  usePreviewPublicResumeMutation,
+  useSubmitPublicApplicationMutation,
+} from '../../api/candidate-service/PublicApply/index';
 import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { PhoneNumberField, ResponsiveRecaptcha } from '../../components/shared';
@@ -18,8 +21,11 @@ import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
 import {
   isPhoneValidForCountry,
   PHONE_VALIDATION_MESSAGE,
+  splitStoredPhone,
   toE164,
 } from '../../shared/utils/validation/phoneValidation';
+
+const CONFIRM_COUNTRY_CODE_MESSAGE = 'Please confirm your country code.';
 
 // Same default every other phone field in this app starts from.
 const DEFAULT_COUNTRY_CODE = '+1';
@@ -76,9 +82,81 @@ export const CareersApplyPage = () => {
 
   const [submitApplication, { isLoading: isSubmitting }] = useSubmitPublicApplicationMutation();
 
+  // Optional resume auto-fill (`POST /apply/resume-preview`). It has its own
+  // "I'm not a robot" box beside the resume: reCAPTCHA tokens are single-use
+  // and the submit below needs its own, so sharing one widget would make the
+  // candidate tick the bottom box twice. Only empty fields are filled, so
+  // anything already typed is never overwritten.
+  const [previewResume, { isLoading: isPreviewing }] = usePreviewPublicResumeMutation();
+  const previewRecaptchaRef = useRef<ReCAPTCHA>(null);
+  const [previewedFile, setPreviewedFile] = useState<File | null>(null);
+  const [previewNotice, setPreviewNotice] = useState<string | null>(null);
+  // The resume's number had no country code: prefilled, but the candidate
+  // must pick one before submitting (none is ever guessed).
+  const [phoneNeedsCountryCode, setPhoneNeedsCountryCode] = useState(false);
+  const resumeRef = useRef<File | null>(null);
+  resumeRef.current = resume;
+
+  const handlePreviewCaptcha = async (token: string | null) => {
+    const file = resume;
+    if (!token || !file || fileError) return;
+    try {
+      const { data } = await previewResume({
+        organizationId: organizationId ?? '',
+        jobOpeningId: jobId ?? '',
+        file,
+        captchaToken: token,
+      }).unwrap();
+      // A different file was picked while this one was being read.
+      if (resumeRef.current !== file) return;
+
+      let filled = false;
+      if (data.first_name && !firstName.trim()) {
+        setFirstName(data.first_name);
+        setFirstNameError(false);
+        filled = true;
+      }
+      if (data.last_name && !lastName.trim()) {
+        setLastName(data.last_name);
+        setLastNameError(false);
+        filled = true;
+      }
+      if (data.email_id && !email.trim()) {
+        setEmail(data.email_id);
+        setEmailError(false);
+        filled = true;
+      }
+      if (data.contact_no && !phone.trim()) {
+        const split = splitStoredPhone(data.contact_no);
+        const hasCountryCode = data.phone_has_country_code !== false && Boolean(split.countryCode);
+        setCountryCode(hasCountryCode ? split.countryCode : '');
+        setPhone(split.phoneNumber);
+        setPhoneNeedsCountryCode(!hasCountryCode);
+        setPhoneError(hasCountryCode ? null : CONFIRM_COUNTRY_CODE_MESSAGE);
+        filled = true;
+      }
+      setPreviewedFile(file);
+      setPreviewNotice(
+        filled
+          ? 'We filled in your details from your resume. Please review them before submitting.'
+          : "We couldn't find any new details to fill in from this resume. Please enter them below."
+      );
+    } catch (err) {
+      const fetchErr = err as { data?: { message?: string } };
+      toast.error(
+        fetchErr?.data?.message ??
+          "We couldn't read your resume. You can still fill in your details yourself.",
+        { autoClose: 6000 }
+      );
+    } finally {
+      previewRecaptchaRef.current?.reset();
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPreviewNotice(null);
     if (!ALLOWED_TYPES.includes(file.type)) {
       setResume(file);
       setFileError('Invalid file type. Only PDF, DOC, and DOCX are allowed');
@@ -101,14 +179,19 @@ export const CareersApplyPage = () => {
     const noEmail = !email.trim();
     const noTos = !tosConsent;
     const noCaptcha = !captchaToken;
-    const badPhone = phone.trim() ? !isPhoneValidForCountry(phone, countryCode) : false;
+    const needsCountryCode = Boolean(phone.trim()) && (phoneNeedsCountryCode || !countryCode);
+    const badPhone = phone.trim()
+      ? needsCountryCode || !isPhoneValidForCountry(phone, countryCode)
+      : false;
 
     setResumeRequired(noResume);
     setFirstNameError(noFirstName);
     setLastNameError(noLastName);
     setEmailError(noEmail);
     setTosError(noTos);
-    setPhoneError(badPhone ? PHONE_VALIDATION_MESSAGE : null);
+    setPhoneError(
+      needsCountryCode ? CONFIRM_COUNTRY_CODE_MESSAGE : badPhone ? PHONE_VALIDATION_MESSAGE : null
+    );
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
 
     if (
@@ -280,6 +363,7 @@ export const CareersApplyPage = () => {
                   onClick={() => {
                     setResume(null);
                     setFileError(null);
+                    setPreviewNotice(null);
                   }}
                   className="text-gray-400 hover:text-red-400 transition-colors shrink-0 cursor-pointer"
                   aria-label="Remove file"
@@ -291,6 +375,27 @@ export const CareersApplyPage = () => {
             {resumeRequired && !resume && (
               <p className="text-sm text-red-500 mt-1">Resume is required</p>
             )}
+            {resume && !fileError && previewedFile !== resume && recaptchaSiteKey && (
+              <div className="mt-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-800">
+                  Fill in your details from this resume
+                </p>
+                <p className="mt-0.5 mb-3 text-xs text-gray-500 leading-relaxed">
+                  Optional. Confirm you&apos;re not a robot and we&apos;ll fill in your name, email
+                  and phone. You can edit everything before submitting.
+                </p>
+                {isPreviewing ? (
+                  <p className="text-sm text-gray-600">Reading your resume…</p>
+                ) : (
+                  <ResponsiveRecaptcha
+                    ref={previewRecaptchaRef}
+                    sitekey={recaptchaSiteKey}
+                    onChange={(token) => void handlePreviewCaptcha(token)}
+                  />
+                )}
+              </div>
+            )}
+            {previewNotice && <p className="mt-2 text-sm text-green-700">{previewNotice}</p>}
           </div>
 
           {/* Name Fields */}
@@ -350,14 +455,18 @@ export const CareersApplyPage = () => {
                 Phone Number
               </label>
               <PhoneNumberField
-                countryCode={countryCode}
-                onCountryCodeChange={setCountryCode}
+                countryCode={countryCode || undefined}
+                onCountryCodeChange={(value) => {
+                  setCountryCode(value);
+                  setPhoneNeedsCountryCode(false);
+                  setPhoneError(null);
+                }}
                 phoneNumber={phone}
                 onPhoneNumberChange={(value) => {
                   setPhone(value);
-                  setPhoneError(null);
+                  if (!phoneNeedsCountryCode) setPhoneError(null);
                 }}
-                className="h-11 rounded-full"
+                className={`h-11 rounded-full ${phoneNeedsCountryCode ? '!border-amber-400' : ''}`}
               />
               {phoneError && <p className="text-sm text-red-500 mt-1">{phoneError}</p>}
             </div>

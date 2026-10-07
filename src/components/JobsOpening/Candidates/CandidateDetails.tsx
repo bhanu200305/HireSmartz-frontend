@@ -1414,14 +1414,29 @@ const CandidateDetails = () => {
   const nextRound = currentRound
     ? (rounds[rounds.findIndex((r) => r.id === currentRound.id) + 1] ?? null)
     : null;
-  // The next round can be invited together with Advance, except a PANEL round
-  // (its interviewers are picked when inviting) and Identity Verification.
+  // The next round can be invited together with Advance, except Identity
+  // Verification, and a PANEL round with no interviewers picked yet. A PANEL
+  // round whose roster is already saved can: Advance's invite publishes the
+  // same round-ready event as the card's Invite, roster included.
+  const isNextRoundPanel =
+    nextRound !== null &&
+    (nextRound.round_type === 'PANEL' ||
+      (nextRound.round_type == null && /panel/i.test(nextRound.round_name ?? '')));
+  const nextRoundInterviewerIds = isNextRoundPanel ? (nextRound?.interviewer_ids ?? []) : [];
   const canAutoInviteNextRound =
     nextRound !== null &&
     nextRound.stage_type === 'interview' &&
-    nextRound.round_type !== 'PANEL' &&
-    !(nextRound.round_type == null && /panel/i.test(nextRound.round_name ?? '')) &&
+    (!isNextRoundPanel || nextRoundInterviewerIds.length > 0) &&
     !isIdentityVerificationRound(nextRound);
+  // Names for the panel roster shown in the Advance popup — same candidate-
+  // scoped directory the interviewer picker uses (RTK shares the cache).
+  const { data: nextRoundEligibleInterviewers } = useListEligibleInterviewersQuery(
+    candidateId ?? '',
+    { skip: !candidateId || !isAdvanceOpen || nextRoundInterviewerIds.length === 0 }
+  );
+  const nextRoundInterviewerNames = nextRoundInterviewerIds.map(
+    (id) => nextRoundEligibleInterviewers?.find((i) => i.id === id)?.display_name ?? 'Interviewer'
+  );
   // The round being completed needs the recruiter's feedback on file first.
   const currentRoundScore = currentRound ? findRoundScore(scores, currentRound) : undefined;
   // Both a star rating and written feedback are required; whatever is already
@@ -3131,15 +3146,16 @@ const CandidateDetails = () => {
           toRound={nextRound}
           feedbackRequirement={advanceFeedbackRequirement}
           canAutoInvite={canAutoInviteNextRound}
-          onSuccess={(newRound) => {
+          panelInterviewerNames={nextRoundInterviewerNames}
+          onSuccess={(newRound, inviteSent) => {
             setIsAdvanceOpen(false);
             // Locked until the refreshed round list moves `currentRound` on.
             setAdvancedFromRoundId(currentRound?.id ?? null);
             void refetchRounds();
             refetchCandidate();
-            // Advancing into a Hiring Panel round: remind the recruiter to pick
-            // the panel and invite. Shown once, right after this advance.
-            if (newRound?.round_type === 'PANEL') setPanelPromptRound(newRound);
+            // Advancing into a Hiring Panel round without inviting it: remind
+            // the recruiter to pick the panel and invite. Shown once.
+            if (newRound?.round_type === 'PANEL' && !inviteSent) setPanelPromptRound(newRound);
           }}
         />
       )}

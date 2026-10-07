@@ -68,8 +68,11 @@ type AdvanceCandidateModalProps = {
   feedbackRequirement: AdvanceFeedbackRequirement;
   /** Whether the next round can be invited automatically along with Advance. */
   canAutoInvite: boolean;
-  /** `nextRound` is the round the candidate is now on (null: none, or stale). */
-  onSuccess: (nextRound: CandidateInterviewRoundView | null) => void;
+  /** A Hiring Panel `toRound`'s already-picked interviewers (empty otherwise). */
+  panelInterviewerNames?: string[];
+  /** `nextRound` is the round the candidate is now on (null: none, or stale);
+   * `inviteSent` is whether the next round was invited with this advance. */
+  onSuccess: (nextRound: CandidateInterviewRoundView | null, inviteSent?: boolean) => void;
 };
 
 const AdvanceCandidateModal = ({
@@ -80,6 +83,7 @@ const AdvanceCandidateModal = ({
   toRound,
   feedbackRequirement,
   canAutoInvite,
+  panelInterviewerNames = [],
   onSuccess,
 }: AdvanceCandidateModalProps) => {
   const [feedback, setFeedback] = useState('');
@@ -124,6 +128,9 @@ const AdvanceCandidateModal = ({
   // box is shown disabled here instead of promising an invite that won't go.
   const isPhoneBlocked = phoneIssueBlocksRoundInvite(candidate.phone_number_issue, toRound);
   const willSendInvite = sendInvite && canAutoInvite && !isPhoneBlocked;
+  // A Hiring Panel round reaches here invitable only once its interviewers
+  // are picked; their names are shown under the checkbox.
+  const isPanelInvite = panelInterviewerNames.length > 0;
 
   const fromLabel = fromRound ? roundLabel(fromRound) : 'the current round';
   const toLabel = toRound ? roundLabel(toRound) : null;
@@ -229,6 +236,12 @@ const AdvanceCandidateModal = ({
           message: 'Final round completed: the candidate has been moved to Selected.',
           type: 'success',
         });
+      } else if (willSendInvite && isPanelInvite) {
+        showToast({
+          message:
+            'Panel invitation created. The candidate will be emailed once every selected interviewer has connected their calendar.',
+          type: 'success',
+        });
       } else if (willSendInvite) {
         showToast({
           message:
@@ -240,7 +253,7 @@ const AdvanceCandidateModal = ({
       }
       // Stay disabled: the modal closes and the parent keeps Advance locked
       // until the refreshed round list shows the candidate on the next round.
-      onSuccess(result.next_round ?? null);
+      onSuccess(result.next_round ?? null, willSendInvite);
     } catch {
       setIsSubmitting(false);
     }
@@ -305,9 +318,22 @@ const AdvanceCandidateModal = ({
         )}
 
         {toLabel && canAutoInvite && !isPhoneBlocked && (
-          <Checkbox checked={sendInvite} onChange={(e) => setSendInvite(e.target.checked)}>
-            Send interview invite over email and SMS for <strong>{toLabel}</strong>
-          </Checkbox>
+          <div className="flex flex-col gap-2">
+            <Checkbox checked={sendInvite} onChange={(e) => setSendInvite(e.target.checked)}>
+              Send interview invite over email and SMS for <strong>{toLabel}</strong>
+            </Checkbox>
+            {isPanelInvite && (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                <span className="font-semibold text-gray-700">
+                  {panelInterviewerNames.length === 1 ? 'Interviewer' : 'Interviewers'}:
+                </span>{' '}
+                {panelInterviewerNames.join(', ')}
+                <p className="mt-1">
+                  The candidate is emailed once every interviewer has connected their calendar.
+                </p>
+              </div>
+            )}
+          </div>
         )}
         {toLabel && canAutoInvite && isPhoneBlocked && (
           <div className="flex flex-col gap-2">
@@ -324,8 +350,8 @@ const AdvanceCandidateModal = ({
         {toLabel && !canAutoInvite && (
           <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
             {toRound?.round_type === 'PANEL' ? (
-              // Advancing never invites a Hiring Panel round: the recruiter
-              // picks the panel, then invites from the round's card.
+              // No interviewers picked yet: the recruiter picks the panel,
+              // then invites from the round's card.
               "Invite the panel from the round's card once interviewers are selected."
             ) : (
               <>

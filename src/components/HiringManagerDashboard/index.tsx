@@ -1,7 +1,7 @@
 import React from 'react';
 import { MdOutlineInsights } from 'react-icons/md';
 import MainLayout from '../../layouts/MainLayout';
-import { Typography, LiveBadge } from '../shared';
+import { Typography } from '../shared';
 import HiringManagerStatCards from './HiringManagerStatCards';
 import HiringManagerCharts from './HiringManagerCharts';
 import QualifiedCandidatePoolSection from './QualifiedCandidatePoolSection';
@@ -42,7 +42,6 @@ const HiringManagerDashboard: React.FC = () => {
               </Typography>
             </div>
           </div>
-          <LiveBadge />
         </div>
 
         <section className="mb-6">
