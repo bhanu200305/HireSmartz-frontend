@@ -19,6 +19,7 @@ import {
   getCandidateErrorStatusCode,
 } from '../../../../shared/utils/auth/candidateError.helpers';
 import { roundLabel } from '../roundDisplay';
+import { phoneIssueBlocksRoundInvite, phoneNumberIssueMessage } from '../phoneNumberIssue';
 import { RATING_TO_RECOMMENDATION } from '../../../../shared/utils/ratingRecommendation';
 
 // Single-candidate Advance popup (candidate details page). Replaces the old
@@ -118,6 +119,12 @@ const AdvanceCandidateModal = ({
   const needsRating = feedbackRequirement !== null && !feedbackSaved;
   const isValid = !needsFeedback || (feedback.trim().length > 0 && (!needsRating || rating > 0));
 
+  // candidate-service silently skips the Advance-time invite for an Intake
+  // Call / Audio Screening round when the phone number is flagged, so the
+  // box is shown disabled here instead of promising an invite that won't go.
+  const isPhoneBlocked = phoneIssueBlocksRoundInvite(candidate.phone_number_issue, toRound);
+  const willSendInvite = sendInvite && canAutoInvite && !isPhoneBlocked;
+
   const fromLabel = fromRound ? roundLabel(fromRound) : 'the current round';
   const toLabel = toRound ? roundLabel(toRound) : null;
   const candidateName =
@@ -178,7 +185,7 @@ const AdvanceCandidateModal = ({
           expectedRoundId: fromRound?.id ?? null,
           // Announced in the same call, so the advance and the invite can't
           // end up half done.
-          sendInvite: sendInvite && canAutoInvite,
+          sendInvite: willSendInvite,
           interviewerFeedback:
             // The interviewer verdict the backend needs comes from the stars,
             // the same mapping the in-call Quick Feedback uses.
@@ -222,7 +229,7 @@ const AdvanceCandidateModal = ({
           message: 'Final round completed: the candidate has been moved to Selected.',
           type: 'success',
         });
-      } else if (sendInvite && canAutoInvite) {
+      } else if (willSendInvite) {
         showToast({
           message:
             'Interview scheduling invitation email has been sent to the candidate. If SMS notifications are enabled, an SMS will also be sent.',
@@ -297,10 +304,22 @@ const AdvanceCandidateModal = ({
           </div>
         )}
 
-        {toLabel && canAutoInvite && (
+        {toLabel && canAutoInvite && !isPhoneBlocked && (
           <Checkbox checked={sendInvite} onChange={(e) => setSendInvite(e.target.checked)}>
             Send interview invite over email and SMS for <strong>{toLabel}</strong>
           </Checkbox>
+        )}
+        {toLabel && canAutoInvite && isPhoneBlocked && (
+          <div className="flex flex-col gap-2">
+            <Checkbox checked={false} disabled>
+              Send interview invite over email and SMS for <strong>{toLabel}</strong>
+            </Checkbox>
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {phoneNumberIssueMessage(candidate.phone_number_issue)} {toLabel} calls the candidate,
+              so no invite will be sent. Fix the number with Edit Candidate, then invite from the
+              Interview Scheduling tab.
+            </p>
+          </div>
         )}
         {toLabel && !canAutoInvite && (
           <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">

@@ -24,6 +24,8 @@ import candidateApi from '../candidateApi';
  * shipping). This is what both `GET /candidates/{id}` and every item in
  * `GET /candidates`'s `PaginatedCandidates.items` return.
  */
+export type PhoneNumberIssue = 'missing_country_code' | 'invalid_for_country';
+
 export type CandidateView = {
   id: string;
   organization_id: string;
@@ -32,6 +34,11 @@ export type CandidateView = {
   last_name: string | null;
   email_id: string | null;
   contact_no: string | null;
+  /** Why `contact_no` can't be called or texted (no leading `+`, or a digit
+   * count that doesn't fit its country code); `null` when it's usable or
+   * there's no number. Computed by candidate-service on every read, so it
+   * clears itself once the number is fixed. Optional until that ships. */
+  phone_number_issue?: PhoneNumberIssue | null;
   /** When the candidate agreed to receive SMS; null means SMS sends are refused. */
   sms_consent_at?: string | null;
   qualification: string | null;

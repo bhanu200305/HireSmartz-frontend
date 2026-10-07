@@ -252,26 +252,28 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
 
   return (
     <div className="flex flex-col items-center px-4 mt-4 w-full">
-      <div className="w-full max-w-6xl mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        {/* On a candidate's page the two back links stack on the left:
-            Job Openings above, Candidate List below. */}
-        <div className="flex flex-col items-start gap-0.5">
-          {isCandidateDetailsPage && (
-            <BackButton onClick={() => navigate('/jobs')} label="Back to Job Openings" />
-          )}
-          <BackButton
-            onClick={handleBackNavigation}
-            label={
-              returnTo
-                ? (returnState?.returnLabel ?? 'Back')
-                : isCandidateDetailsPage
-                  ? 'Back to Candidate List'
-                  : 'Back'
-            }
-          />
+      {isCandidateDetailsPage ? (
+        // A candidate's page mirrors its two back links: Job Openings on the
+        // left, Candidate List on the right directly above the Previous /
+        // Next switcher (portaled into the slot), both on the same top line.
+        <div className="w-full max-w-6xl mb-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          <BackButton onClick={() => navigate('/jobs')} label="Back to Job Openings" />
+          {/* `ml-auto` keeps it on the right even when a narrow screen wraps it. */}
+          <div className="ml-auto flex flex-col items-end gap-1">
+            <BackButton
+              onClick={handleBackNavigation}
+              label={returnTo ? (returnState?.returnLabel ?? 'Back') : 'Back to Candidate List'}
+              className="-mr-2"
+            />
+            <div ref={setHeaderSlot} className="flex items-center empty:hidden" />
+          </div>
         </div>
-        <div ref={setHeaderSlot} className="flex items-center empty:hidden" />
-      </div>
+      ) : (
+        <div className="w-full max-w-6xl mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <BackButton onClick={handleBackNavigation} label="Back" />
+          <div ref={setHeaderSlot} className="flex items-center empty:hidden" />
+        </div>
+      )}
       <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">
         {!isCandidatePage && (
           <div className="mb-4 border-b border-neutral-200">

@@ -12,6 +12,7 @@ import {
   LuSquarePen,
   LuThumbsDown,
   LuThumbsUp,
+  LuTriangleAlert,
   LuUsers,
 } from 'react-icons/lu';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
@@ -45,6 +46,7 @@ import {
 import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
 import FilterMenu, { type CandidateListFilterValues } from './FilterMenu';
 import AddCandidateModal from './Modal/AddCandidateModal';
+import { phoneNumberIssueMessage } from './phoneNumberIssue';
 import CandidateRecruiterNotesPanel from './Notes/CandidateRecruiterNotesPanel';
 import BulkEmailCandidatesModal from './Modal/BulkEmailCandidatesModal';
 import BulkSendSmsModal from './Modal/BulkSendSmsModal';
@@ -861,6 +863,20 @@ const CandidatesListing = () => {
                               <span className="text-neutral-700">
                                 {candidate.contact_no || 'N/A'}
                               </span>
+                              {phoneNumberIssueMessage(candidate.phone_number_issue) && (
+                                <Tooltip
+                                  title={phoneNumberIssueMessage(candidate.phone_number_issue)}
+                                >
+                                  <LuTriangleAlert
+                                    size={13}
+                                    className="ml-1 inline align-[-2px] text-amber-600"
+                                    aria-label={
+                                      phoneNumberIssueMessage(candidate.phone_number_issue) ??
+                                      undefined
+                                    }
+                                  />
+                                </Tooltip>
+                              )}
                             </p>
                             <p className="truncate">
                               <span className="font-semibold text-neutral-500">Source: </span>

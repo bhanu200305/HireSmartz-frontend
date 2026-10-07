@@ -24,6 +24,8 @@ import {
   normaliseRoundStatus,
 } from './roundProgress';
 import { canManageRoundInterviewers, findRoundScore } from './roundPipeline';
+import { phoneIssueBlocksRoundInvite, PHONE_BLOCKED_INVITE_MESSAGE } from './phoneNumberIssue';
+import type { PhoneNumberIssue } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
 
 // "Interview Scheduling" tab: one card per interview round (the resume stage
 // has no interview to schedule), laid out like the old app's Round Overview.
@@ -106,6 +108,9 @@ export type InterviewSchedulingTabProps = {
   isTerminal: boolean;
   /** The candidate was already selected elsewhere (bookings refused). */
   bookingsClosed: boolean;
+  /** The candidate's phone can't be dialed: Intake Call / Audio Screening
+   * invites are refused by candidate-service. */
+  phoneNumberIssue?: PhoneNumberIssue | null;
   /** A booking / reinvite / reschedule request is in flight. */
   isBusy: boolean;
   onInvite: (round: CandidateInterviewRoundView) => void;
@@ -145,6 +150,7 @@ const RoundCard = ({
   currentRoundId,
   isTerminal,
   bookingsClosed,
+  phoneNumberIssue,
   isBusy,
   onInvite,
   onReinvite,
@@ -231,6 +237,9 @@ const RoundCard = ({
     status === 'NOT INVITED' &&
     !bookingId &&
     !isIdentityVerificationRound(round);
+  // Intake Call / Audio Screening phone the candidate; a flagged number makes
+  // candidate-service refuse the invite, so it's disabled up front.
+  const isPhoneBlocked = phoneIssueBlocksRoundInvite(phoneNumberIssue, round);
   // Invitation sent but not booked = its link is still unused, which is all
   // POST /bookings/{id}/reinvite needs now (no longer gated on expiry).
   // interview-service's reinvite rule (`reinvite_expired_booking.py`): only a
@@ -402,16 +411,23 @@ const RoundCard = ({
               title={
                 bookingsClosed
                   ? 'This candidate has already been selected.'
-                  : isPanel && interviewers.length === 0
-                    ? 'Select the panel first.'
-                    : undefined
+                  : isPhoneBlocked
+                    ? PHONE_BLOCKED_INVITE_MESSAGE
+                    : isPanel && interviewers.length === 0
+                      ? 'Select the panel first.'
+                      : undefined
               }
             >
               <span className="flex">
                 <Button
                   type="button"
                   className={`${actionButton} bg-primary text-white`}
-                  disabled={isBusy || bookingsClosed || (isPanel && interviewers.length === 0)}
+                  disabled={
+                    isBusy ||
+                    bookingsClosed ||
+                    isPhoneBlocked ||
+                    (isPanel && interviewers.length === 0)
+                  }
                   onClick={() => onInvite(round)}
                 >
                   Invite

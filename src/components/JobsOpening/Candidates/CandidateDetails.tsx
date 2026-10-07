@@ -22,6 +22,7 @@ import {
   LuCalendarCheck,
   LuUpload,
   LuCircleCheck,
+  LuTriangleAlert,
 } from 'react-icons/lu';
 import { IoChatbubbleEllipses } from 'react-icons/io5';
 import { Button, Badge, InfoHint, Textarea, showToast } from '../../shared';
@@ -100,6 +101,12 @@ import AiCommentsBox from './AiCommentsBox';
 import { useRecordCandidateViewedMutation } from '../../../api/candidate-service/Candidates/candidateViewedApi';
 import ResumeViewerModal from './Modal/ResumeViewerModal';
 import RoundSidebarItem from './RoundSidebarItem';
+import {
+  isPhoneNumberUnusableError,
+  phoneIssueBlocksRoundInvite,
+  phoneNumberIssueMessage,
+  PHONE_BLOCKED_INVITE_MESSAGE,
+} from './phoneNumberIssue';
 import { RoundCandidateFeedback, RoundRecording, RoundTranscript } from './RoundArtifactsPanel';
 import PanelInterviewersModal from './Modal/PanelInterviewersModal';
 import {
@@ -1306,6 +1313,12 @@ const CandidateDetails = () => {
         showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
         return false;
       }
+      // A stale screen can still offer Invite after the number was flagged.
+      if (isPhoneNumberUnusableError(error)) {
+        showToast({ message: PHONE_BLOCKED_INVITE_MESSAGE, type: 'error' });
+        void refetchCandidate();
+        return false;
+      }
       showToast({
         message: getCandidateErrorMessage(error, 'Could not send the invitation.'),
         type: 'error',
@@ -2389,7 +2402,7 @@ const CandidateDetails = () => {
   ) : null;
 
   // Previous / Next in the listing's order (see useCandidateNavigation).
-  // Portaled into JobDetailsLayout's Back row so it mirrors "Back to
+  // Portaled into JobDetailsLayout's Back row, right under "Back to
   // Candidate List" on the right; inline in the name row as a fallback.
   const candidateSwitcher =
     candidateNav.isReady && candidateNav.total > 1 ? (
@@ -2584,7 +2597,15 @@ const CandidateDetails = () => {
               </HeaderInfoRow>
               <HeaderInfoRow label="Source:">{sourceLabel ?? 'N/A'}</HeaderInfoRow>
               <HeaderInfoRow label="Email:">{candidate?.email_id ?? 'N/A'}</HeaderInfoRow>
-              <HeaderInfoRow label="Phone:">{candidate?.contact_no ?? 'N/A'}</HeaderInfoRow>
+              <HeaderInfoRow label="Phone:">
+                {candidate?.contact_no ?? 'N/A'}
+                {phoneNumberIssueMessage(candidate?.phone_number_issue) && (
+                  <span className="mt-1 flex items-start gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
+                    <LuTriangleAlert size={14} className="mt-px shrink-0" aria-hidden />
+                    {phoneNumberIssueMessage(candidate?.phone_number_issue)}
+                  </span>
+                )}
+              </HeaderInfoRow>
             </div>
 
             <div className="min-w-0 border-t border-gray-200 pt-4 text-sm lg:border-t-0 lg:border-l lg:border-gray-300 lg:px-6 lg:pt-0">
@@ -2961,6 +2982,7 @@ const CandidateDetails = () => {
               currentRoundId={currentRound?.id ?? null}
               isTerminal={isTerminal}
               bookingsClosed={bookingsClosed}
+              phoneNumberIssue={candidate?.phone_number_issue ?? null}
               isBusy={
                 isCreatingBooking || isSavingInterviewers || isRequestingReschedule || isReinviting
               }
@@ -3267,6 +3289,11 @@ const CandidateDetails = () => {
                 helperText="Pick at least one panel interviewer to enable Send Invite."
               />
             )}
+            {phoneIssueBlocksRoundInvite(candidate?.phone_number_issue, selectedRound) && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {PHONE_BLOCKED_INVITE_MESSAGE}
+              </p>
+            )}
             <div className="flex gap-3">
               <Button
                 type="button"
@@ -3286,7 +3313,8 @@ const CandidateDetails = () => {
                 disabled={
                   isCreatingBooking ||
                   isSavingInterviewers ||
-                  (isPanelRound && selectedInterviewerIds.length === 0)
+                  (isPanelRound && selectedInterviewerIds.length === 0) ||
+                  phoneIssueBlocksRoundInvite(candidate?.phone_number_issue, selectedRound)
                 }
                 className="flex-1 rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
               >
