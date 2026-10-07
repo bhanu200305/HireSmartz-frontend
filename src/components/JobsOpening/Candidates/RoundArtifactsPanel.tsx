@@ -239,13 +239,22 @@ type TranscriptMessage = {
 const SPEAKER_LINE = /^([^:\n\r]{1,40}):\s*(.*)$/;
 const CANDIDATE_SPEAKER = /\b(candidate|user|usuario|customer)\b/i;
 const BOT_SPEAKER = /^(ai|bot|assistant)$/i;
+// AWS Transcribe's diarization labels (the AI Video round): "spk_0", "spk_1".
+const DIARIZED_SPEAKER = /^spk_?\d+$/i;
 
 /** Role-labeled transcript → bubbles (consecutive lines from the same
  * speaker merged, unlabeled lines continue the previous message). `null`
- * when no line carries a speaker label — plain text, nothing to split. */
-const parseTranscript = (rawText: string): TranscriptMessage[] | null => {
+ * when no line carries a speaker label — plain text, nothing to split.
+ * `aiSpeaksFirst` (the AI Video round only, where the AI always opens): the
+ * first "spk_N" label seen is the AI Interviewer and any other is the
+ * Candidate. Not applied elsewhere, where speaker order can't be trusted. */
+export const parseTranscript = (
+  rawText: string,
+  aiSpeaksFirst = false
+): TranscriptMessage[] | null => {
   const messages: TranscriptMessage[] = [];
   let sawSpeaker = false;
+  let aiSpeaker: string | null = null;
 
   for (const rawLine of rawText.split(/\r?\n|\\n/)) {
     const line = rawLine.trim();
@@ -270,8 +279,13 @@ const parseTranscript = (rawText: string): TranscriptMessage[] | null => {
     const speaker = match[1].trim();
     const text = match[2].trim();
     if (!text) continue;
-    const isCandidate = CANDIDATE_SPEAKER.test(speaker);
-    const isBot = !isCandidate && BOT_SPEAKER.test(speaker);
+    let isCandidate = CANDIDATE_SPEAKER.test(speaker);
+    let isBot = !isCandidate && BOT_SPEAKER.test(speaker);
+    if (aiSpeaksFirst && DIARIZED_SPEAKER.test(speaker)) {
+      aiSpeaker ??= speaker.toLowerCase();
+      isBot = speaker.toLowerCase() === aiSpeaker;
+      isCandidate = !isBot;
+    }
     const speakerLabel = isCandidate ? 'Candidate' : isBot ? 'AI Interviewer' : speaker;
 
     if (previous && previous.speakerLabel === speakerLabel) {
@@ -287,8 +301,8 @@ const parseTranscript = (rawText: string): TranscriptMessage[] | null => {
 const bubbleClass =
   'max-w-xl whitespace-pre-line rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-800 shadow';
 
-const TranscriptBody = ({ text }: { text: string }) => {
-  const messages = useMemo(() => parseTranscript(text), [text]);
+const TranscriptBody = ({ text, aiSpeaksFirst }: { text: string; aiSpeaksFirst: boolean }) => {
+  const messages = useMemo(() => parseTranscript(text, aiSpeaksFirst), [text, aiSpeaksFirst]);
 
   if (!text.trim()) return <p className="text-sm text-gray-600">Not available</p>;
 
@@ -336,7 +350,15 @@ const TranscriptBody = ({ text }: { text: string }) => {
  * icon in the bottom-right corner opening the same text in a large popup.
  * Falls back to embedding the file if the fetch fails (CORS / network) —
  * an iframe navigation isn't subject to CORS, so it still shows inline. */
-const TranscriptViewer = ({ url, roundName }: { url: string; roundName: string }) => {
+const TranscriptViewer = ({
+  url,
+  roundName,
+  aiSpeaksFirst,
+}: {
+  url: string;
+  roundName: string;
+  aiSpeaksFirst: boolean;
+}) => {
   const [state, setState] = useState<
     { status: 'loading' } | { status: 'text'; text: string } | { status: 'fallback' }
   >({ status: 'loading' });
@@ -371,7 +393,7 @@ const TranscriptViewer = ({ url, roundName }: { url: string; roundName: string }
 
   const content = (heightClass: string) =>
     state.status === 'text' ? (
-      <TranscriptBody text={state.text} />
+      <TranscriptBody text={state.text} aiSpeaksFirst={aiSpeaksFirst} />
     ) : (
       <iframe
         src={url}
@@ -415,7 +437,12 @@ type RoundTranscriptProps = RoundRecordingProps & {
   roundName: string;
 };
 
-export const RoundTranscript = ({ candidateId, roundId, roundName }: RoundTranscriptProps) => {
+export const RoundTranscript = ({
+  candidateId,
+  roundId,
+  roundType,
+  roundName,
+}: RoundTranscriptProps) => {
   const { attempts, attemptIndex, setAttempt, artifact, isLoading, error } =
     useRoundArtifactsOfKind(candidateId, roundId, 'transcript');
 
@@ -429,7 +456,11 @@ export const RoundTranscript = ({ candidateId, roundId, roundName }: RoundTransc
       ) : !artifact.url ? (
         <EmptyBox>The transcript is still processing</EmptyBox>
       ) : (
-        <TranscriptViewer url={artifact.url} roundName={roundName} />
+        <TranscriptViewer
+          url={artifact.url}
+          roundName={roundName}
+          aiSpeaksFirst={roundType === 'AI_VIDEO'}
+        />
       )}
     </div>
   );
