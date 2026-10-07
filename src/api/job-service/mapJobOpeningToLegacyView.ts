@@ -171,6 +171,19 @@ export const mapDetailsToJobDetailsState = (
       details.non_exempt_upper_salary_range != null
         ? toMoneyString(details.non_exempt_upper_salary_range)
         : null,
+    // Which salary blocks the Edit form shows ('true' = exempt, 'false' =
+    // non-exempt) — derived from the salaries exactly like EditJobDetail's
+    // own `updateFormWithJobData`. Left out, a form filled from this state
+    // hid both salary blocks, so saved salaries looked missing.
+    exemptionStatus: [
+      ...(details.exempt_lower_salary_range != null || details.exempt_upper_salary_range != null
+        ? ['true']
+        : []),
+      ...(details.non_exempt_lower_salary_range != null ||
+      details.non_exempt_upper_salary_range != null
+        ? ['false']
+        : []),
+    ],
     minExperience: details.min_experience_req != null ? Number(details.min_experience_req) : null,
     maxExperience: details.max_experience_req != null ? Number(details.max_experience_req) : null,
     openDate: details.job_open_date ?? '',
