@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { ConfigProvider } from 'antd';
 import UploadAndGenerateHeader, {
   type ImportWarningItem,
 } from '../../../../src/components/JobsOpening/AddJobDescription/UploadAndGenerateHeader';
@@ -28,17 +29,20 @@ const warnings: ImportWarningItem[] = [
 
 const renderHeader = () =>
   render(
-    <UploadAndGenerateHeader
-      description=""
-      onGenerate={vi.fn()}
-      onUpload={vi.fn()}
-      onDownloadTemplate={vi.fn()}
-      uploadedFileName="questions.xlsx"
-      importedCount={3}
-      failedCount={2}
-      duplicateCount={2}
-      warnings={warnings}
-    />
+    // No animation, so a closed modal is gone at once.
+    <ConfigProvider theme={{ token: { motion: false } }}>
+      <UploadAndGenerateHeader
+        description=""
+        onGenerate={vi.fn()}
+        onUpload={vi.fn()}
+        onDownloadTemplate={vi.fn()}
+        uploadedFileName="questions.xlsx"
+        importedCount={3}
+        failedCount={2}
+        duplicateCount={2}
+        warnings={warnings}
+      />
+    </ConfigProvider>
   );
 
 describe('UploadAndGenerateHeader import details', () => {
