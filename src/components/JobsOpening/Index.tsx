@@ -297,11 +297,11 @@ const JobsOpening = () => {
   );
   const { data, isLoading, refetch } = usesLocalList ? allJobsQuery : pagedJobsQuery;
   const { data: jobStats } = useGetJobStatsQuery(
-    { locationId: filters.locationId },
+    { locationIds: filters.locationIds },
     { skip: !hasTenantContext }
   );
   const { data: myJobStats } = useGetJobStatsQuery(
-    { assignedToMe: true, locationId: filters.locationId },
+    { assignedToMe: true, locationIds: filters.locationIds },
     { skip: !hasTenantContext || !canFilterToMyJobs }
   );
   const { data: orgDepartments = [] } = useListTenantDepartmentsQuery(tenantId ?? '', {
@@ -459,7 +459,7 @@ const JobsOpening = () => {
           isDraft: undefined,
           isClosed: undefined,
           isAll: true,
-          locationId: undefined,
+          locationIds: undefined,
           startDateTime: '',
           endDateTime: '',
           sortBy: undefined,
@@ -746,10 +746,10 @@ const JobsOpening = () => {
     }
   };
 
-  const handleLocationChange = (value: string | undefined) => {
+  const handleLocationChange = (value: string[]) => {
     dispatch(
       setJobOpeningFilters({
-        locationId: value,
+        locationIds: value.length > 0 ? value : undefined,
         page: 0,
       })
     );
@@ -1203,6 +1203,8 @@ const JobsOpening = () => {
               <div className="cfp-dropdown-trigger w-full sm:w-48 shrink-0">
                 <FilterSelectIcon />
                 <Select
+                  mode="multiple"
+                  maxTagCount="responsive"
                   placeholder="All Locations"
                   onChange={handleLocationChange}
                   allowClear
@@ -1211,7 +1213,7 @@ const JobsOpening = () => {
                   className="w-full custom-select"
                   popupMatchSelectWidth={false}
                   variant="borderless"
-                  value={filters.locationId}
+                  value={filters.locationIds ?? []}
                 >
                   {locations.map((loc) => (
                     <Option key={loc.id} value={loc.id}>

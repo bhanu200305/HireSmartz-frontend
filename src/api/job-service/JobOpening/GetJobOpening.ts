@@ -18,7 +18,8 @@ type ListJobOpeningsArgs = Partial<JobFilterRequest> & {
   sortDir?: string;
   globalSearchRequestDto?: { text: string; field: string };
   assignedToMe?: boolean;
-  locationId?: string;
+  /** Any of these offices (a job matching at least one is listed). */
+  locationIds?: string[];
 };
 
 // Maps UI sortKeys to job-service's sort_by values. Unmapped keys (e.g.
@@ -30,6 +31,16 @@ const SORT_BY_MAP: Record<string, string> = {
   createdAt: 'created_at',
   vacancies: 'vacancies',
   jobProfileCode: 'job_profile_code',
+};
+
+// `location_id` repeated once per office (`?location_id=a&location_id=b`): the
+// params object can't repeat a key, so it goes in the URL itself (RTK appends
+// the rest of the params with `&`).
+const locationQuery = (locationIds?: string[]): string => {
+  const ids = (locationIds ?? []).filter(Boolean);
+  return ids.length > 0
+    ? `?${ids.map((id) => `location_id=${encodeURIComponent(id)}`).join('&')}`
+    : '';
 };
 
 // Defaults to 'published' when no filter flag is set at all - a new caller
@@ -56,7 +67,7 @@ const listFilterParams = (args: ListJobOpeningsArgs) => {
     ...(sortBy ? { sort_by: sortBy } : {}),
     ...(args.sortDir ? { sort_dir: String(args.sortDir).toLowerCase() } : {}),
     ...(args.assignedToMe ? { assigned_to_me: true } : {}),
-    ...(args.locationId ? { location_id: args.locationId } : {}),
+    // `location_id` (one per office) is added to the URL, see `locationQuery`.
   };
 };
 
@@ -78,7 +89,7 @@ const extendedApi = jobApi.injectEndpoints({
           undefined;
 
         return {
-          url: '/job-openings',
+          url: `/job-openings${locationQuery(args.locationIds)}`,
           method: 'GET',
           params: {
             page,
@@ -109,7 +120,7 @@ const extendedApi = jobApi.injectEndpoints({
         let total = 0;
         for (let page = 1; page <= MAX_PAGES; page += 1) {
           const result = await baseQuery({
-            url: '/job-openings',
+            url: `/job-openings${locationQuery(args.locationIds)}`,
             method: 'GET',
             params: { page, page_size: MAX_PAGE_SIZE, ...listFilterParams(args) },
           });
@@ -130,14 +141,13 @@ const extendedApi = jobApi.injectEndpoints({
 
     getJobStats: build.query<
       JobStatsResponse,
-      { assignedToMe?: boolean; locationId?: string } | void
+      { assignedToMe?: boolean; locationIds?: string[] } | void
     >({
       query: (args) => ({
-        url: '/job-openings/stats',
+        url: `/job-openings/stats${locationQuery(args?.locationIds)}`,
         method: 'GET',
         params: {
           ...(args?.assignedToMe ? { assigned_to_me: true } : {}),
-          ...(args?.locationId ? { location_id: args.locationId } : {}),
         },
       }),
       providesTags: ['JobStats'],

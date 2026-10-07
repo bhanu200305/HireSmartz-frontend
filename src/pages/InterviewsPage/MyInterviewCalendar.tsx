@@ -28,6 +28,7 @@ import {
 } from '../../api/interview-service/client';
 import { buildCandidateDetailsPath } from '../../components/JobsOpening/Candidates/useCandidateNavigation';
 import { useJobTitleForOpening } from './useJobTitleForOpening';
+import { useFromCalendar } from './useFromCalendar';
 import { bookingStatusBadge, bookingStatusLabel, interviewTypeLabel } from './interviewLabels';
 
 // `GET /bookings` has no date-range filter and orders by `created_at` desc,
@@ -95,9 +96,6 @@ const dayGroupLabel = (date: Dayjs): string => {
   return date.format('dddd');
 };
 
-// Lets the candidate page's Back button return to the calendar.
-const FROM_CALENDAR = { returnTo: '/interviews', returnLabel: 'Back to Calendar' };
-
 // Candidate name + the job opening id their profile link needs — shared by
 // every card/avatar below so each only renders once RTK Query's own cache
 // resolves it (one request per distinct candidate, not one per usage).
@@ -146,6 +144,7 @@ const HeroAvatarChip = ({ booking, onClick }: { booking: BookingView; onClick: (
 };
 
 const AgendaCard = ({ booking, onOpen }: { booking: BookingView; onOpen: () => void }) => {
+  const fromCalendar = useFromCalendar();
   const { name, jobOpeningId } = useCandidateSummary(booking.candidate_id);
   const resolveJobTitle = useJobTitleForOpening();
   const jobTitle = booking.round_snapshot?.job_title?.trim() || resolveJobTitle(booking.job_id);
@@ -181,7 +180,7 @@ const AgendaCard = ({ booking, onOpen }: { booking: BookingView; onOpen: () => v
             {profileHref ? (
               <Link
                 to={profileHref}
-                state={FROM_CALENDAR}
+                state={fromCalendar}
                 onClick={(e) => e.stopPropagation()}
                 title="Open this candidate's full profile"
                 className="truncate font-semibold text-brand-700 underline decoration-transparent underline-offset-2 transition-colors hover:text-brand-800 hover:decoration-brand-400"
@@ -216,12 +215,12 @@ const AgendaCard = ({ booking, onOpen }: { booking: BookingView; onOpen: () => v
       {profileHref && (
         <Link
           to={profileHref}
-          state={FROM_CALENDAR}
+          state={fromCalendar}
           onClick={(e) => e.stopPropagation()}
           title="Open this candidate's full profile"
           className="flex shrink-0 items-center gap-1 self-start rounded-full border border-neutral-200 px-2 py-1 text-xs font-medium text-neutral-600 hover:border-brand-300 hover:text-brand-600"
         >
-          Profile
+          View
           <LuExternalLink size={12} />
         </Link>
       )}

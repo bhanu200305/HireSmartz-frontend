@@ -178,13 +178,22 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     viewTabIndex >= 0 && viewTabIndex + 1 < allSteps.length ? currentPaths[viewTabIndex + 1] : null;
 
   // Candidate list Back goes to the job listing, not `navigate(-1)`.
-  const returnState = location.state as { returnTo?: string; returnLabel?: string } | null;
+  const returnState = location.state as {
+    returnTo?: string;
+    returnLabel?: string;
+    reopenCalendar?: boolean;
+  } | null;
   const returnTo =
     isCandidateDetailsPage && returnState?.returnTo?.startsWith('/') ? returnState.returnTo : null;
 
   const handleBackNavigation = () => {
     if (returnTo) {
-      navigate(returnTo);
+      // From the calendar popup: land back on the page it was opened from, with
+      // the popup open again.
+      navigate(
+        returnTo,
+        returnState?.reopenCalendar ? { state: { reopenCalendar: true } } : undefined
+      );
     } else if (isCandidateDetailsPage && id) {
       navigate(`/jobs/view/${id}/candidates`);
     } else if (fromDashboard) {

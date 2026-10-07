@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BsCalendar4Event } from 'react-icons/bs';
 import AntdCommonModal from '../../components/shared/ui/AntdCommonModal';
 import { BookingDetailDrawer } from './BookingDetailDrawer';
@@ -16,6 +16,11 @@ type MyInterviewCalendarModalProps = {
 // whatever page was already open underneath it.
 export const MyInterviewCalendarModal = ({ open, onClose }: MyInterviewCalendarModalProps) => {
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  // A booking's detail panel must not outlive the popup (it would stay open
+  // over the page a link inside it navigated to).
+  useEffect(() => {
+    if (!open) setSelectedBookingId(null);
+  }, [open]);
 
   return (
     <>

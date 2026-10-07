@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Drawer, Select } from 'antd';
+import { Drawer, Rate, Select } from 'antd';
 import dayjs from 'dayjs';
 import { LuExternalLink, LuCirclePlay } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
+import { RATING_TO_RECOMMENDATION } from '../../shared/utils/ratingRecommendation';
+import { useFromCalendar } from './useFromCalendar';
 
 import { Badge } from '../../components/shared/ui/badge';
 import { Button } from '../../components/shared/ui/button';
@@ -32,7 +34,6 @@ import {
   toUploadableAudioFile,
   AUDIO_UPLOAD_ACCEPT,
   type BookingStatus,
-  type FeedbackRecommendation,
   type InterviewApiError,
 } from '../../api/interview-service/client';
 import { useGetJobQuestionsQuery } from '../../api/job-service/JobOpening/jobQuestions';
@@ -65,14 +66,6 @@ const fmt = (iso: string | null): string =>
 
 type PendingAction = 'cancel' | 'skip' | 'status' | 'substitute' | null;
 
-const RECOMMENDATION_OPTIONS: Array<{ label: string; value: FeedbackRecommendation }> = [
-  { label: 'Strong Yes', value: 'strong_yes' },
-  { label: 'Yes', value: 'yes' },
-  { label: 'Neutral', value: 'neutral' },
-  { label: 'No', value: 'no' },
-  { label: 'Strong No', value: 'strong_no' },
-];
-
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="flex justify-between gap-4 py-1.5 text-sm">
     <span className="shrink-0 text-neutral-500">{label}</span>
@@ -93,6 +86,7 @@ export const BookingDetailDrawer = ({
 }) => {
   const open = Boolean(bookingId);
   const id = bookingId ?? '';
+  const fromCalendar = useFromCalendar();
 
   const {
     data: booking,
@@ -178,9 +172,8 @@ export const BookingDetailDrawer = ({
   const [targetStatus, setTargetStatus] = useState<BookingStatus>('completed');
   const [newInterviewerId, setNewInterviewerId] = useState<string | undefined>(undefined);
   const [note, setNote] = useState('');
-  const [recommendation, setRecommendation] = useState<FeedbackRecommendation | undefined>(
-    undefined
-  );
+  // Stars only; the recommendation sent is derived from them.
+  const [rating, setRating] = useState(0);
   const [feedbackNotes, setFeedbackNotes] = useState('');
   const [recordingRef, setRecordingRef] = useState('');
 
@@ -191,7 +184,7 @@ export const BookingDetailDrawer = ({
     setNote('');
     setTargetStatus('completed');
     setNewInterviewerId(undefined);
-    setRecommendation(undefined);
+    setRating(0);
     setFeedbackNotes('');
     setRecordingRef('');
   }, [bookingId]);
@@ -306,14 +299,14 @@ export const BookingDetailDrawer = ({
   };
 
   const sendFeedback = async () => {
-    if (!recommendation || !feedbackNotes.trim()) return;
+    if (rating < 1 || !feedbackNotes.trim()) return;
     try {
       await submitFeedback({
         bookingId: id,
-        recommendation,
+        recommendation: RATING_TO_RECOMMENDATION[rating],
         notes: feedbackNotes.trim(),
       }).unwrap();
-      setRecommendation(undefined);
+      setRating(0);
       setFeedbackNotes('');
       showToast({ message: 'Feedback submitted.', type: 'success' });
     } catch (e) {
@@ -388,7 +381,7 @@ export const BookingDetailDrawer = ({
             {profileHref && (
               <Link
                 to={profileHref}
-                state={{ returnTo: '/interviews', returnLabel: 'Back to Calendar' }}
+                state={fromCalendar}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
               >
                 View Full Candidate Profile
@@ -663,17 +656,8 @@ export const BookingDetailDrawer = ({
                 <SectionTitle>Submit Feedback</SectionTitle>
                 <div className="space-y-3 rounded-lg border border-neutral-200 p-3">
                   <div>
-                    <span className="mb-1 block text-xs font-medium text-neutral-600">
-                      Recommendation
-                    </span>
-                    <Select<FeedbackRecommendation>
-                      className="w-full"
-                      size="large"
-                      placeholder="Select a Recommendation"
-                      value={recommendation}
-                      options={RECOMMENDATION_OPTIONS}
-                      onChange={(v) => setRecommendation(v)}
-                    />
+                    <span className="mb-1 block text-xs font-medium text-neutral-600">Rating</span>
+                    <Rate value={rating} onChange={setRating} />
                   </div>
                   <div>
                     <span className="mb-1 block text-xs font-medium text-neutral-600">Notes</span>
@@ -687,7 +671,7 @@ export const BookingDetailDrawer = ({
                   </div>
                   <Button
                     className={`${PRIMARY_BTN} w-full`}
-                    disabled={!recommendation || !feedbackNotes.trim() || feedbackState.isLoading}
+                    disabled={rating < 1 || !feedbackNotes.trim() || feedbackState.isLoading}
                     onClick={sendFeedback}
                   >
                     {feedbackState.isLoading ? 'Submitting…' : 'Submit Feedback'}
