@@ -8,7 +8,7 @@ import CandidatePoolTable from './CandidatePoolTable';
 const DEFAULT_PAGE_SIZE = 10;
 
 /**
- * "Qualified candidate pool" — candidates who have passed resume screening,
+ * "Qualified candidate pool" — candidates who have passed resume review,
  * within this hiring manager's assigned-job scope (server-side, same as
  * every other candidate-service KPI route here).
  */
@@ -35,7 +35,7 @@ const QualifiedCandidatePoolSection: React.FC = () => {
             Qualified Candidate Pool
           </Typography>
           <Typography variant="caption" className="mt-0.5 block text-neutral-400">
-            Candidates who have passed resume screening
+            Candidates who have passed resume review
           </Typography>
         </div>
       </div>

@@ -94,7 +94,7 @@ const CandidateAverageScoreCell = ({ average }: { average: number | null | undef
 // loads up to 200 candidates (the API maximum) and is filtered, sorted and
 // paged here.
 const CLIENT_PAGED_FETCH_LIMIT = 200;
-// Value of the Round filter's "Resume Screening" option (no round id exists).
+// Value of the Round filter's "Resume Review" option (no round id exists).
 const RESUME_ROUND_FILTER = '__resume__';
 // What candidate-service names the resume stage in `current_round_name`
 // (`RESUME_STAGE_NAME`), the same text the list's status column shows.
@@ -216,7 +216,7 @@ const CandidatesListing = () => {
       search: search || undefined,
       displayStatus,
       source,
-      // The Resume Screening option has no job-service round behind it, so
+      // The Resume Review option has no job-service round behind it, so
       // it narrows nothing on the server (see `scopedItems` below).
       roundId: roundId && roundId !== RESUME_ROUND_FILTER ? roundId : undefined,
       sortBy,
@@ -247,9 +247,11 @@ const CandidatesListing = () => {
       ((jobRoundPlan ?? []) as Array<{ roundId?: string; roundName?: string | null }>)
         .filter((r) => r.roundId)
         .map((r) =>
-          // The plan's "Resume Screening" round is the resume stage, which candidates
+          // The plan's "Resume Review" round is the resume stage, which candidates
           // are never "sitting at" through a round id.
-          ['resume screening', 'resume round'].includes((r.roundName ?? '').trim().toLowerCase())
+          ['resume review', 'resume screening', 'resume round'].includes(
+            (r.roundName ?? '').trim().toLowerCase()
+          )
             ? { label: RESUME_STAGE_LABEL, value: RESUME_ROUND_FILTER }
             : { label: r.roundName || 'Round', value: r.roundId as string }
         ),

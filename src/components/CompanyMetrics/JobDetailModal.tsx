@@ -126,7 +126,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           <ChartCard
             title="Candidate Status Breakdown"
-            subtitle="Applied, AI Audio Call, AI Video Interview, Panel Interview, Selected, Rejected"
+            subtitle="Applied, AI Audio Screening, AI Video Interview, Panel Interview, Selected, Rejected"
             isLoading={isFunnelLoading}
             available={funnelStages.length > 0}
           >

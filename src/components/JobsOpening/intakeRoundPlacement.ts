@@ -61,4 +61,4 @@ export const hasQuestionRound = (
 };
 
 export const NO_QUESTION_ROUND_MESSAGE =
-  'Add an AI Audio Call, AI Video Interview or Hiring Panel round before continuing to Questions.';
+  'Add an AI Audio Screening, AI Video Interview or Hiring Panel round before continuing to Questions.';

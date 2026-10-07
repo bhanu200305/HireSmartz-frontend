@@ -98,8 +98,8 @@ export const candidateStatusColor = (
 const STATUS_TOOLTIP_BY_CODE: Record<string, string> = {
   applied: 'Application received, not yet reviewed.',
   resume_under_review: "Resume is being scored — check back once it's done.",
-  resume_rejected: "Didn't pass resume screening.",
-  shortlisted: 'Passed resume screening — ready for interview rounds.',
+  resume_rejected: "Didn't pass resume review.",
+  shortlisted: 'Passed resume review — ready for interview rounds.',
   interview_scheduled: 'An interview round has been booked for this candidate.',
   interview_in_progress: 'An interview round is currently underway.',
   interview_rejected: "Didn't pass an interview round.",

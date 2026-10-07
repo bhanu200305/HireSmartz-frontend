@@ -289,7 +289,7 @@ const NotesSidePanel = ({
           authorName: currentUserName,
           authorRole: 'Hiring Manager',
           authorId,
-          roundName: 'AI Audio Call',
+          roundName: 'AI Audio Screening',
         }
       : {
           id: `candidate-note-${nowIso}`,

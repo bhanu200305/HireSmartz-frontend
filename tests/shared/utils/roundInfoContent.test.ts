@@ -8,8 +8,9 @@ import {
 
 describe('getSpecialKindFromRoundName', () => {
   it('maps the seeded round names to their kind, ignoring case and spaces', () => {
-    expect(getSpecialKindFromRoundName('Resume Screening')).toBe('resume');
+    expect(getSpecialKindFromRoundName('Resume Review')).toBe('resume');
     expect(getSpecialKindFromRoundName('Intake Call')).toBe('intake_call');
+    expect(getSpecialKindFromRoundName('Resume Screening')).toBe('resume');
     expect(getSpecialKindFromRoundName('Resume Round')).toBe('resume');
     expect(getSpecialKindFromRoundName('  intake call round ')).toBe('intake_call');
     expect(getSpecialKindFromRoundName('Identity Verification')).toBe('verification');
@@ -39,7 +40,7 @@ describe('getRoundInfoSections', () => {
   });
 
   it('lists the focus areas of each interview round', () => {
-    expect(textOf({ roundName: 'AI Audio Call' }, 'Focus areas')).toBe(
+    expect(textOf({ roundName: 'AI Audio Screening' }, 'Focus areas')).toBe(
       'Personality Traits, Qualifications, Company Fit, Career Goals.'
     );
     expect(textOf({ variants: ['avatar'] }, 'Focus areas')).toBe('Skills Match.');

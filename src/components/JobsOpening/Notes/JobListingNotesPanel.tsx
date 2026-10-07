@@ -83,7 +83,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     authorRole: 'Hiring Manager',
     authorId: undefined,
     createdAt: '2026-03-17T18:09:00.000Z',
-    roundName: 'AI Audio Call',
+    roundName: 'AI Audio Screening',
     content: 'Please schedule an in-person interview with this candidate',
   },
   {
@@ -124,7 +124,7 @@ export const JOB_NOTES_DUMMY: CandidateNoteItem[] = [
     authorRole: 'Super Admin',
     authorId: undefined,
     createdAt: '2026-03-01T17:00:00.000Z',
-    roundName: 'AI Audio Call',
+    roundName: 'AI Audio Screening',
     content: 'Can budget $40k. Check if this works.',
   },
 ];

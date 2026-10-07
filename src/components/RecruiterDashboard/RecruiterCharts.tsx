@@ -31,10 +31,10 @@ const ROUND_TYPE_COLORS: Record<(typeof ROUND_TYPES)[number], string> = {
   VIDEO: '#3b82f6',
 };
 // Display names for those buckets (round_type_classification.py): AUDIO =
-// AI Audio Call rounds, AVATAR = AI Video Interview rounds (soundwave/avatar),
+// AI Audio Screening rounds, AVATAR = AI Video Interview rounds (soundwave/avatar),
 // VIDEO = Hiring Panel rounds (online/offline).
 const ROUND_TYPE_LABELS: Record<(typeof ROUND_TYPES)[number], string> = {
-  AUDIO: 'AI Audio Call',
+  AUDIO: 'AI Audio Screening',
   AVATAR: 'AI Video Interview',
   VIDEO: 'Panel Interview',
 };
@@ -191,7 +191,7 @@ const RecruiterCharts: React.FC = () => {
 
       <ChartCard
         title="Interviews by Status & Type"
-        subtitle="Status split by AI Audio Call, AI Video Interview & Panel Interview"
+        subtitle="Status split by AI Audio Screening, AI Video Interview & Panel Interview"
         tag="Grouped Bar"
         isLoading={isInterviewsLoading}
         available={interviewsByStatusAndTypeData.length > 0}

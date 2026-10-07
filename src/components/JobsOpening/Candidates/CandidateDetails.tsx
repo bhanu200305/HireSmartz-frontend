@@ -675,7 +675,7 @@ const CandidateDetails = () => {
   }, [selectedRound?.id]);
 
   // Assessment tab always has something selected in its sidebar, like the
-  // old app (which opened on Resume Screening): the first round, or the
+  // old app (which opened on Resume Review): the first round, or the
   // Resume Assessment fallback entry when there's no resume-stage round.
   // Only runs while nothing is picked, so it never overrides a real choice.
   useEffect(() => {
@@ -1537,7 +1537,7 @@ const CandidateDetails = () => {
       ? [
           {
             key: RESUME_FALLBACK_KEY,
-            label: 'Resume Screening',
+            label: 'Resume Review',
             ai: candidate?.resume_score ?? null,
             human: candidate?.resume_rating ?? null,
           },
@@ -1615,7 +1615,7 @@ const CandidateDetails = () => {
   // Resume stage detail in the old app's text layout: score sentences, the
   // recruiter's star rating + comments, and the resume page on the right.
   // Same data and handlers as before; shared by the resume round and the
-  // fallback "Resume Screening" tab.
+  // fallback "Resume Review" tab.
   const resumeMatchMetrics = (jobScoringConfig?.data?.resumeConfig?.weights ?? []).map((w) => ({
     label: RESUME_CRITERIA_LABELS[w.categoryName] ?? w.displayName ?? w.categoryName,
     max: w.weightPercentage,
@@ -1855,7 +1855,7 @@ const CandidateDetails = () => {
         // What actually belongs here is the resume's own AI score
         // plus the recruiter's own review of it — previously only
         // reachable from the Assessment tab, so adding one here
-        // never showed up on the "Resume Screening" pipeline card
+        // never showed up on the "Resume Review" pipeline card
         // a recruiter actually clicks into.
         renderResumeAssessment()
       ) : (
@@ -2924,7 +2924,7 @@ const CandidateDetails = () => {
                           <h3
                             className={`text-sm font-semibold ${isResumeFallbackSelected ? 'text-primary' : 'text-gray-900'}`}
                           >
-                            Resume Screening
+                            Resume Review
                           </h3>
                           {candidate?.resume_score != null && (
                             <p className="text-xs text-gray-800">
@@ -3291,7 +3291,7 @@ const CandidateDetails = () => {
                 : isAiVideoRound(selectedRound)
                   ? 'from the available AI Video Interview slots.'
                   : isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound)
-                    ? 'from the available AI Audio Call slots.'
+                    ? 'from the available AI Audio Screening slots.'
                     : 'from the available slots.'}
             </p>
             {isPanelRound && (

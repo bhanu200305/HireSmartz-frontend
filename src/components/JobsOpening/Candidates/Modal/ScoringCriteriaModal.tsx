@@ -103,7 +103,7 @@ const DEFAULT_INTERVIEW_WEIGHTS = [
   },
 ];
 
-// Same colours and bands as the category bars on the Resume Screening tab
+// Same colours and bands as the category bars on the Resume Review tab
 // (CandidateDetails.tsx): a category's 0-5 score shown as a percentage.
 const RESUME_BAR_BANDS = [
   { color: '#3FB97F', label: '4-5 out of 5 (80-100%)', meaning: 'Strong match' },
@@ -323,9 +323,9 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
             </li>
 
             <li>
-              <strong>AI Audio Call Score: 20%</strong>
+              <strong>AI Audio Screening Score: 20%</strong>
               <p className="ml-2">
-                Derived from candidate’s performance in the AI Audio Call round.
+                Derived from candidate’s performance in the AI Audio Screening round.
               </p>
             </li>
 
@@ -343,8 +343,8 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
       <section>
         <h3 className="text-lg font-semibold mb-2">Formula</h3>
         <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm font-mono">
-          Overall AI Score = (Resume Score × 20%) + (AI Audio Call Score × 20%) + (Average AI Video
-          Interview Scores × 60%)
+          Overall AI Score = (Resume Score × 20%) + (AI Audio Screening Score × 20%) + (Average AI
+          Video Interview Scores × 60%)
         </div>
       </section>
     </div>
@@ -607,7 +607,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
             score.
           </p>
           <p>
-            While this check is pending, the Resume Screening and Intake Call stages stay locked:
+            While this check is pending, the Resume Review and Intake Call stages stay locked:
             Advance, Skip, Reject and Mark as Selected become available once the consistency score
             has been recorded.
           </p>

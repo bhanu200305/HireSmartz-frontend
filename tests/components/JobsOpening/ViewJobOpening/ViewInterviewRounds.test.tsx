@@ -7,8 +7,8 @@ const jobData = {
     interviewRounds: [
       {
         id: 1,
-        round: { id: 'r-resume', name: 'Resume Screening' },
-        description: 'AI resume screening.',
+        round: { id: 'r-resume', name: 'Resume Review' },
+        description: 'AI resume review.',
         duration: null,
         variant: null,
       },
@@ -42,7 +42,7 @@ const jobData = {
 };
 
 const roundTypes = [
-  { id: 'r-resume', name: 'Resume Screening', special_kind: 'resume', variant_labels: undefined },
+  { id: 'r-resume', name: 'Resume Review', special_kind: 'resume', variant_labels: undefined },
   {
     id: 'r-intake',
     name: 'Renamed Intake',
@@ -84,12 +84,12 @@ describe('ViewInterviewRounds', () => {
 
   it('shows one numbered pill per round and the first round by default', () => {
     renderPage();
-    expect(screen.getByRole('button', { name: '1. Resume Screening' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '1. Resume Review' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '3. Hiring Panel Round' })).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: '1. Resume Screening' }).getAttribute('aria-current')
+      screen.getByRole('button', { name: '1. Resume Review' }).getAttribute('aria-current')
     ).toBe('true');
-    expect(screen.getByText('AI resume screening.')).toBeTruthy();
+    expect(screen.getByText('AI resume review.')).toBeTruthy();
   });
 
   it('shows no Questions section for the Resume round', () => {
