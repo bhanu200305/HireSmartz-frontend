@@ -20,6 +20,7 @@ import {
   useGenerateJobQuestionsMutation,
   useRegenerateJobQuestionsMutation,
   useBulkImportJobQuestionsMutation,
+  useGetQuestionImportsQuery,
   useLazyGetQuestionImportTemplateQuery,
   jobQuestionsApi,
 } from '../../../api/job-service/JobOpening/jobQuestions';
@@ -288,6 +289,23 @@ const AiQuestionsSetup = () => {
       jdRounds.some((round) => round.round_instance_id === selectedRoundInstanceId) &&
       selectedRoundInstanceId) ||
     defaultRoundInstanceId;
+  // Files bulk-imported into this round, newest first.
+  const { data: questionImports } = useGetQuestionImportsQuery(
+    { jobOpeningId: activeJobOpeningId ?? '', interviewRoundId: activeRoundInstanceId },
+    { skip: !activeJobOpeningId || !activeRoundInstanceId }
+  );
+  const uploadedFiles = useMemo(
+    () =>
+      (questionImports?.imports ?? []).map((file) => ({
+        id: file.id,
+        fileName: file.file_name,
+        uploadedAt: file.uploaded_at,
+        imported: file.imported_count,
+        failed: file.failed_count,
+        duplicates: file.duplicate_count,
+      })),
+    [questionImports]
+  );
   // The API lists the newest batch first.
   const visibleQuestions = useMemo(
     () => questions.filter((q) => q.interview_round_id === activeRoundInstanceId),
@@ -1109,6 +1127,7 @@ const AiQuestionsSetup = () => {
                       failedCount={failedRowCount}
                       duplicateCount={duplicateRowCount}
                       warnings={importWarnings}
+                      uploadedFiles={uploadedFiles}
                       onClearDetails={() => {
                         setUploadedFileName('');
                         setImportWarnings([]);

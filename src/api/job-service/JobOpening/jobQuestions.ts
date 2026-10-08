@@ -3,6 +3,7 @@ import type {
   AudioQuestionResponse,
   FailedQuestionRowResponse,
   JobQuestionsResponse,
+  QuestionImportResponse,
   QuestionRequest,
   QuestionResponse,
   RoundQuestionsResponse,
@@ -124,7 +125,22 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
           params: interview_round_id ? { interview_round_id } : undefined,
         };
       },
-      invalidatesTags: (_r, _e, { jobOpeningId }) => [{ type: 'JobQuestions', id: jobOpeningId }],
+      invalidatesTags: (_r, _e, { jobOpeningId }) => [
+        { type: 'JobQuestions', id: jobOpeningId },
+        { type: 'QuestionImports', id: jobOpeningId },
+      ],
+    }),
+
+    getQuestionImports: build.query<
+      { imports: QuestionImportResponse[] },
+      { jobOpeningId: string; interviewRoundId?: string | null }
+    >({
+      query: ({ jobOpeningId, interviewRoundId }) => ({
+        url: `/job-openings/${jobOpeningId}/question-imports`,
+        method: 'GET',
+        params: interviewRoundId ? { interview_round_id: interviewRoundId } : undefined,
+      }),
+      providesTags: (_r, _e, { jobOpeningId }) => [{ type: 'QuestionImports', id: jobOpeningId }],
     }),
 
     getQuestionImportTemplate: build.query<{ download_url: string; expires_in: number }, void>({
@@ -225,6 +241,7 @@ export const {
   useGenerateJobQuestionsMutation,
   useRegenerateJobQuestionsMutation,
   useBulkImportJobQuestionsMutation,
+  useGetQuestionImportsQuery,
   useLazyGetQuestionImportTemplateQuery,
   useGetJobIntakeQuestionsQuery,
   useImportJobIntakeQuestionsMutation,

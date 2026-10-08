@@ -140,6 +140,7 @@ import {
 import { roundLabel, formatCallIntent } from './roundDisplay';
 import {
   resolveCurrentRound,
+  isReadyForOverallScore,
   isRoundConcluded,
   isAiVideoRound,
   isAudioScreeningRound,
@@ -1389,6 +1390,7 @@ const CandidateDetails = () => {
   // plan hasn't loaded/has no rounds yet, which would otherwise trivially
   // satisfy "nothing outstanding".
   const allRoundsCompleted = rounds.length > 0 && currentRound === null;
+  const overallScoreReady = isReadyForOverallScore(rounds);
   const isAdvanceLocked = currentRound !== null && currentRound.id === advancedFromRoundId;
   const nextRound = currentRound
     ? (rounds[rounds.findIndex((r) => r.id === currentRound.id) + 1] ?? null)
@@ -1585,9 +1587,9 @@ const CandidateDetails = () => {
       : null;
   };
   const overallRows = scoredRows.filter((row) => !row.excludeFromOverall);
-  // N/A (null) until every round is completed — a mid-pipeline average
-  // would read as a final verdict.
-  const overallScore = allRoundsCompleted
+  // N/A (null) until every round is done and the last has concluded — a
+  // mid-pipeline average would read as a final verdict.
+  const overallScore = overallScoreReady
     ? {
         ai: averageOf(overallRows.map((row) => row.ai)),
         human: averageOf(overallRows.map((row) => row.human)),
@@ -2640,7 +2642,7 @@ const CandidateDetails = () => {
                     <div
                       className="truncate pr-2"
                       title={
-                        allRoundsCompleted
+                        overallScoreReady
                           ? 'Average across rounds with a score (skipped rounds and the Intake Call consistency check not included)'
                           : 'Shown once all rounds are completed'
                       }
@@ -3166,7 +3168,7 @@ const CandidateDetails = () => {
             setAdvancedFromRoundId(currentRound?.id ?? null);
             void refetchRounds();
             refetchCandidate();
-            // Advancing into a Hiring Panel round without inviting it: remind
+            // Advancing into a panel round without inviting it: remind
             // the recruiter to pick the panel and invite. Shown once.
             if (newRound?.round_type === 'PANEL' && !inviteSent) setPanelPromptRound(newRound);
           }}
@@ -3176,7 +3178,7 @@ const CandidateDetails = () => {
         // Informational, never a gate: closing it any way (X, Escape, outside
         // click) is the same as Later. Shown once per advance.
         <AntdCommonModal
-          title="Next round: Hiring Panel"
+          title={`Next round: ${roundLabel(panelPromptRound)}`}
           open
           onClose={() => setPanelPromptRound(null)}
           modalProps={{ width: 480 }}
@@ -3304,7 +3306,7 @@ const CandidateDetails = () => {
                 : isAiVideoRound(selectedRound)
                   ? 'from the available AI Video Interview slots.'
                   : isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound)
-                    ? 'from the available AI Audio Screening slots.'
+                    ? 'from the available AI Agent Call slots.'
                     : 'from the available slots.'}
             </p>
             {isPanelRound && (

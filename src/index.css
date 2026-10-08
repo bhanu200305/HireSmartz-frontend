@@ -510,9 +510,11 @@ canvas[data-agora-recording='true'] {
   z-index: 1250 !important;
 }
 
-/* Centre tooltip text, so a wrapped line sits evenly under the button. */
-.ant-tooltip-inner {
-  text-align: center;
+/* Centre tooltip text, so a wrapped line sits evenly under the button. antd's
+   own `.ant-tooltip .ant-tooltip-inner { text-align: start }` is as specific
+   and loads later, hence the !important. */
+.ant-tooltip .ant-tooltip-inner {
+  text-align: center !important;
 }
 
 .ant-tabs-tab:focus {
